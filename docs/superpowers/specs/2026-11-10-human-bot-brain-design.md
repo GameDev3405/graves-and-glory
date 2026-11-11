@@ -1,6 +1,6 @@
 # Bots that feel human and play smart: a fresh design (2026-11-10)
 
-Status: proposal for Kort, 2026-11-10 (not approved). Replaces the design sections of docs/reports/ai-audit-and-design-2026-11-09.md, which Kort reopened ("dont limit yourself by any past work"); the audit and research in that report stand.
+Status: proposal, 2026-11-10; Kort answered its five questions on 2026-11-11 (section 6), folded in below. The rest is not yet approved as a whole. Replaces the design sections of docs/reports/ai-audit-and-design-2026-11-09.md, which Kort reopened ("dont limit yourself by any past work"); the audit and research in that report stand.
 
 Read-only proposal. Earlier AI designs are reference only. Kept constraints: the army economy (best of 5, real pick phase, same gold), six orders through the player's path, no hidden information, no stat or gold bonuses, a few ms per tick, content through data.
 
@@ -26,7 +26,7 @@ The theme: **"smart" and "human" are separate jobs.** A brain decides what it wa
 ### A. The embodied commander
 - **Player sees:** a named commander on a horse or on foot with its banner, its head turning toward what it is watching, fighting when caught, using relics and its commander ability, killable. Its look direction is a readable tell of its attention.
 - **How:** a server-side fake player (the trick Carpet mod uses for `/player`) with a small body controller: stay near the army it watches, avoid fights it did not choose, look at its focus. Order range from the body; no orders while dead (existing F7 rule).
-- **Cost:** L for the body and controller, plus a separate L for its own combat. **Risk:** Carpet is a mod, not a library, so this is our own fake player: it fires join events, counts against `maxPlayers` (8), loads chunks, shows in the tab list, and looks fake (ping 0, default skin) unless handled. 1.20.1 and 1.21.1 need different code (`ConnectedClientData` from 1.20.2). Its tracking cost against 200+ troops must be measured. Start with a feasibility spike on both versions. **When:** after the port, once the Warlord chain exists. Needs Kort's yes and an amendment to the polish spec, which says a bot has no body and `down` never applies to a bot (question 1).
+- **Cost:** L for the body and controller, plus a separate L for its own combat. **Risk:** Carpet is a mod, not a library, so this is our own fake player: it fires join events, counts against `maxPlayers` (8), loads chunks, shows in the tab list, and looks fake (ping 0, default skin) unless handled. 1.20.1 and 1.21.1 need different code (`ConnectedClientData` from 1.20.2). Its tracking cost against 200+ troops must be measured. Start with a feasibility spike on both versions. **When:** after the port, once the Warlord chain exists. **Kort said yes (2026-11-11):** the body can be seen, chased and killed, and gives no orders until it respawns. This overrides the polish spec's "a bot has no body" rule; the polish lead amends that spec, including whether `down` applies to a bot body. The body is labelled as a bot (question 2), so it does not need to pass as a player: no fake ping or skin tricks needed, only a clear bot name tag.
 
 ### B. Hands: an attention and reaction layer between brain and orders
 - **Player sees:** orders come in bursts of 2 to 4 at one place, then a lull while it "looks" elsewhere; a group far from its focus keeps holding where it was told; a sudden ambush takes it a second or two to answer.
@@ -46,12 +46,13 @@ The theme: **"smart" and "human" are separate jobs.** A brain decides what it wa
 ### E. The voice: pings and lines
 - **Player sees:** a bot teammate pings where it is going, says one short line when it commits, asks for help when it needs it, answers your Attack or Defend pings ("On my way, 20 s"). Enemy bots say almost nothing: a rare line at a round's end, in character.
 - **How:** listens to plan events and picks a line from its persona's bank (data, by the lore lead). About one line a minute at most, none while it is in a heavy fight. Every line is true to its real plan. Pings use the existing `ping_v1` kinds (no text) through a new `Squad`-based overload, since `Battle.ping` needs a seated player today; words like "On my way" are chat lines.
-- **Cost:** S. **Risk:** spam or cringe, the fastest way to look like a bot; few lines, tested by readers. **When:** pings could go into today's code; lines after the port with personas. Needs a tone call (question 3).
+- **Tone (Kort, 2026-11-11):** yes to short team chat lines, and they sound like a normal player ("pushing mill", "need help at ford"), not a medieval captain. Personas change word choice and how often they talk, not the era. Enemy bots stay almost silent.
+- **Cost:** S. **Risk:** spam or cringe, the fastest way to look like a bot; few lines, tested by readers. **When:** pings could go into today's code; lines after the port with personas.
 
 ### F. A style library from real human play
 - **Player sees:** bot openings and habits that feel like a person's because they came from a person: one captain opens like Kort's friend who always splits early, another turtles like a careful player.
 - **How:** a recorder logs every commander's orders, timings, picks and what that side could see, one format for humans and bots. Offline tools turn recordings into (1) an **opening book**: the first 30-60 s of real matches per map and mode, replayed with variation and dropped the moment the enemy surprises it; (2) **persona numbers**: order rate, burst size, how far they split, when they pull back, pick-phase pace. Plain statistics plus a weight search over sims; nothing learned runs live.
-- **Cost:** recorder S; fitting M after the port. **Risk:** needs dozens of human matches. Recording people needs their consent (question 4): opt-in, local files only, pseudonymised ids, a deletion rule. **When:** a bots-only recorder now (useful for the metrics); recording people only after Kort answers question 4; fitting after the port.
+- **Cost:** recorder S; fitting M after the port. **Risk:** needs dozens of human matches. Recording people needs their consent (question 4): opt-in, local files only, pseudonymised ids, a deletion rule. **When:** a bots-only recorder now (useful for the metrics). Kort said yes to recording people (2026-11-11: orders, timings and picks only, local, names replaced), but nothing is recorded until he says he and his friends are playing; the recorder for people stays off by default until then. Fitting after the port.
 
 ### G. Mistakes with causes, instead of random noise
 - **Player sees:** an Easy bot plays like a new player you can learn to punish: chases too far, forgets a group, commits everything to one fight, retreats late. A Hard bot rarely does, and corrects quickly.
@@ -75,12 +76,12 @@ Seven parts. Only the first runs per troop; everything bot-specific is per comma
 | 3. **Situation** | bot commander | every 1-2 s | Reads score, clock, round, gold, journal; sets posture (press, hold lead, gamble, save) and risk appetite. |
 | 4. **Planner** (with council) | bot commander | every 2 s staggered, plus events (contact, flip, group lost, ping) | Scores objectives (mode list) and plays; assigns groups to roles; keeps commitments unless something is clearly better. The council splits objectives between bots on a team and treats human pings as plans. Posts wanted orders, each with a purpose line. |
 | 5. **Hands** | bot commander | every tick (timers only) | Focus, focus-switch cost, reaction delay, burst rate, mistake catalogue; releases orders through `Orders.issue`, the player's path. |
-| 6. **Body** (if approved) | bot commander | every tick | Moves, looks at the focus, fights, relics. |
+| 6. **Body** (approved) | bot commander | every tick | Moves, looks at the focus, fights, relics. |
 | 7. **Journal, Quartermaster, Voice** | bot commander | pick phase / events | Memory of opponents; buys in the pick phase like a person (takes its time, edits picks visibly, fills gaps in human teammates' picks); lines and pings. |
 
 Offline, outside the game: the **recorder** (all commanders, one format), the **style fitter**, the **tournament runner** and the **weight search**.
 
-**Data contracts.** A mode lists objectives (take, hold, escort, intercept, destroy, survive; place, value, wanted strength). A map has editor marks (rally points, lanes, ambush spots, high ground) plus an automatic walk grid. The brain derives each troop's capability (reach, speed, toughness, area damage, healing) from its existing row. Plays, personas, difficulty rows (Hands limits, plan depth, mistake rates, memory) and line banks are rows. New content needs rows, not code.
+**Data contracts.** A mode lists objectives (take, hold, escort, intercept, destroy, survive; place, value, wanted strength). A map gets no hand-placed AI marks (Kort, 2026-11-11). The brain works out rally points, lanes, chokepoints, ambush spots and high ground itself, once per map load, from the walk grid, heights, cover and the objectives' places, and caches the result per map version. This analysis is part of perception (part 2) and gets its own sim check: on every map, the found rally points must be reachable, out of the enemy's first-contact line, and stable between loads. The brain derives each troop's capability (reach, speed, toughness, area damage, healing) from its existing row. Plays, personas, difficulty rows (Hands limits, plan depth, mistake rates, memory) and line banks are rows. New content needs rows, not code.
 
 **Budget.** Bot-only parts (estimate, to be measured with `GRAVES_BOTSIM_PROBE`): about 0.5 ms mean a tick for 8 bot commanders including perception, with planner spikes up to about 1.5 ms (one plan per tick at most); a body adds its own entity cost, measured in the spike. The real cost is the shared troop layer at 200+ troops: a spatial grid instead of nearest-enemy scans, staggered beats, level of detail. Measure 4v4 at 40 slots before the soft-20 prices are tuned.
 
@@ -99,14 +100,14 @@ Offline, outside the game: the **recorder** (all commanders, one format), the **
 
 **Human.**
 - *Machine judge (cheap, repeatable, not Kort; a diagnostic, not a gate):* an offline classifier on recorded order streams (rate, bursts, reaction times, focus switches, pick-phase timing) tries to tell humans from bots, tested on human matches held out from persona fitting, with its accuracy reported with a confidence interval. Its value is the features it leans on: they show what still gives bots away.
-- *Blind playtest (BotPrize style):* in friends' playtests, some seats are people, some bots, all with neutral names and bodies. After each match every player marks each other commander "person" or "bot". Humanness = share of votes calling bots human divided by share calling people human; target 0.7 first, 1.0 later. Kort's votes are counted apart and never decide the pass.
-- *Outside clip test:* the audit's 20-clip test, judged by three or more people who did not play those matches (fail at 15+ correct, pass at 13 or fewer); every "what gave it away" note is a defect.
+- *Playtest ratings:* bots are always labelled (Kort, 2026-11-11), so players cannot guess who is a bot. Instead, after each match every player rates each other commander 1 to 5 on "played like a person" and "played smart", and writes what felt off. Target: bots average within 0.5 of the human commanders on both. Kort's ratings are counted apart and never decide the pass. (My call: this replaces the BotPrize vote, which needs unlabelled bots.)
+- *Outside clip test:* the audit's 20-clip test, with name tags and the scoreboard cropped or blurred so the label does not give it away, judged by three or more people who did not play those matches (fail at 15+ correct, pass at 13 or fewer); every "what gave it away" note is a defect.
 - *Budget:* AI share per tick at 4v4, 40 slots, reported every sim.
 
 ## 5. Ranked build plan
 
 **Now (approved: measurement and fixes in today's code)**
-1. **Measure, explain, record.** Sim metrics, a "why" line per bot order, the dev overlay (being built now), and a bots-only decision recorder; recording people waits for question 4. S.
+1. **Measure, explain, record.** Sim metrics, a "why" line per bot order, the dev overlay (being built now), and a bots-only decision recorder; recording people starts only when Kort says his group is playing. S.
 2. **Fix today's worst moments** in `Campaign.botDecide`: per-group targets, guard a taken point, gather reinforcements, escort clears the wagon, face the target, no Retreat under fire. One small human touch fits here: spread a bot's orders over 1-3 s. M.
 3. **Balance gates measured seat-swapped** (Kort's levers). S.
 
@@ -115,15 +116,16 @@ Offline, outside the game: the **recorder** (all commanders, one format), the **
 5. **Brain core with the economy:** perception, objectives, situation, planner and council, Hands, quartermaster, journal; sims play whole best-of-5 matches. L.
 6. **Plays, tells, feints, bait; the voice.** M.
 7. **Personas, mistake catalogue, difficulty rows; style fitting from recordings; opening book.** M.
-8. **Embodied commander** (if approved), after the Warlord animation chain. L.
+8. **Embodied commander** (Kort said yes), after the Warlord animation chain; a feasibility spike can come earlier. L + L.
 9. **Proof rounds:** machine judge, exploiter ladder, blind playtest, outside clip test; at most two fix rounds, then remaining notes go to Kort. M.
 
-## 6. Questions only Kort can answer
+## 6. Kort's answers (2026-11-11, via the coordinator)
 
-1. Should bot commanders have a body on the field like a player: one you can see, chase and kill, that stops giving orders until it respawns, and that wears the room's gear and uses relics? (This changes the approved controls spec, which says a bot has no body.)
-2. Should bots be marked as bots in names and the scoreboard, or look like players (at least for the blind playtests)?
-3. May bots type short chat lines to their team, and should they sound in character (medieval captain) or like a normal player?
-4. May we record your and your friends' matches (orders, timings and picks only, kept on your machine, names replaced) to give the bots human styles?
+1. **Body: yes.** Bot commanders have a body on the field that can be seen, chased and killed, and they give no orders until they respawn. This overrides the polish spec's "a bot has no body" rule.
+2. **Labelled: yes.** Bots are marked as bots in names and on the scoreboard. So the human test is a rating, not a guess (section 4).
+3. **Chat lines: yes,** short team lines that sound like a normal player, not a medieval captain.
+4. **Recording: yes,** orders, timings and picks only, local, names replaced. Nothing is recorded until Kort says his group is playing.
+5. **Map markers: no.** Kort will not place them; the bot works out rally, lane and high-ground spots itself (section 3).
 
 Already decided and kept: bots wear gear matched to the room's gear power; no routing; no LAST STAND label.
 
