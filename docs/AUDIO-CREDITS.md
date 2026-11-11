@@ -173,3 +173,4 @@ Source: pixabay.com, downloaded 2026-11-02 (Pixabay Content Licence). Author is 
 | combat.heavy_metal_hit | heavy_metal_hit_3.ogg | Cpfcfan10 | CC-BY 4.0 | https://freesound.org/people/Cpfcfan10/sounds/650843 | "Hammer Hiting Metal" by Cpfcfan10, freesound, CC-BY 4.0 |
 | magic.impact | magic_impact_3.ogg | qubodup | CC-BY 4.0 | https://freesound.org/people/qubodup/sounds/442827 | "Fireball" by qubodup, freesound, CC-BY 4.0 |
 | magic.impact | magic_impact_4.ogg | EminYILDIRIM | CC-BY 4.0 | https://freesound.org/people/EminYILDIRIM/sounds/541478 | "Magic Fire Spell Impact & Punch" by EminYILDIRIM, freesound, CC-BY 4.0 |
+| combat.bow_shoot | bow_shoot_2.ogg | saturdaysoundguy | CC0 1.0 | https://freesound.org/people/saturdaysoundguy/sounds/394178 | No credit required (CC0). |

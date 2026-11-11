@@ -353,6 +353,10 @@
       {
         "name": "gravesandglory:bow_shoot_1",
         "stream": false
+      },
+      {
+        "name": "gravesandglory:bow_shoot_2",
+        "stream": false
       }
     ]
   },

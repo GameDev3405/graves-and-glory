@@ -37,7 +37,7 @@ Each id is a variant group in `sounds.json`; the game picks one file at random. 
 | combat.sword_swing | A blade troop's swing (every second slot) | sword_swing_1, 2 |
 | combat.sword_clash | A blade hitting an armed melee troop | sword_clash_1 to 4 |
 | combat.armor_hit | A blade hitting a metal-armoured troop with no weapon | armor_hit_1 |
-| combat.bow_shoot | An archer or crossbow shot leaves (lower for siege bolts) | bow_shoot_1 |
+| combat.bow_shoot | An archer or crossbow shot leaves (lower for siege bolts) | bow_shoot_1, 2 |
 | combat.arrow_hit | An arrow or bolt lands | arrow_hit_1 |
 | magic.cast | A caster's shot as the spell begins (the Mist Caller's cloud sounds magic.impact when it lands) | magic_cast_1 |
 | magic.impact | A caster's missile or blight lands | magic_impact_1, 3, 4 (2 was dropped) |

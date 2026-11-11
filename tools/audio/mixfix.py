@@ -82,6 +82,7 @@ GROUP_TARGETS = {
     "relic_use_ice": -18.8,         # both takes clip; gain alone brings them level (the re-encode needs more headroom than the clipped source)
     "blacksmith_roll": -17.6,       # not in the audit's 14 (spread was 1.2) but both takes are hot, so pin the pair
     "sword_swing": -18.1,           # take 1 is hot, so the group sits a little below the median
+    "bow_shoot": -24.2,             # Kort 2026-11-11: take 2 is a single 50 ms transient that cannot rise under -1 dBTP, so take 1 comes down to it
 }
 
 # Single-file targets: file -> dict(target LUFS, max_gain, limiter allowed for a raise).
