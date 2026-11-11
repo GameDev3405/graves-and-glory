@@ -293,6 +293,8 @@ final class Tactics {
         boolean slotted=a.order.equals("hold")&&a.holdSlots&&placed(battle,u); // a player's Formation in place: melee keep their slots, ranged shoot anything in reach
         Vec3d slot=slotted?battle.formation(u):null;double keep=Abilities.range(battle,u);
         if(slotted&&u.spec.ranged())engage=keep;
+        boolean holdRanged=hold&&!holdSiege&&u.spec.ranged(); // a ranged troop on Hold (or arrived) shoots any enemy it sees within its weapon's reach, from its slot: it never walks out after one
+        if(holdRanged)engage=Math.max(engage,keep);
         LivingEntity enemy=null,close=null;double nearest=engage*engage,closest=nearest; // enemy: the one it picks (never one inside its minimum range); close: the nearest of any, which a ranged troop backs off from
         if(order.engage()&&u.lockedTarget!=null&&u.lockedTarget.isAlive()&&time<u.lockUntil&&mob.squaredDistanceTo(u.lockedTarget)<nearest*(holdSiege?1:1.4)&&!Abilities.tooClose(u,mob.squaredDistanceTo(u.lockedTarget))&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,u.lockedTarget.getPos())&&(!lane||ahead(u,a,u.lockedTarget.getPos()))&&remembers(u,u.lockedTarget,time))enemy=u.lockedTarget; // kept while seen within sightMemoryTicks, so a step behind a post does not drop it
         if(order.engage()&&a.enemy>=0&&battle.world.getEntityById(a.enemy) instanceof LivingEntity explicit&&explicit.isAlive()&&sees(u,explicit,time)&&!Abilities.tooClose(u,mob.squaredDistanceTo(explicit))){enemy=explicit;a.target=explicit.getPos();}
@@ -335,7 +337,7 @@ final class Tactics {
         }
         if(enemy!=u.lockedTarget){u.lockedTarget=enemy;u.lockUntil=time+Spec.COMBATDISCIPLINE[0].targetMemoryTicks();}
         mob.setTarget(enemy);mob.setAttacking(enemy!=null);
-        double reach=Abilities.range(battle,u);boolean ranged=u.spec.ranged();boolean post=a.perch||slotted&&ranged; // a ranged troop on a raised post or in place on a Formation shoots from its slot
+        double reach=Abilities.range(battle,u);boolean ranged=u.spec.ranged();boolean post=a.perch||slotted&&ranged||holdRanged; // a ranged troop on a raised post, in place on a Formation or on Hold shoots from its slot
         if(enemy!=null&&nearest<=reach*reach)stamp(battle,u,enemy); // an archer taking aim from within its reach puts its target's group under fire
         if(u.tags.contains("shield")){ // Hold: up with any enemy picked or in sight; other orders: up under archer fire; never on Charge or Retreat, down to swing once the enemy is in reach
             String shieldOrder=shieldOrder(u,a);double near=nearest;boolean any=enemy!=null;
