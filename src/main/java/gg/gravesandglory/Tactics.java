@@ -233,6 +233,34 @@ final class Tactics {
     }
     /** How far a troop picks its targets: the order's engage radius, or for a siege troop (tag siege) at least its weapon's reach (Entrench's bonus included), so artillery shoots what it can reach and not only what the order's leash allows. The sheet's order radii are untouched. */
     static double engageRadius(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,double order){return u.tags.contains("siege")?Math.max(order,Abilities.range(battle,u)):order;}
+    /** Line of sight for targeting (AI fix 2026-11-11): whether the troop sees the entity now. One raycast (LivingEntity.canSee) per troop and entity
+     *  a beat at most: a result read within SIGHT_REFRESH ticks is reused (Unit.sight). Old entries are dropped once the cache grows past SIGHT_KEEP. */
+    static boolean sees(GravesAndGlory.Unit u,Entity e,long time){
+        long[] r=u.sight.get(e.getId());
+        if(r==null||time-r[0]>=SIGHT_REFRESH||time<r[0]){
+            if(r==null){if(u.sight.size()>=SIGHT_KEEP)u.sight.values().removeIf(v->time-v[0]>SIGHT_REFRESH*4||time<v[0]);r=new long[]{0,Long.MIN_VALUE/2};u.sight.put(e.getId(),r);}
+            r[0]=time;sightRays++;if(u.mob.canSee(e))r[1]=time;
+        }
+        return r[1]==r[0];
+    }
+    /** Whether the troop saw the entity within sightMemoryTicks: a target it already holds is kept that long out of sight, so it does not flicker. */
+    static boolean remembers(GravesAndGlory.Unit u,Entity e,long time){
+        if(sees(u,e,time))return true;
+        long[] r=u.sight.get(e.getId());return r!=null&&time-r[1]<=C.sightMemoryTicks();
+    }
+    static final int SIGHT_REFRESH=10,SIGHT_KEEP=32;
+    /** Raycasts sees has made since the server started (the sim may read it). */
+    static long sightRays;
+    /** The scan's nearest candidates, nearest first (offer), of which the pick takes the first the troop can see: at most PICK_TESTS raycasts a beat. */
+    static final int PICK_TESTS=6;
+    static final LivingEntity[] PICK=new LivingEntity[PICK_TESTS];static final double[] PICK_D=new double[PICK_TESTS];
+    /** Puts a candidate into PICK by distance; returns the new count. */
+    static int offer(int n,LivingEntity e,double d){
+        int i=Math.min(n,PICK_TESTS-1);
+        if(n==PICK_TESTS&&d>=PICK_D[PICK_TESTS-1])return n;
+        while(i>0&&PICK_D[i-1]>d){PICK[i]=PICK[i-1];PICK_D[i]=PICK_D[i-1];i--;}
+        PICK[i]=e;PICK_D[i]=d;return Math.min(n+1,PICK_TESTS);
+    }
     static void tick(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,long time){
         hop(u,time); // a wall troop jumping onto its slot on a rise is carried over the edge every tick of the jump
         if(u.lockedTarget!=null&&!u.lockedTarget.isAlive())u.lockedTarget=null; // a fallen enemy lies a while (Task 7): drop it at once, not on the next beat
@@ -259,7 +287,6 @@ final class Tactics {
         boolean hunt=a.order.equals("attack")&&a.hunt; // a player's Attack: anything it can see within scouting range, else the nearest enemy anywhere (no leash)
         boolean dash=a.order.equals("charge")&&a.chargeDir!=null; // a player's Charge down its direction
         boolean volley=dash&&u.spec.ranged(),lane=dash&&!volley; // ranged on a Charge advance and shoot what is in reach; melee strike only what stands on their path
-        boolean sight=hunt||volley; // picks only what it can see (one line-of-sight test, on a nearer candidate)
         double speed=order.moveMultiplier()*(a.order.equals("hold")?FormationRules.moveShare(u,a):1); // a Formation (Hold) walks at its formation's share
         double engage=holdSiege?Abilities.range(battle,u):engageRadius(battle,u,hunt?Spec.SCOUTING[0].range():order.engageRadius()); // the order's radius, widened to the weapon's reach for a siege troop; on Hold the weapon's reach as it is now
         if(volley)engage=Math.min(engage,Abilities.range(battle,u));
@@ -267,22 +294,30 @@ final class Tactics {
         Vec3d slot=slotted?battle.formation(u):null;double keep=Abilities.range(battle,u);
         if(slotted&&u.spec.ranged())engage=keep;
         LivingEntity enemy=null,close=null;double nearest=engage*engage,closest=nearest; // enemy: the one it picks (never one inside its minimum range); close: the nearest of any, which a ranged troop backs off from
-        if(order.engage()&&u.lockedTarget!=null&&u.lockedTarget.isAlive()&&time<u.lockUntil&&mob.squaredDistanceTo(u.lockedTarget)<nearest*(holdSiege?1:1.4)&&!Abilities.tooClose(u,mob.squaredDistanceTo(u.lockedTarget))&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,u.lockedTarget.getPos())&&(!lane||ahead(u,a,u.lockedTarget.getPos()))&&(!sight||mob.canSee(u.lockedTarget)))enemy=u.lockedTarget;
-        if(order.engage()&&a.enemy>=0&&battle.world.getEntityById(a.enemy) instanceof LivingEntity explicit&&explicit.isAlive()&&mob.canSee(explicit)&&!Abilities.tooClose(u,mob.squaredDistanceTo(explicit))){enemy=explicit;a.target=explicit.getPos();}
+        if(order.engage()&&u.lockedTarget!=null&&u.lockedTarget.isAlive()&&time<u.lockUntil&&mob.squaredDistanceTo(u.lockedTarget)<nearest*(holdSiege?1:1.4)&&!Abilities.tooClose(u,mob.squaredDistanceTo(u.lockedTarget))&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,u.lockedTarget.getPos())&&(!lane||ahead(u,a,u.lockedTarget.getPos()))&&remembers(u,u.lockedTarget,time))enemy=u.lockedTarget; // kept while seen within sightMemoryTicks, so a step behind a post does not drop it
+        if(order.engage()&&a.enemy>=0&&battle.world.getEntityById(a.enemy) instanceof LivingEntity explicit&&explicit.isAlive()&&sees(u,explicit,time)&&!Abilities.tooClose(u,mob.squaredDistanceTo(explicit))){enemy=explicit;a.target=explicit.getPos();}
         if(enemy!=null){nearest=mob.squaredDistanceTo(enemy);close=enemy;closest=nearest;}
         boolean locked=enemy!=null;
-        for(var other:battle.units)if(order.engage()&&!locked&&other.squad.team!=s.team&&other.mob.isAlive()){
-            double d=mob.squaredDistanceTo(other.mob);
-            boolean inLeash=leash(u,a,hold,holdSiege,slotted,slot,keep,engage,other.mob.getPos())&&(!lane||ahead(u,a,other.mob.getPos()));
-            if(inLeash&&d<closest){close=other.mob;closest=d;}
-            if(inLeash&&d<nearest&&!Abilities.tooClose(u,d)&&(!sight||mob.canSee(other.mob))){enemy=other.mob;nearest=d;}
-        }
-        for(ServerPlayerEntity p:battle.server.getPlayerManager().getPlayerList()){
-            var other=battle.squads.get(p.getUuid());if(order.engage()&&!locked&&other!=null&&other.team!=s.team&&!p.isSpectator()&&p.isAlive()&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,p.getPos())&&(!lane||ahead(u,a,p.getPos()))){
-                double d=mob.squaredDistanceTo(p);
-                if(d<closest){close=p;closest=d;}
-                if(d<nearest&&!Abilities.tooClose(u,d)&&(!sight||mob.canSee(p))){enemy=p;nearest=d;}
+        // The scan: every enemy troop and commander inside the engage radius and the leash. close is the nearest of any (a ranged troop backs off
+        // from it, seen or not); the pick is the nearest the troop can see, tested nearest first on at most PICK_TESTS of them (sees, cached a beat).
+        int found=0;
+        if(order.engage()&&!locked){
+            for(var other:battle.units)if(other.squad.team!=s.team&&other.mob.isAlive()){
+                double d=mob.squaredDistanceTo(other.mob);
+                if(!(d<closest||d<nearest))continue;
+                if(!leash(u,a,hold,holdSiege,slotted,slot,keep,engage,other.mob.getPos())||lane&&!ahead(u,a,other.mob.getPos()))continue;
+                if(d<closest){close=other.mob;closest=d;}
+                if(d<nearest&&!Abilities.tooClose(u,d))found=offer(found,other.mob,d);
             }
+            for(ServerPlayerEntity p:battle.server.getPlayerManager().getPlayerList()){
+                var other=battle.squads.get(p.getUuid());if(other!=null&&other.team!=s.team&&!p.isSpectator()&&p.isAlive()&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,p.getPos())&&(!lane||ahead(u,a,p.getPos()))){
+                    double d=mob.squaredDistanceTo(p);
+                    if(d<closest){close=p;closest=d;}
+                    if(d<nearest&&!Abilities.tooClose(u,d))found=offer(found,p,d);
+                }
+            }
+            for(int k=0;k<found;k++)if(sees(u,PICK[k],time)){enemy=PICK[k];nearest=PICK_D[k];break;}
+            java.util.Arrays.fill(PICK,0,found,null);
         }
         if(order.engage()&&!locked){var drawn=GearCombat.taunter(battle,u);if(drawn!=null&&!Abilities.tooClose(u,mob.squaredDistanceTo(drawn))&&(!lane||ahead(u,a,drawn.getPos()))&&(!volley||mob.squaredDistanceTo(drawn)<=engage*engage)){enemy=drawn;nearest=mob.squaredDistanceTo(drawn);close=drawn;closest=nearest;}} // taunt_aura: a share of the troops near a commander wearing it pick him
         if(order.engage()&&!locked&&enemy==null)for(var st:battle.structures){ // a supply banner is a target when no troop or commander is: the army first, then its commander, then its banner
@@ -308,13 +343,13 @@ final class Tactics {
             shield(mob,BattleMath.raiseShield(shieldOrder,underFire(battle,u),near,reach*reach,any));
             crawl(battle,u,shieldOrder);
         }
-        boolean aiming=ranged&&enemy!=null&&nearest<=reach*reach&&mob.canSee(enemy); // stance_v2: a ranged troop with its target in reach and sight aims at it
+        boolean aiming=ranged&&enemy!=null&&nearest<=reach*reach&&sees(u,enemy,time); // stance_v2: a ranged troop with its target in reach and sight aims at it
         show(battle,u,arrived?held(a):a,aiming,aiming?Projectiles.aimPitch(battle,u,enemy):0);
         Abilities.tick(battle,u,enemy,time); // mend heals and a caster's spell bursts on the beat
         double flee=Math.max(N.rangedRetreatDistance(),Abilities.minRange(u)); // a ranged troop backs off from an enemy this near; one with a minimum range (the Mortar) from anything inside it
         if(enemy!=null){
             mob.getLookControl().lookAt(enemy,40,40);
-            boolean visible=mob.canSee(enemy);
+            boolean visible=sees(u,enemy,time);
             if(nearest<=reach*reach&&visible){
                 if(ranged&&close!=null&&closest<flee*flee&&!hold&&!a.perch)backOff(battle,u,close,time);
                 else if(post&&ranged)toSlot(battle,u,a,time,speed); // it shoots on its way up and climbs on
@@ -606,7 +641,7 @@ final class Tactics {
      */
     static void looseLate(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,long time){
         LivingEntity t=u.looseTarget;u.looseAt=-1;u.looseTarget=null;
-        if(t==null||!u.mob.isAlive()||time<u.stunnedUntil||!t.isAlive()||t.isRemoved()||t.getWorld()!=battle.world||t instanceof net.minecraft.entity.player.PlayerEntity p&&p.isSpectator()){looseLost++;return;}
+        if(t==null||!u.mob.isAlive()||time<u.stunnedUntil||!t.isAlive()||t.isRemoved()||t.getWorld()!=battle.world||t instanceof net.minecraft.entity.player.PlayerEntity p&&p.isSpectator()||!u.mob.canSee(t)){looseLost++;return;} // nor through a wall the target stepped behind since the beat
         shoot(battle,u,t,time,true);
     }
     /** Late shots lost (looseLate) since the server started. */

@@ -310,6 +310,8 @@ public final class GravesAndGlory implements ModInitializer {
         /** The last sidestep of Tactics.walk (battle tick, where, and how many times in a row at that wedge before it), for Wedge; and the detour a unit stuck again is on (its point, the goal it was made for, and the tick it is dropped at); detourRetryAt: no new search before this tick (the last found nothing). */
         long wedgeTime,detourUntil,detourRetryAt;Vec3d wedgeAt,detour,detourFor;int wedgeRepeats;
         LivingEntity lockedTarget;long lockUntil;
+        /** Line of sight as the troop last read it (Tactics.sees): entity id to {battle tick read, battle tick last seen}. Read again at most once a beat. */
+        final java.util.HashMap<Integer,long[]> sight=new java.util.HashMap<>();
         /** The army whose blow last hurt this unit; kill credit when the attacker itself is gone. */
         Squad lastHitBy;
         /** Battle time (ticks) of that blow: a death with no attacker credits lastHitBy only within Projectiles.CREDIT_WINDOW_TICKS of it. */

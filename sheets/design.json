@@ -2640,7 +2640,8 @@
       "chargeKnockback": 0.8,
       "outlineShareTicks": 200,
       "outlineLitTicks": 20,
-      "retreatArriveRadius": 4.0
+      "retreatArriveRadius": 4.0,
+      "sightMemoryTicks": 30
     }
   ],
   "attackVariants": [
