@@ -3805,7 +3805,7 @@ public final class Phase1Checks implements ClientModInitializer {
             int k=at(tick);
             switch(sub){
                 case 0->{if(k<2)return;String[] gone={"room-create","code","room-join","copy","room-leave","team-0","team-1","fill","map","ready","start","size-1","size-2","size-3","size-4"};StringBuilder left=new StringBuilder();for(String g:gone)if(button(c,g)!=null)left.append(g).append(' ');
-                    var council=button(c,"council");boolean one=council!=null&&council.active&&"Open the war council".equals(text("council"))&&"table/note-room-short".equals(tex("room"))&&text("room-line")!=null&&left.length()==0;ok&=one;
+                    var council=button(c,"council");boolean one=council!=null&&council.active&&"Open the war council".equals(text("council"))&&"table/note-room-short".equals(tex("room"))&&text("room-line")==null&&left.length()==0;ok&=one;
                     why+="; the room's note holds "+(left.length()==0?"no room tags":"WRONG: still "+left)+" and the tag \""+text("council")+"\" on "+tex("room")+(one?"":" WRONG");next(tick);}
                 case 1->{if(k<2)return;var create=button(c,"create");boolean shown=create!=null&&create.visible&&create.active&&"Create party".equals(text("create"));
                     boolean open="Open seat".equals(text("open-1"))&&"Open seat".equals(text("open-3"))&&text("open-0")==null&&WarTablePages.me().equals(text("member-0"))&&"table/note-room-short".equals(tex("room"));

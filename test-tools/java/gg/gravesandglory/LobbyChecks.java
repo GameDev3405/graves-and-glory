@@ -50,9 +50,10 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
     /** The map-wait view's faults (empty when right): every part drawn, the percent and a tip from the list, each box inside the canvas and its own paper, and no two boxes overlapping. */
     String waitFaults(MinecraftClient c,String at){
         var r=WarTableLobby.rects();var t=WarTableLobby.texts();List<String> bad=new ArrayList<>();int[] sheet=r.get("sheet"),note=r.get("note");
-        List<String> onSheet=new ArrayList<>(List.of("wait-head","wait-percent","wait-bar","wait-side-0","wait-side-1","wait-seat-0-0","wait-seat-1-0","wait-tip","ready","status")),onNote=List.of("wait-card","wait-map-name","wait-mode-head","wait-mode-summary");
+        List<String> onSheet=new ArrayList<>(List.of("wait-head","wait-percent","wait-bar","wait-side-0","wait-side-1","wait-seat-0-0","wait-seat-1-0","wait-tip","ready")),onNote=List.of("wait-card","wait-map-name","wait-mode-head","wait-mode-summary");
         for(String k:onSheet)if(r.get(k)==null)bad.add(k+" not drawn");
         for(String k:onNote)if(k.equals("wait-mode-head")?!t.containsKey(k):r.get(k)==null)bad.add(k+" not drawn");
+        if(r.get("status")!=null||t.containsKey("status"))bad.add("the wait view still draws a status line: \""+t.get("status")+"\" (the heading and the plate say it)");
         if(!bad.isEmpty())return at+": "+bad;
         int map=Math.max(0,Math.min(Spec.MAPS.length-1,num("map")));var m=Spec.MAPS[map];
         if(!"37%".equals(t.get("wait-percent")))bad.add("percent reads "+t.get("wait-percent"));

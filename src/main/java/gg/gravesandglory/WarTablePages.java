@@ -108,7 +108,7 @@ final class WarTablePages {
     // opens it. Each commander in the camp has an Invite tag and, when holding an open room, a Join tag. Offsets from the note's top.
     static final int CAMP_X = 56, CAMP_W = 228, INVITE_Y = 144, INVITE_STEP = 32, INVITES = 4, PARTY_SEATS = 4, JOIN_W = 60;
     static final int PARTY_X = 300, PARTY_Y = 124, PARTY_NAME_W = 108, ROOM_X = 676, ROOM_Y = 124, ROOM_W = 196, CODE_LENGTH = 8;
-    static final int CREATE_DY = 76;
+    static final int CREATE_DY = 76, ROOM_TAG_DY = 32; // the war council tag sits right under its heading while no room is open
     /** The party's rule, beside the seats level with the first (the commander's own, which never carries a tag) and on the
      *  column of the leader's tags, and the camp column's line on how friends reach a camp this machine runs: how to share it,
      *  or, once it is open on the network, where friends find it. */
@@ -2052,7 +2052,7 @@ final class WarTablePages {
             else tag("claim-lead", px + 112, py, 136, "Claim offline lead", () -> send("social:claim"));
         }
         int[] ro = col(C_ROOM);
-        tag("council", ro[0] + ROOM_X + 16, ro[1] + ROOM_Y + CREATE_DY, ROOM_W, value("room").isEmpty() ? "Open the war council" : "Back to the war council", () -> screen.page("lobby"));
+        tag("council", ro[0] + ROOM_X + 16, ro[1] + ROOM_Y + (value("room").isEmpty() ? ROOM_TAG_DY : CREATE_DY), ROOM_W, value("room").isEmpty() ? "Open the war council" : "Back to the war council", () -> screen.page("lobby"));
     }
 
     /** What the party allows now, as the server rules it: invitations from the party's leader to a commander in no party, a room joined by a party's leader (or a commander alone) who is in none. */
@@ -2088,12 +2088,11 @@ final class WarTablePages {
         int x = ox + CAMP_X;
         g.drawText(font, DarkUi.heading("In this camp"), x, oy + 124, DarkUi.BRASS, false);
         if (rows("camp").isEmpty()) {
-            var first = lines(g, "Commanders who join this server appear here.", x, oy + INVITE_Y, campW(), 2, DarkUi.MUTED);
             var server = MinecraftClient.getInstance().getServer();
             if (server != null) { // this machine runs the camp: how friends reach it (isRemote: open on the network)
-                var how = lines(g, server.isRemote() ? CAMP_OPEN : CAMP_HOW, x, oy + INVITE_Y + 13 * first.size() + 8, campW(), 4, DarkUi.MUTED);
+                var how = lines(g, server.isRemote() ? CAMP_OPEN : CAMP_HOW, x, oy + INVITE_Y, campW(), 4, DarkUi.MUTED);
                 textsDrawn.put("camp-how", String.join(" ", how));
-            }
+            } else lines(g, "Commanders who join this server appear here.", x, oy + INVITE_Y, campW(), 2, DarkUi.MUTED); // no how-to to carry it
         } else if (!flag("partyLead")) {
             String hint = flag("party") ? "Only the party leader invites." : "Create a party to invite them.";
             text(g, "invite-hint", DarkUi.body(hint), hint, x, oy + 304, DarkUi.MUTED);
@@ -2185,10 +2184,7 @@ final class WarTablePages {
         rectsDrawn.put("room", UiTex.draw(g, "table/note-room-short", x, y));
         texturesDrawn.put("room", "table/note-room-short");
         g.drawText(font, DarkUi.heading("War council"), lx, y + 12, DarkUi.INK_TEXT, false);
-        if (room.isEmpty()) {
-            var said = lines(g, "Your own battle, on teams you choose.", lx, y + 30, ROOM_W, 6, DarkUi.SEPIA);
-            textsDrawn.put("room-line", String.join(" ", said));
-        } else {
+        if (!room.isEmpty()) {
             var lead = DarkUi.body("You are in room");
             g.drawText(font, lead, lx, y + 30, DarkUi.SEPIA, false);
             drawCode(g, font, room, lx + font.getWidth(lead) + 5, y + 30, DarkUi.SEPIA);
@@ -2262,7 +2258,6 @@ final class WarTablePages {
         for (int i = 0; i < desc.size(); i++) WarTableHome.centred(g, DarkUi.body(desc.get(i)), ox + CARD_CX, oy + CARD_Y + 110 + 13 * i, DarkUi.SEPIA);
         String status = GravesAndGloryClient.running ? "A battle is on: maps wait until it ends" : "The war council host picks the map";
         text(g, "status", DarkUi.body(status), status, ox + MAP_X, oy + STATUS_Y, DarkUi.INK_TEXT);
-        g.drawText(font, DarkUi.body("Open it from the table's home page."), ox + MAP_X, oy + STATUS_Y + 13, DarkUi.SEPIA, false);
         WarTableHome.centred(g, DarkUi.heading("Bots"), ox + CARD_CX, oy + BOTS_HEAD_Y, DarkUi.INK_TEXT);
         textsDrawn.put("bots-current", CampaignClient.tierName(CampaignClient.difficulty));
         statuses(g, ox, oy);
