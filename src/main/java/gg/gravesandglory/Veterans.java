@@ -309,11 +309,11 @@ final class Veterans {
     /**
      * Why this buy is refused, or "" when it is allowed. First the checks that come before the Armoury's own: progression on, a running round the army
      * is seated in, a known troop, track and tier (tier 1 to the sheet's highest; tier I is always worn, so it reads "Already bought"), a troop of the
-     * army's banner. Then LevelMath.refusal: already bought, the level not yet seen this round ("Needs a level-2 Knight", with the level name), the tier
+     * army's banner. Then LevelMath.refusal: already bought, the level not yet seen this round ("Needs a Rank 2 Knight", with the level name), the tier
      * below not bought, the location (here), the gold. A commander class's discount never applies to gear (design 4.2): the price is the rarity's.
      */
     static String refusal(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.TroopsRow t, String track, int tier, boolean here) {
-        if (!enabled()) return "Levels are off";
+        if (!enabled()) return "Ranks are off";
         if (b == null || s == null || !b.running || !s.seated) return "Gear is bought during a battle";
         if (t == null || !(LevelMath.WEAPON.equals(track) || LevelMath.ARMOUR.equals(track)) || tier < 1 || tier > LevelMath.maxTier()) return "No such gear";
         if (!types(s).contains(t)) return t.name() + " is not in your banner";

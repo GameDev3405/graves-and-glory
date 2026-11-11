@@ -10218,7 +10218,7 @@
       "condition": "raised_front",
       "multiplier": 0.85,
       "replaces": "C1|C15",
-      "text": "Veteran armour bolts nearly ignore raised shields."
+      "text": "Rank 2 armour bolts nearly ignore raised shields."
     },
     {
       "id": "C14v",
@@ -10227,7 +10227,7 @@
       "condition": "always",
       "multiplier": 1.6,
       "replaces": "C1|C2|C3|C14",
-      "text": "Veteran sunder smashes through shields."
+      "text": "Rank 2 sunder smashes through shields."
     },
     {
       "id": "C18a2",
@@ -10236,7 +10236,7 @@
       "condition": "hold",
       "multiplier": 1.3,
       "replaces": "C18a",
-      "text": "Veteran steady archers on Hold shoot truer."
+      "text": "Rank 2 steady archers on Hold shoot truer."
     },
     {
       "id": "C18b2",
@@ -10245,7 +10245,7 @@
       "condition": "no_sky",
       "multiplier": 1.35,
       "replaces": "C18b",
-      "text": "Veteran hunters strike harder from cover."
+      "text": "Rank 2 hunters strike harder from cover."
     },
     {
       "id": "C18c2",
@@ -10254,7 +10254,7 @@
       "condition": "hold",
       "multiplier": 1.5,
       "replaces": "C18c",
-      "text": "Veteran braced spears punish a charge."
+      "text": "Rank 2 braced spears punish a charge."
     },
     {
       "id": "C18d",
@@ -10290,7 +10290,7 @@
       "condition": "target_wounded",
       "multiplier": 0.8,
       "replaces": "none",
-      "text": "Unbroken: a wounded veteran takes less."
+      "text": "Unbroken: a wounded troop takes less."
     }
   ],
   "rarities": [

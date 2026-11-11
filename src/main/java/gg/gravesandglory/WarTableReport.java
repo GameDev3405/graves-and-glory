@@ -472,7 +472,7 @@ final class WarTableReport {
         int ry = y + HEAD_Y;
         head(g, "troops", "Troops in battle", null, x, ry, TEXT_W);
         ry += 18;
-        if (levels.isEmpty()) { line(g, "levels-none", "No troop levels this battle.", x, ry, DarkUi.SEPIA); return; }
+        if (levels.isEmpty()) { line(g, "levels-none", "No troop Ranks this battle.", x, ry, DarkUi.SEPIA); return; }
         // every row in the long form, whole: a long list pages rather than trimming a name
         var rows = new ArrayList<String[]>();
         for (int i = 0; i < levels.size(); i++) { var words = CampScreen.levelWords(levels.get(i).getAsJsonObject(), false); if (words != null) rows.add(words); }

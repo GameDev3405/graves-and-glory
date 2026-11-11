@@ -5703,7 +5703,7 @@ public final class Phase2Checks implements ClientModInitializer {
                         if(wait>5&&shotDone(c)){var t=Campaign.troop("sentinel");var w=WarTableTroop.texts();var o=p.owned.get("sentinel");var next=Spec.MASTERY[1];
                             boolean page=s.page.equals("troop")&&"sentinel".equals(ttext("letter-troop"))&&"Templar".equals(ttext("letter-name"));
                             boolean stars=page&&"2".equals(ttext("letter-stars"))&&ttext("letter-line1").startsWith("Gilded Order");
-                            boolean title=page&&"Title: Veteran".equals(ttext("mastery-title"))&&"Next, level 2: Veteran trim".equals(ttext("mastery-next"));
+                            boolean title=page&&"Title: Veteran".equals(ttext("mastery-title"))&&"Next, Mastery 2: Mastery trim".equals(ttext("mastery-next"));
                             boolean bars=page&&trect("mastery-kills-bar")!=null&&trect("mastery-fights-bar")!=null
                                 &&("Kills "+Math.min(o==null?0:o.kills,next.kills())+" of "+next.kills()).equals(ttext("mastery-kills"))
                                 &&("Fights survived "+Math.min(o==null?0:o.survived,next.matches())+" of "+next.matches()).equals(ttext("mastery-fights"));

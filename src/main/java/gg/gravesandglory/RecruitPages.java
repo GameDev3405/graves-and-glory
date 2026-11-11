@@ -182,7 +182,7 @@ final class RecruitPages {
     static String masteryReward(Spec.MasteryRow m){
         List<String> out=new ArrayList<>();
         for(String part:m.reward().split(";")){String[] kv=part.split(":",2);if(kv.length<2)continue;
-            out.add(switch(kv[0]){case "title"->kv[1]+" title";case "skin"->kv[1].equals("veteran")?"Veteran trim":CampScreen.cap(kv[1])+" look";case "frame"->CampScreen.cap(kv[1])+" frame";default->CampScreen.cap(kv[1]);});}
+            out.add(switch(kv[0]){case "title"->kv[1]+" title";case "skin"->kv[1].equals("veteran")?"Mastery trim":CampScreen.cap(kv[1])+" look";case "frame"->CampScreen.cap(kv[1])+" frame";default->CampScreen.cap(kv[1]);});}
         return String.join(", ",out);
     }
     /** A thin progress bar: its track, its fill to have of want, brass when full. */
@@ -216,12 +216,12 @@ final class RecruitPages {
         else g.drawText(f,f.trimToWidth("Not in your collection",LEFT),x,sy,DarkUi.MUTED,false);
         // the right column
         int rx=x+LEFT+16,rw=w-LEFT-16,ry=y;
-        head(g,f,"LEVELS",rx,ry,rw);ry+=13;var names=levelNames(t);boolean line=!names.get(0).equals(names.get(2));
+        head(g,f,"RANK",rx,ry,rw);ry+=13;var names=levelNames(t);boolean line=!names.get(0).equals(names.get(2));
         if(line)for(int i=0;i<3;i++){int cx=rx+i*(rw/3);String n=MatchStats.roman(i+1);g.drawText(f,n,cx,ry,DarkUi.GOLD,false);g.drawText(f,f.trimToWidth(names.get(i),rw/3-f.getWidth(n)-10),cx+f.getWidth(n)+4,ry,DarkUi.PAPER,false);}
         else{g.drawText(f,"I  II  III",rx,ry,DarkUi.GOLD,false);g.drawText(f,f.trimToWidth(names.get(0)+" at every level",rw-60),rx+f.getWidth("I  II  III")+6,ry,DarkUi.PAPER,false);}
         ry+=18;head(g,f,"ABILITY",rx,ry,rw);ry+=13;var lines=abilityLines(t);
         for(int i=0;i<3;i++){String n=MatchStats.roman(i+1);g.drawText(f,n,rx,ry,DarkUi.GOLD,false);
-            var wrapped=wrap(f,lines.get(i).isEmpty()?"No change at this level":lines.get(i),rw-20,2);int ly=ry;for(var l:wrapped){g.drawText(f,l,rx+20,ly,i==0?DarkUi.PAPER:0xffd9d3c7,false);ly+=10;}ry=Math.max(ry+12,ly+2);}
+            var wrapped=wrap(f,lines.get(i).isEmpty()?"No change at this Rank":lines.get(i),rw-20,2);int ly=ry;for(var l:wrapped){g.drawText(f,l,rx+20,ly,i==0?DarkUi.PAPER:0xffd9d3c7,false);ly+=10;}ry=Math.max(ry+12,ly+2);}
         ry+=4;head(g,f,"MASTERY",rx,ry,rw);ry+=13;int level=o==null?0:o.mastery,bars=0;
         int col=0;for(var m:Spec.MASTERY)col=Math.max(col,f.getWidth(masteryReward(m)));col+=12;
         int kw=f.getWidth("400/400 kills"),bw=f.getWidth("60/60 survived"),room=Math.max(48,rw-20-col-kw-bw-6-6-10),killBar=room*56/96,fightBar=room-killBar;List<String> counts=new ArrayList<>();

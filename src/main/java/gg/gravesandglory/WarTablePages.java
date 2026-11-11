@@ -125,6 +125,8 @@ final class WarTablePages {
     // that band, 40 px above its foot.
     static final int FIELD_X = 220, FIELD_Y = 124, MAP_X = 236, MAP_Y = 156, MAP_STEP = 44, MAP_W = 176, STATUS_Y = 380;
     static final int CARD_X = 544, CARD_Y = 156, CARD_CX = 612, CARD_TEXT_W = 208, BOTS_HEAD_Y = 362, BOTS_Y = STATUS_Y;
+    /** The Statuses paper (polish T7), standing right of the sheet on the same parchment (a cut of sheet-field), the sheet's height less its torn rim: 140 wide so the compact page's right edge holds it 12 px clear; a row per status with its glyph, name and line. */
+    static final int GLOSS_X = FIELD_X + 534, GLOSS_Y = FIELD_Y + 4, GLOSS_W = 140, GLOSS_H = 316, GLOSS_ROW_Y = 34, GLOSS_STEP = 46, GLOSS_LINES = 3;
     static final String[] TIER_IDS = {"easy", "normal", "hard"};
     static final int[] TIER_X = {504, 576, 656}, TIER_W = {64, 72, 64};
 
@@ -2232,6 +2234,40 @@ final class WarTablePages {
         g.drawText(font, DarkUi.body("Open the war council from the table's home page."), ox + MAP_X, oy + STATUS_Y + 13, DarkUi.SEPIA, false);
         WarTableHome.centred(g, DarkUi.heading("Bots"), ox + CARD_CX, oy + BOTS_HEAD_Y, DarkUi.INK_TEXT);
         textsDrawn.put("bots-current", CampaignClient.tierName(CampaignClient.difficulty));
+        statuses(g, ox, oy);
+    }
+
+    /** The Statuses glossary: a paper of the sheet's parchment right of the sheet, a head, and a row per status (Statuses.Glossary) with its glyph, its name and its line wrapped to the paper. Recorded as statuses (the paper), status-(id) (the row), status-(id)-icon, and the texts status-(id) (the name) and status-(id)-line. */
+    void statuses(DrawContext g, int ox, int oy) {
+        var font = font();
+        int x = ox + GLOSS_X, y = oy + GLOSS_Y;
+        UiTex.part(g, "table/sheet-field", x, y, 190, 4, GLOSS_W, GLOSS_H);
+        g.drawBorder(x, y, GLOSS_W, GLOSS_H, DarkUi.SEPIA_LINE);
+        rectsDrawn.put("statuses", new int[]{x, y, GLOSS_W, GLOSS_H});
+        g.drawText(font, DarkUi.heading("Statuses"), x + 10, y + 10, DarkUi.INK_TEXT, false);
+        g.fill(x + 10, y + 24, x + GLOSS_W - 10, y + 25, DarkUi.SEPIA_LINE);
+        textsDrawn.put("statuses-head", "Statuses");
+        int row = 0;
+        for (var e : Statuses.Glossary.entries()) {
+            int ry = y + GLOSS_ROW_Y + GLOSS_STEP * row++;
+            int ix = x + 10;
+            for (int r = 0; r < e.glyph().length; r++)
+                for (int c = 0; c < 9; c++) {
+                    char ch = e.glyph()[r].charAt(c);
+                    if (ch != ' ') g.fill(ix + c, ry + 1 + r, ix + c + 1, ry + 2 + r, ch == 'k' ? DarkUi.INK_TEXT : 0xff000000 | e.colour());
+                }
+            rectsDrawn.put("status-" + e.id() + "-icon", new int[]{ix, ry + 1, 9, e.glyph().length});
+            g.drawText(font, DarkUi.heading(e.name()), x + 24, ry, DarkUi.INK_TEXT, false);
+            var lines = UiMath.lines(e.line(), GLOSS_W - 20, GLOSS_LINES, v -> font.getWidth(DarkUi.body(v)));
+            int right = x + 24 + font.getWidth(DarkUi.heading(e.name()));
+            for (int i = 0; i < lines.size(); i++) {
+                g.drawText(font, DarkUi.body(lines.get(i)), x + 10, ry + 13 + 11 * i, DarkUi.INK_TEXT, false);
+                right = Math.max(right, x + 10 + font.getWidth(DarkUi.body(lines.get(i))));
+            }
+            rectsDrawn.put("status-" + e.id(), new int[]{ix, ry, right - ix, 13 + 11 * Math.max(1, lines.size()) - 2});
+            textsDrawn.put("status-" + e.id(), e.name());
+            textsDrawn.put("status-" + e.id() + "-line", String.join(" ", lines));
+        }
     }
 
     /** A map's row: its name in INK, a tack by the map whose card shows; a click shows its card. */

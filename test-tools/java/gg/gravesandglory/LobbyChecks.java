@@ -49,7 +49,26 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
     }
     void fail(MinecraftClient c,String id,String why){report(id,false,why);end(c);}
 
-    public void step(MinecraftClient c,int tick){
+    String growthWhy="";
+        /** The Growth face of the troop sheet: its four rows by name in order, each with a line and a lasting, every drawn box inside the sheet, and no word "Veteran" or "level" on it. Empty when right. */
+        String growthFaults(MinecraftClient c,String at){
+            var t=WarTableTroop.texts();var r=WarTableTroop.rects();int[] sheet=r.get("sheet");List<String> bad=new ArrayList<>();
+            if(!"growth".equals(t.get("tab")))bad.add("tab is "+t.get("tab"));
+            for(String n:new String[]{"Stars","Rank","Armoury","Mastery"}){
+                if(!n.equals(t.get("head-growth-"+n)))bad.add(n+" row missing");
+                String line=t.get("growth-line-"+n),lasts=t.get("growth-"+n);
+                if(line==null||line.isBlank())bad.add(n+" has no line");
+                if(lasts==null||!lasts.startsWith("Lasts "))bad.add(n+" has no duration (\""+lasts+"\")");
+                for(String k:new String[]{"head-growth-"+n,"growth-line-"+n,"growth-"+n}){int[] b=r.get(k);if(b==null||sheet==null||b[0]<sheet[0]||b[1]<sheet[1]||b[0]+b[2]>sheet[0]+sheet[2]||b[1]+b[3]>sheet[1]+sheet[3])bad.add(k+" not inside the sheet "+java.util.Arrays.toString(b));}
+            }
+            int[] last=r.get("growth-line-Mastery");if(last!=null&&last[1]+last[3]>sheet[1]+WarTableTroop.CONTENT_END)bad.add("Mastery's line runs past the sheet's content end");
+            for(var e:t.entrySet())if(e.getKey().startsWith("growth")&&e.getValue().toLowerCase().matches(".*\b(levels?|veterans?)\b.*"))bad.add(e.getKey()+" says \""+e.getValue()+"\"");
+            List<String> names=new ArrayList<>();for(String k:r.keySet())if(k.contains("growth"))names.add(k);
+            for(int i=0;i<names.size();i++)for(int j=i+1;j<names.size();j++)if(overlaps(r.get(names.get(i)),r.get(names.get(j))))bad.add(names.get(i)+" overlaps "+names.get(j));
+            return bad.isEmpty()?"":at+": "+bad;
+        }
+        static boolean overlaps(int[] a,int[] b){return a!=null&&b!=null&&a[0]<b[0]+b[2]&&b[0]<a[0]+a[2]&&a[1]<b[1]+b[3]&&b[1]<a[1]+a[3];}
+        public void step(MinecraftClient c,int tick){
         if(finished)return;
         if(tick>9000){fail(c,"p1-lobby-timeout","stuck in stage "+stage);return;}
         int k=since(tick);
@@ -277,11 +296,21 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
             case 40->{ // the troop sheet fills the window at 1440p too
                 if(!(c.currentScreen instanceof CampScreen s)||!s.page.equals("troop")||k<20){if(k>100)fail(c,"p1-lobby-troop-1440","no troop sheet");return;}
                 report("p1-lobby-troop-1440",UiCanvas.k()==3&&UiCanvas.width()*3<=2560&&UiCanvas.height()*3<=1440,"troop sheet at 2560x1440: canvas k "+UiCanvas.k()+", canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" (want 3)");
-                shot(c,"troop-1440");window(c,1920,1080,0,true);stage=42;}
+                shot(c,"troop-1440");s.troopSheet.face("growth");stage=43;}
+            case 43->{ // the Growth face: the four names (Stars, Rank, Armoury, Mastery), each with a line and how long it lasts, none of them the old system word; at 1440p
+                if(k<4)return;growthWhy=growthFaults(c,"2560x1440");report("p1-lobby-troop-growth-1440",growthWhy.isEmpty(),growthWhy.isEmpty()?"the Growth face names Stars, Rank, Armoury and Mastery with a line and a duration each, inside the sheet, and no Veteran or level word":growthWhy);
+                shot(c,"troop-growth-1440");if(c.currentScreen instanceof CampScreen s)s.troopSheet.face("troop");window(c,1920,1080,0,true);stage=42;}
             case 42->{ // and at 1080p, the War Table's 2x (Kort, 2026-10-31); then back to 1440p and the lobby
                 if(k<20)return;
                 report("p1-lobby-troop-1080",UiCanvas.k()==2&&c.currentScreen instanceof CampScreen s&&s.page.equals("troop"),"troop sheet at 1920x1080: canvas k "+UiCanvas.k()+", canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" (want 2)");
-                shot(c,"troop-1080");window(c,2560,1440,0,true);CampScreen.open("lobby");stage=41;}
+                shot(c,"troop-1080");if(c.currentScreen instanceof CampScreen s)s.troopSheet.face("growth");stage=44;}
+            case 44->{ // the Growth face again at 1080p, and the Troop face's words checked for the old system word
+                if(k<4)return;growthWhy=growthFaults(c,"1920x1080");report("p1-lobby-troop-growth-1080",growthWhy.isEmpty(),growthWhy.isEmpty()?"the Growth face is whole at 1920x1080":growthWhy);
+                shot(c,"troop-growth-1080");if(c.currentScreen instanceof CampScreen s)s.troopSheet.face("troop");stage=45;}
+            case 45->{ // the Troop face reads Rank and Mastery, never Levels or Veteran as a system
+                if(k<4)return;var t=WarTableTroop.texts();String bad="";for(var e:t.entrySet())if(e.getValue().toLowerCase().matches(".*\b(levels?|veterans?)\b.*")&&!e.getKey().startsWith("level-")&&!e.getKey().equals("mastery-title")&&!e.getKey().equals("mastery-next")&&!e.getKey().equals("letter-name"))bad+=e.getKey()+"=\""+e.getValue()+"\" ";
+                report("p1-lobby-troop-names",bad.isEmpty()&&"Mastery".equals(WarTableTroop.texts().get("head-mastery-level"))&&"Rank in battle".equals(WarTableTroop.texts().get("head-levels")),"the Troop face's headings read "+WarTableTroop.texts().get("head-mastery-level")+" and "+WarTableTroop.texts().get("head-levels")+(bad.isEmpty()?"; no line says level or veteran":"; WRONG: "+bad));
+                window(c,2560,1440,0,true);CampScreen.open("lobby");stage=41;}
             case 41->{if(lobby(c)==null||k<20){if(k>100)fail(c,"p1-lobby-back","lobby not back after the troop sheet");return;}press(c,"invite");stage=70;}
             case 70->{ // Invite opens the friends list as a pop-over over the page; Close puts it away
                 var l=lobby(c);if(l==null||!l.inviting||l.button("invite-close")==null||!WarTableLobby.texts().containsKey("popover")||k<6){if(k>100)fail(c,"p1-lobby-invite-popover","the pop-over did not open");else if(k>=30&&k%30==0&&l!=null&&!l.inviting)press(c,"invite");return;}

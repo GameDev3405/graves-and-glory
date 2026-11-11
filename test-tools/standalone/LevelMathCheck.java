@@ -130,7 +130,7 @@ public final class LevelMathCheck {
             check(LevelMath.maxTier() == 3, "lm-tier-cap: with a fourth gearTiers row the highest tier is still the highest priced one, III, not " + LevelMath.maxTier());
             check(LevelMath.buyState(4, 4, 3, 1000, 0) == LevelMath.Buy.LOCKED, "lm-tier-cap: tier IV is LOCKED however rich the army and high the soldier");
             String why = LevelMath.refusal(4, 4, 3, 1000, 0, true, "Knight");
-            check(why.startsWith("Needs a level-4 "), "lm-tier-cap: tier IV is refused, not bought: " + why);
+            check(why.startsWith("Needs a Rank 4 "), "lm-tier-cap: tier IV is refused, not bought: " + why);
             List<LevelMath.Option> capped = null; String thrown = "";
             try { capped = LevelMath.botPicks(bot("hard", 4, 0, "open"), List.of(type("knight", 3, 3, 3, 4), type("archer", 3, 1, 1, 1)), 100000, 22); } catch (RuntimeException e) { thrown = e.toString(); }
             check(thrown.isEmpty() && picks(capped).equals("archer:weapon:2,archer:weapon:3,archer:armour:2,archer:armour:3"), "lm-tier-cap: a bot whose row allows tier IV buys up to III and never throws (the knight is done, the archer buys II and III on both tracks): " + (thrown.isEmpty() ? picks(capped) : "THREW " + thrown));
@@ -139,14 +139,14 @@ public final class LevelMathCheck {
 
         // lm-refusal: the Armoury's player copy (design 5.1)
         check(LevelMath.refusal(2, 2, 1, 100, 40, true).isEmpty() && LevelMath.refusal(3, 3, 2, 80, 80, true, "armour", "Knight-Captain").isEmpty(), "lm-refusal: an allowed buy gives no copy");
-        check(LevelMath.refusal(2, 1, 1, 100, 40, true, "Knight").equals("Needs a level-2 Knight"), "lm-refusal: a locked tier II names the level-2 name: " + LevelMath.refusal(2, 1, 1, 100, 40, true, "Knight"));
-        check(LevelMath.refusal(3, 2, 2, 100, 80, true, "Knight-Captain").equals("Needs a level-3 Knight-Captain"), "lm-refusal: a locked tier III names the level-3 name");
+        check(LevelMath.refusal(2, 1, 1, 100, 40, true, "Knight").equals("Needs a Rank 2 Knight"), "lm-refusal: a locked tier II names the level-2 name: " + LevelMath.refusal(2, 1, 1, 100, 40, true, "Knight"));
+        check(LevelMath.refusal(3, 2, 2, 100, 80, true, "Knight-Captain").equals("Needs a Rank 3 Knight-Captain"), "lm-refusal: a locked tier III names the level-3 name");
         check(LevelMath.refusal(3, 3, 1, 100, 80, true).equals("Buy Weapon II first") && LevelMath.refusal(3, 3, 1, 100, 80, true, "armour", "Knight-Captain").equals("Buy Armour II first"), "lm-refusal: tier III before tier II names the track's tier II");
         check(LevelMath.refusal(2, 2, 2, 100, 40, true).equals("Already bought") && LevelMath.refusal(3, 3, 3, 0, 80, false).equals("Already bought"), "lm-refusal: a bought tier says Already bought");
         check(LevelMath.refusal(2, 2, 1, 39, 40, true).equals("Not enough gold"), "lm-refusal: one gold short says Not enough gold");
         check(LevelMath.refusal(2, 2, 1, 100, 40, false).equals("Buy at your barracks or a held point") && LevelMath.refusal(2, 2, 1, 0, 40, false).equals("Buy at your barracks or a held point"), "lm-refusal: an open buy away from the barracks names the place, rich or poor");
-        check(LevelMath.refusal(2, 1, 1, 100, 40, false, "Knight").equals("Needs a level-2 Knight"), "lm-refusal: a locked buy names the level first, even away from the barracks");
-        check(LevelMath.refusal(2, 1, 1, 100, 40, true).equals("Needs a level-2 soldier"), "lm-refusal: with no level name the copy says soldier");
+        check(LevelMath.refusal(2, 1, 1, 100, 40, false, "Knight").equals("Needs a Rank 2 Knight"), "lm-refusal: a locked buy names the level first, even away from the barracks");
+        check(LevelMath.refusal(2, 1, 1, 100, 40, true).equals("Needs a Rank 2 troop"), "lm-refusal: with no level name the copy says soldier");
         String[] copies = {LevelMath.refusal(2, 1, 1, 100, 40, true, "Knight"), LevelMath.refusal(2, 1, 1, 100, 40, true), LevelMath.refusal(3, 3, 1, 100, 80, true), LevelMath.refusal(3, 3, 1, 100, 80, true, "armour", "x"), LevelMath.refusal(2, 2, 2, 100, 40, true), LevelMath.refusal(2, 2, 1, 39, 40, true), LevelMath.refusal(2, 2, 1, 100, 40, false)};
         for (String c : copies) check(clean(c), "lm-refusal: player copy says stage, evolve or Writ: " + c);
 

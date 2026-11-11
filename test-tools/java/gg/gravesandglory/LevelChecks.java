@@ -721,14 +721,14 @@ final class LevelChecks {
                     u1 = at(b, own, "knight", -6, -2); u2 = at(b, own, "knight", -4, -2); u3 = at(b, own, "knight", -2, -2);
                     double base = u1.mob.getMaxHealth();
                     String locked = say(b, "gear:knight:weapon:2");
-                    boolean lockedOk = locked.equals("Needs a level-2 Knight") && own.gold == 1000 && Veterans.peek(b, own, "knight") == null && Veterans.row(b, own, knight).weapon2() == LevelMath.Buy.LOCKED;
-                    Phase2Checks.report("p2-gear-locked", lockedOk, "before any Squire reached level 2, gear:knight:weapon:2 left the notice \"" + locked + "\" (want \"Needs a level-2 Knight\"), gold " + own.gold + " (want 1000), the row " + states(Veterans.row(b, own, knight)));
+                    boolean lockedOk = locked.equals("Needs a Rank 2 Knight") && own.gold == 1000 && Veterans.peek(b, own, "knight") == null && Veterans.row(b, own, knight).weapon2() == LevelMath.Buy.LOCKED;
+                    Phase2Checks.report("p2-gear-locked", lockedOk, "before any Squire reached Rank 2, gear:knight:weapon:2 left the notice \"" + locked + "\" (want \"Needs a Rank 2 Knight\"), gold " + own.gold + " (want 1000), the row " + states(Veterans.row(b, own, knight)));
                     Veterans.credit(b, u1, L2); Veterans.credit(b, u2, L2);
                     var r = Veterans.row(b, own, knight);
                     String three = say(b, "gear:knight:weapon:3");
                     boolean open = u1.level == 2 && r.weapon2() == LevelMath.Buy.OPEN && r.weapon3() == LevelMath.Buy.LOCKED && r.armour2() == LevelMath.Buy.OPEN && r.armour3() == LevelMath.Buy.LOCKED
-                        && three.equals("Needs a level-3 Knight-Captain") && own.gold == 1000 && Veterans.row(b, own, archer).weapon2() == LevelMath.Buy.LOCKED;
-                    Phase2Checks.report("p2-gear-open-l2", open, "two Squires reached " + cl(u1, u2) + ": the row " + states(r) + " (want OPEN/LOCKED/OPEN/LOCKED), gear:knight:weapon:3 \"" + three + "\" (want \"Needs a level-3 Knight-Captain\"), the archers' row " + states(Veterans.row(b, own, archer)) + " (want LOCKED: no archer levelled), gold " + own.gold);
+                        && three.equals("Needs a Rank 3 Knight-Captain") && own.gold == 1000 && Veterans.row(b, own, archer).weapon2() == LevelMath.Buy.LOCKED;
+                    Phase2Checks.report("p2-gear-open-l2", open, "two Squires reached " + cl(u1, u2) + ": the row " + states(r) + " (want OPEN/LOCKED/OPEN/LOCKED), gear:knight:weapon:3 \"" + three + "\" (want \"Needs a Rank 3 Knight-Captain\"), the archers' row " + states(Veterans.row(b, own, archer)) + " (want LOCKED: no archer levelled), gold " + own.gold);
                     boolean tierOne = u1.weaponTier == 1 && u2.weaponTier == 1 && u1.armourTier == 1;
                     String away = say(b, "gear:knight:weapon:2"); int goldAway = own.gold;
                     unheld.owner = -1; toPoint(b, unheld); boolean hereUnheld = Veterans.buyHere(b, p, own); String atUnheld = say(b, "gear:knight:weapon:2"); home(b);
@@ -767,7 +767,7 @@ final class LevelChecks {
                     fall(b, m);
                     var after = Veterans.row(b, own, mage); boolean none = b.fielded(own).noneMatch(u -> u.spec == mage);
                     boolean ok = !m.mob.isAlive() && none && before.weapon2() == LevelMath.Buy.OPEN && after.weapon2() == LevelMath.Buy.OPEN && after.armour2() == LevelMath.Buy.OPEN && after.weapon3() == LevelMath.Buy.LOCKED;
-                    Phase2Checks.report("p2-gear-open-stays", ok, "a Sunweaver reached level 2 (row " + states(before) + ") and fell (dead " + !m.mob.isAlive() + ", no Sunweaver fielded " + none + "): the row " + states(after) + " (want OPEN/LOCKED/OPEN/LOCKED: what a level opened stays open)");
+                    Phase2Checks.report("p2-gear-open-stays", ok, "a Sunweaver reached Rank 2 (row " + states(before) + ") and fell (dead " + !m.mob.isAlive() + ", no Sunweaver fielded " + none + "): the row " + states(after) + " (want OPEN/LOCKED/OPEN/LOCKED: what a level opened stays open)");
                     clearFixture(b, "open-stays"); next(b, 40);
                 }
                 case 40 -> { // p2-gear-price: Common 40/80, Epic 80/160, flat (no discount touches gear)
@@ -826,7 +826,7 @@ final class LevelChecks {
                     String why = Veterans.refusal(b, dawn, knight, LevelMath.WEAPON, 2, true);
                     if (why.isEmpty()) Veterans.purchase(b, dawn, knight, LevelMath.WEAPON, 2, LevelMath.price("common", 2));
                     boolean apart = why.isEmpty() && dk.weaponTier == 2 && Veterans.peek(b, own, "knight").toString().equals(ownKit) && ok2.weaponTier == 2 && ok2.armourTier == 2 && Veterans.row(b, dawn, knight).weapon2() == LevelMath.Buy.BOUGHT;
-                    Phase2Checks.report("p2-gear-allies-separate", untouched && apart, "a Squire of a second Dawn army reached level 2 after the commander's army bought Squire gear: he wears " + wore + " before his army buys (want 1/1), his army's row " + states(dr) + " (want OPEN on tier II) against the commander's " + states(or) + "=" + untouched + "; the second army buys Weapon II (refusal \"" + why + "\"): he wears weapon " + dk.weaponTier + " (want 2), the commander's Squires' Armoury " + Veterans.peek(b, own, "knight") + " (want unchanged " + ownKit + ")=" + apart);
+                    Phase2Checks.report("p2-gear-allies-separate", untouched && apart, "a Squire of a second Dawn army reached Rank 2 after the commander's army bought Squire gear: he wears " + wore + " before his army buys (want 1/1), his army's row " + states(dr) + " (want OPEN on tier II) against the commander's " + states(or) + "=" + untouched + "; the second army buys Weapon II (refusal \"" + why + "\"): he wears weapon " + dk.weaponTier + " (want 2), the commander's Squires' Armoury " + Veterans.peek(b, own, "knight") + " (want unchanged " + ownKit + ")=" + apart);
                     clearFixture(b, "allies"); next(b, 80);
                 }
                 case 80 -> { // p2-gear-stats: a star-3 Squire at level 3 with Weapon III and Armour III: health and blows x1.30 each, stars on top
@@ -897,8 +897,8 @@ final class LevelChecks {
                     StringBuilder got = new StringBuilder(); boolean same = rowsMatch(report, want, got);
                     var expect = List.of(new MatchStats.LevelRow("knight", 3, 2, 3, 3), new MatchStats.LevelRow("archer", 3, 1, 1, 3), new MatchStats.LevelRow("mage", 3, 1, 3, 1));
                     String text = want.isEmpty() ? "" : MatchStats.levelText(want.get(0), knight.name(), LevelMath.levelName(knight, want.get(0).highest()));
-                    reportOk = same && want.equals(expect) && text.equals("reached Knight-Captain / 2 at level 3 / Weapon III, Armour III") && MatchStats.levelText(new MatchStats.LevelRow("mage", 1, 0, 1, 1), mage.name(), mage.name()).equals("no level ups / no gear bought")
-                        && MatchStats.levelText(new MatchStats.LevelRow("mage", 3, 1, 3, 1), mage.name(), LevelMath.levelName(mage, 3)).equals("reached level 3 / 1 at level 3 / Weapon III") && !b.running && b.armouries.isEmpty();
+                    reportOk = same && want.equals(expect) && text.equals("reached Knight-Captain / 2 at Rank 3 / Weapon III, Armour III") && MatchStats.levelText(new MatchStats.LevelRow("mage", 1, 0, 1, 1), mage.name(), mage.name()).equals("no Rank gains / no gear bought")
+                        && MatchStats.levelText(new MatchStats.LevelRow("mage", 3, 1, 3, 1), mage.name(), LevelMath.levelName(mage, 3)).equals("reached Rank 3 / 1 at Rank 3 / Weapon III") && !b.running && b.armouries.isEmpty();
                     reportWhy = "the report's levels rows " + got.toString().trim() + " (want " + want + ", which is " + expect + ")=" + same + "; the Squires' line \"" + text + "\"; the Armoury emptied as the round ended " + b.armouries.isEmpty() + "; ";
                     firstReport = report == null ? "none" : report.get("id").getAsString(); reportShots.put(firstReport, "gear-report");
                     reward = b.campaign.notices.get(player);
@@ -1035,9 +1035,9 @@ final class LevelChecks {
             Veterans.override = Boolean.FALSE; String off = say(b, "gear:mage:armour:2"); Veterans.override = null;
             own.seated = false; String seatless = say(b, "gear:mage:armour:2"); own.seated = true;
             home(b);
-            boolean ok = poorOk && exactOk && wrong.isEmpty() && idle.equals("Gear is bought during a battle") && off.equals("Levels are off") && seatless.isEmpty() && own.gold == 1000 && kits(b, own).equals(kit1);
+            boolean ok = poorOk && exactOk && wrong.isEmpty() && idle.equals("Gear is bought during a battle") && off.equals("Ranks are off") && seatless.isEmpty() && own.gold == 1000 && kits(b, own).equals(kit1);
             Phase2Checks.report("p2-gear-refusals", ok, "with 39 gold the archers' Weapon II (40) said \"" + poor + "\" (want \"Not enough gold\", gold and Kits unchanged)=" + poorOk + "; with 40 it said \"" + exact + "\" (want bought, 0 left)=" + exactOk
-                + "; malformed or foreign: " + (wrong.isEmpty() ? "all nine said what they should" : wrong) + "; the Sunweaver's Armour II (80, affordable and open) with no round running said \"" + idle + "\" (want \"Gear is bought during a battle\"), with levels off \"" + off + "\" (want \"Levels are off\"), unseated \"" + seatless + "\" (want nothing: the command is dropped); gold " + own.gold + " (want 1000) and Kits " + kits(b, own) + " (want " + kit1 + ")");
+                + "; malformed or foreign: " + (wrong.isEmpty() ? "all nine said what they should" : wrong) + "; the Sunweaver's Armour II (80, affordable and open) with no round running said \"" + idle + "\" (want \"Gear is bought during a battle\"), with levels off \"" + off + "\" (want \"Ranks are off\"), unseated \"" + seatless + "\" (want nothing: the command is dropped); gold " + own.gold + " (want 1000) and Kits " + kits(b, own) + " (want " + kit1 + ")");
         }
 
         /** p2-gear-forward: with Battle.forwardReinforcement off no point is a place to buy (troops no longer deploy there), the barracks still is. */
@@ -1462,8 +1462,8 @@ final class LevelChecks {
 
         /** p2-armoury-off: with levels off the tab says so and offers nothing to buy. */
         void evalOff(RecruitmentScreen s) {
-            boolean ok = s != null && s.tab == 1 && s.page.message.equals("Levels are off") && s.page.buttons.isEmpty() && s.page.arrows.isEmpty() && CampaignClient.armoury.rows().isEmpty() && snap != null && snap.armoury().rows().isEmpty() && !Veterans.enabled() && s.page.headerDrawn.contains("Levels are off");
-            Phase2Checks.report("p2-armoury-off", ok, "with Veterans.override false the server sends " + (snap == null ? "nothing" : snap.armoury()) + " and the tab says \"" + (s == null ? "-" : s.page.message) + "\" with " + (s == null ? "-" : s.page.buttons.size() + " buy buttons") + " (want \"Levels are off\" and none)");
+            boolean ok = s != null && s.tab == 1 && s.page.message.equals("Ranks are off") && s.page.buttons.isEmpty() && s.page.arrows.isEmpty() && CampaignClient.armoury.rows().isEmpty() && snap != null && snap.armoury().rows().isEmpty() && !Veterans.enabled() && s.page.headerDrawn.contains("Ranks are off");
+            Phase2Checks.report("p2-armoury-off", ok, "with Veterans.override false the server sends " + (snap == null ? "nothing" : snap.armoury()) + " and the tab says \"" + (s == null ? "-" : s.page.message) + "\" with " + (s == null ? "-" : s.page.buttons.size() + " buy buttons") + " (want \"Ranks are off\" and none)");
         }
 
         /** The eight-type banner on the 854x480 canvas: the rows that fit, then the arrows, the wheel and Page Up and Down move by a row, never past either end. */

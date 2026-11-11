@@ -19,7 +19,7 @@ import static gg.gravesandglory.GravesAndGloryClient.*;
  * never works one out: a button is locked, open, bought or unaffordable as the server says, and a press sends gear:(troop):(weapon|armour):(tier), which
  * the server checks again. Every state carries a word and a glyph or a shape, never colour alone: a padlock and what is needed, a vellum tag with "Buy" and
  * the price, a check and "Bought", a flat greyed box with the price and "Not enough gold". Away from a buy place every buy is greyed and says "Not here",
- * the sheet's notice line gives the reason; with progression off the tab says "Levels are off".
+ * the sheet's notice line gives the reason; with progression off the tab says "Ranks are off".
  * A tag on the note under the rows turns the sheet to the custom groups (command UI plan Task 12): the four columns become groups 1 to 4, each head a
  * name tag (press, type, Enter) over a Delete tag (pressed twice), the lowest empty column a New group tag, and each cell a tag that puts the row's
  * troop type in or out of that group. Every edit is a group: command (CustomGroups.command), which the server checks and saves with the profile.
@@ -38,7 +38,7 @@ final class ArmouryTab {
     static final int OPEN_FILL = 0xfff1e7cb, OPEN_FOCUS = OPEN_FILL, OFF_FILL = DarkUi.VELLUM, PAPER_FILL = 0xffdccb9f;
     private static final String[] UP = {"...x...", "..xxx..", ".xxxxx.", "xxxxxxx"}, DOWN = {"xxxxxxx", ".xxxxx.", "..xxx..", "...x..."};
     /** The words of the fixed lines. */
-    static final String TITLE = "Armoury", SUBTITLE = "Gear for this round, per troop type", OFF = "Levels are off", OFF_WHY = "Soldiers do not level and no gear is sold this match.",
+    static final String TITLE = "Armoury", SUBTITLE = "Gear for this round, per troop type", OFF = "Ranks are off", OFF_WHY = "Troops earn no Rank and no Armoury gear is sold this match.",
         AWAY = "Buy at your barracks or a held point", GROUPS_SUB = "Numbered groups for orders", TO_GROUPS = "Custom groups", TO_GEAR = "Back to gear", NOT_HERE = "Not here", NO_GOLD = "Not enough gold", BOUGHT = "Bought", EMPTY = "Your banner has no troop types to buy gear for.";
     static final String[] GROUPS = {"Weapons", "Armour"}, COLUMNS = {"II", "III", "II", "III"};
     /** The wire tracks and tiers of the four columns, in order. */
@@ -100,7 +100,7 @@ final class ArmouryTab {
     static String ownName(Spec.TroopsRow t, int tier) { return LevelMath.levelName(t, tier); }
 
     /**
-     * Why a locked button is locked, in the game's own copy (LevelMath.refusal): "Needs a level-2 Knight" until a soldier of the type has reached the tier's level, and for a
+     * Why a locked button is locked, in the game's own copy (LevelMath.refusal): "Needs a Rank 2 Knight" until a soldier of the type has reached the tier's level, and for a
      * tier III with tier II still to buy, "Buy Weapon II first". The state packet carries the four states, not the highest level seen, so this names the one thing the
      * player can do next and is true whichever reason the server holds.
      */
@@ -126,7 +126,7 @@ final class ArmouryTab {
         String what = t.name() + ", " + trackWord(track) + " " + MatchStats.roman(tier) + ": ";
         int price = LevelMath.price(t.rarity(), tier);
         return what + switch (state) {
-            case BOUGHT -> "bought. Every soldier of the type whose level allows it wears it.";
+            case BOUGHT -> "bought. Every soldier of the type whose Rank allows it wears it.";
             case LOCKED -> lockedText(t, track, tier, row) + ".";
             case OPEN -> here ? price + " gold. Press to buy it for every " + t.name() + " this round." : price + " gold. " + AWAY + ".";
             case UNAFFORDABLE -> price + " gold, and you have " + gold + "." + (here ? "" : " " + AWAY + ".");

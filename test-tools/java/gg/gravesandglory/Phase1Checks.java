@@ -3359,11 +3359,31 @@ public final class Phase1Checks implements ClientModInitializer {
             String title=text("title");int[] tr=rect("title");
             boolean titled=name.equals("chapter")?title==null&&"Season pass / The Founders".equals(text("chapter"))
                 :WarTablePages.TITLES.get(name).equals(title)&&tr!=null&&Math.abs(tr[0]+tr[2]/2-(o[0]+480))<=1&&tr[1]==o[1]+84&&Integer.valueOf(DarkUi.IVORY).equals(WarTablePages.colors().get("title"));
-            boolean pass=pages(c)!=null&&b.size()>=5&&out.isEmpty()&&over.isEmpty()&&art.isEmpty()&&ours&&back&&rail&&wood&&titled;
+            List<String> gloss=name.equals("field")?glossaryFaults(c):List.of();
+            boolean pass=pages(c)!=null&&b.size()>=5&&out.isEmpty()&&over.isEmpty()&&art.isEmpty()&&ours&&back&&rail&&wood&&titled&&gloss.isEmpty();
             ok&=pass;
             return "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" (k "+UiCanvas.k()+"): "+b.size()+" widgets, within 12 px of the edge "+out+", overlapping "+over+", art within 12 px of the edge "+art
                 +(ours?", every widget the War Table's own":", a vanilla widget among them")+", back "+str(b.get("back"))+", the rail "+(rail?"as home's, this page's plaque lit":"WRONG:"+railWhy)
-                +", the oak "+table+", "+(name.equals("chapter")?"the chapter block \""+text("chapter")+"\"":"the title \""+title+"\" at "+str(tr))+(pass?"":" WRONG");
+                +", the oak "+table+", "+(name.equals("chapter")?"the chapter block \""+text("chapter")+"\"":"the title \""+title+"\" at "+str(tr))+(name.equals("field")?"; the Statuses glossary "+(gloss.isEmpty()?Statuses.Glossary.entries().size()+" rows drawn on the paper, apart":"WRONG: "+gloss):"")+(pass?"":" WRONG");
+        }
+        /** The Field page's Statuses glossary (polish T7): the paper is drawn and clear of the sheet, every widget and the notice; every status of Statuses.Glossary has a row with its glyph, its name and a non-empty line, each inside the paper, 12 px inside the canvas and overlapping no other row, no widget and not the sheet. */
+        List<String> glossaryFaults(MinecraftClient c){
+            List<String> bad=new ArrayList<>();int[] paper=rect("statuses");var widgets=boxes(c);
+            if(paper==null){bad.add("no paper");return bad;}
+            if(!within(paper))bad.add("the paper "+str(paper)+" is not 12 px inside the canvas");
+            for(String k:new String[]{"sheet","card","notice"}){int[] r=rect(k);if(r!=null&&UiHomeChecks.overlap(paper,r))bad.add("the paper meets "+k+" "+str(r));}
+            for(var w:widgets.entrySet())if(UiHomeChecks.overlap(paper,w.getValue()))bad.add("the paper meets widget "+w.getKey());
+            List<String> ids=new ArrayList<>();
+            for(var e:Statuses.Glossary.entries()){String id=e.id();ids.add(id);int[] row=rect("status-"+id),icon=rect("status-"+id+"-icon");String line=text("status-"+id+"-line");
+                if(row==null||icon==null||line==null||line.isBlank()||!e.name().equals(text("status-"+id))){bad.add(id+" has no complete row");continue;}
+                if(!UiPagesChecks.in(row,paper))bad.add(id+" row "+str(row)+" is off the paper");
+                if(!UiPagesChecks.in(icon,paper))bad.add(id+" icon "+str(icon)+" is off the paper");
+                if(!within(row))bad.add(id+" row "+str(row)+" is not 12 px inside the canvas");
+                if(!line.equals(String.join(" ",UiMath.lines(e.line(),WarTablePages.GLOSS_W-20,WarTablePages.GLOSS_LINES,v->MinecraftClient.getInstance().textRenderer.getWidth(DarkUi.body(v))))))bad.add(id+" line cut: \""+line+"\"");
+                for(var w:widgets.entrySet())if(UiHomeChecks.overlap(row,w.getValue()))bad.add(id+" meets widget "+w.getKey());
+                for(String k:new String[]{"sheet","card"}){int[] r=rect(k);if(r!=null&&UiHomeChecks.overlap(row,r))bad.add(id+" meets "+k);}
+                for(String other:ids)if(!other.equals(id)&&rect("status-"+other)!=null&&UiHomeChecks.overlap(row,rect("status-"+other)))bad.add(id+" meets "+other);}
+            return bad;
         }
         /** layout(c,name) for the scales: its line, clearing scalesOk (not ok) when wrong. */
         String scaled(MinecraftClient c,String name){boolean was=ok;ok=true;String line=layout(c,name);scalesOk&=ok;ok=was;return line;}

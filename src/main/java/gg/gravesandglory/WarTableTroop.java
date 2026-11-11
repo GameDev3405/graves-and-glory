@@ -124,6 +124,7 @@ final class WarTableTroop {
         int sx = o[0] + SHEET_X, sy = o[1] + TOP;
         add("tab-troop", new UiButton(sx + PAD, sy + TAB_Y, TAB_W, TAB_H, Text.literal("Troop"), b -> face("troop"), (g, x, y, w, h, hot) -> paintTab(g, "troop", "Troop", x, y, w, h)));
         add("tab-matchups", new UiButton(sx + PAD + TAB_W + TAB_GAP, sy + TAB_Y, TAB_W, TAB_H, Text.literal("Matchups"), b -> face("matchups"), (g, x, y, w, h, hot) -> paintTab(g, "matchups", "Matchups", x, y, w, h)));
+        add("tab-growth", new UiButton(sx + PAD + 2 * (TAB_W + TAB_GAP), sy + TAB_Y, TAB_W, TAB_H, Text.literal("Growth"), b -> face("growth"), (g, x, y, w, h, hot) -> paintTab(g, "growth", "Growth", x, y, w, h)));
         choose = add("choose", new UiButton(o[0] + LETTER_X + WarTableRecruit.CHOOSE_X, o[1] + TOP + WarTableRecruit.CHOOSE_Y, WarTableRecruit.CHOOSE_W, WarTableRecruit.CHOOSE_H, Text.literal("Buy"), b -> chooseTroop(), this::paintChoose));
         refresh();
     }
@@ -369,6 +370,7 @@ final class WarTableTroop {
         rectsDrawn.put("sheet", UiTex.draw(g, "table/sheet-banner", x, y));
         textsDrawn.put("tab", tab);
         if (tab.equals("matchups")) matchups(g, t, x + PAD, y);
+        else if (tab.equals("growth")) growth(g, t, x + PAD, y);
         else levels(g, t, x + PAD, y);
         notice(g, x + PAD, y);
     }
@@ -453,13 +455,13 @@ final class WarTableTroop {
         // Mastery
         ry += 8;
         int level = o == null ? 0 : o.mastery, top = Spec.MASTERY.length;
-        head(g, "mastery-level", "Mastery", "Level " + level + " of " + top, x, ry);
+        head(g, "mastery-level", "Mastery", level + " of " + top + " reached", x, ry);
         ry += 18;
         String title = masteryTitle(level);
         line(g, "mastery-title", title.isEmpty() ? "No title yet" : "Title: " + title, x, ry, title.isEmpty() ? DarkUi.SEPIA : DarkUi.INK_TEXT);
         ry += STEP;
         var next = level >= top ? null : Spec.MASTERY[level];
-        line(g, "mastery-next", next == null ? "Mastery complete" : "Next, level " + next.level() + ": " + RecruitPages.masteryReward(next), x, ry, DarkUi.SEPIA);
+        line(g, "mastery-next", next == null ? "Mastery complete" : "Next, Mastery " + next.level() + ": " + RecruitPages.masteryReward(next), x, ry, DarkUi.SEPIA);
         ry += STEP + 3;
         var m = next == null ? Spec.MASTERY[top - 1] : next;
         int kills = o == null ? 0 : o.kills, fights = o == null ? 0 : o.survived;
@@ -468,7 +470,7 @@ final class WarTableTroop {
         bar(g, "mastery-fights", "Fights survived", Math.min(fights, m.matches()), m.matches(), x, ry);
         ry += 22;
         // the three levels in battle
-        head(g, "levels", "Levels in battle", null, x, ry);
+        head(g, "levels", "Rank in battle", null, x, ry);
         ry += 18;
         var names = RecruitPages.levelNames(t);
         var lines = RecruitPages.abilityLines(t);
@@ -484,8 +486,34 @@ final class WarTableTroop {
                 colorsDrawn.put("level-" + i + "-name", DarkUi.INK_TEXT);
                 ry += 13;
             }
-            String text = lines.get(i).isEmpty() ? "No change at this level." : lines.get(i);
+            String text = lines.get(i).isEmpty() ? "No change at this Rank." : lines.get(i);
             ry = block(g, "level-" + i, text, x + 30, ry, TEXT_W - 30, 3, DarkUi.INK_TEXT) + 4;
+        }
+    }
+
+    /** The four ways a troop grows (Kort, 2026-11-10: Stars, Rank, Armoury, Mastery), one row each: the name, how long it lasts on the right, and one line of what it gives, from the sheet's rows. */
+    static List<String[]> growthRows(Spec.TroopsRow t) {
+        var r = RosterMath.rarityRow(t.rarity());
+        int s2 = r == null ? 0 : (int) Math.round(r.starPct2() * 100), s3 = r == null ? 0 : (int) Math.round(r.starPct3() * 100);
+        var lv = Spec.LEVELS;
+        String rank = lv.length < 3 ? "Kills in a match raise it." : "Kills in a match raise it: Rank 2 at " + lv[1].kills() + " kills (+" + Math.round(lv[1].damagePct() * 100) + "%), Rank 3 at " + lv[2].kills() + " (+" + Math.round(lv[2].damagePct() * 100) + "%).";
+        var gt = Spec.GEARTIERS;
+        String arm = gt.length < 3 || r == null ? "Gold buys weapon and armour upgrades for this troop type." : "Gold buys weapon and armour upgrades for this troop type: tier II +" + Math.round(gt[1].weaponPct() * 100) + "% for " + r.gearPrice2() + ", tier III +" + Math.round(gt[2].weaponPct() * 100) + "% for " + r.gearPrice3() + ".";
+        StringBuilder m = new StringBuilder("The account's record with this troop type earns titles: ");
+        for (int i = 0; i < Spec.MASTERY.length; i++) m.append(i == 0 ? "" : ", ").append(Spec.MASTERY[i].kills()).append(" kills and ").append(Spec.MASTERY[i].matches()).append(" fights");
+        return List.of(
+            new String[]{"Stars", "Lasts forever", "Duplicates raise it to star 2 (+" + s2 + "% health and damage) and star 3 (+" + s3 + "%)."},
+            new String[]{"Rank", "Lasts the match", rank},
+            new String[]{"Armoury", "Lasts the match", arm},
+            new String[]{"Mastery", "Lasts forever", m + "."});
+    }
+
+    void growth(DrawContext g, Spec.TroopsRow t, int x, int y) {
+        int ry = y + HEAD_Y;
+        for (String[] row : growthRows(t)) {
+            head(g, "growth-" + row[0], row[0], row[1], x, ry);
+            ry += 18;
+            ry = block(g, "growth-line-" + row[0], row[2], x, ry, TEXT_W, 3, DarkUi.INK_TEXT) + 10;
         }
     }
 

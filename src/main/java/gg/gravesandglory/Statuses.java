@@ -261,4 +261,61 @@ final class Statuses {
         }
         return took;
     }
+
+    /**
+     * The glossary the War Table's Field page lists (polish T7): one entry per thing a troop can carry, in the order the engine's header names them, with the
+     * one plain line each reads from the sheet's rows (statusTicks and amount of the abilities that lay it, combatDiscipline's bleed). The battle HUD's group
+     * cards draw no status icon today (a hover tooltip waits for the port); the icon is a small pixel glyph, ' ' clear, 'k' the ink outline, 'c' the colour.
+     */
+    static final class Glossary {
+        private Glossary() {}
+        /** One row: the status id, its name, its line, the glyph's rows and the glyph's colour. */
+        record Entry(String id, String name, String line, String[] glyph, int colour) {}
+
+        static final String[] SLOW = {"   kkk   ", "   kck   ", "   kck   ", "kkkkckkkk", " kccccck ", "  kccck  ", "   kck   ", "    k    "};
+        static final String[] STUN = {"    k    ", "   kck   ", "kkkkckkkk", "kccccccck", "kkkkckkkk", "   kck   ", "    k    "};
+        static final String[] WEAKEN = {"  kkkkk  ", " kccccck ", "kccccccck", "kckkkkkck", "kccccccck", " kccccck ", "  kkkkk  "};
+        static final String[] BLEED = {"    k    ", "   kck   ", "  kccck  ", " kccccck ", " kccccck ", " kccccck ", "  kccck  ", "   kkk   "};
+        static final String[] MARK = {"    k    ", "   kck   ", "  kccck  ", " kcckcck ", "  kccck  ", "   kck   ", "    k    "};
+        static final String[] KNOCK = {"    kk   ", "    kck  ", "kkkkkcck ", "kccccccck", "kkkkkcck ", "    kck  ", "    kk   "};
+
+        /** Seconds from ticks: "1", "1.5". */
+        static String secs(int ticks) {
+            double v = ticks / 20.0;
+            return v == Math.rint(v) ? Integer.toString((int) v) : Double.toString(Math.round(v * 10) / 10.0);
+        }
+
+        /** "1 s" or "1 to 3 s" over the ticks of every ability row that lays the status (0 when none does). */
+        static String lasts(String status) {
+            int lo = Integer.MAX_VALUE, hi = 0;
+            for (var a : Spec.ABILITIES) if (a.status().equals(status) && a.statusTicks() > 0) { lo = Math.min(lo, a.statusTicks()); hi = Math.max(hi, a.statusTicks()); }
+            if (hi == 0) return "";
+            return lo == hi ? secs(lo) + " s" : secs(lo) + " to " + secs(hi) + " s";
+        }
+
+        /** The share a weaken takes off a troop's blows, in percent (the first row that lays one). */
+        static long weakenPct() {
+            for (var a : Spec.ABILITIES) if (a.status().equals("weaken")) return Math.round(a.amount() * 100);
+            return 0;
+        }
+
+        /** The mark's bonus in percent and its seconds (the sheet's "mark" mechanic). */
+        static String mark() {
+            for (var a : Spec.ABILITIES) if (a.mechanic().equals("mark")) return "Takes " + Math.round(a.amount() * 100) + "% more from the army that marked it for " + secs(a.durationTicks()) + " s.";
+            return "Takes more from the army that marked it.";
+        }
+
+        static List<Entry> entries() {
+            var d = Spec.COMBATDISCIPLINE[0];
+            String bleed = "Loses " + (d.bleedDamage() == Math.rint(d.bleedDamage()) ? Integer.toString((int) d.bleedDamage()) : Double.toString(d.bleedDamage())) + " health every " + secs(d.bleedEveryTicks()) + " s, for " + lasts("bleed") + ".";
+            return List.of(
+                new Entry("slow", "Slowed", "Moves slower for " + lasts("slow") + ".", SLOW, 0x4A7BA6),
+                new Entry("stun", "Stunned", "Cannot attack or cast for " + lasts("stun") + ".", STUN, 0xC8A23A),
+                new Entry("weaken", "Weakened", "Deals " + weakenPct() + "% less damage for " + lasts("weaken") + ".", WEAKEN, ASH),
+                new Entry("bleed", "Bleeding", bleed, BLEED, BLOOD),
+                new Entry("mark", "Marked", mark(), MARK, MARK_COLOUR),
+                new Entry("knockback", "Knocked back", "Thrown back from the blow; a troop holding its ground is not moved.", KNOCK, 0xA66A3A));
+        }
+        static final int MARK_COLOUR = Statuses.MARK;
+    }
 }

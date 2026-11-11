@@ -49,7 +49,7 @@ public final class LevelMath {
         return gold < price ? Buy.UNAFFORDABLE : Buy.OPEN;
     }
 
-    /** The refusal copy for a weapon buy with no level name ("Needs a level-2 soldier"); "" when the buy is allowed. */
+    /** The refusal copy for a weapon buy with no level name ("Needs a Rank 2 troop"); "" when the buy is allowed. */
     public static String refusal(int tier, int highestLevelSeen, int boughtTier, int gold, int price, boolean here) {
         return refusal(tier, highestLevelSeen, boughtTier, gold, price, here, WEAPON, null);
     }
@@ -62,7 +62,7 @@ public final class LevelMath {
     /** The player copy that refuses a buy, or "" when it is allowed. In order: already bought, the level not yet seen, the tier below not bought, away from the barracks or a held point (here false), not enough gold. */
     public static String refusal(int tier, int highestLevelSeen, int boughtTier, int gold, int price, boolean here, String track, String levelName) {
         if (boughtTier >= tier) return "Already bought";
-        if (tier > maxTier() || highestLevelSeen < tier) return "Needs a level-" + tier + " " + (levelName == null || levelName.isEmpty() ? "soldier" : levelName);
+        if (tier > maxTier() || highestLevelSeen < tier) return "Needs a Rank " + tier + " " + (levelName == null || levelName.isEmpty() ? "troop" : levelName);
         if (boughtTier < tier - 1) return "Buy " + (ARMOUR.equals(track) ? "Armour" : "Weapon") + " " + MatchStats.roman(tier - 1) + " first";
         if (!here) return "Buy at your barracks or a held point";
         if (gold < price) return "Not enough gold";
