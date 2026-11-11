@@ -187,9 +187,10 @@ public final class BattleHud {
             int[] box=at.get("trait-"+id);if(box==null)continue;
             Spec.HousesRow row=null;for(var h:Spec.HOUSES)if(h.id().equals(id))row=h;if(row==null)continue;
             int tier=tiers.get(id);String numeral=MatchStats.roman(tier);
-            g.fill(box[0],box[1],box[0]+box[2],box[1]+box[3],DarkUi.OAK0);g.fill(box[0]+1,box[1]+1,box[0]+box[2]-1,box[1]+box[3]-1,DarkUi.TRACK);
-            g.drawTexture(new Identifier(row.glyph()),box[0]+2,box[1]+1,0f,0f,16,16,16,16);
-            g.drawText(font,numeral,box[0]+21,box[1]+5,UiMath.accentText(row.accent()),true);
+            // the parchment chip the readout and the other small plates use, cut to the chip's width: its left end, then its right end (art 5 px wider than the box, as the readout's)
+            int lw=27,rw=box[2]+5-lw;UiTex.part(g,"hud/chip-plain",box[0]-1,box[1]-1,0,0,lw,24);UiTex.part(g,"hud/chip-plain",box[0]-1+lw,box[1]-1,181-rw,0,rw,24);
+            g.drawTexture(new Identifier(row.glyph()),box[0]+3,box[1]+1,0f,0f,16,16,16,16);
+            g.drawText(font,numeral,box[0]+22,box[1]+5,DarkUi.INK_TEXT,false);
             r.put("trait-"+id,box);tx.put("trait-"+id,numeral);
         }
     }
@@ -300,10 +301,11 @@ public final class BattleHud {
         goldSeen=gold;incomeSeen=income;goldFrameMs=now;
         int x=box[0],y=box[1];boolean narrow=box[2]<UiMath.CARD_W; // the amount alone on a short row: the plate's two ends, no income
         if(narrow){int rest=box[2]+5-54;UiTex.part(g,"hud/chip-plain",x-1,y-1,0,0,54,24);UiTex.part(g,"hud/chip-plain",x+53,y-1,181-rest,0,rest,24);}else UiTex.draw(g,"hud/chip-plain",x,y);
-        String main=gold+" gold",sub="+"+income+" every "+Spec.ECONOMY[0].incomeSeconds()+" s";
+        int every=Spec.ECONOMY[0].incomeSeconds();String main=gold+" gold",sub="+"+income+" every "+every+" s";
         g.drawText(font,DarkUi.heading(main),x+10,y+4,DarkUi.INK_TEXT,false);
-        float sc=0.75f;int sw=Math.round(font.getWidth(sub)*sc);
-        if(!narrow){var m=g.getMatrices();m.push();m.translate(x+box[2]-10-sw,y+5.5f,0);m.scale(sc,sc,1);g.drawText(font,sub,0,0,DarkUi.SEPIA,false);m.pop();}
+        // the income in the amount's own font and ink; the short form when the full one would crowd the amount and a payout's "+n" (readable at the small scales)
+        Text subT=DarkUi.heading(sub);if(!narrow&&font.getWidth(DarkUi.heading(main))+font.getWidth(subT)+60>box[2]){sub="+"+income+" / "+every+" s";subT=DarkUi.heading(sub);}
+        if(!narrow)g.drawText(font,subT,x+box[2]-10-font.getWidth(subT),y+4,DarkUi.INK_TEXT,false);
         r.put("gold",box);tx.put("gold",main);if(!narrow)tx.put("gold-income",sub);
         long age=now-gainMs;
         if(gainAmount>0&&age<GAIN_MS){

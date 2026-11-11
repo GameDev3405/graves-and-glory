@@ -1139,7 +1139,7 @@ final class WarTablePages {
 
     /** One House of the banner for the trait rows: the House, the slots the banner fields of it, its thresholds and the tier they reach. */
     record TraitRow(Spec.HousesRow house, int slots, int[] thresholds, int tier) {}
-    static final int TRAIT_HEAD = 14, TRAIT_NAME = 13, TRAIT_PIPS = 11, TRAIT_LINE = 11, TRAIT_GAP = 6;
+    static final int TRAIT_HEAD = 14, TRAIT_NAME = 14, TRAIT_PIPS = 12, TRAIT_LINE = 11, TRAIT_GAP = 6;
 
     /** The Houses the banner shown fields at least one slot of, the most slots first (House order among equals); a House with none is left out. */
     static List<TraitRow> traitRows() {
@@ -1202,11 +1202,9 @@ final class WarTablePages {
             String id = r.house().id();
             int accent = UiMath.accentText(r.house().accent()), top0 = y;
             g.drawTexture(new Identifier(r.house().glyph()), x, y, 12, 12, 0f, 0f, 16, 16, 16, 16);
-            String name = RosterMath.houseName(id) + (r.tier() > 0 ? " " + MatchStats.roman(r.tier()) : "");
+            String name = UiMath.trim(RosterMath.houseName(id) + (r.tier() > 0 ? " " + MatchStats.roman(r.tier()) : ""), w - 16, t -> font.getWidth(DarkUi.heading(t)));
             g.drawText(font, DarkUi.heading(name), x + 16, y + 1, r.tier() > 0 ? accent : DarkUi.MUTED, false);
             String progress = r.tier() >= 3 ? r.slots() + " slots" : r.slots() + " / " + r.thresholds()[r.tier()];
-            int pw = font.getWidth(DarkUi.small(progress));
-            g.drawText(font, DarkUi.small(progress), x + w - pw, y + 1, DarkUi.IVORY, false);
             y += TRAIT_NAME;
             int px = x + 16;
             for (int t = 0; t < r.thresholds().length; t++) {
@@ -1214,9 +1212,14 @@ final class WarTablePages {
                 if (met) g.fill(px, y + 1, px + 8, y + 9, DarkUi.opaque(r.house().accent()));
                 g.drawBorder(px, y + 1, 8, 8, met ? DarkUi.BRASS_HI : DarkUi.MUTED);
                 String n = Integer.toString(r.thresholds()[t]);
-                g.drawText(font, DarkUi.small(n), px + 11, y, met ? DarkUi.IVORY : DarkUi.MUTED, false);
-                px += 11 + font.getWidth(DarkUi.small(n)) + 8;
+                g.drawText(font, DarkUi.body(n), px + 11, y + 1, met ? DarkUi.IVORY : DarkUi.MUTED, false);
+                px += 11 + font.getWidth(DarkUi.body(n)) + 8;
             }
+            // the progress shares the pips' row, right-aligned and clear of them (the short form, the slots alone, when the long one would touch the last number)
+            int pw = font.getWidth(DarkUi.body(progress));
+            String drawn = progress;
+            if (px - 8 + 6 + pw > x + w) { drawn = Integer.toString(r.slots()); pw = font.getWidth(DarkUi.body(drawn)); }
+            g.drawText(font, DarkUi.body(drawn), x + w - pw, y + 1, DarkUi.IVORY, false);
             y += TRAIT_PIPS;
             if (level >= 1) {
                 y += 2;

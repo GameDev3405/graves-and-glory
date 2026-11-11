@@ -46,7 +46,7 @@ final class SocialHub {
     Set<UUID> group(UUID id){Party p=party(id);return p==null?Set.of(id):Set.copyOf(p.members);}
     boolean lead(UUID id){Party p=party(id);return p==null||id.equals(p.leader);}
     String createParty(UUID id){if(party(id)!=null)return "You already have a party.";if(room(id)!=null)return "Leave your room before changing your party.";
-        Party p=new Party(id);parties.put(p.id,p);revision++;return "Party created. Invite up to three friends.";}
+        Party p=new Party(id);parties.put(p.id,p);revision++;return "Party created. Friends in this camp can be invited from the list.";}
     String invite(UUID from,UUID to,long now){Party p=party(from);if(p==null||!from.equals(p.leader))return "Only the party leader can invite.";
         if(room(from)!=null)return "Leave your room before inviting party members.";
         if(!online.contains(to))return "That friend is offline.";if(party(to)!=null)return "That friend is already in a party.";
@@ -60,16 +60,16 @@ final class SocialHub {
         p.members.add(id);invites.remove(id);revision++;return "Joined party. Your group stays together between matches.";}
     String decline(UUID id){invites.remove(id);revision++;return "Invitation declined.";}
     String leaveParty(UUID id){Party p=party(id);if(p==null)return "You are not in a party.";
-        if(p.members.stream().anyMatch(member->room(member)!=null))return "Leave the room before changing the party.";
+        if(p.members.stream().anyMatch(member->room(member)!=null))return "Leave room before changing the party.";
         p.members.remove(id);if(p.members.isEmpty())parties.remove(p.id);else if(id.equals(p.leader))p.leader=p.members.stream().filter(online::contains).findFirst().orElse(p.members.iterator().next());
         invites.values().removeIf(i->i.party.equals(p.id));revision++;return "Left party.";}
     String transfer(UUID leader,UUID target){Party p=party(leader);if(p==null||!leader.equals(p.leader)||!p.members.contains(target))return "Only the leader can transfer to a party member.";
         if(!online.contains(target))return "Choose an online member.";p.leader=target;invites.values().removeIf(i->i.party.equals(p.id));revision++;return "Party leader transferred.";}
     String kick(UUID leader,UUID target){Party p=party(leader);if(p==null||!leader.equals(p.leader)||leader.equals(target)||!p.members.contains(target))return "Only the leader can remove another party member.";
-        if(p.members.stream().anyMatch(member->room(member)!=null))return "Leave the room before changing the party.";
+        if(p.members.stream().anyMatch(member->room(member)!=null))return "Leave room before changing the party.";
         p.members.remove(target);revision++;return "Member removed from party.";}
     String disband(UUID id){Party p=party(id);if(p==null||!id.equals(p.leader))return "Only the party leader can disband.";
-        if(p.members.stream().anyMatch(member->room(member)!=null))return "Leave the room before disbanding.";
+        if(p.members.stream().anyMatch(member->room(member)!=null))return "Leave room before disbanding.";
         parties.remove(p.id);invites.values().removeIf(i->i.party.equals(p.id));revision++;return "Party disbanded.";}
     String claim(UUID id,long now){Party p=party(id);if(p==null)return "You are not in a party.";
         if(online.contains(p.leader)||now-offlineSince.getOrDefault(p.leader,now)<RECONNECT_MS)return "Leader has a two-minute reconnect reservation.";

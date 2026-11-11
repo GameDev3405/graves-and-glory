@@ -24,13 +24,13 @@ final class WarTableLobby {
     /** On the sheet (sheet-relative): text edge and width, the seat columns, the seats' rows, the picks and the Ready plate. */
     static final int PAD = 22, TEXT_W = 360, COL_W = 174, COL_GAP = 12, SEATS = 4, TEAM_Y = 40, SEAT_Y = 56, SEAT_H = 24, SEAT_STEP = 27,
             HOST_Y = 166, HOUSE_HEAD_Y = 184, HOUSE_Y = 202, CHIP_PAD = 6, CHIP_SEAL = 16, CHIP_SEAL_GAP = 4, CHIP_GAP = 4, ROLE_HEAD_Y = 236, ROLE_Y = 254,
-            READY_Y = 288, STATUS_Y = 334, NOTICE_Y = 350, STEP = 12;
+            READY_Y = 288, STATUS_Y = 334, NOTICE_Y = 346, NOTICE_STEP = 10, NOTICE_LINES = 2, PAPER_INSET = 6, STEP = 12;
     /** The room's code line on the sheet: the Copy and Invite tags beside the heading, and (not in a room) the Join by code field and its tag. SUMMARY_Y is the chosen mode's one line of rules, in the gap above the Ready plate. START_W is Start now beside Ready. */
     static final int HEAD_TAG_H = 20, COPY_W = 48, INVITE_W = 56, SUMMARY_Y = 270, START_W = 112, CODE_LENGTH = WarTablePages.CODE_LENGTH, JOIN_Y = 150, FIT_TICKS = 60;
     /** The invite pop-over: its panel (sheet-relative), the rows of friends it lists and each row's height. */
-    static final int POP_X = 40, POP_Y = 44, POP_W = 324, POP_H = 232, POP_ROWS = 5, POP_ROW_H = 28;
+    static final int POP_X = 40, POP_Y = 44, POP_W = 324, POP_ROWS = 5, POP_ROW_H = 28, POP_HEAD = 40, POP_FOOT = 40;
     /** On the note (note-relative): its text edge and width, and the rows of the orders. */
-    static final int NPAD = 18, NOTE_TEXT_W = 196, MODE_Y = 44, MAP_Y = 116, CARD_Y = 132, SIZE_Y = 252, FILL_Y = 284, TIER_Y = 312, LEAVE_Y = 344,
+    static final int NPAD = 18, NOTE_TEXT_W = 196, MODE_Y = 44, MAP_Y = 116, CARD_Y = 132, SIZE_Y = 252, FILL_Y = 284, TIER_Y = 312, LEAVE_Y = 340,
             MODE_COLS = 2, MODE_H = 24, MODE_GAP = 3, TIER_GAP = 3;
     // The mode tabs wrap two to a row (four modes since Survival did not fit one row of the note's 196 px); the rows below the tabs sit 24 px lower than the single row had them.
     /** The host's two tags on the last row of the note, Pass host and Leave, each this wide. */
@@ -60,6 +60,10 @@ final class WarTableLobby {
     final Map<String, UiButton> buttons = new LinkedHashMap<>();
     long ticks;
     boolean asked;
+    /** The tick a room request (social:lobby) went out and none has come back since; -1 when none is pending. After REQUEST_TICKS the page says it could not open one. */
+    long requestAt = -1;
+    boolean wasInRoom;
+    static final int REQUEST_TICKS = 60;
     /** The host pressed Pass host: the other online commanders' seats now hand him the host's seat (social:host:<name>). */
     boolean choosingHost;
     /** Whether each House chip carries its seal this build (UiMath.chipRow), by House id. */
@@ -166,7 +170,7 @@ final class WarTableLobby {
     /** Builds the widgets (CampScreen.init on page lobby): again whenever the camp state changes. The first build without a room asks the server for one (social:lobby). */
     void init() {
         buttons.clear();
-        if (!inRoom() && !asked) { asked = true; if (!joining) send("social:lobby"); }
+        if (!inRoom() && !asked) { asked = true; if (!joining && send("social:lobby")) requestAt = ticks; }
         joining = false;
         int[] o = columnAt();
         add("back", WarTable.backPlaque(b -> back()));
@@ -176,7 +180,7 @@ final class WarTableLobby {
             int jy = sy + JOIN_Y;
             add("code", new UiButton(sx + PAD, jy + 14, TEXT_W - 108, 24, Text.literal("Room code"), b -> typing = true, (g, x, y, w, h, hot) -> paintCode(g, x, y, w, h)));
             add("join", new UiButton(sx + PAD + TEXT_W - 100, jy + 14, 100, 24, Text.literal("Join"), b -> join(), (g, x, y, w, h, hot) -> tag(g, "join", "Join", false, x, y, w, h))).active = codeWhole();
-            add("open", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal("Open the council"), b -> send("social:lobby"), (g, x, y, w, h, hot) -> plate(g, "open", "Open the council", true, x, y)));
+            add("open", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal("Open the council"), b -> { if (send("social:lobby")) requestAt = ticks; }, (g, x, y, w, h, hot) -> plate(g, "open", "Open the council", true, x, y)));
             return;
         }
         typing = false;
@@ -238,7 +242,7 @@ final class WarTableLobby {
             add("pass-host", new UiButton(nx + NPAD, ny + LEAVE_Y, HOST_TAG_W, 24, Text.literal(passLabel()), b -> { choosingHost = !choosingHost; screen.rebuild(); }, (g, x, y, w, h, hot) -> tag(g, "pass-host", passLabel(), choosingHost, x, y, w, h))).active = heirs();
             add("leave", new UiButton(nx + NPAD + NOTE_TEXT_W - HOST_TAG_W, ny + LEAVE_Y, HOST_TAG_W, 24, Text.literal("Leave room"), b -> send("social:exit"), (g, x, y, w, h, hot) -> tag(g, "leave", "Leave room", false, x, y, w, h))).active = idle && !choosingHost;
         } else
-            add("leave", new UiButton(nx + NPAD + (NOTE_TEXT_W - 120) / 2, ny + LEAVE_Y, 120, 24, Text.literal("Leave the room"), b -> send("social:exit"), (g, x, y, w, h, hot) -> tag(g, "leave", "Leave the room", false, x, y, w, h))).active = idle;
+            add("leave", new UiButton(nx + NPAD + (NOTE_TEXT_W - 120) / 2, ny + LEAVE_Y, 120, 24, Text.literal("Leave room"), b -> send("social:exit"), (g, x, y, w, h, hot) -> tag(g, "leave", "Leave room", false, x, y, w, h))).active = idle;
     }
 
     /** The House chip row for this frame's pick: every name whole, seals where they fit (UiMath.chipRow within the sheet's text width). */
@@ -281,8 +285,20 @@ final class WarTableLobby {
             boolean free = str(camp.get(inviteOffset + k), "room").isEmpty();
             add(key, new UiButton(sx + POP_X + POP_W - 16 - 72, sy + POP_Y + 40 + POP_ROW_H * k, 72, 24, Text.literal("Invite " + name), b -> send("social:roominvite:" + name), (g, x, y, w, h, hot) -> tag(g, key, "Invite", false, x, y, w, h))).active = free;
         }
-        if (camp.size() > POP_ROWS) add("invite-more", new UiButton(sx + POP_X + 16, sy + POP_Y + POP_H - 36, 64, 24, Text.literal("More"), b -> { inviteOffset = inviteOffset + POP_ROWS < camp.size() ? inviteOffset + POP_ROWS : 0; screen.rebuild(); }, (g, x, y, w, h, hot) -> tag(g, "invite-more", "More", false, x, y, w, h)));
-        add("invite-close", new UiButton(sx + POP_X + POP_W - 16 - 72, sy + POP_Y + POP_H - 36, 72, 24, Text.literal("Close"), b -> { inviting = false; screen.rebuild(); }, (g, x, y, w, h, hot) -> tag(g, "invite-close", "Close", false, x, y, w, h)));
+        if (camp.size() > POP_ROWS) add("invite-more", new UiButton(sx + POP_X + 16, sy + POP_Y + popH() - 36, 64, 24, Text.literal("More"), b -> { inviteOffset = inviteOffset + POP_ROWS < camp.size() ? inviteOffset + POP_ROWS : 0; screen.rebuild(); }, (g, x, y, w, h, hot) -> tag(g, "invite-more", "More", false, x, y, w, h)));
+        add("invite-close", new UiButton(sx + POP_X + POP_W - 16 - 72, sy + POP_Y + popH() - 36, 72, 24, Text.literal("Close"), b -> { inviting = false; screen.rebuild(); }, (g, x, y, w, h, hot) -> tag(g, "invite-close", "Close", false, x, y, w, h)));
+    }
+
+    /** The pop-over's height: the title, the rows or the empty-camp lines, and the Close row. */
+    static int popH() {
+        var camp = camp();
+        int body = camp.isEmpty() ? 13 * emptyLines().size() + 4 : POP_ROW_H * Math.min(POP_ROWS, camp.size()) + 4;
+        return POP_HEAD + body + POP_FOOT;
+    }
+
+    static List<String> emptyLines() {
+        var font = font();
+        return UiMath.lines("Nobody else is in this camp yet. Friends who join this game can use the code " + str("room", "") + " on their war council page.", POP_W - 32, 4, t -> font.getWidth(DarkUi.body(t)));
     }
 
     static String readyLabel() {
@@ -301,6 +317,10 @@ final class WarTableLobby {
 
     void tick() {
         ticks++;
+        boolean in = inRoom();
+        if (in) requestAt = -1;
+        if (wasInRoom && !in) { noticeText = ""; noticeAt = -1000; } // left the room: its notices go with it
+        wasInRoom = in;
         if (CampaignClient.noticeSerial != noticeSerialSeen) {
             noticeSerialSeen = CampaignClient.noticeSerial;
             noticeText = CampaignClient.notice;
@@ -373,9 +393,14 @@ final class WarTableLobby {
             WarTable.drawChrome(g, "friends");
             rectsDrawn.putAll(WarTable.drawn());
             texturesDrawn.put("table", WarTable.drawnTable());
-            sheet(g, o[0] + SHEET_X, o[1] + TOP);
-            note(g, o[0] + NOTE_X, o[1] + TOP);
-            if (inviting && inRoom()) popover(g, o[0] + SHEET_X, o[1] + TOP, o[0] + NOTE_X + NOTE_W);
+            if (inviting && inRoom()) { // the pop-over stands alone on the bare papers: none of the page's words or tags show under it
+                rectsDrawn.put("sheet", UiTex.draw(g, "table/sheet-banner", o[0] + SHEET_X, o[1] + TOP));
+                rectsDrawn.put("note", UiTex.draw(g, "table/note-room", o[0] + NOTE_X, o[1] + TOP));
+                popover(g, o[0] + SHEET_X, o[1] + TOP);
+            } else {
+                sheet(g, o[0] + SHEET_X, o[1] + TOP);
+                note(g, o[0] + NOTE_X, o[1] + TOP);
+            }
         } finally {
             UiCanvas.end(g);
         }
@@ -437,7 +462,8 @@ final class WarTableLobby {
         int lx = x + PAD;
         if (!inRoom()) {
             head(g, "room", "War council", null, lx, y + 18, TEXT_W);
-            line(g, "status", DarkUi.body("Opening a room for your party..."), "Opening a room for your party...", lx, y + 40, DarkUi.SEPIA);
+            String said = requestAt < 0 ? "" : ticks - requestAt <= REQUEST_TICKS ? "Opening a room for your party..." : "Could not open a room. Try again.";
+            if (!said.isEmpty()) line(g, "status", DarkUi.body(said), said, lx, y + 40, DarkUi.SEPIA);
             head(g, "join-head", "Join by code", null, lx, y + JOIN_Y, TEXT_W);
             line(g, "join-hint", DarkUi.body("A friend's code opens their war council."), "A friend's code opens their war council.", lx, y + JOIN_Y + 42, DarkUi.SEPIA);
             notice(g, lx, y);
@@ -448,7 +474,7 @@ final class WarTableLobby {
         String roomCode = str("room", "");
         int codeRight = lx + TEXT_W - INVITE_W - 4 - COPY_W - 8, codeW = font.getWidth(roomCode);
         var codeLabel = DarkUi.body("Room");
-        g.drawText(font, codeLabel, codeRight - codeW - 5 - font.getWidth(codeLabel), y + 15, DarkUi.SEPIA, false);
+        g.drawText(font, codeLabel, codeRight - codeW - 5 - font.getWidth(codeLabel), y + 17, DarkUi.SEPIA, false);
         g.drawText(font, Text.literal(roomCode), codeRight - codeW, y + 17, DarkUi.INK_TEXT, false);
         rectsDrawn.put("code", new int[]{codeRight - codeW, y + 17, codeW, 9});
         textsDrawn.put("code", roomCode);
@@ -481,20 +507,19 @@ final class WarTableLobby {
         notice(g, lx, y);
     }
 
-    /** A friend-list pop-over over the sheet and the note: a veil, a vellum panel on the sheet (title, a row per other commander in camp whose Invite tag is a widget, and what to do when none). */
-    void popover(DrawContext g, int x, int y, int right) {
+    /** A friend-list pop-over on the sheet: a parchment panel on the House chips' nine-slice (title, a row per other commander in camp whose Invite tag is a widget, and what to do when none), sized to its rows. */
+    void popover(DrawContext g, int x, int y) {
         var font = font();
-        g.fill(x, y, right, y + PAPER_H, 0xA0140E08);
-        int px = x + POP_X, py = y + POP_Y;
-        g.fill(px - 1, py - 1, px + POP_W + 1, py + POP_H + 1, DarkUi.SEPIA);
-        g.fill(px, py, px + POP_W, py + POP_H, DarkUi.VELLUM);
-        rectsDrawn.put("popover", new int[]{px, py, POP_W, POP_H});
+        int px = x + POP_X, py = y + POP_Y, ph = popH();
+        UiTex.nine(g, "table/chip-house", px, py, POP_W + 1, ph + 2);
+        texturesDrawn.put("popover", "table/chip-house");
+        rectsDrawn.put("popover", new int[]{px, py, POP_W, ph});
         g.drawText(font, DarkUi.heading("Invite a commander"), px + 16, py + 14, DarkUi.INK_TEXT, false);
         g.fill(px + 16, py + 27, px + POP_W - 16, py + 28, DarkUi.SEPIA_LINE);
         textsDrawn.put("popover", "Invite a commander");
         var camp = camp();
         if (camp.isEmpty()) {
-            var lines = UiMath.lines("Nobody else is in this camp yet. Friends who join this game can use the code " + str("room", "") + " on their war council page.", POP_W - 32, 4, t -> font.getWidth(DarkUi.body(t)));
+            var lines = emptyLines();
             for (int i = 0; i < lines.size(); i++) g.drawText(font, DarkUi.body(lines.get(i)), px + 16, py + 40 + 13 * i, DarkUi.SEPIA, false);
             textsDrawn.put("popover-empty", String.join(" ", lines));
             return;
@@ -681,7 +706,7 @@ final class WarTableLobby {
             ink = DarkUi.SEPIA; t = DarkUi.body(s);
         }
         var font = font();
-        int w = font.getWidth(t), lx = x + (SHEET_W - w) / 2;
+        int w = font.getWidth(t), mid = startBuilt && seconds > 0 ? PAD + 120 : SHEET_W / 2, lx = x + mid - w / 2; // beside Start now the line sits under the Ready plate
         g.drawText(font, t, lx, y + STATUS_Y - (seconds > 0 ? 3 : 0), ink, false);
         rectsDrawn.put("status", new int[]{lx, y + STATUS_Y, w, 11});
         textsDrawn.put("status", s);
@@ -743,13 +768,17 @@ final class WarTableLobby {
     void notice(DrawContext g, int x, int y) {
         long age = ticks - noticeAt;
         if (noticeText.isEmpty() || age >= WarTableHome.NOTICE_TICKS + WarTableHome.NOTICE_FADE_TICKS) return;
+        if (inRoom() && myTeam() >= 0 && noticeText.contains(" Choose a team and ready up.")) noticeText = noticeText.replace(" Choose a team and ready up.", " Ready up when you are set."); // a seated guest has chosen
+        if (inRoom() && noticeText.startsWith("Your banner holds no") && !houseRefusal().isEmpty()) return; // the status line under Ready says it already
+        if (inRoom() && num("countdown", 0) > 0 && noticeText.startsWith("All commanders ready")) return; // the countdown line says it already
         var font = font();
         float fade = age < WarTableHome.NOTICE_TICKS ? 1 : 1 - (age - WarTableHome.NOTICE_TICKS) / (float) WarTableHome.NOTICE_FADE_TICKS;
-        var lines = UiMath.lines(HintText.expand(noticeText, GravesAndGloryClient::hint), TEXT_W, 1, s -> font.getWidth(DarkUi.body(s)));
+        var lines = UiMath.lines(HintText.expand(noticeText, GravesAndGloryClient::hint), TEXT_W, NOTICE_LINES, s -> font.getWidth(DarkUi.body(s)));
         if (lines.isEmpty()) return;
         int alpha = Math.max(4, Math.round(fade * 255)), ink = (alpha << 24) | (DarkUi.INK_TEXT & 0xffffff);
-        g.drawText(font, DarkUi.body(lines.get(0)), x, y + NOTICE_Y, ink, false);
-        rectsDrawn.put("notice", new int[]{x, y + NOTICE_Y, font.getWidth(DarkUi.body(lines.get(0))), 11});
-        textsDrawn.put("notice", lines.get(0));
+        int w = 0;
+        for (int i = 0; i < lines.size(); i++) { g.drawText(font, DarkUi.body(lines.get(i)), x, y + NOTICE_Y + NOTICE_STEP * i, ink, false); w = Math.max(w, font.getWidth(DarkUi.body(lines.get(i)))); }
+        rectsDrawn.put("notice", new int[]{x, y + NOTICE_Y, w, NOTICE_STEP * (lines.size() - 1) + 9});
+        textsDrawn.put("notice", String.join(" ", lines));
     }
 }
