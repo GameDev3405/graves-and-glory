@@ -43,6 +43,8 @@ public final class EditSuite implements CommandUiChecks.Suite {
     List<String> selBefore = List.of();
     boolean enterOk, hiddenRest1920, hiddenRest854, hiddenOpens;
     String enterDetail = "", dragDetail = "", resizeDetail = "", hiddenDetail = "", opacityDetail = "";
+    String bigDetail = "";
+    boolean bigOk = true;
     boolean dragOk, resizeOk, escOk, opacityOk854, opacityOk1920, resetOk;
     int[] dragFrom;
 
@@ -91,6 +93,7 @@ public final class EditSuite implements CommandUiChecks.Suite {
         if (CommandPanel.lastDrawn.isEmpty() || CommandPanel.bounds == null) { movedFails.add(state + ": nothing drawn"); return; }
         int[] b = CommandPanel.bounds;
         if (b[0] < 0 || b[1] < 0 || b[0] + b[2] > sw || b[1] + b[3] > sh) movedFails.add(state + ": bounds " + box(b) + " leave the " + sw + "x" + sh + " screen");
+        if (meets(b, CommandPanel.vanillaHud(sw, sh))) movedFails.add(state + ": bounds " + box(b) + " meet the vanilla hotbar rows " + Arrays.toString(CommandPanel.vanillaHud(sw, sh)));
         for (int[] r : CommandPanel.lastDrawn) if (r[1] < 0 || r[2] < 0 || r[1] + r[3] > sw || r[2] + r[4] > sh) movedFails.add(state + ": id " + r[0] + " " + box(r) + " off screen");
         int[] t = rect(CommandPanel.TRAY), v = CommandPanel.vanillaHud(sw, sh);
         if (t != null && t[1] < v[0] + v[2] && v[0] < t[1] + t[3] && t[2] < v[1] + v[3] && v[1] < t[2] + t[4]) movedFails.add(state + ": tray " + box(t) + " meets the vanilla hotbar rows " + Arrays.toString(v));
@@ -98,15 +101,23 @@ public final class EditSuite implements CommandUiChecks.Suite {
         notes.add(state + " bounds " + box(b) + " tray " + box(t));
     }
 
-    /** The edit toolbar: drawn on screen, clear of the panel, and attached to it (within 20 px above or below). */
+    static boolean meets(int[] a, int[] v) { return a != null && a[0] < v[0] + v[2] && v[0] < a[0] + a[2] && a[1] < v[1] + v[3] && v[1] < a[1] + a[3]; }
+    static int[] xywh(int[] r) { return r == null ? null : new int[]{r[1], r[2], r[3], r[4]}; }
+
+    /** The edit toolbar: on screen, clear of the panel, the caption and the vanilla hotbar rows, and attached to the panel (within 20 px on any side);
+     *  the dashed outline inside the screen and the panel clear of the hotbar rows. */
     String toolbarCheck(MinecraftClient c, String state) {
         int[] t = rect(CommandPanel.TOOLBAR), b = CommandPanel.bounds, cap = rect(CommandPanel.CAPTION);
         if (t == null || b == null || cap == null || !drawn(CommandPanel.EDGE)) return state + ": toolbar " + box(t) + " caption " + box(cap) + " outline " + drawn(CommandPanel.EDGE) + " FAIL";
         boolean on = t[1] >= 0 && t[2] >= 0 && t[1] + t[3] <= sw(c) && t[2] + t[4] <= sh(c);
-        boolean below = t[2] >= b[1] + b[3], above = t[2] + t[4] <= b[1];
-        int gapPx = below ? t[2] - (b[1] + b[3]) : b[1] - (t[2] + t[4]);
-        boolean ok = on && (below || above) && gapPx <= 20;
-        return state + ": toolbar " + box(t) + (below ? " below" : above ? " above" : " OVER") + " the panel " + box(b) + " gap " + gapPx + ", caption " + box(cap) + (ok ? "" : " FAIL");
+        boolean below = t[2] >= b[1] + b[3], above = t[2] + t[4] <= b[1], left = t[1] + t[3] <= b[0], right = t[1] >= b[0] + b[2];
+        int gapPx = below ? t[2] - (b[1] + b[3]) : above ? b[1] - (t[2] + t[4]) : left ? b[0] - (t[1] + t[3]) : t[1] - (b[0] + b[2]);
+        int[] v = CommandPanel.vanillaHud(sw(c), sh(c)), e = rect(CommandPanel.EDGE);
+        boolean clear = !meets(xywh(t), v) && !meets(xywh(t), xywh(cap)) && (!PanelLayout.moved() || !meets(b, v));
+        boolean outline = e != null && e[1] >= 0 && e[2] >= 0 && e[1] + e[3] <= sw(c) && e[2] + e[4] <= sh(c);
+        boolean ok = on && (below || above || left || right) && gapPx <= 20 && clear && outline;
+        return state + ": toolbar " + box(t) + (below ? " below" : above ? " above" : left ? " left of" : right ? " right of" : " OVER") + " the panel " + box(b) + " gap " + gapPx
+            + ", clear of the hotbar rows " + Arrays.toString(v) + " and the caption " + box(cap) + "=" + clear + ", outline " + box(e) + " on screen=" + outline + (ok ? "" : " FAIL");
     }
 
     @Override public void tick(MinecraftClient c, int tick) {
@@ -149,7 +160,7 @@ public final class EditSuite implements CommandUiChecks.Suite {
         }
         if (tick == 91) {
             int[] b = CommandPanel.bounds;
-            dragOk = b != null && b[0] + b[2] == sw(c) && b[1] + b[3] == sh(c) && PanelLayout.anchor.equals("bottom-right") && !CommandPanel.dragging();
+            dragOk = b != null && b[0] + b[2] == sw(c) - PanelLayout.MARGIN && b[1] + b[3] == sh(c) - PanelLayout.MARGIN && PanelLayout.anchor.equals("bottom-right") && !CommandPanel.dragging();
             dragDetail += "; after the drag " + box(b) + " on " + sw(c) + "x" + sh(c) + ", layout " + layout();
             press(c, "key.gravesandglory.panel_edit");
         }
@@ -164,7 +175,7 @@ public final class EditSuite implements CommandUiChecks.Suite {
         if (tick == 110) press(c, "key.gravesandglory.menu");
         if (tick == 112) waits.when(tick, 20, () -> CommandPanel.lastSlide >= 1 && CommandPanel.bounds != null, null, ok -> {
             int[] b = CommandPanel.bounds;
-            resizeOk = ok && b[0] >= 0 && b[1] >= 0 && b[0] + b[2] == sw(c) && b[1] + b[3] == sh(c);
+            resizeOk = ok && b[0] >= PanelLayout.MARGIN && b[1] >= PanelLayout.MARGIN && b[0] + b[2] == sw(c) - PanelLayout.MARGIN && b[1] + b[3] <= sh(c) - PanelLayout.MARGIN && !meets(b, CommandPanel.vanillaHud(sw(c), sh(c))); // its corner's right edge; lifted clear of the hotbar rows where they meet
             resizeDetail = "854x480 (GUI " + sw(c) + "x" + sh(c) + "), panel opened with R: bounds " + box(b) + ", layout " + layout();
             movedChecks(c, "bottom-right-854", false);
             CommandUiChecks.report("cu-edit-resize", resizeOk, resizeDetail);
@@ -195,8 +206,8 @@ public final class EditSuite implements CommandUiChecks.Suite {
             movedChecks(c, "top-right-tray-1920", true);
             shot(c, "panel-moved-1920.png");
             int[] b = CommandPanel.bounds;
-            boolean corner = b != null && b[1] == 0 && b[0] + b[2] == sw(c) && PanelLayout.anchor.equals("top-right") && !CommandPanel.editing();
-            CommandUiChecks.report("cu-edit-moved", corner && movedFails.isEmpty() && movedChecked >= 3,
+            boolean corner = b != null && b[1] == PanelLayout.MARGIN && b[0] + b[2] == sw(c) - PanelLayout.MARGIN && PanelLayout.anchor.equals("top-right") && !CommandPanel.editing();
+            CommandUiChecks.report("cu-edit-moved", corner && movedFails.isEmpty() && movedChecked >= 3, // 854 and 1920; 2560 reports in cu-edit-2560
                 "top-right after Done=" + corner + "; " + movedChecked + " moved frames: " + (movedFails.isEmpty() ? "every rect on screen, tray clear of the hotbar rows and to the panel's left" : String.join("; ", movedFails)) + "; " + String.join("; ", notes));
             CommandSelection.setPanelOpen(false);
         });
@@ -210,9 +221,9 @@ public final class EditSuite implements CommandUiChecks.Suite {
             shot(c, "panel-edit-hidden-1920.png");
             press(c, "key.gravesandglory.panel_edit");
         }
-        if (tick == 264) { hiddenRest1920 = !CommandPanel.editing() && PanelLayout.hidden; sentBefore = OrderIntakeProbe.ordersSent(); selBefore = CommandSelection.selected(); press(c, "key.gravesandglory.menu"); }
-        if (tick == 266) { press(c, "key.gravesandglory.attack"); CommandUiChecks.press(c, c.options.hotbarKeys[3]); }
-        if (tick == 269) waits.when(tick, 15, () -> CommandPanel.bounds == null && !gg.gravesandglory.BattleHud.hintRows().isEmpty(), null, ok -> {
+        if (tick == 262) { hiddenRest1920 = !CommandPanel.editing() && PanelLayout.hidden; sentBefore = OrderIntakeProbe.ordersSent(); selBefore = CommandSelection.selected(); press(c, "key.gravesandglory.attack"); CommandUiChecks.press(c, c.options.hotbarKeys[3]); }
+        if (tick == 268) press(c, "key.gravesandglory.menu"); // after the order's action-bar echo, so the hidden note replaces it
+        if (tick == 271) waits.when(tick, 15, () -> CommandPanel.bounds == null && !gg.gravesandglory.BattleHud.hintRows().isEmpty(), null, ok -> {
             hiddenRest1920 &= ok && keyboardOnly(c, "1920");
             shot(c, "panel-hidden-1920.png");
         });
@@ -242,6 +253,10 @@ public final class EditSuite implements CommandUiChecks.Suite {
             CommandSelection.setPanelOpen(false);
         });
 
+        if (tick == 400) press(c, "key.gravesandglory.panel_edit");
+        if (tick == 403) shot(c, "panel-edit-opacity-1920.png");
+        if (tick == 405) press(c, "key.gravesandglory.panel_edit");
+
         // Reset: the left edge, 100%, shown
         if (tick == 409) press(c, "key.gravesandglory.panel_edit");
         if (tick == 412) clickId(c, CommandPanel.RESET);
@@ -255,19 +270,48 @@ public final class EditSuite implements CommandUiChecks.Suite {
             CommandSelection.setPanelOpen(false);
         });
 
+        // 2560x1440 (the window as large as the desktop allows): edit, moved with the tray, edit with the panel hidden, hidden after R, 35% opacity
+        if (tick == 444) { CommandSelection.setPanelOpen(false); GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 2560, 1440); }
+        if (tick == 460) press(c, "key.gravesandglory.panel_edit");
+        if (tick == 463) waits.when(tick, 14, () -> drawn(CommandPanel.TOOLBAR) && sw(c) > 640, null, ok -> { bigDetail += toolbarCheck(c, "edit-2560"); shot(c, "panel-edit-2560.png"); });
+        if (tick >= 478 && tick <= 485) drag(c, tick, 478, sw(c) + 60, -60);
+        if (tick == 487) clickId(c, CommandPanel.DONE);
+        if (tick == 490) press(c, "key.gravesandglory.menu");
+        if (tick == 493) press(c, "key.gravesandglory.formation");
+        if (tick == 495) waits.when(tick, 16, () -> drawn(CommandPanel.TRAY) && CommandPanel.lastSlide >= 1, null, ok -> { movedChecks(c, "top-right-tray-2560", true); shot(c, "panel-moved-2560.png"); CommandSelection.setPanelOpen(false); });
+        if (tick == 514) press(c, "key.gravesandglory.panel_edit");
+        if (tick == 517) clickId(c, CommandPanel.HIDE);
+        if (tick == 519) waits.when(tick, 6, () -> PanelLayout.hidden && Math.abs(CommandPanel.op() - 0.35f) < 1e-4, null, ok -> { bigDetail += "; edit-hidden-2560 at " + CommandPanel.op() + " caption " + box(rect(CommandPanel.CAPTION)); shot(c, "panel-edit-hidden-2560.png"); });
+        if (tick == 522) press(c, "key.gravesandglory.panel_edit");
+        if (tick == 525) press(c, "key.gravesandglory.menu");
+        if (tick == 528) waits.when(tick, 12, () -> CommandPanel.bounds == null, null, ok -> { bigDetail += "; hidden-2560 after R: drawn=" + (CommandPanel.bounds != null) + " panel open=" + CommandSelection.panelOpen(); bigOk &= ok && !CommandSelection.panelOpen(); shot(c, "panel-hidden-2560.png"); });
+        if (tick == 544) press(c, "key.gravesandglory.panel_edit");
+        if (tick == 547) clickId(c, CommandPanel.HIDE);
+        if (tick == 549) { int[] r = rect(CommandPanel.SLIDER); if (r != null) { double x0 = r[1] + 3, w = r[3] - 6; PanelSuite.clickGui(c, x0 + (0.35 - 0.20) / 0.80 * w, r[2] + r[4] / 2.0, 0); } }
+        if (tick == 551) press(c, "key.gravesandglory.panel_edit");
+        if (tick == 554) press(c, "key.gravesandglory.menu");
+        if (tick == 557) waits.when(tick, 16, () -> CommandPanel.lastSlide >= 1 && CommandPanel.bounds != null, null, ok -> {
+            bigOk &= ok && opacityApplied("2560");
+            shot(c, "panel-opacity-2560.png");
+            CommandSelection.setPanelOpen(false);
+            bigOk &= !bigDetail.contains("FAIL") && movedFails.isEmpty();
+            CommandUiChecks.report("cu-edit-2560", bigOk, bigDetail + "; moved: " + (movedFails.isEmpty() ? "on screen, tray left, clear of the hotbar rows" : String.join("; ", movedFails)) + "; " + opacityDetail.substring(Math.max(0, opacityDetail.lastIndexOf("; 2560"))));
+        });
+        if (tick == 576) GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 1920, 1080);
+
         // an arrangement to keep (top-right, 50%), saved by Done, then a disconnect and rejoin reads it back from the file
-        if (tick == 444) press(c, "key.gravesandglory.panel_edit");
-        if (tick >= 447 && tick <= 454) drag(c, tick, 447, sw(c) + 60, -60);
-        if (tick == 456) { int[] r = rect(CommandPanel.SLIDER); if (r != null) { double x0 = r[1] + 3, w = r[3] - 6; PanelSuite.clickGui(c, x0 + (0.50 - 0.20) / 0.80 * w, r[2] + r[4] / 2.0, 0); } }
-        if (tick == 458) clickId(c, CommandPanel.DONE);
-        if (tick == 461) {
+        if (tick == 594) press(c, "key.gravesandglory.panel_edit");
+        if (tick >= 597 && tick <= 604) drag(c, tick, 597, sw(c) + 60, -60);
+        if (tick == 606) { int[] r = rect(CommandPanel.SLIDER); if (r != null) { double x0 = r[1] + 3, w = r[3] - 6; PanelSuite.clickGui(c, x0 + (0.50 - 0.20) / 0.80 * w, r[2] + r[4] / 2.0, 0); } }
+        if (tick == 608) clickId(c, CommandPanel.DONE);
+        if (tick == 611) {
             expect = layout();
             loadsBefore = PanelLayout.loads;
             disconnectStage = 1;
             c.world.disconnect();
             c.disconnect(new gg.gravesandglory.FrontMenuScreen());
         }
-        if (tick >= 462 && disconnectStage == 3 && rejoinTick < 0) rejoinTick = tick;
+        if (tick >= 612 && disconnectStage == 3 && rejoinTick < 0) rejoinTick = tick;
         if (rejoinTick > 0 && tick == rejoinTick + 20) { PanelLayout.ensureLoaded(c); press(c, "key.gravesandglory.panel_edit"); }
         if (rejoinTick > 0 && tick == rejoinTick + 24) {
             String got = layout();

@@ -25,6 +25,8 @@ public final class PanelLayout {
 
     public static final String DEFAULT = "default";
     public static final float MIN_OPACITY = 0.20f, STEP = 0.05f;
+    /** A moved panel keeps this many GUI px from the screen edges, so its edit outline (1 px outside) stays on screen. */
+    public static final int MARGIN = 2;
 
     /** "default" (the left-edge layout) or top-left, top-right, bottom-left, bottom-right. */
     public static String anchor = DEFAULT;
@@ -120,25 +122,37 @@ public final class PanelLayout {
      * The panel's bounds' top-left on screen (GUI px) for bounds bw x bh, clamped so the whole of them stays on the screen; null for the
      * default layout. k is GUI px per canvas px.
      */
-    static double[] place(int bw, int bh, int sw, int sh, double k) {
+    static double[] place(int bw, int bh, int sw, int sh, double k, int[] avoid) {
         if (!moved()) return null;
-        double left = anchor.endsWith("left") ? offX * k : sw - bw - offX * k;
-        double top = anchor.startsWith("top") ? offY * k : sh - bh - offY * k;
-        return new double[]{clamp(left, 0, sw - bw), clamp(top, 0, sh - bh)};
+        double left = anchor.endsWith("left") ? MARGIN + offX * k : sw - bw - MARGIN - offX * k; // offsets are the gap beyond the margin, so a snapped edge keeps the margin at every size
+        double top = anchor.startsWith("top") ? MARGIN + offY * k : sh - bh - MARGIN - offY * k;
+        left = clamp(left, MARGIN, sw - bw - MARGIN); top = clamp(top, MARGIN, sh - bh - MARGIN);
+        // never over the vanilla hotbar, health and armour rows: the nearest of beside them (either side) or above them that fits on screen
+        if (avoid != null && left < avoid[0] + avoid[2] && avoid[0] < left + bw && top < avoid[1] + avoid[3] && avoid[1] < top + bh) {
+            double[][] options = {{avoid[0] + avoid[2] + MARGIN, top}, {avoid[0] - bw - MARGIN, top}, {left, avoid[1] - bh - MARGIN}};
+            double best = Double.MAX_VALUE; double[] at = null;
+            for (double[] o : options) {
+                if (o[0] < MARGIN || o[0] + bw > sw - MARGIN || o[1] < MARGIN || o[1] + bh > sh - MARGIN) continue;
+                double d = Math.abs(o[0] - left) + Math.abs(o[1] - top);
+                if (d < best) { best = d; at = o; }
+            }
+            if (at != null) { left = at[0]; top = at[1]; }
+        }
+        return new double[]{left, top};
     }
 
     /** Records a dragged position (bounds top-left in GUI px): clamped on screen, snapped to an edge within 8 canvas px, kept by its nearest corner. */
     static void moveTo(double left, double top, int bw, int bh, int sw, int sh, double k) {
-        left = clamp(left, 0, sw - bw); top = clamp(top, 0, sh - bh);
+        left = clamp(left, MARGIN, sw - bw - MARGIN); top = clamp(top, MARGIN, sh - bh - MARGIN);
         double snap = 8 * k;
-        if (left < snap) left = 0;
-        if (sw - bw - left < snap) left = Math.max(0, sw - bw);
-        if (top < snap) top = 0;
-        if (sh - bh - top < snap) top = Math.max(0, sh - bh);
+        if (left - MARGIN < snap) left = MARGIN;
+        if (sw - bw - MARGIN - left < snap) left = Math.max(MARGIN, sw - bw - MARGIN);
+        if (top - MARGIN < snap) top = MARGIN;
+        if (sh - bh - MARGIN - top < snap) top = Math.max(MARGIN, sh - bh - MARGIN);
         boolean leftSide = left + bw / 2.0 < sw / 2.0, topSide = top + bh / 2.0 < sh / 2.0;
         anchor = (topSide ? "top-" : "bottom-") + (leftSide ? "left" : "right");
-        offX = (leftSide ? left : sw - bw - left) / k;
-        offY = (topSide ? top : sh - bh - top) / k;
+        offX = Math.max(0, (leftSide ? left : sw - bw - left) - MARGIN) / k;
+        offY = Math.max(0, (topSide ? top : sh - bh - top) - MARGIN) / k;
     }
 
     static double clamp(double v, double lo, double hi) { return hi < lo ? lo : Math.max(lo, Math.min(hi, v)); }

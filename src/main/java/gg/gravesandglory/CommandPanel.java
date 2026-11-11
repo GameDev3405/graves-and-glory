@@ -239,7 +239,7 @@ public final class CommandPanel {
         int bw = bx1 - bx0, bh = by1 - by0;
         var win = MinecraftClient.getInstance().getWindow();
         double k = UiCanvas.hudK() / win.getScaleFactor(); // GUI px per HUD canvas px
-        double[] at = PanelLayout.place(bw, bh, sw, sh, k);
+        double[] at = PanelLayout.place(bw, bh, sw, sh, k, vanillaHud(sw, sh));
         int sx = at == null ? 0 : (int) Math.round(at[0]) - bx0, sy = at == null ? 0 : (int) Math.round(at[1]) - by0;
         boolean rightSide = at != null && bx0 + sx + bw / 2.0 > sw / 2.0;
         // the slide: in from the left edge, or from the right edge for a panel placed in the right half
@@ -330,6 +330,7 @@ public final class CommandPanel {
                 // hover: the trim turns full gold, so the pennant under the cursor stands out at any size
                 RenderSystem.setShaderColor(((GOLD >> 16) & 255) / 255f, ((GOLD >> 8) & 255) / 255f, (GOLD & 255) / 255f, op);
                 pennant(g, "command/pennant_trim", x, yy, w);
+                pennant(g, "command/pennant_trim", x + 1, yy, w); // doubled, so the hover reads at 854 as well as 2560
             } else {
                 RenderSystem.setShaderColor(((TRIM >> 16) & 255) / 255f, ((TRIM >> 8) & 255) / 255f, (TRIM & 255) / 255f, (cooling ? 0.75f : 1f) * op);
                 pennant(g, "command/pennant_trim", x, yy, w);
@@ -340,13 +341,19 @@ public final class CommandPanel {
                 // foot of the body (a dark track the gold fills as Charge recharges), so the cooldown reads at every size
                 int bodyL = x + 4, bodyR = x + w - 16, span = bodyR - bodyL, veil = (int) Math.round(span * Math.min(1, chargeLeft / (double) chargeTotal));
                 int edgeX = bodyR - veil;
-                if (veil > 0) g.fill(edgeX, yy + 2, bodyR, yy + PENNANT_H - 2, fa(0xa6000000));
+                if (veil > 0) {
+                    g.enableScissor(edgeX + ox, yy + oy, x + w + ox, yy + PENNANT_H + oy); // scissor rects are screen GUI px: the matrices' offset added
+                    RenderSystem.setShaderColor(0, 0, 0, 0.65f * op);
+                    pennant(g, "command/pennant", x, yy, w);
+                    RenderSystem.setShaderColor(1, 1, 1, 1);
+                    g.disableScissor();
+                }
                 g.fill(bodyL, yy + PENNANT_H - 5, bodyR, yy + PENNANT_H - 2, ta(0xd9000000));
                 if (edgeX > bodyL) g.fill(bodyL, yy + PENNANT_H - 4, edgeX, yy + PENNANT_H - 3, ta(0xff000000 | GOLD));
                 int line = Math.max(bodyL, edgeX - 1);
                 g.fill(line, yy + 1, line + 2, yy + PENNANT_H - 1, ta(0xff000000 | GOLD));
             } else if (hov) {
-                g.fill(x + 2, yy + 2, x + w - 18, yy + PENNANT_H - 2, fa(0x2efff6dc)); // hover: a light wash over the body
+                g.fill(x + 2, yy + 2, x + w - 18, yy + PENNANT_H - 2, fa(0x4dfff6dc)); // hover: a clear light wash over the body
             }
             RenderSystem.setShaderColor(1, 1, 1, (cooling ? 0.8f : 1f) * ink);
             UiTex.draw(g, ICONS[i], x + ICON_X, yy + 4);
@@ -409,7 +416,10 @@ public final class CommandPanel {
             if (ty + sy < 2) ty = 2 - sy;
             if (ty + sy + th > sh - 2) ty = sh - 2 - th - sy;
             RenderSystem.setShaderColor(1, 1, 1, 1);
+            g.fill(tx + 2, ty + 2, tx + tw - 2, ty + th - 2, fa(0xb31b120c));
+            RenderSystem.setShaderColor(1, 1, 1, op);
             UiTex.nine(g, "command/tray", tx, ty, tw, th);
+            RenderSystem.setShaderColor(1, 1, 1, 1);
             record(TRAY, tx, ty, tw, th);
             for (int j = 0; j < cells; j++) {
                 int cx = tx + pad + (j % cols) * (cw + gap), cy = ty + pad + (j / cols) * (CELL_H + gap);
@@ -447,6 +457,7 @@ public final class CommandPanel {
         CommandMode.cancel();
         CommandSelection.setTrayOpen(false);
         editing = true; dragging = sliding = false;
+        c.inGameHud.setOverlayMessage(net.minecraft.text.Text.empty(), false); // the hidden-panel note (or any action-bar line) never sits under the caption
         return true;
     }
 
@@ -524,10 +535,16 @@ public final class CommandPanel {
         boolean capAbove = b[1] - 2 - capH >= 0;
         int capY = capAbove ? b[1] - 2 - capH : b[1] + b[3] + 2;
         int belowTop = (capAbove ? b[1] + b[3] : capY + capH) + 3;
-        int ty = belowTop + th <= sh - 2 ? belowTop : (capAbove ? capY : b[1]) - 3 - th;
-        ty = Math.max(2, Math.min(sh - 2 - th, ty));
-        int tx = Math.max(2, Math.min(sw - 2 - tw, b[0]));
         int capX = Math.max(1, Math.min(sw - 1 - capW, b[0]));
+        int[] vh = vanillaHud(sw, sh);
+        int ax = Math.max(2, Math.min(sw - 2 - tw, b[0])), sy = Math.max(2, Math.min(sh - 2 - th, b[1]));
+        int[][] spots = {{ax, belowTop}, {ax, (capAbove ? capY : b[1]) - 3 - th}, {b[0] - 3 - tw, sy}, {b[0] + b[2] + 3, sy}};
+        int tx = ax, ty = Math.max(2, Math.min(sh - 2 - th, belowTop));
+        for (int[] o : spots) {
+            if (o[0] < 2 || o[1] < 2 || o[0] + tw > sw - 2 || o[1] + th > sh - 2) continue;
+            if (meets(o[0], o[1], tw, th, vh) || meets(o[0], o[1], tw, th, b) || meets(o[0], o[1], tw, th, new int[]{capX, capY, capW, capH})) continue;
+            tx = o[0]; ty = o[1]; break;
+        }
 
         g.fill(capX, capY, capX + capW, capY + capH, 0xb3000000);
         g.drawText(font, cap, capX + 4, capY + 2, 0xff000000 | GOLD, true);
@@ -557,6 +574,8 @@ public final class CommandPanel {
         x = button(g, font, RESET, resetL, x, cy, resetW, bh, mouse) + gap;
         button(g, font, DONE, doneL, x, cy, doneW, bh, mouse);
     }
+
+    private static boolean meets(int x, int y, int w, int h, int[] r) { return x < r[0] + r[2] && r[0] < x + w && y < r[1] + r[3] && r[1] < y + h; }
 
     /** A dark-wood button with a brass edge (lighter under the cursor); returns its right edge. */
     private static int button(DrawContext g, TextRenderer font, int id, String label, int x, int y, int w, int h, double[] mouse) {
