@@ -2687,10 +2687,10 @@ public final class Phase1Checks implements ClientModInitializer {
                         // at the foot left of Ride, the inkwell and the rolled map left off; every box 12 px inside, none under the rail
                         var r=WarTableHome.rects();var bad=fits(r,b);
                         boolean props=r.containsKey("candle")&&r.containsKey("glow")&&!r.containsKey("inkwell")&&!r.containsKey("maproll");
-                        int[] field=r.get("field");boolean placed=WarTable.compact()&&Arrays.equals(field,new int[]{611,160,168,188})&&Arrays.equals(r.get("seat-0"),new int[]{75,82,48,48})&&Arrays.equals(box(c,"ride"),new int[]{219,360,240,40})&&Arrays.equals(box(c,"camp"),new int[]{12,12,96,28});
+                        int[] field=r.get("field");boolean placed=WarTable.compact()&&Arrays.equals(field,new int[]{611,160,168,188})&&Arrays.equals(r.get("seat-0"),new int[]{75,82,48,48})&&Arrays.equals(box(c,"ride"),new int[]{307,360,240,40})&&Arrays.equals(box(c,"camp"),new int[]{12,12,96,28});
                         scalesOk&=home(c)!=null&&w==854&&h==480&&b.size()>=12&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()&&props&&placed;
                         scalesWhy+="; 854x480 GUI 2 (compact "+WarTable.compact()+"): canvas "+w+"x"+h+", "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", not fitting "+bad+", candle "+str(r.get("candle"))+(props?", inkwell and rolled map left off":" WRONG props "+r.keySet())
-                            +", seat 0 "+str(r.get("seat-0"))+", field card "+str(field)+", ride "+str(box(c,"ride"))+", camp "+str(box(c,"camp"))+(placed?"":" WRONG (pinned 75,82 / 611,160 / 219,360 / 12,12)");shot(c,"ui-home-small");return;}
+                            +", seat 0 "+str(r.get("seat-0"))+", field card "+str(field)+", ride "+str(box(c,"ride"))+", camp "+str(box(c,"camp"))+(placed?"":" WRONG (pinned 75,82 / 611,160 / 307,360 / 12,12)");shot(c,"ui-home-small");return;}
                     if(k==44){window(c,1920,1080,2,true);return;}
                     if(k==64){int[] o=WarTable.origin();boolean same=Arrays.equals(box(c,"ride"),LAYOUT[10])&&Arrays.equals(box(c,"camp"),LAYOUT[0]);
                         scalesOk&=home(c)!=null&&UiCanvas.k()==2&&UiCanvas.width()==960&&UiCanvas.height()==540&&o[0]==0&&o[1]==0&&same;
@@ -3379,7 +3379,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 if(!UiPagesChecks.in(row,paper))bad.add(id+" row "+str(row)+" is off the paper");
                 if(!UiPagesChecks.in(icon,paper))bad.add(id+" icon "+str(icon)+" is off the paper");
                 if(!within(row))bad.add(id+" row "+str(row)+" is not 12 px inside the canvas");
-                if(!line.equals(String.join(" ",UiMath.lines(e.line(),WarTablePages.GLOSS_W-20,WarTablePages.GLOSS_LINES,v->MinecraftClient.getInstance().textRenderer.getWidth(DarkUi.body(v))))))bad.add(id+" line cut: \""+line+"\"");
+                if(!line.equals(String.join(" ",WarTablePages.glossLines(e.line(),v->MinecraftClient.getInstance().textRenderer.getWidth(DarkUi.body(v))))))bad.add(id+" line cut: \""+line+"\"");
                 for(var w:widgets.entrySet())if(UiHomeChecks.overlap(row,w.getValue()))bad.add(id+" meets widget "+w.getKey());
                 for(String k:new String[]{"sheet","card"}){int[] r=rect(k);if(r!=null&&UiHomeChecks.overlap(row,r))bad.add(id+" meets "+k);}
                 for(String other:ids)if(!other.equals(id)&&rect("status-"+other)!=null&&UiHomeChecks.overlap(row,rect("status-"+other)))bad.add(id+" meets "+other);}
@@ -3850,7 +3850,7 @@ public final class Phase1Checks implements ClientModInitializer {
          *  row shows its map's painted card; Hard sets the server's bots to hard, Normal puts them back. Then, at 1920x1080 GUI 2, the
          *  page's layout (ui-page-field-1080). */
         void field(MinecraftClient c,int tick){
-            int k=at(tick);int[] o=WarTable.origin();
+            int k=at(tick);int[] o=WarTablePages.fieldCol();
             switch(sub){
                 case 0->{boolean plain="The war council's host picks the map".equals(text("status"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("status"));
                     for(int i=0;i<Spec.MAPS.length;i++){plain&=button(c,"vote-"+i)==null&&Spec.MAPS[i].name().equals(text("map-"+i))&&Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("map-"+i));}

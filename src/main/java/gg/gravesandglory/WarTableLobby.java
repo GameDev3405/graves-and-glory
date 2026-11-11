@@ -120,6 +120,8 @@ final class WarTableLobby {
     }
     static JsonObject me() { for (var r : commanders()) if (flag(r, "me")) return r; return null; }
     static int myTeam() { var m = me(); return m == null || !m.has("team") ? -1 : m.get("team").getAsInt(); }
+    /** Whether the plate reads Stand down: this commander is ready, or the test preview of the map wait shows the plate as a ready player sees it (the room is only built once everyone is ready). */
+    static boolean standing() { return myReady() || previewWait >= 0; }
     static boolean myReady() { var m = me(); return m != null && flag(m, "ready"); }
     static String myHouse() { var m = me(); String h = m == null ? "" : str(m, "house"); return h.isEmpty() ? RosterMath.rollHouse(CampaignClient.profile.banner) : h; }
     /** The role the viewer fights in: the set he wears most pieces of (GearStats), as the server tells the room. */
@@ -208,7 +210,7 @@ final class WarTableLobby {
         if (inviting) { initInvite(sx, sy); return; }
         if (waiting()) { // the map is being built: the wait view has the Stand down plate and nothing else to press
             choosingHost = false;
-            var stand = add("ready", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal(readyLabel()), x -> { UiSounds.toggled(!myReady()); send("social:ready"); }, (g, x, y, w, h, hot) -> plate(g, "ready", readyLabel(), !myReady(), x, y)));
+            var stand = add("ready", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal(readyLabel()), x -> { UiSounds.toggled(!myReady()); send("social:ready"); }, (g, x, y, w, h, hot) -> plate(g, "ready", readyLabel(), !standing(), x, y)));
             stand.active = idle();
             return;
         }
@@ -243,7 +245,7 @@ final class WarTableLobby {
         startBuilt = start;
         String label = readyLabel();
         int readyX = start ? sx + PAD : sx + (SHEET_W - 240) / 2;
-        if (start) add("start", new UiButton(sx + PAD + 248, sy + READY_Y + 8, START_W, 24, Text.literal("Start now"), b -> send("social:start"), (g, x, y, w, h, hot) -> tag(g, "start", "Start now", false, x, y, w, h)));
+        if (start) add("start", new UiButton(sx + PAD + 248, sy + READY_Y, START_W, 40, Text.literal("Start now"), b -> send("social:start"), (g, x, y, w, h, hot) -> tag(g, "start", "Start now", false, x, y, w, h)));
         var ready = add("ready", new UiButton(readyX, sy + READY_Y, 240, 40, Text.literal(label), b -> { UiSounds.toggled(!myReady()); send("social:ready"); }, (g, x, y, w, h, hot) -> plate(g, "ready", readyLabel(), !myReady(), x, y)));
         ready.active = idle && !choosing && houseRefusal().isEmpty();
         var modes = modes();
@@ -319,18 +321,18 @@ final class WarTableLobby {
     /** The pop-over's height: the title, the rows or the empty-camp lines, and the Close row. */
     static int popH() {
         var camp = camp();
-        int body = camp.isEmpty() ? 13 * emptyLines().size() + 4 : POP_ROW_H * Math.min(POP_ROWS, camp.size()) + 4;
+        int body = camp.isEmpty() ? 13 * (emptyLines().size() + 1) + 4 : POP_ROW_H * Math.min(POP_ROWS, camp.size()) + 4;
         return POP_HEAD + body + POP_FOOT;
     }
 
     static List<String> emptyLines() {
         var font = font();
-        return UiMath.lines("Nobody else is in this camp yet. Friends who join this game can use the code " + str("room", "") + " on their war council page.", POP_W - 32, 4, t -> font.getWidth(DarkUi.body(t)));
+        return UiMath.lines("Nobody else is in this camp yet. Friends who join this game can use this code on their war council page:", POP_W - 32, 3, t -> font.getWidth(DarkUi.body(t)));
     }
 
     static String readyLabel() {
         if (flag("playing")) return "In battle";
-        return myReady() ? "Stand down" : "Ready";
+        return standing() ? "Stand down" : "Ready";
     }
 
     void back() { UiSounds.back(); screen.page("home"); }
@@ -422,9 +424,15 @@ final class WarTableLobby {
             WarTable.drawChrome(g, "friends");
             rectsDrawn.putAll(WarTable.drawn());
             texturesDrawn.put("table", WarTable.drawnTable());
-            if (inviting && inRoom()) { // the pop-over stands alone on the bare papers: none of the page's words or tags show under it
-                rectsDrawn.put("sheet", UiTex.draw(g, "table/sheet-banner", o[0] + SHEET_X, o[1] + TOP));
-                rectsDrawn.put("note", UiTex.draw(g, "table/note-room", o[0] + NOTE_X, o[1] + TOP));
+            if (inviting && inRoom()) { // the pop-over stands over the dimmed page
+                // the lobby stays drawn behind it, dimmed; what it drew is not the pop-over's to be checked against, so its records are put back as they were
+                var rects = new java.util.HashMap<>(rectsDrawn); var texts = new java.util.HashMap<>(textsDrawn); var colors = new java.util.HashMap<>(colorsDrawn); var textures = new java.util.HashMap<>(texturesDrawn);
+                sheet(g, o[0] + SHEET_X, o[1] + TOP);
+                note(g, o[0] + NOTE_X, o[1] + TOP);
+                int[] sheetBox = rectsDrawn.get("sheet"), noteBox = rectsDrawn.get("note");
+                rectsDrawn.clear(); rectsDrawn.putAll(rects); textsDrawn.clear(); textsDrawn.putAll(texts); colorsDrawn.clear(); colorsDrawn.putAll(colors); texturesDrawn.clear(); texturesDrawn.putAll(textures);
+                rectsDrawn.put("sheet", sheetBox); rectsDrawn.put("note", noteBox);
+                g.fill(0, 0, UiCanvas.width(), UiCanvas.height(), 0x99000000);
                 popover(g, o[0] + SHEET_X, o[1] + TOP);
             } else if (waiting()) {
                 waitSheet(g, o[0] + SHEET_X, o[1] + TOP);
@@ -504,10 +512,10 @@ final class WarTableLobby {
         // the heading, then the room's code (in Minecraft's face, whose 0 and O differ) left of the Copy and Invite tags
         head(g, "room", "War council", null, lx, y + 18, TEXT_W);
         String roomCode = str("room", "");
-        int codeRight = lx + TEXT_W - INVITE_W - 4 - COPY_W - 8, codeW = font.getWidth(roomCode);
+        int codeRight = lx + TEXT_W - INVITE_W - 4 - COPY_W - 8, codeW = WarTablePages.codeWidth(roomCode);
         var codeLabel = DarkUi.body("Room");
         g.drawText(font, codeLabel, codeRight - codeW - 5 - font.getWidth(codeLabel), y + 17, DarkUi.SEPIA, false);
-        g.drawText(font, Text.literal(roomCode), codeRight - codeW, y + 17, DarkUi.INK_TEXT, false);
+        WarTablePages.drawCode(g, font, roomCode, codeRight - codeW, y + 17, DarkUi.INK_TEXT);
         rectsDrawn.put("code", new int[]{codeRight - codeW, y + 17, codeW, 9});
         textsDrawn.put("code", roomCode);
         textsDrawn.put("room", "Room " + roomCode);
@@ -557,7 +565,7 @@ final class WarTableLobby {
         int by = y + WAIT_BAR_Y, fillW = (TEXT_W - 2) * waitPercent() / 100;
         g.fill(lx, by, lx + TEXT_W, by + WAIT_BAR_H, DarkUi.SEPIA_LINE);
         g.fill(lx + 1, by + 1, lx + TEXT_W - 1, by + WAIT_BAR_H - 1, DarkUi.VELLUM);
-        g.fill(lx + 1, by + 1, lx + 1 + fillW, by + WAIT_BAR_H - 1, DarkUi.INK_TEXT);
+        g.fill(lx + 1, by + 1, lx + 1 + fillW, by + WAIT_BAR_H - 1, DarkUi.BRASS);
         rectsDrawn.put("wait-bar", new int[]{lx, by, TEXT_W, WAIT_BAR_H});
         textsDrawn.put("wait-bar", String.valueOf(waitPercent()));
         for (int t = 0; t < 2; t++) {
@@ -649,7 +657,11 @@ final class WarTableLobby {
         if (camp.isEmpty()) {
             var lines = emptyLines();
             for (int i = 0; i < lines.size(); i++) g.drawText(font, DarkUi.body(lines.get(i)), px + 16, py + 40 + 13 * i, DarkUi.SEPIA, false);
-            textsDrawn.put("popover-empty", String.join(" ", lines));
+            String roomCode = str("room", "");
+            int codeY = py + 40 + 13 * lines.size();
+            WarTablePages.drawCode(g, font, roomCode, px + 16, codeY, DarkUi.INK_TEXT);
+            rectsDrawn.put("popover-code", new int[]{px + 16, codeY, WarTablePages.codeWidth(roomCode), 9});
+            textsDrawn.put("popover-empty", String.join(" ", lines) + " " + roomCode);
             return;
         }
         for (int k = 0; k < POP_ROWS && inviteOffset + k < camp.size(); k++) {
@@ -671,10 +683,9 @@ final class WarTableLobby {
         g.fill(x, y + h - 3, x + w, y + h - 2, typing || hot ? DarkUi.INK_TEXT : DarkUi.SEPIA);
         if (code.isEmpty() && !typing) g.drawText(font, DarkUi.body("Click to write the code"), x + 4, y + 7, DarkUi.SEPIA, false);
         else {
-            var t = Text.literal(code);
-            g.drawText(font, t, x + 4, y + 9, DarkUi.INK_TEXT, false);
+            WarTablePages.drawCode(g, font, code, x + 4, y + 9, DarkUi.INK_TEXT);
             if (typing && ticks / 10 % 2 == 0) {
-                int cx = x + 5 + font.getWidth(t);
+                int cx = x + 5 + WarTablePages.codeWidth(code);
                 g.fill(cx, y + 7, cx + 1, y + 18, DarkUi.INK_TEXT);
             }
             if (code.length() < CODE_LENGTH) {
@@ -810,9 +821,10 @@ final class WarTableLobby {
         if (!live && !on) DarkUi.disabledVeil(g, x + 1, y + 1, w - 1, h); // veiled as well as sepia while it cannot be pressed (4F.5)
         var t = DarkUi.heading(label);
         int tw = font.getWidth(t), lx = x + (w - tw) / 2, ink = live || on ? DarkUi.INK_TEXT : DarkUi.SEPIA;
-        g.drawText(font, t, lx, y + 6, ink, false);
-        if (on) g.fill(lx, y + 18, lx + tw, y + 20, DarkUi.INK_TEXT);
-        else if (WarTableRecruit.hot(b)) underline(g, lx, y + 18, tw, ink);
+        int ty = h > 24 ? y + (h - 12) / 2 : y + 6; // a tag as tall as a plate (Start now) centres its word
+        g.drawText(font, t, lx, ty, ink, false);
+        if (on) g.fill(lx, ty + 12, lx + tw, ty + 14, DarkUi.INK_TEXT);
+        else if (WarTableRecruit.hot(b)) underline(g, lx, ty + 12, tw, ink);
         rectsDrawn.put(key, new int[]{x, y, w, h});
         texturesDrawn.put(key, plate);
         colorsDrawn.put(key, ink);

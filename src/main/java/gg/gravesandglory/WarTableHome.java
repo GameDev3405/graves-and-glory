@@ -146,7 +146,7 @@ final class WarTableHome {
     UiButton ride, change;
     /** Practice's bot difficulty switch on the field card (Easy, Normal, Hard; difficulty:<id>, the server's setting practice plays at), in the card's second line's place; Change steps down under it. */
     final UiButton[] tiers = new UiButton[3];
-    static final int TIER_ROW_Y = 131, TIER_W = 46, TIER_GAP = 7, TIER_H = 20, BONUS_Y = 146, CHANGE_Y = 152, CHANGE_PRACTICE_Y = 155;
+    static final int TIER_ROW_Y = 131, TIER_W = 46, TIER_GAP = 7, TIER_H = 20, BONUS_Y = 144, CHANGE_Y = 152, CHANGE_PRACTICE_Y = 155;
 
     WarTableHome(CampScreen screen) {
         this.screen = screen;
@@ -194,11 +194,16 @@ final class WarTableHome {
             tiers[i].active = !GravesAndGloryClient.running;
         }
         placeField();
-        ride = add("ride", new UiButton(ox + 360, oy + 388, 240, 40, Text.literal(rideLabel()), b -> ride(), this::paintRide));
+        ride = add("ride", new UiButton(ox + rideX(), oy + 388, 240, 40, Text.literal(rideLabel()), b -> ride(), this::paintRide));
         ride.active = !GravesAndGloryClient.running;
         change.active = focused != 2; // the Long March fixes its map: the campaign card has no Change
         if (CampaignClient.result.has("id")) add("last", new UiButton(ox + FIELD_X + 40, oy + 392, 88, 24, Text.literal("Last battle"), b -> screen.page("results"), this::paintLast));
     }
+
+    /** The page's centre in block coordinates: 480 on the 960 page; the compact block is shifted so its sheets centre, so the page's centre (427) is 141 further along. */
+    static int pageCentre() { return WarTable.compact() ? 480 - COMPACT_BLOCK[0] - 53 : 480; }
+    /** The Ride plate's left edge in block coordinates: the plate (240 wide) centred under the page's title and rail on every canvas. */
+    static int rideX() { return pageCentre() - 120; }
 
     /** Practice's card: the difficulty switch shows and Change steps down under it; the other cards have Change in its usual place. */
     void placeField() {
@@ -502,10 +507,10 @@ final class WarTableHome {
         g.drawText(font, DarkUi.heading("Bonus"), x, y, DarkUi.INK_TEXT, false);
         int rw = font.getWidth(DarkUi.body(right));
         g.drawText(font, DarkUi.body(right), x + w - rw, y + 1, DarkUi.SEPIA, false);
-        g.fill(x, y + 12, x + w, y + 13, DarkUi.SEPIA_LINE);
+        g.fill(x, y + 13, x + w, y + 14, DarkUi.SEPIA_LINE);
         var lines = UiMath.lines(b.text(), w, 2, s -> font.getWidth(DarkUi.body(s)));
-        for (int i = 0; i < lines.size(); i++) g.drawText(font, DarkUi.body(lines.get(i)), x, y + 14 + 10 * i, claimed ? DarkUi.SEPIA : DarkUi.INK_TEXT, false);
-        rectsDrawn.put("field-bonus", new int[]{x, y, w, 14 + 10 * Math.max(0, lines.size() - 1) + 9});
+        for (int i = 0; i < lines.size(); i++) g.drawText(font, DarkUi.body(lines.get(i)), x + (w - font.getWidth(DarkUi.body(lines.get(i)))) / 2, y + 17 + 10 * i, claimed ? DarkUi.SEPIA : DarkUi.INK_TEXT, false);
+        rectsDrawn.put("field-bonus", new int[]{x, y, w, 17 + 10 * Math.max(0, lines.size() - 1) + 9});
         textsDrawn.put("field-bonus", b.text());
         textsDrawn.put("field-bonus-reward", right);
         textsDrawn.put("field-bonus-state", claimed ? "claimed" : "open");
@@ -645,7 +650,7 @@ final class WarTableHome {
         float fade = age < NOTICE_TICKS ? 1 : 1 - (age - NOTICE_TICKS) / (float) NOTICE_FADE_TICKS;
         String text = UiMath.trim(HintText.expand(noticeText, GravesAndGloryClient::hint), 440, s -> font.getWidth(DarkUi.body(s)));
         int alpha = Math.max(4, Math.round(fade * 255));
-        int x = centred(g, DarkUi.body(text), ox + 480, oy + 440, (alpha << 24) | (DarkUi.IVORY & 0xffffff));
+        int x = centred(g, DarkUi.body(text), ox + pageCentre(), oy + 440, (alpha << 24) | (DarkUi.IVORY & 0xffffff));
         textsDrawn.put("notice", text);
         rectsDrawn.put("notice", new int[]{x, oy + 440, font.getWidth(DarkUi.body(text)), 11});
     }

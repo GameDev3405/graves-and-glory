@@ -126,7 +126,7 @@ final class WarTablePages {
     static final int FIELD_X = 220, FIELD_Y = 124, MAP_X = 236, MAP_Y = 156, MAP_STEP = 44, MAP_W = 176, STATUS_Y = 380;
     static final int CARD_X = 544, CARD_Y = 156, CARD_CX = 612, CARD_TEXT_W = 208, BOTS_HEAD_Y = 362, BOTS_Y = STATUS_Y;
     /** The Statuses paper (polish T7), standing right of the sheet on the same parchment (a cut of sheet-field), the sheet's height less its torn rim: 140 wide so the compact page's right edge holds it 12 px clear; a row per status with its glyph, name and line. */
-    static final int GLOSS_X = FIELD_X + 534, GLOSS_Y = FIELD_Y + 4, GLOSS_W = 140, GLOSS_H = 316, GLOSS_ROW_Y = 34, GLOSS_STEP = 46, GLOSS_LINES = 3, GLOSS_GAP = 7;
+    static final int GLOSS_X = FIELD_X + 534, GLOSS_Y = FIELD_Y, GLOSS_W = 140, GLOSS_H = 320, FIELD_DX = -77, GLOSS_ROW_Y = 34, GLOSS_STEP = 46, GLOSS_LINES = 3, GLOSS_GAP = 7;
     static final String[] TIER_IDS = {"easy", "normal", "hard"};
     static final int[] TIER_X = {504, 576, 656}, TIER_W = {64, 72, 64};
 
@@ -138,7 +138,7 @@ final class WarTablePages {
      *  left (its title seal on the letter, clear of the rail), the chapter block, the XP rail and Claim right of it with the
      *  notice between the XP line and Claim, and the track under both, nine tiers shown, the labels at the page's edge, "no oaths"
      *  in two even lines under The Oath in place of "not sworn"; the letter and the chapter block 4 px under the rail. */
-    static final int[] C_ROLL = {-29, -36}, C_SHEET = {-40, -36}, C_CLASS = {-62, -36}, C_CONTRACTS = {-55, -40}, C_FIELD = {-55, -36};
+    static final int[] C_ROLL = {-29, -36}, C_SHEET = {-40, -36}, C_CLASS = {-62, -36}, C_CONTRACTS = {-55, -40}, C_FIELD = {-130, -36};
     static final int[] C_CAMP = {-44, -36}, C_PARTY = {-76, -36}, C_ROOM = {-76, -36}, C_HERO = {-44, -2}, C_BLOCK = {-65, -10}, C_BLOCK_HEAD = {-60, -10};
     static final int C_CAMP_W = 200, C_BANNER_NOTICE_Y = 396, C_BANNER_NOTICE_LINES = 4, C_CONTRACTS_NOTICE_Y = 436, C_FIELD_NOTICE_Y = 425;
     static final int C_FRIENDS_NOTICE_Y = 400, C_FRIENDS_NOTICE_CX = 406, C_FRIENDS_NOTICE_W = 340, C_CHAPTER_NOTICE_Y = 188;
@@ -461,7 +461,7 @@ final class WarTablePages {
                 case "contracts" -> { int[] c = col(C_CONTRACTS); contracts(g, c[0], c[1]); }
                 case "chapter" -> chapter(g);
                 case "friends" -> friends(g);
-                default -> { int[] c = col(C_FIELD); field(g, c[0], c[1]); }
+                default -> { int[] c = fieldCol(); field(g, c[0], c[1]); }
             }
             notice(g, ox, oy);
         } finally {
@@ -2185,14 +2185,45 @@ final class WarTablePages {
         rectsDrawn.put("room", UiTex.draw(g, "table/note-room-short", x, y));
         texturesDrawn.put("room", "table/note-room-short");
         g.drawText(font, DarkUi.heading("War council"), lx, y + 12, DarkUi.INK_TEXT, false);
-        var said = lines(g, room.isEmpty() ? "Your own battle, with friends on the teams you choose." : "You are in room " + room + ".", lx, y + 30, ROOM_W, 6, DarkUi.SEPIA);
-        textsDrawn.put("room-line", String.join(" ", said));
+        if (room.isEmpty()) {
+            var said = lines(g, "Your own battle, with friends on the teams you choose.", lx, y + 30, ROOM_W, 6, DarkUi.SEPIA);
+            textsDrawn.put("room-line", String.join(" ", said));
+        } else {
+            var lead = DarkUi.body("You are in room");
+            g.drawText(font, lead, lx, y + 30, DarkUi.SEPIA, false);
+            drawCode(g, font, room, lx + font.getWidth(lead) + 5, y + 30, DarkUi.SEPIA);
+            textsDrawn.put("room-line", "You are in room " + room + ".");
+        }
     }
 
     // ======================================================================================================================= Field
 
-    void initField() {
+    /** A room code drawn in Minecraft's face with one fixed cell per character (the body font spaces its letters unevenly): the cell's width, the run's width, and the draw. */
+    static final int CODE_CELL = 8;
+    static int codeWidth(String code) { return CODE_CELL * code.length(); }
+    static void drawCode(DrawContext g, TextRenderer font, String code, int x, int y, int color) {
+        for (int i = 0; i < code.length(); i++) {
+            var t = Text.literal(String.valueOf(code.charAt(i)));
+            g.drawText(font, t, x + CODE_CELL * i + (CODE_CELL - font.getWidth(t)) / 2, y, color, false);
+        }
+    }
+
+    /** The Field page's origin: the sheet and the Statuses paper (674 px with the gap) stand as one pair centred under the title (page centre 480 on the 960 page; the compact page's C_FIELD does the same). */
+    static int[] fieldCol() {
         int[] o = col(C_FIELD);
+        return WarTable.compact() ? o : new int[]{o[0] + FIELD_DX, o[1]};
+    }
+
+    /** A status line wrapped for the paper, a number and its unit ("3 s") kept on one line (a no-break space the wrap helper does not cut at, drawn and measured as a space). */
+    static List<String> glossLines(String line, java.util.function.ToIntFunction<String> width) {
+        String bound = line.replaceAll("(\\d) s\\b", "$1\u00a0s");
+        var out = new java.util.ArrayList<String>();
+        for (String l : UiMath.lines(bound, GLOSS_W - 20, GLOSS_LINES, v -> width.applyAsInt(v.replace('\u00a0', ' ')))) out.add(l.replace('\u00a0', ' '));
+        return out;
+    }
+
+    void initField() {
+        int[] o = fieldCol();
         int ox = o[0], oy = o[1];
         for (int i = 0; i < Spec.MAPS.length; i++) {
             final int index = i;
@@ -2241,15 +2272,16 @@ final class WarTablePages {
     void statuses(DrawContext g, int ox, int oy) {
         var font = font();
         int x = ox + GLOSS_X, y = oy + GLOSS_Y;
-        UiTex.part(g, "table/sheet-field", x, y, 190, 4, GLOSS_W, GLOSS_H);
-        g.drawBorder(x, y, GLOSS_W, GLOSS_H, DarkUi.SEPIA_LINE);
+        UiTex.part(g, "table/sheet-field", x, y, 190, 0, GLOSS_W, GLOSS_H); // the sheet's own rows, so its top and torn rim line up with the main paper's
+        UiTex.draw(g, "table/tack", x + 6, y + 4);
+        UiTex.draw(g, "table/tack", x + GLOSS_W - 12, y + 4);
         rectsDrawn.put("statuses", new int[]{x, y, GLOSS_W, GLOSS_H});
         g.drawText(font, DarkUi.heading("Statuses"), x + 10, y + 10, DarkUi.INK_TEXT, false);
         g.fill(x + 10, y + 24, x + GLOSS_W - 10, y + 25, DarkUi.SEPIA_LINE);
         textsDrawn.put("statuses-head", "Statuses");
         int prevLines = 1, ry = y + GLOSS_ROW_Y - GLOSS_STEP; // each row starts below the last row's measured text and a clear gap, so a long line never meets the next name
         for (var e : Statuses.Glossary.entries()) {
-            var lines = UiMath.lines(e.line(), GLOSS_W - 20, GLOSS_LINES, v -> font.getWidth(DarkUi.body(v)));
+            var lines = glossLines(e.line(), v -> font.getWidth(DarkUi.body(v)));
             ry += ry == y + GLOSS_ROW_Y - GLOSS_STEP ? GLOSS_STEP : 13 + 11 * Math.max(1, prevLines) + GLOSS_GAP;
             prevLines = lines.size();
             int ix = x + 10;
