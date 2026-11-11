@@ -317,8 +317,8 @@ final class LevelChecks {
                     knightMastery = knightOwned.mastery; knightOwned.mastery = 2;
                     var u = at(b, own, "knight", 0, -2); String fresh = name(u);
                     Veterans.credit(b, u, L3);
-                    boolean ok = fresh.equals("Order Squire" + ArmyMobs.VETERAN) && u.level == 3 && name(u).equals("Knight-Captain (Veteran)");
-                    Phase2Checks.report("p2-level-name-veteran", ok, "a Mastery II Order Squire of the commander's army spawns as \"" + fresh + "\" and at " + cl(u) + " is named \"" + name(u) + "\" (want \"Knight-Captain (Veteran)\")");
+                    boolean ok = fresh.equals("Order Squire" + ArmyMobs.VETERAN) && u.level == 3 && name(u).equals("Knight-Captain (Proven)");
+                    Phase2Checks.report("p2-level-name-veteran", ok, "a Mastery II Order Squire of the commander's army spawns as \"" + fresh + "\" and at " + cl(u) + " is named \"" + name(u) + "\" (want \"Knight-Captain (Proven)\")");
                     restoreKnight(b); clearFixture(b, "veteran"); next(b, 60);
                 }
                 case 60 -> { // p2-level-flash: the commander 8 blocks west of a Dawn Squire, looking at him

@@ -232,7 +232,7 @@ public final class HousesCheck {
             gold += g.gold();shardTotal += g.shards();if (g.troop() != null) troops.add(g.troop());if (g.cosmetic() != null) cosmetics.add(g.cosmetic());
         }
         check(gold == 300 && shardTotal == 120 && troops.equals(List.of("longbow")) && cosmetics.equals(List.of("pennant_pattern", "banner_frame")) && all.claims.size() == 30, "all 30 tiers: gold " + gold + " (want 300), shards " + shardTotal + " (want 120), troops " + troops + ", cosmetics " + cosmetics + ", claims " + all.claims.size());
-        check(all.titles.equals(new LinkedHashSet<>(List.of("Recruit", "Scout", "Pathfinder", "Captain", "Veteran", "Bannerlord"))), "the chapter's titles are Scout, Pathfinder, Captain, Veteran and Bannerlord: " + all.titles);
+        check(all.titles.equals(new LinkedHashSet<>(List.of("Recruit", "Scout", "Pathfinder", "Captain", "Banneret", "Bannerlord"))), "the chapter's titles are Scout, Pathfinder, Captain, Veteran and Bannerlord: " + all.titles);
         var old = tier30();old.claims.add("founders:2");
         var again = Progression.claim(old, "founders:2:gilded");
         check(again.shards() == 0 && again.gold() == 0 && again.message().equals("Already claimed."), "a state holding the old claim founders:2 returns Already claimed: " + again);

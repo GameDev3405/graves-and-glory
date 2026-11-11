@@ -101,7 +101,7 @@ public final class ArmyMobs {
     private static Spec.LevelNamesRow[] namedLevels;
     private static Map<String, Spec.TroopsRow> names = Map.of();
     /** The suffix a Mastery II troop's custom name carries (its veteran trim, in-match progression design 4.4); TroopModels.resolve reads it. */
-    public static final String VETERAN = " (Veteran)";
+    public static final String VETERAN = " (Proven)";
 
     /** The troop whose name, or whose level name, is the given custom name (a trailing VETERAN ignored); null for any other name. A troop name wins over a level name that matches it. */
     public static synchronized Spec.TroopsRow named(String name) {

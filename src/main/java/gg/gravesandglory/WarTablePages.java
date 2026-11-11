@@ -87,7 +87,7 @@ final class WarTablePages {
     static final int SLIDE_TICKS = 6;
     /** One line of copy for each title on the hero letter. */
     static final Map<String, String> TITLE_COPY = Map.of("Scout", "First out, first to see the field.", "Pathfinder", "You find the road the others lost.",
-        "Captain", "They hold because you hold.", "Vanguard", "First into the line, last out of it.", "Veteran", "Old scars, steady hands.",
+        "Captain", "They hold because you hold.", "Vanguard", "First into the line, last out of it.", "Banneret", "Men march under your colours.",
         "Bannerlord", "The banner answers to you.");
     /** The Oath's reward on each odd tier (NOTES.md, "The Oath row"): the icon's stem, the name and the second line. The even tiers
      *  carry shards, but the portrait frame at 10, the cloak at 20 and the Oathsworn title at 30 (oath). */

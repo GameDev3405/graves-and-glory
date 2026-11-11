@@ -8,7 +8,7 @@ final class Progression {
     static final String SEASON="founders";
     static final int TIERS=30, XP_PER_TIER=250;
     /** The chapter's titles in tier order (houses design 4.8: the old six minus Vanguard), at TITLE_TIERS. A profile that earned Vanguard before keeps it. */
-    static final String[] TITLES={"Scout","Pathfinder","Captain","Veteran","Bannerlord"};
+    static final String[] TITLES={"Scout","Pathfinder","Captain","Banneret","Bannerlord"};
     static final int[] TITLE_TIERS={5,10,15,25,30};
     /** The re-authored Founders chapter (houses design 4.8): ten tiers of gold, twelve of shards to a chosen House, five titles, one chosen Rare and two banner cosmetics; 300 gold in all. */
     static final Set<Integer> GOLD_TIERS=Set.of(1,3,7,9,11,13,17,19,23,27),SHARD_TIERS=Set.of(2,4,6,8,12,14,16,18,22,24,26,28);
@@ -23,7 +23,10 @@ final class Progression {
         String day="",week="",title="Recruit";boolean rerolled;
         int dailyBattles,dailyCaptures,dailyOrders;
         Set<String> claims=new HashSet<>(),titles=new LinkedHashSet<>(Set.of("Recruit")),matchGrants=new LinkedHashSet<>();
-        void sanitize(){if(claims==null)claims=new HashSet<>();if(titles==null)titles=new LinkedHashSet<>();titles.add("Recruit");if(!titles.contains(title))title="Recruit";
+        /** Titles renamed on 2026-11-11 (Kort: Veteran names nothing): the chapter title Veteran is Banneret, a Mastery title "X Veteran" is "X Storied". Saved titles follow. */
+        static String renamed(String t){return t==null?null:t.equals("Veteran")?"Banneret":t.endsWith(" Veteran")?t.substring(0,t.length()-8)+" Storied":t;}
+        void renamed(){var out=new LinkedHashSet<String>();for(String t:titles)out.add(renamed(t));titles=out;title=renamed(title);}
+        void sanitize(){if(claims==null)claims=new HashSet<>();if(titles==null)titles=new LinkedHashSet<>();renamed();titles.add("Recruit");if(!titles.contains(title))title="Recruit";
             if(matchGrants==null)matchGrants=new LinkedHashSet<>();xp=Math.max(0,Math.min(1_000_000,xp));}
     }
     /** What a claim pays. Gold and XP as before; shards go to house; troop is a troop id to add to the collection (a new troop or a duplicate copy) and cosmetic a banner cosmetic id, each null when the claim gives none. Titles go straight into the state. */

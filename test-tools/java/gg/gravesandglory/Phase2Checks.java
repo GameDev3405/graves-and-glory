@@ -4197,7 +4197,7 @@ public final class Phase2Checks implements ClientModInitializer {
         static void stage(GravesAndGlory.Unit u,int level){stage(u,level,1,level);}
         /**
          * Sets a posted troop's rank on the server and sends it (RankSync.changed; a player who starts tracking it later gets it through
-         * START_TRACKING), and renames it to the level's name, as a level up names it (the " (Veteran)" suffix of a Mastery II troop stays).
+         * START_TRACKING), and renames it to the level's name, as a level up names it (the " (Proven)" suffix of a Mastery II troop stays).
          * The client draws the tiers from rank_v1 (in-match progression Task 9), never from the name.
          */
         static void stage(GravesAndGlory.Unit u,int level,int weaponTier,int armourTier){
@@ -5543,8 +5543,8 @@ public final class Phase2Checks implements ClientModInitializer {
                     pr.owned.remove(troopOf(0,"legendary"));pr.writs=1;pr.shards.put(Spec.HOUSES[0].id(),rich.shardStar2()+rich.shardStar3());camp.save(player);stage=121;fixture2Ready=true;}
                 case 104->{stage=105;claimReady=true;} // the claims (ClaimChecks) arm their own fixtures: the dailies, a shard tier, tier 20
                 case 108->{var o=camp.profile(player).owned.get("knight");o.mastery=2;camp.save(player);
-                    var a=ArmyMobs.named("Order Squire (Veteran)");var c3=ArmyMobs.named("Knight-Captain (Veteran)");
-                    serverWhy="ArmyMobs.named(Order Squire (Veteran)) is "+(a==null?"null":a.id())+", named(Knight-Captain (Veteran)) is "+(c3==null?"null":c3.id());
+                    var a=ArmyMobs.named("Order Squire (Proven)");var c3=ArmyMobs.named("Knight-Captain (Proven)");
+                    serverWhy="ArmyMobs.named(Order Squire (Proven)) is "+(a==null?"null":a.id())+", named(Knight-Captain (Proven)) is "+(c3==null?"null":c3.id());
                     stage=1;} // the Stage flow: a skirmish, the platform, cast
                 default->{}
             }
@@ -5750,13 +5750,13 @@ public final class Phase2Checks implements ClientModInitializer {
                     String n1=e1==null||e1.getCustomName()==null?"":e1.getCustomName().getString(),n3=e3==null||e3.getCustomName()==null?"":e3.getCustomName().getString(),n0=e0==null||e0.getCustomName()==null?"":e0.getCustomName().getString();
                     var l1=d1==null?null:d1.last;var l3=d3==null?null:d3.last;var l0=d0==null?null:d0.last;
                     // the hand-authored knight has no veteran trim since 25ecd79 (its model's "veteran" is empty): a Veteran knight is told by its name and look; RankChecks' p2-veteran-trim-tier draws a trim
-                    boolean names=n1.equals("Order Squire (Veteran)")&&n3.equals("Knight-Captain (Veteran)")&&n0.equals("Order Squire");
+                    boolean names=n1.equals("Order Squire (Proven)")&&n3.equals("Knight-Captain (Proven)")&&n0.equals("Order Squire");
                     boolean one=l1!=null&&l1.look().veteran()&&unfar(l1.skin()).endsWith("knight_s1.png")&&l1.trim()==null;
                     boolean three=l3!=null&&l3.look().veteran()&&l3.look().armourTier()==3&&unfar(l3.skin()).endsWith("knight_s3.png")&&l3.trim()==null;
                     boolean bare=l0!=null&&!l0.look().veteran()&&l0.trim()==null&&unfar(l0.skin()).endsWith("knight_s1.png");
-                    boolean named=serverWhy.contains("(Order Squire (Veteran)) is knight")&&serverWhy.contains("(Knight-Captain (Veteran)) is knight");
+                    boolean named=serverWhy.contains("(Order Squire (Proven)) is knight")&&serverWhy.contains("(Knight-Captain (Proven)) is knight");
                     shot(c,"chase-veteran");
-                    report("p2-veteran-skin",names&&one&&three&&bare&&named,"names on the client: \""+n1+"\", \""+n3+"\", \""+n0+"\" (want Order Squire (Veteran), Knight-Captain (Veteran), Order Squire)="+names+"; the Mastery II knight at tier I drew skin "+(l1==null?"none":l1.skin())+" with trim "+(l1==null?"none":l1.trim())+" (want knight_s1, a Veteran, no trim: the knight has none)="+one+"; at tier III skin "+(l3==null?"none":l3.skin())+" with trim "+(l3==null?"none":l3.trim())+"="+three+"; the bot's plain knight trim "+(l0==null?"none":l0.trim())+"="+bare+"; "+serverWhy+"="+named+"; picture p2-chase-veteran.png");
+                    report("p2-veteran-skin",names&&one&&three&&bare&&named,"names on the client: \""+n1+"\", \""+n3+"\", \""+n0+"\" (want Order Squire (Proven), Knight-Captain (Proven), Order Squire)="+names+"; the Mastery II knight at tier I drew skin "+(l1==null?"none":l1.skin())+" with trim "+(l1==null?"none":l1.trim())+" (want knight_s1, a Veteran, no trim: the knight has none)="+one+"; at tier III skin "+(l3==null?"none":l3.skin())+" with trim "+(l3==null?"none":l3.trim())+"="+three+"; the bot's plain knight trim "+(l0==null?"none":l0.trim())+"="+bare+"; "+serverWhy+"="+named+"; picture p2-chase-veteran.png");
                     lineupCast=false;server(c,b->lineup(b,true));cs=8;wait=0;}
                 case 8,9,10->{if(!lineupCast||!(posted.size()==6&&posted.stream().allMatch(u->{var e=client(c,u.mob);return e!=null&&e.getCustomName()!=null;})))return; // the six at Mastery II, then the six plain (for the trim's grading)
                     if(++wait<40)return;if(!shotReady(c,"screens-lineup")){wait--;return;}

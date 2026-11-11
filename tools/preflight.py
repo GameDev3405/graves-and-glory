@@ -334,9 +334,9 @@ for t in data['troops']:
     tags=t['tags'].split(',')
     if 'none' in tags and len(tags)>1: errors.append(f'{name}: tags is none or a comma list of tags, never both')
 # A troop is drawn from its custom name (TroopModels.resolve through ArmyMobs.named, where a later troop row wins and a troop
-# name beats a level name), and " (Veteran)" on it marks the Veteran skin: so no name may stand for two troops, two levels of
-# one line, or a level and its own troop, and none may end in " (Veteran)".
-VETERAN=' (Veteran)'
+# name beats a level name), and " (Proven)" on it marks the Mastery II skin: so no name may stand for two troops, two levels of
+# one line, or a level and its own troop, and none may end in " (Proven)".
+VETERAN=' (Proven)'
 nameOwners={}
 for t in data['troops']: nameOwners.setdefault(t['name'],{}).setdefault(t['id'],[]).append(f'troops/{t["id"]}')
 for e in data['levelNames']:
@@ -344,7 +344,7 @@ for e in data['levelNames']:
         if t['evolveLine']==e['troop']: nameOwners.setdefault(e['name'],{}).setdefault(t['id'],[]).append(f'levelNames/{e["id"]}')
 for nm,owners in nameOwners.items():
     where=', '.join(w for ws in owners.values() for w in ws)
-    if nm.endswith(VETERAN): errors.append(f'{where}: the name "{nm}" ends in "{VETERAN.strip()}", which marks a Veteran skin')
+    if nm.endswith(VETERAN): errors.append(f'{where}: the name "{nm}" ends in "{VETERAN.strip()}", which marks a Mastery II skin')
     if len(owners)>1: errors.append(f'{where}: the name "{nm}" stands for {len(owners)} troops ({", ".join(owners)}); a troop is drawn from its name, so one would draw as the other')
     else:
         for troop,ws in owners.items():

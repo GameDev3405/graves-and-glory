@@ -182,7 +182,7 @@ final class RecruitPages {
     static String masteryReward(Spec.MasteryRow m){
         List<String> out=new ArrayList<>();
         for(String part:m.reward().split(";")){String[] kv=part.split(":",2);if(kv.length<2)continue;
-            out.add(switch(kv[0]){case "title"->kv[1]+" title";case "skin"->kv[1].equals("veteran")?"Mastery trim":CampScreen.cap(kv[1])+" look";case "frame"->CampScreen.cap(kv[1])+" frame";default->CampScreen.cap(kv[1]);});}
+            out.add(switch(kv[0]){case "title"->kv[1]+" title";case "skin"->kv[1].equals("proven")?"Mastery trim":CampScreen.cap(kv[1])+" look";case "frame"->CampScreen.cap(kv[1])+" frame";default->CampScreen.cap(kv[1]);});}
         return String.join(", ",out);
     }
     /** A thin progress bar: its track, its fill to have of want, brass when full. */
