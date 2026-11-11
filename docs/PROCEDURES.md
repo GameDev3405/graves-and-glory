@@ -25,10 +25,10 @@ These procedures have not been measured against Opus yet; see "Measuring" at the
 - Budget: under `<80k>` tokens. Read the diff, then open only the files it touches.
 
 **Mechanical checks.** Run these first and quote their results:
-1. `git diff --stat <base>...<branch>`. Flag any file outside the brief's scope, and any file another lead owns (see `status/*.md`).
-2. Run the test files the diff adds or changes, and give the count and time.
+1. `git diff --stat <base>...<branch>`. Flag any file outside the brief's scope, and any file another lead owns (see `C:/Users/kortt/Melty/status/*.md`).
+2. Run the test files the diff adds or changes, and give the count and time: Python `python test-tools/standalone/<file>.py` (or `python -m unittest <path>`), standalone Java checks through `python tools/verify.py fast`.
 3. `git diff <base>...<branch> -- src/main/java/gg/gravesandglory/Spec.java sheets/preflight.json`. A change here is allowed only as a separate regenerate commit (docs/NEW-UNIT.md, Hard rules).
-4. `git grep -n -i "fable"` in the diff, plus `git push` and `--force`. Flag any new use.
+4. `git diff <base>...<branch> | grep -n -i -E "^\+.*(model.*fable|git push|--force)"`: flag any added line that selects a Fable model, pushes or force-pushes (stating the ban in docs is fine).
 
 **Then judge.**
 - Correctness against the brief: every new branch, exit code and error path has a test, or say which one doesn't.
@@ -70,7 +70,7 @@ A finding without file:line and a failure case is not reported.
 1. Read only the named files and the tests next to them. Use `python tools/where.py <id>` for troop, asset and sheet ids, and rg for code.
 2. Write the failing test first, run it, and see it fail for the expected reason.
 3. Implement until it passes. Run the test file, then start `python tools/verify.py fast` in the background (it takes about 2 minutes).
-4. Make one commit, ending with the repo's Co-Authored-By line. Don't land and don't push.
+4. Make one commit; its message ends with the trailer line the lead gives in the brief (default `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`). Don't land and don't push.
 
 **Stop rules.** Report instead of continuing if:
 - the same failure survives two fix attempts;
@@ -106,7 +106,7 @@ Its rubric, grade caps and report format are in `references/review-loop.md`. The
 
 The planned blind comparison (Sonnet high re-runs of earlier Opus results, with a blind Sonnet-high grader) does not fit a small budget. A fresh agent costs about 57k tokens before it reads anything (lookup trial, 2026-11-10), so one measured pair costs about 150–200k per task type. The only recent Opus code-review baseline is a 182 KB branch diff.
 
-Measure in normal work instead, at no extra cost. For two weeks, the lead records one line per use of these procedures in `status/procedure-log.md`:
+Measure in normal work instead, at no extra cost. For two weeks, the lead records one line per use of these procedures in `C:/Users/kortt/Melty/status/procedure-log.md`:
 
 ```
 <date> <type> <model> <tokens> <findings or result> <accepted by lead: y/n> <later bug traced to a miss: y/n>
