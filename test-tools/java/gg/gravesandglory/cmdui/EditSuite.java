@@ -201,32 +201,27 @@ public final class EditSuite implements CommandUiChecks.Suite {
             CommandSelection.setPanelOpen(false);
         });
 
-        // Hide: not drawn at rest, R still opens it at its place
+        // Hide = keyboard-only mode: R draws nothing and keeps the cursor locked, the hint slip names H Panel instead of R Commands,
+        // number keys stay with the hotbar (the panel never opens) and the order keys still give orders
         if (tick == 254) press(c, "key.gravesandglory.panel_edit");
         if (tick == 257) clickId(c, CommandPanel.HIDE);
         if (tick == 259) {
-            hiddenDetail = "Hide clicked: hidden=" + PanelLayout.hidden + ", edit-mode alpha " + CommandPanel.op(); // 35% while editing
+            hiddenDetail = "Hide clicked: hidden=" + PanelLayout.hidden + ", edit-mode alpha " + CommandPanel.op() + ", button " + PanelSuite.drawn(CommandPanel.HIDE); // 35% while editing
             shot(c, "panel-edit-hidden-1920.png");
             press(c, "key.gravesandglory.panel_edit");
         }
-        if (tick == 264) waits.when(tick, 16, () -> !CommandPanel.editing() && CommandPanel.bounds == null, null, ok -> {
-            hiddenRest1920 = ok && PanelLayout.hidden && !CommandSelection.panelOpen();
-            hiddenDetail += "; at rest 1920: drawn=" + (CommandPanel.bounds != null);
+        if (tick == 264) { hiddenRest1920 = !CommandPanel.editing() && PanelLayout.hidden; sentBefore = OrderIntakeProbe.ordersSent(); selBefore = CommandSelection.selected(); press(c, "key.gravesandglory.menu"); }
+        if (tick == 266) { press(c, "key.gravesandglory.attack"); CommandUiChecks.press(c, c.options.hotbarKeys[3]); }
+        if (tick == 269) waits.when(tick, 15, () -> CommandPanel.bounds == null && !gg.gravesandglory.BattleHud.hintRows().isEmpty(), null, ok -> {
+            hiddenRest1920 &= ok && keyboardOnly(c, "1920");
             shot(c, "panel-hidden-1920.png");
         });
-        if (tick == 282) press(c, "key.gravesandglory.menu");
-        if (tick == 285) waits.when(tick, 15, () -> CommandPanel.lastSlide >= 1 && CommandPanel.bounds != null, null, ok -> {
-            int[] b = CommandPanel.bounds;
-            hiddenOpens = ok && CommandSelection.panelOpen() && b[1] == 0 && b[0] + b[2] == sw(c);
-            hiddenDetail += "; R opened it at " + box(b);
-            CommandSelection.setPanelOpen(false);
-        });
         if (tick == 304) GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 854, 480);
-        if (tick == 320) waits.when(tick, 15, () -> CommandPanel.bounds == null && sw(c) < 600, null, ok -> {
-            hiddenRest854 = ok && PanelLayout.hidden;
-            hiddenDetail += "; at rest 854: drawn=" + (CommandPanel.bounds != null);
+        if (tick == 318) { sentBefore = -1; press(c, "key.gravesandglory.menu"); }
+        if (tick == 321) waits.when(tick, 15, () -> CommandPanel.bounds == null && sw(c) < 600, null, ok -> {
+            hiddenRest854 = ok && keyboardOnly(c, "854");
             shot(c, "panel-hidden-854.png");
-            CommandUiChecks.report("cu-edit-hidden", hiddenRest1920 && hiddenOpens && hiddenRest854, hiddenDetail);
+            CommandUiChecks.report("cu-edit-hidden", hiddenRest1920 && hiddenRest854, hiddenDetail);
         });
 
         // opacity 35% through the slider (and Show again): the pennants' cloth at 35% of their alpha, text and icons kept at 60%
@@ -281,6 +276,24 @@ public final class EditSuite implements CommandUiChecks.Suite {
                 + "; H with no battle HUD: editing=" + CommandPanel.editing() + " (battle " + GravesAndGloryClient.battleActive() + "); file " + file() + "; shots: " + String.join(", ", shotLog));
             CommandUiChecks.finish(c);
         }
+    }
+
+    /** After R with the panel hidden: nothing drawn, the panel shut, the cursor locked, the slip shows the arrange key and no Commands; the order key
+     *  sent its order and the number key picked no group (checked once, at 1920: sentBefore >= 0). */
+    boolean keyboardOnly(MinecraftClient c, String size) {
+        var rows = gg.gravesandglory.BattleHud.hintRows();
+        List<String> row = rows.isEmpty() ? List.of() : rows.get(0);
+        String h = GravesAndGloryClient.hint("panel_edit");
+        // at 854x480 the HUD layout leaves the slip out for room (its priority); where it is drawn it must name H Panel, never R Commands
+        boolean slip = rows.isEmpty() ? size.equals("854") : row.contains("Panel") && row.contains(h) && !row.contains("Commands");
+        boolean ok = CommandPanel.bounds == null && !CommandSelection.panelOpen() && !CommandPanel.capturing() && slip; // the panel never holds the cursor (the lock itself needs a focused window)
+        hiddenDetail += "; " + size + " after R: drawn=" + (CommandPanel.bounds != null) + ", panel open=" + CommandSelection.panelOpen() + ", holds the cursor=" + CommandPanel.capturing() + ", cursor locked=" + c.mouse.isCursorLocked() + " (window focused=" + c.isWindowFocused() + "), hint slip row " + row;
+        if (sentBefore >= 0) {
+            int sent = OrderIntakeProbe.ordersSent() - sentBefore;
+            ok &= sent >= 1 && CommandSelection.selected().equals(selBefore);
+            hiddenDetail += ", Z sent " + sent + " order(s), key 4 left the selection " + selBefore + " -> " + CommandSelection.selected();
+        }
+        return ok;
     }
 
     /** The open panel drawn at the chosen opacity: each idle pennant at Spec pennantAlpha x opacity, text and icons at no less than 60%. */

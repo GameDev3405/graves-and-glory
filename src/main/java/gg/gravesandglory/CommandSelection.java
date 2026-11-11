@@ -86,7 +86,7 @@ public final class CommandSelection {
 
     public static boolean panelOpen() { return panelOpen; }
     /** Opens or shuts the panel; shutting it folds the formation tray as well. */
-    public static void setPanelOpen(boolean open) { panelOpen = open; if (!open) trayOpen = false; }
+    public static void setPanelOpen(boolean open) { panelOpen = open && !(PanelLayout.hidden && !CommandPanel.editing()); if (!panelOpen) trayOpen = false; } // a hidden panel never opens
     public static boolean trayOpen() { return trayOpen; }
     public static void setTrayOpen(boolean open) { trayOpen = open; }
 
@@ -116,6 +116,7 @@ public final class CommandSelection {
             }
             case "hold" -> { trayOpen = false; CommandMode.begin("hold"); aimKeepOpen = keepOpen; }
             case "formation" -> {
+                if (PanelLayout.hidden && !CommandPanel.editing()) { order("hold", keepOpen); return; } // keyboard-only mode: no tray to open, B aims the Formation order in the current shape
                 CommandMode.cancel();
                 if (!panelOpen) { panelOpen = true; trayOpen = true; } else trayOpen = !trayOpen;
             }

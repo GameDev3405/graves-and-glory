@@ -75,7 +75,7 @@ public final class CommandPanel {
     private static long flashAt;
     private static final boolean[] keyWas = new boolean[ORDERS.length];
     // cursor bookkeeping (PanelInputMixin): whether the panel held the mouse at the last client tick
-    static boolean wasCapturing;
+    static boolean wasCapturing, relockPending;
 
     // the world camera of the last frame, for the cursor ray and the projection of a troop onto the screen
     private static final Matrix4f view = new Matrix4f(), proj = new Matrix4f();
@@ -127,8 +127,11 @@ public final class CommandPanel {
      */
     static void syncCursor(MinecraftClient c) {
         boolean cap = capturing();
-        if (cap) { if (c.mouse.isCursorLocked()) c.mouse.unlockCursor(); }
-        else if (wasCapturing && c.currentScreen == null && !c.mouse.isCursorLocked()) c.mouse.lockCursor();
+        if (cap) { if (c.mouse.isCursorLocked()) c.mouse.unlockCursor(); relockPending = false; }
+        else if ((wasCapturing || relockPending) && c.currentScreen == null && !c.mouse.isCursorLocked()) {
+            c.mouse.lockCursor();
+            relockPending = !c.mouse.isCursorLocked(); // the game locks only a focused window: try again on the next ticks
+        } else relockPending = false;
         wasCapturing = cap;
     }
 
@@ -451,6 +454,7 @@ public final class CommandPanel {
     public static void leaveEdit(MinecraftClient c) {
         if (!editing) return;
         editing = false; dragging = sliding = false;
+        if (PanelLayout.hidden) CommandSelection.setPanelOpen(false); // keyboard-only mode: the panel stays shut
         PanelLayout.save(c);
     }
 

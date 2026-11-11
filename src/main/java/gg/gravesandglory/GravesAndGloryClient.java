@@ -166,7 +166,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
                 while(panelEdit.wasPressed())CommandPanel.toggleEdit(client);
                 CommandPanel.editTick(client);
                 if(CommandPanel.editing()){for(KeyBinding k:new KeyBinding[]{menu,attack,charge,followMe,retreat,formation,confirmOrder,cancelOrder})while(k.wasPressed()){}} // no orders while the panel is being arranged
-                while(menu.wasPressed()){CampaignClient.end(client);CommandMode.cancel();if(battleActive())CommandSelection.setPanelOpen(!CommandSelection.panelOpen());else client.setScreen(new CampScreen("home"));}
+                while(menu.wasPressed()){CampaignClient.end(client);if(battleActive()&&PanelLayout.hidden){client.player.sendMessage(Text.literal("Command panel hidden. Press "+hint("panel_edit")+" to arrange."),true);continue;} // keyboard-only mode: R opens nothing
+                    CommandMode.cancel();if(battleActive())CommandSelection.setPanelOpen(!CommandSelection.panelOpen());else client.setScreen(new CampScreen("home"));}
                 while(armoury.wasPressed())if(battleActive())client.setScreen(new RecruitmentScreen(1));
                 while(gearKey.wasPressed())if(!battleActive())client.setScreen(new CampScreen("gear"));
                 // Orders work with the panel closed, on the last selection; Shift keeps the panel open for the next one.

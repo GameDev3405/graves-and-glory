@@ -257,8 +257,9 @@ public final class BattleHud {
     static void hintSlip(DrawContext g,TextRenderer font,int[] box,Map<String,int[]> r){
         int x=box[0],y=box[1];boolean aiming=CommandMode.active();
         UiTex.draw(g,"hud/notice-slip",x,y);
-        String[][] ids={aiming?new String[]{"confirm","cancel"}:new String[]{"map","menu"},{"rotate_left","rotate_right","hints"}};
-        String[][] words={aiming?new String[]{"Confirm","Cancel"}:new String[]{"Map","Commands"},{null,"Turn","Hints"}};
+        boolean keysOnly=PanelLayout.hidden; // a hidden panel (keyboard-only mode): R opens nothing, so the slip names the arrange key instead
+        String[][] ids={aiming?new String[]{"confirm","cancel"}:new String[]{"map",keysOnly?"panel_edit":"menu"},{"rotate_left","rotate_right","hints"}};
+        String[][] words={aiming?new String[]{"Confirm","Cancel"}:new String[]{"Map",keysOnly?"Panel":"Commands"},{null,"Turn","Hints"}};
         for(int row=0;row<2;row++){
             List<String> keys=new ArrayList<>(),shorts=new ArrayList<>();for(String id:ids[row]){keys.add(GravesAndGloryClient.hint(id));shorts.add(GravesAndGloryClient.hintShort(id));}
             String[] rowWords=words[row];
