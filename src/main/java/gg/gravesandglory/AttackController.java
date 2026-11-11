@@ -51,6 +51,17 @@ final class AttackController extends AnimationController<GeoTroop> {
     private final boolean howls;
     private boolean howlOn, howlSeenOff;
     private double howlAt = Double.NEGATIVE_INFINITY;
+    /**
+     * An on-hit status with a cooldown (the Web Stalker's ensnare): the clip named after its Spec ability id, played in place of a swing's
+     * own clip when the troop's clip file has it, else null. The client hears only the swing, not whether the status fired, so a swing
+     * counts as the ensnare when it starts at least {@link #snareCd} ticks after the last one shown (the first swing seen does too):
+     * presentation only, and it can drift from the server on a miss, a blocked blow or a troop first seen mid-fight. The rule is
+     * generic: any troop whose ability row is onhit_status with a cooldown (today also tc_harpooner's "harpoon") gets its ability
+     * clip the same way, as soon as its clip file has one named after the ability; without that clip nothing changes.
+     */
+    private final String snareClip;
+    private final int snareCd;
+    private long snareAt = Long.MIN_VALUE;
     /** Whether this troop's shots hold their full draw (Tactics.drawsAhead: a non-magic ranged bow troop), as Projectiles.hold does on the server. */
     private final boolean draws;
     /** The stance layer, whose standing factor scales the swing's footwork (attack_&lt;name&gt;_legs): planted feet never slide. */
@@ -92,11 +103,14 @@ final class AttackController extends AnimationController<GeoTroop> {
         String ab = null;
         int wu = 0;
         boolean hw = false;
+        String sn = null;
+        int sc = 0;
         for (Spec.TroopsRow r : Spec.TROOPS) if (r.id().equals(troop.troop)) {
             f = r.family(); d = r.ranged() && !r.magic() && "bow".equals(f);
             var row = Abilities.row(r);
             if ("caster".equals(f)) switch (row.mechanic()) { case "mend", "blight", "mist" -> { ab = r.ability(); wu = Math.max(0, row.windupTicks()); } default -> {} }
             hw = "aura".equals(row.mechanic()) && "timer".equals(row.trigger());
+            if ("onhit_status".equals(row.mechanic()) && row.cooldownTicks() > 0) { sn = r.ability(); sc = row.cooldownTicks(); }
             break;
         }
         family = f;
@@ -104,6 +118,8 @@ final class AttackController extends AnimationController<GeoTroop> {
         abilityClip = ab;
         windup = wu;
         howls = hw;
+        snareClip = sn;
+        snareCd = sc;
     }
 
     /** The clip a swing plays: attack_&lt;variant id without its family prefix&gt;, e.g. sword_shield_thrust plays attack_thrust. */
@@ -144,6 +160,18 @@ final class AttackController extends AnimationController<GeoTroop> {
             // after that, so the clip is shifted to put its own impact marker on that tick (a mend: 0; a blight or a mist: 10).
             Animation clip = abilityClip == null ? null : model.getAnimation(animatable, abilityClip);
             double lead = clip == null ? 0 : variants.get(a.variant()).impactTicks() + windup - impact(clip);
+            if (clip == null && snareClip != null) {
+                Animation sn = model.getAnimation(animatable, snareClip);
+                // Only a swing that can still show decides: the latest, or one still inside the clip's length. A troop coming back
+                // into view keeps older retained swings, and letting one of those claim the ensnare would latch it onto an arbitrary
+                // past swing and push the next real one a whole cooldown later.
+                boolean live = sn != null && (a == latest || now - a.startTick() < sn.length());
+                if (sn != null && (a.startTick() == snareAt || live && a.startTick() > snareAt
+                        && (snareAt == Long.MIN_VALUE || a.startTick() - snareAt >= snareCd))) {
+                    clip = sn;
+                    snareAt = a.startTick();
+                }
+            }
             if (clip == null) clip = model.getAnimation(animatable, clipName(family, variants.get(a.variant()).id()));
             if (clip == null) continue;
             double raw = now - a.startTick() - lead;
