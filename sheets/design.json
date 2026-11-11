@@ -1368,6 +1368,8 @@
       "riseWarning": 0,
       "maxDeadAlive": 0,
       "waveSet": "-",
+      "guardRadius": 8.0,
+      "guardNear": 24.0,
       "note": "draft values (convoy spec 3.1 to 3.3, 8); Kort tunes them after the sim gate"
     },
     {
@@ -1396,6 +1398,8 @@
       "riseWarning": 0,
       "maxDeadAlive": 0,
       "waveSet": "-",
+      "guardRadius": 0.0,
+      "guardNear": 0.0,
       "note": "Siege draft values (siege spec section 5; keep edge: attackers add a second while contested at 2 of every 3 defenders); Kort tunes them after the sim gate. The convoy columns are unused here"
     },
     {
@@ -1424,6 +1428,8 @@
       "riseWarning": 5,
       "maxDeadAlive": 60,
       "waveSet": "moon",
+      "guardRadius": 0.0,
+      "guardNear": 0.0,
       "note": "DRAFT (Phase 4 plan Task 6, question for Kort): +50% dead per extra banner, 5 s rise warning, at most 60 dead alive, the moon wave set"
     }
   ],

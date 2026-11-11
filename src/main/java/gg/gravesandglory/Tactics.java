@@ -261,6 +261,23 @@ final class Tactics {
         while(i>0&&PICK_D[i-1]>d){PICK[i]=PICK[i-1];PICK_D[i]=PICK_D[i-1];i--;}
         PICK[i]=e;PICK_D[i]=d;return Math.min(n+1,PICK_TESTS);
     }
+    /** Escorts guard the wagon (AI fix 2026-11-11, audit C1 and C2): a Convoy escort troop within guardNear of the wagon gets the wagon's position, so
+     *  its pick puts enemies within guardRadius of the wagon (onWagon: a single defender within push range stops it) before any other. Target choice
+     *  only, for player and bot escorts alike: it moves no troop. null in any other mode, for the defence, and for an escort troop farther off. */
+    static Vec3d guardPoint(GravesAndGlory.Battle battle,GravesAndGlory.Unit u){
+        if(!(battle.mode instanceof ConvoyMode c)||u.squad.team!=ConvoyMode.ESCORT||c.wagon==null||c.finished||ConvoyMode.R.guardRadius()<=0)return null;
+        Vec3d w=c.wagon.getPos();double near=ConvoyMode.R.guardNear();
+        return GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(),w)<=near*near?w:null;
+    }
+    static boolean onWagon(Vec3d guard,Entity e){double r=ConvoyMode.R.guardRadius();return GravesAndGlory.Battle.horizontalDistance(e.getPos(),guard)<=r*r;}
+    /** A scan candidate for the pick (offer): by the wagon, enemies on it first (their distance less GUARD_FIRST); with a target held for later, only those. */
+    static int guarded(int n,Vec3d guard,LivingEntity held,LivingEntity e,double d){
+        if(guard==null)return offer(n,e,d);
+        boolean on=onWagon(guard,e);
+        if(held!=null&&!on)return n;
+        return offer(n,e,on?d-GUARD_FIRST:d);
+    }
+    static final double GUARD_FIRST=1e7;
     static void tick(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,long time){
         hop(u,time); // a wall troop jumping onto its slot on a rise is carried over the edge every tick of the jump
         if(u.lockedTarget!=null&&!u.lockedTarget.isAlive())u.lockedTarget=null; // a fallen enemy lies a while (Task 7): drop it at once, not on the next beat
@@ -295,9 +312,12 @@ final class Tactics {
         if(slotted&&u.spec.ranged())engage=keep;
         boolean holdRanged=hold&&!holdSiege&&u.spec.ranged(); // a ranged troop on Hold (or arrived) shoots any enemy it sees within its weapon's reach, from its slot: it never walks out after one
         if(holdRanged)engage=Math.max(engage,keep);
-        LivingEntity enemy=null,close=null;double nearest=engage*engage,closest=nearest; // enemy: the one it picks (never one inside its minimum range); close: the nearest of any, which a ranged troop backs off from
+        boolean told=false;LivingEntity enemy=null,close=null;double nearest=engage*engage,closest=nearest; // enemy: the one it picks (never one inside its minimum range); close: the nearest of any, which a ranged troop backs off from
         if(order.engage()&&u.lockedTarget!=null&&u.lockedTarget.isAlive()&&time<u.lockUntil&&mob.squaredDistanceTo(u.lockedTarget)<nearest*(holdSiege?1:1.4)&&!Abilities.tooClose(u,mob.squaredDistanceTo(u.lockedTarget))&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,u.lockedTarget.getPos())&&(!lane||ahead(u,a,u.lockedTarget.getPos()))&&remembers(u,u.lockedTarget,time))enemy=u.lockedTarget; // kept while seen within sightMemoryTicks, so a step behind a post does not drop it
-        if(order.engage()&&a.enemy>=0&&battle.world.getEntityById(a.enemy) instanceof LivingEntity explicit&&explicit.isAlive()&&sees(u,explicit,time)&&!Abilities.tooClose(u,mob.squaredDistanceTo(explicit))){enemy=explicit;a.target=explicit.getPos();}
+        if(order.engage()&&a.enemy>=0&&battle.world.getEntityById(a.enemy) instanceof LivingEntity explicit&&explicit.isAlive()&&sees(u,explicit,time)&&!Abilities.tooClose(u,mob.squaredDistanceTo(explicit))){enemy=explicit;a.target=explicit.getPos();told=true;}
+        Vec3d guard=order.engage()?guardPoint(battle,u):null; // Convoy: an escort troop near the wagon puts the defenders on it first (one there stops it)
+        LivingEntity held=null;
+        if(enemy!=null&&!told&&guard!=null&&!onWagon(guard,enemy)){held=enemy;enemy=null;} // it keeps its target only if no defender on the wagon is in sight
         if(enemy!=null){nearest=mob.squaredDistanceTo(enemy);close=enemy;closest=nearest;}
         boolean locked=enemy!=null;
         // The scan: every enemy troop and commander inside the engage radius and the leash. close is the nearest of any (a ranged troop backs off
@@ -309,17 +329,18 @@ final class Tactics {
                 if(!(d<closest||d<nearest))continue;
                 if(!leash(u,a,hold,holdSiege,slotted,slot,keep,engage,other.mob.getPos())||lane&&!ahead(u,a,other.mob.getPos()))continue;
                 if(d<closest){close=other.mob;closest=d;}
-                if(d<nearest&&!Abilities.tooClose(u,d))found=offer(found,other.mob,d);
+                if(d<nearest&&!Abilities.tooClose(u,d))found=guarded(found,guard,held,other.mob,d);
             }
             for(ServerPlayerEntity p:battle.server.getPlayerManager().getPlayerList()){
                 var other=battle.squads.get(p.getUuid());if(other!=null&&other.team!=s.team&&!p.isSpectator()&&p.isAlive()&&leash(u,a,hold,holdSiege,slotted,slot,keep,engage,p.getPos())&&(!lane||ahead(u,a,p.getPos()))){
                     double d=mob.squaredDistanceTo(p);
                     if(d<closest){close=p;closest=d;}
-                    if(d<nearest&&!Abilities.tooClose(u,d))found=offer(found,p,d);
+                    if(d<nearest&&!Abilities.tooClose(u,d))found=guarded(found,guard,held,p,d);
                 }
             }
-            for(int k=0;k<found;k++)if(sees(u,PICK[k],time)){enemy=PICK[k];nearest=PICK_D[k];break;}
+            for(int k=0;k<found;k++)if(sees(u,PICK[k],time)){enemy=PICK[k];nearest=mob.squaredDistanceTo(enemy);break;}
             java.util.Arrays.fill(PICK,0,found,null);
+            if(enemy==null&&held!=null){enemy=held;nearest=mob.squaredDistanceTo(held);locked=true;} // no defender on the wagon in sight: back to the target it held
         }
         if(order.engage()&&!locked){var drawn=GearCombat.taunter(battle,u);if(drawn!=null&&!Abilities.tooClose(u,mob.squaredDistanceTo(drawn))&&(!lane||ahead(u,a,drawn.getPos()))&&(!volley||mob.squaredDistanceTo(drawn)<=engage*engage)){enemy=drawn;nearest=mob.squaredDistanceTo(drawn);close=drawn;closest=nearest;}} // taunt_aura: a share of the troops near a commander wearing it pick him
         if(order.engage()&&!locked&&enemy==null)for(var st:battle.structures){ // a supply banner is a target when no troop or commander is: the army first, then its commander, then its banner

@@ -149,6 +149,7 @@ for r in data.get('modeRules',[]):
     if r['id']=='convoy':
         if not 0<r['speedOne']<=r['speedTwo']<=r['speedThree']: errors.append(f'{where}: push speeds must be above 0 and never fall with more pushers')
         if not 0<r['uphill']<=1<=r['downhill']: errors.append(f'{where}: uphill must be in (0,1] and downhill at least 1')
+        if not 0<=r['guardRadius']<=r['guardNear']: errors.append(f'{where}: escort guard needs 0 <= guardRadius <= guardNear (troops within guardNear of the wagon prefer enemies within guardRadius of it)')
     if r['id']=='siege' and not (r['keepEdgeAttackers']>0 and r['keepEdgeDefenders']>=r['keepEdgeAttackers']): errors.append(f'{where}: the keep edge is attackers of defenders, 0 < keepEdgeAttackers <= keepEdgeDefenders')
 if 'convoy' in mode_ids and 'convoy' not in rule_rows: errors.append('modeRules: the convoy mode needs its row')
 if 'siege' in mode_ids and 'siege' not in rule_rows: errors.append('modeRules: the siege mode needs its row')
