@@ -366,7 +366,6 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     }
     static void campHud(DrawContext g,int w,int h){
         var c=MinecraftClient.getInstance();if(c.currentScreen!=null)return;
-        if(CampaignClient.padCountdown>0)g.drawCenteredTextWithShadow(c.textRenderer,"War gates: "+CampaignClient.padCountdown+"s / Step off to cancel",w/2,24,DarkUi.GOLD);
         else if(CampaignClient.waiting)g.drawCenteredTextWithShadow(c.textRenderer,"A battle is underway / Your camp remains open",w/2,24,DarkUi.MUTED);
     }
     /** Relic slot 0 in the HUD's ability slot (BattleHud.ability). The slot reads the state packet's test-ability triple, which is "none" in play, so the relic the packet

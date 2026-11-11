@@ -132,7 +132,7 @@ public final class BotSimulation implements ModInitializer {
         notReady=0;if(probe&&building){building=false;buildNs=System.nanoTime()-buildStartNs;}if(b.running)return;
         int map=maps[match%maps.length];
         if(b.campaign.map!=map){lobbyTicks=0;if(probe){building=true;buildStartNs=System.nanoTime();buildTickCount=0;}b.campaign.switchMap(map);return;}
-        // A real round starts from the camp at least one ready-pad countdown after the arena is ready (Campaign.padTick, 200 ticks); starting in the ready tick put
+        // A real round starts from the camp some time after the arena is ready (a room's start, a practice press); starting in the ready tick put
         // the build's last step (landmarks, overlay, war table, mapReady) inside the round's tick 0 (docs/reports/perf-targets-2026-11-02.md, tick 0 fix).
         if(++lobbyTicks<LOBBY_TICKS)return;lobbyTicks=0;
         var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;c.lastWinner=ABORTED;c.battleMode=simMode;

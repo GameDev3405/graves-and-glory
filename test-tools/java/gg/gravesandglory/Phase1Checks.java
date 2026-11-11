@@ -37,6 +37,12 @@ public final class Phase1Checks implements ClientModInitializer {
     /** A suite that sees every HUD frame (Fabric's HUD callback runs after InGameHud has drawn the status bars), including frames
      *  while the client's ready is false, when step() does not run. clientTick runs every client tick, ready or not. */
     public interface HudWatch { void hudFrame(MinecraftClient c); default void clientTick(MinecraftClient c){} }
+    /** A lone commander's 3v3 against five bots, as the ready pads used to start one (their start is gone; this seats him on Dawn, bot fill on, no room, no battle row): the state a skirmish round reads, then startRound. */
+    static void startSolo3v3(GravesAndGlory.Battle b,UUID player){
+        var c=b.campaign;c.closeParty();c.practice=false;c.size=3;c.fill=true;c.activeRoom="";c.activeBattle=null;
+        for(var squad:b.squads.values())if(!squad.bot){squad.seated=squad.owner.equals(player);if(squad.seated)squad.team=0;}
+        b.startRound();
+    }
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
     static{SUITES.put("combat",Combat::new);SUITES.put("ui-lobby",LobbyChecks::new);SUITES.put("ui-bannerfield",BannerFieldChecks::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);SUITES.put("ui-report",UiReportChecks::new);SUITES.put("gear",GearChecks::new);SUITES.put("gear-combat",GearCombatChecks::new);SUITES.put("ui-gear",GearScreenChecks::new);SUITES.put("gear-art",GearArtChecks::new);SUITES.put("house-art",HouseArtChecks::new);SUITES.put("weapon-look",WeaponLookChecks::new);SUITES.put("geo-knight",GeoKnightChecks::new);SUITES.put("stalker-reel",StalkerReelChecks::new);SUITES.put("geo-perf",GeoPerfChecks::new);SUITES.put("prop-look",PropLookChecks::new);SUITES.put("prop-gameplay",PropGameplayChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
@@ -910,8 +916,8 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(b.campaign.difficulty.equals("easy")){buttonOk=true;b.command(sp(b),"difficulty:hard");System.out.println("[p1] Bots button moved the tier hard -> easy; command set it back to "+b.campaign.difficulty);next(b,6);}
                     else if(since(b)>100){System.out.println("[p1] Bots button press did not reach the server; difficulty is "+b.campaign.difficulty);b.command(sp(b),"difficulty:hard");next(b,6);}
                 }
-                case 6->{ // a solo pad 3v3 match: every bot takes the tier; the command is refused while it runs
-                    var c=b.campaign;c.closeParty();c.onPad.clear();c.onPad.put(player,0);c.mapVotes.clear();c.startQuickMatch();c.introUntil=b.time;
+                case 6->{ // a solo 3v3 match: every bot takes the tier; the command is refused while it runs
+                    var c=b.campaign;startSolo3v3(b,player);c.introUntil=b.time;
                     var bots=b.squads.values().stream().filter(s->s.bot).toList();
                     tiersOk=b.running&&bots.size()==5&&bots.stream().allMatch(s->s.tier.equals("hard"));
                     tiersWhy=bots.size()+" bots with tiers "+bots.stream().map(s->s.tier).toList()+" (running="+b.running+", "+c.size+"v"+c.size+")";
@@ -1138,7 +1144,7 @@ public final class Phase1Checks implements ClientModInitializer {
             }
             if(stage==14&&GravesAndGloryClient.running)padSeen.add(CampaignClient.tutorial);
             if(stage==15&&!padReported){padReported=true;
-                report("p1-tutorial-not-on-pads",padOk&&padSeen.equals(Set.of(-1)),padWhy+"; client lesson values while the match ran "+padSeen+" (expected only -1)");
+                report("p1-tutorial-not-in-skirmish",padOk&&padSeen.equals(Set.of(-1)),padWhy+"; client lesson values while the match ran "+padSeen+" (expected only -1)");
                 server(c,b->next(b,99));
             }
             if(stage==99&&!finished){finished=true;finish(c,"tutorial");}
@@ -1180,14 +1186,14 @@ public final class Phase1Checks implements ClientModInitializer {
                     introUntil=b.campaign.introUntil;next(b,10);
                 }
                 case 11->{if(since(b)==20){replay.over=true;next(b,12);}} // the client reports reward-once, then 13
-                case 13->{ // a solo pad 3v3 for a fresh commander
+                case 13->{ // a solo 3v3 for a fresh commander
                     if(b.running){b.campaign.returnLobby();stageAt=b.time;return;}
                     if(since(b)<40)return;
-                    fresh(b);var c=b.campaign;c.closeParty();c.onPad.clear();c.onPad.put(player,0);c.mapVotes.clear();c.startQuickMatch();padWhy="";next(b,14);
+                    fresh(b);startSolo3v3(b,player);padWhy="";next(b,14);
                 }
                 case 14->{
                     int step=b.campaign.tutorialStep(player);if(!padWhy.contains("["+step+"]"))padWhy+="["+step+"]";
-                    if(since(b)>=60){padOk=b.running&&b.campaign.size==3&&padWhy.equals("[-1]");padWhy="solo pad match "+b.campaign.size+"v"+b.campaign.size+" running="+b.running+" for a fresh commander, server lessons over 60 ticks "+padWhy+" (expected only [-1])";b.campaign.returnLobby();next(b,15);}
+                    if(since(b)>=60){padOk=b.running&&b.campaign.size==3&&padWhy.equals("[-1]");padWhy="solo 3v3 match "+b.campaign.size+"v"+b.campaign.size+" running="+b.running+" for a fresh commander, server lessons over 60 ticks "+padWhy+" (expected only [-1])";b.campaign.returnLobby();next(b,15);}
                 }
                 default->{}
             }
@@ -2420,7 +2426,7 @@ public final class Phase1Checks implements ClientModInitializer {
         static final int[][] LAYOUT={{56,12,96,28},{184,12,112,28},{300,12,112,28},{532,12,112,28},{648,12,112,28},{764,12,112,28},{228,200,152,136},{392,188,176,160},{580,200,152,136},{796,340,80,24},{360,388,240,40},{416,12,112,28}};
         static final int[] PRACTICE_LO={228,200,152,136},PRACTICE_HI={216,188,176,160},SKIRMISH_LO={404,200,152,136};
         // the server thread writes these, the client thread reads them
-        volatile int stage;volatile UUID player;volatile boolean serverRunning,serverOnPad,serverRoom;volatile int padCountdown=-1;
+        volatile int stage;volatile UUID player;volatile boolean serverRunning,serverRoom;
         // client thread only
         int mark=-1,waitFrom,oldW,oldH,oldGui,runAt=-1,padAt=-1;boolean finished,focusOk=true,modesOk=true,scalesOk=true,noticeOk=true,badgesOk;
         String focusWhy="",modesWhy="",gatesWhy="",scalesWhy="",noticeWhy="",badgesWhy="";
@@ -2441,7 +2447,7 @@ public final class Phase1Checks implements ClientModInitializer {
         }
         static final String PRACTICE_SOLO="Practice is solo. Use a private room to play with your party.";
 
-        public void serverTick(GravesAndGlory.Battle b){serverRunning=b.running;var id=player;serverOnPad=id!=null&&b.campaign.onPad.containsKey(id);serverRoom=id!=null&&b.campaign.social.room(id)!=null;padCountdown=b.campaign.padCountdown;}
+        public void serverTick(GravesAndGlory.Battle b){serverRunning=b.running;var id=player;serverRoom=id!=null&&b.campaign.social.room(id)!=null;}
         /** Steps since the suite entered its current stage. */
         int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
         static WarTableHome home(MinecraftClient c){return c.currentScreen instanceof CampScreen s&&s.page.equals("home")?s.home:null;}
@@ -2601,17 +2607,12 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==5){click(c,box(c,"skirmish"));return;}
                     if(k==7){gatesWhy="a click on Skirmish, the plate \""+label()+"\"";click(c,box(c,"ride"));padAt=tick;return;}
                     if(k<7)return;
-                    // Kort, 2026-10-30: the War Table lobby is the skirmish's main path; Ride opens it and asks the server for a room (social:lobby). The pads keep working in camp.
+                    // Kort, 2026-10-30: the War Table lobby is the skirmish's main path; Ride opens it and asks the server for a room (social:lobby).
                     String room=CampaignClient.social.has("room")?CampaignClient.social.get("room").getAsString():"";
                     if(c.currentScreen instanceof CampScreen s&&s.page.equals("lobby")&&!room.isEmpty()){
                         gatesWhy+="; Ride: the War Table lobby opened "+(tick-padAt)+" ticks later with room "+room+" ("+CampaignClient.social.get("size").getAsInt()+" a side)";
                         report("p1-ui-home-gates",CampaignClient.social.get("size").getAsInt()==SocialHub.LOBBY_SIZE,gatesWhy);GravesAndGloryClient.send("social:exit");s.page("home");stage=11;}
                     else if(tick-padAt>60){report("p1-ui-home-gates",false,gatesWhy+"; Ride: no lobby with a room 60 ticks later (screen "+(c.currentScreen instanceof CampScreen s2?s2.page:String.valueOf(c.currentScreen))+", notice \""+CampaignClient.notice+"\")");stage=11;}
-                }
-                case 10->{ // stepping off the pad cancels it
-                    int k=since(tick);
-                    if(!serverOnPad&&padCountdown<0){report("p1-ui-home-gates",true,gatesWhy+"; moved off: off the pad with the countdown cancelled "+k+" ticks later");stage=11;}
-                    else if(k>60){report("p1-ui-home-gates",false,gatesWhy+"; 60 ticks after the move off: on the pad "+serverOnPad+", countdown "+padCountdown);stage=11;}
                 }
                 case 11->{ // p1-ui-home-props: the props' solid pixels stay 12 px inside the page and clear of everything a page can show
                     int k=since(tick);
@@ -3300,7 +3301,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** One of the server's reroll refusals. Null-safe (Set.of throws on null): a notice line no frame has drawn yet is none. */
         static boolean refused(String notice){return notice!=null&&REROLL_REFUSALS.contains(notice);}
         // the server thread writes these, the client thread reads them
-        volatile int stage,serverCountdown=-1;volatile UUID player;volatile boolean serverRoom,serverOnPad;volatile String serverDifficulty="";
+        volatile int stage;volatile UUID player;volatile boolean serverRoom;volatile String serverDifficulty="";
         // client thread only
         int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1,origMap=-1,cardAsked=-1,fieldRow,goldBefore,xpBefore,pick;boolean finished,ok=true,slid,scalesOk=true,cardsOk=true;
         String why="",before="",focusName="",scalesWhy="",cardsWhy="";List<String> roll=List.of();String at0="",at19="";CampScreen table;
@@ -3308,10 +3309,7 @@ public final class Phase1Checks implements ClientModInitializer {
         String house="";int shardsBefore;Progression.Grant gA,gW,gT;
         final Set<Integer> rollSeen=new TreeSet<>(),oathSeen=new TreeSet<>();
 
-        public void serverTick(GravesAndGlory.Battle b){var id=player;serverRoom=id!=null&&b.campaign.social.room(id)!=null;serverDifficulty=b.campaign.difficulty;
-            serverOnPad=id!=null&&b.campaign.onPad.containsKey(id);serverCountdown=b.campaign.padCountdown;}
-        /** The commander off the war gates, back where the camp puts its commanders. */
-        void stepOff(MinecraftClient c){server(c,b->{var p=b.server.getPlayerManager().getPlayer(player);if(p!=null)b.campaign.toLobby(p);});}
+        public void serverTick(GravesAndGlory.Battle b){var id=player;serverRoom=id!=null&&b.campaign.social.room(id)!=null;serverDifficulty=b.campaign.difficulty;}
         /** Box a lies inside box b. */
         static boolean in(int[] a,int[] b){return a!=null&&b!=null&&a[0]>=b[0]&&a[1]>=b[1]&&a[0]+a[2]<=b[0]+b[2]&&a[1]+a[3]<=b[1]+b[3];}
         int since(int tick){if(mark!=stage){mark=stage;waitFrom=tick;}return tick-waitFrom;}
@@ -3811,20 +3809,15 @@ public final class Phase1Checks implements ClientModInitializer {
             }
         }
 
-        /** The field: off the war gates every row is sepia and every Vote dull under the line that says where to stand; each row shows
-         *  its map's painted card; Hard sets the server's bots to hard, Normal puts them back. Then, at 1920x1080 GUI 2, the
-         *  commander on the war gates (camp:gates, as home's Ride sends it): every row in ink and every Vote live under the gates'
-         *  count (ui-page-field-gates); Vote on the camp's map brings the server's "Vote saved: <map>" on the notice line and the
-         *  label Voted on that row alone (ui-page-field-voted); stepped off, the rows go back to sepia and dull. A lone commander on
-         *  the gates starts the countdown to a match: he steps off long before it runs out. */
+        /** The field: every map row is in ink with no Vote beside it, under the line that says the war council's host picks the map; each
+         *  row shows its map's painted card; Hard sets the server's bots to hard, Normal puts them back. Then, at 1920x1080 GUI 2, the
+         *  page's layout (ui-page-field-1080). */
         void field(MinecraftClient c,int tick){
             int k=at(tick);int[] o=WarTable.origin();
-            if((sub==8||sub==9)&&serverCountdown>0&&serverCountdown<=60){ok=false;why+="; the war gates' countdown down to "+serverCountdown+" ticks (step "+sub+"): stepped off before a match could start WRONG";
-                stepOff(c);landedAt=-1;sub=10;subAt=tick;return;}
             switch(sub){
-                case 0->{boolean off=CampaignClient.padMine<0&&"Stand on the war gates to vote".equals(text("status"))&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("status"));
-                    for(int i=0;i<Spec.MAPS.length;i++){var v=button(c,"vote-"+i);off&=v!=null&&!v.active&&Spec.MAPS[i].name().equals(text("map-"+i))&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("map-"+i));}
-                    ok&=off;why+="; off the war gates: \""+text("status")+"\""+(off?", every row sepia and every Vote dull":" WRONG");fieldRow=0;click(c,box(c,"map-0"));next(tick);}
+                case 0->{boolean plain="The war council's host picks the map".equals(text("status"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("status"));
+                    for(int i=0;i<Spec.MAPS.length;i++){plain&=button(c,"vote-"+i)==null&&Spec.MAPS[i].name().equals(text("map-"+i))&&Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("map-"+i));}
+                    ok&=plain;why+="; the page says \""+text("status")+"\""+(plain?", every row in ink and no Vote":" WRONG");fieldRow=0;click(c,box(c,"map-0"));next(tick);}
                 case 1->{int i=fieldRow;String want="table/map-"+Spec.MAPS[i].id();if(k<2||!want.equals(tex("card"))&&k<40)return; // the card as a frame drew it: waits for the frame
                     boolean card=want.equals(tex("card"))&&Spec.MAPS[i].name().equals(text("card-name"))&&Arrays.equals(rect("card"),new int[]{o[0]+WarTablePages.CARD_X,o[1]+WarTablePages.CARD_Y,139,83});
                     ok&=card;why+=(i==0?"; each row's card: ":", ")+tex("card")+(card?"":" WRONG (want "+want+" at "+str(rect("card"))+")");
@@ -3843,36 +3836,7 @@ public final class Phase1Checks implements ClientModInitializer {
                         why+="; Normal sent "+lastSent()+": back to "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");landedAt=-1;next(tick);}
                     else if(!landed&&k>100){ok=false;why+="; Normal sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";landedAt=-1;next(tick);}}
                 case 6->{window(c,1920,1080,2,true);next(tick);}
-                case 7->{if(k==18)UiRecruitChecks.park(c);if(k<20)return;pick=Math.max(0,Math.min(Spec.MAPS.length-1,CampaignClient.map));GravesAndGloryClient.send("camp:gates");landedAt=-1;next(tick);}
-                // on the gates the server counts the commander (the snapshot's pads) and the page redraws a frame later: judged once a
-                // frame has drawn the gates' line and every row and Vote in ink (the snapshot can land in a frame drawn before the tick
-                // that makes the Votes live), or 20 ticks after the landing
-                case 8->{boolean landed=CampaignClient.padMine>=0&&serverOnPad;if(landed&&landedAt<0)landedAt=tick;String status=text("status");
-                    boolean inked=true;for(int i=0;i<Spec.MAPS.length;i++)inked&=Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("vote-"+i))&&Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("map-"+i));
-                    boolean drawn=status!=null&&status.startsWith("War gates: ")&&inked;
-                    if(landed&&k>=3&&(drawn||tick>=landedAt+20)){
-                        boolean live=drawn&&Integer.valueOf(DarkUi.INK_TEXT).equals(WarTablePages.colors().get("status"))&&status.contains((CampaignClient.padMine==0?"Dawn":"Dusk")+" 1 / ");
-                        List<String> votes=new ArrayList<>();
-                        for(int i=0;i<Spec.MAPS.length;i++){var v=button(c,"vote-"+i);boolean on=v!=null&&v.active&&"Vote".equals(text("vote-"+i));live&=on;votes.add(text("vote-"+i)+(on?" live":" dull"));}
-                        ok&=live;why+="; camp:gates sent: on the war gates (the snapshot's pad "+CampaignClient.padMine+", the server's "+serverOnPad+"), \""+status+"\""+(live?", every row in ink and every Vote live":" WRONG (rows and Votes drawn in ink "+inked+", the line's ink "+UiHomeChecks.hex(WarTablePages.colors().getOrDefault("status",0))+", "+votes+")")+"; 1920x1080 GUI 2, "+layout(c,"field");
-                        shot(c,"ui-page-field-gates");serial=CampaignClient.noticeSerial;landedAt=-1;click(c,box(c,"map-"+pick));click(c,box(c,"vote-"+pick));next(tick);}
-                    else if(!landed&&k>100){ok=false;why+="; camp:gates sent: the commander never stood on the war gates (the snapshot's pad "+CampaignClient.padMine+", the server's "+serverOnPad+") WRONG";stepOff(c);landedAt=-1;sub=10;subAt=tick;}}
-                case 9->{if(k==2)UiRecruitChecks.park(c);String name=Spec.MAPS[pick].name(),want=WarTablePages.VOTE_SAVED+name;
-                    boolean landed=CampaignClient.noticeSerial!=serial&&want.equals(CampaignClient.notice);if(landed&&landedAt<0)landedAt=tick;
-                    boolean drawn="Voted".equals(text("vote-"+pick))&&want.equals(text("notice"));
-                    if(landed&&k>=4&&(drawn||tick>=landedAt+20)){boolean others=true;for(int i=0;i<Spec.MAPS.length;i++)if(i!=pick)others&="Vote".equals(text("vote-"+i));
-                        boolean pass=("vote:"+pick).equals(lastSent())&&drawn&&others&&("table/map-"+Spec.MAPS[pick].id()).equals(tex("card"));ok&=pass;
-                        why+="; Vote on "+name+" sent "+lastSent()+": the notice line \""+text("notice")+"\", its row's label \""+text("vote-"+pick)+"\""+(others?", the others Vote":", WRONG: another row not Vote")+", the card "+tex("card")+(pass?"":" WRONG");
-                        shot(c,"ui-page-field-voted");stepOff(c);landedAt=-1;next(tick);}
-                    else if(!landed&&k>100){ok=false;why+="; Vote on "+name+" sent "+lastSent()+": no \""+want+"\" 100 ticks on (the notice \""+CampaignClient.notice+"\") WRONG";stepOff(c);landedAt=-1;next(tick);}}
-                case 10->{boolean off=CampaignClient.padMine<0&&!serverOnPad;if(off&&landedAt<0)landedAt=tick;
-                    boolean sepia=true;for(int i=0;i<Spec.MAPS.length;i++)sepia&=Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("vote-"+i))&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("map-"+i));
-                    boolean drawn="Stand on the war gates to vote".equals(text("status"))&&sepia;
-                    if(off&&k>=3&&(drawn||tick>=landedAt+20)){boolean dull=drawn&&Integer.valueOf(DarkUi.SEPIA).equals(WarTablePages.colors().get("status"));
-                        for(int i=0;i<Spec.MAPS.length;i++){var v=button(c,"vote-"+i);dull&=v!=null&&!v.active&&"Vote".equals(text("vote-"+i));}
-                        ok&=dull;why+="; stepped off (the server's pad "+serverOnPad+"): \""+text("status")+"\""+(dull?", every Vote dull and none Voted":" WRONG");landedAt=-1;next(tick);}
-                    else if(!off&&k>100){ok=false;why+="; stepped off: still on the war gates (the snapshot's pad "+CampaignClient.padMine+", the server's "+serverOnPad+") WRONG";landedAt=-1;stage=4;}}
-                case 11->{if(text("notice")==null||k>=200)stage=4;} // the vote's notice faded, for the grading shot
+                case 7->{if(k==18)UiRecruitChecks.park(c);if(k<20)return;why+="; 1920x1080 GUI 2, "+layout(c,"field");shot(c,"ui-page-field-1080");stage=4;}
                 default->stage=4;
             }
         }

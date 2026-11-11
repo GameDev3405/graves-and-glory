@@ -5781,7 +5781,7 @@
       "yaw": 0.0,
       "halfX": 2,
       "halfZ": 2,
-      "label": "WEST GATE / Stand here to ready"
+      "label": "WEST GATE / Open the war council"
     },
     {
       "id": "gate-east",
@@ -5793,7 +5793,7 @@
       "yaw": 0.0,
       "halfX": 2,
       "halfZ": 2,
-      "label": "EAST GATE / Stand here to ready"
+      "label": "EAST GATE / Open the war council"
     },
     {
       "id": "war-gates",
@@ -5805,7 +5805,7 @@
       "yaw": 0.0,
       "halfX": 3,
       "halfZ": 1,
-      "label": "WAR GATES / Local matches / Bots fill empty seats"
+      "label": "WAR GATES / War council rooms / Bots fill empty seats"
     },
     {
       "id": "drillmaster",

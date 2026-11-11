@@ -74,11 +74,6 @@ public final class CampaignChecks implements ClientModInitializer {
                 }
                 long stale=0;for(var e:b.world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")&&e.getClass()==net.minecraft.entity.mob.HuskEntity.class)stale++;
                 report("restart-clean-lobby",stale==0,"Hostile husks left from the earlier session: "+stale);}catch(Exception e){report("restart-collection",false,e.toString());}});}
-            if(tick==40)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var pad=CampaignMaps.padCenter(0);b.relocate(p,pad.x,pad.y,pad.z,90,0);});
-            if(tick==52)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var on=b.campaign.onPad.get(p.getUuid());String note=b.campaign.notices.getOrDefault(p.getUuid(),"");
-                report("pad-ready",on!=null&&on==0&&b.campaign.onPad.size()==1&&b.campaign.padCountdown>=0&&b.campaign.padCountdown<=200,"Solo commander is ready and the countdown is active: pad="+on+" countdown="+b.campaign.padCountdown+" notice="+note);});
-            if(tick==54)server(c,b->b.campaign.toLobby(b.server.getPlayerManager().getPlayer(c.player.getUuid())));
-            if(tick==66)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());report("pad-step-off",!b.campaign.onPad.containsKey(p.getUuid())&&b.campaign.padCountdown<0,"Stepping off the pad clears the ready state; pads="+b.campaign.onPad.size());});
             if(tick==70)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());UUID me=p.getUuid();var camp=b.campaign;
                 camp.closeParty();camp.handle(p,"party:open");
                 report("party-open",me.equals(camp.partyLeader)&&camp.party.contains(me),"Commander opens a custom lobby and leads it; leader="+camp.partyLeader);
@@ -150,14 +145,12 @@ public final class CampaignChecks implements ClientModInitializer {
             if(tick==1000){c.setScreen(new GravesAndGloryClient.LobbyScreen());report("campaign-suite",!failed,"Mechanical checks finished; local multiplayer joining is a separate run");shot(c,"final-lobby");}
             if(tick==1050)server(c,b->{
                 var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var camp=b.campaign;
-                var pad=CampaignMaps.padCenter(0);b.relocate(p,pad.x,pad.y,pad.z,90,0);camp.padMapRolled=true;
-                camp.padTick(); // since 0.3.5 a new ready group first resets the countdown, so this tick only seats him on the pad
-                camp.padCountdown=10;camp.padTick();
-                report("solo-pad-3v3",b.running&&camp.size==3&&b.squads.size()==6&&b.units.size()==fielded(b)&&eachFieldsBanner(b)&&b.squads.values().stream().filter(s->s.bot).count()==5,"One ready commander starts a 3v3 with five AI commanders");
+                Phase1Checks.startSolo3v3(b,p.getUuid()); // a lone commander's 3v3 with bot fill; the ready pads that used to start it are gone
+                report("solo-3v3-fill",b.running&&camp.size==3&&b.squads.size()==6&&b.units.size()==fielded(b)&&eachFieldsBanner(b)&&b.squads.values().stream().filter(s->s.bot).count()==5,"One commander starts a 3v3 with five AI commanders");
                 camp.finish(-1);if(backup!=null){camp.profiles.put(p.getUuid(),Campaign.JSON.fromJson(Campaign.JSON.toJson(backup),Profile.class));camp.save(p.getUuid());}
             });
             if(tick==1130)c.scheduleStop(); // a clean quit, so the next launch reopens the saved world and profile
-            if(tick==1080)report("roadmap-suite",!failed,"Full regression including solo ready-pad battle completed");
+            if(tick==1080)report("roadmap-suite",!failed,"Full regression including solo 3v3 battle completed");
         });
     }
 }

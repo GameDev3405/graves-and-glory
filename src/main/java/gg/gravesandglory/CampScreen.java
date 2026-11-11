@@ -49,8 +49,8 @@ final class CampScreen extends ArmyScreen {
             if(binding==null)continue;var bound=InputUtil.fromTranslationKey(binding.getBoundKeyTranslationKey());if(bound.getCategory()==InputUtil.Type.KEYSYM&&bound.getCode()>=0&&!keys.contains(bound.getCode()))keys.add(bound.getCode());}
         return keys;
     }
-    /** The page a name opens: the old names still sent (the war gates' match is the field, the private room is on Friends, the Quartermaster's army is the Banner), else the name. */
-    static String alias(String page){return switch(page){case "match"->"field";case "room"->"friends";case "army"->"banner";case "forge"->"gear";default->page;};}
+    /** The page a name opens: the old names still sent (the war gates' match is the war council, the private room is on Friends, the Quartermaster's army is the Banner), else the name. */
+    static String alias(String page){return switch(page){case "match"->"lobby";case "room"->"friends";case "army"->"banner";case "forge"->"gear";default->page;};}
     /** The House a station named (recruit:<house>, a tent of the House ring), which the recruit page opens on; "" for none. */
     String stationHouse="";
     /** A station: a page, or page:house (the House ring's tents send recruit:<house>), split on the first colon. */

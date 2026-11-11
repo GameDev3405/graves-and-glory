@@ -12,17 +12,8 @@ import java.util.*;
 /** Authored 700 by 500 battlefields. Routes are also terrain constraints. */
 public final class CampaignMaps {
     public static int selected=0;
-    /** The z of the camp origin and of the first row of the two ready pads, from the camp sheet. */
+    /** The z of the camp origin. */
     static final int LOBBY_Z=Spec.CAMP[0].originZ();
-    /** Ready pads: a four-block square on the lobby floor (the War Gates piece lays them). Dawn is on the west, Dusk on the east. */
-    static final int PAD_Z=LOBBY_Z+Spec.CAMP[0].padDz();
-    /** The west edge of a pad: pad0Dx for Dawn (team 0), pad1Dx for Dusk. */
-    static int padX(int team){var c=Spec.CAMP[0];return c.originX()+(team==0?c.pad0Dx():c.pad1Dx());}
-    /** The middle of a ready pad at standing height: (-9.0,65,-282.0) for Dawn and (10.0,65,-282.0) for Dusk. */
-    static net.minecraft.util.math.Vec3d padCenter(int team){return new net.minecraft.util.math.Vec3d(padX(team)+2.0,Spec.CAMP[0].floorY()+1,PAD_Z+2.0);}
-    static boolean onPad(int team,double x,double y,double z){double min=padX(team);return x>=min&&x<min+4&&z>=PAD_Z&&z<PAD_Z+4&&y>64&&y<68;}
-    /** The middle of a team's ready pad, the square onPad tests: where Ride to the war gates sets a commander down (UI name for padCenter). */
-    static net.minecraft.util.math.Vec3d padCentre(int team){return padCenter(team);}
     record Road(int ax,int az,int bx,int bz,int width){}
     static List<Road> roads=new ArrayList<>(),building=roads;
     /** How many objectives (capture points) a map has: the three crossings, plus the two flank outposts of Kingsfield (map 4). Read by the lobby without building the map. */

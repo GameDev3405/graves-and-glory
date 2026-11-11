@@ -18,7 +18,7 @@ import java.util.*;
  *  the twenty deployment seats on their sheet and the commander's role), Contracts (the three dailies, the reroll and the
  *  weekly), Chapter (the Founders reward track, as Kort approved it on 2026-10-18: the hero letter, the chapter block with the XP
  *  rail and the Claim plate, and the track of plaques in two rows), Friends (the camp's commanders, the party, invitations and
- *  the private room) and the Field (the map vote with each map's painted card, and the bots' tier). Each page has the back plaque
+ *  the private room) and the Field (each map's painted card, and the bots' tier). Each page has the back plaque
  *  (Esc) and the rail's other plaques; the open page's plaque is drawn lit and takes no press. Every page but the Chapter carries
  *  one focal title in IVORY with its shadow, centred on x 480 at top 84; the Chapter is named by its chapter block ("Chapter 1",
  *  "The Founders"), where the approved layout puts it. Every press sends the command the old camp pages sent, through
@@ -38,7 +38,6 @@ final class WarTablePages {
      *  to the track's right end at top 500, opposite the Oath's line. */
     static final int NOTICE_Y = 504, NOTICE_STEP = 13, NOTICE_W = 440, NOTICE_LINES = 2;
     static final int CHAPTER_NOTICE_R = 888, CHAPTER_NOTICE_Y = 500, CHAPTER_NOTICE_W = 400;
-    static final String VOTE_SAVED = "Vote saved: ";
 
     // Banner: the roll (recruit/muster-roll, rows as the recruit page has them), each row's Add and Remove tags, the sheet and its
     // 5 x 4 seats (front row first), the armed troop's band under the seats, and the commander's roles on the right.
@@ -116,11 +115,11 @@ final class WarTablePages {
     static final String CAMP_HOW = "To play together, host a camp on this network from Play with friends on the title screen; friends pick Join a server there.";
     static final String CAMP_OPEN = "This camp is open on your network: friends pick Play with friends, then Join a server, on their title screen.";
 
-    // Field: the sheet; on its left a row per map (its name, then Vote) and under them the war gates' line and the vote's rule;
+    // Field: the sheet; on its left a row per map (its name) and under them the line that says the war council picks the map;
     // on its right the card of the map in view with its name and description, and under them the bots' tier, its three tags
-    // centred under the card on the band of the war gates' lines. Both columns start 32 px under the sheet's top and end on
+    // centred under the card on the band of that line. Both columns start 32 px under the sheet's top and end on
     // that band, 40 px above its foot.
-    static final int FIELD_X = 220, FIELD_Y = 124, MAP_X = 236, MAP_Y = 156, MAP_STEP = 44, MAP_W = 176, VOTE_X = 420, STATUS_Y = 380;
+    static final int FIELD_X = 220, FIELD_Y = 124, MAP_X = 236, MAP_Y = 156, MAP_STEP = 44, MAP_W = 176, STATUS_Y = 380;
     static final int CARD_X = 544, CARD_Y = 156, CARD_CX = 612, CARD_TEXT_W = 208, BOTS_HEAD_Y = 362, BOTS_Y = STATUS_Y;
     static final String[] TIER_IDS = {"easy", "normal", "hard"};
     static final int[] TIER_X = {504, 576, 656}, TIER_W = {64, 72, 64};
@@ -245,8 +244,8 @@ final class WarTablePages {
     static final int DRAG_START = 6, PEND_TICKS = 100, FLY_MS = 150;
     /** Friends: the first commander of the camp's list shown. */
     int offset;
-    /** Field: the map whose card shows, and the map the war gates last took this commander's vote for (-1: none). */
-    int viewed, voted = -1;
+    /** Field: the map whose card shows. */
+    int viewed;
     /** Chapter: whether the arrows moved the track off its place, and where to; the first tier the last tick showed; the tier this
      *  page last claimed (its stamp is the wet one); and the tick the track began to slide. */
     boolean paged;
@@ -273,7 +272,7 @@ final class WarTablePages {
     /** The widget a name stands for, or null: back, recruit, banner, contracts, chapter, friends (the rail's, all but the open
      *  page's); Banner: row-(i), add-(i), remove-(i), seat-(i), clear; Contracts: claim-(i), reroll, claim-weekly;
      *  Chapter: claim, earlier, later, title-(t); Friends: invite-(k), more, accept, decline, lobby-accept, lobby-decline, lead-(i),
-     *  kick-(i), create, leave, disband, claim-lead, join-(k) (Join on a friend's row), council; Field: map-(i), vote-(i), bots-(tier). */
+     *  kick-(i), create, leave, disband, claim-lead, join-(k) (Join on a friend's row), council; Field: map-(i), bots-(tier). */
     UiButton button(String name) { return buttons.get(name); }
 
     UiButton add(String name, UiButton b) { buttons.put(name, b); return screen.add(b); }
@@ -320,7 +319,6 @@ final class WarTablePages {
             noticeSerialSeen = CampaignClient.noticeSerial;
             noticeText = CampaignClient.notice;
             if (!noticeText.isEmpty()) noticeAt = ticks;
-            for (int i = 0; i < Spec.MAPS.length; i++) if (noticeText.equals(VOTE_SAVED + Spec.MAPS[i].name())) voted = i;
         }
         if (page.equals("chapter")) slide();
         if (page.equals("banner")) dragTick();
@@ -494,7 +492,7 @@ final class WarTablePages {
         colorsDrawn.put("title", DarkUi.IVORY);
     }
 
-    /** The server's notice (a refusal, a claim's reward, a saved vote) in IVORY, on two lines when one is too short, shown
+    /** The server's notice (a refusal, a claim's reward) in IVORY, on two lines when one is too short, shown
      *  WarTableHome.NOTICE_TICKS and then faded over NOTICE_FADE_TICKS, as home's and the recruit page's are. */
     void notice(DrawContext g, int ox, int oy) {
         long age = ticks - noticeAt;
@@ -2180,9 +2178,7 @@ final class WarTablePages {
         for (int i = 0; i < Spec.MAPS.length; i++) {
             final int index = i;
             int y = oy + MAP_Y + MAP_STEP * i;
-            String vote = "vote-" + i;
             add("map-" + i, new UiButton(ox + MAP_X, y, MAP_W, 28, Text.literal(Spec.MAPS[i].name()), b -> viewed = index, (g, x, by, w, h, hot) -> paintMapRow(g, index, x, by)));
-            add(vote, new UiButton(ox + VOTE_X, y + 2, 64, 24, Text.literal("Vote"), b -> send("vote:" + index), (g, x, by, w, h, hot) -> vellum(g, vote, x, by, w, h, index == voted && CampaignClient.padMine >= 0 ? "Voted" : "Vote", false)));
         }
         for (int i = 0; i < TIER_IDS.length; i++) {
             String id = TIER_IDS[i], key = "bots-" + id, label = CampaignClient.tierName(id);
@@ -2190,20 +2186,15 @@ final class WarTablePages {
         }
     }
 
-    /** Vote takes a press only on the war gates with no battle running (the server's rule); the bots' tier while none runs. */
+    /** The bots' tier takes a press while no battle runs (the server's rule). */
     void refreshField() {
-        boolean gate = CampaignClient.padMine >= 0 && !GravesAndGloryClient.running;
-        for (int i = 0; i < Spec.MAPS.length; i++) {
-            var b = buttons.get("vote-" + i);
-            if (b != null) b.active = gate;
-        }
         for (String id : TIER_IDS) {
             var b = buttons.get("bots-" + id);
             if (b != null) b.active = !GravesAndGloryClient.running;
         }
     }
 
-    /** The sheet: the map rows (widgets, paintMapRow), the war gates' line and the vote's rule under them; the card of the map in
+    /** The sheet: the map rows (widgets, paintMapRow) and the line under them that says where the map is picked; the card of the map in
      *  view with its name and description, and the bots' heading over their tiers (widgets) under it. */
     void field(DrawContext g, int ox, int oy) {
         var font = font();
@@ -2219,22 +2210,18 @@ final class WarTablePages {
         textsDrawn.put("card-name", map.name());
         var desc = UiMath.lines(map.description(), CARD_TEXT_W, 3, s -> font.getWidth(DarkUi.body(s)));
         for (int i = 0; i < desc.size(); i++) WarTableHome.centred(g, DarkUi.body(desc.get(i)), ox + CARD_CX, oy + CARD_Y + 110 + 13 * i, DarkUi.SEPIA);
-        boolean gate = CampaignClient.padMine >= 0 && !GravesAndGloryClient.running;
-        String status = gate ? "War gates: Dawn " + CampaignClient.padDawn + " / " + CampaignClient.padSize + ", Dusk " + CampaignClient.padDusk + " / " + CampaignClient.padSize
-            + (CampaignClient.padCountdown > 0 ? ", " + CampaignClient.padCountdown + " s" : "") : "Stand on the war gates to vote";
-        if (GravesAndGloryClient.running) { gate = false; status = "A battle is on: votes open when it ends"; }
-        text(g, "status", DarkUi.body(status), status, ox + MAP_X, oy + STATUS_Y, gate ? DarkUi.INK_TEXT : DarkUi.SEPIA);
-        g.drawText(font, DarkUi.body("Most votes wins; a tie goes to the map listed first."), ox + MAP_X, oy + STATUS_Y + 13, DarkUi.SEPIA, false);
+        String status = GravesAndGloryClient.running ? "A battle is on: the maps wait for it to end" : "The war council's host picks the map";
+        text(g, "status", DarkUi.body(status), status, ox + MAP_X, oy + STATUS_Y, DarkUi.INK_TEXT);
+        g.drawText(font, DarkUi.body("Open the war council from the table's home page."), ox + MAP_X, oy + STATUS_Y + 13, DarkUi.SEPIA, false);
         WarTableHome.centred(g, DarkUi.heading("Bots"), ox + CARD_CX, oy + BOTS_HEAD_Y, DarkUi.INK_TEXT);
         textsDrawn.put("bots-current", CampaignClient.tierName(CampaignClient.difficulty));
     }
 
-    /** A map's row: its name, INK while a vote can be cast and SEPIA while not, a tack by the map whose card shows; a click shows
-     *  its card. */
+    /** A map's row: its name in INK, a tack by the map whose card shows; a click shows its card. */
     void paintMapRow(DrawContext g, int i, int x, int y) {
         var font = font();
         var b = buttons.get("map-" + i);
-        int ink = CampaignClient.padMine >= 0 && !GravesAndGloryClient.running ? DarkUi.INK_TEXT : DarkUi.SEPIA;
+        int ink = DarkUi.INK_TEXT;
         if (i == viewed) UiTex.draw(g, "table/tack", x + 2, y + 11);
         String name = UiMath.trim(Spec.MAPS[i].name(), MAP_W - 20, s -> font.getWidth(DarkUi.heading(s)));
         g.drawText(font, DarkUi.heading(name), x + 14, y + 8, ink, false);

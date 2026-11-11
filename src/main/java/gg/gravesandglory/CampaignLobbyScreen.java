@@ -100,7 +100,7 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             text(g,name+(isLead?"  (lead)":""),rx+(i/6)*(rw/4),155+(i%6)*12,rw/4-8,isLead?DarkUi.GOLD:DarkUi.IVORY);i++;}
         if(lead)text(g,"INVITE ONLINE COMMANDERS",rx,262,rw,DarkUi.MUTED);
         else if(member)text(g,"Only the lead can invite commanders or start the battle.",rx,262,rw,DarkUi.MUTED);
-        text(g,lead?"Invite commanders, then start the battle when you are ready.":member?"Waiting for the lead to start.":"Stand on a pad to quick-match, or wait for an invitation.",18,height-23,width-230,DarkUi.MUTED);
+        text(g,lead?"Invite commanders, then start the battle when you are ready.":member?"Waiting for the lead to start.":"Open the war council at the war table, or wait for an invitation.",18,height-23,width-230,DarkUi.MUTED);
     }
     void text(DrawContext g,String value,int x,int y,int max,int color){g.drawText(textRenderer,net.minecraft.util.Language.getInstance().reorder(textRenderer.trimToWidth(DarkUi.body(value),max)),x,y,color,false);}
     @Override public void render(DrawContext g,int mx,int my,float delta){
@@ -125,10 +125,8 @@ public class CampaignLobbyScreen extends GravesAndGloryClient.ArmyScreen {
             text(g,"700 x 500 blocks / "+CampaignMaps.objectiveCount(CampaignClient.map)+" objectives",24,height-68,lw-16,DarkUi.MUTED);
             int total=CampaignClient.mode.equals("ai")?2:Integer.parseInt(CampaignClient.mode)*2;
             text(g,total+" commander slots",rx,height-72,rw,DarkUi.MUTED);
-            String hint=CampaignClient.lead?(hasResult?"Choose the battlefield, then open a custom lobby to play again.":"Choose your battlefield, then start from the Custom lobby tab."):(hasResult?"Stand on a pad or open a custom lobby to play again.":"Only the custom lobby lead chooses the battlefield. Stand on a pad to quick-match.");
+            String hint=CampaignClient.lead?(hasResult?"Choose the battlefield, then open a custom lobby to play again.":"Choose your battlefield, then start from the Custom lobby tab."):(hasResult?"Open the war council at the war table to play again.":"Only the custom lobby lead chooses the battlefield. Open the war council at the war table to play in a room.");
             text(g,hint,18,height-23,width-230,DarkUi.MUTED);
-            if(CampaignClient.padCountdown>0)text(g,"Match starts in "+CampaignClient.padCountdown+" s / "+CampaignClient.padSize+"v"+CampaignClient.padSize,18,height-44,width-230,DarkUi.GOLD);
-            else if(CampaignClient.padDawn+CampaignClient.padDusk>0)text(g,"On pads: Dawn "+CampaignClient.padDawn+", Dusk "+CampaignClient.padDusk+" / plays "+CampaignClient.padSize+"v"+CampaignClient.padSize,18,height-44,width-230,DarkUi.MUTED);
         }else if(tab==1){
             var catalog=RosterMath.Catalog.fromSpec();var line=CampaignClient.profile.banner;int used=(int)line.stream().filter(id->!id.equals(RosterMath.EMPTY)).count();
             text(g,"BANNER / "+RosterMath.units(line,catalog)+" UNITS IN "+used+" OF "+line.size()+" SLOTS",16,74,width/2-28,DarkUi.GOLD);

@@ -314,7 +314,7 @@ final class WarTableHome {
         switch (focused) {
             case 0 -> screen.action("camp:practice");
             case 2 -> { if (CampaignClient.seasonLock(next()).isEmpty()) screen.action("campaign:" + next().id()); } // a chapter whose season has not begun waits (brief G2)
-            default -> screen.page("lobby"); // the War Table lobby (plan 3.4): seats, Houses, classes and the host's orders; the war gates' pads still work in camp
+            default -> screen.page("lobby"); // the War Table lobby (plan 3.4): seats, Houses, classes and the host's orders
         }
     }
 
@@ -469,7 +469,7 @@ final class WarTableHome {
             seals(g, x + 16, y + 30);
             textsDrawn.put("field-card", "seals");
         } else textsDrawn.put("field-card", "none");
-        int n = switch (focused) { case 0 -> 1; case 2 -> row.size(); default -> CampaignClient.padSize; };
+        int n = switch (focused) { case 0 -> 1; case 2 -> row.size(); default -> SocialHub.LOBBY_SIZE; };
         String tier = CampaignClient.tierName(march ? row.difficulty() : CampaignClient.difficulty);
         String rule = Modes.ruleLine(march ? row.mode() : Modes.DOMINATION);
         String teams = march ? MarchMath.battleLine(row, Spec.CAMPAIGNBATTLES, Spec.CAMPAIGNCHAPTERS, tier) : n + " v " + n + ", " + tier + (n == 1 ? " bot" : " bots");

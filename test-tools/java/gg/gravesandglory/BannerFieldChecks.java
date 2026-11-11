@@ -9,17 +9,17 @@ import static gg.gravesandglory.Phase1Checks.*;
  *  server, each in a normal, an empty and an error state, shot at 1920x1080 (canvas scale 2) and 2560x1440 (scale 3), GUI Auto,
  *  borderless. Scenes: banner-normal (a mixed banner, a wide troop), banner-empty (one troop, no seat filled), banner-empty-house
  *  (a House with no troop recruited), banner-error (a third Epic refused by the server), banner-battle (a round is on),
- *  field-normal (on the war gates with a saved vote), field-empty (off the gates), field-error (a round is on). Every shot is
+ *  field-normal (a commander with a mixed banner), field-empty (a commander back in the camp), field-error (a round is on). Every shot is
  *  judged: the page is open at the wanted scale, no widget overlaps another, and every widget and drawn box sits 12 px inside the
  *  canvas and clear of the rail (UiHomeChecks.fits). Shots: run/screenshots/p1-bf-(scene)-(1080|1440).png. */
 final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch {
     static final String[] SCENES = {"banner-normal", "banner-empty", "banner-empty-house", "banner-error", "field-normal", "field-empty", "field-error", "banner-battle",
         "drag-valid", "drag-invalid", "drag-ghost", "drag-unseat",
         "drop-roll-empty", "drop-roll-wide", "drop-roll-refused", "drop-move-empty", "drop-swap", "drop-swap-wide", "drop-unseat", "drop-snap", "drop-cancel", "drop-same", "drop-click"};
-    volatile UUID player;volatile boolean serverOnPad,serverRunning;
+    volatile UUID player;volatile boolean serverRunning;
     int scene,phase,pAt,sub,oldW,oldH,oldGui,serial;boolean started,finished;String saved;List<String> want=List.of();String note="";
 
-    public void serverTick(GravesAndGlory.Battle b){var id=player;serverOnPad=id!=null&&b.campaign.onPad.containsKey(id);serverRunning=b.running;}
+    public void serverTick(GravesAndGlory.Battle b){serverRunning=b.running;}
 
     void go(int next,int tick){phase=next;pAt=tick+1;sub=0;} // k reads 0 on the next tick
     static String page(String scene){return scene.startsWith("field")?"field":"banner";}
@@ -56,10 +56,9 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         } else if(name.equals("banner-battle")){
             want=banner(name).banner;
         } else if(name.equals("field-normal")){
-            server(c,b->{if(b.running)b.campaign.returnLobby();var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,banner("banner-normal"));b.campaign.mapVotes.remove(id);});
-            GravesAndGloryClient.send("camp:gates");
+            server(c,b->{if(b.running)b.campaign.returnLobby();var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,banner("banner-normal"));});
         } else if(name.equals("field-empty")){
-            server(c,b->{var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.mapVotes.remove(id);});
+            server(c,b->{var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);});
         } else if(name.equals("field-error")){
             server(c,b->{var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,banner("banner-normal"));b.campaign.save(id);});
         }
@@ -68,8 +67,8 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
     /** Whether the scene's state has reached the client. */
     boolean ready(MinecraftClient c,String name,int tick){
         switch(name){
-            case "field-normal": return CampaignClient.padMine>=0&&serverOnPad&&CampaignClient.profile.banner.equals(banner("banner-normal").banner);
-            case "field-empty": return CampaignClient.padMine<0&&!serverOnPad&&!GravesAndGloryClient.running;
+            case "field-normal": return CampaignClient.profile.banner.equals(banner("banner-normal").banner)&&!GravesAndGloryClient.running;
+            case "field-empty": return !GravesAndGloryClient.running;
             case "field-error": case "banner-battle": return GravesAndGloryClient.running&&CampaignClient.waiting&&serverRunning; // seated players cannot open the War Table in a round: the commander is stood down
             default: return CampaignClient.profile.banner.equals(want)&&!GravesAndGloryClient.running;
         }
@@ -88,11 +87,9 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                 if(k>120){note+="; no refusal notice 120 ticks on";return true;}
                 return false;
             }
-            case "field-normal": {
-                if(k==0){serial=CampaignClient.noticeSerial;UiPagesChecks.click(c,UiPagesChecks.box(c,"map-1"));return false;}
-                if(k==6)UiPagesChecks.click(c,UiPagesChecks.box(c,"vote-1"));
-                if(k>6&&CampaignClient.noticeSerial!=serial&&CampaignClient.notice.startsWith("Vote saved")){note+="; notice \""+CampaignClient.notice+"\"";return k>=14;}
-                if(k>120){note+="; no vote notice 120 ticks on";return true;}
+            case "field-normal": { // a click on the second map row shows its card; nothing is voted any more
+                if(k==0){UiPagesChecks.click(c,UiPagesChecks.box(c,"map-1"));return false;}
+                if(k>=8){note+="; map-1 clicked, no Vote beside it";return true;}
                 return false;
             }
             case "drag-valid": case "drag-invalid": case "drag-ghost": case "drag-unseat": {
@@ -137,7 +134,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                     else if(serverRunning&&!standDown){standDown=true;server(c,b->{var sq=b.squads.get(player);if(sq!=null)sq.seated=false;});}
                 }
                 if(ready(c,name,tick)&&k>=(name.equals("field-error")||name.equals("banner-battle")?150:30)&&CampaignClient.camera==null){go(1,tick);return;}
-                if(k>(name.equals("field-error")?2400:400)){report("p1-bf-"+name,false,"the state never reached the client: banner "+CampaignClient.profile.banner+" wanted "+want+" (valid: "+RosterMath.validBanner(want,RosterMath.Catalog.fromSpec(),banner(name).owned.keySet())+"), padMine "+CampaignClient.padMine+", running "+GravesAndGloryClient.running+", server running "+serverRunning+", onPad "+serverOnPad);scene++;go(0,tick);}
+                if(k>(name.equals("field-error")?2400:400)){report("p1-bf-"+name,false,"the state never reached the client: banner "+CampaignClient.profile.banner+" wanted "+want+" (valid: "+RosterMath.validBanner(want,RosterMath.Catalog.fromSpec(),banner(name).owned.keySet())+"), running "+GravesAndGloryClient.running+", server running "+serverRunning);scene++;go(0,tick);}
             }
             case 1->{ // the page from the table's door
                 if(k<60&&k%6==0&&UiPagesChecks.pages(c)==null){CampScreen.open(page(name));return;} // a round's opening may close it again

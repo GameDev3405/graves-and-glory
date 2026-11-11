@@ -40,6 +40,11 @@ import java.util.function.Supplier;
 
 /** Isolated real-client checks for Phase 3 (the built world). GRAVES_PHASE3_CHECKS=<suite>[,<suite>...]. Never included in releases. */
 public final class Phase3Checks implements ClientModInitializer {
+    /** The camp's two pad squares (decoration now: nothing stands on them for a match), from the camp sheet: Dawn on the west, Dusk on the east, four blocks on a side. */
+    static double padWest(int team){var c=Spec.CAMP[0];return c.originX()+(team==0?c.pad0Dx():c.pad1Dx());}
+    static double padNorth(){return Spec.CAMP[0].originZ()+Spec.CAMP[0].padDz();}
+    static net.minecraft.util.math.Vec3d padCenter(int team){return new net.minecraft.util.math.Vec3d(padWest(team)+2.0,Spec.CAMP[0].floorY()+1,padNorth()+2.0);}
+    static boolean padContains(int team,double x,double y,double z){double min=padWest(team);return x>=min&&x<min+4&&z>=padNorth()&&z<padNorth()+4&&y>64&&y<68;}
     public interface Suite { void step(MinecraftClient c,int tick);
         /** Client ticks the suite may take before it is failed as stuck (one tick is 50 ms). */
         default int limit(){return 2400;}
@@ -1176,15 +1181,15 @@ public final class Phase3Checks implements ClientModInitializer {
          *  The next two (fix round 1) look at the south rim as a commander meets it: from the west pad area toward the south-west, and from the east of the bowl toward the south-west across the gatehouse.
          *  The last three (fix round 2) look at the terrain itself: the bank of the ridge from the east side of the bowl, and each flank from above the middle of the bowl. */
         static final double[][] VIEWS={{0.5,67.6,-292.0,0.5,67,-330},{0.5,82,-361,0.5,64,-300},{0.5,110,-250,0.5,64,-320},{0.5,84,-361,0.5,78,-371},{0.5,67,-298,0.5,66,-276},{0.5,71.5,-271,0.5,67,-290},{30.5,68,-304,46,66,-304},{-9.5,66.6,-290.0,-36,76,-268},{30.5,66.6,-300.0,-30,76,-268},{44.5,67,-328,-6,71,-356},{-10.5,92,-330,-80,84,-330},{10.5,92,-330,80,84,-330}};
-        int stage,waited,page,pad,leashCase,shotIndex,mapIx,sub,frostIx;
+        int stage,waited,page,leashCase,shotIndex,mapIx,sub,frostIx;
         volatile boolean done;
         /** The maps the rim seam is looked at on, in the order they are built (map 0 stands from the start of the world). With GRAVES_BOX_DUMP set, map 0 is built once more at the end: the first map 0 was built before the rule that stops the random ticks could be set. */
         static final boolean DUMPING=System.getenv("GRAVES_BOX_DUMP")!=null&&!System.getenv("GRAVES_BOX_DUMP").isEmpty();
         static final int[] SEAM_MAPS=DUMPING?new int[]{0,1,2,3,4,0}:new int[]{0,1,2,3,4};
         final StringBuilder seamWhy=new StringBuilder();
         boolean seamOk=true;
-        final StringBuilder pagesBad=new StringBuilder(),padsWhy=new StringBuilder(),leashWhy=new StringBuilder();
-        boolean padsOk=true,leashOk=true;
+        final StringBuilder pagesBad=new StringBuilder(),leashWhy=new StringBuilder();
+        boolean leashOk=true;
         @Override public int limit(){return 16000;}
         @Override public void cleanup(MinecraftClient c){server(c,b->b.campaign.leash=true);}
         static Spec.PiecesRow piece(String id){for(var p:Spec.PIECES)if(p.id().equals(id))return p;throw new IllegalStateException("no pieces row "+id);}
@@ -1201,7 +1206,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 case 1->{if(done&&++waited>=20){done=false;server(c,b->{built(b);budget();stations(b);tableMap0(b);shapes(b);look(b);done=true;});stage=2;}}
                 case 2->{if(done){stage=3;page=0;waited=0;}}
                 case 3->{
-                    if(page>=PAGES.size()){report("p3-camp-pages",pagesBad.length()==0,pagesBad.length()==0?"every page opened its screen: "+String.join(", ",PAGES):pagesBad.toString());c.setScreen(null);stage=4;pad=0;waited=0;done=false;break;}
+                    if(page>=PAGES.size()){report("p3-camp-pages",pagesBad.length()==0,pagesBad.length()==0?"every page opened its screen: "+String.join(", ",PAGES):pagesBad.toString());c.setScreen(null);stage=4;waited=0;done=false;break;}
                     String want=PAGES.get(page);
                     if(waited==0){c.setScreen(null);server(c,b->GravesAndGlory.openCamp(b.server.getPlayerManager().getPlayer(c.player.getUuid()),want));waited=1;}
                     else if(++waited>14){
@@ -1210,16 +1215,7 @@ public final class Phase3Checks implements ClientModInitializer {
                         page++;waited=0;
                     }
                 }
-                case 4->{
-                    if(pad>=2){
-                        report("p3-camp-pads",padsOk,padsWhy.toString());server(c,b->b.campaign.toLobby(b.server.getPlayerManager().getPlayer(c.player.getUuid())));stage=5;waited=0;break;}
-                    int team=pad;
-                    if(waited==0){server(c,b->{var v=CampaignMaps.padCenter(team);b.relocate(b.server.getPlayerManager().getPlayer(c.player.getUuid()),v.x,v.y,v.z,0,0);});waited=1;}
-                    else if(++waited==42){done=false;server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var on=b.campaign.onPad.get(p.getUuid());var sq=b.squads.get(p.getUuid());
-                        boolean ok=on!=null&&on==team&&sq!=null&&sq.team==team;if(!ok)padsOk=false;
-                        padsWhy.append("pad ").append(team).append(" at ").append(CampaignMaps.padCenter(team)).append(": on pad ").append(on).append(", squad team ").append(sq==null?"none":sq.team).append(ok?" ok; ":" WRONG; ");done=true;});}
-                    else if(waited>42&&done){pad++;waited=0;}
-                }
+                case 4->{server(c,b->b.campaign.toLobby(b.server.getPlayerManager().getPlayer(c.player.getUuid())));stage=5;waited=0;} // the ready pads no longer start anything; the commander goes back to the camp's own spot
                 case 5->{if(++waited>=20){stage=6;leashCase=0;waited=0;}} // toLobby of the pads stage settles: the squad steps off, the countdown is gone
                 case 6->{
                     if(leashCase>=3){report("p3-camp-leash",leashOk,leashWhy.toString());stage=7;shotIndex=0;break;}
@@ -2513,7 +2509,7 @@ public final class Phase3Checks implements ClientModInitializer {
      *  After the legs: the arrival, parade, gates, pads and tent views again at dusk and at night (the world time is set; lanterns, braziers), the two flanks and the edges of the island seen from the ground, and the flight views (spectator camera: both pads from above,
      *  the war table, the island from outside). Pictures are screenshots/p3-cw-<NN>-<what>.png, each with a check line p3-cw-<NN>-<what> that says where the walker stood and looked.
      *  Checks: p3-cw-leg-<id> (the lane finished, no stuck window of 2 s with under 3 blocks gained, no forced step), p3-cw-walk (all legs: stuck windows, forced steps, auto-jumps, blocks walked), p3-cw-pad-west and p3-cw-pad-east (the walker stood on the pad: his feet inside it,
-     *  smooth quartz under him, Campaign.onPad has his team), p3-cw-stairs (the west flight climbed to feet 77 and the east flight descended to feet 65, no forced step), p3-cw-floating (floatBox over the island box and the rim rows, y from minY: no solid block that does not reach the
+     *  smooth quartz under him), p3-cw-stairs (the west flight climbed to feet 77 and the east flight descended to feet 65, no forced step), p3-cw-floating (floatBox over the island box and the rim rows, y from minY: no solid block that does not reach the
      *  floor), p3-cw-lantern (every lantern of the box could be placed where it hangs: LanternBlock.canPlaceAt), p3-cw-barrier (the 21 barriers are the arch's and no other barrier stands in the box), p3-cw-entities (no camp entity inside a block that stops him: villagers by their
      *  collision box, labels by the cell they stand in), p3-cw-labels (every label 3.7 above its row and, from the place the walker photographed it, all five sample points of its rectangle in sight; no two labels overlap in his view), p3-cw-pictures (the files exist),
      *  p3-cw-complete (every id of the walk was reported; only when no filter was given) and p3-cw-suite.
@@ -2528,7 +2524,7 @@ public final class Phase3Checks implements ClientModInitializer {
         final List<Leg> mine=new ArrayList<>();
         final Set<String> ids=Collections.synchronizedSet(new LinkedHashSet<>());
         volatile boolean scanned,arrived,labelsDone;
-        final double[][] padFeet=new double[2][];final boolean[] padQuartz=new boolean[2];final int[] padOn={-9,-9},padCount={-9,-9};
+        final double[][] padFeet=new double[2][];final boolean[] padQuartz=new boolean[2];
         double stairTop=Double.NaN,stairFoot=Double.NaN;
         final List<double[]> labelViews=Collections.synchronizedList(new ArrayList<>());
         volatile Map<String,double[]> spots=Map.of();
@@ -2774,8 +2770,6 @@ public final class Phase3Checks implements ClientModInitializer {
             switch(k[0]){
                 case "pad"->{
                     int team=Integer.parseInt(k[1]);padFeet[team]=new double[]{p.getX(),p.getY(),p.getZ()};padQuartz[team]=c.world.getBlockState(p.getBlockPos().down()).isOf(Blocks.SMOOTH_QUARTZ);
-                    UUID id=p.getUuid();
-                    server(c,b->{Integer on=b.campaign.onPad.get(id);padOn[team]=on==null?-1:on;padCount[team]=b.campaign.padCountdown;b.campaign.padCountdown=-1;}); // a fresh countdown: the walker is off the pad long before it ends
                 }
                 case "label"->{for(int i=0;i<Spec.CAMPSTATIONS.length;i++)if(Spec.CAMPSTATIONS[i].id().equals(k[1]))labelViews.add(new double[]{i,p.getX(),p.getEyeY(),p.getZ()});}
                 case "top"->stairTop=p.getY();
@@ -2797,9 +2791,9 @@ public final class Phase3Checks implements ClientModInitializer {
             for(int team=0;team<2;team++){
                 if(!ranLeg(team==0?"leg3b":"leg3c"))continue;
                 var f=padFeet[team];boolean has=f!=null;
-                boolean in=has&&CampaignMaps.onPad(team,f[0],f[1],f[2]);
-                var ctr=CampaignMaps.padCenter(team);
-                ck("p3-cw-pad-"+names[team],has&&in&&padQuartz[team]&&padOn[team]==team,has?String.format(Locale.ROOT,"the walker stood at (%.2f, %.2f, %.2f), the pad centre is (%.1f, %.1f, %.1f): inside the pad %s, smooth quartz under his feet %s, Campaign.onPad says team %d (want %d), ready countdown %d of 200 when he was photographed",f[0],f[1],f[2],ctr.x,ctr.y,ctr.z,in,padQuartz[team],padOn[team],team,padCount[team]):"the walker never reached the pad stop");
+                boolean in=has&&padContains(team,f[0],f[1],f[2]);
+                var ctr=padCenter(team);
+                ck("p3-cw-pad-"+names[team],has&&in&&padQuartz[team],has?String.format(Locale.ROOT,"the walker stood at (%.2f, %.2f, %.2f), the pad centre is (%.1f, %.1f, %.1f): inside the pad %s, smooth quartz under his feet %s",f[0],f[1],f[2],ctr.x,ctr.y,ctr.z,in,padQuartz[team]):"the walker never reached the pad stop");
             }
             Leg west=null,east=null;for(var l:mine){if(l.id.equals("4b-west-stair"))west=l;if(l.id.equals("4f-east-stair"))east=l;}
             if(west!=null||east!=null){
@@ -2864,7 +2858,7 @@ public final class Phase3Checks implements ClientModInitializer {
             note("SABOTAGE armor stand spawned "+spawned+" at "+stand.getPos()+", tags "+stand.getCommandTags()+", in the world "+(w.getEntity(stand.getUuid())!=null)+", block there "+w.getBlockState(BlockPos.ofFloored(stand.getPos())).getBlock());
             for(var e:w.iterateEntities())if(e instanceof net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity d&&d.getCommandTags().contains("camp:contracts")){d.setPosition(d.getX(),d.getY()+3.0,d.getZ());break;} // the Archivist's label into the roof
             for(int x=-3;x<=3;x++)for(int y=65;y<=67;y++)w.setBlockState(new BlockPos(OX+x,y,OZ+9),Blocks.STONE_BRICKS.getDefaultState(),flags); // a wall across the avenue, 3 high
-            for(int team=0;team<2;team++){var ctr=CampaignMaps.padCenter(team);for(int dx=-2;dx<=2;dx++)for(int dz=-2;dz<=2;dz++){var bp=new BlockPos((int)Math.floor(ctr.x)+dx,(int)Math.floor(ctr.y)-1,(int)Math.floor(ctr.z)+dz);if(w.getBlockState(bp).isOf(Blocks.SMOOTH_QUARTZ))w.setBlockState(bp,Blocks.STONE.getDefaultState(),flags);}} // the quartz floors of both pads become stone
+            for(int team=0;team<2;team++){var ctr=padCenter(team);for(int dx=-2;dx<=2;dx++)for(int dz=-2;dz<=2;dz++){var bp=new BlockPos((int)Math.floor(ctr.x)+dx,(int)Math.floor(ctr.y)-1,(int)Math.floor(ctr.z)+dz);if(w.getBlockState(bp).isOf(Blocks.SMOOTH_QUARTZ))w.setBlockState(bp,Blocks.STONE.getDefaultState(),flags);}} // the quartz floors of both pads become stone
             for(int x=-24;x<=-12;x++)for(int y=69;y<=72;y++)w.setBlockState(new BlockPos(OX+x,y,OZ-42),Blocks.STONE_BRICKS.getDefaultState(),flags); // a wall across the west stair, 4 high
         }
         void scan(GravesAndGlory.Battle b){

@@ -76,10 +76,6 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==905)GravesAndGloryClient.send("social:ready");
    if(tick==930)GravesAndGloryClient.send("social:start");
    if(tick==990){check("map-preparation-auto-start",GravesAndGloryClient.battleActive());server(c,b->{b.campaign.finish(-1);b.campaign.social.leaveRoom(c.player.getUuid());});}
-   if(tick==1020)server(c,b->{var pad=CampaignMaps.padCenter(0);b.relocate(b.server.getPlayerManager().getPlayer(c.player.getUuid()),pad.x,pad.y,pad.z,0,0);});
-   if(tick==1050)server(c,b->check("gate-pad-countdown",b.campaign.onPad.containsKey(c.player.getUuid())&&b.campaign.padCountdown>=0));
-   if(tick==1070)server(c,b->b.campaign.toLobby(b.server.getPlayerManager().getPlayer(c.player.getUuid())));
-   if(tick==1100)server(c,b->check("gate-step-off-cancels",!b.campaign.onPad.containsKey(c.player.getUuid())&&b.campaign.padCountdown<0));
    if(tick==1120){check("final-suite",!failed);c.setScreen(new CampScreen("home"));}
   }catch(Exception e){check("client-exception",false);e.printStackTrace();tick++;}});
  }
