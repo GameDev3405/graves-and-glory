@@ -733,7 +733,6 @@ public final class Campaign {
             // A dropped commander's army keeps its last orders for disconnectGraceSeconds; then its bot takes command (MatchRules).
             if(MatchRules.waiting(b.time,s.takeoverAt))continue;if(s.takeoverAt>0){s.takeoverAt=0;s.order="attack";}
             var tier=tier(s);boolean decide=b.time%Math.max(1,tier.decisionTicks())==0;
-            if(!decide&&b.time%MUSTER_CHECK_TICKS==0&&s.muster!=null)musterCheck(s); // refills under fire or done waiting go up between decisions
             if(!economy&&!decide)continue;
             if(economy){
                 long living=b.fielded(s).count();
@@ -769,8 +768,8 @@ public final class Campaign {
     static final double GUARD_THREAT_RADIUS=60,GUARD_REACH=90;
     /** Refills (musterRefill, musterRelease): none gather when they appear within MUSTER_NEAR of their army; otherwise they gather at a rally MUSTER_BACK blocks behind it, toward them,
      *  and move up together once MUSTER_COUNT stand within MUSTER_GATHERED of one another or MUSTER_WAIT_TICKS after the first reached the rally (MUSTER_CAP_TICKS after the first
-     *  appeared at the latest); once one of them is hit, the rest fight there under Attack. The check runs every MUSTER_CHECK_TICKS, whatever the tier's cadence. */
-    static final double MUSTER_NEAR=30,MUSTER_BACK=30,MUSTER_GATHERED=10;static final int MUSTER_COUNT=3;static final long MUSTER_WAIT_TICKS=160,MUSTER_CAP_TICKS=900,MUSTER_CHECK_TICKS=20;
+     *  appeared at the latest). The check runs at each decision, so an Easy bot (8 s) sends them later than a Hard one (3 s). */
+    static final double MUSTER_NEAR=30,MUSTER_BACK=30,MUSTER_GATHERED=10;static final int MUSTER_COUNT=3;static final long MUSTER_WAIT_TICKS=160,MUSTER_CAP_TICKS=900;
     /** Facing: an army turns only when the new facing is more than FACE_TURN degrees off its last; within FACE_ARRIVE of its spot it faces the nearest enemy its team has seen within FACE_ENEMY of the spot. */
     static final double FACE_TURN=30,FACE_ARRIVE=16,FACE_ENEMY=48;
     /** Per bot army (owner): the point its guard group holds (botDecide), and when its first refill reached the rally (musterRelease). */
@@ -781,7 +780,7 @@ public final class Campaign {
      *  Every tier reads only what its team has seen (b.sightings) for its charge, its contact and its guards; point owners and contested flags are what the HUD shows. A team's armies spread over the points (BattleMath.pickPoint), and one group stays on a taken point only while an enemy is near it. */
     void botDecide(GravesAndGlory.Squad s,Spec.BotCommandRow tier){
         var all=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList();
-        long living=all.size();if(living==0){s.muster=null;botGuard.remove(s.owner);musterFirstAt.remove(s.owner);return;} // a dead army claims and guards nothing
+        long living=all.size();if(living==0){s.muster=null;return;}
         var front=all.stream().filter(u->u.musterSince<0).toList();var mine=front.isEmpty()?all:front; // the army proper; refills at the rally join it later
         Vec3d center=Morale.centre(mine);
         // One live view of the enemy for the whole decision: the living enemy units, and only the sightings of units that are still alive.
@@ -808,14 +807,15 @@ public final class Campaign {
             int lane=BattleMath.laneTarget(s.lane,s.team,count); // Dusk's lane points mirror Dawn's; GravesAndGlory.reinforce mirrors its rows to match
             double[] px=new double[count],pz=new double[count];int[] owner=new int[count],claims=new int[count];boolean[] contested=new boolean[count];
             for(int i=0;i<count;i++){var p=b.points.get(i);px[i]=p.spec.x();pz[i]=p.spec.z();owner[i]=p.owner;contested[i]=p.contested;if(on(s.target,p))current=i;}
-            for(var army:b.squads.values())if(army!=s&&army.bot&&army.seated&&army.team==s.team&&!botRetreating.contains(army.owner)&&!botRespawns.containsKey(army.owner)) // an army waiting to respawn has no troops to send
+            for(var army:b.squads.values())if(army!=s&&army.bot&&army.seated&&army.team==s.team&&!botRetreating.contains(army.owner))
                 for(int i=0;i<count;i++)if(on(army.target,b.points.get(i))||botGuard.getOrDefault(army.owner,-1)==i)claims[i]++;
             choice=b.points.get(Math.max(0,BattleMath.pickPoint(center.x,center.z,px,pz,owner,contested,s.team,lane,claims,current)));
             if(decisionListener!=null){StringBuilder why=new StringBuilder("pick");for(int i=0;i<count;i++)why.append(';').append(b.points.get(i).spec.name().replace(',',' ')).append(':').append(String.format(Locale.ROOT,"%.0f",BattleMath.pointValue(center.x,center.z,px[i],pz[i],owner[i],contested[i],s.team,i==lane,claims[i],i==current))).append(claims[i]>0?"(claimed"+claims[i]+")":"");botWhy=why.toString();}
         }
-        // Easy and Normal weigh a charge against the enemies their team has seen (b.sightings) within scouting range of this army, never against every enemy on the map.
-        long enemies=0;double nearest=Double.MAX_VALUE;long near=0;
-        for(var sight:seen.values()){double d=Math.hypot(sight.x()-center.x,sight.z()-center.z);nearest=Math.min(nearest,d);if(d<=NEAR_RADIUS_FACTOR*tier.chargeDistance())near++;if(d<=Spec.SCOUTING[0].range())enemies++;} // Easy and Normal weigh the enemies seen within scouting range of this army
+        // Easy and Normal weigh a charge against every enemy their team has seen (b.sightings), never against every enemy on the map, and charge only with one in sight within scouting range of the army.
+        long enemies=seen.size();double nearest=Double.MAX_VALUE;long near=0;
+        for(var sight:seen.values()){double d=Math.hypot(sight.x()-center.x,sight.z()-center.z);nearest=Math.min(nearest,d);if(d<=NEAR_RADIUS_FACTOR*tier.chargeDistance())near++;}
+        if(nearest>Spec.SCOUTING[0].range())enemies=0; // nothing in front of it to charge
         boolean couldCharge=b.startsCharge(s,"all");
         String wasOrder=s.order;Vec3d wasTarget=s.target;s.assignments.clear();
         Vec3d goal=null;
@@ -917,7 +917,7 @@ public final class Campaign {
         s.assignments.put("ranged",new GravesAndGlory.Assignment(s.order,s.formation,GravesAndGlory.Battle.groundAt(x,z),s.yaw));
     }
     /** Bot reinforcement routing (audit C3, D3): a bot's new troop that appears far from its army gathers at a rally MUSTER_BACK blocks behind the army, toward where it appeared
-     *  (where it appeared when the army has nobody else), and waits there for the others under Hold (it never chases off alone; once one is hit they all fight under Attack); musterRelease sends them up together. */
+     *  (where it appeared when the army has nobody else), and waits there for the others under Attack (it fights what comes); musterRelease sends them up together. */
     void musterRefill(GravesAndGlory.Squad s,GravesAndGlory.Unit fresh){
         if(botRetreating.contains(s.owner))return;
         boolean gathering=s.muster!=null&&b.units.stream().anyMatch(u->u!=fresh&&u.squad==s&&u.mob.isAlive()&&u.musterSince>=0);
@@ -931,7 +931,7 @@ public final class Campaign {
             if(GravesAndGlory.Battle.inArena(x,z)&&!GravesAndGlory.Battle.wet(x,z))rally=GravesAndGlory.Battle.groundAt(x,z);
             yaw=BattleMath.yawToward(c.x-rally.x,c.z-rally.z);
         }
-        var order=new GravesAndGlory.Assignment("hold","loose",rally,yaw);order.issued=Long.MIN_VALUE;
+        var order=new GravesAndGlory.Assignment("attack","loose",rally,yaw);order.issued=Long.MIN_VALUE;
         s.muster=order;musterFirstAt.remove(s.owner);fresh.musterSince=b.time;
     }
     /** Sends a bot's gathered refills up to their army together, at each decision. The rally follows the army: MUSTER_BACK blocks behind its troops, toward the refills. The largest knot
@@ -942,12 +942,10 @@ public final class Campaign {
         var waiting=all.stream().filter(u->u.musterSince>=0).toList();
         if(waiting.isEmpty()){s.muster=null;musterFirstAt.remove(s.owner);return;}
         long first=Long.MAX_VALUE;for(var u:waiting)first=Math.min(first,u.musterSince);
-        boolean hit=false;for(var u:waiting)if(u.mob.getAttacker()!=null&&u.mob.age-u.mob.getLastAttackedTime()<=UNDER_FIRE_TICKS){hit=true;break;}
-        if(hit&&s.muster!=null)s.muster.order="attack"; // refills under attack fight back together where they stand (sent up one by one, each would meet the fight alone)
         boolean every=retreating||s.muster==null||b.time-first>=MUSTER_CAP_TICKS;
         List<GravesAndGlory.Unit> knot=waiting;
         if(!every&&front.isEmpty()){ // the army is all refills: they gather where they appear and go together
-            knot=largestKnot(waiting);if(!BattleMath.musterGo(knot.size(),(int)Math.min(MUSTER_COUNT,waiting.size()+s.training.size()),b.time-first,MUSTER_WAIT_TICKS))return; // they stand where they appear, so the wait runs from the first
+            knot=largestKnot(waiting);if(knot.size()<Math.min(MUSTER_COUNT,waiting.size()+s.training.size()))return;
         }else if(!every){
             knot=largestKnot(waiting);Vec3d c=Morale.centre(front),k=Morale.centre(knot);double dx=k.x-c.x,dz=k.z-c.z,d=Math.hypot(dx,dz);
             if(d>MUSTER_NEAR){
@@ -963,12 +961,6 @@ public final class Campaign {
         for(var u:waiting){if(!knot.contains(u)){u.musterSince=b.time;continue;} // one elsewhere waits for the next knot
             u.musterSince=-1;u.mob.getNavigation().stop();u.nextPath=0;}
         musterFirstAt.remove(s.owner);if(knot.size()==waiting.size())s.muster=null;
-    }
-    /** musterRelease between decisions (every MUSTER_CHECK_TICKS), so refills under fire or done waiting go up without waiting for the tier's cadence. */
-    void musterCheck(GravesAndGlory.Squad s){
-        var all=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList();
-        if(all.isEmpty()){s.muster=null;return;}
-        musterRelease(s,all,all.stream().filter(u->u.musterSince<0).toList(),botRetreating.contains(s.owner));
     }
     /** The most refills standing within MUSTER_GATHERED of one of them (that one included). */
     static List<GravesAndGlory.Unit> largestKnot(List<GravesAndGlory.Unit> waiting){

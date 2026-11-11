@@ -1179,7 +1179,7 @@ public final class GravesAndGlory implements ModInitializer {
             mode.setup(this); // after the flags, so a mode that takes them down keeps them down
             respawns.clear();BattleEffects.startRound();Morale.startRound();
             for(Squad s:squads.values()){
-                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.places.clear();s.chargedAt.clear();s.chargeReadyAt=0;s.shotAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.muster=null;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=fieldBase(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.places.clear();s.chargedAt.clear();s.chargeReadyAt=0;s.shotAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=fieldBase(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
