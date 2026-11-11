@@ -102,7 +102,7 @@ public final class BotSimulation implements ModInitializer {
             Files.writeString(meta,"override="+SheetOverride.describe()+"\nfast="+gg.gravesandglory.testing.SimSpeed.FAST+"\n",StandardCharsets.UTF_8);
         }catch(IOException e){throw new UncheckedIOException(e);}
         metrics.open(dir);
-        Campaign.decisionListener=(c,sq,tr,ce,lv,fu,se,en,cc,ch,ho,re,wo,wt)->{if(playing)metrics.decision(c,sq,tr,ce,lv,fu,se,en,cc,ch,ho,re,wo,wt);};
+        Campaign.decisionListener=(c,sq,tr,ce,lv,fu,se,en,cc,ch,ho,re,wo,wt)->{try{if(playing)metrics.decision(c,sq,tr,ce,lv,fu,se,en,cc,ch,ho,re,wo,wt);}catch(RuntimeException e){System.out.println("[botsim] decision log failed: "+e);e.printStackTrace(System.out);}};
         overlayCheck=Boolean.getBoolean("gravesandglory.simOverlayCheck");
         net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((entity,source)->ledger.onDeath(GravesAndGlory.battle,entity,source));
         ServerTickEvents.END_SERVER_TICK.register(this::tick);

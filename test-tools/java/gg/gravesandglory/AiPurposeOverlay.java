@@ -34,7 +34,7 @@ public final class AiPurposeOverlay implements ModInitializer {
 
     @Override public void onInitialize(){
         CommandRegistrationCallback.EVENT.register((d,access,env)->d.register(CommandManager.literal("gg").requires(s->s.hasPermissionLevel(2))
-            .then(CommandManager.literal("ai").then(CommandManager.literal("purpose")
+            .then(CommandManager.literal("ai").then(CommandManager.literal("purpose").requires(s->s.hasPermissionLevel(2))
                 .executes(c->{c.getSource().sendFeedback(()->Text.literal("AI purpose overlay is "+(on?"on":"off")+". /gg ai purpose on|off"),false);return 1;})
                 .then(CommandManager.argument("mode",StringArgumentType.word()).suggests((c,b)->{b.suggest("on");b.suggest("off");return b.buildFuture();}).executes(c->{
                     String v=StringArgumentType.getString(c,"mode");
@@ -57,15 +57,19 @@ public final class AiPurposeOverlay implements ModInitializer {
     }
     static void refresh(GravesAndGlory.Battle b){
         refreshes++;
-        labels.entrySet().removeIf(e->{var u=e.getKey();if(u.mob.isAlive()&&b.units.contains(u))return false;mine.remove(e.getValue().getUuid());e.getValue().discard();return true;});
+        labels.entrySet().removeIf(e->{var u=e.getKey();if(u.mob.isAlive()&&!u.temporary&&b.units.contains(u))return false;mine.remove(e.getValue().getUuid());e.getValue().discard();return true;});
+        var shown=new ArrayList<GravesAndGlory.Unit>();
         for(var u:new ArrayList<>(b.units)){
             if(!u.mob.isAlive()||u.temporary)continue;
+            shown.add(u);
             String line=line(b,u);
             var stand=labels.get(u);
+            if(stand!=null&&stand.isRemoved())mine.remove(stand.getUuid());
             if(stand==null||stand.isRemoved()){stand=spawn(b,u);labels.put(u,stand);}
             stand.setCustomName(Text.literal(line));
             stand.refreshPositionAndAngles(u.mob.getX(),u.mob.getY()+u.mob.getHeight()-.1,u.mob.getZ(),0,0);
         }
+        state.retain(shown); // memory of troops that died or left is dropped
     }
     /** "<group> <order> | <state> | <target or spot>": the target is the foe it fights (its name and distance), else the spot it is ordered to (a point's name or x,z). */
     static String line(GravesAndGlory.Battle b,GravesAndGlory.Unit u){

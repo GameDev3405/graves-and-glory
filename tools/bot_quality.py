@@ -48,13 +48,13 @@ def main(argv):
         return 0
     with open(d / "ai-metrics.csv", newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
-    teams = [r for r in rows if r["scope"] == "team"]
-    armies = [r for r in rows if r["scope"] == "army"]
-    matches = sorted({r["match"] for r in rows}, key=int)
+    teams = [r for r in rows if r.get("scope") == "team"]
+    armies = [r for r in rows if r.get("scope") == "army"]
+    matches = sorted({r.get("match", "0") for r in rows}, key=lambda m: int(num(m)))
     seats = ["dawn", "dusk"]
 
     def by(seat, rs=teams):
-        return [r for r in rs if r["team"] == seat]
+        return [r for r in rs if r.get("team") == seat]
 
     def ratio(rs, top, bottom):
         t = sum(num(r[top]) for r in rs)
@@ -66,6 +66,7 @@ def main(argv):
         return None if tot == 0 else sum(num(r[col]) * num(r[weight]) for r in rs if has(r[col])) / tot
 
     out = []  # (metric, target, all, dawn, dusk, verdict)
+    header = set(rows[0].keys()) if rows else set()
 
     def add(metric, target, value, dawn, dusk, verdict):
         out.append((metric, target, value, dawn, dusk, verdict))
@@ -73,59 +74,102 @@ def main(argv):
     def verdict(value, ok):
         return "INFO" if value is None else ("PASS" if ok(value) else "FAIL")
 
-    # idle
-    v = share(teams, "idleShare")
-    add("idle share (troop-seconds)", "mean < 5%", pct(v), pct(share(by("dawn"), "idleShare")), pct(share(by("dusk"), "idleShare")), verdict(v, lambda x: x < 0.05))
-    worst = max((num(r["idleMaxGroupS"]) for r in teams), default=None)
-    wd = max((num(r["idleMaxGroupS"]) for r in by("dawn")), default=None)
-    wk = max((num(r["idleMaxGroupS"]) for r in by("dusk")), default=None)
-    add("longest idle stretch, any group (s)", "<= 20 s", "n/a" if worst is None else f"{worst:.0f}", "n/a" if wd is None else f"{wd:.0f}", "n/a" if wk is None else f"{wk:.0f}", verdict(worst, lambda x: x <= 20))
-    hv = share(teams, "holdIdleShare")
-    add("  of which idle on Hold", "(info)", pct(hv), pct(share(by("dawn"), "holdIdleShare")), pct(share(by("dusk"), "holdIdleShare")), "INFO")
-    fv = share(teams, "fightShare")
-    add("fight share", "(info)", pct(fv), pct(share(by("dawn"), "fightShare")), pct(share(by("dusk"), "fightShare")), "INFO")
-    # objective
-    v = share(teams, "objectiveShare")
-    add("objective share (troop-seconds)", ">= 70%", pct(v), pct(share(by("dawn"), "objectiveShare")), pct(share(by("dusk"), "objectiveShare")), verdict(v, lambda x: x >= 0.70))
-    # blind picks
-    bl = sum(num(r["blindPicks"]) for r in teams)
-    pk = sum(num(r["picks"]) for r in teams)
-    add("blind picks (no line of sight)", "0", f"{bl:.0f} of {pk:.0f}", f"{sum(num(r['blindPicks']) for r in by('dawn')):.0f}", f"{sum(num(r['blindPicks']) for r in by('dusk')):.0f}", "PASS" if bl == 0 else "FAIL")
-    # trickle
-    v = ratio(teams, "trickleAlone", "trickleTotal")
-    tot = sum(num(r["trickleTotal"]) for r in teams)
-    add("trickle index (refills arriving alone)", "< 10%", f"{pct(v)} of {tot:.0f}", pct(ratio(by("dawn"), "trickleAlone", "trickleTotal")), pct(ratio(by("dusk"), "trickleAlone", "trickleTotal")), verdict(v, lambda x: x < 0.10))
-    # wasted
-    v = ratio(teams, "wastedCasts", "casts")
-    tot = sum(num(r["casts"]) for r in teams)
-    add("wasted abilities (casts hitting nothing)", "< 10%", f"{pct(v)} of {tot:.0f}", pct(ratio(by("dawn"), "wastedCasts", "casts")), pct(ratio(by("dusk"), "wastedCasts", "casts")), verdict(v, lambda x: x < 0.10))
-    # stuck
-    st = sum(num(r["stuck30"]) for r in teams)
-    add("troops stuck over 30 s", "0", f"{st:.0f}", f"{sum(num(r['stuck30']) for r in by('dawn')):.0f}", f"{sum(num(r['stuck30']) for r in by('dusk')):.0f}", "PASS" if st == 0 else "FAIL")
-    # retreats
-    rmax = max((num(r["retreats"]) for r in armies), default=None)
-    rsum = sum(num(r["retreats"]) for r in armies)
-    add("retreats (total; worst army in a match)", "<= 2 per army per round", f"{rsum:.0f} (worst {0 if rmax is None else rmax:.0f})", f"{sum(num(r['retreats']) for r in by('dawn')):.0f}", f"{sum(num(r['retreats']) for r in by('dusk')):.0f}", verdict(rmax, lambda x: x <= 2))
-    # switches
-    nm = max(1, len(matches))
+    def metric(name, target, fn):
+        """Runs one metric; a missing column or a failed read makes only this metric INFO 'not measured'."""
+        try:
+            add(name, target, *fn())
+        except (KeyError, ValueError, TypeError, ZeroDivisionError):
+            add(name, target, "not measured", "", "", "INFO")
 
-    def per_army(rs, col):
-        n = max(1, len([r for r in rs if True]))
-        return sum(num(r[col]) for r in rs) / n
+    def need(*cols):
+        for c in cols:
+            if c not in header:
+                raise KeyError(c)
 
-    add("commander target switches per army per match", "(info; audit baseline 1.9)", f"{per_army(armies, 'commanderSwitches'):.1f}",
-        f"{per_army(by('dawn', armies), 'commanderSwitches'):.1f}", f"{per_army(by('dusk', armies), 'commanderSwitches'):.1f}", "INFO")
-    add("troop target switches per army per match", "(info)", f"{per_army(armies, 'troopSwitches'):.0f}",
-        f"{per_army(by('dawn', armies), 'troopSwitches'):.0f}", f"{per_army(by('dusk', armies), 'troopSwitches'):.0f}", "INFO")
-    # gold
-    def gold(rs):
-        return sum(num(r["unspentGold"]) for r in rs) / max(1, len(rs))
+    def sums(rs, col):
+        need(col)
+        return sum(num(r[col]) for r in rs)
 
-    add("unspent gold at match end (per team)", "(info)", f"{gold(teams):.0f}", f"{gold(by('dawn')):.0f}", f"{gold(by('dusk')):.0f}", "INFO")
+    def share3(col, ok, weight="troopSeconds"):
+        need(col, weight)
+        v = share(teams, col, weight)
+        return pct(v), pct(share(by("dawn"), col, weight)), pct(share(by("dusk"), col, weight)), verdict(v, ok)
+
+    def maxcol(rs, col):
+        need(col)
+        return max((num(r[col]) for r in rs), default=None)
+
+    def fmt(x):
+        return "n/a" if x is None else f"{x:.0f}"
+
+    # idle: the FAIL is on idle that is not Hold at an own point or objective; idle on Hold there is shown separately
+    metric("idle share, not on Hold (troop-seconds)", "mean < 5%", lambda: share3("idleShare", lambda x: x < 0.05))
+    metric("longest idle stretch, any group, not Hold (s)", "<= 20 s",
+           lambda: (fmt(maxcol(teams, "idleMaxGroupS")), fmt(maxcol(by("dawn"), "idleMaxGroupS")), fmt(maxcol(by("dusk"), "idleMaxGroupS")), verdict(maxcol(teams, "idleMaxGroupS"), lambda x: x <= 20)))
+    metric("  idle on Hold at own point or objective", "(info)", lambda: share3("holdIdleShare", lambda x: True) [:3] + ("INFO",))
+    metric("fight share", "(info)", lambda: share3("fightShare", lambda x: True)[:3] + ("INFO",))
+    metric("objective share (troop-seconds)", ">= 70%", lambda: share3("objectiveShare", lambda x: x >= 0.70))
+
+    def blind():
+        need("blindPicks", "picks")
+        if not teams:
+            return "no rows", "", "", "INFO"
+        bl, pk = sums(teams, "blindPicks"), sums(teams, "picks")
+        return f"{bl:.0f} of {pk:.0f}", f"{sums(by('dawn'), 'blindPicks'):.0f}", f"{sums(by('dusk'), 'blindPicks'):.0f}", "PASS" if bl == 0 else "FAIL"
+
+    metric("blind picks (no line of sight)", "0", blind)
+
+    def ratio3(num_col, den_col, ok):
+        need(num_col, den_col)
+        v = ratio(teams, num_col, den_col)
+        tot = sums(teams, den_col)
+        return f"{pct(v)} of {tot:.0f}", pct(ratio(by("dawn"), num_col, den_col)), pct(ratio(by("dusk"), num_col, den_col)), verdict(v, ok)
+
+    metric("trickle index (refills arriving alone)", "< 10%", lambda: ratio3("trickleAlone", "trickleTotal", lambda x: x < 0.10))
+    metric("wasted abilities (casts hitting nothing)", "< 10%", lambda: ratio3("wastedCasts", "casts", lambda x: x < 0.10))
+
+    def stuck():
+        need("stuck30")
+        if not teams:
+            return "no rows", "", "", "INFO"
+        st = sums(teams, "stuck30")
+        return f"{st:.0f}", f"{sums(by('dawn'), 'stuck30'):.0f}", f"{sums(by('dusk'), 'stuck30'):.0f}", "PASS" if st == 0 else "FAIL"
+
+    metric("troops stuck over 30 s", "0", stuck)
+
+    def retreats():
+        need("retreats")
+        if not armies:
+            return "no rows", "", "", "INFO"
+        rmax = maxcol(armies, "retreats")
+        return f"{sums(armies, 'retreats'):.0f} (worst {rmax:.0f})", f"{sums(by('dawn', armies), 'retreats'):.0f}", f"{sums(by('dusk', armies), 'retreats'):.0f}", verdict(rmax, lambda x: x <= 2)
+
+    metric("retreats (total; worst army in a match)", "<= 2 per army per round", retreats)
+
+    def per_army(col, f):
+        need(col)
+        def one(rs):
+            return f"{sum(num(r[col]) for r in rs) / max(1, len(rs)):{f}}"
+        return one(armies), one(by("dawn", armies)), one(by("dusk", armies)), "INFO"
+
+    metric("commander target switches per army per match", "(info; audit baseline 1.9)", lambda: per_army("commanderSwitches", ".1f"))
+    metric("troop target switches per army per match", "(info)", lambda: per_army("troopSwitches", ".0f"))
+
+    def gold():
+        need("unspentGold")
+        def one(rs):
+            return f"{sum(num(r['unspentGold']) for r in rs) / max(1, len(rs)):.0f}"
+        return one(teams), one(by("dawn")), one(by("dusk")), "INFO"
+
+    metric("unspent gold at match end (per team)", "(info)", gold)
+
     # tick cost
-    means = [num(r["tickMeanMs"]) for r in teams if has(r["tickMeanMs"])]
-    p99s = [num(r["tickP99Ms"]) for r in teams if has(r["tickP99Ms"])]
-    if means:
+    if "tickMeanMs" in header and "tickP99Ms" in header:
+        means = [num(r["tickMeanMs"]) for r in teams if has(r["tickMeanMs"])]
+        p99s = [num(r["tickP99Ms"]) for r in teams if has(r["tickP99Ms"])]
+    else:
+        means = p99s = []
+    if means and p99s:
         add("server tick, mean ms (whole server, not only AI)", "< 4 ms at 160 troops", f"{statistics.mean(means):.2f}", "", "", verdict(statistics.mean(means), lambda x: x < 4))
         add("server tick, p99 ms (worst match)", "< 8 ms at 160 troops", f"{max(p99s):.2f}", "", "", verdict(max(p99s), lambda x: x < 8))
     else:

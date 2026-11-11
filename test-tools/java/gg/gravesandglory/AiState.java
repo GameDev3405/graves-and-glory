@@ -12,8 +12,9 @@ import java.util.Map;
 final class AiState {
     /** A troop within this many blocks of its group's order target counts as at its spot (rows of up to 10 columns and a role depth of up to 9 stand around the target). */
     static final double SPOT_RADIUS=14;
-    /** On a mode objective: within this of the group's target (Convoy's wagon, Siege's stage spot), or within a capture point's radius plus POINT_SLACK. */
-    static final double OBJECTIVE_RADIUS=16,POINT_SLACK=4;
+    /** On a mode objective: within this of a mode's own objective spot (Convoy's wagon or the road ahead of it, Siege's stage spot, Survival's shrine), or within a capture point's radius plus POINT_SLACK.
+     *  The group's own order target is not an objective: only the places the mode itself scores on count. */
+    static final double OBJECTIVE_RADIUS=16,POINT_SLACK=4,CONVOY_AHEAD=20;
     /** Progress toward the spot: at least this many blocks per second closer (a walking troop closes 3 to 6). */
     static final double PROGRESS_PER_SECOND=0.8;
     /** Reinforcements are troops spawned later than this many ticks after the round began. */
@@ -24,17 +25,19 @@ final class AiState {
 
     /** Per-troop memory between reads. */
     static final class Mem {
-        Vec3d pos;long at=-1;boolean refill,fought;long noMoveTicks;int stuckCounted;
+        Vec3d pos;long at=-1;boolean refill,fought;long noMoveTicks;int stuckCounted;double objectiveDistance=-1;
         LivingEntity lastTarget;
     }
     final Map<GravesAndGlory.Unit,Mem> mem=new IdentityHashMap<>();
 
     /** One troop's reading. valid is false on the first read of a troop (no previous position to compare). */
     static final class Read {
-        boolean valid,fighting,progress,atSpot,arrived,hold,retreating,onObjective,refill,stuck;
+        boolean valid,fighting,progress,atSpot,arrived,hold,retreating,onObjective,towardObjective,onOwnObjective,refill,stuck;
         String group,order,state,spotName;LivingEntity foe;Vec3d spot;double spotDistance;
-        /** Objective: on a mode objective, or moving toward one. */
-        boolean objective(){return onObjective||(progress&&!retreating&&!onObjective&&!arrived);}
+        /** Objective: near a capture point or mode objective, or moving toward one (never while retreating). */
+        boolean objective(){return !retreating&&(onObjective||towardObjective);}
+        /** Hold-idle: idle on Hold (or arrived) standing at a capture point its own side holds, or at a mode objective of its own: that is the order working, not a troop doing nothing. */
+        boolean holdAtOwn(){return hold&&onOwnObjective;}
     }
 
     void reset(){mem.clear();}
@@ -60,16 +63,21 @@ final class AiState {
                 for(var other:b.units)if(other.squad.team!=u.squad.team&&other.mob.isAlive()){double d=mob.squaredDistanceTo(other.mob);if(d<best){best=d;foe=other.mob;}}}
         }
         r.foe=foe;r.fighting=foe!=null;
-        // Objective: on the group's target (a mode's goal), or on a capture point of a mode that plays them.
-        boolean onTarget=!a.order.equals("retreat")&&r.spotDistance<=OBJECTIVE_RADIUS,onPoint=false;
-        if(!a.order.equals("retreat")&&b.mode.capturesPoints(b))for(var p:b.points){double reach=p.spec.radius()+POINT_SLACK;if(Math.hypot(pos.x-p.spec.x(),pos.z-p.spec.z())<=reach){onPoint=true;break;}}
-        r.onObjective=onTarget||onPoint;
+        // Objective: near a capture point (of a mode that plays them) or a mode objective, or closing on the nearest one.
+        double nearest=Double.MAX_VALUE;boolean own=false;
+        if(b.mode.capturesPoints(b))for(var p:b.points){double reach=p.spec.radius()+POINT_SLACK,d=Math.hypot(pos.x-p.spec.x(),pos.z-p.spec.z());
+            if(d<=reach){r.onObjective=true;if(p.owner==u.squad.team)own=true;}nearest=Math.min(nearest,Math.max(0,d-reach));}
+        for(var o:modeObjectives(b,u.squad)){double d=Math.hypot(pos.x-o.x,pos.z-o.z);
+            if(d<=OBJECTIVE_RADIUS){r.onObjective=true;own=true;}nearest=Math.min(nearest,Math.max(0,d-OBJECTIVE_RADIUS));}
+        r.onOwnObjective=own;
+        double objectiveBefore=m.objectiveDistance;m.objectiveDistance=nearest==Double.MAX_VALUE?-1:nearest;
         r.spotName=spotName(b,spot);
         if(!first){
             double dtSeconds=Math.max(1,time-m.at)/20.0;
             double before=Math.hypot(m.pos.x-spot.x,m.pos.z-spot.z);
             r.progress=before-r.spotDistance>=PROGRESS_PER_SECOND*dtSeconds;
             r.valid=true;
+            if(objectiveBefore>=0&&nearest!=Double.MAX_VALUE)r.towardObjective=objectiveBefore-nearest>=PROGRESS_PER_SECOND*dtSeconds;
             // A troop that should walk (not fighting, not at its spot, not in a held arrival) and makes no progress is waiting or stuck.
             if(!r.fighting&&!r.atSpot&&!r.arrived&&!r.progress)m.noMoveTicks+=Math.max(1,time-m.at);else m.noMoveTicks=0;
         }
@@ -92,6 +100,13 @@ final class AiState {
     /** The memory of a troop, created if it was not read yet. */
     Mem memory(GravesAndGlory.Unit u){return mem.computeIfAbsent(u,k->new Mem());}
 
+    /** The places a mode scores on besides capture points, for one army: Convoy's wagon and the road ahead of it, the Siege stage target, Survival's shrine (BattleMode.botTarget). Read only. */
+    static java.util.List<Vec3d> modeObjectives(GravesAndGlory.Battle b,GravesAndGlory.Squad s){
+        var out=new java.util.ArrayList<Vec3d>(3);
+        if(b.mode instanceof ConvoyMode c&&!c.finished&&c.wagon!=null){out.add(c.wagon.getPos());out.add(c.road(c.distance+CONVOY_AHEAD));}
+        var t=b.mode.botTarget(b,s);if(t!=null)out.add(t);
+        return out;
+    }
     /** A capture point's name when the spot lies on one, else "x,z". */
     static String spotName(GravesAndGlory.Battle b,Vec3d spot){
         for(var p:b.points)if(Math.hypot(spot.x-p.spec.x(),spot.z-p.spec.z())<=2)return p.spec.name();

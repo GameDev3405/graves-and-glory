@@ -10,9 +10,10 @@ import java.util.*;
  *  Writes botsim/ai-metrics.csv (one row per bot army and one per team, per match) and botsim/decisions.csv (one row per bot commander decision, from Campaign.decisionListener).
  *  It only reads the game. Metrics are per troop, not per group centre: refills walking in from base drag a group's centre away from where its troops are.
  *  Definitions (a sample is one second of one living, non-temporary troop of a bot army, from its second read on):
- *   - idle: no fight (AiState.Read.fighting) and no progress toward its order spot; holdIdle is the part of idle under a Hold order or an arrived group.
- *   - idleMaxGroupS: the longest run, in seconds, of a group with at least 90 percent of its sampled troops idle.
- *   - objective: on a mode objective (a capture point of a mode that plays them, or within 16 blocks of the group's target) or moving toward the group's target.
+ *   - idle (idleShare): no fight (AiState.Read.fighting) and no progress toward its order spot, except holdIdle: idle on Hold (or arrived) standing at a capture point its own side holds or at a mode objective, which is the order working.
+ *     idleShare and holdIdleShare are disjoint; together they are all idle.
+ *   - idleMaxGroupS: the longest run, in seconds, of a group with at least 90 percent of its sampled troops in (non-hold) idle.
+ *   - objective: near a capture point of a mode that plays them or a mode objective (Convoy wagon and the road ahead, Siege stage target, Survival shrine), or closing on the nearest one; not while retreating. The group's own target does not count.
  *   - blind pick: a troop's locked target changed to a new one that its mob cannot see (LivingEntity.canSee) at the end of the tick of the change.
  *   - trickle: a reinforcement (first seen over 3 s into the round) at the moment it first fights, with no living friendly troop within 8 blocks.
  *   - wasted cast: a cooldown spent (Unit.abilityAt or the level-3 store rising) with nothing to use it on: an enemy-target row with no living enemy within the caster's reach plus the row's radius, an
@@ -58,7 +59,7 @@ final class AiMetrics {
     void tick(GravesAndGlory.Battle b){
         long t0=System.nanoTime();
         for(var u:b.units){
-            if(!u.mob.isAlive())continue;Integer i=index.get(u.squad);if(i==null)continue;var a=acc[i];var m=mem.computeIfAbsent(u,k->new UnitMem());
+            if(!u.mob.isAlive()||u.temporary)continue;Integer i=index.get(u.squad);if(i==null)continue;var a=acc[i];var m=mem.computeIfAbsent(u,k->new UnitMem());
             var t=u.lockedTarget;
             if(t!=m.target){
                 if(t!=null){a.picks++;if(!u.mob.canSee(t))a.blind++;if(m.target!=null&&m.target.isAlive())a.switches++;}
@@ -109,11 +110,11 @@ final class AiMetrics {
             if(!r.valid)continue;
             a.troopSec++;
             if(r.fighting)a.fightSec++;
-            boolean idle=AiState.idle(r);
-            if(idle){a.idleSec++;if(r.hold)a.holdIdleSec++;}
+            boolean idle=AiState.idle(r),holdIdle=idle&&r.holdAtOwn(),otherIdle=idle&&!holdIdle;
+            if(holdIdle)a.holdIdleSec++;else if(otherIdle)a.idleSec++;
             if(r.objective())a.objSec++;
             if(m.noMoveTicks>=600){if(m.stuckCounted==0){a.stuck30++;m.stuckCounted=1;}}else if(m.noMoveTicks==0)m.stuckCounted=0;
-            var g=groups.computeIfAbsent(i+"/"+r.group,k->new int[2]);g[0]++;if(idle)g[1]++;
+            var g=groups.computeIfAbsent(i+"/"+r.group,k->new int[2]);g[0]++;if(otherIdle)g[1]++;
         }
         state.retain(alive);mem.keySet().retainAll(Set.copyOf(alive));
         for(int i=0;i<acc.length;i++){var a=acc[i];
