@@ -150,6 +150,7 @@ for r in data.get('modeRules',[]):
         if not 0<r['speedOne']<=r['speedTwo']<=r['speedThree']: errors.append(f'{where}: push speeds must be above 0 and never fall with more pushers')
         if not 0<r['uphill']<=1<=r['downhill']: errors.append(f'{where}: uphill must be in (0,1] and downhill at least 1')
         if not 0<=r['guardRadius']<=r['guardNear']: errors.append(f'{where}: escort guard needs 0 <= guardRadius <= guardNear (troops within guardNear of the wagon prefer enemies within guardRadius of it)')
+        if r['guardRadius']<r['pushRadius']: errors.append(f'{where}: guardRadius must be at least pushRadius (every defender that stops the wagon is in the guard zone)')
     if r['id']=='siege' and not (r['keepEdgeAttackers']>0 and r['keepEdgeDefenders']>=r['keepEdgeAttackers']): errors.append(f'{where}: the keep edge is attackers of defenders, 0 < keepEdgeAttackers <= keepEdgeDefenders')
 if 'convoy' in mode_ids and 'convoy' not in rule_rows: errors.append('modeRules: the convoy mode needs its row')
 if 'siege' in mode_ids and 'siege' not in rule_rows: errors.append('modeRules: the siege mode needs its row')
@@ -411,6 +412,7 @@ for col,lo,hi,loOpen,hiOpen in (('shieldWallCell',.5,1.3,True,False),('crawlShar
     v=cd[col]
     if isinstance(v,bool) or not isinstance(v,(int,float)) or v<lo or loOpen and v==lo or hi is not None and (v>hi or hiOpen and v==hi):
         errors.append(f'combatDiscipline: {col} is {v}; it must be '+('above' if loOpen else 'at least')+f' {lo}'+('' if hi is None else (' and below' if hiOpen else ' and at most')+f' {hi}'))
+if 'sightMemoryTicks' in cd and cd['sightMemoryTicks']>cd['targetMemoryTicks']: errors.append('combatDiscipline: sightMemoryTicks must be at most targetMemoryTicks')
 for col in ('fireMemoryTicks','corpseLieTicks','corpseFadeTicks','sightMemoryTicks'):
     if col in cd and (isinstance(cd[col],bool) or not isinstance(cd[col],int)): errors.append(f'combatDiscipline: {col} must be a whole number of ticks')
 if 'mediumHitShare' in cd and 'heavyHitShare' in cd and not cd['heavyHitShare']>cd['mediumHitShare']: errors.append(f'combatDiscipline: heavyHitShare {cd["heavyHitShare"]} must be above mediumHitShare {cd["mediumHitShare"]}')
