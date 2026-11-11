@@ -40,7 +40,7 @@ Each id is a variant group in `sounds.json`; the game picks one file at random. 
 | combat.bow_shoot | An archer or crossbow shot leaves (lower for siege bolts) | bow_shoot_1 |
 | combat.arrow_hit | An arrow or bolt lands | arrow_hit_1 |
 | magic.cast | A caster's shot as the spell begins (the Mist Caller's cloud sounds magic.impact when it lands) | magic_cast_1 |
-| magic.impact | A caster's missile or blight lands | magic_impact_1, 2 |
+| magic.impact | A caster's missile or blight lands | magic_impact_1, 3, 4 (2 was dropped) |
 | clock.tick | Each of the last ten seconds of a round's clock | clock_tick_1, 2 |
 | battle.drums | Battle entrance camera, layered under battle_intro (kept) | battle_drums |
 | music.calm | Banner Camp, lobby, War Table; 45 s gap between plays | music_calm_long_day |

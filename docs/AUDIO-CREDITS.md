@@ -167,3 +167,9 @@ Source: pixabay.com, downloaded 2026-11-02 (Pixabay Content Licence). Author is 
 | ui_back | ui_back_7.ogg | jodybruchon | CC0 1.0 | https://freesound.org/people/jodybruchon/sounds/433862 | No credit required (CC0). Courtesy: "Book - medium-sized, leather cover, flipping through, slamming shut.wav" by jodybruchon, freesound, CC0 1.0 |
 | veteran_levelup | veteran_levelup_5.ogg | Benboncan | CC-BY 4.0 | https://freesound.org/people/Benboncan/sounds/103632 | "Large Anvil & Steel Hammer 4.wav" by Benboncan, freesound, CC-BY 4.0 |
 | wagon_wheels | wagon_wheels_6.ogg | craigsmith | CC0 1.0 | https://freesound.org/people/craigsmith/sounds/480022 | No credit required (CC0). Courtesy: "R18-54-Objects Rattle on Horse-Drawn Wagon.wav" by craigsmith, freesound, CC0 1.0 |
+| combat.armor_hit | armor_hit_2.ogg | SypherZent | CC-BY 4.0 | https://freesound.org/people/SypherZent/sounds/420675 | "Cut Through Armor / Slice / Clang" by SypherZent, freesound, CC-BY 4.0 |
+| combat.sword_clash | sword_clash_5.ogg | Christopherderp | CC0 1.0 | https://freesound.org/people/Christopherderp/sounds/364531 | No credit required (CC0). |
+| combat.heavy_metal_hit | heavy_metal_hit_2.ogg | dslrguide | CC0 1.0 | https://freesound.org/people/dslrguide/sounds/321482 | No credit required (CC0). |
+| combat.heavy_metal_hit | heavy_metal_hit_3.ogg | Cpfcfan10 | CC-BY 4.0 | https://freesound.org/people/Cpfcfan10/sounds/650843 | "Hammer Hiting Metal" by Cpfcfan10, freesound, CC-BY 4.0 |
+| magic.impact | magic_impact_3.ogg | qubodup | CC-BY 4.0 | https://freesound.org/people/qubodup/sounds/442827 | "Fireball" by qubodup, freesound, CC-BY 4.0 |
+| magic.impact | magic_impact_4.ogg | EminYILDIRIM | CC-BY 4.0 | https://freesound.org/people/EminYILDIRIM/sounds/541478 | "Magic Fire Spell Impact & Punch" by EminYILDIRIM, freesound, CC-BY 4.0 |

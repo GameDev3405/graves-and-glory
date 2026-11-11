@@ -285,6 +285,14 @@
       {
         "name": "gravesandglory:heavy_metal_hit_1",
         "stream": false
+      },
+      {
+        "name": "gravesandglory:heavy_metal_hit_2",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:heavy_metal_hit_3",
+        "stream": false
       }
     ]
   },
@@ -319,6 +327,10 @@
       {
         "name": "gravesandglory:sword_clash_1",
         "stream": false
+      },
+      {
+        "name": "gravesandglory:sword_clash_5",
+        "stream": false
       }
     ]
   },
@@ -327,6 +339,10 @@
     "sounds": [
       {
         "name": "gravesandglory:armor_hit_1",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:armor_hit_2",
         "stream": false
       }
     ]
@@ -363,6 +379,14 @@
     "sounds": [
       {
         "name": "gravesandglory:magic_impact_1",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:magic_impact_3",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:magic_impact_4",
         "stream": false
       }
     ]
