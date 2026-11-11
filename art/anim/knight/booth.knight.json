@@ -215,6 +215,16 @@
    "reference": "hit_knockback"
   },
   {
+   "name": "hit_pulled",
+   "base": [
+    "hit_pulled_legs"
+   ],
+   "reference_base": [
+    "hit_pulled_legs"
+   ],
+   "reference": "hit_pulled"
+  },
+  {
    "name": "hit_light_front",
    "base": [
     "hit_light_front_legs"

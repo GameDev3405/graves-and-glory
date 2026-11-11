@@ -1,0 +1,32 @@
+{
+ "troop": "sentinel",
+ "family": "knight",
+ "geo": "src/main/resources/assets/gravesandglory/geo/troop/sentinel.geo.json",
+ "textures": [
+  "src/main/resources/assets/gravesandglory/textures/entity/troop/sentinel_geo/t3_crimson.png"
+ ],
+ "anim": "src/main/resources/assets/gravesandglory/animations/troop/sentinel.animation.json",
+ "foot_bones": [
+  "left_foot",
+  "right_foot"
+ ],
+ "reference": {
+  "geo": "src/main/resources/assets/gravesandglory/geo/troop/knight.geo.json",
+  "textures": [
+   "src/main/resources/assets/gravesandglory/textures/entity/troop/knight_geo/t3_crimson.png"
+  ],
+  "anim": "src/main/resources/assets/gravesandglory/animations/troop/knight.animation.json"
+ },
+ "clips": [
+  {
+   "name": "hit_pulled",
+   "base": [
+    "hit_pulled_legs"
+   ],
+   "reference_base": [
+    "hit_pulled_legs"
+   ],
+   "reference": "hit_pulled"
+  }
+ ]
+}
