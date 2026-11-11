@@ -119,6 +119,12 @@
    ]
   },
   {
+   "name": "hit_pulled",
+   "base": [
+    "hit_pulled_legs"
+   ]
+  },
+  {
    "name": "hit_light_front",
    "base": [
     "hit_light_front_legs"

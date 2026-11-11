@@ -12,6 +12,10 @@ lifted to rest on the floor.
 Gaits are the alternating tetrapod (L1 R2 L3 R4, then R1 L2 R3 L4), each set staggered a touch front to back. Ground speed:
 walk_ covers 2.56 px/tick (GaitController ref .16), run_ 4.16 px/tick (ref .26). Both attacks and the ensnare land at tick 8
 (Spec family spider: spider_bite and spider_lunge, delay 8; cooldown 25).
+
+hit_pulled / hit_pulled_legs (14 ticks, additive, hit_v1 flag 8: harpooned toward a puller in front) yank the body forward off its
+claws, the forelegs reaching to dig in while the six others scrape behind and then scrabble back under it. `--pulled` splices
+just those two into the existing file (as --deaths, --fallback and --ensnare do).
 """
 import json, math, os, sys
 import numpy as np
@@ -758,6 +762,56 @@ def knockback(t):
     return up, body, feet
 
 
+PULL_T = 14.0   # hit_pulled's length, as every troop's (art/anim/common/reactions.py)
+
+
+def pulled(t):
+    """Harpooned (hit_v1 flag 8: dragged toward a puller in front; the server moves the body): the whole spider yanked forward
+    off its claws, the front pitching down, the head lagging then lifting to the puller, the abdomen trailing and whipping up;
+    the forelegs flung forward, flailing, then hooked down to dig in; the other six claws scrape along the turf behind the body,
+    then scrabble back under it, set A then set B, and it settles. Additive, zero at both ends."""
+    ru, rb, rf = ready_pose(0)
+    L = PULL_T
+    a = K([(0, 0), (1.0, 1.0), (2.5, 0.95), (5.0, 0.6), (9.0, 0.2), (L, 0)])(t)
+    lag = K([(0, 0), (0.8, 0), (2.0, 1), (3.5, 0.5), (5.5, -0.35), (8.0, 0), (L, 0)])(t)
+    fade = 1 - ss((t - 9.0) / 4.0)
+    up = {b: {ch: list(v) for ch, v in ru[b].items()} for b in ru}
+    body = {ch: list(v) for ch, v in rb.items()}
+    feet = {l: np.array(v) for l, v in rf.items()}
+    body["position"][2] += -3.6 * a                      # yanked forward
+    body["position"][1] += -0.7 * a
+    body["rotation"][0] += 9 * a                         # the front pitched down toward the puller
+    body["rotation"][2] += 2.2 * damp(t, 3.0, 2.4, 2.5) * fade   # a scrabbling rock
+    add_rot(up, "thorax", [5 * a, 0, 0])
+    add_rot(up, "head", [14 * lag - 6 * a * (1 - ss(t / 3.0)) - 10 * a * ss((t - 3.0) / 2.0), 0, 0])
+    add_rot(up, "abdomen", [22 * lag + 6 * a, 0, 0])
+    add_rot(up, "sacs", [-12 * lag, 0, 0])
+    add_rot(up, "palps", [22 * a, 0, 0])
+    for f in FANGS:
+        add_rot(up, f, [-18 * a, 0, 0])
+    add_rot(up, "mandible_left", [0, -16 * a, 0]); add_rot(up, "mandible_right", [0, 16 * a, 0])
+    reach = K([(0, 0), (1.2, 1), (3.5, 1), (5.5, 0.6), (9.0, 0.2), (L, 0)])(t)
+    dig = K([(0, 0), (2.0, 0), (3.5, 1), (6.0, 1), (9.5, 0), (L, 0)])(t)
+    for l in ("left_leg_1", "right_leg_1"):
+        fl = damp(t, 0.5, 2.5, 2.0) * fade * (1 if l == "left_leg_1" else -1)
+        feet[l] = feet[l] + np.array([sg(l) * (0.8 * reach + 0.9 * fl), 1.5 * reach - 3.5 * dig + 0.6 * fl, 3.0 * reach])
+    for l in IK.LEGS:
+        i = idx(l)
+        if i == 1:
+            continue
+        p0 = feet[l]
+        tr = p0 + np.array([-sg(l) * 0.3 * (i - 1), 0, -{2: 1.6, 3: 1.4, 4: 0.6}[i]])   # the rear stretch least: its reach is shortest
+        ca = p0 + np.array([0, 0, 0.6])
+        s0 = 3.0 if l in IK.SET_A else 4.2
+        if t < s0:
+            feet[l] = p0 + (tr - p0) * ss(t / 2.0)       # dragged: the claw scrapes behind the body
+        elif t < s0 + 6.0:
+            feet[l] = step(tr, ca, (t - s0) / 1.8, 1.8)  # the scrabble back under it
+        else:
+            feet[l] = step(ca, p0, (t - s0 - 6.0) / 2.2, 0.8)
+    return up, body, feet
+
+
 # stun (absolute, like a stance): a 4-tick snap, then a 20-tick dazed loop whose tick 24 is its tick 4 ----------------
 STUN_ENTRY, STUN_LOOP = 4, 20
 
@@ -1021,14 +1075,22 @@ def delta_of(samples, ref):
     return out
 
 
+def pulled_clip(ready0):
+    dl = delta_of(sample_clip("hit_pulled", PULL_T, pulled, loop=False), ready0)
+    CLIPS["hit_pulled"] = bake(dl, PULL_T, False, UPPER)
+    CLIPS["hit_pulled_legs"] = bake(dl, PULL_T, False, LOWER)
+
+
 def main():
     global STAND_GUESS
     # the standing solution, the fallback guess for every leg
     p0, _ = pose_of(idle, 0, "stand0")
     STAND_GUESS = {l: list(p0[l]["rotation"]) + [p0[l + "_low"]["rotation"][2]] for l in IK.LEGS}
     path = os.path.join(HERE, "out", "wm_stalker.animation.json")
-    if "--deaths" in sys.argv or "--fallback" in sys.argv or "--ensnare" in sys.argv:   # rebuild only these, spliced in
+    if any(f in sys.argv for f in ("--deaths", "--fallback", "--ensnare", "--pulled")):   # rebuild only these, spliced in
         out = json.load(open(path))
+        if "--pulled" in sys.argv:
+            pulled_clip(pose_of(ready_pose, 0, "ready0")[0])
         if "--ensnare" in sys.argv:
             emit("ensnare", ATK_T, sample_clip("ensnare", ATK_T, ensnare, loop=False), False, upper_name="ensnare",
                  legs_name="ensnare_legs", timeline={fmt_t(IMPACT / TPS): "impact"})
@@ -1066,6 +1128,7 @@ def main():
     dl = delta_of(sample_clip("hit_knockback", 20, knockback, loop=False), ready0)
     CLIPS["hit_knockback"] = bake(dl, 20, False, UPPER)
     CLIPS["hit_knockback_legs"] = bake(dl, 20, False, LOWER)
+    pulled_clip(ready0)
     s = sample_clip("stun", STUN_ENTRY + STUN_LOOP, stun, loop=False)
     CLIPS["stun_upper"] = bake(s, STUN_ENTRY + STUN_LOOP, True, UPPER)
     CLIPS["stun_legs"] = bake(s, STUN_ENTRY + STUN_LOOP, True, LOWER)
