@@ -32,7 +32,7 @@ final class CampaignDevControl {
             if(action.equals("presentation")){c.setScreen(new PresentationScreen());return;}
             if(action.equals("shader")){Presentation.selectShader(j.get("index").getAsInt());return;}
             if(action.equals("impact")){Presentation.impact(1);return;}
-            if(action.equals("ui")){var s=new GravesAndGloryClient.LobbyScreen();c.setScreen(s);s.showTab(j.has("tab")?j.get("tab").getAsInt():0);return;}
+            if(action.equals("ui")){String[] pages={"home","banner","friends"};int tab=j.has("tab")?j.get("tab").getAsInt():0;c.setScreen(new CampScreen(j.has("page")?j.get("page").getAsString():pages[Math.max(0,Math.min(pages.length-1,tab))]));return;} // the War Table: "page", or the old tab number (0 home, 1 banner, 2 friends)
             if(action.equals("perspective")){c.options.setPerspective(j.get("value").getAsString().equals("front")?net.minecraft.client.option.Perspective.THIRD_PERSON_FRONT:net.minecraft.client.option.Perspective.THIRD_PERSON_BACK);return;}
             if(action.equals("visual")||action.equals("visual-clear")){c.setScreen(null);c.options.hudHidden=true;c.options.setPerspective(net.minecraft.client.option.Perspective.THIRD_PERSON_BACK);c.getServer().execute(()->visualFixture(c,action.equals("visual")));return;}
             c.setScreen(null);c.getServer().execute(()->{var b=GravesAndGlory.battle;if(b==null)return;var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());

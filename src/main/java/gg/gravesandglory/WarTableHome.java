@@ -287,11 +287,10 @@ final class WarTableHome {
         return n;
     }
 
-    /** 1 while an invitation waits (the party's or the camp's), else 0. */
+    /** 1 while an invitation waits (a party's), else 0. */
     static int friendsBadge() {
-        boolean party = CampaignClient.party.has("inviteSeconds") && CampaignClient.party.get("inviteSeconds").getAsInt() > 0;
         boolean social = CampaignClient.social.has("inviteSeconds") && CampaignClient.social.get("inviteSeconds").getAsInt() > 0;
-        return party || social ? 1 : 0;
+        return social ? 1 : 0;
     }
 
     /** The Long March battle the Campaign sheet rides to: the one after the last cleared, or the last once all are cleared. */

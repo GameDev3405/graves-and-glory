@@ -195,9 +195,8 @@ public final class GravesAndGlory implements ModInitializer {
             if(world.isClient)return ActionResult.SUCCESS;
             if(battle!=null&&player instanceof ServerPlayerEntity p&&world==battle.world){
                 if(!battle.running){
-                    // The custom lobby lectern opens the party tab. Every other lectern opens the war council.
-                    var channel=hit.getBlockPos().equals(new BlockPos(3,66,CampaignMaps.LOBBY_Z+18))?PARTY:OPEN_BARRACKS;
-                    if(ServerPlayNetworking.canSend(p,channel))ServerPlayNetworking.send(p,channel,PacketByteBufs.create());
+                    // Every lectern outside a running match opens the War Table (the client's OPEN_BARRACKS receiver); the old party lectern's PARTY packet id stays, and the client opens the War Table for it too.
+                    if(ServerPlayNetworking.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,OPEN_BARRACKS,PacketByteBufs.create());
                 }else battle.openBarracks(p);
                 return ActionResult.SUCCESS;
             }

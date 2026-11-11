@@ -811,8 +811,8 @@ public final class Phase1Checks implements ClientModInitializer {
     /** Task 4: bot difficulty tiers. The command, the lobby and camp buttons and the Hard cadence first (map 0), then Hard's decisions on Kingsfield Crossroads (map 4, five points). Stages run on the server tick; the UI stages run on the client tick. */
     static final class Bots implements Suite,ServerWatch {
         volatile int stage;volatile String wantShot;volatile boolean finished;
-        volatile UUID player;long stageAt;int shotDelay,lobbyAt=-1,homeAt=-1;
-        boolean lobbyOk,commandOk,homeOk,buttonOk,tiersOk,refusedOk;String lobbyWhy="",homeWhy="",tiersWhy="";
+        volatile UUID player;long stageAt;int shotDelay,homeAt=-1;
+        boolean commandOk,homeOk,buttonOk,tiersOk,refusedOk;String homeWhy="",tiersWhy="";
         final Map<UUID,Vec3d> firstTarget=new HashMap<>();final Map<UUID,Long> decidedAt=new HashMap<>();
         GravesAndGlory.Squad hard;List<GravesAndGlory.Unit> foes=new ArrayList<>();
         String farOrder="";boolean noShieldwall;double gap;
@@ -875,16 +875,6 @@ public final class Phase1Checks implements ClientModInitializer {
         public void step(MinecraftClient c,int tick){
             if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
             if(wantShot!=null&&++shotDelay>=2){shot(c,wantShot);wantShot=null;shotDelay=0;}
-            if(stage==2){ // the war council, as the lobby lead: Bot fill and Bots share the row
-                if(lobbyAt==-1&&CampaignClient.lead){lobbyAt=tick;c.setScreen(new GravesAndGloryClient.LobbyScreen());}
-                else if(lobbyAt>=0&&tick==lobbyAt+25){
-                    var bots=button(c.currentScreen,"Bots: ");var fill=button(c.currentScreen,"Bot fill");
-                    lobbyOk=bots!=null&&fill!=null&&bots.getMessage().getString().equals("Bots: Normal")&&bots.active&&fill.active&&fill.getX()+fill.getWidth()<=bots.getX();
-                    lobbyWhy=bots==null||fill==null?"a button is missing":"\""+fill.getMessage().getString()+"\" and \""+bots.getMessage().getString()+"\", active="+bots.active+", "+fill.getWidth()+" + "+bots.getWidth()+" px side by side";
-                    wantShot="bots-lobby";
-                }
-                else if(lobbyAt>=0&&tick==lobbyAt+30){c.setScreen(null);lobbyAt=-2;server(c,b->next(b,3));}
-            }
             if(stage==4){ // the War Table's Field page after difficulty:hard (UI Task 7: the tiers are three tags, the current one lit), then a real press of Easy
                 if(homeAt==-1){homeAt=tick;CampScreen.open("field");}
                 else if(tick==homeAt+25){
@@ -902,14 +892,14 @@ public final class Phase1Checks implements ClientModInitializer {
 
         public void serverTick(GravesAndGlory.Battle b){
             switch(stage){
-                case 1->{ // map 0 camp: open a custom lobby so the player leads it
+                case 1->{ // map 0 camp: the old lectern lobby's Bots row went with that screen; the war council's own (ui-lobby) and the Field page's (stage 4) are what is checked
                     var p=sp(b);if(p==null||!b.ready)return;
                     if(b.running){b.campaign.returnLobby();stageAt=b.time;return;} // an earlier suite's skirmish still runs: back to camp first
                     if(since(b)<40)return; // the client hears that the round and its lobby are over before a new lobby opens
-                    b.command(p,"party:open");System.out.println("[p1] bots start: map "+b.campaign.map+", difficulty "+b.campaign.difficulty+", lead="+b.campaign.leader(p));next(b,2);
+                    System.out.println("[p1] bots start: map "+b.campaign.map+", difficulty "+b.campaign.difficulty);next(b,3);
                 }
-                case 3->{ // the command, once no lobby needs a leader
-                    var p=sp(b);b.command(p,"party:leave");b.command(p,"difficulty:hard");
+                case 3->{ // the command
+                    var p=sp(b);b.command(p,"difficulty:hard");
                     commandOk=b.campaign.difficulty.equals("hard");System.out.println("[p1] difficulty:hard -> "+b.campaign.difficulty);next(b,4);
                 }
                 case 5->{ // the Bots button was pressed on the client: hard -> easy; put it back on hard by command
@@ -923,7 +913,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     tiersWhy=bots.size()+" bots with tiers "+bots.stream().map(s->s.tier).toList()+" (running="+b.running+", "+c.size+"v"+c.size+")";
                     b.command(sp(b),"difficulty:easy");refusedOk=c.difficulty.equals("hard");
                     for(var s:bots)firstTarget.put(s.owner,s.target);
-                    report("p1-bots-tiers",lobbyOk&&commandOk&&homeOk&&buttonOk&&tiersOk&&refusedOk,"lobby: "+lobbyWhy+"; difficulty:hard set it="+commandOk+"; the Field page: "+homeWhy+"; button press reached the server="+buttonOk+"; solo pad 3v3: "+tiersWhy+"; difficulty:easy refused while running (still "+c.difficulty+")="+refusedOk);
+                    report("p1-bots-tiers",commandOk&&homeOk&&buttonOk&&tiersOk&&refusedOk,"difficulty:hard set it="+commandOk+"; the Field page: "+homeWhy+"; button press reached the server="+buttonOk+"; solo pad 3v3: "+tiersWhy+"; difficulty:easy refused while running (still "+c.difficulty+")="+refusedOk);
                     next(b,7);
                 }
                 case 7->{ // Hard decides on its 60-tick beat: each bot's first order change lands on a multiple of 60
@@ -2660,13 +2650,13 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 15->{ // p1-ui-home-badges: the Contracts badge counts the Claim buttons the Contracts page would show, the Friends badge a waiting invitation
                     int k=since(tick);var h=home(c);if(h==null){report("p1-ui-home-badges",false,"the home closed");stage=16;return;}
                     if(k==0)oldProgression=CampaignClient.profile.progression;
-                    if(k<=6){ // put in again each tick: the camp snapshot, every 10 ticks, puts the server's profile and party back
+                    if(k<=6){ // put in again each tick: the camp snapshot, every 10 ticks, puts the server's profile and social state back
                         var st=new Progression.State();st.sanitize();st.dailyBattles=3;st.weeklyBattles=Progression.WEEKLY_BATTLES;st.claims.add("daily:0");
-                        CampaignClient.profile.progression=st;CampaignClient.party.addProperty("inviteSeconds",30);h.screen.rebuild();
+                        CampaignClient.profile.progression=st;CampaignClient.social.addProperty("inviteSeconds",30);h.screen.rebuild();
                     }
                     if(k>=1&&k<=7){var bd=WarTable.badges();
                         if(Integer.valueOf(2).equals(bd.get("Contracts"))&&Integer.valueOf(1).equals(bd.get("Friends"))&&WarTableHome.contractsBadge()==2&&Integer.valueOf(0).equals(bd.get("Recruit"))){badgesOk=true;badgesWhy="drawn "+bd+" with daily 1 and the weekly claimable, daily 0 claimed, daily 2 unfinished, an invitation waiting";}}
-                    if(k==8){CampaignClient.profile.progression=oldProgression;CampaignClient.party.addProperty("inviteSeconds",0);h.screen.rebuild();
+                    if(k==8){CampaignClient.profile.progression=oldProgression;CampaignClient.social.addProperty("inviteSeconds",0);h.screen.rebuild();
                         report("p1-ui-home-badges",badgesOk,badgesOk?badgesWhy:"the badges never read Contracts 2 and Friends 1: "+WarTable.badges());stage=16;}
                 }
                 case 16->{ // p1-ui-home-last: a result id puts Last battle under the field card, clear of Change and Ride; it stays for the scales
@@ -3389,6 +3379,23 @@ public final class Phase1Checks implements ClientModInitializer {
                 if(!UiHomeChecks.inside(box,w,h))bad.add(id+" "+str(box)+" off the "+w+"x"+h+" canvas");
                 for(var e:all.entrySet()){String k=e.getKey();if((k.equals("sheet")||k.equals("roll")||k.equals("mark")||k.startsWith("role-")||k.startsWith("trait-")&&!k.equals("trait-"+id))&&UiHomeChecks.overlap(box,e.getValue()))bad.add(id+" meets "+k+" "+str(e.getValue()));}
                 for(var e:b.entrySet())if(UiHomeChecks.overlap(box,e.getValue()))bad.add(id+" meets widget "+e.getKey()+" "+str(e.getValue()));}
+            bad.addAll(colourFaults(c));
+            return bad;
+        }
+        /** The Banner's colour row: every side has a chip drawn on the sheet's paper, as its widget's own box, on the canvas, overlapping no other widget and none of the page's other
+         *  drawn boxes (the sheet and the roll's paper aside): not the House rows, the seats, the seat count or head line, the roll, the role plaques, the trait rows or the armed band. */
+        List<String> colourFaults(MinecraftClient c){
+            List<String> bad=new ArrayList<>();int w=UiCanvas.width(),h=UiCanvas.height();var b=boxes(c);var all=WarTablePages.rects();int[] sheet=all.get("sheet");
+            if(sheet==null){bad.add("no sheet drawn to hold the colour row");return bad;}
+            int paperL=sheet[0]+WarTablePages.BANNER_PAPER_X,paperR=paperL+WarTablePages.BANNER_PAPER_W;
+            if(!"Colour".equals(text("colour-label")))bad.add("no Colour word drawn");
+            for(var f:Spec.FACTIONS){String key="colour-"+f.id();int[] box=rect(key),widget=b.get(key);
+                if(box==null||widget==null){bad.add(key+" not drawn"+(widget==null?" and has no widget":""));continue;}
+                if(!Arrays.equals(box,widget))bad.add(key+" drawn at "+str(box)+" but its widget is "+str(widget));
+                if(!UiHomeChecks.inside(box,w,h))bad.add(key+" "+str(box)+" off the "+w+"x"+h+" canvas");
+                if(box[0]<paperL||box[0]+box[2]>paperR||box[1]<sheet[1]||box[1]+box[3]>sheet[1]+sheet[3])bad.add(key+" "+str(box)+" is not on the sheet's paper "+paperL+".."+paperR);
+                for(var e:all.entrySet()){String k=e.getKey();if(k.equals("sheet")||k.equals("table")||k.equals(key))continue;if(UiHomeChecks.overlap(box,e.getValue()))bad.add(key+" meets "+k+" "+str(e.getValue()));}
+                for(var e:b.entrySet())if(!e.getKey().equals(key)&&UiHomeChecks.overlap(box,e.getValue()))bad.add(key+" meets widget "+e.getKey()+" "+str(e.getValue()));}
             return bad;
         }
         String traits(MinecraftClient c,String name){if(!name.equals("banner"))return "";var f=traitFaults(c);scalesOk&=f.isEmpty();return "; House trait rows "+WarTablePages.traitRows().size()+" (detail level "+text("trait-level")+")"+(f.isEmpty()?" drawn, on the canvas and apart":" WRONG: "+f);}
@@ -3499,7 +3506,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 10->{ // p1-ui-page-focus: Tab to Remove on the Banner's row 0; a rebuild, then a change of the camp state, leave the focus there
                     int k=since(tick);var s=screen(c);
                     if(k==0){CampScreen.open("banner");return;}
-                    if(k==5){UiRecruitChecks.park(c);for(int i=0;i<16&&!focused(c).equals("remove-0");i++)UiRecruitChecks.tap(c,GLFW.GLFW_KEY_TAB);focusName=focused(c);
+                    if(k==5){UiRecruitChecks.park(c);for(int i=0;i<24&&!focused(c).equals("remove-0");i++)UiRecruitChecks.tap(c,GLFW.GLFW_KEY_TAB);focusName=focused(c);
                         why="Tab to "+focusName;if(s!=null)s.rebuild();String again=focused(c);ok=focusName.equals("remove-0")&&again.equals(focusName);why+=", a rebuild: "+again+(ok?"":" WRONG");return;}
                     if(k==7){boolean hot=WarTablePages.underlined().contains(focusName);ok&=hot;why+=", drawn underlined "+WarTablePages.underlined()+(hot?"":" WRONG");gold=CampaignClient.profile.gold;
                         server(c,b->{b.campaign.profile(player).gold+=1;b.campaign.save(player);});return;}
@@ -3581,11 +3588,21 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 5->{if(k<8)return;click(c,box(c,"row-"+Math.max(0,roll.indexOf(at0))));click(c,box(c,"seat-0"));next(tick);}
                 case 6->{if(at0.equals(line.get(0)))next(tick);else if(k>100){ok=false;why+="; seat 0 not put back ("+line.get(0)+") WRONG";next(tick);}}
                 case 7->{if(k<8)return;click(c,box(c,"row-"+Math.max(0,roll.indexOf(at19))));click(c,box(c,"seat-19"));next(tick);}
-                case 8->{if(at19.equals(line.get(19))){why+="; seats 0 and 19 put back ("+line.get(0)+", "+line.get(19)+")";stage=4;}
-                    else if(k>100){ok=false;why+="; seat 19 not put back ("+line.get(19)+") WRONG";stage=4;}}
+                case 8->{if(at19.equals(line.get(19))){why+="; seats 0 and 19 put back ("+line.get(0)+", "+line.get(19)+")";next(tick);}
+                    else if(k>100){ok=false;why+="; seat 19 not put back ("+line.get(19)+") WRONG";next(tick);}}
+                // the colour row: a press on a side that is not the commander's sends colour:<side>, the saved colour becomes it, and the chip is set in; then it is put back
+                case 9->{if(k<8)return;colourWas=CampaignClient.profile.bannerColour;colourTo=null;for(var f:Spec.FACTIONS)if(colourTo==null&&!f.id().equals(colourWas))colourTo=f.id();
+                    ok&=colourTo!=null;click(c,box(c,"colour-"+colourTo));landedAt=-1;next(tick);}
+                case 10->{boolean landed=colourTo.equals(CampaignClient.profile.bannerColour);if(landed&&landedAt<0)landedAt=tick;
+                    if(landed&&k>=3&&(colourTo.equals(text("colour-chosen"))||tick>=landedAt+20)){boolean pass=("colour:"+colourTo).equals(lastSent())&&colourTo.equals(text("colour-chosen"))&&colourFaults(c).isEmpty();ok&=pass;
+                        why+="; colour "+colourTo+" pressed: sent "+lastSent()+", the saved colour is "+CampaignClient.profile.bannerColour+", the chosen chip "+text("colour-chosen")+(pass?"":" WRONG "+colourFaults(c));click(c,box(c,"colour-"+colourWas));landedAt=-1;next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; colour "+colourTo+" pressed: sent "+lastSent()+", the saved colour still "+CampaignClient.profile.bannerColour+" 100 ticks on WRONG";next(tick);}}
+                case 11->{if(colourWas.equals(CampaignClient.profile.bannerColour)){why+="; colour put back ("+colourWas+")";stage=4;}
+                    else if(k>100){ok=false;why+="; colour "+colourWas+" not put back ("+CampaignClient.profile.bannerColour+") WRONG";stage=4;}}
                 default->stage=4;
             }
         }
+        String colourWas="",colourTo;
 
         /** What claiming key would pay now, by the game's own rule: Progression.claim on a copy of the state (a JSON round trip) with every contract finished,
          *  every tier reached and stored's own claim taken off. The expected words and amounts of the claim checks come from here and from the sheets, never from a number written out. */

@@ -62,7 +62,7 @@ public final class CampaignChecks implements ClientModInitializer {
                 if(tick==35){report("startup-suite",!failed,"Startup-only fixture complete");c.scheduleStop();}
                 return;
             }
-            if(tick==20){c.setScreen(new GravesAndGloryClient.LobbyScreen());server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());backup=Campaign.JSON.fromJson(Campaign.JSON.toJson(b.campaign.profile(p.getUuid())),Profile.class);report("lobby-ready",CampWorld.inCamp(p.getX(),p.getY(),p.getZ())&&b.world.getBlockState(new BlockPos(0,64,CampaignMaps.LOBBY_Z)).isSolidBlock(b.world,new BlockPos(0,64,CampaignMaps.LOBBY_Z)),"Player stands in built war council");});}
+            if(tick==20){c.setScreen(new CampScreen("home"));server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());backup=Campaign.JSON.fromJson(Campaign.JSON.toJson(b.campaign.profile(p.getUuid())),Profile.class);report("lobby-ready",CampWorld.inCamp(p.getX(),p.getY(),p.getZ())&&b.world.getBlockState(new BlockPos(0,64,CampaignMaps.LOBBY_Z)).isSolidBlock(b.world,new BlockPos(0,64,CampaignMaps.LOBBY_Z)),"Player stands in built war council");});}
             if(tick==25&&devRun()&&Files.exists(restartFile(c))){shot(c,"restart-lobby");server(c,b->{try{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var pr=b.campaign.profile(p.getUuid());var saved=Campaign.JSON.fromJson(Files.readString(restartFile(c)),Profile.class);
                 report("restart-collection",Campaign.JSON.toJsonTree(pr).equals(Campaign.JSON.toJsonTree(saved)),"Entire collection, loadout and commander profile after reopen matches the saved profile");
                 if(Boolean.getBoolean("gravesandglory.migrationFixture")){
@@ -74,22 +74,6 @@ public final class CampaignChecks implements ClientModInitializer {
                 }
                 long stale=0;for(var e:b.world.iterateEntities())if(e.getCommandTags().contains("gravesandglory")&&e.getClass()==net.minecraft.entity.mob.HuskEntity.class)stale++;
                 report("restart-clean-lobby",stale==0,"Hostile husks left from the earlier session: "+stale);}catch(Exception e){report("restart-collection",false,e.toString());}});}
-            if(tick==70)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());UUID me=p.getUuid();var camp=b.campaign;
-                camp.closeParty();camp.handle(p,"party:open");
-                report("party-open",me.equals(camp.partyLeader)&&camp.party.contains(me),"Commander opens a custom lobby and leads it; leader="+camp.partyLeader);
-                UUID other=UUID.randomUUID();camp.partyLeader=other;camp.party.add(other);
-                camp.handle(p,"party:invite:"+p.getGameProfile().getName());
-                report("invite-leader-only",!camp.invites.containsKey(me)&&camp.notices.getOrDefault(me,"").contains("Only the custom lobby leader"),"A member cannot send invitations; notice="+camp.notices.getOrDefault(me,""));
-                camp.closeParty();camp.partyLeader=other;camp.party.add(other);camp.invites.put(me,other);camp.inviteUntil.put(me,(long)b.time-1);
-                camp.handle(p,"party:accept");
-                report("invite-expired",!camp.party.contains(me)&&!camp.invites.containsKey(me)&&camp.notices.getOrDefault(me,"").contains("expired"),"Accepting after the sixty-second window is refused; notice="+camp.notices.getOrDefault(me,""));
-                camp.closeParty();camp.partyLeader=other;camp.party.add(other);camp.invites.put(me,other);camp.inviteUntil.put(me,(long)b.time+1200);
-                camp.handle(p,"party:decline");
-                report("invite-decline",!camp.party.contains(me)&&!camp.invites.containsKey(me)&&!camp.inviteUntil.containsKey(me),"Declining removes the invitation without joining");
-                camp.closeParty();camp.partyLeader=other;camp.party.add(other);camp.invites.put(me,other);camp.inviteUntil.put(me,(long)b.time+1200);
-                camp.handle(p,"party:accept");
-                report("invite-accept",camp.party.contains(me)&&!camp.invites.containsKey(me),"Accepting a live invitation joins the custom lobby");
-                camp.closeParty();});
             if(tick==60)shot(c,"war-council");
             if(tick==100&&devRun()&&Files.exists(restartFile(c))){shot(c,"restart-look");report("restart-armory-enabled",armoryEnabled(c),"The armory pack stays enabled across a restart");}
             if(tick==80)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var pr=b.campaign.profile(p.getUuid());var cat=RosterMath.Catalog.fromSpec();UUID me=p.getUuid();
@@ -103,7 +87,7 @@ public final class CampaignChecks implements ClientModInitializer {
                 boolean grid=pr.banner.size()==20&&pr.banner.get(0).equals("archer")&&java.util.Collections.frequency(pr.banner,"knight")==19&&RosterMath.validBanner(pr.banner,cat,pr.owned.keySet())==null;
                 report("army-composition",grid&&RosterMath.units(pr.banner,cat)==20,"Twenty-slot banner: slot 0 replaced in place, slot 20 and an unowned Legendary refused; banner="+pr.banner);b.campaign.handle(p,"slot:0:knight");
                 pr.owned.get("knight").stars=3; // a star 3 knight shows the progression bonus at spawn
-                b.campaign.handle(p,"party:open");b.campaign.handle(p,"mode:ai");b.campaign.handle(p,"start");var s=b.squads.get(p.getUuid());var bots=b.squads.values().stream().filter(x->x.bot).toList();
+                b.campaign.closeParty();b.campaign.partyLeader=p.getUuid();b.campaign.party.add(p.getUuid());b.campaign.handle(p,"mode:ai");b.campaign.handle(p,"start");var s=b.squads.get(p.getUuid());var bots=b.squads.values().stream().filter(x->x.bot).toList();
                 report("bot-practice",b.squads.size()==2&&bots.size()==1&&b.units.stream().filter(u->u.squad==s).count()==20&&b.units.size()==fielded(b)&&eachFieldsBanner(b),"One real commander (twenty knights) and one AI army fielding its banner: "+(bots.isEmpty()?"none":bots.get(0).banner)+"; units="+b.units.size());
                 var knight=b.units.stream().filter(u->u.squad==s).findFirst().orElseThrow();double want3=knight.spec.health()*RosterMath.progressionMultiplier(RosterMath.starPct(3,RosterMath.rarityRow(knight.spec.rarity())),Spec.RECRUITMENT[0].capPct());var enemy=b.units.stream().filter(u->u.squad.bot&&u.spec.group().equals("infantry")).findFirst().orElseThrow(); /* the bot's front line, as in Phase 1: a Normal bot banner opens with its Epic support in slot 0 */
                 botStarts.clear();for(var u:b.units)if(u.squad.bot)botStarts.put(u.mob.getUuid(),u.mob.getPos());
@@ -117,11 +101,11 @@ public final class CampaignChecks implements ClientModInitializer {
             if(tick==400){shot(c,"battle");server(c,b->{report("combat-effects",!victim.mob.isAlive()||victim.mob.getHealth()<health,"Actual melee damage after swing and spatial effect");});}
             if(tick==420){CommandMode.issue("infantry","move","line",new Vec3d(-170,Arena.ground(-170,0)+1,0),-90,-1);}
             if(tick==450)server(c,b->{var s=b.squads.get(c.player.getUuid());report("tactical-orders",s.assignments.containsKey("infantry")&&s.assignments.get("infantry").order.equals("move"),"Real client packet changed group assignment");b.roundStarted=b.time-181*20;b.campaign.joinedAt.put(s.owner,b.roundStarted);b.campaign.finish(s.team);report("match-rewards",b.campaign.profile(s.owner).gold==40,"Completed practice awards forty collection gold; elapsed-time fixture");});
-            if(tick==480){c.setScreen(new GravesAndGloryClient.LobbyScreen());((CampaignLobbyScreen)c.currentScreen).showTab(1);}
+            if(tick==480)c.setScreen(new CampScreen("banner"));
             if(tick==520)shot(c,"collection");
-            if(tick==550){c.setScreen(new GravesAndGloryClient.LobbyScreen());((CampaignLobbyScreen)c.currentScreen).showTab(2);}
-            if(tick==580){report("lobby-party-tab",c.currentScreen instanceof CampaignLobbyScreen,"The lobby's third tab is the custom lobby now that gear replaced the class tab");shot(c,"party");}
-            if(tick==600){c.setScreen(null);server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());boolean pass=true;for(int n=1;n<=4;n++){b.campaign.handle(p,"party:open");b.campaign.handle(p,"mode:"+n);b.campaign.handle(p,"start");pass&=b.squads.size()==n*2&&b.units.size()==fielded(b)&&eachFieldsBanner(b);for(int team=0;team<2;team++){final int t=team;pass&=b.squads.values().stream().filter(s->s.team==t).count()==n;}if(n<4)b.campaign.finish(-1);}report("team-modes",pass,"1v1, 2v2, 3v3, 4v4 filled to exact team capacities; every army fields its banner");});}
+            if(tick==550)c.setScreen(new CampScreen("friends"));
+            if(tick==580)shot(c,"friends");
+            if(tick==600){c.setScreen(null);server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());boolean pass=true;for(int n=1;n<=4;n++){b.campaign.closeParty();b.campaign.partyLeader=p.getUuid();b.campaign.party.add(p.getUuid());b.campaign.handle(p,"mode:"+n);b.campaign.handle(p,"start");pass&=b.squads.size()==n*2&&b.units.size()==fielded(b)&&eachFieldsBanner(b);for(int team=0;team<2;team++){final int t=team;pass&=b.squads.values().stream().filter(s->s.team==t).count()==n;}if(n<4)b.campaign.finish(-1);}report("team-modes",pass,"1v1, 2v2, 3v3, 4v4 filled to exact team capacities; every army fields its banner");});}
             if(tick==750)server(c,b->{report("large-battle",b.squads.size()==8&&b.units.size()==fielded(b)&&b.units.size()>=8*16&&b.units.stream().allMatch(u->u.mob.isAlive()),"Eight banner armies simulated ("+b.units.size()+" troops); tick ms="+b.server.getTickTime());var missing=b.units.stream().filter(u->u.squad.bot&&u.spec.rarity().equals("common")).findFirst().orElseThrow();repairWhy=missing.spec.id()+" ("+missing.spec.trainingSeconds()+" s to train) lost with "+missing.squad.gold+" gold"; /* a Common, as in Phase 1: slot 0 of a Normal bot banner is a 9-second Epic */repairBot=missing.squad.owner;missing.mob.discard();var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());p.changeGameMode(GameMode.SPECTATOR);p.teleport(b.world,-235,85,28,-70,25);});
             if(tick==755)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());b.relocate(p,-286,Arena.ground(-286,40)+1,40,0,0);p.changeGameMode(GameMode.ADVENTURE);p.setHealth(p.getMaxHealth());});
             if(tick==769)server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var s=b.squads.get(p.getUuid());report("barracks-ready",b.atBarracks(p,s)&&!b.respawns.containsKey(p.getUuid())&&!p.isSpectator(),"Fixture stands outside barracks: "+p.getPos()+" respawn="+b.respawns.containsKey(p.getUuid()));});
@@ -142,7 +126,7 @@ public final class CampaignChecks implements ClientModInitializer {
             if(tick==1110&&devRun())server(c,b->{try{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var mark=b.campaign.profile(p.getUuid());if(!Files.exists(restartFile(c).resolveSibling("keep-profile"))){mark.gold=777;b.campaign.save(p.getUuid());} /* a non-default value, so the reopen proves the saved file was read */ Files.writeString(restartFile(c),Campaign.JSON.toJson(mark));
                 var husk=net.minecraft.entity.EntityType.HUSK.create(b.world);husk.addCommandTag("gravesandglory");husk.refreshPositionAndAngles(-20,65,CampaignMaps.LOBBY_Z,0,0);b.world.spawnEntity(husk);
                 report("restart-fixture",true,"Collection saved and one stale hostile husk planted for the reopen test");}catch(Exception e){report("restart-fixture",false,e.toString());}});
-            if(tick==1000){c.setScreen(new GravesAndGloryClient.LobbyScreen());report("campaign-suite",!failed,"Mechanical checks finished; local multiplayer joining is a separate run");shot(c,"final-lobby");}
+            if(tick==1000){c.setScreen(new CampScreen("home"));report("campaign-suite",!failed,"Mechanical checks finished; local multiplayer joining is a separate run");shot(c,"final-lobby");}
             if(tick==1050)server(c,b->{
                 var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());var camp=b.campaign;
                 Phase1Checks.startSolo3v3(b,p.getUuid()); // a lone commander's 3v3 with bot fill; the ready pads that used to start it are gone

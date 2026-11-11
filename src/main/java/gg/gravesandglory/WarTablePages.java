@@ -56,6 +56,10 @@ final class WarTablePages {
     /** The Banner's House row sits in the sheet's head: the chosen House shows seal, tick and name, the other four their seal only
      *  (five names are 414 px wide and the sheet's paper holds 372); each chip's tooltip names its House. */
     static final int BANNER_CHIPS_DY = 10, BANNER_CHIPS_CX = 202, BANNER_HEAD_DY = 44, BANNER_PAPER_X = 20, BANNER_PAPER_W = 364;
+    /** The banner colour row, in the sheet's head line between the side's name and the seat count (colour:<side> sets what the commander
+     *  asks to fly): a "Colour" word and one swatch chip per side, each 24 x 14, from the sheet's x 192 and 2 px above the head line, so the
+     *  row lies in the 14 px between the House chips and the first seat row. */
+    static final int COLOUR_LABEL_X = 150, COLOUR_X = 192, COLOUR_DY = -2, COLOUR_W = 24, COLOUR_H = 14, COLOUR_GAP = 3;
 
     // Contracts: the three daily notes in a row centred on the page, Reroll under the middle one, the weekly note under it.
     static final int NOTE_X = 140, NOTE_Y = 140, NOTE_STEP = 240, REROLL_X = 436, REROLL_Y = 252, WEEKLY_X = 328, WEEKLY_Y = 300, RESET_Y = 412;
@@ -188,7 +192,7 @@ final class WarTablePages {
     /** Words drawn: here, title, notice; Banner: row-(i) (the troop id), count-(i), roll-hint, seat-(i) (the troop id, or empty),
      *  armed, armed-hint, seated, bonus, role-(id); Contracts: contract-(i), progress-(i), weekly, progress-weekly, reroll-hint,
      *  reset; Chapter: tier, first (the first tier on the track), xp, to-next, hero (its tier), hero-name, hero-state, roll-(t)
-     *  and oath-(t) (their two lines), unsworn; Friends: camp-how, invite-hint, invitation, lobby-invitation, member-(i),
+     *  and oath-(t) (their two lines), unsworn; Friends: camp-how, invite-hint, invitation, member-(i),
      *  party-rule, party-line, room-why, code, room-code, code-count; Field: map-(i), card-name, status, bots-current; every vellum tag's
      *  label by its widget's name. */
     static Map<String, String> texts() { return texts; }
@@ -271,7 +275,7 @@ final class WarTablePages {
 
     /** The widget a name stands for, or null: back, recruit, banner, contracts, chapter, friends (the rail's, all but the open
      *  page's); Banner: row-(i), add-(i), remove-(i), seat-(i), clear; Contracts: claim-(i), reroll, claim-weekly;
-     *  Chapter: claim, earlier, later, title-(t); Friends: invite-(k), more, accept, decline, lobby-accept, lobby-decline, lead-(i),
+     *  Chapter: claim, earlier, later, title-(t); Friends: invite-(k), more, accept, decline, lead-(i),
      *  kick-(i), create, leave, disband, claim-lead, join-(k) (Join on a friend's row), council; Field: map-(i), bots-(tier). */
     UiButton button(String name) { return buttons.get(name); }
 
@@ -621,6 +625,12 @@ final class WarTablePages {
             var chip = add("house-" + id, new UiButton(sh[0] + SHEET_X, sh[1] + SHEET_Y, 26, CHIP_H, Text.literal(name), bb -> { bannerPick = id; refresh(); }, (g, bx, by, bw, bh, hot) -> paintBannerChip(g, id, name, bx, by, bw, bh)));
             chip.setTooltip(Tooltip.of(Text.literal("Troops of " + name)));
         }
+        for (int i = 0; i < Spec.FACTIONS.length; i++) { // the banner colour: after the House row, before the roll
+            final var side = Spec.FACTIONS[i];
+            var chip = add("colour-" + side.id(), new UiButton(sh[0] + SHEET_X + COLOUR_X + i * (COLOUR_W + COLOUR_GAP), sh[1] + SHEET_Y + BANNER_HEAD_DY + COLOUR_DY, COLOUR_W, COLOUR_H,
+                Text.literal(side.name()), bb -> send("colour:" + side.id()), (g, bx, by, bw, bh, hot) -> paintColour(g, side, bx, by, bw, bh)));
+            chip.setTooltip(Tooltip.of(Text.literal("Fly the " + side.name() + ", unless the other team flies it first")));
+        }
         for (int i = 0; i < ROWS; i++) {
             final int index = i;
             int y = r[1] + ROW_TOP + ROW_H * i;
@@ -663,6 +673,7 @@ final class WarTablePages {
         }
         var clear = buttons.get("clear");
         if (clear != null) clear.active = !EMPTY.equals(armed);
+        for (var side : Spec.FACTIONS) { var chip = buttons.get("colour-" + side.id()); if (chip != null) chip.active = free; } // the server holds colour: too while a battle is on
     }
 
     private final String[] addTips = new String[ROWS];
@@ -1051,6 +1062,9 @@ final class WarTablePages {
         int sw = font.getWidth(DarkUi.body(seated));
         g.drawText(font, DarkUi.body(seated), x + BANNER_PAPER_X + BANNER_PAPER_W - sw, hy, DarkUi.SEPIA, false);
         textsDrawn.put("seated", seated);
+        g.drawText(font, DarkUi.body("Colour"), x + COLOUR_LABEL_X, hy, DarkUi.SEPIA, false);
+        textsDrawn.put("colour-label", "Colour");
+        rectsDrawn.put("colour-label", new int[]{x + COLOUR_LABEL_X, hy, font.getWidth(DarkUi.body("Colour")), 9});
         rectsDrawn.put("seated", new int[]{x + BANNER_PAPER_X + BANNER_PAPER_W - sw, hy, sw, 9});
         g.drawText(font, DarkUi.body("Front"), x + 16, oy + SEAT_Y + 19, DarkUi.SEPIA, false);
         g.drawText(font, DarkUi.body("Rear"), x + 16, oy + SEAT_Y + 3 * SEAT_STEP + 19, DarkUi.SEPIA, false);
@@ -1424,6 +1438,23 @@ final class WarTablePages {
         texturesDrawn.put("house-" + id, tex);
         colorsDrawn.put("house-" + id, DarkUi.INK_TEXT);
         if (on) textsDrawn.put("house-chosen", id);
+    }
+
+    /** A banner colour chip: the side's colour as a swatch on a parchment chip; the colour the commander asks for (the profile's
+     *  bannerColour) is set into the table, darker and ticked, as the chosen House chip is, so it is told by depth and not by colour alone. */
+    void paintColour(DrawContext g, Spec.FactionsRow side, int x, int y, int w, int h) {
+        var b = buttons.get("colour-" + side.id());
+        boolean on = side.id().equals(CampaignClient.profile.bannerColour);
+        String tex = on ? "table/chip-house-on" : "table/chip-house";
+        UiTex.nine(g, tex, x, y, w + 1, h + 2);
+        g.fill(x + 4, y + 3, x + w - 4, y + h - 3, DarkUi.OAK0);
+        g.fill(x + 5, y + 4, x + w - 5, y + h - 4, DarkUi.opaque(side.color()));
+        if (on) UiTex.draw(g, "table/ready-check", x + w - 12, y + 3);
+        if (hot(b)) underline(g, "colour-" + side.id(), x + 4, y + h + 1, w - 8, DarkUi.INK_TEXT);
+        rectsDrawn.put("colour-" + side.id(), new int[]{x, y, w, h});
+        textsDrawn.put("colour-" + side.id(), side.name());
+        texturesDrawn.put("colour-" + side.id(), tex);
+        if (on) textsDrawn.put("colour-chosen", side.id());
     }
 
     /** A Banner chip: as paintChip, but the name is written only on the House shown; the others are a seal (the tooltip names them). */
@@ -1970,11 +2001,6 @@ final class WarTablePages {
         return out.subList(0, Math.min(4, out.size()));
     }
 
-    /** A custom lobby's invitation waits for this commander (the old war council's Custom lobby tab answered it). */
-    static boolean lobbyInvited() {
-        var p = CampaignClient.party;
-        return p.has("member") && !p.get("member").getAsBoolean() && p.has("inviteSeconds") && p.get("inviteSeconds").getAsInt() > 0;
-    }
 
     /** This commander's ready in the room, as its snapshot lists him. */
     static boolean mineReady() {
@@ -2005,10 +2031,6 @@ final class WarTablePages {
         if (!value("inviter").isEmpty()) {
             tag("accept", ox + CAMP_X, oy + 344, 112, "Accept invitation", () -> send("social:accept"));
             tag("decline", ox + CAMP_X + 120, oy + 344, 72, "Decline", () -> send("social:decline"));
-        }
-        if (lobbyInvited()) {
-            tag("lobby-accept", ox + CAMP_X, oy + 404, 72, "Accept", () -> send("party:accept"));
-            tag("lobby-decline", ox + CAMP_X + 80, oy + 404, 72, "Decline", () -> send("party:decline"));
         }
         int[] po = col(C_PARTY);
         ox = po[0]; oy = po[1];
@@ -2058,7 +2080,7 @@ final class WarTablePages {
     }
 
     /** The camp's commanders who are in no party (their Invite tags are widgets), the line when there are none or they cannot be
-     *  invited yet, and the invitations waiting: the party's and a custom lobby's. */
+     *  invited yet, and the party invitation waiting. */
     void camp(DrawContext g, int ox, int oy) {
         var font = font();
         int x = ox + CAMP_X;
@@ -2077,11 +2099,6 @@ final class WarTablePages {
         if (!value("inviter").isEmpty()) {
             String line = UiMath.trim("Invitation from " + value("inviter") + " (" + number("inviteSeconds", 0) + " s)", campW(), s -> font.getWidth(DarkUi.body(s)));
             text(g, "invitation", DarkUi.body(line), line, x, oy + 324, DarkUi.IVORY);
-        }
-        if (lobbyInvited()) {
-            var p = CampaignClient.party;
-            String line = UiMath.trim("Custom lobby from " + p.get("inviter").getAsString() + " (" + p.get("inviteSeconds").getAsInt() + " s)", campW(), s -> font.getWidth(DarkUi.body(s)));
-            text(g, "lobby-invitation", DarkUi.body(line), line, x, oy + 384, DarkUi.IVORY);
         }
     }
 

@@ -94,8 +94,8 @@ public final class Campaign {
     Spec.CampaignBattlesRow pendingBattle;UUID pendingCommander;
     /** The winner of the last finished round: 0 Dawn, 1 Dusk, -1 a draw (and before any round has finished). The bot simulation sets -2 before each of its rounds. */
     int lastWinner=-1;
-    /** Custom lobby: one at a time. Its leader sets mode, map and bot fill, and starts the match. Invites expire after 60 seconds. */
-    UUID partyLeader;final LinkedHashSet<UUID> party=new LinkedHashSet<>();final Map<UUID,UUID> invites=new HashMap<>();final Map<UUID,Long> inviteUntil=new HashMap<>();
+    /** The solo-start group: the one commander who starts a practice or campaign battle (and what tests seat); its leader sets mode, map and bot fill. War council rooms (SocialHub) are how commanders play together. */
+    UUID partyLeader;final LinkedHashSet<UUID> party=new LinkedHashSet<>();
     Path layoutFile(){return b.server.getSavePath(WorldSavePath.ROOT).resolve("gravesandglory-layout.json");}
     Campaign(GravesAndGlory.Battle battle){
         b=battle;Path save=b.server.getSavePath(WorldSavePath.ROOT);
@@ -209,7 +209,7 @@ public final class Campaign {
         // A stopping server skips this: its own shutdown save follows.
         if(ArenaAutosave.settle()&&b.server.isRunning()){long at=System.nanoTime();b.server.saveAll(true,false,false);System.out.println("[Graves and Glory] Saved the world after the battle ("+(System.nanoTime()-at)/1_000_000+" ms).");}
     }
-    /** Leaving frees any seat in a custom lobby, and invitations to it, and forgets which snapshot forms were logged for him. */
+    /** Leaving frees any seat in the solo-start group, and forgets which snapshot forms were logged for him. */
     void left(UUID id){newerSaveTold.remove(id);gearSent.remove(id);forgeResults.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
     boolean handle(ServerPlayerEntity p,String cmd){
         if(cmd.startsWith("group:"))return CustomGroups.command(this,b,p,cmd); // custom group edits from the Armoury (command UI Task 12)
@@ -231,7 +231,6 @@ public final class Campaign {
             if(row.map()!=map){switchMap(row.map());notice(p.getUuid(),"Preparing "+Spec.MAPS[map].name()+" for "+row.name()+".");}
             return true;
         }
-        if(cmd.startsWith("party:")){partyCommand(p,cmd);return true;}
         if(cmd.equals("lobby")){if(b.running)notice(p.getUuid(),"Finish the battle before returning to the lobby.");else toLobby(p);return true;}
         if(b.running){
             var current=b.squads.get(p.getUuid());
@@ -241,7 +240,7 @@ public final class Campaign {
         }
         if(cmd.startsWith("difficulty:")){
             String id=cmd.substring(11);if(Arrays.stream(Spec.BOTCOMMAND).noneMatch(r->r.id().equals(id)))return true;
-            if(partyLeader!=null&&!leader(p)){notice(p.getUuid(),"Only the custom lobby leader sets the bots.");return true;}
+            if(partyLeader!=null&&!leader(p)){notice(p.getUuid(),"Only the host sets the bots.");return true;}
             difficulty=id;notice(p.getUuid(),"Bots: "+id.substring(0,1).toUpperCase()+id.substring(1)+".");return true;
         }
         Profile pr=profile(p.getUuid());var squad=b.squads.get(p.getUuid());if(squad==null)return false;
@@ -274,7 +273,7 @@ public final class Campaign {
             if(!leader(p))return true;
             String mode=cmd.substring(5);int requested=switch(mode){case "ai","1"->1;case "2"->2;case "3"->3;case "4"->4;default->0;};
             if(requested==0)return true;
-            if(party.size()>requested*2||(mode.equals("ai")&&party.size()>1)){notice(p.getUuid(),"Your custom lobby is too large for that mode.");return true;}
+            if(party.size()>requested*2||(mode.equals("ai")&&party.size()>1)){notice(p.getUuid(),"Your group is too large for that mode.");return true;}
             size=requested;practice=mode.equals("ai");if(!practice)for(var entry:profiles.entrySet()){entry.getValue().sanitize();save(entry.getKey());}balance();return true;
         }
         if(cmd.equals("fill")){if(leader(p))fill=!fill;return true;}
@@ -291,7 +290,7 @@ public final class Campaign {
             battleMode=id;notice(p.getUuid(),"Battle mode: "+Modes.row(id).name()+".");return true;
         }
         if(cmd.equals("start")){
-            if(!leader(p)){notice(p.getUuid(),"Only the custom lobby leader starts the match.");return true;}
+            if(!leader(p)){notice(p.getUuid(),"Only the host starts the match.");return true;}
             if(!fill&&!practice&&party.size()!=size*2){notice(p.getUuid(),"Waiting for commanders. Enable bot fill to play now.");return true;}
             if(practice&&party.size()>1){notice(p.getUuid(),"Practice is for one commander.");return true;}
             for(UUID id:party){var s=b.squads.get(id);if(s!=null&&bannerUnits(id)==0){notice(p.getUuid(),"Every commander needs at least one troop in their banner.");return true;}}
@@ -725,7 +724,7 @@ public final class Campaign {
                 else for(UUID member:pending.members)notice(member,"Map prepared. Match cancelled because readiness or room membership changed.");}
         }
         if(b.time%20==0)social.presence(new HashSet<>(b.server.getPlayerManager().getPlayerList().stream().map(ServerPlayerEntity::getUuid).toList()),System.currentTimeMillis());
-        if(!b.running){for(var p:b.server.getPlayerManager().getPlayerList())if(leash&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))toLobby(p);if(b.time%20==0)expireInvites();if(b.time%10==0)roomCountdown();return;}
+        if(!b.running){for(var p:b.server.getPlayerManager().getPlayerList())if(leash&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))toLobby(p);if(b.time%10==0)roomCountdown();return;}
         // Unseated lobby players wait in the hall while a match runs.
         if(b.time%20==0)for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(leash&&(s==null||!s.seated)&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))toLobby(p);}
         if(b.time<introUntil){for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(s!=null&&s.seated&&p.squaredDistanceTo(b.fieldBase(s.team))>2)b.toBase(p,s.team);}return;}
@@ -848,54 +847,15 @@ public final class Campaign {
     }
     boolean leader(ServerPlayerEntity p){return p.getUuid().equals(partyLeader);}
     String name(UUID id){var p=b.server.getPlayerManager().getPlayer(id);return p==null?social.names.getOrDefault(id,"Commander-"+id.toString().substring(0,6)):p.getGameProfile().getName();}
-    void closeParty(){partyLeader=null;party.clear();invites.clear();inviteUntil.clear();}
-    void expireInvites(){for(var e:new ArrayList<>(inviteUntil.entrySet()))if(e.getValue()<=b.time){invites.remove(e.getKey());inviteUntil.remove(e.getKey());}}
+    void closeParty(){partyLeader=null;party.clear();}
     void leaveParty(UUID id){
-        if(!party.contains(id))return;
-        String who=name(id);party.remove(id);invites.remove(id);inviteUntil.remove(id);
-        if(party.isEmpty()){closeParty();return;}
-        if(id.equals(partyLeader)){partyLeader=party.iterator().next();notice(partyLeader,"You now lead the custom lobby.");}
-        for(UUID member:party)notice(member,who+" left the custom lobby.");
-    }
-    void partyCommand(ServerPlayerEntity p,String cmd){
-        UUID me=p.getUuid();
-        if(b.running){notice(me,"Finish the battle first.");return;}
-        if(cmd.equals("party:open")){
-            if(partyLeader!=null){notice(me,"A custom lobby is already open.");return;}
-            partyLeader=me;party.add(me);notice(me,"Custom lobby open. Invite commanders from the Custom lobby tab.");return;
-        }
-        if(cmd.equals("party:leave")){leaveParty(me);return;}
-        if(cmd.equals("party:decline")){invites.remove(me);inviteUntil.remove(me);return;}
-        if(cmd.equals("party:accept")){
-            Long until=inviteUntil.get(me);
-            if(until==null||until<=b.time||partyLeader==null){invites.remove(me);inviteUntil.remove(me);notice(me,"That invitation has expired.");return;}
-            if(party.size()>=size*2){notice(me,"This lobby is full.");return;}
-            party.add(me);invites.remove(me);inviteUntil.remove(me);
-            for(UUID member:party)notice(member,name(me)+" joined the custom lobby.");
-            return;
-        }
-        if(cmd.startsWith("party:invite:")){
-            if(partyLeader==null||!party.contains(me)){notice(me,"Open a custom lobby first.");return;}
-            if(!leader(p)){notice(me,"Only the custom lobby leader invites.");return;}
-            var target=b.server.getPlayerManager().getPlayer(cmd.substring(13));
-            if(target==null||!b.squads.containsKey(target.getUuid())){notice(me,"That commander is not in this server.");return;}
-            if(party.contains(target.getUuid()))return;
-            if(party.size()>=size*2){notice(me,"This lobby is full.");return;}
-            invites.put(target.getUuid(),me);inviteUntil.put(target.getUuid(),b.time+1200);
-            notice(target.getUuid(),name(me)+" invites you to a custom lobby. Open the Custom lobby tab to accept.");
-            notice(me,"Invited "+target.getGameProfile().getName()+".");
-        }
+        if(!party.remove(id))return;
+        if(party.isEmpty())closeParty();else if(id.equals(partyLeader))partyLeader=party.iterator().next();
     }
     String snapshot(ServerPlayerEntity p){
         JsonObject j=new JsonObject();Profile pr=profile(p.getUuid());j.add("profile",forClient(pr));j.addProperty("collectionReady",collectionsReady.contains(p.getUuid()));j.addProperty("waiting",b.running&&(!b.squads.containsKey(p.getUuid())||!b.squads.get(p.getUuid()).seated));j.addProperty("mode",practice?"ai":Integer.toString(size));j.addProperty("fill",fill);j.addProperty("difficulty",difficulty);j.addProperty("map",map);j.addProperty("serial",serial);j.addProperty("intro",b.squads.containsKey(p.getUuid())&&b.squads.get(p.getUuid()).seated?Math.max(0,introUntil-b.time):0);j.addProperty("notice",notices.getOrDefault(p.getUuid(),""));j.addProperty("noticeSerial",noticeSerials.getOrDefault(p.getUuid(),0));j.addProperty("headline",headline);j.addProperty("tutorial",tutorialStep(p.getUuid()));
         JsonObject battle=new JsonObject();if(activeBattle!=null){battle.addProperty("id",activeBattle.id());battle.addProperty("name",activeBattle.name());battle.addProperty("briefing",activeBattle.briefing());battle.addProperty("reason",activeBattle.reason());}j.add("battle",battle);var starts=seasonStarts();j.addProperty("season",MarchMath.Seasons.current(starts,Progression.today()));JsonArray dates=new JsonArray();for(var d:starts)dates.add(d==null?"":d.toString());j.add("seasonStarts",dates); // brief G2: the campaign card shows a chapter that has not opened // the Long March battle being fought, or {}
-        JsonObject partyJson=new JsonObject();boolean member=party.contains(p.getUuid());Long until=inviteUntil.get(p.getUuid());UUID inviter=invites.get(p.getUuid());
-        partyJson.addProperty("open",partyLeader!=null);partyJson.addProperty("member",member);partyJson.addProperty("lead",leader(p));partyJson.addProperty("capacity",size*2);
-        partyJson.addProperty("leader",partyLeader==null?"":name(partyLeader));
-        JsonArray members=new JsonArray();for(UUID id:party)members.add(name(id));partyJson.add("members",members);
-        partyJson.addProperty("inviteSeconds",until==null?0:(int)Math.max(0,(until-b.time+19)/20));partyJson.addProperty("inviter",inviter==null?"":name(inviter));
-        JsonArray online=new JsonArray();if(partyLeader!=null)for(var other:b.server.getPlayerManager().getPlayerList())if(!party.contains(other.getUuid())&&b.squads.containsKey(other.getUuid()))online.add(other.getGameProfile().getName());
-        partyJson.add("online",online);j.add("party",partyJson);j.add("result",results.getOrDefault(p.getUuid(),new JsonObject()));
+        j.add("result",results.getOrDefault(p.getUuid(),new JsonObject()));
         // In the lobby a row carries the team the viewer's next round gives that commander (nextSeats), or -1 when he would not enter with the viewer, so the list's marks read like the side preview; in battle, the squad's team.
         Map<UUID,Integer> nextTeams=new HashMap<>();if(!b.running)for(var seat:nextSeats(p.getUuid()))nextTeams.put(seat.owner(),seat.team());
         JsonArray players=new JsonArray();for(var s:b.squads.values()){JsonObject row=new JsonObject();var player=b.server.getPlayerManager().getPlayer(s.owner);row.addProperty("name",s.bot?"AI Commander":player==null?"Commander":player.getGameProfile().getName());row.addProperty("team",b.running?s.team:nextTeams.getOrDefault(s.owner,-1));row.addProperty("bot",s.bot);players.add(row);}j.add("players",players);j.add("sides",sidesJson(p.getUuid()));j.add("banner",bannerJson(p.getUuid()));j.add("social",socialSnapshot(p.getUuid()));j.add("progression",progressSnapshot(p.getUuid()));j.add("lastRoll",lastRolls.getOrDefault(p.getUuid(),new JsonObject()));j.add("forge",forgeResults.getOrDefault(p.getUuid(),new JsonObject()));
@@ -906,7 +866,7 @@ public final class Campaign {
     /**
      * The seats the viewer's next round would have, for the lobby's side preview. While a start is under way they are the seated
      * commanders, exactly what chooseSides reads. Between rounds nobody is seated, so they are the commanders the viewer's start
-     * would seat, balanced as prepareRound balances them: his room on its teams, his custom lobby on
+     * would seat, balanced as prepareRound balances them: his room on its teams, his solo-start group on
      * their teams, or he alone on team 0, as a solo battle seats him. A commander in the lobby who will not enter with him does
      * not set his preview.
      */

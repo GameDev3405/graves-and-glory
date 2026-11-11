@@ -107,8 +107,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             for(int i=0;i<3;i++)while(client.options.hotbarKeys[i].wasPressed())send("relic:"+i);});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.GEAR,(client,handler,buf,responder)->{String text=buf.readString(GearWire.LIMIT);client.execute(()->CampaignClient.gear=GearWire.decode(text));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.CAMP,(client,handler,buf,responder)->{String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new LobbyScreen())));
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new LobbyScreen(3))));
+        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new CampScreen("home"))));
+        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new CampScreen("home"))));
         // The motion events (Task 6): a troop's stance (stance_v2), its swings (attack_v1) and the blows on it (hit_v1), kept in MotionEvents.Client for the
         // motion engine. A stance a player gets on START_TRACKING comes before the entity's spawn packet (Fabric calls the event first), so a stance is
         // kept for an id the world does not have yet (the server sends the catch-up swing after the spawn); an unloaded entity's entries go. TroopMotion reads them each frame.
@@ -417,10 +417,6 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         @Override public boolean keyPressed(int key,int scan,int mods){if(menu.matchesKey(key,scan)||key==GLFW.GLFW_KEY_ESCAPE){close();return true;}if(mapKey.matchesKey(key,scan)&&battleActive()){client.setScreen(new MapScreen(this));return true;}return super.keyPressed(key,scan,mods);}
         ButtonWidget primary(String label,int x,int y,int w,java.util.function.Consumer<ButtonWidget> action){var b=new FantasyButton(x,y,w,26,Text.literal(label),action::accept);b.primary=true;return addDrawableChild(b);}
         ButtonWidget button(String label,int x,int y,int w,java.util.function.Consumer<ButtonWidget> action){return addDrawableChild(new FantasyButton(x,y,w,20,Text.literal(label),action::accept));}
-    }
-    public static final class LobbyScreen extends CampaignLobbyScreen {
-        LobbyScreen(){this(0);}
-        LobbyScreen(int first){super();tab=first;}
     }
     public static final class BarracksScreen extends RecruitmentScreen { BarracksScreen(){super();} }
     public static final class MapScreen extends ArmyScreen {

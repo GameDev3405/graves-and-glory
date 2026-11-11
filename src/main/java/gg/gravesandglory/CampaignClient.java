@@ -32,7 +32,7 @@ public final class CampaignClient {
     static String text(JsonObject j,String key){return j.has(key)?j.get(key).getAsString():"";}
     /** The Long March number (sheet order) of the battle being fought; 1 when none is known. */
     static int battleOrder(){for(var row:Spec.CAMPAIGNBATTLES)if(row.id().equals(text(battle,"id")))return row.order();return 1;}
-    static boolean lead,fill=true;static String mode="2",notice="",dismissed="",headline="",partyKey="";
+    static boolean fill=true;static String mode="2",notice="",dismissed="",headline="";
     /** The server's count of notices sent to this player, as last sent in the snapshot: it rises with each notice, even one that repeats the last text. */
     static int noticeSerial;
     /** The server-wide bot difficulty (a Spec.BOTCOMMAND id), as last sent in the snapshot. */
@@ -44,8 +44,7 @@ public final class CampaignClient {
     static String homeMode="skirmish";
     /** The tier a press of the Bots button asks for: the next row of the sheet, wrapping round. */
     static String nextDifficulty(){for(int i=0;i<Spec.BOTCOMMAND.length;i++)if(Spec.BOTCOMMAND[i].id().equals(difficulty))return Spec.BOTCOMMAND[(i+1)%Spec.BOTCOMMAND.length].id();return Spec.BOTCOMMAND[0].id();}
-    static JsonObject party=emptyParty();static int tutorial=-1;
-    static JsonObject emptyParty(){JsonObject j=new JsonObject();j.addProperty("open",false);j.addProperty("member",false);j.addProperty("lead",false);j.addProperty("capacity",2);j.addProperty("leader","");j.add("members",new JsonArray());j.addProperty("inviteSeconds",0);j.addProperty("inviter","");j.add("online",new JsonArray());return j;}
+    static int tutorial=-1;
     static String lastSaved="",revealUnit="";static long revealUntil;static boolean received;
     /** The last roll or chosen buy, from the snapshot's lastRoll (Task 12): the troop id, whether it was a duplicate, its stars before and after and the shards it gave; n tells a new one from the same. */
     record LastRoll(String troop,boolean duplicate,int starsBefore,int starsAfter,int shards,int n){}
@@ -123,8 +122,7 @@ public final class CampaignClient {
         revision++;
         try{JsonObject j=JsonParser.parseString(json).getAsJsonObject();if(!j.has("profile"))return; /* "{}": the server could not fit this snapshot; keep the last camp state */var nextProfile=Campaign.JSON.fromJson(j.get("profile"),Profile.class);if(received&&nextProfile.owned!=null&&nextProfile.owned.size()>profile.owned.size()){for(var unit:Spec.TROOPS)if(nextProfile.owned.containsKey(unit.id())&&!profile.owned.containsKey(unit.id()))revealUnit=unit.name();revealUntil=System.currentTimeMillis()+2400;}nextProfile.sanitize();profile=nextProfile;acceptRoll(j,!received);acceptForge(j);received=true;
             if(j.has("sides")){var s=j.getAsJsonArray("sides");if(s.size()==2)sides=new String[]{s.get(0).getAsString(),s.get(1).getAsString()};}
-            if(j.has("banner")){var list=new java.util.ArrayList<String>();for(var e:j.getAsJsonArray("banner"))list.add(e.getAsString());banner=list;}social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();battleMode=j.has("battleMode")?j.getAsJsonObject("battleMode"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");party=j.getAsJsonObject("party");lead=party.get("lead").getAsBoolean();
-            JsonObject keyed=new JsonObject();for(var entry:party.entrySet())if(!entry.getKey().equals("inviteSeconds"))keyed.add(entry.getKey(),entry.getValue());partyKey=keyed.toString();
+            if(j.has("banner")){var list=new java.util.ArrayList<String>();for(var e:j.getAsJsonArray("banner"))list.add(e.getAsString());banner=list;}social=j.has("social")?j.getAsJsonObject("social"):new JsonObject();battleMode=j.has("battleMode")?j.getAsJsonObject("battleMode"):new JsonObject();progression=j.has("progression")?j.getAsJsonObject("progression"):new JsonObject();if(j.has("progression"))profile.progression=Campaign.JSON.fromJson(progression,Progression.State.class);players=j.getAsJsonArray("players");
             tutorial=j.has("tutorial")?j.get("tutorial").getAsInt():-1;battle=j.has("battle")?j.getAsJsonObject("battle"):new JsonObject();season=j.has("season")?j.get("season").getAsInt():1;seasonStarts=new java.util.ArrayList<>();if(j.has("seasonStarts"))for(var d:j.getAsJsonArray("seasonStarts"))try{seasonStarts.add(java.time.LocalDate.parse(d.getAsString()));}catch(Exception bad){seasonStarts.add(null);}fill=j.get("fill").getAsBoolean();difficulty=j.has("difficulty")?j.get("difficulty").getAsString():"normal";mode=j.get("mode").getAsString();acceptNotice(j.get("notice").getAsString());acceptedStates++;noticeSerial=j.has("noticeSerial")?j.get("noticeSerial").getAsInt():0;headline=j.has("headline")&&!j.get("headline").isJsonNull()?j.get("headline").getAsString():"";
             int next=j.get("map").getAsInt();if(next!=map||Spec.FACTIONS[0].spawnX()!=CampaignMaps.spawnX(next,0)){map=next;if(c.getServer()==null)CampaignMaps.select(map);GravesAndGloryClient.invalidateMap(c);}
             waiting=j.has("waiting")&&j.get("waiting").getAsBoolean();

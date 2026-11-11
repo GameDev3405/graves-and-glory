@@ -38,7 +38,7 @@ final class LobbyCanvas {
         new Area("spawn","SPAWN","Players arrive here. /warp lists every area of this plan.",Blocks.WHITE_CONCRETE,-7,14,7,24,true),
         new Area("hearth-court","HEARTH COURT","The heart of the camp: the gathering place around the war table.",Blocks.ORANGE_CONCRETE,-18,-24,18,10,false),
         new Area("war-table","WAR TABLE","Use the table to open the War Table: claims, recruits, class cards, troop sheet, campaign.",Blocks.BROWN_CONCRETE,-5,-12,5,-2,false),
-        new Area("party-lectern","PARTY LECTERN","Use the lectern to open the party tab and form a party.",Blocks.MAGENTA_CONCRETE,11,-7,15,-3,false),
+        new Area("party-lectern","WAR COUNCIL LECTERN","Use the lectern to open the War Table and start a war council.",Blocks.MAGENTA_CONCRETE,11,-7,15,-3,false),
         new Area("tent-ironclad","IRONCLAD TENT","House tent of the Ironclad: recruit this House's troops here.",Blocks.GRAY_CONCRETE,-47,-58,-33,-40,false),
         new Area("tent-gilded","GILDED TENT","House tent of the Gilded: recruit this House's troops here.",Blocks.YELLOW_CONCRETE,-27,-58,-13,-40,false),
         new Area("tent-graveborn","GRAVEBORN TENT","House tent of the Graveborn: recruit this House's troops here.",Blocks.PURPLE_CONCRETE,-7,-58,7,-40,false),
