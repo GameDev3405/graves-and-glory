@@ -649,6 +649,45 @@ public final class BattleMath {
     public static boolean timedCharge(double nearestEnemyDistance, long living, long enemiesNear, double chargeRatio, double chargeDistance) {
         return living >= enemiesNear * chargeRatio && (chargeDistance <= 0 || nearestEnemyDistance <= chargeDistance);
     }
+    /** Bot point choice weights (bot-AI plan step 2): a point off the army's lane, a contested point (a fight to join), each other friendly bot
+     *  army already sent there (so a team's armies spread over the map, audit D1), the army's current point (no flapping between two near-equal
+     *  points), and an owned, uncontested point (a fall-back only: nothing is left to take). */
+    public static final double POINT_OFF_LANE = 90, POINT_CONTESTED = 55, POINT_CLAIMED = 120, POINT_KEEP = 25, POINT_OWNED = 400;
+    /** One point's cost for a bot army at (cx, cz); the lowest wins (pickPoint). A point this team owns counts as open to take again only while it is contested. */
+    public static double pointValue(double cx, double cz, double px, double pz, int owner, boolean contested, int team, boolean onLane, int claims, boolean current) {
+        double v = Math.hypot(cx - px, cz - pz) + claims * POINT_CLAIMED - (current ? POINT_KEEP : 0);
+        if (owner != team || contested) v += (onLane ? 0 : POINT_OFF_LANE) - (contested ? POINT_CONTESTED : 0);
+        else v += POINT_OWNED;
+        return v;
+    }
+    /** The point a bot army goes for (pointValue over every point): claims[i] counts this team's other bot armies already sent to point i, current is the army's point now (-1 none). */
+    public static int pickPoint(double cx, double cz, double[] px, double[] pz, int[] owner, boolean[] contested, int team, int lane, int[] claims, int current) {
+        int best = -1; double bestValue = Double.MAX_VALUE;
+        for (int i = 0; i < px.length; i++) {
+            double v = pointValue(cx, cz, px[i], pz[i], owner[i], contested[i], team, i == lane, claims[i], i == current);
+            if (v < bestValue) { bestValue = v; best = i; }
+        }
+        return best;
+    }
+    /** How far behind a point's centre a bot's ranged group stands to shoot across it: its reach less the point's radius and 2, so its arrows cover
+     *  the far edge, kept between 5 (the old fixed role depth) and the radius plus 2 (still on the point's edge, where it counts as on the objective). */
+    public static double rangedStandoff(double reach, double radius) { return Math.max(5, Math.min(radius + 2, reach - radius - 2)); }
+    /** Minecraft yaw, in degrees, of a body facing along (dx, dz): +z is 0, +x is -90 (Dawn's default facing), -x is 90. */
+    public static float yawToward(double dx, double dz) { return (float) Math.toDegrees(Math.atan2(-dx, dz)); }
+    /** The smaller angle between two yaws, in degrees (0 to 180). */
+    public static double yawGap(double a, double b) { double d = Math.abs(((a - b) % 360 + 540) % 360 - 180); return d; }
+    /** The group a bot army leaves to guard a point it took: the smallest of its infantry, ranged and cavalry groups with at least 2 living troops
+     *  (infantry first on a tie, then ranged), so the bulk of the army moves on; null when the army has fewer than two groups of 2 or more (it is one group: all of it stays or goes). */
+    public static String guardGroup(int infantry, int ranged, int cavalry, int support, int siege) {
+        int groups = (infantry >= 2 ? 1 : 0) + (ranged >= 2 ? 1 : 0) + (cavalry >= 2 ? 1 : 0) + (support >= 2 ? 1 : 0) + (siege >= 2 ? 1 : 0);
+        if (groups < 2) return null;
+        String best = null; int size = Integer.MAX_VALUE;
+        String[] ids = {"infantry", "ranged", "cavalry"}; int[] n = {infantry, ranged, cavalry};
+        for (int i = 0; i < ids.length; i++) if (n[i] >= 2 && n[i] < size) { size = n[i]; best = ids[i]; }
+        return best;
+    }
+    /** Whether a bot's waiting refills move up together: enough have gathered at the rally spot (need), or the first has waited the timeout. */
+    public static boolean musterGo(int gathered, int need, long waitedTicks, long timeoutTicks) { return gathered >= need || waitedTicks >= timeoutTicks; }
     /** Whether a shield troop holds its shield up. Never on a charge or a retreat, and never with an enemy in reach
      *  (nearestSq at or inside reachSq, both squared blocks): the troop lowers it to swing, as a player must. On Hold any
      *  enemy raises it (hasEnemy: one picked or in sight), and so does archer fire from one it cannot see (underFire);

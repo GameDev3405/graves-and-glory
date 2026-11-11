@@ -9,7 +9,9 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Convoy, the supply-wagon escort (spec docs/superpowers/specs/2026-10-31-convoy-escort-design.md, approved by Kort
@@ -81,6 +83,8 @@ public final class ConvoyMode extends BattleMode {
     final String[] stopNames;
     double distance;
     String state = ModeMath.IDLE;
+    /** The battle tick the wagon was last contested (a defender within reach), for the escort bots' clear-the-wagon task (botGoal). */
+    long contestedAt = Long.MIN_VALUE / 2;
     int idleTicks, pushers, defenders;
     long movingSince = -1, lastStopped = -100000, lastNear = -100000;
     boolean everMoved, rolledBack, wasRolling, finished;
@@ -219,6 +223,7 @@ public final class ConvoyMode extends BattleMode {
         count(b, at);
         String was = state;
         state = ModeMath.convoyState(pushers, defenders, idleTicks, IDLE_TICKS);
+        if (state.equals(ModeMath.CONTESTED)) contestedAt = b.time;
         idleTicks = state.equals(ModeMath.IDLE) || state.equals(ModeMath.ROLLBACK) ? idleTicks + 1 : 0;
         int seg = ModeMath.segment(stations, distance);
         Vec3d a = position(stations[seg]), z = position(stations[seg + 1]);
@@ -347,6 +352,7 @@ public final class ConvoyMode extends BattleMode {
         List<String> roles = ModeMath.convoyRoles(banners, humans, raidShare(tier.id()), escort);
         String role = roles.get(Math.min(roles.size() - 1, humans + index));
         Vec3d at = position(distance);
+        if (escort && b.time - contestedAt <= CLEAR_TICKS && clears(b, s, at)) return at; // the wagon is contested: the nearest escorts clear it (audit C1, C2)
         boolean far = Math.hypot(centre.x - at.x, centre.z - at.z) > chaseRange(tier.id());
         return switch (role) {
             case "pusher" -> road(distance + 3);
@@ -354,6 +360,33 @@ public final class ConvoyMode extends BattleMode {
             case "screen" -> far ? at : road(distance + 20);
             default -> far ? at : road(Math.min(distance + BLOCK_AHEAD, stops[nextStop()]));
         };
+    }
+
+    /** How long after the wagon was last contested the escorts sent to clear it stay on it (so a defender stepping in and out does not flap their orders), and how many of the escort's bot armies go. */
+    static final long CLEAR_TICKS = 100;
+    static final int CLEAR_ARMIES = 2;
+    /**
+     * Whether this escort army is one of the CLEAR_ARMIES escort bot armies nearest the wagon (by the centre of their troops; ties to the earlier army),
+     * which go to the wagon itself while it is contested and clear the defenders off it, whatever their role (pusher or screen).
+     */
+    static boolean clears(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Vec3d wagon) {
+        Map<GravesAndGlory.Squad, double[]> sum = new LinkedHashMap<>();
+        for (var u : b.units) {
+            var q = u.squad;
+            if (!u.mob.isAlive() || q.team != ESCORT || !q.bot || !q.seated || u.musterSince >= 0 || b.campaign.botRetreating.contains(q.owner)) continue;
+            double[] c = sum.computeIfAbsent(q, k -> new double[3]);
+            c[0] += u.mob.getX(); c[1] += u.mob.getZ(); c[2]++;
+        }
+        double[] mine = sum.get(s);
+        if (mine == null) return false;
+        double own = Math.hypot(mine[0] / mine[2] - wagon.x, mine[1] / mine[2] - wagon.z);
+        int nearer = 0;
+        for (var e : sum.entrySet()) {
+            if (e.getKey() == s) continue;
+            double[] c = e.getValue();
+            if (Math.hypot(c[0] / c[2] - wagon.x, c[1] / c[2] - wagon.z) < own) nearer++;
+        }
+        return nearer < CLEAR_ARMIES;
     }
 
     /** Whether the round's wagon ever rolled back behind where it stood: the never_rolled bonus is lost. */

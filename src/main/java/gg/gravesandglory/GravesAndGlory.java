@@ -229,6 +229,8 @@ public final class GravesAndGlory implements ModInitializer {
         /** Gold the squad earns (income, kills): into the bank and this round's tally. Starting gold and refunds go straight to gold. */
         void earn(int amount){gold+=amount;stats.goldEarned+=amount;}
         final Map<String,Assignment> assignments=new HashMap<>();
+        /** A bot army's refill rally (Campaign.musterRefill): the spot its new troops gather at before they move up together, and the order they stand under there; null when none wait. Never set for a player's army. */
+        Assignment muster;
         final ArrayDeque<Training> training=new ArrayDeque<>();
         /** Per group: which groups stand their last stand now, when each was last told of it (Morale.tick), and the group's full lineup health this round. */
         final Set<String> lastStand=new HashSet<>();final Map<String,Long> lastStandAt=new HashMap<>();
@@ -280,6 +282,8 @@ public final class GravesAndGlory implements ModInitializer {
         Squad squad;
         Spec.TroopsRow spec;
         int slot;
+        /** A bot army's refill waiting at its rally (Squad.muster) since this battle tick, -1 when it is with its army (Campaign.musterRefill, musterRelease). */
+        long musterSince=-1;
         long nextAttack;long abilityAt,windupUntil;Vec3d spellCenter;
         /** Kort Q70: the battle tick a bow troop's late shot leaves (Tactics.looseLate; -1 none) and the target its beat chose. */
         long looseAt=-1;LivingEntity looseTarget;
@@ -985,10 +989,11 @@ public final class GravesAndGlory implements ModInitializer {
             }
         }
         /** The order a troop is under: its group's stored one, or its troop type's (troop:<id>, from a custom group order, CustomGroups) when that was issued at the same time or later. No group ever leaves it on its own (the no-routing design); only its commander's next order changes it. */
-        Assignment assignment(Unit u){Assignment t=u.squad.assignments.get(CustomGroups.TROOP+u.spec.id()),g=u.squad.assignments.get(u.spec.group());return t!=null&&(g==null||t.issued>=g.issued)?t:storedAssignment(u.squad,u.spec.group());}
+        Assignment assignment(Unit u){if(u.musterSince>=0&&u.squad.muster!=null)return u.squad.muster; // a bot's refill gathering at its rally (Campaign.musterRefill)
+            Assignment t=u.squad.assignments.get(CustomGroups.TROOP+u.spec.id()),g=u.squad.assignments.get(u.spec.group());return t!=null&&(g==null||t.issued>=g.issued)?t:storedAssignment(u.squad,u.spec.group());}
         /** The newest order among the squad's living troops of a group as assignment(u) reads it (a custom group's order included, Task 12 fix I2),
          *  else the group's stored one: what the HUD shows for the group and where reinforcements go. */
-        Assignment groupOrder(Squad s,String group){Assignment best=null;for(Unit u:units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive()){var a=assignment(u);if(best==null||a.issued>best.issued)best=a;}return best!=null?best:storedAssignment(s,group);}
+        Assignment groupOrder(Squad s,String group){Assignment best=null;for(Unit u:units)if(u.squad==s&&u.spec.group().equals(group)&&u.mob.isAlive()&&u.musterSince<0){var a=assignment(u);if(best==null||a.issued>best.issued)best=a;}return best!=null?best:storedAssignment(s,group);}
         Assignment storedAssignment(Squad s,String group){return s.assignments.getOrDefault(group,new Assignment(s.order,s.formation,s.target,s.yaw));}
         /** Stamps the charge of the named group(s) (Squad.chargedAt), which the counters table's charge impact (row C5) reads. A bot's order sounds nothing; a player's order sounds in the world at him (BattleEffects.feedback), on the order paths. */
         void markCharge(Squad s,String group){for(var g:Spec.GROUPS)if(!g.id().equals("all")&&(group.equals("all")||group.equals(g.id())))s.chargedAt.put(g.id(),time);}
@@ -1025,7 +1030,7 @@ public final class GravesAndGlory implements ModInitializer {
             // the group in slot order (then entity id, so every member sees the same order); BattleMath.holdLayout lays it out: on Hold its shield troops close into the wall in the front ranks, the rest form behind them
             List<Unit> group=new ArrayList<>();group.add(u);
             String key=CustomGroups.stateKey(u); // its spec group, or the troops sharing its custom group's order (Task 12 fix I1)
-            for(Unit other:units)if(other!=u&&other.squad==u.squad&&other.mob.isAlive()&&CustomGroups.stateKey(other).equals(key))group.add(other);
+            for(Unit other:units)if(other!=u&&other.squad==u.squad&&other.mob.isAlive()&&(other.musterSince<0)==(u.musterSince<0)&&CustomGroups.stateKey(other).equals(key))group.add(other); // a bot's refills at the rally form apart from their group
             group.sort(Comparator.<Unit>comparingInt(m->m.slot).thenComparingInt(m->m.mob.getId()));
             boolean[] shield=new boolean[group.size()];double[] width=new double[group.size()];int at=0;
             for(int i=0;i<shield.length;i++){Unit m=group.get(i);shield[i]=walls(m,a.order);width[i]=m.mob.getWidth();if(m==u)at=i;}
@@ -1095,7 +1100,8 @@ public final class GravesAndGlory implements ModInitializer {
                 int slot=-1;for(int i=0;i<s.banner.size()&&i<R.squadSize();i++)if(s.banner.get(i).equals(t.spec().id())&&!used.contains(i)){slot=i;break;} // its own banner slot, so it forms where the banner puts it
                 if(slot<0){slot=0;while(used.contains(slot))slot++;}
                 if(slot>=R.squadSize()){s.gold+=t.paid();continue;}
-                var at=deploy(s,slot,t.spec());spawn(s,t.spec(),slot,at.at());Morale.fielded(this,s,t.spec().group());
+                var at=deploy(s,slot,t.spec());var fresh=spawn(s,t.spec(),slot,at.at());Morale.fielded(this,s,t.spec().group());
+                if(s.bot)campaign.musterRefill(s,fresh); // a bot's refill gathers with the others before it moves up (bot-AI plan step 2)
                 FeedEvents.deployed(this,s,t.spec());
             }
         }

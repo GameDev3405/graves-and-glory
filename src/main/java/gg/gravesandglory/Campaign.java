@@ -201,7 +201,7 @@ public final class Campaign {
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
         b.running=false;introUntil=0;social.finish();activeRoom="";roundTier="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);b.clearIntel();
         Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearCorpses();b.clearSides();b.clearProgression();
-        b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();deleteProgress();
+        b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();botGuard.clear();musterFirstAt.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();deleteProgress();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}closeParty();
         notices.values().removeIf(WELCOME_WAIT::equals);noticeAt.keySet().retainAll(notices.keySet()); // "Battle in progress" is no longer true
         for(var p:b.server.getPlayerManager().getPlayerList())toLobby(p);
@@ -337,7 +337,7 @@ public final class Campaign {
     void prepareRound(){
         tutorial.clear();
         b.squads.values().removeIf(s->s.bot);balance();
-        for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();b.clearCorpses();botRespawns.clear();botRetreating.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();
+        for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();b.clearCorpses();botRespawns.clear();botRetreating.clear();botGuard.clear();musterFirstAt.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
             int target=size; // practice and a March battle set size in soloStart, so one bot per team stays the practice rule
             if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():botTier();s.lane=i%3;var ally=allyRow(s);if(ally!=null)s.tier=ally.difficulty();b.squads.put(id,s);} // a March battle's allies fight at their own row's tier
@@ -761,21 +761,40 @@ public final class Campaign {
     static volatile DecisionListener decisionListener;
     /** A remembered enemy counts as near a point, or near an army, within this many times the point's radius or the tier's charge distance. */
     static final double NEAR_RADIUS_FACTOR=2;
-    /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, stamp the charge (Battle.markCharge; a bot's command plays no sound). A new Charge starts only when the squad's Charge cooldown is ready (OrderRules.useCharge).
-     *  Easy and Normal read the whole battlefield; Hard reads only what its team has seen (b.sightings), and holds the points it owns before it flanks (garrisonPoint). */
+    // Bot-AI plan step 2 (docs/reports/ai-audit-and-design-2026-11-09.md section 8 row 2). Code constants, not sheet rows: they shape the bot's judgement, not a rule players meet.
+    /** An army is in contact while an enemy its team has seen stands within this of one of its troops (Attack's engage radius), or one of its groups was shot at within UNDER_FIRE_TICKS (Squad.shotAt). */
+    static final double CONTACT_RADIUS=24;static final long UNDER_FIRE_TICKS=60;
+    /** An owned point is worth a guard while it is contested or an enemy its team has seen stands within GUARD_THREAT_RADIUS of it; the nearest army within GUARD_REACH leaves one group there. */
+    static final double GUARD_THREAT_RADIUS=60,GUARD_REACH=90;
+    /** Refills (musterRefill, musterRelease): none gather when they appear within MUSTER_NEAR of their army; otherwise they gather at a rally MUSTER_BACK blocks behind it, toward them,
+     *  and move up together once MUSTER_COUNT stand within MUSTER_GATHERED of one another or MUSTER_WAIT_TICKS after the first reached the rally (MUSTER_CAP_TICKS after the first
+     *  appeared at the latest). The check runs at each decision, so an Easy bot (8 s) sends them later than a Hard one (3 s). */
+    static final double MUSTER_NEAR=30,MUSTER_BACK=30,MUSTER_GATHERED=10;static final int MUSTER_COUNT=3;static final long MUSTER_WAIT_TICKS=160,MUSTER_CAP_TICKS=900;
+    /** Facing: an army turns only when the new facing is more than FACE_TURN degrees off its last; within FACE_ARRIVE of its spot it faces the nearest enemy its team has seen within FACE_ENEMY of the spot. */
+    static final double FACE_TURN=30,FACE_ARRIVE=16,FACE_ENEMY=48;
+    /** Per bot army (owner): the point its guard group holds (botDecide), and when its first refill reached the rally (musterRelease). */
+    final Map<UUID,Integer> botGuard=new HashMap<>();final Map<UUID,Long> musterFirstAt=new HashMap<>();
+    /** The last decision's point costs, for the decision listener's why log; written only while a listener is set. */
+    String botWhy="";
+    /** One command decision for a bot army, run at its tier's cadence: retreat or rally (never into a retreat while in contact), pick the point to take, set the order, the facing and its groups' spots, stamp the charge (Battle.markCharge; a bot's command plays no sound). A new Charge starts only when the squad's Charge cooldown is ready (OrderRules.useCharge).
+     *  Every tier reads only what its team has seen (b.sightings) for its charge, its contact and its guards; point owners and contested flags are what the HUD shows. A team's armies spread over the points (BattleMath.pickPoint), and one group stays on a taken point only while an enemy is near it. */
     void botDecide(GravesAndGlory.Squad s,Spec.BotCommandRow tier){
-        var mine=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList();
-        long living=mine.size();if(living==0)return;
-        Vec3d center=mine.stream().map(u->u.mob.getPos()).reduce(Vec3d.ZERO,Vec3d::add).multiply(1.0/living);
+        var all=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList();
+        long living=all.size();if(living==0){s.muster=null;return;}
+        var front=all.stream().filter(u->u.musterSince<0).toList();var mine=front.isEmpty()?all:front; // the army proper; refills at the rally join it later
+        Vec3d center=Morale.centre(mine);
         // One live view of the enemy for the whole decision: the living enemy units, and only the sightings of units that are still alive.
         Map<UUID,GravesAndGlory.Unit> foes=new HashMap<>();for(var u:b.units)if(u.squad.team!=s.team&&u.mob.isAlive())foes.put(u.mob.getUuid(),u);
         Map<UUID,GravesAndGlory.Battle.Sight> seen=new HashMap<>();for(var entry:b.sightings.getOrDefault(s.team,Map.of()).entrySet())if(foes.containsKey(entry.getKey()))seen.put(entry.getKey(),entry.getValue());
         int count=b.points.size();GravesAndGlory.Capture choice;
         int full=RosterMath.units(s.banner,RosterMath.Catalog.fromSpec()); // the units its banner lists, an Epic or a Legendary once
+        boolean contact=inContact(s,mine,seen.values());
         if(!b.mode.botRetreats(b,s))botRetreating.remove(s.owner); // a mode can deny the fall-back (Siege's defenders behind the gate)
-        else if(living<=full*tier.retreatShare())botRetreating.add(s.owner);
+        else if(living<=full*tier.retreatShare()){if(!contact)botRetreating.add(s.owner);} // disengage only out of contact (audit D4): an army in a fight fights on
         else if(living>=full*tier.rallyShare())botRetreating.remove(s.owner);
-        int hold=tier.flankLeastDefended()?garrisonPoint(s,center,tier):-1;
+        boolean retreating=botRetreating.contains(s.owner);
+        musterRelease(s,all,front,retreating);
+        int hold=tier.flankLeastDefended()?garrisonPoint(s,center,tier):-1,current=-1;
         if(hold>=0)choice=b.points.get(hold);
         else if(tier.flankLeastDefended()){
             // Every point of the current map counts (Kingsfield has five); a point is defended by the enemies this team last saw near it.
@@ -784,22 +803,29 @@ public final class Campaign {
                 for(var sight:seen.values())if(Math.hypot(sight.x()-px[i],sight.z()-pz[i])<=NEAR_RADIUS_FACTOR*p.spec.radius())defenders[i]++;}
             choice=b.points.get(Math.max(0,BattleMath.leastDefended(center.x,center.z,px,pz,owner,defenders,s.team,tier.defenderWeight())));
         }else{
+            // The points plan: a team's armies spread (each other bot army sent to a point makes it dearer, audit D1); a taken point is left for the next (D2) unless it is contested.
             int lane=BattleMath.laneTarget(s.lane,s.team,count); // Dusk's lane points mirror Dawn's; GravesAndGlory.reinforce mirrors its rows to match
-            choice=b.points.get(lane);double best=Double.MAX_VALUE;
-            for(int i=0;i<count;i++){var p=b.points.get(i);double value=Math.hypot(center.x-p.spec.x(),center.z-p.spec.z())+(p.owner==s.team?140:0)+(i==lane?0:90)-(p.contested?55:0);if(value<best){best=value;choice=p;}}
+            double[] px=new double[count],pz=new double[count];int[] owner=new int[count],claims=new int[count];boolean[] contested=new boolean[count];
+            for(int i=0;i<count;i++){var p=b.points.get(i);px[i]=p.spec.x();pz[i]=p.spec.z();owner[i]=p.owner;contested[i]=p.contested;if(on(s.target,p))current=i;}
+            for(var army:b.squads.values())if(army!=s&&army.bot&&army.seated&&army.team==s.team&&!botRetreating.contains(army.owner))
+                for(int i=0;i<count;i++)if(on(army.target,b.points.get(i))||botGuard.getOrDefault(army.owner,-1)==i)claims[i]++;
+            choice=b.points.get(Math.max(0,BattleMath.pickPoint(center.x,center.z,px,pz,owner,contested,s.team,lane,claims,current)));
+            if(decisionListener!=null){StringBuilder why=new StringBuilder("pick");for(int i=0;i<count;i++)why.append(';').append(b.points.get(i).spec.name().replace(',',' ')).append(':').append(String.format(Locale.ROOT,"%.0f",BattleMath.pointValue(center.x,center.z,px[i],pz[i],owner[i],contested[i],s.team,i==lane,claims[i],i==current))).append(claims[i]>0?"(claimed"+claims[i]+")":"");botWhy=why.toString();}
         }
-        long enemies=foes.size();
-        boolean couldCharge=b.startsCharge(s,"all"),retreating=botRetreating.contains(s.owner);
+        // Easy and Normal weigh a charge against every enemy their team has seen (b.sightings), never against every enemy on the map, and charge only with one in sight within scouting range of the army.
+        long enemies=seen.size();double nearest=Double.MAX_VALUE;long near=0;
+        for(var sight:seen.values()){double d=Math.hypot(sight.x()-center.x,sight.z()-center.z);nearest=Math.min(nearest,d);if(d<=NEAR_RADIUS_FACTOR*tier.chargeDistance())near++;}
+        if(nearest>Spec.SCOUTING[0].range())enemies=0; // nothing in front of it to charge
+        boolean couldCharge=b.startsCharge(s,"all");
         String wasOrder=s.order;Vec3d wasTarget=s.target;s.assignments.clear();
-        if(retreating){s.order="retreat";s.formation="loose";s.target=b.fieldBase(s.team);}
+        Vec3d goal=null;
+        if(retreating){s.order=contact?"attack":"retreat";s.formation="loose";s.target=b.fieldBase(s.team);} // caught on the way back it fights its way home (Attack toward the base), never walks off under blows
         else{
-            Vec3d goal=b.mode.botGoal(b,s,center,tier); // a mode's own goal (Convoy's wagon), else the chosen point
-            s.order=goal!=null||choice.owner!=s.team?"attack":"hold";s.formation=living<8?"loose":"block";s.target=goal!=null?goal:new Vec3d(choice.spec.x(),choice.spec.elevation()+1,choice.spec.z());
+            goal=b.mode.botGoal(b,s,center,tier); // a mode's own goal (Convoy's wagon), else the chosen point
+            s.order=goal!=null||choice.owner!=s.team||choice.contested?"attack":"hold";s.formation=living<8?"loose":"block";s.target=goal!=null?goal:spot(choice);
             if(s.order.equals("attack")){
                 if(tier.chargeDistance()>0){
                     // Timed charge: judged on the enemies this team has seen, counted near the army, and only once the nearest is in range.
-                    double nearest=Double.MAX_VALUE;long near=0;
-                    for(var sight:seen.values()){double d=Math.hypot(sight.x()-center.x,sight.z()-center.z);nearest=Math.min(nearest,d);if(d<=NEAR_RADIUS_FACTOR*tier.chargeDistance())near++;}
                     if(near>0&&BattleMath.timedCharge(nearest,living,near,tier.chargeRatio(),tier.chargeDistance()))s.order="charge";
                 }else if(enemies>0&&BattleMath.timedCharge(0,living,enemies,tier.chargeRatio(),0))s.order="charge";
             }
@@ -807,11 +833,140 @@ public final class Campaign {
         Vec3d objective=retreating?null:b.mode.botTarget(b,s); // a mode's own objective (Siege's stage) replaces the point plan
         if(objective!=null){s.target=objective;if(b.mode.howToSide(b,s).equals("defend"))s.order="hold";else if(!s.order.equals("charge"))s.order="attack";}
         if(s.order.equals("charge")&&couldCharge&&!OrderRules.useCharge(b,s))s.order="attack"; // a new Charge needs the commander's cooldown (OrderRules.chargeReady, markChargeUsed); not ready, the army attacks its objective. A bot never hunts: only a player's Attack does (Assignment.hunt).
-        s.yaw=s.team==0?-90:90;
+        // Guard (audit D2): on the points plan, the army nearest a threatened point its team owns leaves one group there; an army of one group holds it whole.
+        boolean points=!retreating&&goal==null&&objective==null&&!tier.flankLeastDefended()&&b.mode.capturesPoints(b);
+        int guard=points?guardPoint(s,center,seen.values()):-1;String guardGroup=null;
+        if(guard>=0){
+            var at=b.points.get(guard);boolean here=b.points.indexOf(choice)==guard;
+            guardGroup=here?null:guardGroup(mine);
+            if(guardGroup==null&&!here){choice=at;s.target=spot(at);s.order=at.contested?"attack":"hold";}
+            botGuard.put(s.owner,guard);
+        }else botGuard.remove(s.owner);
+        if(guard>=0)hold=guard;
+        s.yaw=b.mode instanceof SiegeMode?(s.team==0?-90:90):facing(s,center,seen.values(),retreating); // Siege lays its stage plan out along the x axis, so it keeps facing the enemy's side
+        if(points)planGroups(s,center,mine,guard,guardGroup,seen.values());
         if(!retreating)b.mode.botPlan(b,s,tier); // a mode's per-group split of the order (Siege's stage plan)
         if(!s.order.equals(wasOrder)||!Objects.equals(s.target,wasTarget))s.arrived.clear(); // a new order or spot ends an arrival (Tactics.arrived); the same decision again keeps it
         if(s.order.equals("charge")&&couldCharge)b.markCharge(s,"all");
         var listener=decisionListener;if(listener!=null)listener.decided(this,s,tier,center,(int)living,full,seen.values(),(int)enemies,couldCharge,choice,hold,retreating,wasOrder,wasTarget); // dev hook, null in play
+    }
+    /** The spot an order to a capture point sends a group to: its centre, a block over the ground. */
+    static Vec3d spot(GravesAndGlory.Capture p){return new Vec3d(p.spec.x(),p.spec.elevation()+1,p.spec.z());}
+    /** Whether an order's target is this point (within 2 blocks of its centre). */
+    static boolean on(Vec3d target,GravesAndGlory.Capture p){return target!=null&&Math.hypot(target.x-p.spec.x(),target.z-p.spec.z())<=2;}
+    /** Contact (audit D4): an enemy its team has seen within CONTACT_RADIUS of one of the army's troops, or a group shot at within UNDER_FIRE_TICKS. */
+    boolean inContact(GravesAndGlory.Squad s,List<GravesAndGlory.Unit> mine,Collection<GravesAndGlory.Battle.Sight> seen){
+        for(long at:s.shotAt.values())if(b.time-at<=UNDER_FIRE_TICKS)return true;
+        for(var sight:seen)for(var u:mine)if(Math.hypot(sight.x()-u.mob.getX(),sight.z()-u.mob.getZ())<=CONTACT_RADIUS)return true;
+        return false;
+    }
+    /** The owned point this army keeps a guard on, or -1. A point needs one while it is contested or a seen enemy stands within GUARD_THREAT_RADIUS of it, and has none
+     *  while another army of the team guards it (a bot's guard, a bot army holding it whole, or a player's troops on it). An army keeps the guard it left while the threat lasts;
+     *  a new guard comes from the nearest free bot army within GUARD_REACH. */
+    int guardPoint(GravesAndGlory.Squad s,Vec3d center,Collection<GravesAndGlory.Battle.Sight> seen){
+        int was=botGuard.getOrDefault(s.owner,-1),best=-1;double bestDistance=Double.MAX_VALUE;
+        Map<GravesAndGlory.Squad,List<GravesAndGlory.Unit>> armies=new HashMap<>();
+        for(var u:b.units)if(u.squad!=s&&u.squad.team==s.team&&u.squad.seated&&u.mob.isAlive()&&u.musterSince<0)armies.computeIfAbsent(u.squad,k->new ArrayList<>()).add(u);
+        for(int i=0;i<b.points.size();i++){var p=b.points.get(i);
+            if(p.owner!=s.team)continue;
+            boolean threat=p.contested;for(var sight:seen)if(!threat&&Math.hypot(sight.x()-p.spec.x(),sight.z()-p.spec.z())<=GUARD_THREAT_RADIUS)threat=true;
+            if(!threat)continue;
+            boolean guarded=false;double d=i==was?0:Math.hypot(center.x-p.spec.x(),center.z-p.spec.z());
+            for(var e:armies.entrySet()){var army=e.getKey();
+                if(army.bot){if(botRetreating.contains(army.owner))continue;
+                    if(botGuard.getOrDefault(army.owner,-1)==i||army.order.equals("hold")&&on(army.target,p)){guarded=true;break;}
+                    if(i!=was&&!botGuard.containsKey(army.owner)&&Morale.centre(e.getValue()).distanceTo(new Vec3d(p.spec.x(),Morale.centre(e.getValue()).y,p.spec.z()))<d){guarded=true;break;} // a nearer free bot army leaves the guard
+                }else for(var u:e.getValue())if(Math.hypot(u.mob.getX()-p.spec.x(),u.mob.getZ()-p.spec.z())<=p.spec.radius()){guarded=true;break;}
+                if(guarded)break;
+            }
+            if(guarded||d>GUARD_REACH)continue;
+            if(d<bestDistance){bestDistance=d;best=i;}
+        }
+        return best;
+    }
+    /** The group this army leaves as a guard (BattleMath.guardGroup), or null: it is one group. */
+    static String guardGroup(List<GravesAndGlory.Unit> mine){
+        Map<String,Integer> n=new HashMap<>();for(var u:mine)n.merge(u.spec.group(),1,Integer::sum);
+        return BattleMath.guardGroup(n.getOrDefault("infantry",0),n.getOrDefault("ranged",0),n.getOrDefault("cavalry",0),n.getOrDefault("support",0),n.getOrDefault("siege",0));
+    }
+    /** The army's facing (audit 4.1 "Facing"; Assignment.yaw lays its formation out round its spot and turns troops at their slots): along its line of march to the spot; at the spot,
+     *  toward the nearest enemy its team has seen near it, else as it came; on a retreat, back the way it came. It turns only by more than FACE_TURN degrees. */
+    float facing(GravesAndGlory.Squad s,Vec3d center,Collection<GravesAndGlory.Battle.Sight> seen,boolean retreating){
+        Vec3d t=s.target;if(t==null)return s.yaw;
+        double dx=t.x-center.x,dz=t.z-center.z,far=Math.hypot(dx,dz);Float want=null;
+        if(retreating){if(far>2)want=BattleMath.yawToward(-dx,-dz);}
+        else if(far>FACE_ARRIVE)want=BattleMath.yawToward(dx,dz);
+        else{double best=FACE_ENEMY;for(var sight:seen){double d=Math.hypot(sight.x()-t.x,sight.z()-t.z);if(d<best&&d>1){best=d;want=BattleMath.yawToward(sight.x()-t.x,sight.z()-t.z);}}}
+        return want!=null&&BattleMath.yawGap(want,s.yaw)>FACE_TURN?want:s.yaw;
+    }
+    /** The points plan per group: the guard group holds its point facing the threat, and on an attack the ranged group stands off behind the point (BattleMath.rangedStandoff) on the side
+     *  it comes from, so its arrows reach across the point instead of the archers walking onto it with the infantry (audit D5). On Hold (a point it keeps) the ranged stay with the rest. */
+    void planGroups(GravesAndGlory.Squad s,Vec3d center,List<GravesAndGlory.Unit> mine,int guard,String guardGroup,Collection<GravesAndGlory.Battle.Sight> seen){
+        if(guard>=0&&guardGroup!=null){var p=b.points.get(guard);Vec3d at=spot(p);float yaw=s.yaw;double best=GUARD_THREAT_RADIUS;
+            for(var sight:seen){double d=Math.hypot(sight.x()-at.x,sight.z()-at.z);if(d<best&&d>1){best=d;yaw=BattleMath.yawToward(sight.x()-at.x,sight.z()-at.z);}}
+            s.assignments.put(guardGroup,new GravesAndGlory.Assignment(p.contested?"attack":"hold",s.formation,at,yaw));}
+        if(s.order.equals("hold")||"ranged".equals(guardGroup))return;
+        double reach=Double.MAX_VALUE;for(var u:mine)if(u.spec.group().equals("ranged"))reach=Math.min(reach,u.spec.range());
+        if(reach==Double.MAX_VALUE)return;
+        GravesAndGlory.Capture point=null;for(var p:b.points)if(on(s.target,p))point=p;if(point==null)return;
+        double back=Math.max(0,BattleMath.rangedStandoff(reach,point.spec.radius())-BattleMath.roleDepth("ranged")); // the formation already puts ranged roleDepth behind the spot
+        double dx=s.target.x-center.x,dz=s.target.z-center.z,len=Math.hypot(dx,dz);
+        if(len<6){double a=Math.toRadians(s.yaw);dx=-Math.sin(a);dz=Math.cos(a);len=1;} // at the point: behind as it faces
+        double x=s.target.x-dx/len*back,z=s.target.z-dz/len*back;
+        if(!GravesAndGlory.Battle.inArena(x,z)||GravesAndGlory.Battle.wet(x,z))return;
+        s.assignments.put("ranged",new GravesAndGlory.Assignment(s.order,s.formation,GravesAndGlory.Battle.groundAt(x,z),s.yaw));
+    }
+    /** Bot reinforcement routing (audit C3, D3): a bot's new troop that appears far from its army gathers at a rally MUSTER_BACK blocks behind the army, toward where it appeared
+     *  (where it appeared when the army has nobody else), and waits there for the others under Attack (it fights what comes); musterRelease sends them up together. */
+    void musterRefill(GravesAndGlory.Squad s,GravesAndGlory.Unit fresh){
+        if(botRetreating.contains(s.owner))return;
+        boolean gathering=s.muster!=null&&b.units.stream().anyMatch(u->u!=fresh&&u.squad==s&&u.mob.isAlive()&&u.musterSince>=0);
+        if(gathering){fresh.musterSince=b.time;return;} // joins the gathering at its rally
+        var front=b.units.stream().filter(u->u!=fresh&&u.squad==s&&u.mob.isAlive()&&u.musterSince<0).toList();
+        Vec3d at=fresh.mob.getPos(),rally=at;float yaw=s.yaw;
+        if(!front.isEmpty()){
+            Vec3d c=Morale.centre(front);double dx=at.x-c.x,dz=at.z-c.z,d=Math.hypot(dx,dz);
+            if(d<=MUSTER_NEAR)return; // close enough to walk in with its army
+            double x=c.x+dx/d*MUSTER_BACK,z=c.z+dz/d*MUSTER_BACK;
+            if(GravesAndGlory.Battle.inArena(x,z)&&!GravesAndGlory.Battle.wet(x,z))rally=GravesAndGlory.Battle.groundAt(x,z);
+            yaw=BattleMath.yawToward(c.x-rally.x,c.z-rally.z);
+        }
+        var order=new GravesAndGlory.Assignment("attack","loose",rally,yaw);order.issued=Long.MIN_VALUE;
+        s.muster=order;musterFirstAt.remove(s.owner);fresh.musterSince=b.time;
+    }
+    /** Sends a bot's gathered refills up to their army together, at each decision. The rally follows the army: MUSTER_BACK blocks behind its troops, toward the refills. The largest knot
+     *  of refills standing within MUSTER_GATHERED of one another goes once it is MUSTER_COUNT strong (fewer when no more are coming; BattleMath.musterGo), once the first has stood at
+     *  the rally MUSTER_WAIT_TICKS, or once it is within MUSTER_NEAR of the army anyway; the others wait for the next knot. All go on a retreat, when the army has nobody else, or
+     *  MUSTER_CAP_TICKS after the first appeared. */
+    void musterRelease(GravesAndGlory.Squad s,List<GravesAndGlory.Unit> all,List<GravesAndGlory.Unit> front,boolean retreating){
+        var waiting=all.stream().filter(u->u.musterSince>=0).toList();
+        if(waiting.isEmpty()){s.muster=null;musterFirstAt.remove(s.owner);return;}
+        long first=Long.MAX_VALUE;for(var u:waiting)first=Math.min(first,u.musterSince);
+        boolean every=retreating||s.muster==null||b.time-first>=MUSTER_CAP_TICKS;
+        List<GravesAndGlory.Unit> knot=waiting;
+        if(!every&&front.isEmpty()){ // the army is all refills: they gather where they appear and go together
+            knot=largestKnot(waiting);if(knot.size()<Math.min(MUSTER_COUNT,waiting.size()+s.training.size()))return;
+        }else if(!every){
+            knot=largestKnot(waiting);Vec3d c=Morale.centre(front),k=Morale.centre(knot);double dx=k.x-c.x,dz=k.z-c.z,d=Math.hypot(dx,dz);
+            if(d>MUSTER_NEAR){
+                double x=c.x+dx/d*MUSTER_BACK,z=c.z+dz/d*MUSTER_BACK;
+                if(GravesAndGlory.Battle.inArena(x,z)&&!GravesAndGlory.Battle.wet(x,z)){s.muster.target=GravesAndGlory.Battle.groundAt(x,z);s.muster.yaw=BattleMath.yawToward(c.x-x,c.z-z);}
+                Vec3d rally=s.muster.target;
+                if(Math.hypot(k.x-rally.x,k.z-rally.z)<=MUSTER_GATHERED)musterFirstAt.putIfAbsent(s.owner,b.time);
+                long arrived=musterFirstAt.getOrDefault(s.owner,b.time);
+                int need=(int)Math.min(MUSTER_COUNT,waiting.size()+s.training.size());
+                if(!BattleMath.musterGo(knot.size(),need,b.time-arrived,MUSTER_WAIT_TICKS))return;
+            }
+        }
+        for(var u:waiting){if(!knot.contains(u)){u.musterSince=b.time;continue;} // one elsewhere waits for the next knot
+            u.musterSince=-1;u.mob.getNavigation().stop();u.nextPath=0;}
+        musterFirstAt.remove(s.owner);if(knot.size()==waiting.size())s.muster=null;
+    }
+    /** The most refills standing within MUSTER_GATHERED of one of them (that one included). */
+    static List<GravesAndGlory.Unit> largestKnot(List<GravesAndGlory.Unit> waiting){
+        List<GravesAndGlory.Unit> best=List.of();
+        for(var a:waiting){var knot=waiting.stream().filter(o->o.mob.squaredDistanceTo(a.mob)<=MUSTER_GATHERED*MUSTER_GATHERED).toList();if(knot.size()>best.size())best=knot;}
+        return best;
     }
     /** Hard holds what it has taken before it flanks. Gathers the team's armies for BattleMath.garrison, near meaning within
      *  NEAR_RADIUS_FACTOR*chargeDistance: its bot armies (alive and not retreating, in squad order; a fixture's army outside b.squads goes last)

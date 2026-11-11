@@ -140,9 +140,8 @@ final class AiMetrics {
         StringBuilder scores=new StringBuilder(),lane=new StringBuilder();int count=b.points.size();
         if(!tier.flankLeastDefended()){
             int laneIndex=BattleMath.laneTarget(s.lane,s.team,count);lane.append("lane=p").append(laneIndex);
-            for(int p=0;p<count;p++){var pt=b.points.get(p);double d=Math.hypot(center.x-pt.spec.x(),center.z-pt.spec.z());int own=pt.owner==s.team?140:0,away=p==laneIndex?0:90,contested=pt.contested?55:0;
-                if(p>0)scores.append(';');
-                scores.append(pt.spec.name().replace(',',' ')).append(':').append(String.format(Locale.ROOT,"dist%.0f+own%d+offlane%d-contested%d=%.0f",d,own,away,contested,d+own+away-contested));}
+            lane.append(";guard=").append(hold);
+            scores.append(c.botWhy); // Campaign.botDecide's point costs (BattleMath.pointValue), written while a listener is set
         }else{
             lane.append("flank=true;hold=").append(hold);
             for(int p=0;p<count;p++){var pt=b.points.get(p);int defenders=0;

@@ -256,6 +256,20 @@ public final class BattleMathCheck {
         check(onPoint[0] == -1 && onPoint[1] == -1, "a player's army on an owned point guards it, so no bot is pulled back to it");
         int[] nearer=BattleMath.garrison(new int[]{0,-1,-1},0,new double[][]{{-44,0},{300,0}},new boolean[]{false,true},at,36); // the player's army 43 blocks from A, the bot 347
         check(nearer[0] == -1 && nearer[1] == 0, "a player's army is never sent to hold a point, even when it is the nearest");
+        // Bot-AI plan step 2: a team's armies spread, taken points are left, ranged stand off, facing, guard group, refill muster.
+        double[] qx={-130,0,130}, qz={100,0,-100}; boolean[] calm={false,false,false};
+        check(BattleMath.pickPoint(-60,50,qx,qz,new int[]{-1,-1,-1},calm,0,0,new int[]{0,0,0},-1) == 0, "a lone army takes its near lane point");
+        check(BattleMath.pickPoint(-60,50,qx,qz,new int[]{-1,-1,-1},calm,0,0,new int[]{1,0,0},-1) == 1, "a point another army is sent to is dearer: the next army spreads (audit D1)");
+        check(BattleMath.pickPoint(-130,100,qx,qz,new int[]{0,-1,-1},calm,0,0,new int[]{0,0,0},0) == 1, "a taken point is left for the next one, even from on top of it (audit D2)");
+        check(BattleMath.pickPoint(-130,100,qx,qz,new int[]{0,-1,-1},new boolean[]{true,false,false},0,0,new int[]{0,0,0},0) == 0, "a taken point under attack is fought for");
+        check(BattleMath.pickPoint(0,0,qx,qz,new int[]{0,0,0},calm,0,1,new int[]{0,2,0},-1) != 1, "all owned, the held centre already claimed twice: the army spreads to another");
+        check(BattleMath.pickPoint(10,0,new double[]{0,30},new double[]{0,0},new int[]{-1,-1},new boolean[]{false,false},0,-1,new int[]{0,0},1) == 1
+            && BattleMath.pickPoint(10,0,new double[]{0,30},new double[]{0,0},new int[]{-1,-1},new boolean[]{false,false},0,-1,new int[]{0,0},-1) == 0, "near-equal points: the army keeps the one it goes for");
+        check(BattleMath.rangedStandoff(22,12) == 8 && BattleMath.rangedStandoff(30,12) == 14 && BattleMath.rangedStandoff(16,12) == 5, "ranged stand off by their reach, between 5 and the point's radius plus 2");
+        check(Math.abs(BattleMath.yawToward(1,0) + 90) < 1e-4 && Math.abs(BattleMath.yawToward(-1,0) - 90) < 1e-4 && Math.abs(BattleMath.yawToward(0,1)) < 1e-4, "yaw: +x is -90 (Dawn's facing), -x 90, +z 0");
+        check(Math.abs(BattleMath.yawGap(170,-170) - 20) < 1e-9 && Math.abs(BattleMath.yawGap(-90,90) - 180) < 1e-9, "yaw gap wraps round");
+        check("ranged".equals(BattleMath.guardGroup(8,4,0,2,0)) && "infantry".equals(BattleMath.guardGroup(3,3,0,0,0)) && BattleMath.guardGroup(10,1,0,0,0) == null, "the guard is the army's smallest fighting group; a one-group army has none to spare");
+        check(BattleMath.musterGo(3,3,0,200) && !BattleMath.musterGo(2,3,100,200) && BattleMath.musterGo(1,3,200,200), "refills move up once three gathered or the wait is over");
         check(BattleMath.laneTarget(0,0,5) == 0 && BattleMath.laneTarget(1,0,5) == 1 && BattleMath.laneTarget(2,0,5) == 2
             && BattleMath.laneTarget(0,1,5) == 4 && BattleMath.laneTarget(1,1,5) == 3 && BattleMath.laneTarget(2,1,5) == 2
             && BattleMath.laneTarget(0,1,3) == 2 && BattleMath.laneTarget(1,1,3) == 1 && BattleMath.laneTarget(2,1,3) == 0, "Dusk lanes mirror Dawn's: A,B,C against E,D,C on five points, C,B,A on three");
