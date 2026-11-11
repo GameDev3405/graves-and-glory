@@ -366,10 +366,14 @@ public final class ConvoyMode extends BattleMode {
     static final long CLEAR_TICKS = 100;
     static final int CLEAR_ARMIES = 2;
     /**
-     * Whether this escort army is one of the CLEAR_ARMIES escort bot armies nearest the wagon (by the centre of their troops; ties to the earlier army),
+     * Whether this escort army is one of the CLEAR_ARMIES (at most all but one of the escort's armies, so one always stays on its push or screen) escort bot armies nearest the wagon (by the centre of their troops; ties to the earlier army),
      * which go to the wagon itself while it is contested and clear the defenders off it, whatever their role (pusher or screen).
      */
     static boolean clears(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Vec3d wagon) {
+        int armies = 0;
+        for (var q : b.squads.values()) if (q.seated && q.team == ESCORT && !(q.bot && b.campaign.botRetreating.contains(q.owner))) armies++;
+        int limit = Math.min(CLEAR_ARMIES, armies - 1); // never every army: at least one stays on the push or the screen
+        if (limit <= 0) return false;
         Map<GravesAndGlory.Squad, double[]> sum = new LinkedHashMap<>();
         for (var u : b.units) {
             var q = u.squad;
@@ -386,7 +390,7 @@ public final class ConvoyMode extends BattleMode {
             double[] c = e.getValue();
             if (Math.hypot(c[0] / c[2] - wagon.x, c[1] / c[2] - wagon.z) < own) nearer++;
         }
-        return nearer < CLEAR_ARMIES;
+        return nearer < limit;
     }
 
     /** Whether the round's wagon ever rolled back behind where it stood: the never_rolled bonus is lost. */

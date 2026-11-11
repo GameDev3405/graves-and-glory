@@ -875,7 +875,8 @@ public final class GravesAndGlory implements ModInitializer {
             Squad replacement=decision.replacement()==null?null:squads.get(decision.replacement());
             Squad s;
             if(replacement!=null){
-                s=replacement;campaign.botRespawns.remove(s.owner);campaign.botRetreating.remove(s.owner);
+                s=replacement;campaign.botRespawns.remove(s.owner);campaign.botRetreating.remove(s.owner);campaign.botGuard.remove(s.owner);campaign.musterFirstAt.remove(s.owner);
+                s.muster=null;for(var u:units)if(u.squad==s)u.musterSince=-1; // a player's army never musters: its refills stay where his orders put them
                 campaign.vacated.values().remove(s.owner);campaign.vacatedUntil.remove(p.getUuid());rekey(s.owner,p.getUuid());s.owner=p.getUuid();s.bot=false;s.seated=true;s.takeoverAt=0;
                 // The seat keeps the bot's living army and its queue, but from now on it trains and reinforces from the joiner's own banner, and fights under his class.
                 // The active's cooldown belongs to the squad, not to whoever commands it: it stays with the seat, so taking a seat over (its owner coming back, or
@@ -1101,7 +1102,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(slot<0){slot=0;while(used.contains(slot))slot++;}
                 if(slot>=R.squadSize()){s.gold+=t.paid();continue;}
                 var at=deploy(s,slot,t.spec());var fresh=spawn(s,t.spec(),slot,at.at());Morale.fielded(this,s,t.spec().group());
-                if(s.bot)campaign.musterRefill(s,fresh); // a bot's refill gathers with the others before it moves up (bot-AI plan step 2)
+                if(s.bot&&!MatchRules.waiting(time,s.takeoverAt))campaign.musterRefill(s,fresh); // a bot's refill gathers with the others before it moves up (bot-AI plan step 2)
                 FeedEvents.deployed(this,s,t.spec());
             }
         }
@@ -1178,7 +1179,7 @@ public final class GravesAndGlory implements ModInitializer {
             mode.setup(this); // after the flags, so a mode that takes them down keeps them down
             respawns.clear();BattleEffects.startRound();Morale.startRound();
             for(Squad s:squads.values()){
-                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.places.clear();s.chargedAt.clear();s.chargeReadyAt=0;s.shotAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=fieldBase(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
+                Commander.reset(this,s);if(!s.seated)continue;s.assignments.clear();s.arrived.clear();s.training.clear();s.lastStand.clear();s.lastStandAt.clear();s.fullHealth.clear();s.fullCount.clear();s.places.clear();s.chargedAt.clear();s.chargeReadyAt=0;s.shotAt.clear();s.traits.clear();s.fallen.clear();s.hitBy=null;s.muster=null;s.gold=Spec.ECONOMY[0].startingGold();s.stats=new MatchStats.SquadStats();s.order=s.bot?"attack":"hold";s.target=fieldBase(s.team);s.reinforceAt=time+R.reinforceSeconds()*20L;
                 var player=server.getPlayerManager().getPlayer(s.owner);
                 if(player!=null){toBase(player,s.team);player.changeGameMode(GameMode.ADVENTURE);equipPlayer(player);}
                 reinforce(s);
