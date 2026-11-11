@@ -1,7 +1,7 @@
 # Reviewer prompt template
 
 Spawn a fresh subagent on Sonnet 5.5 (`model: "sonnet"`) at high effort (WORKFLOW.md, Kort 2026-11-09). Never a
-Fable model. Fill every `<...>` and pass the whole block as the prompt.
+Fable model as a reviewer. Give it the frames and the numbers, never your own verdict. Fill every `<...>` and pass the whole block as the prompt.
 
 ---
 
@@ -19,6 +19,7 @@ into a scratch folder under `work/` if you need a frame the author did not rende
 **Evidence:**
 - Renders (render_geo, front/side/three_quarter, near and game16): `<folders>`. Study each frame at full size.
 - Scorecard: `<json path>` from `python tools/anim/scorecard.py --troop <troop> --json <path>`.
+- Focus check: `<json path>` from `python tools/anim/focus_check.py --troop <troop> --json <path>`.
 - Harness (if run): `<work/ingame-check/<root>>` screens and `gradle.log`.
 - Animation file: `src/main/resources/assets/gravesandglory/animations/troop/<troop>.animation.json`.
 - Timing: `sheets/design.json` attackVariants rows for the troop's family.
@@ -26,12 +27,17 @@ into a scratch folder under `work/` if you need a frame the author did not rende
 - Rubric, caps and report format: `.claude/skills/troop-animation/references/review-loop.md`.
 
 **Do this:**
+0. Kort's four standing complaints come first, on **every tick** and not only the key poses: clipping; stale or
+   stagnant motion (and its opposite, too much sway); a blade or weapon facing the wrong way; limbs glitching or
+   bending the wrong direction. The focus check measured them; you are looking for what it missed. Confirm a
+   suspected clip in a second view before you list it as real.
 1. Check the evidence is truthful: each folder is the clip it names, cameras match across ticks, the frame shows the
    troop under review (not its opponent). If not, that is finding F1 and the affected cells are "not checked".
 2. For every clip group, look at front, side and three-quarter. Check weapon direction at wind-up, contact and
    follow-through against the move (slash flat, edge leading; overhead high behind the head then down edge first;
    thrust point leading, level, in line with the arm; blocks and draws facing the threat).
-3. Read the scorecard: list every failing metric with clip, value and limit; any failure caps that group at C.
+3. Read the scorecard and the focus check: list every failing row with clip, value, tick and limit; any failure
+   caps that group at C. A check that is n/a on a clip where it should apply is a finding.
 4. Check against STYLE.md: guard is a ready pose; whole-body strikes with footwork; held wind-up, fast contact,
    overshooting follow-through, eased settle; graded, readable hits; stances distinct at 16 blocks; shield and cape
    moving with the body.

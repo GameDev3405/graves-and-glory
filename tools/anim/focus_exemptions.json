@@ -1,0 +1,16 @@
+{
+ "about": "Known findings that do not gate. Each one names the troop, clip, check and why. An entry is a debt, not a pass: remove it when the clip is fixed. Never add one to get a new clip through.",
+ "exemptions": [
+  {"troop": "knight", "clip": "stance_wall_upper", "check": "floor", "reason": "shield planted in the ground on purpose (stances round 3, approved 2026-11-08)"},
+  {"troop": "knight", "clip": "stun_upper", "check": "floor", "reason": "shield rests on the ground while stunned (approved 2026-11-08)"},
+  {"troop": "knight", "clip": "stun_out_upper", "check": "floor", "reason": "starts from the stun pose with the shield on the ground"},
+  {"troop": "knight", "clip": "stance_wall_up_upper", "check": "floor", "reason": "baseline 2026-11-11: left knee 1.1 px under the ground at tick 9.5; found by the first run of this tool, not fixed"},
+  {"troop": "knight", "clip": "hit_pulled", "check": "floor", "reason": "baseline 2026-11-11: right toe 1.9 px under the ground at tick 5; not fixed"},
+  {"troop": "knight", "clip": "hit_pulled", "check": "elbow", "reason": "baseline 2026-11-11: shield arm elbow bends backward at tick 2.75; not fixed"},
+  {"troop": "knight", "clip": "hit_knockback", "check": "weapon_in_body", "reason": "baseline 2026-11-11: sword 2 px into the right leg at tick 1.75; not fixed"},
+  {"troop": "knight", "clip": "hit_knockback", "check": "floor", "reason": "baseline 2026-11-11: right foot 1.5 px under the ground at tick 5.5; not fixed"},
+  {"troop": "knight", "clip": "hit_knockback", "check": "elbow", "reason": "baseline 2026-11-11: shield arm elbow at tick 8.5; not fixed"},
+  {"troop": "knight", "clip": "hit_medium_back", "check": "knee", "reason": "baseline 2026-11-11: right knee bends 13 deg backward at tick 11.5; not fixed"},
+  {"troop": "knight", "clip": "hit_block", "check": "elbow", "reason": "baseline 2026-11-11: shield arm elbow bends backward at ticks 6-8; not fixed"}
+ ]
+}

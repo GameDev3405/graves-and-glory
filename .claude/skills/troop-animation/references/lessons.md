@@ -10,6 +10,9 @@ lessons into this file with their commit hashes.
 
 ## 1. Weapon facing (Kort: "this mistake keeps coming back")
 
+- Measured on every quarter tick by `focus_check.py` (`edge_lead`, `point_lead`, `at_foe`, `roll_spin`, `wrist`);
+  see `four-focus-points.md`. The full-body kit rolls the edge onto the tip's path by itself (`fullbody-kit.md`).
+
 - Check the weapon on every frame, not only contact, in front, side and three-quarter views. A clean pose with the
   blade wrong is wrong.
 - Aim numerically, not by eye: print the blade direction and tip position at wind-up, contact and follow-through,
@@ -79,6 +82,17 @@ lessons into this file with their commit hashes.
   changed the knight).
 - After two fix rounds, record the minors in the troop's review md and escalate blockers with evidence.
 - Kort sees results through the review booth; no merge or landing before `booth.py decide` says so.
+
+## 7b. From the full-body demo (knight overhead, 2026-11-11)
+
+- Joint angles guessed by hand were the source of most clipping and wrong-way limbs. Saying where the hand, blade,
+  pelvis and feet are in the world and solving the joints removed the class of bug (`fullbody-kit.md`).
+- Blending two edge directions as vectors flips the hand 180 degrees when they oppose. Blend the roll as an angle
+  about the blade and follow one branch through a swing.
+- A hand target more than the arm's length from the shoulder is the usual cause of a snapped elbow. Print the
+  distance every half tick (`fullbody.reach_report`) before solving.
+- The mechanical checks did not separate the stalker Kort rejected from the one he kept. Numbers gate the four
+  faults; they do not grade the move. Kort's frame grades do (`frame-grading.md`).
 
 ## 8. Legacy clip pipeline (for old-model fixes only)
 

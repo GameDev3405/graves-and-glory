@@ -1,0 +1,270 @@
+<title>__TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: a drill sheet. One column, the player on top, then one card per tick in order; grading controls sit under each frame. */
+:root {
+  --bg: #eceae4; --panel: #f8f7f3; --ink: #1d2126; --dim: #5d646c; --line: #cfccc2;
+  --accent: #9c2b25; --good: #2f6f43; --ok: #96690f; --bad: #a3271f; --on: #ffffff; --frame: #d9d9d9;
+  --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15181c; --panel: #1e2227; --ink: #e9e6de; --dim: #9aa0a8; --line: #343a42;
+  --accent: #e0685f; --good: #5fb37a; --ok: #d9a544; --bad: #ec6f66; --on: #14171a; --frame: #2a2e34; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #15181c; --panel: #1e2227; --ink: #e9e6de; --dim: #9aa0a8; --line: #343a42;
+  --accent: #e0685f; --good: #5fb37a; --ok: #d9a544; --bad: #ec6f66; --on: #14171a; --frame: #2a2e34; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 16px/1.45 var(--body) }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 20px 96px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 20px }
+.eyebrow { font: 600 13px var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--accent) }
+h1 { font: 700 34px/1.05 var(--display); margin: 2px 0 6px; text-wrap: balance; text-transform: uppercase; letter-spacing: .01em }
+h2 { font: 600 20px/1.1 var(--display); margin: 0; text-transform: uppercase; letter-spacing: .06em }
+p { margin: 0; max-width: 65ch }
+.dim { color: var(--dim) }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 12px }
+button, textarea { font: inherit; color: inherit }
+button { cursor: pointer; background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 9px 12px; min-height: 42px }
+button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink) }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.grow { flex: 1 1 auto; min-width: 0 }
+img { display: block; width: 100%; height: auto; background: var(--frame); border-radius: 3px }
+.stage { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: end }
+.stage figure, .views figure { margin: 0; position: relative }
+figcaption { font: 600 11px var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); padding-top: 3px }
+.readout { font: 700 30px/1 var(--display); font-variant-numeric: tabular-nums; min-width: 4.2ch }
+input[type=range] { width: 100%; accent-color: var(--accent); min-height: 32px }
+.chip { font: 600 12px var(--display); letter-spacing: .1em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; border: 1px solid var(--line); color: var(--dim) }
+.chip.impact { background: var(--accent); border-color: var(--accent); color: var(--on) }
+.tick { scroll-margin-top: 12px }
+.tick header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap }
+.tick .num { font: 700 28px/1 var(--display); font-variant-numeric: tabular-nums }
+.views { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: end }
+.views button { padding: 0; border: 0; min-height: 0; display: block; width: 100% }
+.grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px }
+.grade button { font: 600 17px var(--display); letter-spacing: .08em; text-transform: uppercase }
+.grade button[data-g="good"][aria-pressed="true"] { background: var(--good); border-color: var(--good); color: var(--on) }
+.grade button[data-g="ok"][aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: var(--on) }
+.grade button[data-g="bad"][aria-pressed="true"] { background: var(--bad); border-color: var(--bad); color: var(--on) }
+.tags button { font-size: 14px; padding: 6px 10px; min-height: 36px; border-radius: 18px }
+textarea { width: 100%; min-height: 64px; resize: vertical; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 9px 10px }
+.score { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px }
+.score button { padding: 0; font: 600 17px var(--display); font-variant-numeric: tabular-nums }
+details summary { cursor: pointer; color: var(--dim) }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums }
+td, th { text-align: left; padding: 3px 8px 3px 0; border-bottom: 1px solid var(--line); vertical-align: top }
+.scroll { overflow-x: auto }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--panel); border-top: 1px solid var(--line); z-index: 5;
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)) }
+.bar .in { max-width: 760px; margin: 0 auto; display: flex; gap: 12px; align-items: center; font: 600 15px var(--display); letter-spacing: .06em; text-transform: uppercase }
+.meter { flex: 1 1 auto; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; display: flex }
+.meter i { display: block; height: 100% }
+.warn { border-color: var(--bad); color: var(--bad) }
+.zoom { position: fixed; inset: 0; background: var(--bg); z-index: 20; display: flex; flex-direction: column; gap: 10px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)) }
+.zoom .pic { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center }
+.zoom img { width: auto; max-width: 100%; max-height: 100%; object-fit: contain }
+@media (max-width: 420px) { h1 { font-size: 28px } .score button { min-height: 38px } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Graves and Glory · frame grading</div>
+    <h1 id="h1"></h1>
+    <p id="intro" class="dim"></p>
+  </header>
+
+  <div id="offline" class="panel warn" hidden>Grades can't be saved to the page in this view, so they are kept on this device only. Open the page signed in to claude.ai to save them.</div>
+
+  <section class="panel" aria-label="Player">
+    <div class="stage">
+      <figure><img id="pA" alt="Side view of the current tick"><figcaption>Side</figcaption></figure>
+      <figure><img id="pB" alt="Three-quarter view of the current tick"><figcaption>Three-quarter</figcaption></figure>
+    </div>
+    <input id="scrub" type="range" min="0" value="0" step="1" aria-label="Tick">
+    <div class="row">
+      <div class="readout" id="readout">T00</div>
+      <button id="play" aria-pressed="false">Play</button>
+      <div class="row" id="speeds" role="group" aria-label="Speed">
+        <button data-s="1" aria-pressed="true">Game speed</button>
+        <button data-s="0.5" aria-pressed="false">Half</button>
+        <button data-s="0.2" aria-pressed="false">Slow</button>
+      </div>
+      <button id="which" aria-pressed="false" hidden>Show previous cut</button>
+      <button id="jump">Grade this tick</button>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Overall">
+    <h2>Overall, out of 10</h2>
+    <div class="score" id="score"></div>
+    <textarea id="overall" placeholder="Anything about the whole move: what to keep doing, what to stop."></textarea>
+  </section>
+
+  <section class="panel" id="checksPanel">
+    <h2>Measured before you see it</h2>
+    <p id="checkLine"></p>
+    <details><summary>Every check and its number</summary><div class="scroll"><table id="checkTable"></table></div></details>
+  </section>
+
+  <div id="ticks" style="display:flex;flex-direction:column;gap:20px"></div>
+</div>
+
+<div class="bar"><div class="in"><span id="count">0 graded</span><div class="meter" id="meter"></div><span id="saved" class="dim">Loading</span></div></div>
+
+<div class="zoom" id="zoom" hidden>
+  <div class="row"><div class="readout" id="zRead">T00</div><span class="grow"></span><button id="zClose">Close</button></div>
+  <div class="pic"><img id="zImg" alt="Enlarged frame"></div>
+  <div class="row" id="zViews" role="group" aria-label="View"></div>
+  <div class="row"><button id="zPrev" class="grow">Tick before</button><button id="zNext" class="grow">Tick after</button></div>
+</div>
+
+<script>
+const D = __DATA__;
+const $ = id => document.getElementById(id);
+const pad = t => String(t).padStart(2, "0");
+const VNAME = {side: "Side", three_quarter: "Three-quarter", front: "Front"};
+const S = {frames: {}, overall: {score: null, note: ""}, set: "new", tick: 0, speed: 1, playing: false};
+const el = (tag, attrs, kids) => { const e = document.createElement(tag); for (const k in (attrs || {})) { if (k === "text") e.textContent = attrs[k]; else e.setAttribute(k, attrs[k]); } (kids || []).forEach(c => e.appendChild(c)); return e; };
+const frame = (view, t) => D.frames[S.set][view][t];
+const blank = () => ({grade: null, tags: [], note: ""});
+const F = t => S.frames[t] || (S.frames[t] = blank());
+
+$("h1").textContent = D.troop + " · " + D.clip.replace(/_/g, " ");
+$("intro").textContent = (D.note ? D.note + " " : "") + D.ticks + " ticks at 20 a second" + (D.impact != null ? ", the blow lands on tick " + D.impact : "") + ". Grade each tick below: good, ok or bad, tag what is wrong, and write what you see. Tap a picture to enlarge it. Everything saves as you go.";
+
+/* ---- checks ---- */
+(function () {
+  const c = D.checks, warn = c.rows.filter(r => r.status === "WARN").length;
+  $("checkLine").textContent = c.ran + " checks ran on every quarter tick for clipping, stale motion, weapon facing and limbs: " + c.fail + " failed, " + warn + " warned. They measure geometry, not taste. Taste is your call.";
+  const tb = $("checkTable");
+  tb.appendChild(el("tr", {}, ["Check", "Result", "Value", "Tick", "Detail"].map(h => el("th", {text: h}))));
+  c.rows.forEach(r => tb.appendChild(el("tr", {}, [r.group + " " + r.check, r.status, r.value == null ? "" : r.value, r.tick == null ? "" : r.tick, r.detail || ""].map(v => el("td", {text: String(v)})))));
+})();
+
+/* ---- player ---- */
+$("scrub").max = D.ticks - 1;
+function show(t) {
+  S.tick = t; $("pA").src = frame("side", t); $("pB").src = frame("three_quarter", t);
+  $("scrub").value = t; $("readout").textContent = "T" + pad(t);
+}
+let timer = null;
+function play(on) {
+  S.playing = on; clearInterval(timer); $("play").textContent = on ? "Pause" : "Play"; $("play").setAttribute("aria-pressed", on);
+  if (on) timer = setInterval(() => show((S.tick + 1) % D.ticks), 50 / S.speed);
+}
+$("play").onclick = () => play(!S.playing);
+$("scrub").oninput = e => { play(false); show(+e.target.value); };
+$("speeds").onclick = e => { const b = e.target.closest("button"); if (!b) return; S.speed = +b.dataset.s; [...$("speeds").children].forEach(x => x.setAttribute("aria-pressed", x === b)); if (S.playing) play(true); };
+$("jump").onclick = () => { play(false); $("tick" + S.tick).scrollIntoView({behavior: "smooth", block: "start"}); };
+if (D.frames.prev) {
+  $("which").hidden = false;
+  $("which").onclick = () => { S.set = S.set === "new" ? "prev" : "new"; const p = S.set === "prev"; $("which").setAttribute("aria-pressed", p); $("which").textContent = p ? "Showing previous cut" : "Show previous cut"; show(S.tick); document.querySelectorAll("img[data-v]").forEach(i => i.src = frame(i.dataset.v, +i.dataset.t)); };
+}
+
+/* ---- overall ---- */
+for (let n = 1; n <= 10; n++) $("score").appendChild(el("button", {"data-n": n, "aria-pressed": "false", text: String(n), "aria-label": n + " out of 10"}));
+$("score").onclick = e => { const b = e.target.closest("button"); if (!b) return; const n = +b.dataset.n; S.overall.score = S.overall.score === n ? null : n; paintOverall(); save("overall"); };
+$("overall").oninput = e => { S.overall.note = e.target.value; save("overall"); };
+function paintOverall() {
+  [...$("score").children].forEach(b => b.setAttribute("aria-pressed", +b.dataset.n === S.overall.score));
+  if (document.activeElement !== $("overall")) $("overall").value = S.overall.note || "";
+}
+
+/* ---- tick cards ---- */
+const cards = {};
+for (let t = 0; t < D.ticks; t++) {
+  const head = el("header", {}, [el("span", {class: "num", text: "Tick " + pad(t)})]);
+  if (D.phases[t]) head.appendChild(el("span", {class: "chip", text: D.phases[t]}));
+  if (t === D.impact) head.appendChild(el("span", {class: "chip impact", text: "Impact"}));
+  const views = el("div", {class: "views"}, ["side", "three_quarter"].map(v => {
+    const b = el("button", {"aria-label": "Enlarge tick " + t + ", " + VNAME[v] + " view"}, [el("img", {"data-v": v, "data-t": t, alt: "Tick " + t + ", " + VNAME[v].toLowerCase() + " view", loading: "lazy", src: frame(v, t)})]);
+    b.onclick = () => zoom(t, v);
+    return el("figure", {}, [b, el("figcaption", {text: VNAME[v]})]);
+  }));
+  const grade = el("div", {class: "grade", role: "group", "aria-label": "Grade for tick " + t}, ["good", "ok", "bad"].map(g => el("button", {"data-g": g, "aria-pressed": "false", text: g})));
+  grade.onclick = e => { const b = e.target.closest("button"); if (!b) return; const f = F(t); f.grade = f.grade === b.dataset.g ? null : b.dataset.g; paint(t); save(t); };
+  const tags = el("div", {class: "row tags", role: "group", "aria-label": "What is wrong on tick " + t}, D.tags.map(g => el("button", {"data-tag": g, "aria-pressed": "false", text: g})));
+  tags.onclick = e => { const b = e.target.closest("button"); if (!b) return; const f = F(t), g = b.dataset.tag; f.tags = f.tags.includes(g) ? f.tags.filter(x => x !== g) : f.tags.concat(g); paint(t); save(t); };
+  const note = el("textarea", {id: "note" + t, placeholder: "What is good or bad on this tick?", "aria-label": "Note for tick " + t});
+  note.oninput = () => { F(t).note = note.value; save(t); count(); };
+  cards[t] = {grade, tags, note};
+  $("ticks").appendChild(el("section", {class: "panel tick", id: "tick" + t}, [head, views, grade, tags, note]));
+}
+function paint(t) {
+  const f = F(t), c = cards[t];
+  [...c.grade.children].forEach(b => b.setAttribute("aria-pressed", b.dataset.g === f.grade));
+  [...c.tags.children].forEach(b => b.setAttribute("aria-pressed", f.tags.includes(b.dataset.tag)));
+  if (document.activeElement !== c.note) c.note.value = f.note || "";
+  count();
+}
+function count() {
+  let n = 0; const m = $("meter"); m.textContent = "";
+  for (let t = 0; t < D.ticks; t++) { const f = F(t); const touched = f.grade || f.note || f.tags.length; if (touched) n++;
+    m.appendChild(el("i", {style: "flex:1;background:" + (f.grade ? "var(--" + f.grade + ")" : touched ? "var(--dim)" : "transparent")})); }
+  $("count").textContent = n + " of " + D.ticks + " graded";
+}
+
+/* ---- zoom ---- */
+const Z = {t: 0, v: "side"};
+D.views.forEach(v => $("zViews").appendChild(el("button", {"data-v": v, "aria-pressed": "false", class: "grow", text: VNAME[v]})));
+function zoom(t, v) { Z.t = (t + D.ticks) % D.ticks; Z.v = v; $("zImg").src = frame(Z.v, Z.t); $("zRead").textContent = "T" + pad(Z.t) + (Z.t === D.impact ? " · impact" : ""); [...$("zViews").children].forEach(b => b.setAttribute("aria-pressed", b.dataset.v === Z.v)); $("zoom").hidden = false; }
+$("zViews").onclick = e => { const b = e.target.closest("button"); if (b) zoom(Z.t, b.dataset.v); };
+$("zPrev").onclick = () => zoom(Z.t - 1, Z.v); $("zNext").onclick = () => zoom(Z.t + 1, Z.v);
+$("zClose").onclick = () => { $("zoom").hidden = true; };
+document.addEventListener("keydown", e => { if ($("zoom").hidden) return; if (e.key === "Escape") $("zoom").hidden = true; if (e.key === "ArrowLeft") zoom(Z.t - 1, Z.v); if (e.key === "ArrowRight") zoom(Z.t + 1, Z.v); });
+
+/* ---- saving: the page's database, one write at a time per document; this device as the fallback ---- */
+let db = null;
+const LS = "grade:" + D.round;
+const dirty = {}, busy = {}, timers = {};
+const status = s => { $("saved").textContent = s; };
+function local() { try { localStorage.setItem(LS, JSON.stringify({frames: S.frames, overall: S.overall})); } catch (e) {} }
+function body(key) {
+  if (key === "overall") return {round: D.round, troop: D.troop, clip: D.clip, score: S.overall.score, note: S.overall.note || "", at: new Date().toISOString()};
+  const f = F(key); return {tick: key, grade: f.grade, tags: f.tags, note: f.note || "", at: new Date().toISOString()};
+}
+const ref = key => key === "overall" ? db.doc("rounds/" + D.round) : db.collection("rounds/" + D.round + "/frames").doc("t" + pad(key));
+function save(key) {
+  local(); if (!db) { status("On this device"); return; }
+  dirty[key] = true; status("Saving"); clearTimeout(timers[key]); timers[key] = setTimeout(() => flush(key), 700);
+}
+async function flush(key) {
+  if (busy[key] || !dirty[key]) return;
+  busy[key] = true; dirty[key] = false;
+  try { await ref(key).set(body(key)); }
+  catch (e) {
+    if (e && e.code === "unavailable") { try { await new Promise(r => setTimeout(r, 800 + Math.random() * 800)); await ref(key).set(body(key)); } catch (e2) { dirty[key] = true; } }
+    else { busy[key] = false; status(e && e.code === "invalid_argument" ? "Read-only here" : "Not saved"); return; }
+  }
+  busy[key] = false;
+  if (dirty[key]) return flush(key);
+  status(Object.keys(dirty).some(k => dirty[k]) || Object.keys(busy).some(k => busy[k]) ? "Saving" : "Saved");
+}
+function start() {
+  try { const o = JSON.parse(localStorage.getItem(LS) || "null"); if (o) { S.frames = o.frames || {}; S.overall = o.overall || S.overall; } } catch (e) {}
+  for (let t = 0; t < D.ticks; t++) paint(t);
+  paintOverall(); show(0);
+  if (!(window.claude && window.claude.use)) { $("offline").hidden = false; status("On this device"); return; }
+  window.claude.use("db").then(d => {
+    if (!d) { $("offline").hidden = false; status("On this device"); return; }
+    db = d;
+    const late = setTimeout(() => status("Can't reach saved grades yet"), 10000);
+    const fail = () => { clearTimeout(late); status("Not connected"); };
+    db.collection("rounds/" + D.round + "/frames").onSnapshot(snap => {
+      if (!snap.metadata.fromCache) { clearTimeout(late); if ($("saved").textContent !== "Saving") status("Saved"); }
+      snap.docs.forEach(doc => { const b = doc.data(); if (!b || typeof b.tick !== "number" || dirty[b.tick] || busy[b.tick]) return;
+        S.frames[b.tick] = {grade: b.grade || null, tags: Array.isArray(b.tags) ? b.tags.filter(x => typeof x === "string") : [], note: typeof b.note === "string" ? b.note : ""}; paint(b.tick); });
+    }, fail);
+    db.doc("rounds/" + D.round).onSnapshot(doc => {
+      if (!doc.exists || dirty.overall || busy.overall) return; const b = doc.data();
+      S.overall = {score: typeof b.score === "number" ? b.score : null, note: typeof b.note === "string" ? b.note : ""}; paintOverall();
+    }, fail);
+  });
+}
+start();
+</script>

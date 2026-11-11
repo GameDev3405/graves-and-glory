@@ -13,6 +13,10 @@ checklist; it points back here.
 
 | Reference | Read it when |
 |---|---|
+| `references/kort-verdicts.md` | Before authoring anything: what Kort approved and rejected, in his words, with dates. |
+| `references/four-focus-points.md` | Before showing a clip to anyone: `focus_check.py`, what each check means, the fix. |
+| `references/fullbody-kit.md` | When authoring an attack or other action clip: the world-space kit and the order that works. |
+| `references/frame-grading.md` | When Kort grades a clip frame by frame: the page, reading his grades, folding them back. |
 | `references/pipeline.md` | Before any build: builder per troop, commands, rig, export, scorecard, renderer, harness. |
 | `references/lessons.md` | Before changing a clip: what failed before and the fix that worked. |
 | `references/review-loop.md` | After every pass: loop, rubric, report format, two-round stop. |
@@ -31,6 +35,21 @@ grep -n "APPROVED =\|PREVIEW =" src/main/java/gg/gravesandglory/GeoTroopRenderer
 - **Legacy clips.** `art/clips/` -> `tools/clips.py` -> `src/main/resources/assets/gravesandglory/clips/` -> ClipLibrary, TroopMotion,
   Motion*.java. Still drawn for every troop outside `APPROVED`, and `verify.py fast` still runs `clips.py --verify`.
   Touch it only for a fix Kort asks for on the old model, never to improve a rebuilt troop.
+
+## The four focus points (Kort, 2026-11-11)
+
+Every animation session works on these four, and proves each one before showing a clip:
+
+1. **No clipping.** Weapon, shield, arms and legs never pass through the body, each other or the ground.
+2. **Nothing stale or stagnant.** The whole body drives every move; a hold still drifts; a shield is never glued.
+   But not swaying either: he cut sway to 25-40% and rejected hits that "break their back".
+3. **The blade or weapon faces the right way on every frame.** Edge leading through a cut, point leading a thrust.
+4. **No limb glitches.** No joint bends the wrong way, no one-frame pops, no feet swapping or sliding.
+
+`python tools/anim/focus_check.py --troop <troop>` measures all four on every quarter tick and names the tick and
+the parts (`references/four-focus-points.md`). It must exit 0 before a reviewer or Kort sees the clip. It measures
+geometry, not taste: a clip that passes can still be wrong, so the reviewer and Kort's frame grades
+(`references/frame-grading.md`) decide. What he has said so far is in `references/kort-verdicts.md`.
 
 ## Kort's rules (never trade these away)
 
@@ -51,17 +70,19 @@ grep -n "APPROVED =\|PREVIEW =" src/main/java/gg/gravesandglory/GeoTroopRenderer
 ## The loop (one change)
 
 1. **Find the builder** (pipeline.md section 2) and read its docstring. Check who else it builds.
-2. **Edit the builder**, not its output.
+2. **Edit the builder**, not its output. A new or reworked attack is authored whole-body in world space with
+   `art/anim/common/fullbody.py` (`references/fullbody-kit.md`): hips and feet first, then torso, hand, blade, shield.
 3. **Build** with the troop's env var (Git Bash form; PowerShell in pipeline.md section 2), e.g.
    `GG_ANIM_TROOP=sentinel python art/anim/knight/build_anims.py`. Expect
    `art/anim/<troop>/out/<troop>.animation.json` to change. Rebuild every other troop on that builder: their
    `out/` must stay byte-identical (`git status --short art/anim` shows only your troop) unless the change is meant
    for all of them.
 4. **Export:** `python art/anim/common/export.py <troop>` (knight: `python art/anim/knight/export.py A`).
-5. **Scorecard:** `python tools/anim/scorecard.py --troop <troop>`. Exit 0 means every metric passes; exit 1 lists
-   clip, metric, value and limit. A failing clip cannot go to the booth.
+5. **Scorecard and focus check:** `python tools/anim/scorecard.py --troop <troop>` and
+   `python tools/anim/focus_check.py --troop <troop>`. Exit 0 means every row passes; exit 1 lists clip, check,
+   value, tick and parts. A failing clip cannot go to a reviewer, the booth or Kort. Fix at the tick it names.
 6. **Render** the changed clips with `tools/anim/render_geo.py` (front, side, three-quarter; near and `game16`).
-   Look at the frames yourself before asking anyone else to.
+   Look at **every tick at full size** yourself before asking anyone else to. Small sheet cells get misread.
 7. **Review:** a fresh Sonnet 5.5 high reviewer (`references/reviewer-prompt.md`). At most two fix rounds, then
    escalate with evidence.
 8. **Harness:** the geo-knight suite for the troop (pipeline.md section 6). Pass = 22 `[p1] p1-` lines, 0 `=false`.
@@ -75,6 +96,7 @@ grep -n "APPROVED =\|PREVIEW =" src/main/java/gg/gravesandglory/GeoTroopRenderer
 Troop / clips:   <troop>: <clips changed>
 Commit:          <sha> on <branch> (worktree <path>)
 Scorecard:       <n> clips, <k> failing  (failing rows pasted)
+Focus check:     <n> clips, <k> with a FAIL  (FAIL and WARN rows pasted; new exemptions with their reason)
 Review:          round <N>: <SHIP | SHIP WITH MINORS | FIX | ESCALATE>, report <path>
 Harness:         <count> [p1] lines, <count> =false, root work/ingame-check/<root>
 verify fast:     PASS | FAIL (<step>)
@@ -88,7 +110,9 @@ Status:          implemented / tested / visually inspected / accepted, each yes 
 - **Sonnet 5.5 high:** routine runs - builds, exports, scorecard, renders, harness, docs, and every review.
 - **Opus 5.5 medium:** authoring or fixing clips, a new family or builder, anything that failed a review.
 - **Opus 5.5 high:** when stuck after a failed fix round. xhigh only when a task explicitly says so.
-- **Never any Fable model.** Reviewer is always a fresh subagent with no stake in the work.
+- **Fable:** never as a subagent or worker. A Fable session only with Kort's explicit yes each time, as its own
+  session, for a heavy rework (Kort, 2026-11-11). This skill is written so that Opus and Sonnet do the work.
+- Reviewer is always a fresh subagent with no stake in the work.
 - Never drive Minecraft with desktop computer-use. Harness clients only: ceiling five across all worktrees, isolated
   run roots, no compile in a checkout with a running client, never stop a client you did not start.
 
@@ -99,6 +123,13 @@ No push and no publish. Branches reach `main` only through `tools/land.py`, and 
 writer per checkout and file; do not touch a builder or troop another worker owns. Keep unrelated changes out of an
 animation lane (Kort's booth approval covers the whole lane). Gameplay timing, saves and protocol need Kort. A
 subagent returns its questions to its caller; the lead asks Kort, through AskUserQuestion, batched.
+
+## Frame grading (one clip, Kort grades every tick)
+
+For a new kind of move or whenever Kort asks: `tools/anim/grade_page.py` builds a phone page with every tick
+embedded, a player and a grade, tags and a note per tick, saved in the page's database; `tools/anim/grade_video.py`
+builds the PREVIOUS | NEW phone video. His grades are folded back into `kort-verdicts.md` and, where a fault can be
+measured, into a new `focus_check.py` check. Full loop: `references/frame-grading.md`.
 
 ## Review booth (GeckoLib lanes)
 

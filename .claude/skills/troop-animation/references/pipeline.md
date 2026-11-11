@@ -101,6 +101,19 @@ the body), `edge_lead` (slash edge leads the tip's travel), `impact_tick` (conta
 `loop_pose`/`loop_pos`/`loop_vel` (looping clips close). A metric that does not apply is `n/a`, never pass.
 `booth.py build` runs it and refuses any failing batch.
 
+## 4b. Focus check, full-body layer, grading tools
+
+- `python tools/anim/focus_check.py --troop <troop>` (or `--all`, `--clip`, `--anim other.json`, `--json`, `--ticks`,
+  `--verbose`). Kort's four focus points per quarter tick; exit 1 on a FAIL. Exceptions with reasons live in
+  `tools/anim/focus_exemptions.json`. See `four-focus-points.md`. Tests: `tools/anim/test_focus_check.py`.
+- `art/anim/common/fullbody.py` is the world-space authoring kit (`fullbody-kit.md`). A full-body builder such as
+  `python art/anim/knight/build_overhead_demo.py [--out file]` is a **late layer**: it replaces only its own clips in
+  the troop's exported animation file. Run it after the base builder, the later layers and the export; rebuilding
+  the troop from the base builder puts the old clip back until the full-body builder is run again. Until a
+  full-body clip is wired into the troop's normal build order, say so in the report.
+- `tools/anim/grade_page.py` and `tools/anim/grade_video.py` build Kort's frame grading page and phone video
+  (`frame-grading.md`).
+
 ## 5. Offline renderer
 
 `tools/anim/render_geo.py` mirrors GeckoLib 4.8.4 on Minecraft 1.20.1 (sources cited in its docstring).
@@ -113,6 +126,8 @@ python tools/anim/render_geo.py --geo $A/geo/troop/<troop>.geo.json \
   --anim $A/animations/troop/<troop>.animation.json --clip attack_overhead \
   --ticks 0:24 --views front,side,three_quarter --out work/render/<troop>-overhead
 ```
+`--ticks a:b` includes b: a 22-tick clip is `0:21` (tick 22 is past the end and shows the bind pose). One `--views`
+value per call gives full-size frames per view; several give one side-by-side strip per tick.
 `--distance game16` for the 16-block read; `--speed <blocks/tick>` moves the root for gaits (walk about 0.16,
 run 0.26 for the knight; the booth config holds each troop's value) and `--report` prints AABBs and foot slide;
 `--tick` for one frame; `--bones` labels pivots. Always pair an upper clip with its legs clip, as the game does.
