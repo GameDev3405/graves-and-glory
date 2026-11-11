@@ -71,7 +71,7 @@ public final class SurvivalMode extends BattleMode {
     }
     /** The bot tier the round's waves take: the March battle's, else the lobby's. */
     static Spec.BotCommandRow tier(GravesAndGlory.Battle b) {
-        String id = b.campaign.activeBattle != null ? b.campaign.activeBattle.difficulty() : b.campaign.difficulty;
+        String id = b.campaign.activeBattle != null ? b.campaign.activeBattle.difficulty() : b.campaign.botTier();
         for (var r : Spec.BOTCOMMAND) if (r.id().equals(id)) return r;
         return Spec.BOTCOMMAND[0];
     }

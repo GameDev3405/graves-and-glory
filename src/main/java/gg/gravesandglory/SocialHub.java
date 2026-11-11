@@ -22,6 +22,8 @@ final class SocialHub {
         Map<UUID,Integer> teams=new HashMap<>();Set<UUID> ready=new HashSet<>();
         /** Lobby only, never saved (rooms are transient): the host's mode, the ready countdown in ticks (-1 idle) and each member's House pick. */
         String mode="domination";int countdown=-1;Map<UUID,String> houses=new HashMap<>();
+        /** The room's bot difficulty (a Spec.BOTCOMMAND id; empty until Campaign gives the new room the server's current one), and which control the last forced change moved ("map" when a mode took the map to one it hosts, "mode" when a map took the mode back to Domination) with a serial the page uses to show "changed to fit" for a moment. Lobby only, never saved. */
+        String difficulty="",fitted="";int fitSerial;
         Room(String code,UUID leader){this.code=code;this.leader=leader;}
     }
     record Invite(UUID party,UUID sender,long expires) {}
@@ -101,7 +103,14 @@ final class SocialHub {
     String configure(UUID id,int size,int map,boolean fill,int mapCount){Room r=room(id);if(r==null||!id.equals(r.leader)||r.playing)return "Only an idle room host changes settings.";
         if(size<1||size>4||map<0||map>=mapCount)return "Invalid room settings.";
         for(int team=0;team<2;team++){final int t=team;if(r.teams.values().stream().filter(v->v==t).count()>size)return "Move commanders before shrinking that team.";}
-        r.size=size;r.map=map;r.fill=fill;r.ready.clear();revision++;return "Room settings saved. Everyone must ready up again.";}
+        boolean ruleChange=r.size!=size||r.map!=map; // bots on or off is not a rule change: nobody's ready is taken back for it
+        r.size=size;r.map=map;r.fill=fill;if(ruleChange)r.ready.clear();revision++;return ruleChange?"Room settings saved. Everyone must ready up again.":"Room settings saved.";}
+    /** The host's bot difficulty for this room (an id in allowed); ready flags stay as they are. */
+    String difficulty(UUID id,String tier,Set<String> allowed){Room r=room(id);if(r==null||!id.equals(r.leader)||r.playing)return "Only an idle room host changes settings.";
+        if(!allowed.contains(tier))return "That bot difficulty does not exist.";r.difficulty=tier;revision++;return "Bots: "+Character.toUpperCase(tier.charAt(0))+tier.substring(1)+".";}
+    /** Tells another commander in camp that this member's room is open to them; no state changes. Returns the refusal, or "" when the invitation may go. */
+    String roomInviteRefusal(UUID from,UUID to){Room r=room(from);if(r==null)return "Open a war council first.";if(r.playing)return "Your room is in battle.";
+        if(to==null||!online.contains(to))return "That commander is not in camp.";if(r.members.contains(to))return "That commander is already in your room.";if(room(to)!=null)return "That commander is in a room already.";return "";}
     String mode(UUID id,String mode){return mode(id,mode,MODES);}
     String mode(UUID id,String mode,List<String> allowed){Room r=room(id);if(r==null||!id.equals(r.leader)||r.playing)return "Only an idle room host changes settings.";
         if(!allowed.contains(mode))return "That mode is not ready yet.";r.mode=mode;r.ready.clear();revision++;return "Mode set. Everyone must ready up again.";}

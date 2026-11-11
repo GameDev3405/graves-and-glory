@@ -915,7 +915,7 @@ public final class GravesAndGlory implements ModInitializer {
             campaign.left(owner);
             Squad s=squads.get(owner);welcomed.remove(owner);respawns.remove(owner);if(s!=null)Commander.stop(this,s);
             // Mid-battle, the army waits on its last orders for disconnectGraceSeconds, then a bot commands it until its owner rejoins (Kort 2026-11-01).
-            if(s!=null&&running&&s.seated&&!s.bot){campaign.dropped(s);UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.tier=campaign.difficulty;s.takeoverAt=MatchRules.takeoverAt(time,Spec.CAMPAIGN[0].disconnectGraceSeconds());rekey(owner,stand);campaign.vacated.put(owner,stand);campaign.vacatedUntil.put(owner,MatchRules.releaseAt(time));return;}
+            if(s!=null&&running&&s.seated&&!s.bot){campaign.dropped(s);UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.tier=campaign.botTier();s.takeoverAt=MatchRules.takeoverAt(time,Spec.CAMPAIGN[0].disconnectGraceSeconds());rekey(owner,stand);campaign.vacated.put(owner,stand);campaign.vacatedUntil.put(owner,MatchRules.releaseAt(time));return;}
             squads.remove(owner);
             units.removeIf(u->{if(u.squad==s){leaveSide(u.mob);u.mob.discard();return true;}return false;});
         }

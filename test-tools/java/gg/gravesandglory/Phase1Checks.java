@@ -3449,7 +3449,7 @@ public final class Phase1Checks implements ClientModInitializer {
                         why+="; 960x540 GUI 1, "+layout(c,name);shot(c,"ui-page-"+name);sub=0;subAt=tick;stage=3;}
                 }
                 case 3->{ // the page's action
-                    if(pages(c)==null){ok=false;why+="; the page closed during its action (step "+sub+") WRONG";stage=4;return;}
+                    if(pages(c)==null&&!(PAGES[index].equals("friends")&&sub>=6&&sub<=8&&screen(c)!=null&&screen(c).page.equals("lobby"))){ok=false;why+="; the page closed during its action (step "+sub+") WRONG";stage=4;return;}
                     switch(PAGES[index]){case "banner"->banner(c,tick);case "contracts"->contracts(c,tick);case "chapter"->chapter(c,tick);case "friends"->friends(c,tick);default->field(c,tick);}
                 }
                 case 4->{ // the page at 1920x1080 GUI 2 (k 2) for grading, then 960x540 again and the back plaque home
@@ -3762,30 +3762,23 @@ public final class Phase1Checks implements ClientModInitializer {
             }
         }
 
-        /** Friends: the room code's line takes letters and digits (upper case, eight at most; Join with party only for a whole code,
-         *  and until then the line says how much is written, "5 of 8"), Backspace, and Esc ends the writing without leaving the
-         *  page; the party's rule stands beside the seats, and with nobody else in the camp the camp column says how friends reach
-         *  a camp; Create party makes a party and Leave party leaves it, as the snapshot shows; a private room lays its tags out
-         *  clear of each other (ui-page-friends-room); Leave room leaves it, and the server's notice speaks of no party. */
+        /** Friends (the room controls live on the war council page now, checked by ui-lobby): the page holds no room tags (no Create private room,
+         *  code line, Copy, team, size, bot, map, Ready or Start tags) and one tag that opens the war council; the party's rule stands beside the
+         *  seats, and with nobody else in the camp the camp column says how friends reach a camp; Create party makes a party and Leave party
+         *  leaves it, as the snapshot shows; the war council tag opens the page and its room (ui-page-friends-room), whose Leave room leaves it. */
         void friends(MinecraftClient c,int tick){
-            int k=at(tick);var p=pages(c);var join=button(c,"room-join");
+            int k=at(tick);
             switch(sub){
-                case 0->{click(c,box(c,"code"));type(c,"ab-c1 2");next(tick);}
-                case 1->{if(k<2||!"ABC12".equals(text("room-code"))&&k<40)return; // read as a frame drew it: waits for the frame
-                    boolean partial=p.typing&&"ABC12".equals(p.code)&&join!=null&&!join.active&&"ABC12".equals(text("room-code"))&&"5 of 8".equals(text("code-count"));
-                    ok&=partial;why+="; the code's line clicked and \"ab-c1 2\" typed: \""+p.code+"\" (writing "+p.typing+"), the line's count \""+text("code-count")+"\", Join with party "+(join!=null&&join.active?"taking a press":"dull")+(partial?"":" WRONG");type(c,"3456");next(tick);}
-                case 2->{if(k<2||!"ABC12345".equals(text("room-code"))&&k<40)return;String whole=p.code;boolean full="ABC12345".equals(whole)&&join!=null&&join.active&&text("code-count")==null;UiRecruitChecks.tap(c,GLFW.GLFW_KEY_BACKSPACE);boolean back="ABC1234".equals(p.code);
-                    UiRecruitChecks.tap(c,GLFW.GLFW_KEY_ESCAPE);var s=screen(c);boolean stays=!p.typing&&s!=null&&s.page.equals("friends");boolean pass=full&&back&&stays;ok&=pass;
-                    why+="; \"3456\" more: \""+whole+"\" with Join "+(join!=null&&join.active?"taking a press":"dull")+" and "+(text("code-count")==null?"no count":"the count \""+text("code-count")+"\"")+"; Backspace: \""+p.code+"\"; Esc: "+(stays?"the writing ends on the page":"WRONG: "+(s==null?"the table closed":s.page+", writing "+p.typing))+(pass?"":" WRONG");next(tick);}
-                case 3->{if(k<2||!"ABC1234".equals(text("room-code"))&&k<40)return;var create=button(c,"create");boolean shown=create!=null&&create.visible&&create.active&&"Create party".equals(text("create"));
+                case 0->{if(k<2)return;String[] gone={"room-create","code","room-join","copy","room-leave","team-0","team-1","fill","map","ready","start","size-1","size-2","size-3","size-4"};StringBuilder left=new StringBuilder();for(String g:gone)if(button(c,g)!=null)left.append(g).append(' ');
+                    var council=button(c,"council");boolean one=council!=null&&council.active&&"Open the war council".equals(text("council"))&&"table/note-room-short".equals(tex("room"))&&text("room-line")!=null&&left.length()==0;ok&=one;
+                    why+="; the room's note holds "+(left.length()==0?"no room tags":"WRONG: still "+left)+" and the tag \""+text("council")+"\" on "+tex("room")+(one?"":" WRONG");next(tick);}
+                case 1->{if(k<2)return;var create=button(c,"create");boolean shown=create!=null&&create.visible&&create.active&&"Create party".equals(text("create"));
                     boolean open="Open seat".equals(text("open-1"))&&"Open seat".equals(text("open-3"))&&text("open-0")==null&&WarTablePages.me().equals(text("member-0"))&&"table/note-room-short".equals(tex("room"));
-                    boolean count="7 of 8".equals(text("code-count"))&&join!=null&&!join.active;
                     boolean words=WarTablePages.PARTY_RULE.equals(text("party-rule"))&&text("party-line")==null&&text("room-why")==null&&in(rect("party-rule"),rect("party"))&&(c.getServer()!=null&&c.getServer().isRemote()?WarTablePages.CAMP_OPEN:WarTablePages.CAMP_HOW).equals(text("camp-how"));
-                    ok&=shown&&open&&count&&words;
+                    ok&=shown&&open&&words;
                     why+="; Create party "+(shown?"shown":"WRONG: missing")+", seat 0 "+text("member-0")+" and seats 1 to 3 \""+text("open-1")+"\""+", the room's note "+tex("room")+(open?"":" WRONG")
-                        +"; the code's line after Esc \""+text("room-code")+"\" counted \""+text("code-count")+"\" with Join "+(join!=null&&join.active?"taking a press":"dull")+(count?"":" WRONG")
                         +"; beside the seats \""+text("party-rule")+"\" at "+str(rect("party-rule"))+", the camp column \""+text("camp-how")+"\""+(words?"":" WRONG");click(c,box(c,"create"));next(tick);}
-                case 4->{ // the party lands in the snapshot; the page rebuilds on it (Leave party a widget) and a frame draws it
+                case 2->{ // the party lands in the snapshot; the page rebuilds on it (Leave party a widget) and a frame draws it
                     var leave=button(c,"leave");
                     if(WarTablePages.flag("party")&&leave!=null&&"Leave party".equals(text("leave"))){
                         boolean sent="social:create".equals(lastSent()),tags=leave.visible&&button(c,"disband")!=null&&button(c,"create")==null,seat=WarTablePages.me().equals(text("member-0"));
@@ -3803,20 +3796,17 @@ public final class Phase1Checks implements ClientModInitializer {
                         why+="; Create party sent "+lastSent()+(sent?"":" WRONG")+": party "+WarTablePages.flag("party")+", Leave party and Disband party "+(tags?"shown, Create party gone":"WRONG: disband "+button(c,"disband")+", create "+button(c,"create"))
                             +", seat 0 "+text("member-0")+(seat?"":" WRONG")+", \""+text("party-line")+"\""+(line?"":" WRONG");next(tick);}
                     else if(k>100){ok=false;why+="; Create party sent "+lastSent()+": no party drawn 100 ticks on (party "+WarTablePages.flag("party")+", Leave party "+(leave==null?"missing":"\""+text("leave")+"\"")+") WRONG";stage=4;}}
-                case 5->{if(k<8)return;click(c,box(c,"leave"));next(tick);}
-                case 6->{if(!WarTablePages.flag("party")&&k>=3){boolean pass="social:leave".equals(lastSent())&&button(c,"create")!=null;ok&=pass;why+="; Leave party sent "+lastSent()+": party "+WarTablePages.flag("party")+", Create party "+(button(c,"create")!=null?"back":"missing")+(pass?"":" WRONG");next(tick);}
+                case 3->{if(k<8)return;click(c,box(c,"leave"));next(tick);}
+                case 4->{if(!WarTablePages.flag("party")&&k>=3){boolean pass="social:leave".equals(lastSent())&&button(c,"create")!=null;ok&=pass;why+="; Leave party sent "+lastSent()+": party "+WarTablePages.flag("party")+", Create party "+(button(c,"create")!=null?"back":"missing")+(pass?"":" WRONG");next(tick);}
                     else if(k>100){ok=false;why+="; Leave party sent "+lastSent()+": still in a party WRONG";stage=4;}}
-                case 7->{if(k<8)return;click(c,box(c,"room-create"));next(tick);}
-                case 8->{if(!WarTablePages.value("room").isEmpty()&&k>=3)next(tick);else if(k>100){ok=false;why+="; Create private room sent "+lastSent()+": no room WRONG";stage=4;}}
-                case 9->{if(k<3)return;UiRecruitChecks.park(c);next(tick);}
-                case 10->{if(k<2||!(WarTablePages.value("room").equals(text("code"))&&"0 of 1 ready".equals(text("room-ready")))&&k<40)return; // read as a frame drew it
-                    boolean code=WarTablePages.value("room").equals(text("code"))&&"table/note-room".equals(tex("room"))&&"0 of 1 ready".equals(text("room-ready"))&&text("room-map")!=null;ok&=code;
-                    why+="; Create private room sent "+lastSent()+": in room "+text("code")+" on "+tex("room")+", \""+text("room-ready")+"\", the map "+text("room-map")+(code?"":" WRONG")+", "+layout(c,"friends");shot(c,"ui-page-friends-room");next(tick);}
-                case 11->{if(k<8)return;landedAt=-1;click(c,box(c,"room-leave"));next(tick);}
-                case 12->{boolean landed=WarTablePages.value("room").isEmpty()&&!serverRoom;if(landed&&landedAt<0)landedAt=tick;String want="You left the room."; // alone: no word of a party
-                    if(landed&&(want.equals(text("notice"))||tick>=landedAt+20)){boolean said=want.equals(text("notice"))&&"social:exit".equals(lastSent());ok&=said;
-                        why+="; Leave room sent "+lastSent()+": out of the room, the notice line \""+text("notice")+"\""+(said?"":" WRONG");landedAt=-1;stage=4;}
-                    else if(!landed&&k>100){ok=false;why+="; Leave room sent "+lastSent()+": still in the room WRONG";landedAt=-1;stage=4;}}
+                case 5->{if(k<8)return;click(c,box(c,"council"));next(tick);}
+                case 6->{var cs=screen(c);boolean there=cs!=null&&cs.page.equals("lobby")&&cs.lobby!=null&&!WarTablePages.value("room").isEmpty();
+                    if(there&&k>=20){boolean tags=cs.lobby.button("copy")!=null&&cs.lobby.button("invite")!=null&&cs.lobby.button("code")==null;ok&=tags;why+="; the war council tag opened the page in room "+WarTablePages.value("room")+": Copy and Invite "+(tags?"shown":"WRONG: missing");shot(c,"ui-page-friends-room");next(tick);}
+                    else if(k>150){ok=false;why+="; the war council tag opened "+(cs==null?"nothing":cs.page)+", room \""+WarTablePages.value("room")+"\" WRONG";stage=4;}}
+                case 7->{var cs=screen(c);if(cs==null||cs.lobby==null){ok=false;why+="; the war council closed WRONG";stage=4;return;}var leave=cs.lobby.button("leave");if(leave==null||!leave.active){if(k>100){ok=false;why+="; no live Leave room on the war council WRONG";stage=4;}return;}
+                    landedAt=-1;WarTableRecruit.press(leave);next(tick);}
+                case 8->{boolean landed=WarTablePages.value("room").isEmpty()&&!serverRoom;if(landed){ok&=true;why+="; Leave room on the war council: out of the room";var cs=screen(c);if(cs!=null)cs.page("friends");stage=4;}
+                    else if(k>100){ok=false;why+="; Leave room on the war council: still in the room WRONG";stage=4;}}
                 default->stage=4;
             }
         }

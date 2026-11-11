@@ -84,6 +84,9 @@ public final class Campaign {
     };
     /** Bot difficulty for the next round: the id of a Spec.BOTCOMMAND row (easy, normal, hard). There is one battle per server, so one setting covers it. */
     String difficulty="normal";
+    /** The bot difficulty a room's round plays at (set when the room starts, empty otherwise); botTier is what bots use. */
+    String roundTier="";
+    String botTier(){return roundTier.isEmpty()?difficulty:roundTier;}
     /** The Long March battle being fought (a Spec.CAMPAIGNBATTLES row), or null in practice, pad matches and rooms. Cleared in returnLobby. */
     Spec.CampaignBattlesRow activeBattle;
     /** The bonus objective of activeBattle (plan 2C.3), or null. Set in soloStart, cleared in returnLobby; the round's events feed it from plan 2C.4. */
@@ -200,7 +203,7 @@ public final class Campaign {
         if(b.mode.teardown(b))Modes.unmark(b);else System.err.println("[Graves and Glory] The round's teardown left "+b.saves.size()+" saved piece(s); the mode marker is kept.");
         if(battleModeBeforeRoom!=null){battleMode=battleModeBeforeRoom;battleModeBeforeRoom=null;} // the room's mode ends with its round
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
-        b.running=false;introUntil=0;social.finish();activeRoom="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);b.clearIntel();
+        b.running=false;introUntil=0;social.finish();activeRoom="";roundTier="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);b.clearIntel();
         Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearCorpses();b.clearSides();b.clearProgression();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();deleteProgress();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}onPad.clear();padCountdown=-1;closeParty();
@@ -348,7 +351,7 @@ public final class Campaign {
         for(var u:b.units){GravesAndGlory.Battle.leaveSide(u.mob);u.mob.discard();}b.units.clear();b.clearCorpses();botRespawns.clear();botRetreating.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();
         for(int team=0;team<2;team++){final int t=team;int humans=(int)b.squads.values().stream().filter(s->s.team==t&&s.seated).count();
             int target=size; // practice and a March battle set size in soloStart, so one bot per team stays the practice rule
-            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():difficulty;s.lane=i%3;var ally=allyRow(s);if(ally!=null)s.tier=ally.difficulty();b.squads.put(id,s);} // a March battle's allies fight at their own row's tier
+            if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():botTier();s.lane=i%3;var ally=allyRow(s);if(ally!=null)s.tier=ally.difficulty();b.squads.put(id,s);} // a March battle's allies fight at their own row's tier
         }
         participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);GearCombat.seat(s,profile(s.owner));}
         for(var s:b.squads.values())if(s.seated)s.banner=banner(s);
@@ -993,26 +996,30 @@ public final class Campaign {
                 if(targetId==null)yield "Commander not found.";
                 yield action.equals("invite")?social.invite(id,targetId,System.currentTimeMillis()):action.equals("kick")?social.kick(id,targetId):social.transfer(id,targetId);}
             case "room"->social.createRoom(id);case "lobby"->social.lobby(id);
+            case "difficulty"->social.difficulty(id,arg,Arrays.stream(Spec.BOTCOMMAND).map(Spec.BotCommandRow::id).collect(java.util.stream.Collectors.toSet()));
+            case "roominvite"->{var target=b.server.getPlayerManager().getPlayer(arg);String refusal=social.roomInviteRefusal(id,target==null?null:target.getUuid());
+                if(!refusal.isEmpty())yield refusal;var mine=social.room(id);notice(target.getUuid(),name(id)+" invites you to war council "+mine.code+". Open Friends and press Join beside "+name(id)+".");yield "Invitation sent to "+name(target.getUuid())+".";}
             case "mode"->{String said=social.mode(id,arg,Modes.ids());var room=social.room(id); // a mode that does not host the room's map takes the room to its first map
-                if(said.startsWith("Mode set")&&room!=null&&!Modes.hosts(room.mode,room.map))for(int m=0;m<Spec.MAPS.length;m++)if(Modes.hosts(room.mode,m)){room.map=m;said=Modes.row(room.mode).name()+" is played on "+Spec.MAPS[m].name()+". "+said;break;}
+                if(said.startsWith("Mode set")&&room!=null&&!Modes.hosts(room.mode,room.map))for(int m=0;m<Spec.MAPS.length;m++)if(Modes.hosts(room.mode,m)){room.map=m;room.fitted="map";room.fitSerial++;said=Modes.row(room.mode).name()+" is played on "+Spec.MAPS[m].name()+". "+said;break;}
                 yield said;}case "house"->{String said=social.house(id,arg,RosterMath.fieldableHouses());String no=said.startsWith("House chosen")?houseRefusal(social.room(id),id):"";yield no.isEmpty()?said:no;}
             case "host"->{UUID targetId=social.room(id)==null?null:social.room(id).members.stream().filter(m->name(m).equals(arg)).findFirst().orElse(null);yield social.handHost(id,targetId);}case "join"->social.joinRoom(id,arg);case "exit"->social.leaveRoom(id);case "ready"->social.ready(id,houseRefusal(social.room(id),id));
             case "team"->social.team(id,Integer.parseInt(arg));
             case "size","map","fill"->{var room=social.room(id);if(room==null)yield "Create or join a room first.";
                 String said=social.configure(id,action.equals("size")?Integer.parseInt(arg):room.size,action.equals("map")?Integer.parseInt(arg):room.map,action.equals("fill")?!room.fill:room.fill,Spec.MAPS.length);
-                if(said.startsWith("Room settings saved")&&!Modes.hosts(room.mode,room.map)){said=Modes.row(room.mode).name()+" is not played on "+Spec.MAPS[room.map].name()+": the mode is now Domination. "+said;room.mode=Modes.DOMINATION;} // a map the room's mode does not host plays Domination
+                if(said.startsWith("Room settings saved")&&!Modes.hosts(room.mode,room.map)){said=Modes.row(room.mode).name()+" is not played on "+Spec.MAPS[room.map].name()+": the mode is now Domination. "+said;room.mode=Modes.DOMINATION;room.fitted="mode";room.fitSerial++;} // a map the room's mode does not host plays Domination
                 yield said;}
             case "start"->{if(!preparingRoom.isEmpty()&&!preparingRoom.equals(social.room(id)==null?"":social.room(id).code))yield "Another room is preparing a battlefield. Your room is saved.";String failure=social.startFailure(id,b.running);if(!failure.isEmpty())yield failure;
                 var room=social.room(id);if(!b.ready)yield "Preparing the battlefield. Please wait.";
                 if(room.map!=map){preparingRoom=room.code;switchMap(room.map);yield "Preparing your chosen map. Your ready group will enter automatically; unready to cancel.";}
                 var empty=room.members.stream().filter(m->houseUnits(room,m)==0).findFirst();if(empty.isPresent())yield name(empty.get())+"'s banner holds no "+RosterMath.houseName(lobbyHouse(room,empty.get()))+" troops.";
-                size=room.size;fill=room.fill;practice=false;activeRoom=room.code;activeBattle=null;
+                size=room.size;fill=room.fill;practice=false;activeRoom=room.code;activeBattle=null;roundTier=room.difficulty;
                 for(var squad:b.squads.values())if(!squad.bot){squad.seated=room.members.contains(squad.owner);if(squad.seated)squad.team=room.teams.get(squad.owner);}
                 if(battleModeBeforeRoom==null)battleModeBeforeRoom=battleMode;
                 battleMode=room.mode; // the room's mode plays (startRound falls back to Domination on a map the mode does not host)
                 social.begin(room);b.startRound();yield "Your room is entering battle together.";}
             default->"Unknown social action.";
         };}catch(IllegalArgumentException e){result="Invalid selection.";}
+        var mineNow=social.room(id);if(mineNow!=null&&mineNow.difficulty.isEmpty())mineNow.difficulty=difficulty; // a new room starts at the server's current bot setting
         if(!before.equals(JSON.toJson(social))&&!saveSocial()){social.rollback(JSON.fromJson(before,SocialHub.class));result="Party change could not be saved. It was not applied; check disk space.";}
         notice(id,result);return true;
     }
@@ -1033,7 +1040,8 @@ public final class Campaign {
         JsonArray members=new JsonArray();if(party!=null)for(UUID m:party.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("online",social.online.contains(m));row.addProperty("me",m.equals(id));members.add(row);}j.add("members",members);
         var invite=social.invites.get(id);j.addProperty("inviter",invite==null?"":name(invite.sender()));j.addProperty("inviteSeconds",invite==null?0:Math.max(0,(invite.expires()-System.currentTimeMillis()+999)/1000));
         JsonArray available=new JsonArray();for(var p:b.server.getPlayerManager().getPlayerList())if(!p.getUuid().equals(id)&&social.party(p.getUuid())==null)available.add(p.getGameProfile().getName());j.add("available",available);
-        j.addProperty("room",room==null?"":room.code);j.addProperty("host",room!=null&&room.leader.equals(id));j.addProperty("playing",room!=null&&room.playing);j.addProperty("preparing",room!=null&&room.code.equals(preparingRoom));j.addProperty("size",room==null?2:room.size);j.addProperty("map",room==null?0:room.map);j.addProperty("fill",room==null||room.fill);
+        JsonArray camp=new JsonArray();for(var p:b.server.getPlayerManager().getPlayerList())if(!p.getUuid().equals(id)){JsonObject row=new JsonObject();var theirs=social.room(p.getUuid());row.addProperty("name",p.getGameProfile().getName());row.addProperty("party",social.party(p.getUuid())!=null);row.addProperty("room",theirs==null||theirs.playing?"":theirs.code);camp.add(row);}j.add("camp",camp);
+        j.addProperty("room",room==null?"":room.code);j.addProperty("host",room!=null&&room.leader.equals(id));j.addProperty("playing",room!=null&&room.playing);j.addProperty("preparing",room!=null&&room.code.equals(preparingRoom));j.addProperty("size",room==null?2:room.size);j.addProperty("map",room==null?0:room.map);j.addProperty("fill",room==null||room.fill);j.addProperty("difficulty",room==null||room.difficulty.isEmpty()?difficulty:room.difficulty);j.addProperty("fitted",room==null?"":room.fitted);j.addProperty("fitSerial",room==null?0:room.fitSerial);
         j.addProperty("mode",room==null?Modes.DOMINATION:room.mode);JsonArray modes=new JsonArray();Modes.ids().forEach(modes::add);j.add("modes",modes);
         j.addProperty("countdown",room==null||room.countdown<0?0:(room.countdown+19)/20);j.addProperty("waiting",room==null||room.playing?"":social.startFailure(room.leader,b.running));
         JsonArray commanders=new JsonArray();if(room!=null)for(UUID m:room.members){JsonObject row=new JsonObject();row.addProperty("name",name(m));row.addProperty("team",room.teams.get(m));row.addProperty("ready",room.ready.contains(m));row.addProperty("online",social.online.contains(m));

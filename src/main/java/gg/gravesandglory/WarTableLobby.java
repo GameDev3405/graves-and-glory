@@ -25,9 +25,13 @@ final class WarTableLobby {
     static final int PAD = 22, TEXT_W = 360, COL_W = 174, COL_GAP = 12, SEATS = 4, TEAM_Y = 40, SEAT_Y = 56, SEAT_H = 24, SEAT_STEP = 27,
             HOST_Y = 166, HOUSE_HEAD_Y = 184, HOUSE_Y = 202, CHIP_PAD = 6, CHIP_SEAL = 16, CHIP_SEAL_GAP = 4, CHIP_GAP = 4, ROLE_HEAD_Y = 236, ROLE_Y = 254,
             READY_Y = 288, STATUS_Y = 334, NOTICE_Y = 350, STEP = 12;
+    /** The room's code line on the sheet: the Copy and Invite tags beside the heading, and (not in a room) the Join by code field and its tag. SUMMARY_Y is the chosen mode's one line of rules, in the gap above the Ready plate. START_W is Start now beside Ready. */
+    static final int HEAD_TAG_H = 20, COPY_W = 48, INVITE_W = 56, SUMMARY_Y = 270, START_W = 112, CODE_LENGTH = WarTablePages.CODE_LENGTH, JOIN_Y = 150, FIT_TICKS = 60;
+    /** The invite pop-over: its panel (sheet-relative), the rows of friends it lists and each row's height. */
+    static final int POP_X = 40, POP_Y = 44, POP_W = 324, POP_H = 232, POP_ROWS = 5, POP_ROW_H = 28;
     /** On the note (note-relative): its text edge and width, and the rows of the orders. */
-    static final int NPAD = 18, NOTE_TEXT_W = 196, MODE_Y = 44, MAP_Y = 116, CARD_Y = 132, SIZE_Y = 254, FILL_Y = 302, LEAVE_Y = 344,
-            MODE_COLS = 2, MODE_H = 24, MODE_GAP = 3;
+    static final int NPAD = 18, NOTE_TEXT_W = 196, MODE_Y = 44, MAP_Y = 116, CARD_Y = 132, SIZE_Y = 252, FILL_Y = 284, TIER_Y = 312, LEAVE_Y = 344,
+            MODE_COLS = 2, MODE_H = 24, MODE_GAP = 3, TIER_GAP = 3;
     // The mode tabs wrap two to a row (four modes since Survival did not fit one row of the note's 196 px); the rows below the tabs sit 24 px lower than the single row had them.
     /** The host's two tags on the last row of the note, Pass host and Leave, each this wide. */
     static final int HOST_TAG_W = 96;
@@ -63,10 +67,25 @@ final class WarTableLobby {
     int noticeSerialSeen;
     String noticeText = "";
     long noticeAt = -1000;
+    /** The room code being written (Join by code, not in a room) and whether the line takes the keys. */
+    String code = "";
+    boolean typing;
+    /** The friends pop-over (Invite) is open, and which of its rows lead. */
+    boolean inviting;
+    int inviteOffset;
+    /** Set by the Friends page's Join: the room it asked for is on its way, so this page does not open a room of its own. */
+    static boolean joining;
+    /** The control the server's last forced change moved ("map" or "mode"), the serial seen, and when (ticks): "changed to fit" shows FIT_TICKS beside it. */
+    int fitSerialSeen;
+    String fitWhat = "";
+    long fitAt = -1000;
+    /** Whether the last build laid Start now out: the page is rebuilt when that changes, since the button moves Ready aside. */
+    boolean startBuilt;
 
     WarTableLobby(CampScreen screen) {
         this.screen = screen;
         noticeSerialSeen = CampaignClient.noticeSerial;
+        fitSerialSeen = num("fitSerial", 0);
     }
 
     static int[] columnAt() { return WarTable.column(COMPACT[0], COMPACT[1]); }
@@ -116,6 +135,20 @@ final class WarTableLobby {
         return out;
     }
     static String modeName(String id) { return id.isEmpty() ? "" : Character.toUpperCase(id.charAt(0)) + id.substring(1); }
+    /** The mode's one line of rules and usual length (the sheet's modes row, summary); empty when the row is missing. */
+    static String summary(String id) { for (var m : Spec.MODES) if (m.id().equals(id)) return m.summary(); return ""; }
+    /** The room's bot difficulty (a Spec.BOTCOMMAND id); the server's setting before the room says. */
+    static String tier() { return str("difficulty", CampaignClient.difficulty); }
+    /** Start now: the host's, when the room is idle and nothing but the countdown stands between it and the battle (every human ready, the seats right). */
+    static boolean startNow() { return host() && idle() && !flag("preparing") && str("waiting", "x").isEmpty() && !commanders().isEmpty(); }
+    /** Whether the code written is a whole code. */
+    boolean codeWhole() { return code.length() == CODE_LENGTH; }
+    /** The camp's other commanders the pop-over lists: name, whether they stand in a party, and the room code they hold when it is open. */
+    static List<JsonObject> camp() {
+        List<JsonObject> out = new ArrayList<>();
+        if (social().has("camp")) for (var e : social().getAsJsonArray("camp")) out.add(e.getAsJsonObject());
+        return out;
+    }
 
     /** The four seats of a side, in order: its commanders, then the seats bots will fill (bot fill on) or that stay open, then the
      *  seats beyond the room's size, closed. */
@@ -133,14 +166,21 @@ final class WarTableLobby {
     /** Builds the widgets (CampScreen.init on page lobby): again whenever the camp state changes. The first build without a room asks the server for one (social:lobby). */
     void init() {
         buttons.clear();
-        if (!inRoom() && !asked) { asked = true; send("social:lobby"); }
+        if (!inRoom() && !asked) { asked = true; if (!joining) send("social:lobby"); }
+        joining = false;
         int[] o = columnAt();
         add("back", WarTable.backPlaque(b -> back()));
         int sx = o[0] + SHEET_X, sy = o[1] + TOP, nx = o[0] + NOTE_X, ny = o[1] + TOP;
         if (!inRoom()) {
+            inviting = false;
+            int jy = sy + JOIN_Y;
+            add("code", new UiButton(sx + PAD, jy + 14, TEXT_W - 108, 24, Text.literal("Room code"), b -> typing = true, (g, x, y, w, h, hot) -> paintCode(g, x, y, w, h)));
+            add("join", new UiButton(sx + PAD + TEXT_W - 100, jy + 14, 100, 24, Text.literal("Join"), b -> join(), (g, x, y, w, h, hot) -> tag(g, "join", "Join", false, x, y, w, h))).active = codeWhole();
             add("open", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal("Open the council"), b -> send("social:lobby"), (g, x, y, w, h, hot) -> plate(g, "open", "Open the council", true, x, y)));
             return;
         }
+        typing = false;
+        if (inviting) { initInvite(sx, sy); return; }
         boolean idle = idle(), host = host() && idle;
         if (!host || !heirs()) choosingHost = false;
         boolean choosing = choosingHost;
@@ -164,8 +204,16 @@ final class WarTableLobby {
             var b = add("house-" + id, new UiButton(cx, sy + HOUSE_Y, row.widths()[i], WarTablePages.CHIP_H, Text.literal(RosterMath.houseName(id)), x -> send("social:house:" + id), (g, x, y, w, h, hot) -> paintHouse(g, id, x, y, w, h)));
             b.active = idle && !choosing;
         }
+        String room = str("room", "");
+        int hx = sx + PAD + TEXT_W;
+        add("invite", new UiButton(hx - INVITE_W, sy + 10, INVITE_W, HEAD_TAG_H, Text.literal("Invite"), b -> { inviting = true; inviteOffset = 0; screen.rebuild(); }, (g, x, y, w, h, hot) -> tag(g, "invite", "Invite", false, x, y, w, h))).active = idle && !choosing;
+        add("copy", new UiButton(hx - INVITE_W - 4 - COPY_W, sy + 10, COPY_W, HEAD_TAG_H, Text.literal("Copy"), b -> { MinecraftClient.getInstance().keyboard.setClipboard(room); noticeText = "Room code copied."; noticeAt = ticks; }, (g, x, y, w, h, hot) -> tag(g, "copy", "Copy", false, x, y, w, h))).active = true;
+        boolean start = startNow() && !choosing;
+        startBuilt = start;
         String label = readyLabel();
-        var ready = add("ready", new UiButton(sx + (SHEET_W - 240) / 2, sy + READY_Y, 240, 40, Text.literal(label), b -> { UiSounds.toggled(!myReady()); send("social:ready"); }, (g, x, y, w, h, hot) -> plate(g, "ready", readyLabel(), !myReady(), x, y)));
+        int readyX = start ? sx + PAD : sx + (SHEET_W - 240) / 2;
+        if (start) add("start", new UiButton(sx + PAD + 248, sy + READY_Y + 8, START_W, 24, Text.literal("Start now"), b -> send("social:start"), (g, x, y, w, h, hot) -> tag(g, "start", "Start now", false, x, y, w, h)));
+        var ready = add("ready", new UiButton(readyX, sy + READY_Y, 240, 40, Text.literal(label), b -> { UiSounds.toggled(!myReady()); send("social:ready"); }, (g, x, y, w, h, hot) -> plate(g, "ready", readyLabel(), !myReady(), x, y)));
         ready.active = idle && !choosing && houseRefusal().isEmpty();
         var modes = modes();
         for (int i = 0; i < modes.size(); i++) {
@@ -178,9 +226,14 @@ final class WarTableLobby {
         add("map-prev", new UiButton(cardX - 28, ny + CARD_Y + 30, 24, 24, Text.literal("Previous map"), b -> send("social:map:" + Math.floorMod(map - 1, n)), (g, x, y, w, h, hot) -> tag(g, "map-prev", "<", false, x, y, w, h))).active = host;
         add("map-next", new UiButton(cardX + 139 + 4, ny + CARD_Y + 30, 24, 24, Text.literal("Next map"), b -> send("social:map:" + Math.floorMod(map + 1, n)), (g, x, y, w, h, hot) -> tag(g, "map-next", ">", false, x, y, w, h))).active = host;
         int size = size();
-        add("size-down", new UiButton(nx + NPAD, ny + SIZE_Y + 14, 24, 24, Text.literal("Fewer seats"), b -> send("social:size:" + (size - 1)), (g, x, y, w, h, hot) -> tag(g, "size-down", "-", false, x, y, w, h))).active = host && size > 1;
-        add("size-up", new UiButton(nx + NPAD + NOTE_TEXT_W - 24, ny + SIZE_Y + 14, 24, 24, Text.literal("More seats"), b -> send("social:size:" + (size + 1)), (g, x, y, w, h, hot) -> tag(g, "size-up", "+", false, x, y, w, h))).active = host && size < SEATS;
-        add("fill", new UiButton(nx + NPAD, ny + FILL_Y + 14, NOTE_TEXT_W, 24, Text.literal(fillLabel()), b -> send("social:fill"), (g, x, y, w, h, hot) -> tag(g, "fill", fillLabel(), flag("fill"), x, y, w, h))).active = host;
+        add("size-down", new UiButton(nx + NPAD + NOTE_TEXT_W - 24 - 52 - 24, ny + SIZE_Y, 24, 24, Text.literal("Fewer seats"), b -> send("social:size:" + (size - 1)), (g, x, y, w, h, hot) -> tag(g, "size-down", "-", false, x, y, w, h))).active = host && size > 1;
+        add("size-up", new UiButton(nx + NPAD + NOTE_TEXT_W - 24, ny + SIZE_Y, 24, 24, Text.literal("More seats"), b -> send("social:size:" + (size + 1)), (g, x, y, w, h, hot) -> tag(g, "size-up", "+", false, x, y, w, h))).active = host && size < SEATS;
+        add("fill", new UiButton(nx + NPAD + 44, ny + FILL_Y, NOTE_TEXT_W - 44, 24, Text.literal(fillLabel()), b -> send("social:fill"), (g, x, y, w, h, hot) -> tag(g, "fill", fillLabel(), flag("fill"), x, y, w, h))).active = host;
+        int tw = (NOTE_TEXT_W - 2 * TIER_GAP) / 3;
+        for (int i = 0; i < Spec.BOTCOMMAND.length && i < 3; i++) {
+            String id = Spec.BOTCOMMAND[i].id(), word = CampaignClient.tierName(id);
+            add("tier-" + id, new UiButton(nx + NPAD + (tw + TIER_GAP) * i, ny + TIER_Y, tw, 24, Text.literal(word), b -> send("social:difficulty:" + id), (g, x, y, w, h, hot) -> tag(g, "tier-" + id, word, id.equals(tier()), x, y, w, h))).active = host;
+        }
         if (host) { // only the host has Pass host; it stands beside Leave, and Leave narrows to share the row
             add("pass-host", new UiButton(nx + NPAD, ny + LEAVE_Y, HOST_TAG_W, 24, Text.literal(passLabel()), b -> { choosingHost = !choosingHost; screen.rebuild(); }, (g, x, y, w, h, hot) -> tag(g, "pass-host", passLabel(), choosingHost, x, y, w, h))).active = heirs();
             add("leave", new UiButton(nx + NPAD + NOTE_TEXT_W - HOST_TAG_W, ny + LEAVE_Y, HOST_TAG_W, 24, Text.literal("Leave room"), b -> send("social:exit"), (g, x, y, w, h, hot) -> tag(g, "leave", "Leave room", false, x, y, w, h))).active = idle && !choosingHost;
@@ -211,7 +264,26 @@ final class WarTableLobby {
         send("social:team:" + team);
     }
 
-    static String fillLabel() { return flag("fill") ? "Bots fill empty seats" : "Empty seats stay empty"; }
+    static String fillLabel() { return flag("fill") ? "Bots fill seats" : "Seats stay empty"; }
+
+    /** Join by code: the code as written, when it is whole; the server finds the room or refuses. */
+    void join() {
+        typing = false;
+        if (codeWhole()) send("social:join:" + code);
+    }
+
+    /** The pop-over's widgets: a row per other commander in camp (Invite, the room invitation), More when there are more rows than fit, and Close. Nothing under the panel stays a widget. */
+    void initInvite(int sx, int sy) {
+        var camp = camp();
+        if (inviteOffset >= camp.size()) inviteOffset = 0;
+        for (int k = 0; k < POP_ROWS && inviteOffset + k < camp.size(); k++) {
+            String name = str(camp.get(inviteOffset + k), "name"), key = "invite-" + k;
+            boolean free = str(camp.get(inviteOffset + k), "room").isEmpty();
+            add(key, new UiButton(sx + POP_X + POP_W - 16 - 72, sy + POP_Y + 40 + POP_ROW_H * k, 72, 24, Text.literal("Invite " + name), b -> send("social:roominvite:" + name), (g, x, y, w, h, hot) -> tag(g, key, "Invite", false, x, y, w, h))).active = free;
+        }
+        if (camp.size() > POP_ROWS) add("invite-more", new UiButton(sx + POP_X + 16, sy + POP_Y + POP_H - 36, 64, 24, Text.literal("More"), b -> { inviteOffset = inviteOffset + POP_ROWS < camp.size() ? inviteOffset + POP_ROWS : 0; screen.rebuild(); }, (g, x, y, w, h, hot) -> tag(g, "invite-more", "More", false, x, y, w, h)));
+        add("invite-close", new UiButton(sx + POP_X + POP_W - 16 - 72, sy + POP_Y + POP_H - 36, 72, 24, Text.literal("Close"), b -> { inviting = false; screen.rebuild(); }, (g, x, y, w, h, hot) -> tag(g, "invite-close", "Close", false, x, y, w, h)));
+    }
 
     static String readyLabel() {
         if (flag("playing")) return "In battle";
@@ -234,15 +306,59 @@ final class WarTableLobby {
             noticeText = CampaignClient.notice;
             if (!noticeText.isEmpty()) noticeAt = ticks;
         }
+        if (num("fitSerial", 0) != fitSerialSeen) {
+            fitSerialSeen = num("fitSerial", 0);
+            fitWhat = str("fitted", "");
+            if (!fitWhat.isEmpty()) fitAt = ticks;
+        }
+        boolean startWanted = inRoom() && startNow() && !choosingHost;
+        if (startWanted != startBuilt) { startBuilt = startWanted; screen.rebuild(); }
+    }
+
+    /** Whether the code line takes the keys (CampScreen asks before anything else, so Backspace repeats as it is held). */
+    boolean typing(int key) {
+        if (!typing) return false;
+        if (key == GLFW.GLFW_KEY_ESCAPE || key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) return false;
+        if (key == GLFW.GLFW_KEY_TAB) { typing = false; return false; }
+        if (key == GLFW.GLFW_KEY_BACKSPACE) { if (!code.isEmpty()) { code = code.substring(0, code.length() - 1); refreshJoin(); } return true; }
+        if (net.minecraft.client.gui.screen.Screen.isPaste(key)) { for (char ch : MinecraftClient.getInstance().keyboard.getClipboard().toCharArray()) put(ch); refreshJoin(); return true; }
+        return true;
+    }
+
+    boolean charTyped(char ch) {
+        if (!typing) return false;
+        put(ch);
+        refreshJoin();
+        return true;
+    }
+
+    /** Join takes a press only for a whole code. */
+    void refreshJoin() { var j = buttons.get("join"); if (j != null) j.active = codeWhole(); }
+
+    void put(char ch) {
+        boolean ok = ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z';
+        if (ok && code.length() < CODE_LENGTH) code += Character.toUpperCase(ch);
+    }
+
+    /** A click anywhere: off the code line it stops the writing. */
+    void clicked(double x, double y) {
+        var slot = buttons.get("code");
+        if (typing && (slot == null || !slot.overArt(x, y))) typing = false;
     }
 
     /** Esc goes home; Enter or Space presses the widget the keyboard's focus is on, and Enter with none presses Ready. */
     boolean keyPressed(int key) {
-        if (key == GLFW.GLFW_KEY_ESCAPE) { back(); return true; }
+        if (key == GLFW.GLFW_KEY_ESCAPE) {
+            if (typing) typing = false;
+            else if (inviting) { inviting = false; screen.rebuild(); }
+            else back();
+            return true;
+        }
+        if (typing && (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER)) { join(); return true; }
         if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER || key == GLFW.GLFW_KEY_SPACE) {
             UiButton target = null;
             if (MinecraftClient.getInstance().getNavigationType().isKeyboard()) for (var b : buttons.values()) if (b.isFocused() && b.visible) target = b;
-            if (target == null && key != GLFW.GLFW_KEY_SPACE) target = buttons.get(inRoom() ? "ready" : "open");
+            if (target == null && key != GLFW.GLFW_KEY_SPACE) target = buttons.get(inviting ? "invite-close" : inRoom() ? "ready" : "open");
             if (target != null && target.visible && target.active) WarTableRecruit.press(target);
             return true;
         }
@@ -259,6 +375,7 @@ final class WarTableLobby {
             texturesDrawn.put("table", WarTable.drawnTable());
             sheet(g, o[0] + SHEET_X, o[1] + TOP);
             note(g, o[0] + NOTE_X, o[1] + TOP);
+            if (inviting && inRoom()) popover(g, o[0] + SHEET_X, o[1] + TOP, o[0] + NOTE_X + NOTE_W);
         } finally {
             UiCanvas.end(g);
         }
@@ -321,10 +438,21 @@ final class WarTableLobby {
         if (!inRoom()) {
             head(g, "room", "War council", null, lx, y + 18, TEXT_W);
             line(g, "status", DarkUi.body("Opening a room for your party..."), "Opening a room for your party...", lx, y + 40, DarkUi.SEPIA);
+            head(g, "join-head", "Join by code", null, lx, y + JOIN_Y, TEXT_W);
+            line(g, "join-hint", DarkUi.body("A friend's code opens their war council."), "A friend's code opens their war council.", lx, y + JOIN_Y + 42, DarkUi.SEPIA);
             notice(g, lx, y);
             return;
         }
-        head(g, "room", "War council", "Room " + str("room", ""), lx, y + 18, TEXT_W);
+        // the heading, then the room's code (in Minecraft's face, whose 0 and O differ) left of the Copy and Invite tags
+        head(g, "room", "War council", null, lx, y + 18, TEXT_W);
+        String roomCode = str("room", "");
+        int codeRight = lx + TEXT_W - INVITE_W - 4 - COPY_W - 8, codeW = font.getWidth(roomCode);
+        var codeLabel = DarkUi.body("Room");
+        g.drawText(font, codeLabel, codeRight - codeW - 5 - font.getWidth(codeLabel), y + 15, DarkUi.SEPIA, false);
+        g.drawText(font, Text.literal(roomCode), codeRight - codeW, y + 17, DarkUi.INK_TEXT, false);
+        rectsDrawn.put("code", new int[]{codeRight - codeW, y + 17, codeW, 9});
+        textsDrawn.put("code", roomCode);
+        textsDrawn.put("room", "Room " + roomCode);
         for (int t = 0; t < 2; t++) {
             int tx = lx + (COL_W + COL_GAP) * t;
             DarkUi.teamMark(g, t, tx, y + TEAM_Y + 2);
@@ -347,8 +475,64 @@ final class WarTableLobby {
         int worn = sr == null ? 0 : GearStats.of(CampaignClient.profile).setCounts().getOrDefault(role, 0);
         String gearLine = UiMath.trim(worn + " of 4 " + (sr == null ? "" : sr.name()) + " pieces worn. Change gear and relics in the Arsenal.", TEXT_W, t -> font.getWidth(DarkUi.body(t)));
         line(g, "gear", DarkUi.body(gearLine), gearLine, lx, y + ROLE_Y, DarkUi.SEPIA);
+        String sum = UiMath.trim(summary(str("mode", "")), TEXT_W, t -> font.getWidth(DarkUi.body(t)));
+        if (!sum.isEmpty()) line(g, "summary", DarkUi.body(sum), sum, lx, y + SUMMARY_Y, DarkUi.INK_TEXT);
         status(g, x, y);
         notice(g, lx, y);
+    }
+
+    /** A friend-list pop-over over the sheet and the note: a veil, a vellum panel on the sheet (title, a row per other commander in camp whose Invite tag is a widget, and what to do when none). */
+    void popover(DrawContext g, int x, int y, int right) {
+        var font = font();
+        g.fill(x, y, right, y + PAPER_H, 0xA0140E08);
+        int px = x + POP_X, py = y + POP_Y;
+        g.fill(px - 1, py - 1, px + POP_W + 1, py + POP_H + 1, DarkUi.SEPIA);
+        g.fill(px, py, px + POP_W, py + POP_H, DarkUi.VELLUM);
+        rectsDrawn.put("popover", new int[]{px, py, POP_W, POP_H});
+        g.drawText(font, DarkUi.heading("Invite a commander"), px + 16, py + 14, DarkUi.INK_TEXT, false);
+        g.fill(px + 16, py + 27, px + POP_W - 16, py + 28, DarkUi.SEPIA_LINE);
+        textsDrawn.put("popover", "Invite a commander");
+        var camp = camp();
+        if (camp.isEmpty()) {
+            var lines = UiMath.lines("Nobody else is in this camp yet. Friends who join this game can use the code " + str("room", "") + " on their war council page.", POP_W - 32, 4, t -> font.getWidth(DarkUi.body(t)));
+            for (int i = 0; i < lines.size(); i++) g.drawText(font, DarkUi.body(lines.get(i)), px + 16, py + 40 + 13 * i, DarkUi.SEPIA, false);
+            textsDrawn.put("popover-empty", String.join(" ", lines));
+            return;
+        }
+        for (int k = 0; k < POP_ROWS && inviteOffset + k < camp.size(); k++) {
+            var row = camp.get(inviteOffset + k);
+            String name = UiMath.trim(str(row, "name"), POP_W - 32 - 72 - 90, t -> font.getWidth(t));
+            int ry = py + 40 + POP_ROW_H * k;
+            boolean free = str(row, "room").isEmpty();
+            g.drawText(font, Text.literal(name), px + 16, ry + 8, free ? DarkUi.INK_TEXT : DarkUi.SEPIA, false);
+            if (!free) g.drawText(font, DarkUi.body("in a room"), px + 16 + font.getWidth(name) + 8, ry + 8, DarkUi.SEPIA, false);
+            textsDrawn.put("popover-row-" + k, str(row, "name"));
+        }
+    }
+
+    /** The code line of the join field: the code in INK in Minecraft's face on a written line, the caret while it is being written, and until it is whole how much of it is written; what to do, in SEPIA, until writing starts. */
+    void paintCode(DrawContext g, int x, int y, int w, int h) {
+        var font = font();
+        var b = buttons.get("code");
+        boolean hot = WarTableRecruit.hot(b);
+        g.fill(x, y + h - 3, x + w, y + h - 2, typing || hot ? DarkUi.INK_TEXT : DarkUi.SEPIA);
+        if (code.isEmpty() && !typing) g.drawText(font, DarkUi.body("Click to write the code"), x + 4, y + 7, DarkUi.SEPIA, false);
+        else {
+            var t = Text.literal(code);
+            g.drawText(font, t, x + 4, y + 9, DarkUi.INK_TEXT, false);
+            if (typing && ticks / 10 % 2 == 0) {
+                int cx = x + 5 + font.getWidth(t);
+                g.fill(cx, y + 7, cx + 1, y + 18, DarkUi.INK_TEXT);
+            }
+            if (code.length() < CODE_LENGTH) {
+                String count = code.length() + " of " + CODE_LENGTH;
+                int cw = font.getWidth(count);
+                g.drawText(font, Text.literal(count), x + w - 4 - cw, y + 9, DarkUi.SEPIA, false);
+                textsDrawn.put("code-count", count);
+            }
+        }
+        rectsDrawn.put("code-line", new int[]{x, y, w, h});
+        textsDrawn.put("room-code", code);
     }
 
     void paintSeat(DrawContext g, int team, int index, int x, int y, int w, int h) {
@@ -521,7 +705,10 @@ final class WarTableLobby {
         textsDrawn.put("orders", host() ? "host" : hostName());
         line(g, null, DarkUi.body("Mode"), "Mode", lx, y + MODE_Y, DarkUi.SEPIA);
         textsDrawn.put("mode", str("mode", ""));
+        boolean fit = !fitWhat.isEmpty() && ticks - fitAt < FIT_TICKS;
+        if (fit && fitWhat.equals("mode")) fitNote(g, "fit-mode", "changed to fit the map", x + NPAD + NOTE_TEXT_W, y + MODE_Y);
         line(g, null, DarkUi.body("Map"), "Map", lx, y + MAP_Y, DarkUi.SEPIA);
+        if (fit && fitWhat.equals("map")) fitNote(g, "fit-map", "changed to fit " + modeName(str("mode", "")), x + NPAD + NOTE_TEXT_W, y + MAP_Y);
         int map = Math.max(0, Math.min(Spec.MAPS.length - 1, num("map", 0)));
         var m = Spec.MAPS[map];
         int cardX = x + (NOTE_W - 139) / 2;
@@ -532,12 +719,24 @@ final class WarTableLobby {
         String theme = UiMath.trim(m.theme(), NOTE_TEXT_W, s -> font.getWidth(DarkUi.body(s)));
         WarTableHome.centred(g, DarkUi.body(theme), x + NOTE_W / 2, y + CARD_Y + 102, DarkUi.SEPIA);
         textsDrawn.put("map", m.id());
-        line(g, null, DarkUi.body("Seats a side"), "Seats a side", lx, y + SIZE_Y, DarkUi.SEPIA);
+        line(g, null, DarkUi.body("Seats"), "Seats", lx, y + SIZE_Y + 7, DarkUi.SEPIA);
         String size = size() + " v " + size();
-        WarTableHome.centred(g, DarkUi.focal(size), x + NOTE_W / 2, y + SIZE_Y + 17, DarkUi.INK_TEXT);
+        WarTableHome.centred(g, DarkUi.focal(size), x + NPAD + NOTE_TEXT_W - 24 - 26, y + SIZE_Y + 8, DarkUi.INK_TEXT);
         textsDrawn.put("size", String.valueOf(size()));
-        line(g, null, DarkUi.body("Bots"), "Bots", lx, y + FILL_Y, DarkUi.SEPIA);
+        line(g, null, DarkUi.body("Bots"), "Bots", lx, y + FILL_Y + 7, DarkUi.SEPIA);
         textsDrawn.put("fill", String.valueOf(flag("fill")));
+        textsDrawn.put("tier", tier());
+    }
+
+    /** "changed to fit X", right-aligned on a control's label row in ink, for FIT_TICKS after the server moved the control. */
+    void fitNote(DrawContext g, String key, String words, int right, int y) {
+        var font = font();
+        String shown = UiMath.trim(words, NOTE_TEXT_W - 48, t -> font.getWidth(DarkUi.body(t)));
+        int w = font.getWidth(DarkUi.body(shown));
+        g.drawText(font, DarkUi.body(shown), right - w, y, DarkUi.INK_TEXT, false);
+        rectsDrawn.put(key, new int[]{right - w, y, w, 11});
+        textsDrawn.put(key, shown);
+        colorsDrawn.put(key, DarkUi.INK_TEXT);
     }
 
     /** The server's last notice, under the countdown line, shown WarTableHome.NOTICE_TICKS and then faded. */

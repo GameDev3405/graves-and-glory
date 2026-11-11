@@ -144,6 +144,9 @@ final class WarTableHome {
     final UiButton[] sheets = new UiButton[3];
     final Map<String, UiButton> buttons = new LinkedHashMap<>();
     UiButton ride, change;
+    /** Practice's bot difficulty switch on the field card (Easy, Normal, Hard; difficulty:<id>, the server's setting practice plays at), in the card's second line's place; Change steps down under it. */
+    final UiButton[] tiers = new UiButton[3];
+    static final int TIER_ROW_Y = 131, TIER_W = 48, TIER_GAP = 4, CHANGE_Y = 152, CHANGE_PRACTICE_Y = 152;
 
     WarTableHome(CampScreen screen) {
         this.screen = screen;
@@ -185,10 +188,39 @@ final class WarTableHome {
         }
         placeSheets();
         change = add("change", new UiButton(ox + FIELD_X + 44, oy + FIELD_Y + 152, 80, 24, Text.literal("Change"), b -> screen.page("field"), this::paintChange));
+        for (int i = 0; i < tiers.length && i < Spec.BOTCOMMAND.length; i++) {
+            String id = Spec.BOTCOMMAND[i].id();
+            tiers[i] = add("tier-" + id, new UiButton(ox + FIELD_X + 8 + (TIER_W + TIER_GAP) * i, oy + FIELD_Y + TIER_ROW_Y, TIER_W, 19, Text.literal(CampaignClient.tierName(id)), b -> screen.action("difficulty:" + id), (g, x, y, w, h, hot) -> paintTier(g, id, x, y, w, h, hot)));
+            tiers[i].active = !GravesAndGloryClient.running;
+        }
+        placeField();
         ride = add("ride", new UiButton(ox + 360, oy + 388, 240, 40, Text.literal(rideLabel()), b -> ride(), this::paintRide));
         ride.active = !GravesAndGloryClient.running;
         change.active = focused != 2; // the Long March fixes its map: the campaign card has no Change
         if (CampaignClient.result.has("id")) add("last", new UiButton(ox + FIELD_X + 40, oy + 392, 88, 24, Text.literal("Last battle"), b -> screen.page("results"), this::paintLast));
+    }
+
+    /** Practice's card: the difficulty switch shows and Change steps down under it; the other cards have Change in its usual place. */
+    void placeField() {
+        int[] o = block();
+        for (var t : tiers) if (t != null) t.visible = focused == 0;
+        if (change != null) change.moveTo(o[0] + FIELD_X + 44, o[1] + FIELD_Y + CHANGE_PRACTICE_Y, 80, 24);
+    }
+
+    /** A difficulty tag: vellum with the tier's word, the chosen one carrying the heavy bar under it. */
+    void paintTier(DrawContext g, String id, int x, int y, int w, int h, boolean hot) {
+        var font = MinecraftClient.getInstance().textRenderer;
+        boolean on = id.equals(CampaignClient.difficulty), live = !GravesAndGloryClient.running;
+        UiTex.nine(g, "table/btn-vellum-88x24", x, y, w + 1, h + 2);
+        String word = CampaignClient.tierName(id);
+        var t = DarkUi.heading(word);
+        int tw = font.getWidth(t), lx = x + (w - tw) / 2, ink = live || on ? DarkUi.INK_TEXT : DarkUi.SEPIA;
+        g.drawText(font, t, lx, y + 4, ink, false);
+        if (on) g.fill(lx, y + 14, lx + tw, y + 16, DarkUi.INK_TEXT);
+        else if (hot && live) g.fill(lx, y + 14, lx + tw, y + 15, ink);
+        rectsDrawn.put("tier-" + id, new int[]{x, y, w, h});
+        textsDrawn.put("tier-" + id, word);
+        if (on) textsDrawn.put("tier", word);
     }
 
     /** The focused sheet's widget takes its raised box and the others their flat boxes, at once (the drawing animates). */
@@ -214,6 +246,7 @@ final class WarTableHome {
         UiSounds.play(AudioCues.Cue.PAGE_TURN); // the next sheet rises
         CampaignClient.homeMode = MODES[i];
         placeSheets();
+        placeField();
         if (change != null) change.active = focused != 2;
         if (ride != null) ride.setMessage(Text.literal(rideLabel()));
     }
@@ -444,6 +477,7 @@ final class WarTableHome {
         var teamLines = font.wrapLines(DarkUi.body(teams), 150); // the chapter-aware line (brief G3) takes two lines when it outgrows the card
         int top = teamLines.size() > 1 ? 116 : 120, step = teamLines.size() > 1 ? 10 : 12;
         centred(g, DarkUi.body(rule), x + 84, y + top, DarkUi.SEPIA);
+        if (focused == 0) teamLines = List.of(); // practice: the difficulty switch stands in the teams line's place and names the tier
         for (int i = 0; i < Math.min(2, teamLines.size()); i++) g.drawText(font, teamLines.get(i), x + 84 - font.getWidth(teamLines.get(i)) / 2, y + top + step * (i + 1), DarkUi.SEPIA, false);
         String closed = march ? CampaignClient.seasonLock(row) : "";
         if (!closed.isEmpty()) { // brief G2: the chapter's season has not begun; its date replaces the bonus

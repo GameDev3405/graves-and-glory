@@ -1291,6 +1291,7 @@
       "pointScale": 1.0,
       "timeout": "score",
       "ruleLine": "Domination to {n}",
+      "summary": "Hold the points to score. First to 300. Up to 15 minutes.",
       "howTo": "Send troops onto a point to take it; hold it to score. | Reach the target score first, or lead when time ends.",
       "howToDefend": "Send troops onto a point to take it; hold it to score. | Reach the target score first, or lead when time ends."
     },
@@ -1305,6 +1306,7 @@
       "pointScale": 0.0,
       "timeout": "team1",
       "ruleLine": "Siege of Ironhold",
+      "summary": "Break the gate and take the keep. About 3 minutes.",
       "howTo": "Break the gate; siege troops strike it four times harder. | Seize the keep before the clock runs out.",
       "howToDefend": "Hold the yard, then the gate, then the keep. | When the clock runs out, Ironhold is yours."
     },
@@ -1319,6 +1321,7 @@
       "pointScale": 0.0,
       "timeout": "team1",
       "ruleLine": "Convoy: reach {n}",
+      "summary": "Push the wagon to the refuge. About 7 minutes.",
       "howTo": "Stay by the wagon to push it; an enemy beside it stops it. | Reach the refuge before the clock runs out.",
       "howToDefend": "Stand by the wagon to stop it. | Hold it until the clock runs out."
     },
@@ -1333,6 +1336,7 @@
       "pointScale": 0.0,
       "timeout": "team0",
       "ruleLine": "Survival: {n} waves",
+      "summary": "Hold the shrine through 7 waves. About 11 minutes.",
       "howTo": "Hold the shrine against every wave; clear a wave for its gold. | Lose the shrine for 20 seconds and the night is lost.",
       "howToDefend": "Hold the shrine against every wave; clear a wave for its gold. | Lose the shrine for 20 seconds and the night is lost."
     }

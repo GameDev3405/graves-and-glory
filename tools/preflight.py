@@ -91,6 +91,7 @@ for m in modes:
     for column in ('howTo','howToDefend'):
         parts=[p.strip() for p in m.get(column,'').split('|') if p.strip()]
         if not 1<=len(parts)<=2: errors.append(f'{where}: {column} holds {len(parts)} parts, want 1 or 2')
+    if not 1<=len(m.get('summary','').strip())<=64: errors.append(f'{where}: summary is the lobby tab one line of rules and a usual length, 1 to 64 characters')
 # Mode copy (plan 2C.2): the feed lines a mode sends, the 2 to 4 numbers of its ledger and its briefing how-to lines are draft copy in
 # the sheets, not in the mode classes. A feed line has a kind FeedLines.style knows, the {name} fields its args column lists, and a text
 # FeedLines.MAX_TEXT can carry; FeedFitCheck measures how wide each one draws on the feed leaf. A how-to part may name a key as {key:<id>}.

@@ -101,13 +101,11 @@ final class WarTablePages {
     static final String UNSWORN = "No House takes oaths yet";
 
     // Friends: the camp's commanders on the left, the party's note in the middle with a seat for each of its four places, the
-    // private room's note on the right: out of a room the short note (as tall as the party's), with Create and the code's line
-    // under "Join a room"; in one the tall note, its tags in groups 16 px apart (the code's, the teams', the settings', the start)
-    // and the rows in a group 8 px apart. Offsets from the note's top.
-    static final int CAMP_X = 56, CAMP_W = 228, INVITE_Y = 144, INVITE_STEP = 32, INVITES = 4, PARTY_SEATS = 4;
-    static final int PARTY_X = 300, PARTY_Y = 124, PARTY_NAME_W = 108, ROOM_X = 676, ROOM_Y = 124, ROOM_W = 196, PAIR_W = 94, PAIR_STEP = 102, CODE_LENGTH = 8;
-    static final int CREATE_DY = 76, JOIN_HEAD_DY = 128, CODE_DY = 146, JOIN_DY = 178, RULES_DY = 226;
-    static final int COPY_DY = 66, TEAMS_DY = 106, NAMES_DY = 122, TEAM_DY = 176, MAP_DY = 216, SIZE_DY = 234, FILL_DY = 266, READY_DY = 306, READY_LINE_DY = 338;
+    // war council's short note on the right (the room itself is run from the war council page, WarTableLobby), with the tag that
+    // opens it. Each commander in the camp has an Invite tag and, when holding an open room, a Join tag. Offsets from the note's top.
+    static final int CAMP_X = 56, CAMP_W = 228, INVITE_Y = 144, INVITE_STEP = 32, INVITES = 4, PARTY_SEATS = 4, JOIN_W = 60;
+    static final int PARTY_X = 300, PARTY_Y = 124, PARTY_NAME_W = 108, ROOM_X = 676, ROOM_Y = 124, ROOM_W = 196, CODE_LENGTH = 8;
+    static final int CREATE_DY = 76;
     /** The party's rule, beside the seats level with the first (the commander's own, which never carries a tag) and on the
      *  column of the leader's tags, and the camp column's line on how friends reach a camp this machine runs: how to share it,
      *  or, once it is open on the network, where friends find it. */
@@ -245,10 +243,8 @@ final class WarTablePages {
     boolean flyBack;
     String dropWhy = "";
     static final int DRAG_START = 6, PEND_TICKS = 100, FLY_MS = 150;
-    /** Friends: the first commander of the camp's list shown, the room code being written and whether it is being written. */
+    /** Friends: the first commander of the camp's list shown. */
     int offset;
-    String code = "";
-    boolean typing;
     /** Field: the map whose card shows, and the map the war gates last took this commander's vote for (-1: none). */
     int viewed, voted = -1;
     /** Chapter: whether the arrows moved the track off its place, and where to; the first tier the last tick showed; the tier this
@@ -277,8 +273,7 @@ final class WarTablePages {
     /** The widget a name stands for, or null: back, recruit, banner, contracts, chapter, friends (the rail's, all but the open
      *  page's); Banner: row-(i), add-(i), remove-(i), seat-(i), clear; Contracts: claim-(i), reroll, claim-weekly;
      *  Chapter: claim, earlier, later, title-(t); Friends: invite-(k), more, accept, decline, lobby-accept, lobby-decline, lead-(i),
-     *  kick-(i), create, leave, disband, claim-lead, room-create, code, room-join, copy, room-leave, team-0, team-1, size-(n), fill,
-     *  map, ready, start; Field: map-(i), vote-(i), bots-(tier). */
+     *  kick-(i), create, leave, disband, claim-lead, join-(k) (Join on a friend's row), council; Field: map-(i), vote-(i), bots-(tier). */
     UiButton button(String name) { return buttons.get(name); }
 
     UiButton add(String name, UiButton b) { buttons.put(name, b); return screen.add(b); }
@@ -351,15 +346,10 @@ final class WarTablePages {
     boolean keyPressed(int key) {
         if (key == GLFW.GLFW_KEY_ESCAPE) {
             if (pressed || dragging) cancelDrag();
-            else if (typing) typing = false;
             else back();
             return true;
         }
         if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER || key == GLFW.GLFW_KEY_SPACE) {
-            if (typing) {
-                if (key != GLFW.GLFW_KEY_SPACE) join();
-                return true;
-            }
             var target = keyboardFocus();
             if (target == null && key != GLFW.GLFW_KEY_SPACE && page.equals("chapter")) target = buttons.get("claim");
             if (target != null && target.visible && target.active) WarTableRecruit.press(target);
@@ -372,31 +362,6 @@ final class WarTablePages {
         return false;
     }
 
-    /** A key while the room code is being written, ahead of the held keys and the page's keys (so Backspace repeats as it is
-     *  held): Backspace takes the last character off, paste puts in the clipboard's letters and digits, Tab ends the writing and
-     *  goes on to move the focus, Esc and Enter go on to keyPressed. Every other key is taken here, so a letter of the code does
-     *  not also act as a key (B, M, the menu key); the letters themselves arrive through charTyped. */
-    boolean typing(int key) {
-        if (!typing) return false;
-        if (key == GLFW.GLFW_KEY_ESCAPE || key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) return false;
-        if (key == GLFW.GLFW_KEY_TAB) { typing = false; return false; }
-        if (key == GLFW.GLFW_KEY_BACKSPACE) { if (!code.isEmpty()) code = code.substring(0, code.length() - 1); return true; }
-        if (Screen.isPaste(key)) { for (char ch : MinecraftClient.getInstance().keyboard.getClipboard().toCharArray()) put(ch); return true; }
-        return true;
-    }
-
-    /** A character typed while the room code is being written: letters (made upper case) and digits, up to CODE_LENGTH. */
-    boolean charTyped(char ch) {
-        if (!typing) return false;
-        put(ch);
-        return true;
-    }
-
-    void put(char ch) {
-        boolean ok = ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z';
-        if (ok && code.length() < CODE_LENGTH) code += Character.toUpperCase(ch);
-    }
-
     /** A click with the other mouse button: on a seat of the Banner it empties the seat. */
     boolean secondaryClick(double x, double y) {
         if (!page.equals("banner")) return false;
@@ -406,12 +371,6 @@ final class WarTablePages {
             if (b != null && b.visible && b.active && b.overArt(x, y)) { place(i, EMPTY); return true; }
         }
         return false;
-    }
-
-    /** A click anywhere: off the room code's line it stops the writing (a click on the line starts it, through its widget). */
-    void clicked(double x, double y) {
-        var slot = buttons.get("code");
-        if (typing && (slot == null || !slot.overArt(x, y))) typing = false;
     }
 
     /** The page's widget the keyboard's focus is on (Tab or the arrows put it there), or null; see WarTableRecruit.keyboardFocus. */
@@ -2032,13 +1991,16 @@ final class WarTablePages {
         int[] o = col(C_CAMP);
         int ox = o[0], oy = o[1];
         boolean party = flag("party"), lead = flag("partyLead");
-        var available = rows("available");
-        if (offset >= available.size()) offset = 0;
-        for (int k = 0; k < INVITES && offset + k < available.size(); k++) {
-            String name = available.get(offset + k).getAsString(), key = "invite-" + k;
-            add(key, new UiButton(ox + CAMP_X, oy + INVITE_Y + INVITE_STEP * k, campW(), 24, Text.literal("Invite " + name), b -> send("social:invite:" + name), (g, x, y, w, h, hot) -> paintInvite(g, key, name, x, y, w, h)));
+        var camp = rows("camp");
+        if (offset >= camp.size()) offset = 0;
+        for (int k = 0; k < INVITES && offset + k < camp.size(); k++) {
+            var row = camp.get(offset + k).getAsJsonObject();
+            String name = row.get("name").getAsString(), key = "invite-" + k, theirs = row.has("room") ? row.get("room").getAsString() : "";
+            int width = theirs.isEmpty() ? campW() : campW() - JOIN_W - 4;
+            add(key, new UiButton(ox + CAMP_X, oy + INVITE_Y + INVITE_STEP * k, width, 24, Text.literal("Invite " + name), b -> send("social:invite:" + name), (g, x, y, w, h, hot) -> paintInvite(g, key, name, x, y, w, h)));
+            if (!theirs.isEmpty()) tag("join-" + k, ox + CAMP_X + campW() - JOIN_W, oy + INVITE_Y + INVITE_STEP * k, JOIN_W, "Join", () -> joinFriend(theirs));
         }
-        if (available.size() > INVITES) tag("more", ox + CAMP_X, oy + INVITE_Y + INVITE_STEP * INVITES, 88, "More", () -> { offset = offset + INVITES < available.size() ? offset + INVITES : 0; screen.rebuild(); });
+        if (camp.size() > INVITES) tag("more", ox + CAMP_X, oy + INVITE_Y + INVITE_STEP * INVITES, 88, "More", () -> { offset = offset + INVITES < camp.size() ? offset + INVITES : 0; screen.rebuild(); });
         if (!value("inviter").isEmpty()) {
             tag("accept", ox + CAMP_X, oy + 344, 112, "Accept invitation", () -> send("social:accept"));
             tag("decline", ox + CAMP_X + 120, oy + 344, 72, "Decline", () -> send("social:decline"));
@@ -2065,58 +2027,26 @@ final class WarTablePages {
             else tag("claim-lead", px + 112, py, 136, "Claim offline lead", () -> send("social:claim"));
         }
         int[] ro = col(C_ROOM);
-        int rx = ro[0] + ROOM_X + 16, ry = ro[1] + ROOM_Y;
-        String room = value("room");
-        if (room.isEmpty()) {
-            tag("room-create", rx, ry + CREATE_DY, ROOM_W, "Create private room", () -> send("social:room"));
-            add("code", new UiButton(rx, ry + CODE_DY, ROOM_W, 24, Text.literal("Room code"), b -> typing = true, (g, x, y, w, h, hot) -> paintCode(g, x, y, w, h)));
-            tag("room-join", rx, ry + JOIN_DY, ROOM_W, "Join with party", this::join);
-            return;
-        }
-        tag("copy", rx, ry + COPY_DY, PAIR_W, "Copy code", () -> MinecraftClient.getInstance().keyboard.setClipboard(room));
-        tag("room-leave", rx + PAIR_STEP, ry + COPY_DY, PAIR_W, "Leave room", () -> send("social:exit"));
-        tag("team-0", rx, ry + TEAM_DY, PAIR_W, "Party to Dawn", () -> send("social:team:0"));
-        tag("team-1", rx + PAIR_STEP, ry + TEAM_DY, PAIR_W, "Party to Dusk", () -> send("social:team:1"));
-        for (int n = 1; n <= 4; n++) {
-            final int size = n;
-            String key = "size-" + n, label = n + "v" + n;
-            add(key, new UiButton(rx + 50 * (n - 1), ry + SIZE_DY, 46, 24, Text.literal(label), b -> send("social:size:" + size), (g, x, y, w, h, hot) -> vellum(g, key, x, y, w, h, label, size == number("size", 2), true)));
-        }
-        tag("fill", rx, ry + FILL_DY, PAIR_W, flag("fill") ? "Bot fill on" : "Bot fill off", () -> send("social:fill"));
-        tag("map", rx + PAIR_STEP, ry + FILL_DY, PAIR_W, "Next map", () -> send("social:map:" + ((number("map", 0) + 1) % Spec.MAPS.length)));
-        tag("ready", rx, ry + READY_DY, PAIR_W, mineReady() ? "Cancel ready" : "Ready", () -> send("social:ready"));
-        tag("start", rx + PAIR_STEP, ry + READY_DY, PAIR_W, flag("playing") ? "Match on" : flag("preparing") ? "Preparing map" : "Start together", () -> send("social:start"));
+        tag("council", ro[0] + ROOM_X + 16, ro[1] + ROOM_Y + CREATE_DY, ROOM_W, value("room").isEmpty() ? "Open the war council" : "Back to the war council", () -> screen.page("lobby"));
     }
 
-    /** What the party and the room allow now, as the server rules them: invitations from the party's leader, a room made or
-     *  joined by a party's leader (or a commander alone), the room's settings by its idle host, the start by the host once ready. */
+    /** What the party allows now, as the server rules it: invitations from the party's leader to a commander in no party, a room joined by a party's leader (or a commander alone) who is in none. */
     void refreshFriends() {
-        boolean lead = flag("partyLead"), alone = !flag("party"), host = flag("host"), playing = flag("playing");
+        boolean lead = flag("partyLead"), alone = !flag("party");
+        var camp = rows("camp");
         for (int k = 0; k < INVITES; k++) {
             var b = buttons.get("invite-" + k);
-            if (b != null) b.active = lead;
+            if (b != null && offset + k < camp.size()) b.active = lead && !flag(camp.get(offset + k).getAsJsonObject(), "party");
+            var join = buttons.get("join-" + k);
+            if (join != null) join.active = UiMath.roomOpen(!alone, lead) && value("room").isEmpty();
         }
-        boolean rooms = UiMath.roomOpen(!alone, lead); // the room's note says why when not (room, UiMath.roomWhy)
-        var create = buttons.get("room-create");
-        if (create != null) create.active = rooms;
-        var join = buttons.get("room-join");
-        if (join != null) join.active = rooms && code.length() == CODE_LENGTH;
-        for (String n : new String[]{"size-1", "size-2", "size-3", "size-4", "fill", "map"}) {
-            var b = buttons.get(n);
-            if (b != null) b.active = host && !playing;
-        }
-        for (String n : new String[]{"team-0", "team-1", "ready", "room-leave"}) {
-            var b = buttons.get(n);
-            if (b != null) b.active = !playing;
-        }
-        var start = buttons.get("start");
-        if (start != null) start.active = host && !playing && GravesAndGloryClient.ready && !GravesAndGloryClient.running;
     }
 
-    /** Join with party: the code as written, when it is whole; the server finds the room or refuses. */
-    void join() {
-        typing = false;
-        if (code.length() == CODE_LENGTH) send("social:join:" + code);
+    /** Join on a friend's row: the room's code goes to the server, and the war council page opens on it. */
+    void joinFriend(String theirs) {
+        WarTableLobby.joining = true;
+        send("social:join:" + theirs);
+        screen.page("lobby");
     }
 
     void friends(DrawContext g) {
@@ -2132,7 +2062,7 @@ final class WarTablePages {
         var font = font();
         int x = ox + CAMP_X;
         g.drawText(font, DarkUi.heading("In this camp"), x, oy + 124, DarkUi.BRASS, false);
-        if (rows("available").isEmpty()) {
+        if (rows("camp").isEmpty()) {
             var first = lines(g, "Commanders appear here after joining this game server.", x, oy + INVITE_Y, campW(), 2, DarkUi.MUTED);
             var server = MinecraftClient.getInstance().getServer();
             if (server != null) { // this machine runs the camp: how friends reach it (isRemote: open on the network)
@@ -2227,93 +2157,16 @@ final class WarTablePages {
         return m.leader() ? "Leader, " + on : m.online() ? "Online" : "Offline";
     }
 
-    /** The private room's note. Out of a room (the short note): what a room is, then "Join a room" over the code's line (Create,
-     *  the line and Join are widgets) and the room's rule. In a room (the tall note): its code in Minecraft's face (whose 0 and O,
-     *  1 and I differ) and its host, each team's commanders (a check by those ready), the map in play, and how many are ready of
-     *  how many (every commander readies before the host can start). Its tags are widgets. */
+    /** The war council's note: the room is run from the war council page (its code, teams, bots and start), so this note says so and carries the one tag that opens it (a widget). */
     void room(DrawContext g, int ox, int oy) {
         var font = font();
         int x = ox + ROOM_X, y = oy + ROOM_Y, lx = x + 16;
-        String room = value("room"), note = room.isEmpty() ? "table/note-room-short" : "table/note-room";
-        rectsDrawn.put("room", UiTex.draw(g, note, x, y));
-        texturesDrawn.put("room", note);
-        g.drawText(font, DarkUi.heading("Private room"), lx, y + 12, DarkUi.INK_TEXT, false);
-        if (room.isEmpty()) {
-            lines(g, "Your own battle, with friends on the teams you choose.", lx, y + 30, ROOM_W, 2, DarkUi.SEPIA);
-            g.drawText(font, DarkUi.heading("Join a room"), lx, y + JOIN_HEAD_DY, DarkUi.INK_TEXT, false);
-            // a party member who does not lead sees Create and Join dull: the word why, under Join, ahead of the rule (UI Task 8b)
-            String why = UiMath.roomWhy(flag("party"), flag("partyLead"));
-            int ruleY = y + RULES_DY;
-            if (!why.isEmpty()) {
-                var said = lines(g, why, lx, ruleY, ROOM_W, 2, DarkUi.SEPIA);
-                textsDrawn.put("room-why", String.join(" ", said));
-                colorsDrawn.put("room-why", DarkUi.SEPIA);
-                rectsDrawn.put("room-why", new int[]{lx, ruleY, ROOM_W, 13 * said.size() - 4});
-                ruleY += 13 * said.size() + 6;
-            }
-            lines(g, "Each commander readies; the host picks the map.", lx, ruleY, ROOM_W, 3, DarkUi.SEPIA);
-            return;
-        }
-        var label = DarkUi.body("Code");
-        g.drawText(font, label, lx, y + 30, DarkUi.SEPIA, false);
-        text(g, "code", Text.literal(room), room, lx + font.getWidth(label) + 5, y + 32, DarkUi.INK_TEXT);
-        g.drawText(font, DarkUi.body(flag("host") ? "You host this room" : "A friend hosts this room"), lx, y + 44, DarkUi.SEPIA, false);
-        for (int t = 0; t < 2; t++) {
-            int tx = lx + PAIR_STEP * t;
-            DarkUi.teamMark(g, t, tx, y + TEAMS_DY + 2);
-            g.drawText(font, DarkUi.heading(t == 0 ? "Dawn" : "Dusk"), tx + 10, y + TEAMS_DY, DarkUi.INK_TEXT, false);
-        }
-        int[] n = {0, 0};
-        int ready = 0, all = 0;
-        for (var e : rows("commanders")) {
-            var r = e.getAsJsonObject();
-            all++;
-            if (flag(r, "ready")) ready++;
-            int t = number(r, "team", -1);
-            if (t < 0 || t > 1 || n[t] >= 4) continue;
-            int tx = lx + PAIR_STEP * t, cy = y + NAMES_DY + 12 * n[t]++;
-            if (flag(r, "ready")) UiTex.draw(g, "table/ready-check", tx, cy);
-            boolean online = flag(r, "online"); // an offline commander carries the word, as the party note writes it
-            var off = DarkUi.body("offline");
-            int offW = online ? 0 : font.getWidth(off) + 4;
-            String name = UiMath.trim(r.get("name").getAsString(), PAIR_W - 14 - offW, s -> font.getWidth(s));
-            g.drawText(font, name, tx + 12, cy, online ? DarkUi.INK_TEXT : DarkUi.SEPIA, false);
-            if (!online) g.drawText(font, off, tx + 16 + font.getWidth(name), cy - 2, DarkUi.SEPIA, false);
-        }
-        var mapLabel = DarkUi.body("Map");
-        int mx = lx + font.getWidth(mapLabel) + 6;
-        String map = Spec.MAPS[Math.max(0, Math.min(Spec.MAPS.length - 1, number("map", 0)))].name();
-        map = UiMath.trim(map, lx + ROOM_W - mx, s -> font.getWidth(DarkUi.heading(s)));
-        g.drawText(font, mapLabel, lx, y + MAP_DY, DarkUi.SEPIA, false);
-        text(g, "room-map", DarkUi.heading(map), map, mx, y + MAP_DY, DarkUi.INK_TEXT);
-        String readyLine = ready + " of " + all + " ready";
-        text(g, "room-ready", DarkUi.body(readyLine), readyLine, lx, y + READY_LINE_DY, DarkUi.SEPIA);
-    }
-
-    /** The room code's line: the code in INK in Minecraft's face on a written line, with the caret while it is being written,
-     *  and until the code is whole how much of it is written ("7 of 8", SEPIA) at the line's end; what to do, in SEPIA, until
-     *  writing starts. */
-    void paintCode(DrawContext g, int x, int y, int w, int h) {
-        var font = font();
-        var b = buttons.get("code");
-        boolean hot = hot(b);
-        g.fill(x, y + h - 3, x + w, y + h - 2, typing || hot ? DarkUi.INK_TEXT : DarkUi.SEPIA);
-        if (hot) underlinedDrawn.add("code");
-        if (code.isEmpty() && !typing) g.drawText(font, DarkUi.body("Click to write the code"), x + 4, y + 7, DarkUi.SEPIA, false);
-        else {
-            var t = Text.literal(code);
-            g.drawText(font, t, x + 4, y + 9, DarkUi.INK_TEXT, false);
-            if (typing && ticks / 10 % 2 == 0) {
-                int cx = x + 5 + font.getWidth(t);
-                g.fill(cx, y + 7, cx + 1, y + 18, DarkUi.INK_TEXT);
-            }
-            if (code.length() < CODE_LENGTH) { // how much of the code is written, at the line's end: Join waits for a whole one
-                String count = code.length() + " of " + CODE_LENGTH;
-                text(g, "code-count", Text.literal(count), count, x + w - 4 - font.getWidth(count), y + 9, DarkUi.SEPIA);
-            }
-        }
-        rectsDrawn.put("code", new int[]{x, y, w, h});
-        textsDrawn.put("room-code", code);
+        String room = value("room");
+        rectsDrawn.put("room", UiTex.draw(g, "table/note-room-short", x, y));
+        texturesDrawn.put("room", "table/note-room-short");
+        g.drawText(font, DarkUi.heading("War council"), lx, y + 12, DarkUi.INK_TEXT, false);
+        var said = lines(g, room.isEmpty() ? "Your own battle, with friends on the teams you choose." : "You are in room " + room + ".", lx, y + 30, ROOM_W, 6, DarkUi.SEPIA);
+        textsDrawn.put("room-line", String.join(" ", said));
     }
 
     // ======================================================================================================================= Field
