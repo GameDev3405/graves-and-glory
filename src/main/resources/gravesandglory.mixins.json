@@ -6,6 +6,7 @@
   "client": [
     "CommandInputMixin",
     "PanelInputMixin",
+    "PanelEditKeyMixin",
     "ChargeCameraMixin",
     "EntranceCameraMixin",
     "CinematicHudMixin",

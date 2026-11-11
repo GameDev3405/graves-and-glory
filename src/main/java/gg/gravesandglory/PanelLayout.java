@@ -1,0 +1,145 @@
+package gg.gravesandglory;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.MinecraftClient;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+/**
+ * Where the command panel sits, how opaque it is and whether it hides at rest: the player's own arrangement, client only. Kept per player
+ * profile on this machine in config/gravesandglory/command-panel.json, keyed by player UUID ("default" when no entry matches):
+ * {"version":1,"profiles":{"&lt;uuid&gt;":{"anchor":"top-right","x":12.0,"y":30.0,"opacity":0.75,"hidden":false}}}. anchor is the
+ * screen corner the panel is nearest ("default" for the left-edge layout) and x, y the gap from that corner to the panel's bounds in HUD
+ * canvas pixels (UiCanvas.hudK), so a resize keeps it in the same corner; CommandPanel clamps it on screen every frame. A missing or
+ * corrupt file means the defaults. Written only when edit mode is left (CommandPanel.leaveEdit).
+ */
+public final class PanelLayout {
+    private PanelLayout() {}
+
+    public static final String DEFAULT = "default";
+    public static final float MIN_OPACITY = 0.20f, STEP = 0.05f;
+
+    /** "default" (the left-edge layout) or top-left, top-right, bottom-left, bottom-right. */
+    public static String anchor = DEFAULT;
+    /** The gap from the anchor corner to the panel's bounds, canvas px. */
+    public static double offX, offY;
+    public static float opacity = 1f;
+    public static boolean hidden;
+
+    /** The profile key the settings in memory came from (null: read the file again before use); probes for the checks. */
+    static String loadedFor;
+    public static int loads, saves;
+
+    public static Path file() { return FabricLoader.getInstance().getConfigDir().resolve("gravesandglory").resolve("command-panel.json"); }
+
+    public static boolean moved() { return !DEFAULT.equals(anchor); }
+
+    /** The defaults: the left edge, fully opaque, shown. */
+    public static void reset() { anchor = DEFAULT; offX = offY = 0; opacity = 1f; hidden = false; }
+
+    static String profileKey(MinecraftClient c) { return c.player == null ? DEFAULT : c.player.getUuid().toString(); }
+
+    /** Reads the file for this player unless it was read for them already. */
+    public static void ensureLoaded(MinecraftClient c) {
+        String key = profileKey(c);
+        if (!key.equals(loadedFor)) load(key);
+    }
+
+    /** Forget what was read: the next use reads the file again (a disconnect, so a rejoin reloads). */
+    public static void forget() { loadedFor = null; }
+
+    static void load(String key) {
+        reset();
+        loadedFor = key;
+        loads++;
+        try {
+            Path f = file();
+            if (!Files.isRegularFile(f)) return;
+            JsonObject profiles = JsonParser.parseString(Files.readString(f, StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonObject("profiles");
+            if (profiles == null) return;
+            JsonElement e = profiles.has(key) ? profiles.get(key) : profiles.get(DEFAULT);
+            if (e == null || !e.isJsonObject()) return;
+            JsonObject o = e.getAsJsonObject();
+            String a = o.has("anchor") ? o.get("anchor").getAsString() : DEFAULT;
+            double x = o.has("x") ? o.get("x").getAsDouble() : 0, y = o.has("y") ? o.get("y").getAsDouble() : 0;
+            double op = o.has("opacity") ? o.get("opacity").getAsDouble() : 1;
+            boolean hide = o.has("hidden") && o.get("hidden").getAsBoolean();
+            if (!validAnchor(a) || !Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(op)) return;
+            anchor = a; offX = Math.max(0, x); offY = Math.max(0, y); opacity = snapOpacity(op); hidden = hide;
+        } catch (Exception ex) {
+            reset(); // a corrupt file means the defaults
+            System.err.println("[Graves and Glory] The command panel layout could not be read, using the defaults: " + ex.getMessage());
+        }
+    }
+
+    /** Writes this player's entry, keeping the other profiles' (a corrupt file is replaced). */
+    public static void save(MinecraftClient c) {
+        String key = loadedFor != null ? loadedFor : profileKey(c);
+        try {
+            Path f = file();
+            JsonObject root = null;
+            if (Files.isRegularFile(f)) try { root = JsonParser.parseString(Files.readString(f, StandardCharsets.UTF_8)).getAsJsonObject(); } catch (Exception ignored) { }
+            if (root == null) root = new JsonObject();
+            root.addProperty("version", 1);
+            JsonObject profiles = root.has("profiles") && root.get("profiles").isJsonObject() ? root.getAsJsonObject("profiles") : new JsonObject();
+            JsonObject o = new JsonObject();
+            o.addProperty("anchor", anchor);
+            o.addProperty("x", Math.round(offX * 100) / 100.0);
+            o.addProperty("y", Math.round(offY * 100) / 100.0);
+            o.addProperty("opacity", Math.round(opacity * 100) / 100.0);
+            o.addProperty("hidden", hidden);
+            profiles.add(key, o);
+            root.add("profiles", profiles);
+            Files.createDirectories(f.getParent());
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            Files.writeString(f, gson.toJson(root), StandardCharsets.UTF_8);
+            saves++;
+        } catch (Exception ex) {
+            System.err.println("[Graves and Glory] The command panel layout could not be saved: " + ex.getMessage());
+        }
+    }
+
+    static boolean validAnchor(String a) {
+        return switch (a) { case DEFAULT, "top-left", "top-right", "bottom-left", "bottom-right" -> true; default -> false; };
+    }
+
+    /** 20% to 100% in 5% steps. */
+    public static float snapOpacity(double v) {
+        double s = Math.round(v / STEP) * STEP;
+        return (float) Math.max(MIN_OPACITY, Math.min(1, Math.round(s * 100) / 100.0));
+    }
+
+    /**
+     * The panel's bounds' top-left on screen (GUI px) for bounds bw x bh, clamped so the whole of them stays on the screen; null for the
+     * default layout. k is GUI px per canvas px.
+     */
+    static double[] place(int bw, int bh, int sw, int sh, double k) {
+        if (!moved()) return null;
+        double left = anchor.endsWith("left") ? offX * k : sw - bw - offX * k;
+        double top = anchor.startsWith("top") ? offY * k : sh - bh - offY * k;
+        return new double[]{clamp(left, 0, sw - bw), clamp(top, 0, sh - bh)};
+    }
+
+    /** Records a dragged position (bounds top-left in GUI px): clamped on screen, snapped to an edge within 8 canvas px, kept by its nearest corner. */
+    static void moveTo(double left, double top, int bw, int bh, int sw, int sh, double k) {
+        left = clamp(left, 0, sw - bw); top = clamp(top, 0, sh - bh);
+        double snap = 8 * k;
+        if (left < snap) left = 0;
+        if (sw - bw - left < snap) left = Math.max(0, sw - bw);
+        if (top < snap) top = 0;
+        if (sh - bh - top < snap) top = Math.max(0, sh - bh);
+        boolean leftSide = left + bw / 2.0 < sw / 2.0, topSide = top + bh / 2.0 < sh / 2.0;
+        anchor = (topSide ? "top-" : "bottom-") + (leftSide ? "left" : "right");
+        offX = (leftSide ? left : sw - bw - left) / k;
+        offY = (topSide ? top : sh - bh - top) / k;
+    }
+
+    static double clamp(double v, double lo, double hi) { return hi < lo ? lo : Math.max(lo, Math.min(hi, v)); }
+}

@@ -50,7 +50,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static int[] owners={-1,-1,-1},progress={0,0,0},challengers={-1,-1,-1},roster=new int[Spec.TROOPS.length],pending=new int[Spec.TROOPS.length];
     static List<Marker> markers=List.of();
     record Marker(float x,float z,boolean fighting,boolean own,String name){}
-    static KeyBinding menu,attack,charge,followMe,retreat,formation,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,hints,armoury,banner,gearKey;
+    static KeyBinding panelEdit,menu,attack,charge,followMe,retreat,formation,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,hints,armoury,banner,gearKey;
     static Path runtime;
     static String join="",error="";
     static boolean attempted,opened,joined,shareCamp,launcherContext,connectingInvitation;
@@ -88,6 +88,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         armoury=key("armoury",GLFW.GLFW_KEY_U); // opens the barracks screen on its Armoury tab, anywhere in a battle (ArmouryTab)
         gearKey=key("gear",GLFW.GLFW_KEY_I); // the Arsenal (the commander's gear, WarTableGear), in camp only
         banner=key("banner",GLFW.GLFW_KEY_N); // the War Table's shortcut to the Banner page (WarTableRecruit.keyPressed), rebindable in Controls like the rest (4F.5)
+        panelEdit=key("panel_edit",GLFW.GLFW_KEY_H); // Arrange command panel: edit mode moves, hides or fades the panel (CommandPanel.toggleEdit), only while the battle HUD shows
         confirmOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.confirm",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_ENTER,"category.gravesandglory"));
         cancelOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.cancel",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_BACKSPACE,"category.gravesandglory"));
         String local=System.getenv("LOCALAPPDATA");runtime=Path.of(System.getProperty("gravesandglory.runtime",local==null?"gravesandglory-runtime":local+"/gravesandglory"));
@@ -101,6 +102,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // change the selected slot (the server pins it to 0 as well, GearCombat.tick); outside battle vanilla gets them and they change slot as ever.
         // With the command panel open the number keys 1 to 4 pick a pill (or a shape, with the tray open) instead and never reach the relics (CommandSelection.pick).
         ClientTickEvents.START_CLIENT_TICK.register(client->{if(client.player==null||client.currentScreen!=null||!battleActive())return;
+            if(CommandPanel.editing()){for(int i=0;i<4;i++)while(client.options.hotbarKeys[i].wasPressed()){}return;} // edit mode: the number keys neither pick nor fire relics
             if(CommandSelection.panelOpen()){boolean shift=CommandSelection.shiftHeld(client);for(int i=0;i<4;i++)while(client.options.hotbarKeys[i].wasPressed())CommandSelection.pick(i+1,shift,shift);return;}
             for(int i=0;i<3;i++)while(client.options.hotbarKeys[i].wasPressed())send("relic:"+i);});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.GEAR,(client,handler,buf,responder)->{String text=buf.readString(GearWire.LIMIT);client.execute(()->CampaignClient.gear=GearWire.decode(text));});
@@ -151,7 +153,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // thread, and not through client.execute: Fabric can fire this event on the network thread, and MinecraftClient.disconnect
         // wipes the queued tasks (the Task 3 re-review's race). The flag waits for the first client tick without a world, and the
         // next join clears them as well; no HUD frame runs without a world to clear them before the next one.
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();MusicDirector.reset(client);TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{CommandPanel.disconnected(client);if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();MusicDirector.reset(client);TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(!toolbarFreed&&client.options!=null){toolbarFreed=true;freeToolbarKeys(client,toolbarFlag());}
             if(hudResetPending&&client.world==null)resetHud();
@@ -161,6 +163,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             }
             if(client.player!=null){
                 worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);MusicDirector.tick(client);Diagnostics.tick(client);
+                while(panelEdit.wasPressed())CommandPanel.toggleEdit(client);
+                CommandPanel.editTick(client);
+                if(CommandPanel.editing()){for(KeyBinding k:new KeyBinding[]{menu,attack,charge,followMe,retreat,formation,confirmOrder,cancelOrder})while(k.wasPressed()){}} // no orders while the panel is being arranged
                 while(menu.wasPressed()){CampaignClient.end(client);CommandMode.cancel();if(battleActive())CommandSelection.setPanelOpen(!CommandSelection.panelOpen());else client.setScreen(new CampScreen("home"));}
                 while(armoury.wasPressed())if(battleActive())client.setScreen(new RecruitmentScreen(1));
                 while(gearKey.wasPressed())if(!battleActive())client.setScreen(new CampScreen("gear"));

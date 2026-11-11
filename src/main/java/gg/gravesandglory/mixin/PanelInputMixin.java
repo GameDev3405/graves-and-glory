@@ -29,8 +29,15 @@ abstract class PanelInputMixin {
     private void graves$panelClick(long window, int button, int action, int mods, CallbackInfo ci) {
         if (window != client.getWindow().getHandle()) return;
         if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && action == GLFW.GLFW_RELEASE && gravesRightHeld) { gravesRightHeld = false; ci.cancel(); return; }
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && action == GLFW.GLFW_RELEASE && CommandPanel.dragging()) CommandPanel.editRelease();
         if (!CommandPanel.capturing()) return;
-        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && CommandPanel.editing()) {
+            // edit mode: a press drags the panel or works the toolbar, a release ends it; never an order, a swing or a pick
+            var w = client.getWindow();
+            if (action == GLFW.GLFW_PRESS) CommandPanel.editPress(x * w.getScaledWidth() / (double) w.getWidth(), y * w.getScaledHeight() / (double) w.getHeight());
+            else if (action == GLFW.GLFW_RELEASE) CommandPanel.editRelease();
+            ci.cancel();
+        } else if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             if (action == GLFW.GLFW_PRESS) {
                 var w = client.getWindow();
                 double gx = x * w.getScaledWidth() / (double) w.getWidth(), gy = y * w.getScaledHeight() / (double) w.getHeight();
@@ -46,6 +53,10 @@ abstract class PanelInputMixin {
 
     @Inject(method = "onCursorPos", at = @At("HEAD"))
     private void graves$panelDrag(long window, double nx, double ny, CallbackInfo ci) {
+        if (window == client.getWindow().getHandle() && CommandPanel.editing() && CommandPanel.capturing()) {
+            var w = client.getWindow();
+            CommandPanel.editDrag(nx * w.getScaledWidth() / (double) w.getWidth(), ny * w.getScaledHeight() / (double) w.getHeight());
+        }
         if (window != client.getWindow().getHandle() || !gravesRightHeld || client.player == null || client.mouse.isCursorLocked()) return;
         double sens = client.options.getMouseSensitivity().getValue() * 0.6 + 0.2, k = sens * sens * sens * 8.0;
         int invert = client.options.getInvertYMouse().getValue() ? -1 : 1;

@@ -7,6 +7,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.resource.language.I18n;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.Util;
 import net.minecraft.util.math.Vec3d;
@@ -29,6 +30,8 @@ public final class CommandPanel {
     private CommandPanel() {}
 
     public static final int POLE = 1, PILL = 100, PENNANT = 200, TRAY = 300, CELL = 400, SWEEP = 500, SECS = 501;
+    /** Edit mode's chrome (PanelLayout): the dashed outline, the caption, the toolbar and its controls. */
+    public static final int EDGE = 600, CAPTION = 601, TOOLBAR = 602, SLIDER = 603, HIDE = 604, RESET = 605, DONE = 606;
     /** The orders in pennant order, with their names. */
     public static final String[] ORDERS = {"attack", "charge", "follow", "retreat", "formation"};
     static final String[] NAMES = {"Attack", "Charge", "Follow me", "Retreat", "Formation"};
@@ -40,6 +43,21 @@ public final class CommandPanel {
     /** Pennant text layout: icon at ICON_X (16 wide), name at NAME_X, at least KEY_GAP between the name and the key, the key ending KEY_PAD before the box's end. */
     static final int ICON_X = 4, NAME_X = 24, KEY_GAP = 6, KEY_PAD = 26;
     static final int PENNANT_H = 24, PILL_H = 12, CELL_W = 32, CELL_W_WIDE = 36, CELL_H = 44;
+
+    /** The panel's bounds in the last frame {x, y, w, h}, GUI px (placement and slide included); null when it was not drawn. */
+    public static int[] bounds;
+    /** Its resting bounds in the last frame {x, y, w, h, screen w, screen h} (no slide) and GUI px per HUD canvas px, for a drag. */
+    static int[] rest;
+    static double restK = 1;
+    /** The pennant under the cursor in the last frame (PENNANT + i), or -1. */
+    public static int hovered = -1;
+    /** Frames rendered, and the slide the last one used (probes for the checks: a shot waits for a fresh, settled frame). */
+    public static int frames;
+    public static double lastSlide;
+    // edit mode (the Arrange command panel key): the panel is moved, hidden or faded; orders wait until it is left
+    static boolean editing, dragging, sliding;
+    static double grabX, grabY;
+    static int sliderX, sliderW = 1;
 
     /** What the last frame drew, {id, x, y, w, h} in GUI px (the slide's offset included). */
     public static final List<int[]> lastDrawn = new ArrayList<>();
@@ -94,7 +112,12 @@ public final class CommandPanel {
      *  and drawn: a hidden HUD (F1), a cinematic or a diagnostics run that hides the HUD leaves an invisible panel that must not keep the cursor. */
     public static boolean capturing() {
         var c = MinecraftClient.getInstance();
-        return CommandSelection.panelOpen() && !CommandMode.active() && c.currentScreen == null && c.player != null && GravesAndGloryClient.battleActive()
+        return (editing || CommandSelection.panelOpen() && !CommandMode.active()) && hudShown(c);
+    }
+
+    /** Whether the battle HUD, and so the panel, is on screen: in battle, no Screen, the HUD not hidden by F1, a cinematic or a diagnostics run. */
+    public static boolean hudShown(MinecraftClient c) {
+        return c.currentScreen == null && c.player != null && GravesAndGloryClient.battleActive()
             && !c.options.hudHidden && !CampaignClient.cinematic() && !(Diagnostics.active() && Diagnostics.hideHud());
     }
 
@@ -126,26 +149,29 @@ public final class CommandPanel {
 
     public static void render(DrawContext g, float delta) {
         var c = MinecraftClient.getInstance();
-        lastDrawn.clear(); lastAlpha.clear(); hits.clear();
+        lastDrawn.clear(); lastAlpha.clear(); hits.clear(); bounds = null; hovered = -1;
         // a key's press shows on its pennant as a click does
         for (int i = 0; i < ORDERS.length; i++) {
             KeyBinding k = binding(i);
             boolean down = k != null && k.isPressed();
-            if (down && !keyWas[i] && CommandSelection.panelOpen()) flash(PENNANT + i);
+            if (down && !keyWas[i] && CommandSelection.panelOpen() && !editing) flash(PENNANT + i);
             keyWas[i] = down;
         }
-        double s = slide();
+        PanelLayout.ensureLoaded(c);
+        double s = editing ? 1 : slide(); // edit mode shows the panel fully open; closed, the panel is off screen (hidden or not)
+        frames++; lastSlide = s;
         if (s <= 0) return;
         TextRenderer font = c.textRenderer;
         var win = c.getWindow();
         int sw = win.getScaledWidth(), sh = win.getScaledHeight();
         double eased = 1 - Math.pow(1 - s, 3);
-        int dx = (int) Math.round(-(1 - eased) * (sw * 0.30 + 8));
         double[] mouse = cursor(c);
-        g.getMatrices().push();
-        g.getMatrices().translate(dx, 0, 0);
-        try { draw(g, font, sw, sh, dx, mouse); }
-        finally { g.getMatrices().pop(); RenderSystem.setShaderColor(1, 1, 1, 1); }
+        try { draw(g, font, sw, sh, eased, mouse); }
+        finally { RenderSystem.setShaderColor(1, 1, 1, 1); }
+        if (editing) {
+            try { editChrome(g, font, sw, sh, mouse); }
+            finally { RenderSystem.setShaderColor(1, 1, 1, 1); }
+        }
     }
 
     static void flash(int id) { flashId = id; flashAt = Util.getMeasuringTimeMs(); }
@@ -155,11 +181,20 @@ public final class CommandPanel {
         return t >= 1 ? 0 : 1 - t;
     }
 
-    private static void record(int id, int x, int y, int w, int h, int dx) { lastDrawn.add(new int[]{id, x + dx, y, w, h}); hits.put(id, new int[]{x + dx, y, w, h}); }
-    private static boolean over(double[] m, int x, int y, int w, int h, int dx) { return m != null && m[0] >= x + dx && m[0] < x + dx + w && m[1] >= y && m[1] < y + h; }
+    /** The offset of this frame's panel from its default layout (the player's placement plus the slide), GUI px. */
+    private static int ox, oy;
+    /** This frame's opacity: the whole panel's, and the floor its text and icons keep (60%). */
+    static float op = 1f, ink = 1f;
+    public static float op() { return op; }
+    public static float ink() { return ink; }
+    private static void record(int id, int x, int y, int w, int h) { lastDrawn.add(new int[]{id, x + ox, y + oy, w, h}); hits.put(id, new int[]{x + ox, y + oy, w, h}); }
+    private static boolean over(double[] m, int x, int y, int w, int h) { return m != null && m[0] >= x + ox && m[0] < x + ox + w && m[1] >= y + oy && m[1] < y + oy + h; }
+    /** A fill's ARGB with the panel's opacity applied; text's with its 60% floor. */
+    static int fa(int argb) { return ((int) Math.round((argb >>> 24) * op) << 24) | (argb & 0xffffff); }
+    static int ta(int argb) { return ((int) Math.round((argb >>> 24) * ink) << 24) | (argb & 0xffffff); }
 
-    /** One frame of the panel at slide offset dx (GUI px, already applied to the matrices; dx is added to the recorded rects only). */
-    static void draw(DrawContext g, TextRenderer font, int sw, int sh, int dx, double[] mouse) {
+    /** One frame of the panel: its default layout, moved to the player's placement (PanelLayout) and slid in by eased (0 off screen .. 1 open). */
+    static void draw(DrawContext g, TextRenderer font, int sw, int sh, double eased, double[] mouse) {
         float alpha = (float) Spec.COMMANDINTERFACE[0].pennantAlpha();
         int limit = (int) Math.floor(sw * 0.30), trayLimit = (int) Math.floor(sw * 0.45);
         int poleX = 2, flagX = 7;
@@ -195,26 +230,56 @@ public final class CommandPanel {
         int flagTop = top + pillsH + 6;
         int poleBottom = flagTop + (ORDERS.length - 1) * pitch + PENNANT_H + 6;
 
+        // the panel's bounds in its default layout: the finial mark and the pole's top down to the pole's foot, the pills and the longest pennant across
+        int bx0 = 0, by0 = Math.min(Math.max(0, top - 12), top - 4), bx1 = flagX + W + ext, by1 = poleBottom;
+        for (int[] b : pillBox) bx1 = Math.max(bx1, b[0] + b[2]);
+        int bw = bx1 - bx0, bh = by1 - by0;
+        var win = MinecraftClient.getInstance().getWindow();
+        double k = UiCanvas.hudK() / win.getScaleFactor(); // GUI px per HUD canvas px
+        double[] at = PanelLayout.place(bw, bh, sw, sh, k);
+        int sx = at == null ? 0 : (int) Math.round(at[0]) - bx0, sy = at == null ? 0 : (int) Math.round(at[1]) - by0;
+        boolean rightSide = at != null && bx0 + sx + bw / 2.0 > sw / 2.0;
+        // the slide: in from the left edge, or from the right edge for a panel placed in the right half
+        int dx = at == null ? (int) Math.round(-(1 - eased) * (sw * 0.30 + 8))
+            : rightSide ? (int) Math.round((1 - eased) * (sw - (bx0 + sx) + 8)) : (int) Math.round(-(1 - eased) * (bx0 + sx + bw + 8));
+        rest = new int[]{bx0 + sx, by0 + sy, bw, bh, sw, sh}; restK = k;
+        ox = dx + sx; oy = sy;
+        bounds = new int[]{bx0 + ox, by0 + oy, bw, bh};
+        op = editing && PanelLayout.hidden ? 0.35f : PanelLayout.opacity;
+        ink = Math.max(op, 0.6f);
+        if (editing) mouse = null; // no hover in edit mode: the panel is only moved there
+        g.getMatrices().push();
+        g.getMatrices().translate(ox, oy, 0);
+        try { drawBody(g, font, sw, sh, mouse, alpha, trayLimit, poleX, flagX, W, ext, pitch, pills, pillBox, pillText, top, flagTop, poleBottom, bx0, sx, sy, at != null, rightSide); }
+        finally { g.getMatrices().pop(); }
+    }
+
+    /** The panel's parts in its default layout's coordinates (the matrices carry the placement and the slide). */
+    private static void drawBody(DrawContext g, TextRenderer font, int sw, int sh, double[] mouse, float alpha, int trayLimit, int poleX, int flagX, int W, int ext, int pitch,
+                                 List<CommandSelection.Pill> pills, List<int[]> pillBox, List<String> pillText, int top, int flagTop, int poleBottom, int bx0, int sx, int sy, boolean moved, boolean rightSide) {
+
         // pole
+        RenderSystem.setShaderColor(1, 1, 1, op);
         int[] pole = UiTex.three(g, "command/pole", poleX, top - 4, poleBottom - (top - 4));
-        record(POLE, pole[0], pole[1], pole[2], pole[3], dx);
+        RenderSystem.setShaderColor(1, 1, 1, 1);
+        record(POLE, pole[0], pole[1], pole[2], pole[3]);
 
         // pills
         for (int i = 0; i < pills.size(); i++) {
             int[] b = pillBox.get(i);
             int x = b[0], y = top + b[1] * (PILL_H + 3), w = b[2];
             boolean sel = CommandSelection.selected().contains(pills.get(i).id());
-            boolean hov = over(mouse, x, y, w, PILL_H, dx);
+            boolean hov = over(mouse, x, y, w, PILL_H);
             if (sel) {
-                for (int r = 0; r < PILL_H; r++) g.fill(x + PILL_INSET[r], y + r, x + w - PILL_INSET[r], y + r + 1, 0xe6000000 | GOLD);
+                for (int r = 0; r < PILL_H; r++) g.fill(x + PILL_INSET[r], y + r, x + w - PILL_INSET[r], y + r + 1, fa(0xe6000000 | GOLD));
             } else {
                 // glass: a see-through smoked body with a pale sheen along its top, framed by the gold edge
                 int body = hov ? 0x8c3a4a63 : 0x664a5a73;
-                for (int r = 1; r < PILL_H - 1; r++) g.fill(x + PILL_INSET[r], y + r, x + w - PILL_INSET[r], y + r + 1, body);
-                for (int r = 1; r < PILL_H / 2; r++) g.fill(x + PILL_INSET[r], y + r, x + w - PILL_INSET[r], y + r + 1, hov ? 0x33ffffff : 0x26ffffff); // the sheen on the upper half
-                g.fill(x + PILL_INSET[1] + 1, y + 1, x + w - PILL_INSET[1] - 1, y + 2, hov ? 0xa6ffffff : 0x8cffffff); // the bright top highlight
-                g.fill(x + PILL_INSET[PILL_H - 2], y + PILL_H - 2, x + w - PILL_INSET[PILL_H - 2], y + PILL_H - 1, 0x40000000); // a darker foot
-                int edge = (hov ? 0xcc000000 : 0x99000000) | GOLD;
+                for (int r = 1; r < PILL_H - 1; r++) g.fill(x + PILL_INSET[r], y + r, x + w - PILL_INSET[r], y + r + 1, fa(body));
+                for (int r = 1; r < PILL_H / 2; r++) g.fill(x + PILL_INSET[r], y + r, x + w - PILL_INSET[r], y + r + 1, fa(hov ? 0x33ffffff : 0x26ffffff)); // the sheen on the upper half
+                g.fill(x + PILL_INSET[1] + 1, y + 1, x + w - PILL_INSET[1] - 1, y + 2, fa(hov ? 0xa6ffffff : 0x8cffffff)); // the bright top highlight
+                g.fill(x + PILL_INSET[PILL_H - 2], y + PILL_H - 2, x + w - PILL_INSET[PILL_H - 2], y + PILL_H - 1, fa(0x40000000)); // a darker foot
+                int edge = fa((hov ? 0xcc000000 : 0x99000000) | GOLD);
                 g.fill(x + PILL_INSET[0], y, x + w - PILL_INSET[0], y + 1, edge);
                 g.fill(x + PILL_INSET[0], y + PILL_H - 1, x + w - PILL_INSET[0], y + PILL_H, edge);
                 for (int r = 1; r < PILL_H - 1; r++) {
@@ -225,21 +290,24 @@ public final class CommandPanel {
                 }
             }
             String t = pillText.get(i);
-            g.drawText(font, t, x + (w - font.getWidth(t) + 1) / 2, y + 2, sel ? 0xff000000 | DARK : 0xff000000 | CREAM, !sel);
-            record(PILL + i, x, y, w, PILL_H, dx);
-            lastAlpha.put(PILL + i, sel ? 0.9f : 1f);
+            g.drawText(font, t, x + (w - font.getWidth(t) + 1) / 2, y + 2, ta(sel ? 0xff000000 | DARK : 0xff000000 | CREAM), !sel);
+            record(PILL + i, x, y, w, PILL_H);
+            lastAlpha.put(PILL + i, (sel ? 0.9f : 1f) * op);
         }
 
         // pennants
         int team = GravesAndGloryClient.team;
         int cloth = DarkUi.teamColor(team);
-        DarkUi.teamMark(g, team, poleX - 1, Math.max(0, top - 12)); // the House shape on the finial: the cloth colour never stands alone
+        RenderSystem.setShaderColor(1, 1, 1, ink);
+        DarkUi.teamMark(g, team, poleX - 1, Math.max(0, top - 12));
+        RenderSystem.setShaderColor(1, 1, 1, 1); // the House shape on the finial: the cloth colour never stands alone
         int chargeLeft = CommandNet.Client.chargeTicksLeft(), chargeTotal = Math.max(1, CommandNet.Client.chargeReadyIn);
         int formationY = 0, formationW = W;
         int secsRight = -1, secsBottom = -1; // the Charge cooldown seconds' right edge and the foot of that row, for the tray to keep clear of
         for (int i = 0; i < ORDERS.length; i++) {
             int y = flagTop + i * pitch;
-            boolean hov = over(mouse, flagX, y, W, PENNANT_H, dx);
+            boolean hov = over(mouse, flagX, y, W, PENNANT_H);
+            if (hov) hovered = PENNANT + i;
             boolean active = i == 4 && CommandSelection.trayOpen();
             boolean cooling = i == 1 && chargeLeft > 0;
             int w = active ? W + ext : hov ? W + Math.max(4, ext / 2) : W;
@@ -249,91 +317,101 @@ public final class CommandPanel {
             float a = active ? Math.min(1f, alpha + 0.10f) : hov ? Math.min(1f, alpha + 0.25f) : alpha;
             float k = cooling ? 0.55f : 1f;
             if (cooling) a = Math.max(a, 0.75f); // darkened, but solid enough to read as a pennant over bright ground
-            RenderSystem.setShaderColor(k * ((cloth >> 16) & 255) / 255f, k * ((cloth >> 8) & 255) / 255f, k * (cloth & 255) / 255f, a);
+            RenderSystem.setShaderColor(k * ((cloth >> 16) & 255) / 255f, k * ((cloth >> 8) & 255) / 255f, k * (cloth & 255) / 255f, a * op);
             pennant(g, "command/pennant", x, yy, w);
             if (active) {
-                RenderSystem.setShaderColor(((GOLD >> 16) & 255) / 255f, ((GOLD >> 8) & 255) / 255f, (GOLD & 255) / 255f, 1f);
+                RenderSystem.setShaderColor(((GOLD >> 16) & 255) / 255f, ((GOLD >> 8) & 255) / 255f, (GOLD & 255) / 255f, op);
                 pennant(g, "command/pennant_trim", x, yy, w);
                 pennant(g, "command/pennant_trim", x + 1, yy, w);
             } else if (hov && !cooling) {
                 // hover: the trim turns full gold, so the pennant under the cursor stands out at any size
-                RenderSystem.setShaderColor(((GOLD >> 16) & 255) / 255f, ((GOLD >> 8) & 255) / 255f, (GOLD & 255) / 255f, 1f);
+                RenderSystem.setShaderColor(((GOLD >> 16) & 255) / 255f, ((GOLD >> 8) & 255) / 255f, (GOLD & 255) / 255f, op);
                 pennant(g, "command/pennant_trim", x, yy, w);
             } else {
-                RenderSystem.setShaderColor(((TRIM >> 16) & 255) / 255f, ((TRIM >> 8) & 255) / 255f, (TRIM & 255) / 255f, cooling ? 0.75f : 1f);
+                RenderSystem.setShaderColor(((TRIM >> 16) & 255) / 255f, ((TRIM >> 8) & 255) / 255f, (TRIM & 255) / 255f, (cooling ? 0.75f : 1f) * op);
                 pennant(g, "command/pennant_trim", x, yy, w);
             }
+            RenderSystem.setShaderColor(1, 1, 1, 1);
             if (cooling) {
-                // the sweep: a dark veil over the part of the body still cooling, its edge a bright gold line that moves left as Charge recharges
-                int bodyR = x + w - 16, span = bodyR - (x + 2), veil = (int) Math.round(span * Math.min(1, chargeLeft / (double) chargeTotal));
-                if (veil > 0) {
-                    g.fill(bodyR - veil, yy + 2, bodyR, yy + PENNANT_H - 2, 0x8c000000);
-                    g.fill(bodyR - veil, yy + 1, bodyR - veil + 1, yy + PENNANT_H - 1, 0xf0000000 | GOLD);
-                }
+                // the sweep: a dark veil over the part of the body still cooling, edged by a bright 2 px gold line, and a recharge bar along the
+                // foot of the body (a dark track the gold fills as Charge recharges), so the cooldown reads at every size
+                int bodyL = x + 4, bodyR = x + w - 16, span = bodyR - bodyL, veil = (int) Math.round(span * Math.min(1, chargeLeft / (double) chargeTotal));
+                int edgeX = bodyR - veil;
+                if (veil > 0) g.fill(edgeX, yy + 2, bodyR, yy + PENNANT_H - 2, fa(0xa6000000));
+                g.fill(bodyL, yy + PENNANT_H - 5, bodyR, yy + PENNANT_H - 2, ta(0xd9000000));
+                if (edgeX > bodyL) g.fill(bodyL, yy + PENNANT_H - 4, edgeX, yy + PENNANT_H - 3, ta(0xff000000 | GOLD));
+                int line = Math.max(bodyL, edgeX - 1);
+                g.fill(line, yy + 1, line + 2, yy + PENNANT_H - 1, ta(0xff000000 | GOLD));
             } else if (hov) {
-                g.fill(x + 2, yy + 2, x + w - 18, yy + PENNANT_H - 2, 0x2efff6dc); // hover: a light wash over the body
+                g.fill(x + 2, yy + 2, x + w - 18, yy + PENNANT_H - 2, fa(0x2efff6dc)); // hover: a light wash over the body
             }
-            RenderSystem.setShaderColor(1, 1, 1, cooling ? 0.8f : 1f);
+            RenderSystem.setShaderColor(1, 1, 1, (cooling ? 0.8f : 1f) * ink);
             UiTex.draw(g, ICONS[i], x + ICON_X, yy + 4);
             RenderSystem.setShaderColor(1, 1, 1, 1);
             int keyRight = x + w - KEY_PAD; // the key ends 10 px before the swallowtail notch's inner point (w - 16)
             // a soft dark band under the words keeps them legible over bright terrain; the cloth around it stays see-through
-            int bandL = x + NAME_X - 3, bandR = keyRight + 3, band = hov && !cooling ? 0x40000000 : 0x59000000;
+            int bandL = x + NAME_X - 3, bandR = keyRight + 3, band = fa(hov && !cooling ? 0x40000000 : 0x59000000);
             g.fill(bandL + 1, yy + 6, bandR - 1, yy + 18, band);
             g.fill(bandL, yy + 7, bandL + 1, yy + 17, band); g.fill(bandR - 1, yy + 7, bandR, yy + 17, band);
             // cream ink with the vanilla shadow reads on any House cloth (the gilded one included); gold stays on the active trim only
-            int ink = cooling ? 0xd9000000 | CREAM : 0xff000000 | CREAM;
-            g.drawText(font, NAMES[i], x + NAME_X, yy + 8, ink, true);
+            int words = ta(cooling ? 0xd9000000 | CREAM : 0xff000000 | CREAM);
+            g.drawText(font, NAMES[i], x + NAME_X, yy + 8, words, true);
             if (!cooling) {
                 String kk = key(ORDERS[i]);
-                g.drawText(font, kk, keyRight - font.getWidth(kk), yy + 8, hov ? 0xff000000 | GOLD : 0xe6000000 | CREAM, true);
+                g.drawText(font, kk, keyRight - font.getWidth(kk), yy + 8, ta(hov ? 0xff000000 | GOLD : 0xe6000000 | CREAM), true);
             } else {
                 // the seconds left take the key's place (the key does nothing while Charge cools), inside the body like the key
                 String secs = (chargeLeft + 19) / 20 + "s";
-                int sx = keyRight - font.getWidth(secs);
-                g.drawText(font, secs, sx, yy + 8, 0xffffffff, true);
-                record(SWEEP, x + 1, yy, Math.max(24, sx + font.getWidth(secs) - x - 1), 24, dx);
-                lastDrawn.add(new int[]{SECS, sx + dx, yy + 8, font.getWidth(secs), 9}); // the seconds alone, for the tray check
-                secsRight = sx + font.getWidth(secs); secsBottom = yy + PENNANT_H;
+                int secsX = keyRight - font.getWidth(secs);
+                g.drawText(font, secs, secsX, yy + 8, ta(0xffffffff), true);
+                record(SWEEP, x + 1, yy, Math.max(24, secsX + font.getWidth(secs) - x - 1), 24);
+                lastDrawn.add(new int[]{SECS, secsX + ox, yy + 8 + oy, font.getWidth(secs), 9}); // the seconds alone, for the tray check
+                secsRight = secsX + font.getWidth(secs); secsBottom = yy + PENNANT_H;
             }
             if (fl > 0) {
-                int fa = (int) Math.round(fl * 0.55 * 255);
-                g.fill(x + 4, yy + 1, x + Math.min(w - 16, 21), yy + PENNANT_H - 1, (fa << 24) | GOLD);
-                g.fill(x + 21, yy + 3, x + w - 16, yy + PENNANT_H - 3, (fa << 24) | GOLD);
+                int fl8 = (int) Math.round(fl * 0.55 * 255);
+                g.fill(x + 4, yy + 1, x + Math.min(w - 16, 21), yy + PENNANT_H - 1, fa((fl8 << 24) | GOLD));
+                g.fill(x + 21, yy + 3, x + w - 16, yy + PENNANT_H - 3, fa((fl8 << 24) | GOLD));
             }
-            record(PENNANT + i, x, yy, w - 4, PENNANT_H, dx); // the art's notch tip ends 4 texels short of its box
-            lastAlpha.put(PENNANT + i, a);
+            record(PENNANT + i, x, yy, w - 4, PENNANT_H); // the art's notch tip ends 4 texels short of its box
+            lastAlpha.put(PENNANT + i, a * op);
             if (i == 4) { formationY = yy; formationW = w; }
         }
 
         // the Formation tray
-        if (CommandSelection.trayOpen()) {
+        if (CommandSelection.trayOpen() && !editing) {
             int cells = CommandSelection.SHAPES.length, pad = 6;
             int ax = flagX + formationW - 14; // the tray meets the pennant at its swallowtail notch
             int tw, th, tx, ty, cols, cw, gap;
+            // the right limit in panel coordinates: 45% of the screen in the default layout, the screen's edge once the player has moved the panel
+            int lim = moved ? sw - 2 - sx : trayLimit;
+            int need4 = pad * 2 + cells * CELL_W + (cells - 1) * 5, leftEdge = bx0 - 2, leftRoom = leftEdge - (2 - sx);
+            // a moved panel opens the tray to its left when the panel sits in the right half or the strip would leave the screen on the right
+            boolean toLeft = moved && (rightSide || ax + need4 > lim) && leftRoom >= need4;
             // a 1x4 strip beside the pennant when it fits (cells as wide as the room allows, 5 px apart, so the names never crowd), else 2x2 above it
-            if (ax + pad * 2 + cells * CELL_W + (cells - 1) * 5 <= trayLimit) { cols = 4; gap = 5; cw = Math.min(CELL_W_WIDE, (trayLimit - ax - pad * 2 - (cells - 1) * gap) / cells); }
-            else { cols = 2; gap = 4; cw = ax + pad * 2 + 2 * CELL_W_WIDE + gap <= trayLimit ? CELL_W_WIDE : CELL_W; }
+            if (toLeft) { cols = 4; gap = 5; cw = Math.min(CELL_W_WIDE, (leftRoom - pad * 2 - (cells - 1) * gap) / cells); }
+            else if (ax + need4 <= lim) { cols = 4; gap = 5; cw = Math.min(CELL_W_WIDE, (lim - ax - pad * 2 - (cells - 1) * gap) / cells); }
+            else { cols = 2; gap = 4; cw = ax + pad * 2 + 2 * CELL_W_WIDE + gap <= lim ? CELL_W_WIDE : CELL_W; }
             int rowsT = (cells + cols - 1) / cols;
             tw = pad * 2 + cols * cw + (cols - 1) * gap; th = pad * 2 + rowsT * CELL_H + (rowsT - 1) * gap;
-            if (cols == 4) { tx = ax; ty = formationY + PENNANT_H / 2 - th / 2; }
-            else { tx = Math.max(flagX, Math.min(ax, trayLimit - tw)); ty = formationY + PENNANT_H - th; } // above the anchor, never down over the group cards
+            if (cols == 4) { tx = toLeft ? leftEdge - tw : ax; ty = formationY + PENNANT_H / 2 - th / 2; }
+            else { tx = Math.max(moved ? 2 - sx : flagX, Math.min(ax, lim - tw)); ty = formationY + PENNANT_H - th; } // above the anchor, never down over the group cards
             if (secsRight >= 0 && cols == 2 && tx < secsRight + 2 && ty < secsBottom) {
-                // the tray would cover the cooldown seconds: slide right of them if the 45% limit allows, else drop below the Charge row
-                if (secsRight + 2 + tw <= trayLimit) tx = secsRight + 2; else ty = secsBottom + 1;
+                // the tray would cover the cooldown seconds: slide right of them if the limit allows, else drop below the Charge row
+                if (secsRight + 2 + tw <= lim) tx = secsRight + 2; else ty = secsBottom + 1;
             }
             // never over the vanilla hotbar, health and armour rows (bottom centre): lift the tray above them when it reaches into their columns
             int[] vh = vanillaHud(sw, sh);
-            if (tx < vh[0] + vh[2] && vh[0] < tx + tw && ty + th > vh[1]) ty = vh[1] - 1 - th;
-            if (ty < 2) ty = 2;
-            if (ty + th > sh - 2) ty = sh - 2 - th;
+            if (tx + sx < vh[0] + vh[2] && vh[0] < tx + sx + tw && ty + sy + th > vh[1]) ty = vh[1] - 1 - th - sy;
+            if (ty + sy < 2) ty = 2 - sy;
+            if (ty + sy + th > sh - 2) ty = sh - 2 - th - sy;
             RenderSystem.setShaderColor(1, 1, 1, 1);
             UiTex.nine(g, "command/tray", tx, ty, tw, th);
-            record(TRAY, tx, ty, tw, th, dx);
+            record(TRAY, tx, ty, tw, th);
             for (int j = 0; j < cells; j++) {
                 int cx = tx + pad + (j % cols) * (cw + gap), cy = ty + pad + (j / cols) * (CELL_H + gap);
                 boolean picked = CommandSelection.SHAPES[j].equals(CommandMode.formation);
-                boolean hov = over(mouse, cx, cy, cw, CELL_H, dx);
+                boolean hov = over(mouse, cx, cy, cw, CELL_H);
                 double fl = flashLeft(CELL + j);
                 if (picked) g.fill(cx, cy, cx + cw, cy + CELL_H, 0x4d000000 | GOLD);
                 else if (hov) g.fill(cx, cy, cx + cw, cy + CELL_H, 0x26000000 | GOLD);
@@ -346,9 +424,145 @@ public final class CommandPanel {
                 int ink = 0xff000000 | (picked ? GOLD : CREAM);
                 g.drawText(font, name, cx + (cw - font.getWidth(name) + 1) / 2, cy + CELL_H - 9, ink, true);
                 g.drawText(font, String.valueOf(j + 1), cx + 2, cy + 1, 0xcc000000 | (picked ? GOLD : CREAM), true);
-                record(CELL + j, cx, cy, cw, CELL_H, dx);
+                record(CELL + j, cx, cy, cw, CELL_H);
             }
         }
+    }
+
+    // --- edit mode ---
+
+    public static boolean editing() { return editing; }
+    public static boolean dragging() { return dragging; }
+
+    /** The Arrange command panel key: enters edit mode where the battle HUD shows, leaves it (saving) when in it. */
+    public static void toggleEdit(MinecraftClient c) { if (editing) leaveEdit(c); else enterEdit(c); }
+
+    /** Edit mode: the cursor freed, the panel drawn fully open with its outline, caption and toolbar; any aim is dropped and the tray folded. */
+    public static boolean enterEdit(MinecraftClient c) {
+        if (editing || !hudShown(c)) return false;
+        PanelLayout.ensureLoaded(c);
+        CommandMode.cancel();
+        CommandSelection.setTrayOpen(false);
+        editing = true; dragging = sliding = false;
+        return true;
+    }
+
+    /** Leaves edit mode and saves the arrangement (Done, the key again, Esc, or the battle's end). */
+    public static void leaveEdit(MinecraftClient c) {
+        if (!editing) return;
+        editing = false; dragging = sliding = false;
+        PanelLayout.save(c);
+    }
+
+    /** Every client tick: edit mode ends (saving) when the battle does. */
+    static void editTick(MinecraftClient c) {
+        if (editing && (c.player == null || !GravesAndGloryClient.battleActive())) leaveEdit(c);
+    }
+
+    /** A disconnect: edit mode is left (saved) and the arrangement is read from the file again on the next join. */
+    public static void disconnected(MinecraftClient c) {
+        if (editing) leaveEdit(c);
+        dragging = sliding = false;
+        PanelLayout.forget();
+    }
+
+    /** A left press in edit mode (GUI px): a toolbar control, else a press on the panel starts a drag. Never an order. */
+    public static void editPress(double x, double y) {
+        if (!editing) return;
+        var c = MinecraftClient.getInstance();
+        if (inside(SLIDER, x, y)) { sliding = true; slideTo(x); return; }
+        if (inside(HIDE, x, y)) { PanelLayout.hidden = !PanelLayout.hidden; return; }
+        if (inside(RESET, x, y)) { PanelLayout.reset(); return; }
+        if (inside(DONE, x, y)) { leaveEdit(c); return; }
+        if (inside(TOOLBAR, x, y) || rest == null) return;
+        if (x >= rest[0] && x < rest[0] + rest[2] && y >= rest[1] && y < rest[1] + rest[3]) { dragging = true; grabX = x - rest[0]; grabY = y - rest[1]; }
+    }
+
+    /** The cursor moved in edit mode (GUI px): the panel follows a drag, the opacity follows the slider. */
+    public static void editDrag(double x, double y) {
+        if (!editing) return;
+        if (sliding) slideTo(x);
+        else if (dragging && rest != null) PanelLayout.moveTo(x - grabX, y - grabY, rest[2], rest[3], rest[4], rest[5], restK);
+    }
+
+    public static void editRelease() { dragging = false; sliding = false; }
+
+    private static void slideTo(double x) { PanelLayout.opacity = PanelLayout.snapOpacity(PanelLayout.MIN_OPACITY + (x - sliderX) / Math.max(1, sliderW) * (1 - PanelLayout.MIN_OPACITY)); }
+
+    private static boolean inside(int id, double x, double y) { int[] b = hits.get(id); return b != null && x >= b[0] && x < b[0] + b[2] && y >= b[1] && y < b[1] + b[3]; }
+
+    private static void chrome(int id, int x, int y, int w, int h) { lastDrawn.add(new int[]{id, x, y, w, h}); hits.put(id, new int[]{x, y, w, h}); }
+
+    static final int WOOD = 0xff3b2818, WOOD_HOVER = 0xff5a3d24, BRASS = 0xffb08d3c, BRASS_LIGHT = 0xffe0bf6a;
+
+    /** Edit mode's chrome in screen GUI px: a dashed gold outline around the panel, the caption above it and the toolbar below it (above when there is no room). */
+    static void editChrome(DrawContext g, TextRenderer font, int sw, int sh, double[] mouse) {
+        int[] b = bounds;
+        if (b == null) return;
+        // the dashed outline, 1 px outside the bounds (kept on screen)
+        int x0 = Math.max(0, b[0] - 1), y0 = Math.max(0, b[1] - 1), x1 = Math.min(sw, b[0] + b[2] + 1), y1 = Math.min(sh, b[1] + b[3] + 1);
+        int dash = 0xff000000 | GOLD;
+        for (int x = x0; x < x1; x += 5) { g.fill(x, y0, Math.min(x + 3, x1), y0 + 1, dash); g.fill(x, y1 - 1, Math.min(x + 3, x1), y1, dash); }
+        for (int y = y0; y < y1; y += 5) { g.fill(x0, y, x0 + 1, Math.min(y + 3, y1), dash); g.fill(x1 - 1, y, x1, Math.min(y + 3, y1), dash); }
+        lastDrawn.add(new int[]{EDGE, x0, y0, x1 - x0, y1 - y0});
+
+        String cap = I18n.translate(PanelLayout.hidden ? "gui.gravesandglory.panel_edit.caption_hidden" : "gui.gravesandglory.panel_edit.caption");
+        int capW = font.getWidth(cap) + 8, capH = 12;
+        String opl = I18n.translate("gui.gravesandglory.panel_edit.opacity"), pct = Math.round(PanelLayout.opacity * 100) + "%";
+        String hideL = I18n.translate(PanelLayout.hidden ? "gui.gravesandglory.panel_edit.show" : "gui.gravesandglory.panel_edit.hide");
+        String resetL = I18n.translate("gui.gravesandglory.panel_edit.reset"), doneL = I18n.translate("gui.gravesandglory.panel_edit.done");
+        int track = sw < 600 ? 44 : 64, pctW = font.getWidth("100%"), pad = 5, gap = 4, bh = 14, th = bh + pad * 2;
+        int hideW = Math.max(font.getWidth(I18n.translate("gui.gravesandglory.panel_edit.hide")), font.getWidth(I18n.translate("gui.gravesandglory.panel_edit.show"))) + 10;
+        int resetW = font.getWidth(resetL) + 10, doneW = font.getWidth(doneL) + 10;
+        int tw = pad + font.getWidth(opl) + gap + 3 + track + 3 + gap + pctW + gap * 2 + hideW + gap + resetW + gap + doneW + pad;
+
+        // the caption above the panel (below it at the top edge); the toolbar under the panel, or above it when there is no room below
+        boolean capAbove = b[1] - 2 - capH >= 0;
+        int capY = capAbove ? b[1] - 2 - capH : b[1] + b[3] + 2;
+        int belowTop = (capAbove ? b[1] + b[3] : capY + capH) + 3;
+        int ty = belowTop + th <= sh - 2 ? belowTop : (capAbove ? capY : b[1]) - 3 - th;
+        ty = Math.max(2, Math.min(sh - 2 - th, ty));
+        int tx = Math.max(2, Math.min(sw - 2 - tw, b[0]));
+        int capX = Math.max(1, Math.min(sw - 1 - capW, b[0]));
+
+        g.fill(capX, capY, capX + capW, capY + capH, 0xb3000000);
+        g.drawText(font, cap, capX + 4, capY + 2, 0xff000000 | GOLD, true);
+        chrome(CAPTION, capX, capY, capW, capH);
+
+        RenderSystem.setShaderColor(1, 1, 1, 1);
+        UiTex.nine(g, "command/tray", tx, ty, tw, th);
+        chrome(TOOLBAR, tx, ty, tw, th);
+        int x = tx + pad, cy = ty + pad, textY = cy + (bh - 8) / 2;
+        g.drawText(font, opl, x, textY, 0xff000000 | CREAM, true);
+        x += font.getWidth(opl) + gap + 3;
+        // the slider: a dark groove filled gold to the value, a brass knob
+        sliderX = x; sliderW = track;
+        int gy = cy + bh / 2 - 2;
+        g.fill(x - 1, gy - 1, x + track + 1, gy + 4, BRASS);
+        g.fill(x, gy, x + track, gy + 3, 0xff1b120c);
+        int knob = x + (int) Math.round((PanelLayout.opacity - PanelLayout.MIN_OPACITY) / (1 - PanelLayout.MIN_OPACITY) * track);
+        g.fill(x, gy, knob, gy + 3, 0xff000000 | GOLD);
+        boolean onSlider = mouse != null && mouse[0] >= x - 3 && mouse[0] < x + track + 3 && mouse[1] >= cy && mouse[1] < cy + bh;
+        g.fill(knob - 2, cy + 1, knob + 3, cy + bh - 1, 0xff1b120c);
+        g.fill(knob - 1, cy + 2, knob + 2, cy + bh - 2, sliding || onSlider ? BRASS_LIGHT : BRASS);
+        chrome(SLIDER, x - 3, cy, track + 6, bh);
+        x += track + 3 + gap;
+        g.drawText(font, pct, x + pctW - font.getWidth(pct), textY, 0xff000000 | GOLD, true);
+        x += pctW + gap * 2;
+        x = button(g, font, HIDE, hideL, x, cy, hideW, bh, mouse) + gap;
+        x = button(g, font, RESET, resetL, x, cy, resetW, bh, mouse) + gap;
+        button(g, font, DONE, doneL, x, cy, doneW, bh, mouse);
+    }
+
+    /** A dark-wood button with a brass edge (lighter under the cursor); returns its right edge. */
+    private static int button(DrawContext g, TextRenderer font, int id, String label, int x, int y, int w, int h, double[] mouse) {
+        boolean hov = mouse != null && mouse[0] >= x && mouse[0] < x + w && mouse[1] >= y && mouse[1] < y + h;
+        g.fill(x, y, x + w, y + h, hov ? BRASS_LIGHT : BRASS);
+        g.fill(x + 1, y + 1, x + w - 1, y + h - 1, hov ? WOOD_HOVER : WOOD);
+        g.fill(x + 1, y + 1, x + w - 1, y + 2, 0x33ffffff);
+        g.drawText(font, label, x + (w - font.getWidth(label) + 1) / 2, y + (h - 8) / 2, 0xff000000 | (hov ? GOLD : CREAM), true);
+        chrome(id, x, y, w, h);
+        return x + w;
     }
 
     /** The vanilla survival HUD's box in GUI px {x, y, w, h}: the hotbar and the health and armour rows above it (as InGameHud lays them out). */

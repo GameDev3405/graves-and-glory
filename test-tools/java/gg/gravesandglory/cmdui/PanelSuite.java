@@ -26,7 +26,7 @@ import java.util.*;
 /**
  * Command UI plan Task 7: the pennant panel. Clicks go through Mouse.onCursorPos and Mouse.onMouseButton (the GLFW callbacks a real mouse
  * drives, so PanelInputMixin sees them as it would a player's); keys through CommandUiChecks.press. Screenshots of each state at 1920x1080
- * and 854x480 (closed, open, hover, pills, tray and cooldown also at 2560x1440; pills also at 854x480) go to <run>/command-ui/shots for the visual review. Never included in releases.
+ * and 854x480 (closed, open, hover, pills, tray and cooldown also at 2560x1440; pills also at 854x480; hover and settled-slide shots wait for their frame, Waits) go to <run>/command-ui/shots for the visual review. Never included in releases.
  */
 public final class PanelSuite implements CommandUiChecks.Suite {
     UUID id;
@@ -57,7 +57,24 @@ public final class PanelSuite implements CommandUiChecks.Suite {
 
     @Override public int limit() { return 2400; }
 
+    final Waits waits = new Waits();
+    final Map<String, String> hover = new LinkedHashMap<>();
+
+    /** Hover: the cursor is put on the Attack pennant until the panel reports it hovered, then the shot is taken from that frame. */
+    void hoverShot(MinecraftClient c, int tick, int within, String size) {
+        waits.when(tick, within, () -> CommandPanel.hovered == CommandPanel.PENNANT, () -> cursorTo(c, CommandPanel.PENNANT), ok -> {
+            hover.put(size, (ok ? "hovered" : "NOT hovered") + " (" + hoverDiag(c) + ")");
+            edges(c, "hover-" + size); shot(c, "panel-hover-" + size + ".png"); cursorCentre(c);
+        });
+    }
+    static String hoverDiag(MinecraftClient c) {
+        double[] m = c.mouse.isCursorLocked() ? null : new double[]{c.mouse.getX() * c.getWindow().getScaledWidth() / (double) c.getWindow().getWidth(), c.mouse.getY() * c.getWindow().getScaledHeight() / (double) c.getWindow().getHeight()};
+        int[] r = rect(CommandPanel.PENNANT);
+        return "hovered id " + CommandPanel.hovered + ", cursor " + (m == null ? "locked" : String.format(Locale.ROOT, "%.0f,%.0f", m[0], m[1])) + ", Attack " + (r == null ? "none" : Arrays.toString(Arrays.copyOfRange(r, 1, 5)));
+    }
+
     @Override public void tick(MinecraftClient c, int tick) {
+        waits.pump(tick);
         if (tick == 1) {
             id = c.player.getUuid(); live = this;
             shots = FabricLoader.getInstance().getGameDir().resolve("command-ui").resolve("shots");
@@ -95,8 +112,7 @@ public final class PanelSuite implements CommandUiChecks.Suite {
             CommandUiChecks.report("cu-panel-alpha", ok && seen == 5, "Spec pennantAlpha " + want + "; idle pennants drawn at " + d.toString().trim());
             shot(c, "panel-open-1920.png"); shot(c, "panel-open.png");
         }
-        if (tick == 80) cursorTo(c, CommandPanel.PENNANT); // hover Attack
-        if (tick == 84) { edges(c, "hover-1920"); shot(c, "panel-hover-1920.png"); }
+        if (tick == 80) hoverShot(c, tick, 5, "1920"); // hover Attack
 
         // walking with the panel open
         if (tick == 86) { cursorCentre(c); walkFrom = c.player.getPos(); c.options.forwardKey.setPressed(true); }
@@ -194,8 +210,7 @@ public final class PanelSuite implements CommandUiChecks.Suite {
         if (tick == 280) shot(c, "panel-closed-854.png");
         if (tick == 282) CommandSelection.setPanelOpen(true);
         if (tick == 292) { edges(c, "open-854"); shot(c, "panel-open-854.png"); }
-        if (tick == 294) cursorTo(c, CommandPanel.PENNANT);
-        if (tick == 298) { edges(c, "hover-854"); shot(c, "panel-hover-854.png"); cursorCentre(c); }
+        if (tick == 293) hoverShot(c, tick, 6, "854");
         if (tick == 300) CommandSelection.order("formation", false);
         if (tick == 304) {
             edges(c, "tray-854"); shot(c, "panel-tray-854.png");
@@ -216,20 +231,22 @@ public final class PanelSuite implements CommandUiChecks.Suite {
         if (tick == 324) cursorCentre(c);
         if (tick == 326) shot(c, "panel-closed-2560.png");
         if (tick == 327) CommandSelection.setPanelOpen(true);
-        if (tick == 336) { edges(c, "open-2560"); shot(c, "panel-open-2560.png"); }
-        if (tick == 337) cursorTo(c, CommandPanel.PENNANT);
-        if (tick == 341) { edges(c, "hover-2560"); shot(c, "panel-hover-2560.png"); cursorCentre(c); }
-        if (tick == 344) shot(c, "panel-pills-2560.png"); // Infantry and Archers still selected
-        if (tick == 346) { CommandSelection.select("infantry", false); CommandSelection.order("formation", false); }
-        if (tick == 350) { edges(c, "tray-2560"); shot(c, "panel-tray-2560.png"); CommandSelection.setTrayOpen(false); }
-        if (tick == 354) {
-            boolean sweep2560 = drawn(CommandPanel.SWEEP);
-            edges(c, "cooldown-2560"); shot(c, "panel-cooldown-2560.png");
+        // the open shot waits for a frame drawn with the slide finished
+        if (tick == 328) waits.when(tick, 15, () -> CommandPanel.lastSlide >= 1 && CommandPanel.bounds != null, null, ok -> { open2560 = ok; edges(c, "open-2560"); shot(c, "panel-open-2560.png"); });
+        if (tick == 345) hoverShot(c, tick, 15, "2560");
+        if (tick == 362) shot(c, "panel-pills-2560.png"); // Infantry and Archers still selected
+        if (tick == 364) { CommandSelection.select("infantry", false); CommandSelection.order("formation", false); }
+        if (tick == 365) waits.when(tick, 15, () -> drawn(CommandPanel.TRAY), null, ok -> { edges(c, "tray-2560"); shot(c, "panel-tray-2560.png"); CommandSelection.setTrayOpen(false); });
+        // the cooldown shot: its own frame, Charge cooling and the tray folded
+        if (tick == 382) waits.when(tick, 15, () -> !drawn(CommandPanel.TRAY) && drawn(CommandPanel.SWEEP), null, ok -> { sweep2560 = ok; edges(c, "cooldown-2560"); shot(c, "panel-cooldown-2560.png"); });
+        if (tick == 400) {
             CommandUiChecks.report("cu-panel-left-edge", edgeFails.isEmpty() && edgeChecked >= 12,
                 edgeChecked + " frames checked (1920x1080, 854x480: open, hover, tray, cooldown; 2560x1440: open, hover, tray, cooldown); " + (edgeFails.isEmpty() ? "every rect inside 30% (tray inside 45%)" : String.join("; ", edgeFails))
-                    + "; 854 cooldown sweep drawn=" + sweep854 + "; 2560 cooldown sweep drawn=" + sweep2560 + "; shots: " + String.join(", ", shotLog));
+                    + "; 854 cooldown sweep drawn=" + sweep854 + "; 2560 cooldown sweep drawn (tray folded)=" + sweep2560 + "; 2560 open shot after the slide settled=" + open2560 + "; shots: " + String.join(", ", shotLog));
             CommandUiChecks.report("cu-panel-overlap", overlapFails.isEmpty() && overlapChecked >= 12,
                 overlapChecked + " frames (1920x1080, 854x480 and 2560x1440): " + (overlapFails.isEmpty() ? "no panel rect meets the hint slip, a group card, the spine or the vanilla hotbar, health and armour rows; the hint slip hidden while open" : String.join("; ", overlapFails.subList(0, Math.min(6, overlapFails.size())))));
+            boolean allHovered = hover.size() == 3 && hover.values().stream().allMatch(v -> v.startsWith("hovered"));
+            CommandUiChecks.report("cu-panel-hover", allHovered, "cursor on the Attack pennant before each hover shot: " + hover);
         }
         if (tick == 310 + S2560) { GLFW.glfwSetWindowSize(c.getWindow().getHandle(), initialSize[0], initialSize[1]); CommandSelection.setPanelOpen(true); CommandSelection.select("ranged", false); }
 
@@ -269,8 +286,8 @@ public final class PanelSuite implements CommandUiChecks.Suite {
     }
 
     /** The ticks after the 2560x1440 set moved this many later to make room for it. */
-    static final int S2560 = 50;
-    boolean sweep854;
+    static final int S2560 = 92;
+    boolean sweep854, sweep2560, open2560;
     List<String> pillFirst = List.of();
     boolean trayOpened, sweepDrawn;
     String chargeAimed = "", beforeDisconnect = "";
@@ -432,6 +449,7 @@ public final class PanelSuite implements CommandUiChecks.Suite {
     }
 
     @Override public void cleanup(MinecraftClient c) {
+        waits.clear();
         c.options.forwardKey.setPressed(false);
         CommandSelection.reset();
         live = null;
