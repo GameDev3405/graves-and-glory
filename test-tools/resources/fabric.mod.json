@@ -14,7 +14,8 @@
       "gg.gravesandglory.ZombieReinforcementProbe",
       "gg.gravesandglory.PerfProbe",
       "gg.gravesandglory.SliceProbe",
-      "gg.gravesandglory.RewardDriver"
+      "gg.gravesandglory.RewardDriver",
+      "gg.gravesandglory.AiPurposeOverlay"
     ],
     "client": [
       "gg.gravesandglory.testing.LocalVisualInspection",

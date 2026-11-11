@@ -59,7 +59,7 @@ if (project.hasProperty('botSim')) {
  // The test tools' checks probe would otherwise append to the file a Melty test descriptor names; keep its lines in the server root.
  loom.runs.server.vmArg '-Dgravesandglory.localChecks=local-checks.txt'
  loom.runs.server.vmArg "-Dgravesandglory.botSim=${project.property('botSim')}"
- ['simDawn', 'simDusk', 'simMaps', 'simSize', 'simRoundSeconds', 'simKit', 'simBanner0', 'simBanner1', 'simProgression', 'simFast', 'simOverride', 'simMode'].each { name ->
+ ['simDawn', 'simDusk', 'simMaps', 'simSize', 'simRoundSeconds', 'simKit', 'simBanner0', 'simBanner1', 'simProgression', 'simFast', 'simOverride', 'simMode', 'simOverlayCheck'].each { name ->
   if (project.hasProperty(name)) loom.runs.server.vmArg "-Dgravesandglory.${name}=${project.property(name)}"
  }
  tasks.named('runServer') { dependsOn localTestToolsJar }

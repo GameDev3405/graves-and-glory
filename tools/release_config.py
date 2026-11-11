@@ -42,7 +42,7 @@ def validate_player_jar(path, expected):
                      'CampTerrainCheck', 'HouseRouteCheck', 'StepHopCheck', 'EngineMapCheck', 'WedgeCheck', 'LayoutMarkerCheck', 'TroopFacesCheck', 'PropDefCheck', 'PropGeometryCheck', 'PropEffectsCheck', 'PropPackFileCheck', 'HandbookTextCheck', 'BannerDropCheck', 'AudioCuesCheck', 'FacesChecks',
                      'MotionChecks', 'MotionGrade', 'SoleSlide', 'MotionMathCheck', 'MotionEngineCheck', 'MotionStanceCheck', 'MotionReactCheck', 'MotionFrameCheck', 'MotionLifeCheck', 'MotionClothCheck', 'MotionLayersCheck', 'StepWindows', 'HoldLineChecks', 'StalkerReelChecks',
                      'DuelSimulation', 'ScratchFlags', 'SheetOverride', 'TypeLedger', 'StoryStills', 'ModeMathCheck', 'FeedFitCheck', 'ModeHudFitCheck', 'SurvivalFeedShortCheck', 'SiegePlayChecks', 'MapWalk', 'MapForge', 'mapforge-builder', 'adoption-dev/', 'ConvoyCheck', 'ConvoyChecks', 'MarchModesChecks', 'SurvivalChecks', 'MarchBonusChecks', 'Phase4Checks', 'CommandUiChecks', 'cmdui/', 'OrderIntakeProbe', 'FeedbackProbe', 'ChargeCameraProbe', 'CustomGroupsProbe', 'BarracksUiChecks', 'FeedbackMate', 'OrderRulesCheck', 'FormationRulesCheck', 'RewardDriver',
-                     'gg/gravesandglory/testing/', 'META-INF/services/gg.gravesandglory.Diagnostics$Probe')
+                     'AiPurposeOverlay', 'AiMetrics', 'AiState', 'gg/gravesandglory/testing/', 'META-INF/services/gg.gravesandglory.Diagnostics$Probe')
         for name in jar.namelist():
             if any(token in name for token in forbidden):
                 raise RuntimeError('Development harness leaked into player JAR: ' + name)

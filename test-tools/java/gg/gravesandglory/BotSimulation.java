@@ -25,7 +25,9 @@ import java.util.stream.IntStream;
  *  time) and botsim/levels.csv (per match and team: when the first soldier reached level 2 and 3, the share of living soldiers at level 2 or higher at the end, the level-3
  *  count and every gear buy with its second) under the server root.
  *  Soak aid, off by default: GRAVES_BOTSIM_PROBE=1 in the environment (or -Dgravesandglory.simProbe=true) also writes botsim/probe.csv and prints one "[botsim] probe" line per match:
- *  server tick times over the round, entities and the battle's own collections after the round's cleanup, and heap after a forced GC. */
+ *  server tick times over the round, entities and the battle's own collections after the round's cleanup, and heap after a forced GC.
+ *  AI quality (2026-11-10, read-only on the game): botsim/ai-metrics.csv (one row per bot army and per team, per match; AiMetrics) and botsim/decisions.csv (one row per bot commander decision, from Campaign.decisionListener); tools/bot_quality.py reads them.
+ *  -PsimOverlayCheck=true also toggles the dev purpose overlay (AiPurposeOverlay) on the running round and asserts its labels and that troop names are untouched, into botsim/overlay-check.txt; it adds entities, so use it on its own run. */
 public final class BotSimulation implements ModInitializer {
     static final int SAMPLE_TICKS=600;
     /** results.csv's score300_0 and score300_1: each team's score at 300 s of round time (6000 battle ticks), or the final score when the round ended sooner. */
@@ -55,6 +57,8 @@ public final class BotSimulation implements ModInitializer {
     /** Setup timing (probe only, test tooling): wall time from the map switch (or the first tick that saw an unbuilt arena) to ready, the tick bodies during that build, and startRound() and field() on the match that follows. */
     boolean building;long buildStartNs,buildNs=-1,startRoundNs,fieldNs;long[] buildTicks=new long[1024];int buildTickCount;
     int unitsPeak;
+    /** AI quality metrics and the why log (AiMetrics); ownNanos is its time inside a tick, taken off the probe's tick times. */
+    final AiMetrics metrics=new AiMetrics();
     boolean probe;Path probeCsv;long tickStart;long[] tickNanos=new long[8192];int tickCount;String probeStartedAt="";
     /** -PsimBanner0 and -PsimBanner1: the botBanners id each team must field, or null for the kit's banner. fielded holds the id each team fields this run, for the CSV and the summary. */
     final String[] bannerChoice={null,null},fielded={"",""};
@@ -97,6 +101,9 @@ public final class BotSimulation implements ModInitializer {
             Files.writeString(types,"match,map,seat,banner,"+TypeLedger.HEADER+"\n",StandardCharsets.UTF_8);
             Files.writeString(meta,"override="+SheetOverride.describe()+"\nfast="+gg.gravesandglory.testing.SimSpeed.FAST+"\n",StandardCharsets.UTF_8);
         }catch(IOException e){throw new UncheckedIOException(e);}
+        metrics.open(dir);
+        Campaign.decisionListener=(c,sq,tr,ce,lv,fu,se,en,cc,ch,ho,re,wo,wt)->{if(playing)metrics.decision(c,sq,tr,ce,lv,fu,se,en,cc,ch,ho,re,wo,wt);};
+        overlayCheck=Boolean.getBoolean("gravesandglory.simOverlayCheck");
         net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((entity,source)->ledger.onDeath(GravesAndGlory.battle,entity,source));
         ServerTickEvents.END_SERVER_TICK.register(this::tick);
         probe="1".equals(System.getenv("GRAVES_BOTSIM_PROBE"))||Boolean.getBoolean("gravesandglory.simProbe");
@@ -105,7 +112,7 @@ public final class BotSimulation implements ModInitializer {
             try{Files.writeString(probeCsv,String.join(",",PROBE_COLUMNS)+"\n",StandardCharsets.UTF_8);}catch(IOException e){throw new UncheckedIOException(e);}
             // Registered after the harness's own listener, so the tick that ends a round is not timed as part of it.
             ServerTickEvents.START_SERVER_TICK.register(s->tickStart=System.nanoTime());
-            ServerTickEvents.END_SERVER_TICK.register(s->{if(building){if(buildTickCount==buildTicks.length)buildTicks=Arrays.copyOf(buildTicks,buildTickCount*2);buildTicks[buildTickCount++]=System.nanoTime()-tickStart;}if(playing){if(tickCount==tickNanos.length)tickNanos=Arrays.copyOf(tickNanos,tickCount*2);tickNanos[tickCount++]=System.nanoTime()-tickStart;var bt=GravesAndGlory.battle;if(bt!=null)unitsPeak=Math.max(unitsPeak,bt.units.size());}});
+            ServerTickEvents.END_SERVER_TICK.register(s->{if(building){if(buildTickCount==buildTicks.length)buildTicks=Arrays.copyOf(buildTicks,buildTickCount*2);buildTicks[buildTickCount++]=System.nanoTime()-tickStart;}if(playing){if(tickCount==tickNanos.length)tickNanos=Arrays.copyOf(tickNanos,tickCount*2);tickNanos[tickCount++]=System.nanoTime()-tickStart-metrics.ownNanos;var bt=GravesAndGlory.battle;if(bt!=null)unitsPeak=Math.max(unitsPeak,bt.units.size());}metrics.ownNanos=0;});
         }
     }
     static String tier(String id){
@@ -119,7 +126,7 @@ public final class BotSimulation implements ModInitializer {
         var b=GravesAndGlory.battle;if(done)return;
         if(b==null){if(++waited==200){System.out.println("[botsim] no battle on this world (level-name must be Graves and Glory); stopping");done=true;server.stop(false);}return;}
         if(playing){
-            if(b.running){scan(b);ledger.tick(b);progress(b);long elapsed=b.time-b.roundStarted;if(elapsed>0&&elapsed%SAMPLE_TICKS==0)sample(b,elapsed/20);
+            if(b.running){scan(b);ledger.tick(b);progress(b);long elapsed=b.time-b.roundStarted;metrics.tick(b);if(elapsed>0&&elapsed%20==0)metrics.second(b);if(overlayCheck)overlayCheck(b,elapsed);if(elapsed>0&&elapsed%SAMPLE_TICKS==0)sample(b,elapsed/20);
                 if(siegeCsv!=null&&elapsed>0&&elapsed%SIEGE_TICKS==0)siegeSample(b,elapsed/20);
                 if(convoyCsv!=null&&elapsed>0&&elapsed%SIEGE_TICKS==0)convoyTrace(b,elapsed/20);
                 if(dominationCsv!=null&&elapsed>0&&elapsed%SIEGE_TICKS==0)dominationTrace(b,elapsed/20);
@@ -140,7 +147,7 @@ public final class BotSimulation implements ModInitializer {
         var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;c.lastWinner=ABORTED;c.battleMode=simMode;
         long t0=System.nanoTime();b.startRound();startRoundNs=System.nanoTime()-t0;if(roundSecondsGiven||simMode.equals(Modes.DOMINATION))b.roundSeconds=roundSeconds; // after startRound, which sets the row's clock
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}
-        t0=System.nanoTime();field(b);fieldNs=System.nanoTime()-t0;seen.clear();resetStats();ledger.reset(b.time);wallStart=System.currentTimeMillis();
+        t0=System.nanoTime();field(b);fieldNs=System.nanoTime()-t0;seen.clear();resetStats();ledger.reset(b.time);metrics.reset(armies,match,simMode);wallStart=System.currentTimeMillis();
         score300[0]=score300[1]=-1;startedAt=b.roundStarted;tallies[0]=tallies[1]=null;shareLevel2[0]=shareLevel2[1]=-1;
         playing=true;if(probe)probeStart();
     }
@@ -220,6 +227,9 @@ public final class BotSimulation implements ModInitializer {
             String.valueOf(b.scores[0]),String.valueOf(b.scores[1]),String.valueOf((b.time-b.roundStarted)/20),fielded[0],fielded[1],
             String.valueOf(kills[0]),String.valueOf(kills[1]),String.valueOf(wiped[0]),String.valueOf(wiped[1]),String.valueOf(retreats[0]),String.valueOf(retreats[1]),String.valueOf(fights),fights==0?"":String.format(Locale.ROOT,"%.1f",fightTicks/20.0/fights),String.valueOf(flankHits[0]),String.valueOf(flankHits[1]),String.valueOf(flankShots[0]),String.valueOf(flankShots[1]),
             String.valueOf(score300[0]<0?b.scores[0]:score300[0]),String.valueOf(score300[1]<0?b.scores[1]:score300[1]),b.mode.row.id(),siegeColumns(b),convoyColumns(b))+"\n");
+        String tickMean="",tickP99="";
+        if(probe&&tickCount>0){long[] t=Arrays.copyOf(tickNanos,tickCount);Arrays.sort(t);tickMean=ms(Arrays.stream(t).average().orElse(0)/1e6);tickP99=ms(pct(t,.99));}
+        metrics.write(String.valueOf(maps[match%maps.length]),fielded,tickMean,tickP99);
         if(probe)probeRow(b);
         recordLevels();
         ledger.stop();String at=(match+1)+","+maps[match%maps.length]+",";
@@ -290,6 +300,47 @@ public final class BotSimulation implements ModInitializer {
                 rows.append(String.format(Locale.ROOT,"%d,%d,%d,%s,%d,%s,%s,%d,%.1f,%.1f,%.1f,%s,%.1f,%.1f,%.1f,%s%n",match+1,second,m.stage,m.target==null?"":String.format(Locale.ROOT,"%.0f",m.target.hp()),i,SEATS[s.team],g,mine.size(),c.x,c.y,c.z,a.order,
                     a.target==null?0:a.target.x,a.target==null?0:a.target.y,a.target==null?0:a.target.z,a.enemy>=0?"gate":""));}}
         append(siegeCsv,rows.toString());
+    }
+    /** -PsimOverlayCheck: the dev purpose overlay on a running round (AiPurposeOverlay). At 120 s of round time it is switched on and every living troop must have one label in the documented form and its name and
+     *  name visibility must be untouched; at 125 s the labels must have been refreshed about every 10 ticks and stand at their troops; at 130 s it is switched off, and 1 s later no label entity may be left,
+     *  no refresh may have run since, and every surviving troop's name (as JSON) and visibility must equal what they were before it was on. Results: botsim/overlay-check.txt. */
+    boolean overlayCheck;int overlayStage;final Map<GravesAndGlory.Unit,String> overlayNames=new IdentityHashMap<>();final Map<GravesAndGlory.Unit,Integer> overlayLevels=new IdentityHashMap<>();long refreshesAtOn,refreshesAtOff;final List<String> overlayLines=new ArrayList<>();boolean overlayFailed;
+    static String nameOf(GravesAndGlory.Unit u){var n=u.mob.getCustomName();return (n==null?"<none>":net.minecraft.text.Text.Serializer.toJson(n))+"|visible="+u.mob.isCustomNameVisible();}
+    void overlayAssert(String what,boolean ok,String detail){overlayLines.add((ok?"PASS ":"FAIL ")+what+(detail.isEmpty()?"":": "+detail));if(!ok)overlayFailed=true;}
+    void overlayCheck(GravesAndGlory.Battle b,long elapsed){
+        java.util.regex.Pattern form=java.util.regex.Pattern.compile("^\\S+ \\S+ \\| (marching|fighting|holding|idle|stuck|retreating|refill-walking) \\| .+$");
+        if(overlayStage==0&&elapsed>=2400){
+            overlayStage=1;overlayNames.clear();overlayLevels.clear();List<GravesAndGlory.Unit> living=new ArrayList<>();
+            for(var u:b.units)if(u.mob.isAlive()&&!u.temporary){living.add(u);overlayNames.put(u,nameOf(u));overlayLevels.put(u,u.level);}
+            overlayAssert("off by default",!AiPurposeOverlay.on&&AiPurposeOverlay.labels.isEmpty(),"on="+AiPurposeOverlay.on+" labels="+AiPurposeOverlay.labels.size());
+            AiPurposeOverlay.set(true);refreshesAtOn=AiPurposeOverlay.refreshes;
+            int bad=0,missing=0;String example="";
+            for(var u:living){var stand=AiPurposeOverlay.labels.get(u);if(stand==null){missing++;continue;}var text=stand.getCustomName()==null?"":stand.getCustomName().getString();
+                if(!form.matcher(text).matches()||!stand.isCustomNameVisible()||!stand.getCommandTags().contains(AiPurposeOverlay.TAG)||!stand.isInvisible()){bad++;example=text;}else if(example.isEmpty())example=text;}
+            overlayAssert("every living troop has a label in the form '<group> <order> | <state> | <target or spot>'",missing==0&&bad==0&&!living.isEmpty(),living.size()+" troops, "+missing+" without label, "+bad+" malformed, e.g. \""+example+"\"");
+            int changed=0;for(var u:living)if(!overlayNames.get(u).equals(nameOf(u)))changed++;
+            overlayAssert("troop names and visibility untouched while on",changed==0,changed+" changed");
+        }else if(overlayStage==1&&elapsed>=2500){
+            overlayStage=2;long runs=AiPurposeOverlay.refreshes-refreshesAtOn;
+            overlayAssert("refreshed about every 10 ticks while on",runs>=9&&runs<=11,runs+" refreshes in "+(elapsed-2400)+" ticks");
+            int far=0,total=0;double worst=0;for(var e:AiPurposeOverlay.labels.entrySet()){total++;double d=Math.sqrt(e.getValue().squaredDistanceTo(e.getKey().mob));worst=Math.max(worst,d);if(d>6)far++;}
+            overlayAssert("labels follow their troops (a label lags its troop by at most one 10-tick refresh)",total>0&&far==0,total+" labels, "+far+" more than 6 blocks from their troop, worst "+String.format(Locale.ROOT,"%.1f",worst));
+            int changed=0;for(var e:overlayNames.entrySet())if(e.getKey().mob.isAlive()&&e.getKey().level==overlayLevels.get(e.getKey())&&!e.getValue().equals(nameOf(e.getKey())))changed++;
+            overlayAssert("troop names and visibility untouched after refreshes",changed==0,changed+" changed");
+            overlayAssert("states seen "+AiPurposeOverlay.statesSeen,!AiPurposeOverlay.statesSeen.isEmpty(),"");
+        }else if(overlayStage==2&&elapsed>=2600){
+            overlayStage=3;AiPurposeOverlay.set(false);refreshesAtOff=AiPurposeOverlay.refreshes;
+            overlayAssert("off: label table empty",AiPurposeOverlay.labels.isEmpty(),AiPurposeOverlay.labels.size()+" left");
+        }else if(overlayStage==3&&elapsed>=2620){
+            overlayStage=4;int stands=0;for(var e:b.world.iterateEntities())if(e.getCommandTags().contains(AiPurposeOverlay.TAG)&&!e.isRemoved())stands++;
+            overlayAssert("off: no label entity left in the world",stands==0,stands+" left");
+            overlayAssert("off: no refresh while off",AiPurposeOverlay.refreshes==refreshesAtOff,(AiPurposeOverlay.refreshes-refreshesAtOff)+" ran");
+            int changed=0,kept=0;int levelled=0;for(var e:overlayNames.entrySet())if(e.getKey().mob.isAlive()){if(e.getKey().level!=overlayLevels.get(e.getKey())){levelled++;continue;}kept++;if(!e.getValue().equals(nameOf(e.getKey())))changed++;}
+            overlayAssert("off: surviving troops' names and visibility exactly as before",changed==0&&kept>0,kept+" troops compared, "+changed+" differ ("+levelled+" skipped: levelled up meanwhile, which the game renames itself)");
+            overlayLines.add(overlayFailed?"OVERLAY CHECK FAIL":"OVERLAY CHECK PASS");
+            try{Files.writeString(results.resolveSibling("overlay-check.txt"),String.join("\n",overlayLines)+"\n",StandardCharsets.UTF_8);}catch(IOException e){System.out.println("[botsim] could not write overlay-check.txt: "+e);}
+            System.out.println("[botsim] "+overlayLines.get(overlayLines.size()-1));
+        }
     }
     /** The final line. Mean gold earned is a team's total over its commanders at the end of a round, averaged over the matches.
      *  " aborted=N" goes on the end only when a round stopped without Campaign.finish, " kit=<id>" only under -PsimKit gilded or graveborn, then " banner0=<id> banner1=<id>": the banners the two teams fielded, and " progression=on|off" closes the line. */

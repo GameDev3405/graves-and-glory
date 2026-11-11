@@ -756,6 +756,9 @@ public final class Campaign {
         for(var row:Spec.BOTCOMMAND)if(row.id().equals("normal"))return row;
         return Spec.BOTCOMMAND[0];
     }
+    /** Test-tools hook (the AI "why" log, BotSimulation): null in play. When set, botDecide reports each finished decision to it as its last step: the army, its tier, the inputs the decision read and the point it chose. It reads only; it changes nothing. */
+    interface DecisionListener{void decided(Campaign c,GravesAndGlory.Squad s,Spec.BotCommandRow tier,Vec3d center,int living,int full,java.util.Collection<GravesAndGlory.Battle.Sight> seen,int enemies,boolean couldCharge,GravesAndGlory.Capture choice,int hold,boolean retreating,String wasOrder,Vec3d wasTarget);}
+    static volatile DecisionListener decisionListener;
     /** A remembered enemy counts as near a point, or near an army, within this many times the point's radius or the tier's charge distance. */
     static final double NEAR_RADIUS_FACTOR=2;
     /** One command decision for a bot army, run at its tier's cadence: retreat or rally, pick the point to take, set the order, stamp the charge (Battle.markCharge; a bot's command plays no sound). A new Charge starts only when the squad's Charge cooldown is ready (OrderRules.useCharge).
@@ -808,6 +811,7 @@ public final class Campaign {
         if(!retreating)b.mode.botPlan(b,s,tier); // a mode's per-group split of the order (Siege's stage plan)
         if(!s.order.equals(wasOrder)||!Objects.equals(s.target,wasTarget))s.arrived.clear(); // a new order or spot ends an arrival (Tactics.arrived); the same decision again keeps it
         if(s.order.equals("charge")&&couldCharge)b.markCharge(s,"all");
+        var listener=decisionListener;if(listener!=null)listener.decided(this,s,tier,center,(int)living,full,seen.values(),(int)enemies,couldCharge,choice,hold,retreating,wasOrder,wasTarget); // dev hook, null in play
     }
     /** Hard holds what it has taken before it flanks. Gathers the team's armies for BattleMath.garrison, near meaning within
      *  NEAR_RADIUS_FACTOR*chargeDistance: its bot armies (alive and not retreating, in squad order; a fixture's army outside b.squads goes last)
