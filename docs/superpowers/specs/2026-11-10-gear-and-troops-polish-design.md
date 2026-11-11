@@ -100,7 +100,7 @@ Values: `restSeconds` 8, `restRadius` 12, `restHealPct` 0.02. This is a troop ru
 
 - The recruit row's ability line shows the troop's own ability text from the sheet, cut to one line.
 - A status glossary: hovering a status icon on a group card, or opening the Field page's new "Statuses" list, gives one line per status.
-- Banner seats and copies: today owning one copy lets a troop fill any number of banner slots (up to its rarity's `bannerMax`). This spec does not change it; it is listed for Kort as a question because it decides how much collecting matters.
+- Banner seats and copies: today owning one copy lets a troop fill any number of banner slots (up to its rarity's `bannerMax`). Kort (2026-11-10): keep as is; copies do not limit banner seats.
 
 ## What it touches
 
@@ -129,5 +129,4 @@ Values: `restSeconds` 8, `restRadius` 12, `restHealPct` 0.02. This is a troop ru
 
 ## Open points for Kort
 
-- Should owning more copies of a troop be needed to field more of it on the banner (B5)?
 - The starting Scrap prices and recommended powers are guesses to be tuned in play.

@@ -1500,6 +1500,14 @@ public final class Phase1Checks implements ClientModInitializer {
         UiHudChecks(){net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->{if(current==this&&keepLesson)CampaignClient.tutorial=lessonStep;});}
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return player==null?null:b.server.getPlayerManager().getPlayer(player);}
         static CommandMode.Group group(String id){for(var g:CommandMode.groups)if(g.id().equals(id))return g;return null;}
+        /** What the top row's box meets: the strip, its bosses, the seals, the lesson note, the feed, the respawn card, the cards, the hint slip, the other row boxes and the chat. */
+        static List<String> topRowHits(String self,int[] box,Map<String,int[]> r,int[] chat){
+            List<String> out=new ArrayList<>();
+            for(var e:r.entrySet()){String k=e.getKey();if(k.equals(self))continue;
+                if((k.equals("score")||k.endsWith("-boss")||k.startsWith("seal-")||k.equals("lesson")||k.equals("feed")||k.equals("respawn")||k.startsWith("card-")||k.equals("hints")||k.equals("gold")||k.startsWith("trait-")||k.equals("aim-name"))&&meets(box,e.getValue()))out.add(self+" meets "+k+" "+box(e.getValue()));}
+            if(chat!=null&&meets(box,chat))out.add(self+" meets the chat "+box(chat));
+            return out;
+        }
         static boolean meets(int[] a,int[] b){return a!=null&&b!=null&&a[0]<b[0]+b[2]&&b[0]<a[0]+a[2]&&a[1]<b[1]+b[3]&&b[1]<a[1]+a[3];}
         static boolean inside(int[] a,int w,int h){return a[0]>=0&&a[1]>=0&&a[0]+a[2]<=w&&a[1]+a[3]<=h;}
         static String box(int[] a){return a==null?"none":Arrays.toString(a);}
@@ -1777,7 +1785,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     report("p1-ui-hud-layout",layoutOk&&layoutSeen==frames,"in "+layoutSeen+" frames (wanted "+frames+") the plates as BattleHud drew them against UiMath.hudLayout for the state the pass set, one layout for the draw and the fit (the Task 8a review's Minor 3): "+(layoutWhy.isEmpty()?"every one equal":layoutWhy));
                     report("p1-ui-hud-gold",goldOk&&goldSeen==frames,"the gold readout in "+goldSeen+" frames (wanted "+frames+"): drawn as \"n gold\", on the canvas, apart from the cards, the hint slip and the chat"+(goldWhy.isEmpty()?"":"; "+goldWhy));
                     report("p1-ui-chat-lift",chatOk&&campLift==0,"in camp the chat moved "+campLift+" GUI px; closed/open lines frame by frame: "+chatLines+(chatWhy.isEmpty()?"":"; "+chatWhy));
-                    report("p1-ui-hud-traits",traitOk&&traitSeen==frames&&traitChips>0,"the House trait chips (not in the hint layer) in "+traitSeen+" frames (wanted "+frames+"), at most "+traitChips+" at once (wanted at least 1): each with its tier numeral, on the canvas, apart from the cards, gold, hint slip, feed, lesson and chat"+(traitWhy.isEmpty()?"":"; "+traitWhy));
+                    report("p1-ui-hud-traits",traitOk&&traitSeen==frames&&traitChips>0,"the House trait chips in "+traitSeen+" frames (wanted "+frames+"), at most "+traitChips+" at once (wanted at least 1): each with its tier numeral, on the canvas, apart from the cards, gold, hint slip, feed, lesson and chat"+(traitWhy.isEmpty()?"":"; "+traitWhy));
                     report("p1-ui-hud-scale",scaleOk&&scaleSeen==3*WINDOWS.length,"the battle HUD at each size (UI Task 8c: Compact at the kit scale on every window, Standard and Large a step up where the whole HUD fits beside vanilla's bars): "+scaleWhy+(scaleSeen==3*WINDOWS.length?"":"; only "+scaleSeen+" of "+3*WINDOWS.length+" windows measured")+(Arrays.stream(WINDOWS).allMatch(v->v[6]==v[5])?"; Large draws as Standard at every one of these windows (no step further fits them)":""));
                     report("p1-ui-hud-footprint",footOk&&footSeen==5,"the HUD's plates (cards and chips, the key strip, the feed leaf, the hint slip, the lesson note, the respawn card) as a share of the screen in the default battle state (three groups, the army selected, the hint layer down, a feed line, no lesson, the commander up: pass C at Compact), against the HUD before this task ("+BASELINE_AREA+" canvas px at Task 8a's scale, run ui-8c-base-211317), at most half of it and the centre band clear at the brief's five windows: "+footWhy+(footSeen==5?"":"; only "+footSeen+" of the five measured"));
                     window(c,960,540,1);
@@ -1924,24 +1932,20 @@ public final class Phase1Checks implements ClientModInitializer {
             List<String> hit=new ArrayList<>();if(chat!=null)for(var e:r.entrySet())if(meets(chat,e.getValue()))hit.add(e.getKey());
             List<String> onBars=new ArrayList<>();if(chat!=null)for(var e:bars.entrySet())if(!e.getKey().equals("the crosshair")&&meets(chat,e.getValue()))onBars.add(e.getKey()); // UI Task 8c
             boolean clear=dr!=null&&!meets(dr,cross);
-            // p1-ui-hud-gold: the gold readout is drawn with its text, on the screen, and meets neither the cards, the hint slip nor the chat
-            {int[] gb=r.get("gold");String gt=BattleHud.texts().get("gold");List<String> why=new ArrayList<>();boolean layer=r.containsKey("hints"); // the hint layer hides the readout (UiMath.hudLayout)
-                if(layer){if(gb!=null)why.add("drawn in the hint layer");gt="0 gold";}
-                else if(gb==null)why.add("no gold rect");else{
-                    if(gb[0]<0||gb[1]<0||gb[0]+gb[2]>cw||gb[1]+gb[3]>ch)why.add("off the "+cw+"x"+ch+" canvas at "+box(gb));
-                    for(var e:r.entrySet())if((e.getKey().startsWith("card-")||e.getKey().equals("hints"))&&meets(gb,e.getValue()))why.add("meets "+e.getKey()+" "+box(e.getValue()));
-                    if(chat!=null&&meets(gb,chat))why.add("meets the chat "+box(chat));}
+            // p1-ui-hud-gold and p1-ui-hud-traits: the gold readout and the House chips hang in a row under the score strip, drawn in every frame (the hint
+            // layer and aiming too), on the canvas, and meet none of the strip, its bosses, the seals, the lesson note, the feed, the respawn card, the cards, the hint slip, the chat
+            {int[] gb=r.get("gold");String gt=BattleHud.texts().get("gold");List<String> why=new ArrayList<>();
+                if(gb==null)why.add("no gold rect");else{
+                    if(gb[0]<12||gb[1]<0||gb[0]+gb[2]>cw-12||gb[1]+gb[3]>ch)why.add("off the "+cw+"x"+ch+" canvas at "+box(gb));
+                    why.addAll(topRowHits("gold",gb,r,chat));}
                 if(gt==null||!gt.matches("[0-9]+ gold"))why.add("text \""+gt+"\" (wanted \"<n> gold\")");
                 goldOk&=why.isEmpty();goldSeen++;if(!why.isEmpty())goldWhy+=(goldWhy.isEmpty()?"":"; ")+at+": "+String.join(", ",why);}
-            // p1-ui-hud-traits: a chip for each House the client has a tier in, drawn with its numeral, on the canvas, apart from the cards, the gold readout, the hint slip and the chat
-            {List<String> why=new ArrayList<>();boolean layer=r.containsKey("hints");var ids=layer?List.<String>of():BattleHud.houseIds(); // the hint layer hides the chips (UiMath.hudLayout)
-                if(layer)for(var e:r.keySet())if(e.startsWith("trait-"))why.add(e+" drawn in the hint layer");
+            {List<String> why=new ArrayList<>();var ids=BattleHud.houseIds();
                 for(String id:ids){int[] cb=r.get("trait-"+id);String ct=BattleHud.texts().get("trait-"+id);
                     if(cb==null){why.add(id+" has no chip");continue;}
                     if(ct==null||!ct.equals(MatchStats.roman(GravesAndGloryClient.houses.get(id))))why.add(id+" numeral \""+ct+"\"");
-                    if(cb[0]<0||cb[1]<0||cb[0]+cb[2]>cw||cb[1]+cb[3]>ch)why.add(id+" off the canvas at "+box(cb));
-                    for(var e:r.entrySet()){String k=e.getKey();if(!k.equals("trait-"+id)&&(k.startsWith("card-")||k.equals("hints")||k.equals("gold")||k.equals("feed")||k.equals("lesson")||k.equals("respawn")||k.startsWith("trait-"))&&meets(cb,e.getValue()))why.add(id+" meets "+k+" "+box(e.getValue()));}
-                    if(chat!=null&&meets(cb,chat))why.add(id+" meets the chat "+box(chat));}
+                    if(cb[0]<0||cb[1]<0||cb[0]+cb[2]>cw-12||cb[1]+cb[3]>ch)why.add(id+" off the canvas at "+box(cb));
+                    why.addAll(topRowHits("trait-"+id,cb,r,chat));}
                 traitOk&=why.isEmpty();traitSeen++;traitChips=Math.max(traitChips,ids.size());if(!why.isEmpty())traitWhy+=(traitWhy.isEmpty()?"":"; ")+at+": "+String.join(", ",why);}
             boolean apart=chat!=null&&dr[1]>=0&&top!=UiMath.NO_COLUMN&&chat[1]+chat[3]<=top&&ChatPlacement.drawnLines==shown&&(want<0?shown>=1:shown==want)&&clear&&hit.isEmpty()&&onBars.isEmpty();chatOk&=apart;
             chatLines.append(chatLines.length()==0?"":", ").append(s[0]).append("x").append(s[1]).append(" GUI ").append(s[2]).append(" ").append(HudSize.NAMES[size]).append(" ").append("ABCD".charAt(pass)).append(" ").append(shown).append(want<0||shown==want?"":" (want "+want+")");

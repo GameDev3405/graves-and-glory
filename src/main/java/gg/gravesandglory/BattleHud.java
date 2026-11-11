@@ -161,7 +161,7 @@ public final class BattleHud {
         List<String> fielded=new ArrayList<>();
         for(String id:Morale.GROUPS){var grp=group(id);if(grp!=null&&grp.full()>0)fielded.add(id);}
         int step=CampaignClient.tutorial,lines=step<0||step>3||CommandMode.active()?0:lesson(font,step).size();
-        return new UiMath.HudState(GravesAndGloryClient.owners.length,List.copyOf(fielded),CommandMode.selected,altLayer(),lines,GravesAndGloryClient.respawn>0,!EventFeed.lines(now).isEmpty(),houseIds());
+        return new UiMath.HudState(GravesAndGloryClient.owners.length,List.copyOf(fielded),CommandMode.selected,altLayer(),lines,GravesAndGloryClient.respawn>0,!EventFeed.lines(now).isEmpty(),houseIds(),CampaignClient.battleMode.has("convoy"));
     }
 
     /** The Houses the client's army has a trait tier in (GravesAndGloryClient.houses, from the state packet), in House order. */
@@ -291,19 +291,20 @@ public final class BattleHud {
         return UiMath.goldIncome(held,e.passiveGold(),e.pointGold(),e.objectiveIncomeCap(),row.passiveScale(),row.pointScale());
     }
 
-    /** The gold readout above the group column: "n gold" and, smaller, the income per tick; a payout that is not the periodic income
+    /** The gold readout under the score strip: "n gold" and, smaller, the income per tick; a payout that is not the periodic income
      *  (a kill) shows as "+n" beside it for GAIN_MS. */
     static void gold(DrawContext g,TextRenderer font,Map<String,int[]> at,long now,Map<String,int[]> r,Map<String,String> tx){
         int[] box=at.get("gold");if(box==null)return;
         int gold=GravesAndGloryClient.gold,income=income();
         if(goldSeen>=0&&now-goldFrameMs<1000&&gold>goldSeen){int d=gold-goldSeen;if(d!=income&&d!=incomeSeen){gainAmount=d;gainMs=now;}}
         goldSeen=gold;incomeSeen=income;goldFrameMs=now;
-        int x=box[0],y=box[1];UiTex.draw(g,"hud/chip-plain",x,y);
+        int x=box[0],y=box[1];boolean narrow=box[2]<UiMath.CARD_W; // the amount alone on a short row: the plate's two ends, no income
+        if(narrow){int rest=box[2]+5-54;UiTex.part(g,"hud/chip-plain",x-1,y-1,0,0,54,24);UiTex.part(g,"hud/chip-plain",x+53,y-1,181-rest,0,rest,24);}else UiTex.draw(g,"hud/chip-plain",x,y);
         String main=gold+" gold",sub="+"+income+" every "+Spec.ECONOMY[0].incomeSeconds()+" s";
         g.drawText(font,DarkUi.heading(main),x+10,y+4,DarkUi.INK_TEXT,false);
         float sc=0.75f;int sw=Math.round(font.getWidth(sub)*sc);
-        var m=g.getMatrices();m.push();m.translate(x+box[2]-10-sw,y+5.5f,0);m.scale(sc,sc,1);g.drawText(font,sub,0,0,DarkUi.SEPIA,false);m.pop();
-        r.put("gold",box);tx.put("gold",main);tx.put("gold-income",sub);
+        if(!narrow){var m=g.getMatrices();m.push();m.translate(x+box[2]-10-sw,y+5.5f,0);m.scale(sc,sc,1);g.drawText(font,sub,0,0,DarkUi.SEPIA,false);m.pop();}
+        r.put("gold",box);tx.put("gold",main);if(!narrow)tx.put("gold-income",sub);
         long age=now-gainMs;
         if(gainAmount>0&&age<GAIN_MS){
             int a=Math.round(255*(1-age/(float)GAIN_MS));
