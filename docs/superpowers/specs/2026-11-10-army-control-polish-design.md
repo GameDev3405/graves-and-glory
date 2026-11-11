@@ -41,7 +41,10 @@ Troop AI (reviewed by the AI lead, 2026-11-10). In the troop layer this is one r
 - A group target is new code. Today's focus is one entity and needs line of sight (`Tactics.java:271`). Troops pick their own enemy inside the target group and spread across it.
 - If the focused group leaves the sight of every troop in the ordered group, the troops go to where it was last seen and, after 5 s without seeing it, Hold there.
 - The switch to Hold must not leave archers idle: Hold engages only within 10 blocks today, against archer reach of 22 to 30. The AI lead's archer-reach fix lands in the same step.
-- Bots use the same order. A bot has no crosshair or body: order range is measured from its army's centre, and refusals come back to it as return values.
+- Bots use the same order, and refusals come back to a bot as return values. Kort (2026-11-11): a bot commander has a body on the field that can be seen, chased and killed, and gives no orders until it respawns. So for a bot with a body:
+  - Order range is measured from the bot's body, exactly as for a player. A bot has no crosshair; it names the point or the enemy group directly, and the same range check applies.
+  - `down` applies to a bot: while its body is respawning every order is refused with `down`, and its troops keep their last orders, as a player's do.
+  - The body is built after the port and after the Warlord animation chain (AI lead's design, `2026-11-10-human-bot-brain-design.md` sections 2A and 6, branch `ai/lead`). Until it exists a bot keeps today's rule: range is measured from its army's centre and `down` never applies.
 
 ### 3.2 Hold (A4, part)
 
