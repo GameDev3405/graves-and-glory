@@ -4,7 +4,8 @@ import java.util.Set;
 
 /**
  * The server-side choices that follow which model a troop is drawn on (GeoTroops; docs/anim-rebuild/OLD-MODEL-GAPS.md gaps 2 and 4): a caster's
- * bolt starts at its GeckoLib staff tip only when the troop draws through GeckoLib, else at its eyes (the old origin). Run on the default settings (no -Dgravesandglory.geoTroops), as verify runs it. Never shipped.
+ * bolt starts at its GeckoLib staff tip only when the troop draws through GeckoLib, else at its eyes (the old origin), and a melee blow shows the
+ * vanilla sweep only on the old model. Run on the default settings (no -Dgravesandglory.geoTroops), as verify runs it. Never shipped.
  */
 public final class GeoTroopsCheck {
     static int checks, failed;
@@ -38,6 +39,15 @@ public final class GeoTroopsCheck {
             check(!GeoTroops.castTip(t, false, true), t + ": with geoTroops=false the bolt starts at the eyes");
         }
         check(GeoTroops.castTip("knight", true, false), "an approved troop takes its tip (where it has one) by default");
+
+        // gap 4: the sweep. Old model: shown; GeckoLib: not (Kort, 2026-11-08: the swing carries the blow).
+        check(!GeoTroops.sweeps("knight", true, false), "the knight (GeckoLib by default) shows no sweep");
+        check(GeoTroops.sweeps("knight", false, false), "the knight on the old model (geoTroops=false) shows the sweep");
+        for (String t : Set.of("revenant", "sentinel", "reaper", "gb_hollowking", "tc_raider")) {
+            check(GeoTroops.sweeps(t, true, false), t + " (old model by default) shows the sweep");
+        }
+        check(!GeoTroops.sweeps("sentinel", true, true), "sentinel with geoTroops=all (GeckoLib) shows no sweep");
+        check(GeoTroops.sweeps("revenant") == !GeoTroops.drawn("revenant") && GeoTroops.sweeps("knight") == !GeoTroops.drawn("knight"), "the default overload follows this JVM's settings");
 
         if (failed > 0) {
             System.out.println("GeoTroopsCheck: " + failed + " checks FAILED");

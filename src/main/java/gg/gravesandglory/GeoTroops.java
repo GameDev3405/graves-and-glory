@@ -5,7 +5,7 @@ import java.util.Set;
 /**
  * Which troops draw through GeckoLib (GeoTroopRenderer) and which on the old model and clips (TroopModel, TroopMotion). A plain class with no client
  * imports, so the server may ask too: a few cosmetic things it sends follow the model, a caster's bolt starting at its GeckoLib staff tip
- * (Projectiles.castFrom) (docs/anim-rebuild/OLD-MODEL-GAPS.md). The server reads its
+ * (Projectiles.castFrom) and the vanilla sweep on a melee blow (BattleEffects.strike) (docs/anim-rebuild/OLD-MODEL-GAPS.md). The server reads its
  * own JVM's -Dgravesandglory.geoTroops: in single player and the harness that is the client's; a dedicated server on default settings judges by
  * APPROVED alone, which is what a client on default settings draws.
  * <p>
@@ -31,4 +31,8 @@ final class GeoTroops {
     static boolean castTip(String troop) { return drawn(troop); }
     static boolean castTip(String troop, boolean enabled, boolean all) { return drawn(troop, enabled, all); }
 
+    /** Whether a melee blow shows the vanilla sweep (BattleEffects.strike): only on the old model. A GeckoLib swing carries the blow itself
+     *  (Kort, 2026-11-08: the white arc behind the sword fights the swing animation); the old clips do not. */
+    static boolean sweeps(String troop) { return !drawn(troop); }
+    static boolean sweeps(String troop, boolean enabled, boolean all) { return !drawn(troop, enabled, all); }
 }

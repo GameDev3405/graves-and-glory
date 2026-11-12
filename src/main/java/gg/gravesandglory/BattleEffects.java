@@ -12,6 +12,8 @@ public final class BattleEffects {
     public static int flashes,lastFlashColor,souls;
     /** Harness counter: how many golem and ravager swings have sent entity status 4 (Abilities.animate). */
     public static int attackStatuses;
+    /** Harness counter: how many vanilla sweeps melee blows on the old model have shown (strike). */
+    public static int sweeps;
     /** An impact puff in the hitting team's colour, so a crowded melee shows who is landing blows. */
     public static void flash(GravesAndGlory.Battle b,Vec3d at,int team){flash(b,at,team,0f);}
     /** The impact, faded by the shooter's flicker (0: full): a guttering caster's bolt lands as a small grey puff with no sparks. */
@@ -91,7 +93,8 @@ public final class BattleEffects {
     }
     static void strike(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity enemy){
         if(!u.spec.ranged()){
-            // No vanilla SWEEP_ATTACK here: the swing animation carries the blow (Kort, 2026-11-08).
+            // The vanilla sweep only on the old model: a GeckoLib swing carries the blow itself (Kort, 2026-11-08); the old clips do not (OLD-MODEL-GAPS.md gap 4).
+            if(GeoTroops.sweeps(u.spec.id())){Vec3d at=u.mob.getPos().add(0,1,0),dir=enemy.getPos().subtract(u.mob.getPos()).normalize();b.world.spawnParticles(ParticleTypes.SWEEP_ATTACK,at.x+dir.x,at.y,at.z+dir.z,1,0,0,0,0);sweeps++;}
             flash(b,new Vec3d(enemy.getX(),enemy.getBodyY(.6),enemy.getZ()),u.squad.team);
             Audio.swing(b,u); // a blade's swish (AudioCues.SWORD_SWING); the landed blow has its own sound in Combat.resolve
         }else if(u.spec.magic()&&!ebbing(b,u)){ // mid-flicker in an ebb battle the caster's particles fade with its glow
