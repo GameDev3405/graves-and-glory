@@ -1,24 +1,20 @@
-"""Work copy of the archer geo for demo renders: the bow fix plus the quiver's lean.
+"""Work copy of a bow troop's geo for render_geo pictures: bow_* cube rotation z negated.
 
-python art/anim/archer/fix_geo_for_render.py [out]   (default work/archer_direct/archer.geo.json, rebuilt from the exported geo)
+python art/anim/archer/fix_geo_for_render.py [out] [troop]   (default work/archer_direct/archer.geo.json, archer)
 
-1. bow_* cubes: rotation z negated (the known bow fault: troop_rig.py writes the weapon builder's cube turn unchanged).
-2. quiver bone: rotation z negated (28 -> -28). Evidence (2026-11-11, archer fix round 1):
-   the hand model art/hand/archer/build_archer.py keys the quiver rot=(0, 0, -28) in its ModelPart frame (y down,
-   x + the troop's left: left_arm pivot x +5). The legacy renderer (TroopModelLoader -> ModelTransform, rotationZYX)
-   puts the fletching top (0, -9) at x = 9 * sin(-28) = -4.2: over the RIGHT (string-hand) shoulder.
-   art/anim/common/troop_rig.py geo() writes bone rotation as (-rx, ry, -rz) (a plain y flip). GeckoLib bakes a bone
-   rotation as (-rx, -ry, +rz) on an x-mirrored model and turns the entity 180 degrees, so in the world a file rotation
-   (fx, fy, fz) acts as Rz(-fz) Ry(-fy) Rx(fx), while the legacy part acts as Rz(-rz) Ry(-ry) Rx(rx): the file wants
-   the hand model's (rx, ry, rz) unchanged, and the exporter's x and z come out mirrored. render_geo (which mirrors
-   GeckoLib 4.8.4) shows the fletching at x +4.2, over the LEFT (bow) shoulder: the same family as the bow fault.
+The game is right and render_geo is wrong here (2026-11-12, run archer-geo1b): with the exported geo the game draws a
+smooth bow at full draw, while render_geo draws the same file as a sawtooth with the string behind the head. render_geo
+reads a cube's rotation z with the opposite sign to the game, so this copy turns the bow cubes back for the pictures.
+Nothing else changes: the quiver's lean is fixed at the source (art/anim/common/troop_rig.py geo()), and render_geo
+already agrees with the game on bone rotation.
 """
 import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-src = ROOT / "src/main/resources/assets/gravesandglory/geo/troop/archer.geo.json"
+troop = sys.argv[2] if len(sys.argv) > 2 else "archer"
+src = ROOT / f"src/main/resources/assets/gravesandglory/geo/troop/{troop}.geo.json"
 out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "work/archer_direct/archer.geo.json"
 g = json.loads(src.read_text(encoding="utf-8"))
 n = 0
@@ -28,9 +24,6 @@ for b in g["minecraft:geometry"][0]["bones"]:
             if c.get("rotation"):
                 c["rotation"] = [c["rotation"][0], c["rotation"][1], -c["rotation"][2]]
                 n += 1
-    if b["name"] == "quiver":
-        r = b["rotation"]
-        b["rotation"] = [r[0], r[1], -r[2]]
-        print("quiver rotation", r, "->", b["rotation"])
+out.parent.mkdir(parents=True, exist_ok=True)
 out.write_text(json.dumps(g), encoding="utf-8")
 print(out, n, "bow cubes turned")

@@ -465,7 +465,12 @@ class Rig:
             j = {"name": bn.name}
             if bn.parent: j["parent"] = bn.parent
             j["pivot"] = [r(ap[0]), r(s.ground - ap[1]), r(ap[2])]
-            if any(bn.rot): j["rotation"] = [r(-bn.rot[0]), r(bn.rot[1]), r(-bn.rot[2])]
+            if any(bn.rot):
+                # The game shows this file's bone roll mirrored against the hand model: an archer's quiver keyed over the
+                # string shoulder sat over the bow shoulder in game (2026-11-12, run archer-geo1b). Fixed for the bow
+                # troops' quivers only, so no other troop's geo moves; the general fix is the lead's call.
+                rz = bn.rot[2] if s.kind == "bow" and "quiver" in bn.name else -bn.rot[2]
+                j["rotation"] = [r(-bn.rot[0]), r(bn.rot[1]), r(rz)]
             cs = []
             for b in (bn.boxes if keep(bn) else ()):
                 o = [ap[i] + b.origin[i] for i in range(3)]
