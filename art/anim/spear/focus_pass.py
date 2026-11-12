@@ -193,7 +193,7 @@ def _write(clip, bone, chan, axis, W):
 
 
 def fix(doc, troop, clip, bone, chan="rotation", axis=0, signs=(1, -1), step=2.0, reach=20.0, const=False,
-        target=TARGET, involve=None, metric="armour"):
+        target=TARGET, involve=None, metric="armour", always=False):
     """One fix (see the module doc). Returns (before px, after px) of the bone's deepest pair, or None if it did not need one."""
     A = doc["animations"]
     if clip not in A:
@@ -208,7 +208,7 @@ def fix(doc, troop, clip, bone, chan="rotation", axis=0, signs=(1, -1), step=2.0
     _write(A[clip], bone, chan, axis, W)
     g1 = measure(doc, troop, clip, bone, chan, involve=involve, metric=metric)[0]
     b0, b1 = max(g0.values(), key=lambda g: g[0]), max(g1.values(), key=lambda g: g[0])
-    if b1[0] > b0[0] - 0.02:     # it did not help: the clip keeps what it had (the least amount is none)
+    if b1[0] > b0[0] - 0.02 and not always:     # it did not help: the clip keeps what it had (the least amount is none)
         if old is None:
             A[clip]["bones"][bone].pop(chan, None)
         else:

@@ -2079,10 +2079,12 @@ FIXES = {
         # the sweep's load, the thrust's lunge, the stun's sag, the hits' steps) swings both, eased, the least either way.
         dict(clips=["attack_low_sweep", "attack_high_thrust", "stun_upper", "hit_knockback", "hit_block", "hit_light_front",
                     "hit_light_back", "hit_light_right", "hit_light_left", "hit_medium_front", "hit_medium_back"],
-             bone="tabard", chan="rotation", axis=0),
+             bone="tabard", chan="rotation", axis=0, always=True),
+        # (always: kept where the pass's every-quarter-tick measure reads no gain; focus_check's half-tick samples do:
+        # hit_medium_back 1.90 -> 1.86, hit_pulled 1.94 -> 1.93)
         # where a swing alone is not enough the panels ride forward or back half a pixel to a pixel and a half
         dict(clips=["attack_high_thrust", "hit_medium_right", "hit_medium_left", "hit_pulled"], bone="tabard",
-             chan="position", axis=2, step=0.5, reach=1.5),
+             chan="position", axis=2, step=0.5, reach=1.5, always=True),
         # in the walk both legs meet the panels' lower edges: the tabard rides up half a pixel
         dict(clips=["walk_upper"], bone="tabard", chan="position", axis=1, signs=(1,), step=0.5, reach=1.5),
         # the knockback flings the left forearm across the breastplate (limb_in_body 2.51): the arm lifts forward from the
