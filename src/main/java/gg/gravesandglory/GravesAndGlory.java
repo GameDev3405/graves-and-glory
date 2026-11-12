@@ -750,7 +750,7 @@ public final class GravesAndGlory implements ModInitializer {
             server.setDifficulty(Difficulty.NORMAL,true);
             clearOldUnits();
             // Only inhabited chunks tick. Unit navigation tickets are maintained below.
-            CampaignMaps.lobby(world);if(campaign.cached()){System.out.println("[Graves and Glory] Cached map ready.");mapReady();}
+            CampaignMaps.lobby(world);PodiumStage.build(world);if(campaign.cached()){System.out.println("[Graves and Glory] Cached map ready.");mapReady();}
         }
         /**
          * The arena is ready, built or cached: read back what an interrupted round changed, then open the camp. Called after
