@@ -32,8 +32,8 @@ class T:
         for x in range(-4, 5):
             for z in range(-4, 5):
                 d = math.hypot(x, z)
-                if d <= r + 0.3 and not (r >= 2 and abs(x) == abs(z) == int(r)) and (cx + x, y, cz + z) not in self.c:
-                    if d > r - 0.6 and r >= 2 and _h(x, y, z, self.seed) < 0.22: continue
+                if d <= r + 0.3 and (cx + x, y, cz + z) not in self.c:
+                    if d > r - 0.5 and r >= 2 and _h(x, y, z, self.seed) < 0.07: continue
                     self.c[(cx + x, y, cz + z)] = leaf + L
 
 
@@ -76,14 +76,14 @@ def birch_pair():
 
 
 def spruce_tall():
-    t = T(6); t.trunk(0, 0, 1, 12, 'spruce')
-    for y, r in ((4, 3), (5, 2), (6, 3), (7, 2), (8, 2), (9, 1), (10, 2), (11, 1), (12, 1), (13, 0), (14, 0)): t.disc(y, r, 'spruce_leaves')
+    t = T(6); t.trunk(0, 0, 1, 14, 'spruce')                         # skirts: each wide ring sits on a narrower one
+    for y, r in ((3, 2.5), (4, 3.5), (5, 3), (6, 2), (7, 3), (8, 2.5), (9, 1.5), (10, 2.5), (11, 2), (12, 1), (13, 1.5), (14, 1), (15, 1), (16, 0), (17, 0)): t.disc(y, r, 'spruce_leaves')
     return t.c
 
 
 def spruce_small():
-    t = T(7); t.trunk(0, 0, 1, 6, 'spruce')
-    for y, r in ((2, 2), (3, 1), (4, 2), (5, 1), (6, 1), (7, 0), (8, 0)): t.disc(y, r, 'spruce_leaves')
+    t = T(7); t.trunk(0, 0, 1, 8, 'spruce')
+    for y, r in ((2, 2), (3, 2.5), (4, 2), (5, 1), (6, 2), (7, 1.5), (8, 1), (9, 1), (10, 0), (11, 0)): t.disc(y, r, 'spruce_leaves')
     return t.c
 
 
