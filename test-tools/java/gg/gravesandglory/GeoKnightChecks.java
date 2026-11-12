@@ -162,6 +162,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         /** Death mode: the foe swing it dies 4 ticks into, and the world tick it was killed (-1 until then). */
         volatile long killSwing = -1, killedAt = -1;
         volatile boolean killedDead;
+        /** Cancel mode (serverCancel), world ticks: the draw announced, the shooter stunned, the shot dropped (its cancel sent that tick); the announce's start, the swing tick then, and the counters before the drop. */
+        volatile long cAnnounce = -1, cStun = -1, cDrop = -1, cStart = -1, cSwing = -1;
+        volatile int cDrops0, cSent0, cDropped, cSent;
         Duel(GeoKnightChecks owner, GravesAndGlory.Battle b, String mode) {
             this.owner = owner; this.b = b; this.mode = mode; this.start = b.server.getTicks(); this.t0 = b.world.getTime();
             us = new GravesAndGlory.Unit[]{owner.knights.get(2), owner.knights.get(5)};
@@ -578,6 +581,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         if (d.killSwing >= 0 && d.killedAt < 0 && now - d.killSwing == KILL_AT) {
             f.mob.setInvulnerable(false); f.mob.kill(); d.killedAt = now; d.killedDead = f.mob.isDead();
         }
+        if (d.mode.equals("cancel")) { serverCancel(d, k, now); return; }
         for (int j = 0; j < 2; j++) {
             var u = d.us[j]; LivingEntity enemy = d.us[1 - j].mob;
             if (RANGED) { rangedNudge(d, j, k, now); continue; }
@@ -613,6 +617,33 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         if (j == 1 && d.mode.equals("death") && k > 20 && d.killSwing < 0)
             { int imp = Tactics.variants(u.spec.family()).get(0).impactTicks(); d.killSwing = Tactics.drawsAhead(u) ? Projectiles.shotStart(u.mob.getUuid(), now + lead, imp) : now + lead - imp; }
     }
+
+    /**
+     * Cancel mode (attack_v1 cancel, coordinator 2026-11-12): the own bow duelist's draw is announced as Tactics.tick does (Projectiles.drawAhead, drawLead ahead),
+     * then 15 ticks into it the shooter is stunned (the harness's "stunned" hold does the same) and its cooldown is let fall due, so the battle's own beat comes
+     * but cannot take the shot (Tactics.tick: stunned) and Tactics.dropUntaken drops it on the beat tick, the game's path for a shot its beat did not take. The foe never shoots.
+     */
+    void serverCancel(Duel d, int k, long now) {
+        var b = d.b; var u = d.us[0]; var f = d.us[1];
+        f.nextAttack = b.time + 1000;
+        if (d.cAnnounce < 0) {
+            u.nextAttack = b.time + 1000;
+            if (k < 20 || !u.mob.isAlive() || !f.mob.isAlive() || Tactics.pending(b, u)) return;
+            u.stunnedUntil = 0;
+            int lead = Tactics.drawLead(u);
+            if (Projectiles.drawAhead(b, u, f.mob, lead) <= 0) return;
+            d.cDrops0 = Projectiles.drawsDropped; d.cSent0 = Projectiles.cancelsSent; d.cStart = u.drawStart; d.cSwing = u.swingTick; d.cAnnounce = now;
+            return;
+        }
+        if (d.cStun < 0) {
+            u.nextAttack = b.time + 1000;
+            if (now - d.cAnnounce >= 15) { u.stunnedUntil = b.time + 400; u.nextAttack = b.time; d.cStun = now; }
+            return;
+        }
+        if (d.cDrop < 0 && Projectiles.drawsDropped > d.cDrops0) { d.cDrop = now; d.cDropped = Projectiles.drawsDropped - d.cDrops0; d.cSent = Projectiles.cancelsSent - d.cSent0; }
+    }
+    /** Cancel stage, client side: the own duelist's announce heard, its cancel accepted, its attack layer's largest weight before and after, and the first frame at weight 0. */
+    long cHeard = -1, cAccept = -1; double cZeroAt = -1, cMaxDrawW, cMaxAfterW; int cAccepted0;
 
     /** Puts the camera (the player's eye) at (x, z) looking along yaw. */
     void eye(GravesAndGlory.Battle b, double x, double z, float yaw, float pitch) {
@@ -965,6 +996,41 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     Phase1Checks.report("p1-geo-" + TROOP + "-attack-walk", walkSwingSamples > 10 && walkWrong.isEmpty() && impactSamples > 2 && minImpactW > .9 && foeBackMin > 0 && median(foeBack) > .1,
                         String.format("%d swinging samples, gait while swinging %s; weight at impact min %.3f over %d; foe backing speed min %.3f median %.3f",
                             walkSwingSamples, walkWrong.isEmpty() ? "always WALK" : "wrong " + walkWrong, minImpactW, impactSamples, foeBackMin, median(foeBack)));
+                    duel = null; next(tick, Tactics.drawsAhead(knights.get(2)) ? 14 : 7);
+                }
+            }
+            case 14 -> {
+                // A dropped bow shot (attack_v1 cancel): the own archer's announced draw is dropped by the server (serverCancel); the client must accept the cancel
+                // and its attack layer reach weight 0 within FADE_OUT + 2 ticks of the accept, with no shot loosed.
+                var own = knights.get(2);
+                if (k == 1) {
+                    cHeard = cAccept = -1; cZeroAt = -1; cMaxDrawW = cMaxAfterW = 0; cAccepted0 = MotionEvents.Client.cancelsAccepted;
+                    Phase1Checks.server(c, b -> { duel = new Duel(this, b, "cancel"); eye(b, cx + ATTACK_EYES[0][0], cz + ATTACK_EYES[0][1], (float) ATTACK_EYES[0][2], (float) ATTACK_EYES[0][3]); });
+                }
+                if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
+                Duel d = duel;
+                if (d == null || !d.mode.equals("cancel") || c.world == null) { if (k > 200) { Phase1Checks.report("p1-geo-" + TROOP + "-attack-cancel", false, "cancel duel never ran"); duel = null; next(tick, 7); } return; }
+                long now = c.world.getTime(), start = d.cStart; int id = own.mob.getId();
+                var e = c.world.getEntityById(id);
+                AttackController ac = e == null ? null : AttackController.LIVE.get(e);
+                if (start >= 0) {
+                    if (cHeard < 0 && MotionInput.kept(MotionEvents.Client.attacks(id), start) != null) cHeard = now;
+                    MotionInput.Cancel cc = MotionInput.cancelled(MotionEvents.Client.cancels(id), start);
+                    if (cAccept < 0 && cc != null) cAccept = cc.at();
+                    if (ac != null && ac.shownAt >= 0) {
+                        if (cAccept < 0 || ac.shownAt < cAccept) { if (ac.shownStart == start) cMaxDrawW = Math.max(cMaxDrawW, ac.shownWeight); }
+                        else if (cZeroAt < 0) { if (ac.shownWeight == 0) cZeroAt = ac.shownAt; }
+                        else cMaxAfterW = Math.max(cMaxAfterW, ac.shownWeight);
+                    }
+                }
+                if ((cAccept >= 0 && now > cAccept + AttackController.FADE_OUT + 14) || k > 400) {
+                    boolean loosed = own.swingTick != d.cSwing; int accepted = MotionEvents.Client.cancelsAccepted - cAccepted0;
+                    double zeroIn = cZeroAt < 0 ? -1 : cZeroAt - cAccept;
+                    boolean pass = d.cDropped >= 1 && d.cSent >= 1 && accepted >= 1 && cAccept >= 0 && cMaxDrawW > 0 && cZeroAt >= 0 && zeroIn <= AttackController.FADE_OUT + 2 && cMaxAfterW == 0 && !loosed;
+                    Phase1Checks.report("p1-geo-" + TROOP + "-attack-cancel", pass,
+                        String.format("loose seed %d hold %d; world ticks: announce %d (start %d), stun %d, drop and send %d (beat %d); client: announce heard %d, cancel accepted %d, weight 0 at %.2f (%.2f after the accept, limit %.0f); draws dropped %d, cancels sent %d, accepted by the client %d; draw weight before the accept max %.3f, after weight 0 max %.3f; shot loosed %s",
+                            Projectiles.looseTicks(own), Projectiles.hold(own), d.cAnnounce, start, d.cStun, d.cDrop, d.cAnnounce + Tactics.drawLead(own), cHeard, cAccept, cZeroAt, zeroIn, AttackController.FADE_OUT + 2, d.cDropped, d.cSent, accepted, cMaxDrawW, cMaxAfterW, loosed));
+                    Phase1Checks.server(c, b -> { own.stunnedUntil = 0; own.nextAttack = b.time + own.spec.cooldown(); });
                     duel = null; next(tick, 7);
                 }
             }
