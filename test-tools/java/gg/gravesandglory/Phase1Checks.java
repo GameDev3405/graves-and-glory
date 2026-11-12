@@ -3789,6 +3789,8 @@ public final class Phase1Checks implements ClientModInitializer {
                     else if(k>120){ok=false;why+="; Enter sent "+lastSent()+": the claim never landed WRONG";stage=4;}}
                 case 7->{if(k<8)return;click(c,box(c,"earlier"));next(tick);}
                 case 8->{if(k<3||!"1".equals(text("first"))&&k<40)return;boolean shown="1".equals(text("first"))&&button(c,"title-5")!=null&&button(c,"title-10")!=null;ok&=shown;why+="; back to tier 1: the claimed titles' plaques "+(shown?"take a press":"WRONG: missing");
+                    // C10-F1: the arrow rebuilt the widgets; the new dull Claim still carries its why as a tooltip
+                    boolean tip=claim!=null&&!claim.active&&claim.getTooltip()!=null;ok&=tip;why+=", the rebuilt dull Claim "+(tip?"keeps its tooltip":"WRONG: no tooltip (\""+text("claim-why")+"\")");
                     landedAt=-1;click(c,box(c,"title-10"));next(tick);}
                 case 9->{boolean landed="Pathfinder".equals(pr.title);if(landed&&landedAt<0)landedAt=tick;
                     if(landed&&k>=3&&("Pathfinder / worn".equals(text("roll-10"))||tick>=landedAt+20)){boolean worn="Pathfinder / worn".equals(text("roll-10"))&&"progress:title:Pathfinder".equals(lastSent());ok&=worn;why+="; Pathfinder's plaque sent "+lastSent()+", now \""+text("roll-10")+"\""+(worn?"":" WRONG");landedAt=-1;next(tick);}
