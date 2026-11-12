@@ -1506,16 +1506,22 @@ final class LevelChecks {
         String tabsBad = "", tabsInfo = "";
         void evalTabs(RecruitmentScreen s) {
             StringBuilder bad = new StringBuilder();
-            int rx = s.width * 65 / 100, rw = s.width - rx - 18, lw = s.width * 30 / 100;
+            // the barracks page is a War Table page (BarracksPage): its three plates on the ladder's axis, the rail as the Armoury has it
+            int[] la = WarTableRecruit.ladderAt(); int px = la[0] + WarTableRecruit.AXIS - BarracksPage.PLATE_W / 2;
             if (s.tab != 0) bad.append("the click on the Barracks tab left the page at " + s.tab + "; ");
-            if (s.recruit == null || s.recruit.getX() != rx || s.recruit.getY() != s.height - 112 || s.recruit.getWidth() != rw || s.recruit.getHeight() != 26) bad.append("the RECRUIT button moved; ");
-            if (s.disband == null || s.disband.getX() != rx || s.disband.getY() != s.height - 79 || s.disband.getWidth() != rw || s.disband.getHeight() != 20) bad.append("the disband button moved; ");
-            if (s.cancel == null || s.cancel.getX() != 18 || s.cancel.getY() != s.height - 67 || s.cancel.getWidth() != lw || s.cancel.getHeight() != 20) bad.append("the cancel button moved; ");
-            String back = backAt(s), want = "18," + (s.height - 32) + " 90x20"; // 12 px off the bottom edge on both pages
-            if (!back.equals(want) || !tabsFirst.startsWith("rail ")) bad.append("Back is at " + back + " here (want " + want + ") and " + tabsFirst + " on the Armoury tab (want its rail plaque); ");
-            if (s.barracksTab.getX() != 200 || s.barracksTab.getY() != 12 || s.armouryTab.getX() != 304 || s.armouryTab.getY() != 12 || !s.barracksTab.getMessage().getString().startsWith("> ") || s.armouryTab.getMessage().getString().startsWith("> ")) bad.append("the tabs are not where and as marked; ");
+            String plates = "";
+            int[][] want = {{px, la[1] + BarracksPage.RECRUIT_Y}, {px, la[1] + BarracksPage.DISBAND_Y}, {px, la[1] + BarracksPage.CANCEL_Y}};
+            ButtonWidget[] got = {s.recruit, s.disband, s.cancel}; String[] names = {"Recruit", "Disband", "Cancel"};
+            for (int i = 0; i < 3; i++) {
+                if (!(got[i] instanceof UiButton u)) { bad.append("the " + names[i] + " plate is not a War Table plate; "); continue; }
+                int[] r = u.canvasBox(); plates += names[i] + " " + r[0] + "," + r[1] + " ";
+                if (r[0] != want[i][0] || r[1] != want[i][1] || r[2] != BarracksPage.PLATE_W || r[3] != BarracksPage.PLATE_H) bad.append("the " + names[i] + " plate moved; ");
+            }
+            String back = backAt(s); // the rail's Back plaque, in the same place on both pages
+            if (!back.equals(tabsFirst) || !back.startsWith("rail ")) bad.append("Back is at " + back + " here and " + tabsFirst + " on the Armoury tab (want the same rail plaque); ");
+            if (!s.barracksTab.getMessage().getString().startsWith("> ") || s.armouryTab.getMessage().getString().startsWith("> ")) bad.append("the rail does not mark the barracks as the page you are on; ");
             if (s.page.buttons.stream().anyMatch(g -> s.children().contains(g))) bad.append("the Armoury's buttons are still on the barracks page; ");
-            tabsBad = bad.toString(); tabsInfo = "the barracks page after the tab click: RECRUIT " + rx + "," + (s.height - 112) + " " + rw + "x26, cancel 18," + (s.height - 67) + ", Back " + back;
+            tabsBad = bad.toString(); tabsInfo = "the barracks page after the tab click: plates " + plates.trim() + ", Back " + back;
         }
         void tabsReport() {
             Phase2Checks.report("p2-armoury-tabs", tabsBad.isEmpty() && tabsToggled && tabsClosed, tabsInfo + "; the key on the barracks page opened the Armoury tab of the same screen=" + tabsToggled + ", the key on the Armoury tab closed the screen=" + tabsClosed + (tabsBad.isEmpty() ? "" : "; WRONG: " + tabsBad));
