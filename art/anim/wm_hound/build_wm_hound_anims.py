@@ -161,7 +161,10 @@ class Solver:
             if g is None:
                 g = [-10, 0, 35, -25] if leg.startswith("front") else [20, 0, -40, 20]
             sol, err = H.solve_leg(pose, leg, np.asarray(tgt, float), pitch, g, M[par])
-            if err > 0.08:   # try the textbook bend
+            # try the textbook bend; not in a death, where a hind leg folded to its limit under the sinking rump has no exact
+            # answer and the retry flipped the paw between two misses (death_back t7.25: 44 degrees in a quarter tick):
+            # there the leg keeps following its own last pose
+            if err > 0.08 and not tag.startswith("death_"):
                 alt = [-10, 0, 35, -25] if leg.startswith("front") else [20, 0, -40, 20]
                 sol2, err2 = H.solve_leg(pose, leg, np.asarray(tgt, float), pitch, alt, M[par])
                 if err2 < err:
@@ -309,18 +312,22 @@ def _clear(pose, joint, gear, most):
 PENDANT_CLEAR = 0.5   # px the tier III throat skull keeps above the floor
 
 
-def pendant(pose):
+def pendant(pose, keep=False):
     """The throat skull hangs from the collar: when the head comes low it swings back against the throat (and rides up it)
-    rather than sink into the ground. Continuous in the pose, so baked keys stay smooth."""
-    pose.setdefault("throat_skull", {})["rotation"] = [0, 0, 0]
+    rather than sink into the ground. Continuous in the pose, so baked keys stay smooth. keep: start from the swing hang()
+    gave it and only take it further back where the floor needs it."""
+    ry = rz = rx0 = 0          # ints, as before: the clips that do not swing stay byte-identical
+    if keep:
+        rx0, ry, rz = pose.setdefault("throat_skull", {}).get("rotation", [0, 0, 0])
+    pose.setdefault("throat_skull", {})["rotation"] = [rx0, ry, rz]
     pose["throat_skull"].pop("position", None)
     if lowest(pose, "throat_skull") >= PENDANT_CLEAR:
         return
 
     def at(rx):
-        pose["throat_skull"]["rotation"] = [rx, 0, 0]
+        pose["throat_skull"]["rotation"] = [rx, ry, rz]
         return lowest(pose, "throat_skull")
-    lo, hi = 0.0, 75.0
+    lo, hi = rx0, max(rx0, 75.0)
     if at(hi) < PENDANT_CLEAR:
         need = PENDANT_CLEAR - at(hi)
         pose["throat_skull"]["position"] = [0, need, 0]
@@ -331,7 +338,118 @@ def pendant(pose):
             lo = mid
         else:
             hi = mid
-    pose["throat_skull"]["rotation"] = [hi, 0, 0]
+    pose["throat_skull"]["rotation"] = [hi, ry, rz]
+
+
+# ------------------------------------------------------------------------------------------------ hanging gear
+# Kort 2026-11-11: "i want the whole unit to be animated including pieces of its armor". What HANGS from the head swings in
+# the action clips (attacks, medium hits, the pull): the tier III throat skull and the tier II/III tooth collar, each a weight
+# on a damped spring behind the head, hinged where the bone is (the neck joint), with a slow swing of its own so a held pose
+# is not a statue. The tier III antler crown (antler_tuft_*) is bone grown from the skull: like a helm's fixed crest it rides
+# the head and gets no keys (knight round 3: "remove the wobble of the red strip on his head"). The ears and tail are keyed.
+#   period ticks, zeta damping, plumb how far it keeps hanging straight down as the head turns, most (x, z) degrees, sway deg
+HANG = {"throat_skull": dict(period=4.2, zeta=0.32, plumb=0.55, most=(26.0, 12.0), sway=2.0, phase=0.0),
+        "tooth_collar": dict(period=3.4, zeta=0.40, plumb=0.35, most=(12.0, 7.0), sway=1.4, phase=0.37)}
+HANG_BONES = ["tooth_collar"]           # keyed only by the clips that swing them (throat_skull is in UPPER already)
+HANG_FADE_IN, HANG_FADE_OUT = 1.0, 2.0   # ticks: every clip still starts and ends on its stance exactly
+
+
+def _piece_centroid_local(name):
+    """The centroid of a bone's cubes, in its own (unposed) model blocks, homogeneous."""
+    idx = [i for i, b in enumerate(H.m.cube_bone) if b == name]
+    c = np.concatenate([H.m.cube_list[i].corners for i in idx]).mean(axis=0)
+    return np.append(c, 1.0)
+
+
+def hang(samples, ticks):
+    """Swings every HANG piece on a spring behind the head (world space, sub-stepped per quarter tick), then keeps each clear of
+    the floor as pendant() does: the throat skull rides back up the throat, the tooth collar swings less. In place."""
+    n = len(samples) - 1
+    dt = 1.0 / SUB
+    for name, c in HANG.items():
+        if name not in H.m.bones:
+            continue
+        cl = _piece_centroid_local(name)
+        pv = np.append(H.m.bones[name].pivot / 16.0, 1.0)
+        # the spring swings about the piece's free hang; the throat skull's floor push (pendant) is laid on after it
+        key0 = [[0.0, 0.0, 0.0] if name == "throat_skull" else list(smp.get(name, {}).get("rotation", [0, 0, 0]))
+                for smp in samples]
+        if name == "throat_skull":
+            for smp in samples:
+                smp[name] = {"rotation": [0.0, 0.0, 0.0]}
+        Ms = [H.fk(smp, ["head"])["head"] for smp in samples]
+        rigid = []
+        P = []
+        for M, k in zip(Ms, key0):
+            Mp = M @ H.local(name, {"rotation": k})
+            rigid.append((Mp @ cl)[:3] * 16.0)
+            P.append((Mp @ pv)[:3] * 16.0)
+        L = float(np.linalg.norm(rigid[0] - P[0]))
+        if L < 0.5:
+            continue
+        d0 = (rigid[0] - P[0]) / L
+        w = 2 * math.pi / c["period"]
+        k_s, k_d = w * w, 2 * c["zeta"] * w
+        X, V = rigid[0].copy(), np.zeros(3)
+        out = []
+        for i in range(n + 1):
+            t = i * dt
+            dr = (rigid[i] - P[i]) / L
+            g = dr * (1 - c["plumb"]) + d0 * c["plumb"]
+            sw = c["sway"] * math.radians(1) * L * math.sin(2 * math.pi * (t / (1.5 * c["period"]) + c["phase"]))
+            side = np.cross(dr, [0.0, 0.0, 1.0])
+            side = side / (np.linalg.norm(side) + 1e-9)
+            G = P[i] + L * g / np.linalg.norm(g) + sw * side
+            if i > 0:
+                for _ in range(4):
+                    h = dt / 4
+                    A = k_s * (G - X) - k_d * V
+                    V = V + A * h
+                    X = X + V * h
+            u = X - P[i]
+            X = P[i] + L * u / (np.linalg.norm(u) + 1e-9)
+            out.append(X.copy())
+        need, swung = [], []
+        for i, smp in enumerate(samples):
+            t = i * dt
+            fade = ss(min(1.0, t / HANG_FADE_IN, (ticks - t) / HANG_FADE_OUT))
+            base = key0[i]
+            Mh = Ms[i]
+
+            def res(v, base=base, Mh=Mh, tgt=out[i]):
+                Mp = Mh @ H.local(name, {"rotation": [base[0] + v[0], base[1], base[2] + v[1]]})
+                return (Mp @ cl)[:3] * 16.0 - tgt
+            from scipy.optimize import least_squares as _ls
+            v = _ls(res, [0.0, 0.0], xtol=1e-6, ftol=1e-6).x
+            vx = max(-c["most"][0], min(c["most"][0], float(v[0]))) * fade
+            vz = max(-c["most"][1], min(c["most"][1], float(v[1]))) * fade
+            ent = smp.setdefault(name, {})
+            ent["rotation"] = [base[0] + vx, base[1], base[2] + vz]
+            if name == "throat_skull":
+                pendant(smp, keep=True)
+                need.append(smp[name]["rotation"][0] - (base[0] + vx))
+                swung.append(base[0] + vx)
+            else:
+                rest = min(HEAD_CLEAR, lowest({**smp, name: {"rotation": base}}, name))
+                s_ = 1.0
+                while lowest(smp, name) < rest - 1e-3 and s_ > 0:
+                    s_ = max(0.0, s_ - 0.1)
+                    ent["rotation"] = [base[0] + vx * s_, base[1], base[2] + vz * s_]
+        if need:
+            # the floor's push back against the throat comes on as a swing, not in one frame (attack_lunge t8.75 snapped 47
+            # degrees): the push each sample needs, spread to its neighbours at PENDANT_RATE so the skull is already
+            # swinging back as the head comes down onto the turf, then pendant() again for what is left
+            rate = PENDANT_RATE / SUB
+            for i, smp in enumerate(samples):
+                fade = ss(min(1.0, i * dt / HANG_FADE_IN, (ticks - i * dt) / HANG_FADE_OUT))   # first and last: the stance's
+                extra = max(need[i], fade * max(max(0.0, nd - rate * abs(i - j)) for j, nd in enumerate(need)))
+                r = smp[name]["rotation"]
+                smp[name]["rotation"] = [min(75.0, swung[i] + extra), r[1], r[2]]
+                smp[name].pop("position", None)
+                pendant(smp, keep=True)
+
+
+PENDANT_RATE = 22.0   # deg per tick the floor may swing the throat skull back
 
 
 # ------------------------------------------------------------------------------------------------ shared poses
@@ -373,8 +491,9 @@ CLIPS = {}
 SOLVER = Solver()
 
 
-def sample_clip(name, ticks, fn, loop=True, tag=None, layers=("legs", "upper"), timeline=None, solve=True):
-    """fn(t) -> (upper dict, body dict, feet dict, extra dict). Writes name_legs and name_upper (or the single names given)."""
+def sample_clip(name, ticks, fn, loop=True, tag=None, layers=("legs", "upper"), timeline=None, solve=True, hang_gear=False):
+    """fn(t) -> (upper dict, body dict, feet dict, extra dict). Writes name_legs and name_upper (or the single names given).
+    hang_gear: swing the head's hanging gear (hang()) once the clip is sampled."""
     tag = tag or name
     n = int(round(ticks * SUB))
     samples, worst = [], 0.0
@@ -393,6 +512,10 @@ def sample_clip(name, ticks, fn, loop=True, tag=None, layers=("legs", "upper"), 
             worst = max(worst, SOLVER.legs(pose, feet, tag))
         pendant(pose)
         samples.append(full(pose))
+    if hang_gear:
+        hang(samples, ticks)
+        for smp in samples:
+            smp.setdefault("tooth_collar", {}).setdefault("rotation", [0, 0, 0])
     return samples, worst
 
 
@@ -540,8 +663,9 @@ def ward(t):
 
 # attacks ---------------------------------------------------------------------------------------------
 def blend_ready(t, up, body, feet, w):
-    """Mixes the clip's pose toward the ready stance by w (rotations and positions linearly)."""
-    ru, rb, rf = ready_pose(t)
+    """Mixes the clip's pose toward the ready stance by w (rotations and positions linearly): toward the stance's pose at its
+    tick 0, which is where the clip started, so the last frame is the first (settle)."""
+    ru, rb, rf = ready_pose(0)
     for b in up:
         for ch in up[b]:
             up[b][ch] = [a + (r - a) * w for a, r in zip(up[b][ch], ru[b].get(ch, [0, 0, 0]))]
@@ -551,6 +675,10 @@ def blend_ready(t, up, body, feet, w):
 
 
 BITE_T, LUNGE_T, IMPACT = 16.0, 16.0, 8.0   # equal lengths: the harness expects every frame of every variant
+# The neck carries the head up and out as it draws back (bite) or gathers (lunge), so the skull-mask's back edge does not
+# sink into the chest (focus check armour_clip, chest into skullcap 2.0 px at bite t4.5 and lunge t3): px (up, forward -z)
+NECK_LIFT = (0.4, -0.8)
+LUNGE_NECK = (0.0, -0.8)   # the gather: out only; lifting it too pitched the chest down onto the front leg wraps (scorecard pen_limb)
 
 
 def bite(t):
@@ -558,13 +686,14 @@ def bite(t):
     # anticipation: the haunches sink and the head draws back and up, jaw opening; strike: the back legs drive the chest
     # forward and down, the head thrusts out; shut at the impact; shake; recover
     draw = K([(0, 0), (4.5, 1), (6, 0.6), (7.2, -0.2), (8, -1), (10.5, -0.8), (13, -0.3), (16, 0)])(t)
-    gape = K([(0, 0.15), (3, 0.5), (5.2, 0.95), (6, 1.0), (7.5, 1.0), (8, 0), (9.5, 0.05), (11, 0.25), (16, 0.15)])(t)
+    gape = K([(0, 0.0), (3, 0.5), (5.2, 0.95), (6, 1.0), (7.5, 1.0), (8, 0), (9.5, 0.05), (11, 0.25), (16, 0.15)])(t)
     thrust = K([(0, 0), (5.5, -0.3), (7.4, 0.8), (8, 1), (9.6, 0.8), (12.5, 0.25), (16, 0)])(t)
     shake = damp(t, 8.3, 2.2, 2.2)
     up = {"chest": {"rotation": [5 - 9 * draw, 3 * shake, -2 * shake]},
-          "head": {"rotation": [-9 - 16 * draw, 14 * shake, -8 * shake], "position": [0, -0.3 * thrust, -2.4 * thrust]},
+          "head": {"rotation": [-9 - 16 * draw, 14 * shake, -8 * shake],
+                   "position": [0, -0.3 * thrust + NECK_LIFT[0] * max(draw, 0), -2.4 * thrust + NECK_LIFT[1] * max(draw, 0)]},
           "jaw": {"rotation": [5 + 36 * gape, 0, 0]},
-          "tail": {"rotation": [24 + 8 * draw, -10 * shake, 0]}}
+          "tail": {"rotation": [24 + 8 * draw, ru["tail"]["rotation"][1] - 10 * shake, 0]}}   # from the stance's own carriage
     up["ear_right"] = {"rotation": [-6 + 14 * max(-draw, 0), 0, 4]}
     up["ear_left"] = {"rotation": [-6 + 14 * max(-draw, 0), 0, -4]}
     body = {"position": [0.3 * shake, -1.5 - 0.7 * max(draw, 0) - 0.3 * max(-draw, 0), -0.6 + 1.6 * draw],
@@ -586,13 +715,14 @@ def lunge(t):
     gather = K([(0, 0), (2, 0.5), (4.8, 1), (5.6, 0.7), (6.6, 0), (16, 0)])(t)
     reach = K([(0, 0), (4.8, -0.1), (6, 0.45), (7.3, 0.92), (8, 1), (9, 0.9), (10.2, 0.75), (13, 0.25), (16, 0)])(t)
     air = K([(0, 0), (5.2, 0), (6.4, 0.8), (7.6, 1), (8.6, 0.6), (9.6, 0), (16, 0)])(t)
-    gape = K([(0, 0.1), (4, 0.4), (6.5, 1), (7.4, 1), (8, 0), (9.5, 0.1), (12, 0.25), (16, 0.15)])(t)
+    gape = K([(0, 0.0), (4, 0.4), (6.5, 1), (7.4, 1), (8, 0), (9.5, 0.1), (12, 0.25), (16, 0.15)])(t)
     land = damp(t, 9.6, 3.0, 1.6)
     up = {"chest": {"rotation": [5 + 4 * gather - 9 * air + 4 * land, 0, 0]},
-          "head": {"rotation": [-9 + 8 * gather + 6 * air - 6 * reach * (1 - air) - 4 * land, 0, 0]},
+          "head": {"rotation": [-9 + 8 * gather + 6 * air - 6 * reach * (1 - air) - 4 * land, 0, 0],
+                   "position": [0, LUNGE_NECK[0] * gather, LUNGE_NECK[1] * gather]},
           "jaw": {"rotation": [5 + 40 * gape, 0, 0]},
           "ear_right": {"rotation": [-6 + 26 * reach, 0, 4]}, "ear_left": {"rotation": [-6 + 26 * reach, 0, -4]},
-          "tail": {"rotation": [24 - 10 * gather + 14 * reach, 0, 0]}}
+          "tail": {"rotation": [24 - 10 * gather + 14 * reach, ru["tail"]["rotation"][1], 0]}}
     body = {"position": [0, -1.5 - 1.6 * gather + 1.6 * air - 0.5 * max(land, 0), -0.6 - 5.0 * reach + 0.8 * gather],
             "rotation": [3 + 2.5 * gather - 9 * air, 0, 0]}
     feet = dict(rf)
@@ -609,10 +739,12 @@ def lunge(t):
         base = REST_SOLE[l] + [(-0.2 if "right" in l else 0.2), 0, 0.6]
         mid = base + [0, 0, 3.4]
         if t < 9:
-            p, pitch = planted(base, -45 * env(t, 5.0, 6.8, 7.2, 8.8))
+            push = -45 * env(t, 5.0, 6.8, 7.2, 8.8)
+            p, pitch = planted(base, push)
             feet[l] = (p, pitch)
-            if t > 7.2:
-                feet[l] = step(base, mid, (t - 7.2) / 2.6, 1.4, 25, False)
+            if t > 7.2:   # the toe roll of the push carries into the hop and fades out (it snapped flat at t7.2: a pop)
+                q, qp = step(base, mid, (t - 7.2) / 2.6, 1.4, 25, False)
+                feet[l] = lifted(q + (p - np.array(base, float)), qp + push)
         elif t < 12.6:
             feet[l] = step(base, mid, (t - 7.2) / 2.6, 1.4, 25, False) if t < 9.8 else planted(mid)
         else:
@@ -830,8 +962,9 @@ def main():
     CLIPS["stance_ward_upper"] = bake(s, READY_P, True, UPPER)
     tl = {fmt_t(IMPACT / TPS): "impact"}
     for nm, L, fn in (("attack_bite", BITE_T, bite), ("attack_lunge", LUNGE_T, lunge)):
-        s, w = sample_clip(nm, L, fn, loop=False)
-        emit(nm, L, s, False, upper_name=nm, legs_name=nm + "_legs", timeline=tl); report[nm] = w
+        s, w = sample_clip(nm, L, fn, loop=False, hang_gear=True)
+        CLIPS[nm] = bake(s, L, False, UPPER + HANG_BONES, tl)
+        CLIPS[nm + "_legs"] = bake(s, L, False, LOWER); report[nm] = w
     ready0 = full({**{k: dict(v) for k, v in ready_pose(0)[0].items()}, "body": dict(ready_pose(0)[1])})
     head_clear(ready0)
     SOLVER.legs(ready0, ready_pose(0)[2], "ready0")
@@ -840,30 +973,32 @@ def main():
         for d in ("front", "back", "right", "left"):
             L, fn = hit(kind, d)
             nm = f"hit_{kind}_{d}"
-            s, w = sample_clip(nm, L, fn, loop=False); report[nm] = w
+            med = kind == "medium"     # the medium (and heavy, x1.55) hits swing the hanging gear; a light flinch does not
+            ups = UPPER + (HANG_BONES if med else [])
+            s, w = sample_clip(nm, L, fn, loop=False, hang_gear=med); report[nm] = w
             delta = []
             for smp in s:
                 dd = {}
-                for b in UPPER + LOWER:
-                    r = [a - c for a, c in zip(smp[b]["rotation"], ready0[b]["rotation"])]
+                for b in ups + LOWER:
+                    r = [a - c for a, c in zip(smp[b]["rotation"], ready0.get(b, {}).get("rotation", [0, 0, 0]))]
                     dd[b] = {"rotation": r}
                     if b in ("body", "throat_skull"):
                         dd[b]["position"] = [a - c for a, c in zip(smp[b].get("position", [0, 0, 0]),
                                                                     ready0[b].get("position", [0, 0, 0]))]
                 delta.append(dd)
-            CLIPS[nm] = bake(delta, L, False, UPPER)
+            CLIPS[nm] = bake(delta, L, False, ups)
             CLIPS[nm + "_legs"] = bake(delta, L, False, LOWER)
     L, fn = hit_pull()
-    s, w = sample_clip("hit_pulled", L, fn, loop=False); report["hit_pulled"] = w
+    s, w = sample_clip("hit_pulled", L, fn, loop=False, hang_gear=True); report["hit_pulled"] = w
     delta = []
     for smp in s:
         dd = {}
-        for b in UPPER + LOWER:
-            dd[b] = {"rotation": [a - c for a, c in zip(smp[b]["rotation"], ready0[b]["rotation"])]}
+        for b in UPPER + HANG_BONES + LOWER:
+            dd[b] = {"rotation": [a - c for a, c in zip(smp[b]["rotation"], ready0.get(b, {}).get("rotation", [0, 0, 0]))]}
             if b in ("body", "throat_skull"):
                 dd[b]["position"] = [a - c for a, c in zip(smp[b].get("position", [0, 0, 0]), ready0[b].get("position", [0, 0, 0]))]
         delta.append(dd)
-    CLIPS["hit_pulled"] = bake(delta, L, False, UPPER)
+    CLIPS["hit_pulled"] = bake(delta, L, False, UPPER + HANG_BONES)
     CLIPS["hit_pulled_legs"] = bake(delta, L, False, LOWER)
     for d in ("back", "forward", "left", "right"):
         death_clip(d)
