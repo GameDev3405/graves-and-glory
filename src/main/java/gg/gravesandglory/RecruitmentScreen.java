@@ -81,7 +81,7 @@ class RecruitmentScreen extends ArmyScreen {
     @Override public void tick(){if(tab==1)page.tick();else{barracks.tick();update();}}
     @Override public boolean mouseClicked(double x,double y,int b){boolean r=super.mouseClicked(x/uiScale,y/uiScale,b);if(tab==0)setFocused(null);return r;}
     @Override public boolean mouseReleased(double x,double y,int b){return super.mouseReleased(x/uiScale,y/uiScale,b);}
-    @Override public boolean mouseScrolled(double x,double y,double amount){if(tab==1&&page.scroll(amount>0?-1:1))return true;if(tab==0&&barracks.scroll(amount>0?-1:1))return true;return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
+    @Override public boolean mouseScrolled(double x,double y,double amount){if(amount==0)return true;if(tab==1&&page.scroll(amount>0?-1:1))return true;if(tab==0&&barracks.scroll(amount>0?-1:1))return true;return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
     /** The Armoury key switches to the Armoury page (from the barracks) or closes the screen (from the Armoury); Page Up and Down scroll the Armoury's troop rows. */
     @Override public boolean keyPressed(int key,int scan,int mods){
         if(armoury!=null&&armoury.matchesKey(key,scan)&&!(tab==1&&page.editing>0)){if(tab==1)close();else show(1);return true;}
