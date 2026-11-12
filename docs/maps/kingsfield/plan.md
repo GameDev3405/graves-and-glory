@@ -65,7 +65,7 @@ Key pieces (Kort sees them before paste):
 | K2 | Grange (West; East is the mirror) | 56 x 56, wall 5, gatehouses 9 | Two gatehouses, two side doors, wall walk reached by straight stairs. Inside: point ring in the yard, hall (Siege keep) 18 x 12, granary, cart shed, well |
 | K3 | Tithe Barn | 34 x 16, eaves 6, ridge 13 | Wide and low, great doors both long sides so the wagon passes through. Point B on its forecourt |
 | K4 | Windmill | base 13 x 13, cap at 22, sails 21 across | Tall post mill on a stone base. Point D on its forecourt. Same cover as the barn: a 34 x 16 yard wall |
-| K5 | The Hand | 44 x 30, at most 2 high | Palm up, lying along the King's Road, which runs across the palm; fingers flat, pointing east. Point C pad sits in the palm |
+| K5 | The Hand | 30 x 44 (x by z), at most 2 high | Palm up, wrist south, fingers north toward the north ramp; the King's Road crosses the palm, which is flush with the pit floor. Fingers and heel 1 high, joints 2. Little finger snapped. Point C pad sits in the palm. Generator `gen/hand.py` |
 | K6 | Quarry crane | 9 x 9 base, 17 high, jib 12 out over the pit | Treadwheel crane on the north rim, east of the ramp |
 
 Supporting pieces (I check these myself):
