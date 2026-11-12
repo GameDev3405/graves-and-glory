@@ -8,6 +8,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import booth_render as br  # noqa: E402
+import render_geo as rg  # noqa: E402
 from booth_config import BoothError  # noqa: E402
 
 FIX = os.path.join(HERE, "fixtures")
@@ -50,6 +51,17 @@ class RenderTest(unittest.TestCase):
     def test_clip_ticks(self):
         self.assertEqual(br.clip_ticks(ANIM, "arm_swing"), 21)
         self.assertEqual(br.clip_ticks(ANIM, "head_look"), 41)
+
+    def test_a_play_once_clip_ends_on_its_last_pose_not_the_bind_pose(self):
+        loop = rg.load_clip(ANIM, "arm_swing")
+        self.assertEqual(br._shown_ticks(loop), list(range(21)))
+        once = copy.copy(loop)
+        once.loop = "once"                  # stopped AT its length: the game never draws that tick
+        self.assertIsNone(once.effective_tick(once.length))
+        ticks = br._shown_ticks(once)
+        self.assertEqual(ticks[:-1], list(range(20)))
+        self.assertLess(ticks[-1], once.length)
+        self.assertTrue(all(once.effective_tick(t) is not None for t in ticks))
 
     def test_three_viewers_share_frame_size(self):
         r = br.render_clip({"reference": src("arm_swing", geo=self.tall_geo()),

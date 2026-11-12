@@ -177,6 +177,10 @@ class AnimTest(unittest.TestCase):
         self.assertEqual(rg.additive_under("hit_block", {"stance_ready_upper", "idle_legs"}), ["stance_ready_upper"])
         self.assertIsNone(rg.additive_under("hit_block_legs", {"stance_ready_legs"}))
         self.assertIsNone(rg.additive_under("stun_upper", {"stance_ready_legs"}))
+        under = ["stance_ready_upper", "stance_ready_legs"]
+        self.assertEqual(rg.additive_split("hit_block", ["hit_block_legs"], under), (under, ["hit_block_legs", "hit_block"]))
+        self.assertEqual(rg.additive_split("stun_out_upper", ["stun_legs"], under),       # the stun's legs are a pose
+                         (["stance_ready_upper", "stun_legs"], ["stun_out_upper"]))
 
 
 class FootSlideTest(unittest.TestCase):

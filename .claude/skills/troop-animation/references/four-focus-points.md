@@ -94,3 +94,9 @@ aimed: go to that tick in the builder, do not nudge the whole clip. The limits a
   `render_geo.py ... --clip stance_ready_upper --clip stance_ready_legs --add-clip hit_medium_front --add-clip hit_medium_front_legs`.
   A hit must be zero at both ends (`settle` compares it with the stance under it). `scorecard.py` still scores hits
   over the rest pose. `focus_check.py --rest-pose` gives the old numbers.
+  A base clip that is a pose of its own is **held, not added**: `stun_out_upper` is checked over `stance_ready_upper` +
+  `stun_legs` (the game still holds the stun's legs when the shake-off starts). Added onto `stance_ready_legs`, the stun's
+  knee bend counted twice and every troop showed a false floor row (hearthguard 1.87, spider 4.26).
+- **Booth sheets end on the clip's last pose (2026-11-12).** A play-once clip has stopped at its length and the renderer
+  returns the bind pose there; `booth_render` now takes that last frame a hair before the end. A sheet whose last frame
+  stands in the bind pose was built before this fix: rebuild it.

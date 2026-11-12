@@ -773,6 +773,19 @@ def additive_under(name, names):
     return [c for c in ("stance_ready_upper", "stance_ready_legs") if c in names]
 
 
+def additive_split(name, base, under):
+    """(held, added) clip names for an additive clip `name` shown with its base clips over the stance clips `under`.
+    A base that is additive itself (a hit's legs) is added with the clip. A base that is a pose of its own (stun_legs
+    under stun_out_upper: the game still holds the stun's legs when the shake-off starts, StanceController's handover)
+    takes the place of the stance clip of the same half; adding it onto stance_ready_legs bent the knees twice
+    (ic_hearthguard stun_out_upper, a false 1.87 px floor row, 2026-11-12)."""
+    added = [b for b in base if b.startswith(("hit_", "stun_out"))] + [name]
+    poses = [b for b in base if b not in added]
+    half = lambda c: "legs" if c.endswith("_legs") else "upper"
+    held = [u for u in under if u not in base and half(u) not in {half(q) for q in poses}] + poses
+    return held, added
+
+
 class Scene:
     DRAW_FRAMES = ("rest", "pull_0", "pull_1", "pull_2")
 

@@ -383,8 +383,9 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
     top = clips[-1]
     held = None
     if under:
-        held = rg.Scene(rig.model, None, [rg.load_clip(anim, u) for u in under if u not in base], 0.0)
-        scene = rg.Scene(rig.model, None, held.clips, 0.0, None, clips)
+        hold, add = rg.additive_split(name, list(base), under)     # a pose base (stun_legs) is held, not added
+        held = rg.Scene(rig.model, None, [rg.load_clip(anim, u) for u in hold], 0.0)
+        scene = rg.Scene(rig.model, None, held.clips, 0.0, None, [rg.load_clip(anim, a) for a in add])
     else:
         scene = rg.Scene(rig.model, None, clips, speed if kind == "gait" else 0.0)
     n = max(1, int(math.floor(top.length / STEP + 1e-6)))

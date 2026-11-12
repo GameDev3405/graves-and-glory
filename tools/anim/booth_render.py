@@ -48,6 +48,14 @@ def _ticks_of(clip):
     return int(math.ceil(clip.length - 1e-9)) + 1
 
 
+def _shown_ticks(clip):
+    """The ticks a sheet shows of a clip, one per game tick. A play-once clip has stopped AT its length (Clip.effective_tick
+    returns None there and the bones go back to the model pose), so its last frame is taken a hair before the end: the
+    sheet ends on the clip's last pose, as the game's last drawn frame does, not on the bind pose (sweep T02-F1)."""
+    end = clip.length - 1e-4 if clip.loop == "once" else float("inf")
+    return [min(float(t), end) if t >= end else t for t in range(_ticks_of(clip))]
+
+
 def clip_ticks(anim_path, clip_name):
     """Frames needed to show the clip once: one per game tick, both ends included."""
     try:
@@ -66,13 +74,15 @@ def _scene(source, viewer):
         with open(path, encoding="utf-8") as f:
             under = rg.additive_under(name, set(json.load(f).get("animations", {})))
         if under:       # a hit is added onto the ready stance in game: show it that way, not over the rest pose
-            held = [rg.load_clip(path, u) for u in under if u not in [n for _, n in source.clips]]
-            scene = rg.Scene(model, list(source.textures), held, 0.0, None, clips)
+            hold, add = rg.additive_split(name, [n for _, n in source.clips[:-1]], under)
+            where = dict((n, q) for q, n in source.clips)       # a pose base (stun_legs) is held, not added
+            scene = rg.Scene(model, list(source.textures), [rg.load_clip(where.get(u, path), u) for u in hold], 0.0, None,
+                             [rg.load_clip(where[a], a) for a in add])
         else:
             scene = rg.Scene(model, list(source.textures), clips, source.speed)
     except (rg.GeoError, OSError, ValueError, KeyError) as e:
         raise BoothError("%s viewer: %s" % (viewer, e))
-    return scene, list(range(_ticks_of(clips[-1])))
+    return scene, _shown_ticks(clips[-1])
 
 
 def _slide(scene_ticks, source, foot_bones, fallback=False):
