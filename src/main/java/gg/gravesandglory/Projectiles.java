@@ -169,7 +169,7 @@ public final class Projectiles {
      */
     static void loose(GravesAndGlory.Unit u,double peak){
         var rows=Tactics.variants(u.spec.family());if(rows.isEmpty())return;
-        int variant=shotVariant(u,rows,peak);
+        int variant=pinned(u,rows,shotVariant(u,rows,peak),u.mob.getWorld().getTime(),true);u.drawVariant=-1;u.drawStart=-1;
         u.catchVariant=variant;u.swingTick=Math.max(0,u.mob.getWorld().getTime()-rows.get(variant).impactTicks()-hold(u));
         MotionEvents.sendAttack(u,variant,u.swingTick);
     }
@@ -181,6 +181,18 @@ public final class Projectiles {
     static int looseTicks(GravesAndGlory.Unit u){return Tactics.drawsAhead(u)?seed(u.mob.getUuid()).loose():0;}
     /** The extra ticks a bow troop's shot holds its full draw (Seed.hold), so its clip starts that much before impactTicks ahead of the loose. Others: 0. */
     static int hold(GravesAndGlory.Unit u){return Tactics.drawsAhead(u)?seed(u.mob.getUuid()).hold():0;}
+    /**
+     * The variant a shot plays: the one its announce chose (Unit.drawVariant) when the shot is that announced one (the same start tick), else fresh. An
+     * announce repeats each beat for a bow and the loose then resends it; a target moving, or the arc fire works out again at the loose, can turn the arc between
+     * volley and direct, and a new variant at the same start would be a second clip. Only the clip is pinned: the arrow still flies its own arc.
+     * at is the loose's world tick (loosing true) or the announced beat's (loosing false: shotStart adds the troop's loose seed).
+     */
+    static int pinned(GravesAndGlory.Unit u,List<Spec.AttackVariantsRow> rows,int fresh,long at,boolean loosing){
+        int v=u.drawVariant;if(v<0||v>=rows.size()||u.drawStart<0)return fresh;
+        int impact=rows.get(v).impactTicks();
+        long start=loosing?at-impact-hold(u):Tactics.drawsAhead(u)?shotStart(u.mob.getUuid(),at,impact):at-impact;
+        return start==u.drawStart?v:fresh;
+    }
     static MotionMath.Seed seed(java.util.UUID id){return MotionMath.seed(id.getMostSignificantBits(),id.getLeastSignificantBits());}
     /**
      * The world tick a bow troop's shot on the beat at beat tick starts its clip (attack_v1's startTick): it leaves loose ticks after the beat and
@@ -197,7 +209,7 @@ public final class Projectiles {
     /**
      * Bow-draw fix Plan B (R110), cosmetic only, also for a crossbow (Tactics.announcesAhead): before a troop's shot (Tactics.tick calls it on each beat from
      * Tactics.drawLead ticks ahead, 30 for a bow and 10 for the rest, until the shot's beat; ahead is the ticks from now to that beat, Tactics.shotAhead), the attack_v1 loose will send, sent now. loose stamps its swing impactTicks before the tick the shot
-     * leaves; ahead ticks from now that is now + ahead - impactTicks, the same startTick and, for the same arc, the same variant, so the
+     * leaves; ahead ticks from now that is now + ahead - impactTicks, the same startTick and the same variant (pinned: Unit.drawVariant), so the
      * client starts the clip now (the draw plays before the loose) and drops loose's copy as the event it already has (MotionEngine.events).
      * Nothing else changes: no projectile, no cooldown, no catchVariant or swingTick (loose still sets those when the shot leaves). If the
      * shot never leaves (its target died, the troop was stunned), the draw plays with no arrow. Returns how many players it was sent to.
@@ -205,9 +217,11 @@ public final class Projectiles {
     static int drawAhead(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,int ahead){
         var rows=Tactics.variants(u.spec.family());if(rows.isEmpty())return 0;
         Vec3d from=u.mob.getEyePos(),to=aim(target);String kind=Abilities.visual(u);
-        int variant=shotVariant(u,rows,arc(b,u,from,to,kind.equals("arrow")||kind.equals("trident")).peak());
-        long beat=u.mob.getWorld().getTime()+ahead;int impact=rows.get(variant).impactTicks();
+        long beat=u.mob.getWorld().getTime()+ahead;
+        int variant=pinned(u,rows,shotVariant(u,rows,arc(b,u,from,to,kind.equals("arrow")||kind.equals("trident")).peak()),beat,false); // a repeat keeps the first announce's variant
+        int impact=rows.get(variant).impactTicks();
         long start=Tactics.drawsAhead(u)?shotStart(u.mob.getUuid(),beat,impact):beat-impact;if(start<0)return 0; // a crossbow has no loose or hold seed: loose stamps beat - impact
+        u.drawVariant=variant;u.drawStart=start;
         return MotionEvents.sendAttack(u,variant,start);
     }
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){

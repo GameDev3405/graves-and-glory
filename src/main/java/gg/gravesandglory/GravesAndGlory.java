@@ -317,6 +317,8 @@ public final class GravesAndGlory implements ModInitializer {
          * catch-up sends with swingTick. Kept apart from lastVariant so a shot never steers the next melee pick (Task 13 fix round 1, M5).
          */
         int catchVariant=-1;
+        /** The shot announced ahead (Projectiles.drawAhead): its variant and world start tick, -1 none. Its repeats and its loose keep that variant (the client keeps one clip per variant and start), whatever arc the shot flies by then. */
+        int drawVariant=-1;long drawStart=-1;
         /** The orders (Charge and Hold) a blow of his carries while it lands (Tactics.land sets them from its swing, Ruling R29, and clears them after): every hit of that blow (its cleave or splash too, and a trample) reads it through Combat.charge; null otherwise. */
         Combat.Charge blow;
         /** The swing (an index into Tactics.variants of its family) of the blow that is landing, set and cleared with blow: hit_v1 reads its kind, zone and weight. -1 otherwise. */
