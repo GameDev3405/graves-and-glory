@@ -12,7 +12,7 @@ FLAGS = [('stone_bricks', 45), ('andesite', 25), ('polished_andesite', 20), ('co
 
 
 def build(b):
-    T = G + 5                                             # wall head
+    T = G + 7                                             # wall head
     for x in range(X0, X1 + 1):
         for z in range(Z0, Z1 + 1):
             edge = x in (X0, X1) or z in (Z0, Z1)
@@ -29,16 +29,23 @@ def build(b):
     # lancet windows and buttresses on the long sides
     for x in (21, 26, 27):
         for z in (Z0, Z1):
-            for y in (G + 2, G + 3, G + 4): b.set(x, y, z, 'iron_bars[east=true,west=true]')
+            for y in range(G + 2, G + 7): b.set(x, y, z, 'yellow_stained_glass_pane[east=true,west=true]')
+    for z in (104, 109):                                   # the east end: tall lights either side of the altar wall
+        for y in range(G + 2, G + 7): b.set(X1, y, z, 'yellow_stained_glass_pane[north=true,south=true]') if z < 104 or z > 109 else None
+    for z in (102, 111):
+        for y in range(G + 2, G + 7): b.set(X1, y, z, 'yellow_stained_glass_pane[north=true,south=true]')
     for x in (19, 23, 29):
         for z, f in ((Z0 - 1, 'south'), (Z1 + 1, 'north')):
             if x == 23 and z == Z0 - 1: continue
-            for y in (G + 1, G + 2): b.set(x, y, z, b.pick(MASON))
-            b.set(x, G + 3, z, 'stone_brick_stairs[facing=%s,half=bottom,shape=straight]' % f)
+            for y in range(G + 1, G + 5): b.set(x, y, z, b.pick(MASON))
+            b.set(x, G + 5, z, 'stone_brick_stairs[facing=%s,half=bottom,shape=straight]' % f)
     # roof: slate, stone gables, a round light in the west gable
     b.gable_x(X0, X1, Z0, Z1, T + 1, 'deepslate_tile_stairs', 'deepslate_tile_slab', fill=MASON)
     for z in (106, 107):
-        for y in (T + 3, T + 4): b.set(X0, y, z, 'iron_bars[north=true,south=true]')
+        for y in (T + 3, T + 4): b.set(X0, y, z, 'yellow_stained_glass_pane[north=true,south=true]')
+    for z in (105, 106, 107, 108):
+        for y in (T + 2, T + 3, T + 4, T + 5):
+            if (z in (105, 108)) != (y in (T + 2, T + 5)) and b.get(X0, y, z) not in (None, 'air'): b.set(X0, y, z, 'chiseled_stone_bricks')
     b.set(X0, T + 9, 106, 'stone_brick_wall'); b.set(X0, T + 9, 107, 'stone_brick_wall')
     for x in (22, 27):
         b.box(x, T + 1, Z0 + 1, x, T + 1, Z1 - 1, 'dark_oak_log[axis=z]')
@@ -71,27 +78,40 @@ def build(b):
                 if (x in (34, 35)) or (z in (106, 107)): b.set(x, G + 17, z, 'chiseled_stone_bricks')
             else:
                 b.set(x, G + 17, z, 'spruce_planks')
-    b.pyramid(tx0 - 1, tz0 - 1, tx1 + 1, tz1 + 1, G + 21, 'deepslate_tile_stairs', 'deepslate_tile_slab')
+    for i in range(4):                                         # a steep spire: each ring two courses high
+        a0, a1, c0, c1 = tx0 - 1 + i, tx1 + 1 - i, tz0 - 1 + i, tz1 + 1 - i
+        for x in range(a0, a1 + 1):
+            for z in range(c0, c1 + 1):
+                if not (x in (a0, a1) or z in (c0, c1)): continue
+                corner = x in (a0, a1) and z in (c0, c1)
+                y = G + 21 + 2 * i
+                f = 'east' if x == a0 else 'west' if x == a1 else 'south' if z == c0 else 'north'
+                if i == 0:
+                    b.set(x, y, z, 'deepslate_tile_slab[type=bottom]' if corner else 'deepslate_tile_stairs[facing=%s,half=bottom,shape=straight]' % f)
+                    continue
+                b.set(x, y - 1, z, 'deepslate_tiles')
+                b.set(x, y, z, 'deepslate_tile_slab[type=bottom]' if corner else 'deepslate_tile_stairs[facing=%s,half=bottom,shape=straight]' % f)
+    for x in (34, 35):
+        for z in (106, 107):
+            for y in (G + 27, G + 28, G + 29): b.set(x, y, z, 'deepslate_tiles')
+            b.set(x, G + 30, z, 'deepslate_tile_wall')
+    b.set(34, G + 31, 106, 'lightning_rod[facing=up]')
+    for x, z in ((tx0, tz0), (tx0, tz1), (tx1, tz0), (tx1, tz1)):  # corner pinnacles
+        b.set(x, G + 22, z, 'stone_brick_wall'); b.set(x, G + 23, z, 'deepslate_tile_slab[type=bottom]')
     b.box(34, G + 20, 105, 35, G + 20, 108, 'dark_oak_log[axis=z]'); b.set(34, G + 19, 106, 'bell[attachment=ceiling,facing=north]')
     b.air(X1, G + 1, 106, tx0, G + 2, 106)                     # vestry door from the chapel
     for y in range(G + 1, G + 18): b.set(33, y, 105, 'ladder[facing=east]')
     b.set(36, G + 1, 108, 'chest[facing=west]'); b.set(36, G + 1, 105, 'barrel[facing=up]'); b.set(36, G + 2, 105, 'candle[candles=2,lit=true]')
     for y in (G + 4, G + 5, G + 9, G + 10, G + 14, G + 15):
-        b.set(tx1, y, 106, 'air'); b.set(34, y, tz0, 'air'); b.set(34, y, tz1, 'air')
+        b.set(tx1, y, 106, 'iron_bars[north=true,south=true]'); b.set(34, y, tz0, 'iron_bars[east=true,west=true]'); b.set(34, y, tz1, 'iron_bars[east=true,west=true]')
     for x in (tx0, tx1):                                       # pale stone: quoins up the corners, two string courses, a spire finial
         for z in (tz0, tz1):
             for y in range(G + 1, G + 21):
-                b.set(x, y, z, 'polished_diorite')
+                b.set(x, y, z, 'polished_andesite' if y % 2 else 'stone_bricks')
     for x in range(tx0, tx1 + 1):
         for z in range(tz0, tz1 + 1):
-            if (x in (tx0, tx1) or z in (tz0, tz1)) and b.get(x, G + 11, z) not in (None, 'air'): b.set(x, G + 11, z, 'polished_diorite')
-            if (x in (tx0, tx1) or z in (tz0, tz1)) and b.get(x, G + 20, z) not in (None, 'air'): b.set(x, G + 20, z, 'polished_diorite' if (x + z) % 2 else 'chiseled_stone_bricks')
-    for x in (34, 35):
-        for z in (106, 107):
-            for y in range(G + 25, G + 30):
-                if b.get(x, y, z) is None: b.set(x, y, z, 'deepslate_tiles')
-            b.set(x, G + 30, z, 'deepslate_tile_wall'); b.set(x, G + 31, z, 'deepslate_tile_wall')
-    b.set(34, G + 32, 106, 'lightning_rod[facing=up]')
+            if (x in (tx0, tx1) or z in (tz0, tz1)) and b.get(x, G + 11, z) not in (None, 'air'): b.set(x, G + 11, z, 'polished_andesite')
+            if (x in (tx0, tx1) or z in (tz0, tz1)) and b.get(x, G + 20, z) not in (None, 'air'): b.set(x, G + 20, z, 'polished_andesite' if (x + z) % 2 else 'chiseled_stone_bricks')
     # closed graveyard strips north and south of the tower
     for x in range(X1 + 1, 38):
         for z in list(range(Z0, tz0)) + list(range(tz1 + 1, Z1 + 1)):
@@ -102,6 +122,9 @@ def build(b):
         b.set(x, G + 1, z, s); b.set(x, G, z - 1 if z < 106 else z, 'coarse_dirt')
     for x, z, f in ((34, 102, 'white_tulip'), (36, 101, 'lily_of_the_valley'), (35, 111, 'poppy'), (33, 110, 'fern'), (36, 102, 'fern')):
         b.set(x, G + 1, z, f)
+    for x, z in ((36, 102), (36, 111)):                        # yews
+        b.set(x, G + 1, z, 'spruce_log[axis=y]'); b.set(x, G + 2, z, 'spruce_log[axis=y]')
+        for dx, dy, dz in ((0, 3, 0), (0, 4, 0), (-1, 3, 0), (0, 3, -1 if z < 106 else 1), (-1, 2, 0), (0, 2, -1 if z < 106 else 1)): b.set(x + dx, G + dy, z + dz, 'spruce_leaves[persistent=true]')
     # by the west door: lamps on plinths
     for z in (104, 109): b.set(X0 - 1, G + 1, z, 'stone_brick_wall'); b.set(X0 - 1, G + 2, z, 'lantern[hanging=false]')
 

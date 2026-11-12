@@ -57,7 +57,7 @@ def build(b):
                       (40, 4, 'hay_block[axis=z]'), (39, 5, 'composter[level=3]')):
         b.set(x, G + 1, z, blk)
     b.set(40, G + 2, -6, 'barrel[facing=up]'); b.set(40, G + 2, 5, 'hay_block[axis=x]')
-    b.set(37, F - 1, 0, 'chain[axis=y]'); b.set(37, F - 2, 0, 'chain[axis=y]'); b.set(37, F - 3, 0, 'cauldron')
+    b.set(37, F - 1, 0, 'chain[axis=y]'); b.set(37, F - 2, 0, 'lantern[hanging=true]')
     # windows with shutters: two to a bay on the long sides, one each side of centre on the ends
     W = F + 2
     for x in (22, 26, 30, 31, 35, 39):
@@ -99,7 +99,7 @@ def build(b):
     b.set(30, R + 4, -1, 'brick_slab[type=bottom]'); b.set(31, R + 4, 0, 'brick_slab[type=bottom]'); b.set(30, R + 4, 0, 'brick_slab[type=bottom]'); b.set(31, R + 4, -1, 'brick_slab[type=bottom]')
     # chimney on the north side
     b.box(30, G, Z0 - 1, 31, F + 7, Z0 - 1, FOOT); b.box(30, F + 7, Z0 - 1, 31, F + 9, Z0 - 1, 'bricks'); b.set(30, F + 10, Z0 - 1, 'brick_wall'); b.set(31, F + 10, Z0 - 1, 'brick_wall')
-    b.set(30, F + 1, Z0, 'campfire[lit=true]'); b.set(30, F + 2, Z0, 'bricks'); b.set(29, F + 1, Z0, 'bricks'); b.set(31, F + 1, Z0, 'bricks'); b.set(31, F + 2, Z0, 'bricks')
+    b.set(30, F + 1, Z0, 'campfire[lit=true]'); b.set(30, F + 1, Z0 + 1, 'iron_bars[east=true,west=true]'); b.set(30, F + 2, Z0, 'bricks'); b.set(29, F + 1, Z0, 'bricks'); b.set(31, F + 1, Z0, 'bricks'); b.set(31, F + 2, Z0, 'bricks')
     # outside stair on the east end, climbing north to a landing and a door
     for i, z in enumerate((5, 4, 3, 2, 1)):
         for x in (X1 + 1, X1 + 2):

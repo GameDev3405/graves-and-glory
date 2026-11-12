@@ -260,3 +260,12 @@ shot st-wall-w -280 212 0 -251 203 0
 shot cmd-wall -262 222 -64 -220 201 -30
 shot st-landing -61 201.6 -20 -61 200 -30
 shot st-camp -74 201.6 -104 -82 200 -110
+shot in-inn -36 201.6 -112 -22 200.8 -102
+shot in-inn-up -36 205.6 -112 -22 204.6 -101
+shot in-shop -83 201.6 -109 -75 200.6 -101
+shot in-shop-up -83 205.6 -109 -75 204.6 -100
+shot cmd-farm -60 225 -118 -82 200 -146
+shot cmd-farm2 -124 225 -118 -146 200 -146
+shot st-wood -190 201.6 -90 -205 202 -106
+shot air-outsk -160 262 -100 -120 199 -152
+shot cmd-wall-w -272 226 -52 -248 203 -24

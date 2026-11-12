@@ -57,7 +57,7 @@ def build(b, colour='cyan'):
     # curtain wall, merlons, wall walk with an inner rail
     def wallcell(x, z, water=False):
         lo = G + 3 if water else G + 1
-        for y in range(lo, G + 6): M(x, y, z, b.pick(FOOT) if y == G + 1 else b.pick(MASON), both=False)
+        for y in range(lo, G + 6): M(x, y, z, b.pick(FOOT) if y == G + 1 else ('polished_andesite' if y == G + 3 and (x * 7 + z * 3) % 10 < 7 else b.pick(MASON)), both=False)
         if (x + z) % 2 == 0: M(x, G + 6, z, b.pick(MASON), both=False)
     for x in range(X0, X1 + 1):
         for z in range(Z0, Z1 + 1):
@@ -89,11 +89,42 @@ def build(b, colour='cyan'):
         if z + 4 < -12:
             for y in (G + 2, G + 3): M(X0, y, z + 4, 'iron_bars[north=true,south=true]')
             M(X0 - 1, G + 5, z + 4, '%s_wall_banner[facing=west]' % colour)
-    for cx, sx in ((X0, 1), (X1, -1)):
-        for i in range(4):
-            for x, z in ((cx + sx * i, Z0), (cx, Z0 + i)):
-                for y in range(G + 6, G + 9): M(x, y, z, b.pick(MASON))
-                if i % 2 == 0: M(x, G + 9, z, b.pick(MASON))
+    for i in range(4):                                     # east corners: raised, the gate towers stand right beside them
+        for x, z in ((X1 - i, Z0), (X1, Z0 + i)):
+            for y in range(G + 6, G + 9): M(x, y, z, b.pick(MASON))
+            if i % 2 == 0: M(x, G + 9, z, b.pick(MASON))
+
+    def tower(xa, xb, za, zb, top, doors):
+        """a hollow wall tower: floor at the wall walk, roof floor at top, merlons, a corbel ring; doors = cells left open"""
+        for x in range(xa, xb + 1):
+            for z in range(za, zb + 1):
+                edge = x in (xa, xb) or z in (za, zb)
+                for y in range(G + 1, top + 1):
+                    if edge: M(x, y, z, b.pick(FOOT) if y == G + 1 else ('polished_andesite' if y == G + 3 else b.pick(MASON)))
+                    elif y in (G + 4, top): M(x, y, z, 'spruce_planks')
+                    else: M(x, y, z, b.pick(MASON) if y < G + 4 else 'air')
+                if edge and (x + z) % 2 == 0: M(x, top + 1, z, b.pick(MASON))
+                if edge and (x in (xa, xb)) != (z in (za, zb)) and (x + z) % 3 == 0 and top - 3 > G + 6: M(x, top - 2, z, 'iron_bars[north=true,south=true]' if x in (xa, xb) else 'iron_bars[east=true,west=true]')
+        for x, z in doors:
+            for y in (G + 5, G + 6): M(x, y, z, 'air')
+    tower(X0 - 2, X0 + 4, Z0 - 2, Z0 + 4, G + 12, [(X0 + 1, Z0 + 4), (X0 + 2, Z0 + 4), (X0 + 4, Z0 + 1), (X0 + 4, Z0 + 2)])     # west corners, 7 x 7
+    for c in (-231, -211):                                 # two towers on each long wall, 5 x 5, the wall walk runs through
+        tower(c - 2, c + 2, Z0 - 2, Z0 + 2, G + 9, [(c - 2, Z0 + 1), (c + 2, Z0 + 1)])
+    tower(X0 - 2, X0 + 2, -26, -22, G + 9, [(X0 + 1, -26), (X0 + 1, -22)])                                                 # one on each half of the west wall
+    # a corbel course under the parapet, and a worn skirt of gravel and cobble at the wall foot
+    for x in range(X0, X1 + 1):
+        if b.get(x, G + 5, Z0 - 1) is None: M(x, G + 5, Z0 - 1, 'stone_brick_stairs[facing=south,half=top,shape=straight]')
+    for z in range(Z0, -10):
+        if b.get(X0 - 1, G + 5, z) is None: M(X0 - 1, G + 5, z, 'stone_brick_stairs[facing=east,half=top,shape=straight]')
+    SKIRT = [('gravel', 35), ('coarse_dirt', 30), ('mossy_cobblestone', 20), ('cobblestone', 15)]
+    for x in range(X0 - 3, X1 + 3):
+        for z in (Z0 - 1, Z0 - 2, Z0 - 3):
+            if b.get(x, G, z) is None and (z > Z0 - 3 or (x * 5 + z) % 3 == 0): M(x, G, z, b.pick(SKIRT))
+    for z in range(Z0, -11):
+        for x in (X0 - 1, X0 - 2, X0 - 3):
+            if b.get(x, G, z) is None and (x > X0 - 3 or (x + z * 5) % 3 == 0): M(x, G, z, b.pick(SKIRT))
+        for x in (X1 + 1, X1 + 2):
+            if b.get(x, G, z) is None and z not in GATE: M(x, G, z, b.pick(SKIRT))
     # twin towers at each gate: 6 x 6, 13 high, on the east wall
     for tz in (-35, -21):
         for x in range(X1 - 5, X1 + 1):
@@ -104,7 +135,9 @@ def build(b, colour='cyan'):
                     else: M(x, y, z, 'air')
                 if edge and (x + z) % 2 == 0: M(x, G + 14, z, b.pick(MASON))
         for y in (G + 7, G + 8): M(X1, y, tz + 2, 'air'); M(X1, y, tz + 3, 'air')        # loops to the field
-        M(X1 + 1, G + 11, tz + 2, '%s_wall_banner[facing=east]' % colour); M(X1 + 1, G + 11, tz + 3, '%s_wall_banner[facing=east]' % colour)
+        for y in range(G + 14, G + 19): M(X1 - 3, y, tz + 2, 'spruce_fence')
+        for y in (G + 17, G + 18):
+            for dz in (1, 2, 3): M(X1 - 3, y, tz + 2 + dz, '%s_wool' % colour) if dz < 3 or y == G + 18 else None
         M(X1 - 5, G + 1, tz + 2, 'air'); M(X1 - 5, G + 2, tz + 2, 'air')                   # door from the yard
         M(X1 - 5, G + 6, tz + 3, 'air'); M(X1 - 5, G + 7, tz + 3, 'air')                   # door from the wall walk level
         for y in range(G + 1, G + 11): M(X1 - 1, y, tz + 4, 'ladder[facing=west]')
@@ -113,7 +146,7 @@ def build(b, colour='cyan'):
     # gate arch between the towers, wall over it
     for z in GATE:
         for x in (X1 - 1, X1):
-            for y in range(G + 5, G + 8): M(x, y, z, b.pick(MASON))
+            for y in range(G + 5, G + 8): M(x, y, z, 'chiseled_stone_bricks' if y == G + 5 and x == X1 and z % 2 else b.pick(MASON))
             if (x + z) % 2 == 0 and x == X1: M(x, G + 8, z, b.pick(MASON))
         M(X1, G + 4, z, 'iron_bars[north=true,south=true]' if z not in (GATE[0], GATE[-1]) else 'stone_brick_stairs[facing=%s,half=top,shape=straight]' % ('north' if z == GATE[0] else 'south'))
         M(X1 - 2, G + 4, z, 'spruce_planks'); M(X1 - 2, G + 5, z, 'air')

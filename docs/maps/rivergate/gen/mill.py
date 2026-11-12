@@ -52,8 +52,10 @@ def build(b):
             for z in range(Z0, Z1 + 1):
                 if b.get(x, y, z) == 'white_terracotta' and (z in (-107, -106) or y == U + 4): b.set(x, y, z, 'dark_oak_log[axis=%s]' % ('y' if z in (-107, -106) else 'z'))
     b.set(X0, U + 2, -109, 'air'); b.set(X0, U + 2, -104, 'air')
-    for x in (23, 24, 25, 26):                               # a louvred vent on the ridge
-        b.set(x, U + 9, -107, 'spruce_planks'); b.set(x, U + 9, -106, 'spruce_planks'); b.set(x, U + 10, -107, 'dark_oak_slab[type=bottom]'); b.set(x, U + 10, -106, 'dark_oak_slab[type=bottom]')
+    for (x, y, z), v in list(b.c.items()):                  # the roof in bands: every third course spruce
+        if y > U and v.startswith('dark_oak_stairs') and (y - U) % 3 == 0: b.set(x, y, z, v.replace('dark_oak_stairs', 'spruce_stairs'))
+    for z in (-108, -107, -106, -105): b.set(X0 - 1, G + 4, z, 'spruce_slab[type=bottom]')   # a pent hood over the west door
+    for z in (-108, -105): b.set(X0 - 1, G + 3, z, 'spruce_fence')
     for z in (Z1 + 1, Z1 + 2): b.set(24, U, z, 'dark_oak_log[axis=z]')
     for y in range(T + 1, U): b.set(24, y, Z1 + 2, 'chain[axis=y]')
     b.set(24, T, Z1 + 2, 'barrel[facing=up]')
@@ -68,10 +70,10 @@ def build(b):
                 b.set(x, G + 1, z, 'stone_brick_wall')
             else:
                 b.set(x, G - 4, z, b.pick([('gravel', 60), ('mossy_cobblestone', 40)]))
-                for y in (G - 3, G - 2): b.set(x, y, z, 'water')
-                for y in (G - 1, G): b.set(x, y, z, 'air')
+                for y in (G - 3, G - 2, G - 1): b.set(x, y, z, 'water')
+                b.set(x, G, z, 'air')
     for z in (Z0, Z1):                                    # head and tail race arches
-        for x in (34, 35): b.set(x, G - 2, z, 'iron_bars[east=true,west=true]'); b.set(x, G - 3, z, 'water')
+        for x in (34, 35): b.set(x, G - 2, z, 'iron_bars[east=true,west=true]'); b.set(x, G - 1, z, 'iron_bars[east=true,west=true]'); b.set(x, G - 3, z, 'water')
     for z in range(Z0 + 1, Z1):                            # the mill wall is stone down to the bed on the pit side
         for y in range(G - 4, G + 1): b.set(X1, y, z, b.pick(MASON if y > G - 2 else FOOT))
     # the wheel: 9 across, in the y-z plane, two rims with paddles, axle into the mill
@@ -79,13 +81,22 @@ def build(b):
     for y in range(G - 3, G + 10):
         for z in range(-112, -100):
             r = math.hypot(y - cy, z - cz)
-            ang = math.degrees(math.atan2(y - cy, z - cz)) % 30
             if 4.7 <= r <= 5.7:
                 b.set(34, y, z, 'stripped_spruce_log[axis=x]')
-                if ang < 8 or ang > 24:                      # paddles stand out each side of the rim
-                    for x in (33, 35): b.set(x, y, z, 'dark_oak_planks')
-            elif r < 4.7 and (abs(y - cy) < 0.6 or abs(z - cz) < 0.6):
-                b.set(34, y, z, 'spruce_fence' if r > 1 else 'stripped_dark_oak_log[axis=x]')
+            elif r < 1.6:
+                b.set(34, y, z, 'stripped_dark_oak_log[axis=x]')
+            elif r < 4.7 and abs(z - cz) < 0.6:
+                b.set(34, y, z, 'stripped_spruce_log[axis=y]')
+            elif r < 4.7 and abs(y - cy) < 0.6:
+                b.set(34, y, z, 'stripped_spruce_log[axis=z]')
+            elif r < 4.7 and abs(abs(y - cy) - abs(z - cz)) < 0.6 and b.get(34, y, z) is None:
+                b.set(34, y, z, 'spruce_fence')
+    for k in range(12):                                    # float boards, one block thick, three wide across the rim
+        a = math.radians(15 + 30 * k)
+        y, z = int(round(cy + 6.0 * math.sin(a))), int(math.floor(cz + 6.0 * math.cos(a) + 0.5))
+        if z in (Z0, Z1) and y <= G + 1: continue
+        for x in (33, 34, 35):
+            if b.get(x, y, z) in (None, 'air', 'water'): b.set(x, y, z, 'dark_oak_planks')
     for x in range(28, 36):
         for z in (-107, -106): b.set(x, G + 3, z, 'stripped_dark_oak_log[axis=x]')
     # inside: pit wheel, stones, hopper, sacks, flour, miller's hearth, ladder to the loft
@@ -103,8 +114,8 @@ def build(b):
                       (29, -112, 'grindstone[face=floor,facing=south]')):
         b.set(x, Y, z, blk)
     b.set(19, Y + 1, -101, 'barrel[facing=up]'); b.set(30, Y + 1, -101, 'lantern[hanging=false]')
-    b.set(25, Y, Z0, 'campfire[lit=true]'); b.set(25, Y + 1, Z0, 'bricks'); b.set(24, Y, Z0, 'bricks'); b.set(26, Y, Z0, 'bricks')
-    b.box(25, G, Z0 - 1, 25, U + 3, Z0 - 1, FOOT); b.box(25, U + 3, Z0 - 1, 25, U + 5, Z0 - 1, 'bricks'); b.set(25, U + 6, Z0 - 1, 'brick_wall')
+    b.set(25, Y, Z0, 'campfire[lit=true]'); b.set(25, Y, Z0 + 1, 'iron_bars[east=true,west=true]'); b.set(25, Y + 1, Z0, 'bricks'); b.set(24, Y, Z0, 'bricks'); b.set(26, Y, Z0, 'bricks')
+    b.box(25, G, Z0 - 1, 25, U + 3, Z0 - 1, FOOT); b.box(25, U + 3, Z0 - 1, 25, U + 5, Z0 - 1, 'bricks'); b.set(25, U + 6, Z0 - 1, 'brick_wall'); b.set(25, U + 7, Z0 - 1, 'brick_slab[type=bottom]')
     for y in range(Y, T + 1): b.set(19, y, -112, 'ladder[facing=east]')
     for x in (21, 28): b.set(x, T - 1, -106, 'lantern[hanging=true]')
     # loft: the miller's bed, sacks, hay

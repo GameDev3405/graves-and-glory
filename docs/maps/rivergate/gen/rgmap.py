@@ -82,10 +82,11 @@ def pave(ax, az):
     if 23 <= ax <= 98 and 85 <= az <= 98: return 'street'
     if 47 <= ax <= 59 and 40 <= az <= 84: return 'street'
     if 103 <= ax <= 109 and 10 <= az <= 100: return 'ford'
-    if (az <= 129 and 127 <= az and ax <= 90) or (85 <= ax <= 86 and 99 <= az <= 129) or (51 <= ax <= 55 and 99 <= az <= 126) or (ax <= 3 and 114 <= az <= 126): return 'lane'
+    if (az <= 129 and 127 <= az and ax <= 146) or (82 <= ax <= 83 and 130 <= az <= 142) or (144 <= ax <= 145 and 130 <= az <= 141) or (85 <= ax <= 86 and 99 <= az <= 129) or (51 <= ax <= 55 and 99 <= az <= 126) or (ax <= 3 and 114 <= az <= 126): return 'lane'
     if path(ax, az) <= 0: return 'path'
     if (23 <= ax <= 46 or 60 <= ax <= 85) and 60 <= az <= 72: return 'yard'
     if 60 <= ax <= 86 and 36 <= az <= 59 and fbm(SEED, ax, az, 9) > -0.12: return 'yard'
+    if ((64 <= ax <= 92 and 136 <= az <= 142) or (137 <= ax <= 153 and 136 <= az <= 141)) and fbm(SEED, ax, az, 9) > -0.2: return 'yard'
     return None
 
 
@@ -115,7 +116,7 @@ def wood(ax, az):
 
 
 HEDGES = [('z', 131, 4, 170, 'hedge'), ('x', 30, 132, 177, 'hedge'), ('x', 62, 132, 177, 'wall'), ('x', 96, 132, 177, 'hedge'), ('x', 134, 124, 177, 'hedge'),
-          ('z', 154, 31, 133, 'wall'), ('x', 174, 50, 119, 'hedge'), ('z', 78, 120, 173, 'hedge') if False else ('z', 121, 119, 133, 'hedge')]
+          ('z', 154, 31, 133, 'wall'), ('x', 174, 50, 121, 'hedge'), ('z', 121, 119, 173, 'hedge'), ('x', 119, 99, 121, 'hedge')]
 
 
 def hedge(ax, az):
@@ -264,7 +265,8 @@ HOUSES = [(-84, -99, 's', ('s2a', 's2b', 's2b', 's2a')), (-73, -99, 's', ('s1a',
           (-66, -41, 's', ('s1c', 's1a', 's1a', 's1c')), (-46, -54, 's', ('s2a', 's2c', 's2c', 's2a')),
           (-93, -19, 's', ('s5a', 's5b', 's5b', 's5a')), (-101, -19, 's', ('s1a', 's1c', 's1c', 's1a')),
           (-112, -103, 's', (None, 's2c', 's2c', None)),
-          (-93, -99, 's', ('s1b', 's1a', 's1a', 's1b')), (-85, -48, 's', ('s1a', 's1c', 's1c', 's1a')), (-97, -84, 'n', ('s2b', 's2c', 's2c', 's2b')), (-77, -35, 's', ('s2a', 's2b', 's2b', 's2a'))]
+          (-93, -99, 's', ('s1b', 's1a', 's1a', 's1b')), (-85, -48, 's', ('s1a', 's1c', 's1c', 's1a')), (-97, -84, 'n', ('s2b', 's2c', 's2c', 's2b')), (-77, -35, 's', ('s2a', 's2b', 's2b', 's2a')),
+          (-90, -142, 's', ('s5a', 's5b', 's5b', 's5a')), (-72, -142, 's', ('s1c', 's1c', 's1c', 's1c')), (-150, -141, 's', ('s2c', 's2a', 's2a', 's2c')), (-208, -100, 's', ('s1c', 's1c', 's1c', 's1c'))]   # two farms and a woodcutter out of town
 
 
 def house_cells(name, x0, zf, face, seed):
@@ -487,7 +489,10 @@ class Map:
                         if j > 0.12: self.plant('apple', ax + (3 if (az // 7) % 2 else 0) + int(j * 3) - 1, az + int(j * 7) % 3 - 1, sx, sz, (ax + az) % 4)
                 for ax, az in ((42, 120), (80, 118), (30, 121), (14, 120), (70, 54), (80, 50), (76, 60), (64, 58), (92, 60), (96, 44), (90, 36)): self.plant('apple', ax, az, sx, sz, ax % 4)
                 for ax, az, name in ((126, 22, 'oak_medium'), (150, 30, 'oak_medium'), (140, 30, 'birch_pair'), (121, 31, 'oak_small'), (260, 20, 'oak_medium'),
-                                     (100, 110, 'oak_great') if False else (93, 112, 'oak_medium'), (70, 140, 'oak_great'), (20, 142, 'birch_pair'), (46, 160, 'oak_medium'), (110, 146, 'oak_great'), (150, 150, 'oak_medium'), (12, 166, 'oak_small'), (84, 168, 'birch_tall'), (120, 170, 'oak_small'), (160, 136, 'birch_pair'), (8, 136, 'oak_medium'), (110, 60, 'oak_small'), (160, 110, 'oak_small')):
+                                     (100, 110, 'oak_great') if False else (93, 112, 'oak_medium'), (58, 146, 'oak_great'), (20, 142, 'birch_pair'), (46, 160, 'oak_medium'), (110, 146, 'oak_great'), (162, 150, 'oak_medium'), (12, 166, 'oak_small'), (84, 168, 'birch_tall'), (120, 170, 'oak_small'), (160, 136, 'birch_pair'), (8, 136, 'oak_medium'), (110, 60, 'oak_small'), (160, 110, 'oak_small'),
+                                     (24, 150, 'oak_medium'), (27, 170, 'birch_tall'), (36, 140, 'oak_small'), (100, 138, 'oak_medium'), (104, 142, 'birch_pair'), (99, 146, 'oak_small'), (128, 162, 'oak_great'), (124, 168, 'birch_tall'), (131, 168, 'oak_small'),
+                                     (140, 160, 'oak_medium'), (166, 166, 'oak_medium'), (156, 170, 'birch_pair'), (16, 150, 'oak_small'), (76, 162, 'oak_medium'), (90, 170, 'oak_small'), (185, 60, 'oak_medium'), (192, 66, 'birch_pair'), (188, 72, 'oak_great'),
+                                     (215, 58, 'oak_medium'), (222, 64, 'oak_small'), (240, 70, 'birch_tall'), (196, 108, 'spruce_small'), (212, 110, 'oak_medium'), (130, 42, 'oak_small') if False else (176, 40, 'oak_small'), (120, 84, 'oak_medium'), (140, 90, 'birch_pair'), (166, 84, 'oak_small')):
                     self.plant(name, ax, az, sx, sz, (ax + az) % 4)
 
     def fold(self):
@@ -499,10 +504,18 @@ class Map:
                         if not (ax in (40, 50) or az in (160, 167)) or (az == 160 and ax in (44, 45)): continue
                         x, z = W(ax, az, sx, sz)
                         if (x, z) in self.col: self.extra[(x, 65, z)] = 'cobblestone'; self.extra[(x, 66, z)] = 'cobblestone_wall'
-                for ax, az, n in ((47, 164, 2), (48, 164, 1), (47, 165, 1), (110, 160, 3), (111, 160, 2), (110, 161, 2), (111, 161, 1), (109, 160, 1)):
+                ricks = [(47, 164, 2), (48, 164, 1), (47, 165, 1)] + [(a, z, 3 if (a in (110, 111) and z in (160, 161)) else 2) for a in range(109, 113) for z in range(159, 163)] + [(a, 139, 2 if a % 2 else 1) for a in range(86, 90)] + [(152, 139, 2), (153, 139, 1), (152, 138, 1)]
+                for ax, az, n in ricks:
                     x, z = W(ax, az, sx, sz)
                     if (x, z) in self.col:
                         for i in range(n): self.extra[(x, 65 + i, z)] = 'hay_block[axis=y]'
+                for ax, az, n in ((198, 104, 2), (198, 105, 2), (198, 106, 1), (199, 104, 1), (199, 105, 2), (201, 113, 1), (202, 113, 2), (203, 113, 1)):
+                    x, z = W(ax, az, sx, sz)
+                    if (x, z) in self.col:
+                        for i in range(n): self.extra[(x, 65 + i, z)] = 'spruce_log[axis=%s]' % ('z' if az < 110 else 'x')
+                for ax, az, blk in ((42, 162, 'cauldron'), (43, 166, 'hay_block[axis=x]'), (66, 138, 'composter[level=3]'), (139, 138, 'cauldron'), (200, 109, 'stripped_spruce_log[axis=y]')):
+                    x, z = W(ax, az, sx, sz)
+                    if (x, z) in self.col: self.extra[(x, 65, z)] = blk
 
     def plant(self, name, ax, az, sx, sz, k=0):
         x0, z0 = W(ax, az, sx, sz)

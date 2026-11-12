@@ -115,45 +115,13 @@ def house(w, d, floors=2, style='slate', ridge=None, shop=False, arch=False, hoi
     lx = (ax0 - 1) if arch else w - 2
     for k in range(floors - 1):
         for y in range(G + 1 + 4 * k, G + 5 + 4 * k): b.set(lx, y, 1, 'ladder[facing=south]')
-    # furniture
+    # furniture: every room has a use; things stand against the walls, the way from door to ladder stays clear
     ix1 = (ax0 - 1) if arch else w - 2                     # last interior x on the ground floor
-    Y = G + 1
-    if hoist:
-        for x in range(1, w - 1):
-            for z in (1, 2):
-                if x == lx and z == 1: continue
-                h = (x * 7 + z * 3 + seed) % 3
-                for y in range(h): b.set(x, Y + y, z, 'barrel[facing=up]' if (x + y + z) % 3 else 'hay_block[axis=x]')
-        b.set(1, Y, d - 2, 'chest[facing=east]'); b.set(1, Y, d - 3, 'composter[level=4]'); b.set(w - 2, Y, d - 2, 'stripped_spruce_log[axis=z]'); b.set(w - 2, Y, d - 3, 'stripped_spruce_log[axis=z]')
-        b.set(w // 2, Y + 2, d // 2, 'lantern[hanging=true]')
-    else:
-        b.set(1, Y, d // 2, 'spruce_fence'); b.set(1, Y + 1, d // 2, 'spruce_pressure_plate'); b.set(1, Y, d // 2 + 1, 'spruce_stairs[facing=north,half=bottom,shape=straight]')
-        b.set(ix1, Y, d - 2, 'barrel[facing=up]') if ix1 not in doors else None
-        b.set(ix1, Y, d // 2, 'chest[facing=west]'); b.set(ix1, Y + 1, d - 2, 'lantern[hanging=false]') if ix1 not in doors else None
-        b.set(min(4, ix1), Y, 1, 'crafting_table' if not shop else 'barrel[facing=up]')
-        b.set((1 + ix1) // 2 + 1, Y + 2, d // 2, 'lantern[hanging=true]')
-        if sign or w >= 17:                                # a common room: trestle tables down the middle
-            for z0 in [3] + ([d - 7] if d >= 14 else []):
-                for x in range(4, ix1 - 1, 4):
-                    if x in doors or x + 1 in doors and z0 > 3: continue
-                    for z in (z0, z0 + 1): b.set(x, Y, z, 'spruce_fence'); b.set(x, Y + 1, z, 'spruce_pressure_plate')
-                    b.set(x - 1, Y, z0, 'spruce_stairs[facing=east,half=bottom,shape=straight]'); b.set(x + 1, Y, z0 + 1, 'spruce_stairs[facing=west,half=bottom,shape=straight]')
-            for z in range(d - 6, d - 2):                  # the bar along the east wall, kegs behind it
-                b.set(ix1 - 2, Y, z, 'spruce_slab[type=top]'); b.set(ix1, Y, z, 'barrel[facing=west]')
-                if z % 2: b.set(ix1, Y + 1, z, 'barrel[facing=west]')
-            b.set(ix1 - 2, Y + 1, d - 5, 'flower_pot'); b.set(ix1 - 1, Y + 2, d - 4, 'lantern[hanging=true]')
-            for x in (5, 9, 13):
-                if x < ix1 - 3: b.set(x, Y + 2, d // 2, 'lantern[hanging=true]')
-            for x in range(w - 6, w - 2): b.set(x, Y, 1, 'barrel[facing=south]'); b.set(x, Y + 1, 1, 'barrel[facing=south]') if x % 2 else None
-    for k in range(1, floors):
-        y = G + 1 + 4 * k
-        b.set(1, y, 2, '%s_bed[facing=north,part=head]' % st['bed']); b.set(1, y, 3, '%s_bed[facing=north,part=foot]' % st['bed']); b.set(1, y, 4, 'chest[facing=east]')
-        b.set(w - 2, y, d - 1, 'bookshelf' if k == 1 else 'barrel[facing=up]'); b.set(w - 2, y, d - 2, 'loom[facing=west]' if k == 1 else 'hay_block[axis=z]')
-        b.set(w // 2, y + 2, d // 2, 'lantern[hanging=true]')
-        b.set(2, y, d - 1, 'spruce_fence'); b.set(2, y + 1, d - 1, 'spruce_pressure_plate')
-        if w >= 11:
-            b.set(w - 2, y, 3, '%s_bed[facing=north,part=foot]' % st['bed']); b.set(w - 2, y, 2, '%s_bed[facing=north,part=head]' % st['bed'])
-            for x in range(4, w - 4): b.set(x, y, d // 2, '%s_carpet' % st['bed'])
+    if hx: b.set(hx, G + 1, 1, 'iron_bars[east=true,west=true]')   # a grate: nothing can step into the fire
+    guild = w >= 17 and not sign
+    ground = 'store' if hoist else 'shop' if shop else 'inn' if sign else 'guild' if guild else 'kitchen'
+    upper = 'loft' if hoist else 'guest' if sign else 'archive' if guild else 'bedroom'
+    furnish(b, w, d, floors, st, doors, lx, ix1, ground, upper, seed)
     # extras on the street face
     if hoist:
         yb = top - 1
@@ -165,6 +133,140 @@ def house(w, d, floors=2, style='slate', ridge=None, shop=False, arch=False, hoi
         b.set(1, G + 6, d + 1, 'spruce_fence'); b.set(1, G + 5, d + 1, 'spruce_trapdoor[facing=south,half=bottom,open=true]')
     b.set(doors[0] - 1 if doors[0] > 1 else doors[-1] + 1, G + 3, d, 'lantern[hanging=true]') if not shop and not hoist else None
     return b
+
+
+BAR2 = ['barrel[facing=up]', 'barrel[facing={F}]']
+BOOKS = ['bookshelf', 'bookshelf']
+HAY2 = ['hay_block[axis=x]', 'hay_block[axis=z]']
+LAMP = ['barrel[facing=up]', 'lantern[hanging=false]']
+CUP = ['chest[facing={F}]', None, 'spruce_trapdoor[facing={F},half=top,open=true]']
+POT = ['stripped_spruce_log[axis=y]', 'flower_pot']
+CANDLE = ['stripped_spruce_log[axis=y]', 'candle[candles=2,lit=false]', 'spruce_slab[type=top]']
+ROOMS = {
+    'kitchen': dict(A=[['smoker[facing={F},lit=false]'], POT, CANDLE, ['water_cauldron[level=3]'], 'TABLE', 'TABLE', LAMP, ['chest[facing={F}]']],
+                    B=[BAR2, CUP, ['bookshelf'], ['composter[level=3]'], ['loom[facing={F}]'], ['hay_block[axis=x]']], N=[['crafting_table'], ['barrel[facing=up]'], HAY2], S=[LAMP], rug='brown'),
+    'shop': dict(A=[BOOKS, BAR2, CUP, LAMP, ['loom[facing={F}]'], ['composter[level=5]'], HAY2, ['barrel[facing=up]']],
+                 B=[BOOKS, ['cartography_table'], POT, ['chest[facing={F}]'], BAR2, ['fletching_table'], LAMP, ['barrel[facing={F}]']],
+                 N=[['crafting_table'], BAR2, ['chest[facing={F}]'], ['barrel[facing=up]'], BOOKS, HAY2], S=[], rug='white'),
+    'inn': dict(A=[BAR2, ['chest[facing={F}]'], [None, 'red_wall_banner[facing={F}]'], LAMP, 'TABLE', 'TABLE', BAR2, [None, 'red_wall_banner[facing={F}]'], ['barrel[facing=up]']],
+                B=[], N=[['barrel[facing={F}]', 'barrel[facing={F}]'], ['barrel[facing={F}]'], BAR2, ['water_cauldron[level=3]'], ['brewing_stand'], ['barrel[facing={F}]', 'barrel[facing={F}]'], ['barrel[facing={F}]'], POT, ['smoker[facing={F},lit=false]']],
+                S=[LAMP, [None, 'yellow_wall_banner[facing={F}]'], ['barrel[facing=up]'], POT], rug=None),
+    'guild': dict(A=[BOOKS, [None, 'blue_wall_banner[facing={F}]'], BOOKS, ['lectern[facing={F}]'], BOOKS, [None, 'blue_wall_banner[facing={F}]'], BOOKS, CUP, BOOKS],
+                  B=[BOOKS, ['cartography_table'], CUP, ['chest[facing={F}]'], [None, 'blue_wall_banner[facing={F}]'], ['loom[facing={F}]'], BOOKS, LAMP, ['chest[facing={F}]']],
+                  N=[['chest[facing={F}]'], ['chest[facing={F}]'], BAR2, ['crafting_table'], BOOKS, BOOKS, ['lectern[facing={F}]'], POT], S=[LAMP, [None, 'yellow_wall_banner[facing={F}]'], POT], rug='blue'),
+    'store': dict(A=[['chest[facing={F}]'], ['composter[level=4]'], HAY2, BAR2, ['white_wool', 'white_wool'], ['barrel[facing=up]'], CUP],
+                  B=[['stripped_spruce_log[axis=z]', 'stripped_spruce_log[axis=z]'], ['stripped_spruce_log[axis=z]'], HAY2, BAR2, ['white_wool'], LAMP],
+                  N=[BAR2, HAY2, ['barrel[facing=up]', 'barrel[facing=up]'], ['hay_block[axis=x]'], BAR2, ['white_wool', 'white_wool'], ['barrel[facing=up]'], HAY2, BAR2, ['barrel[facing=up]'], HAY2, BAR2], S=[['barrel[facing=up]'], ['hay_block[axis=z]']], rug=None),
+    'bedroom': dict(A=['BED', ['chest[facing={F}]'], [None, '{C}_wall_banner[facing={F}]'], ['bookshelf'], ['loom[facing={F}]'], 'TABLE', LAMP],
+                    B=['BED', CUP, LAMP, ['bookshelf'], POT, ['barrel[facing=up]']], N=[BOOKS, ['chest[facing={F}]'], ['bookshelf']], S=[['lectern[facing={F}]'], POT, ['barrel[facing=up]']], rug='{C}'),
+    'workshop': dict(A=[['crafting_table'], ['smithing_table'], ['grindstone[face=floor,facing={F}]'], BAR2, ['stripped_spruce_log[axis=z]'], LAMP],
+                     B=[['cartography_table'], ['fletching_table'], HAY2, ['barrel[facing=up]'], CUP], N=[['chest[facing={F}]'], BAR2], S=[['loom[facing={F}]'], ['composter[level=2]'], POT], rug=None),
+    'guest': dict(A=['BED', ['chest[facing={F}]'], [None, 'red_wall_banner[facing={F}]'], 'BED', CUP, 'BED', LAMP, 'BED', ['chest[facing={F}]']],
+                  B=['BED', ['chest[facing={F}]'], [None, 'red_wall_banner[facing={F}]'], 'BED', CUP, 'BED', LAMP, 'BED', ['chest[facing={F}]']],
+                  N=[BOOKS, BAR2, ['chest[facing={F}]'], POT, BOOKS, LAMP], S=[POT, ['barrel[facing=up]'], 'TABLE', LAMP, ['lectern[facing={F}]'], POT], rug='red'),
+    'archive': dict(A=[BOOKS, BOOKS, ['lectern[facing={F}]'], BOOKS, BOOKS, [None, 'blue_wall_banner[facing={F}]'], BOOKS, CUP, BOOKS],
+                    B=['BED', ['chest[facing={F}]'], 'BED', CUP, [None, 'blue_wall_banner[facing={F}]'], 'BED', ['chest[facing={F}]'], LAMP],
+                    N=[BOOKS, BOOKS, ['cartography_table'], BOOKS, ['chest[facing={F}]'], BOOKS], S=['TABLE', POT, ['lectern[facing={F}]'], LAMP, 'TABLE', POT], rug='blue'),
+    'loft': dict(A=[HAY2, BAR2, ['white_wool', 'white_wool'], ['chest[facing={F}]'], ['hay_block[axis=x]'], BAR2, ['white_wool']],
+                 B=[['barrel[facing=up]'], HAY2, ['white_wool'], ['crafting_table'], ['chest[facing={F}]'], BAR2, HAY2],
+                 N=[BAR2, ['barrel[facing=up]'], HAY2, ['white_wool', 'white_wool'], BAR2, ['hay_block[axis=z]'], ['barrel[facing=up]']], S=[['barrel[facing=up]'], ['white_wool']], rug=None),
+}
+INWARD = {'east': (1, 0), 'west': (-1, 0), 'south': (0, 1), 'north': (0, -1)}
+
+
+def furnish(b, w, d, floors, st, doors, lx, ix1, ground, upper, seed):
+    """fill every storey from ROOMS: side A is the long wall away from the door, B the other, N the back, S the front"""
+    def free(x, y, z): return b.get(x, y, z) in (None, 'air')
+    def solid(x, y, z):
+        v = b.get(x, y, z)
+        return v is not None and v != 'air' and not any(t in v for t in ('bars', 'pane', 'trapdoor', 'slab', 'campfire'))
+    for k in range(floors):
+        role = ground if k == 0 else (upper if k == 1 else 'workshop')
+        R = ROOMS[role]
+        y, x1, z1 = G + 1 + 4 * k, (ix1 if k == 0 else w - 2), (d - 2 if k == 0 else d - 1)
+        res = {(lx, 1), (lx, 2), (lx, 3), (lx - 1, 1), (lx - 1, 2)}
+        if k == 0:
+            for x in doors: res |= {(x, z) for z in range(1, z1 + 1)}
+            res |= {(x, 2) for x in range(min(doors[0], lx), max(doors[-1], lx) + 1)} | {(2, 1), (2, 2)}
+        else:
+            res |= {(x, 2) for x in range(lx - 3, lx + 1)}
+        a_east = doors[0] <= (1 + x1) // 2
+        walls = {'A': 'E' if a_east else 'W', 'B': 'W' if a_east else 'E', 'N': 'N', 'S': 'S'}
+
+        def place(side, items):
+            wall = walls[side]
+            if wall == 'W': cells, F, wc = [(1, z) for z in range(1, z1 + 1)], 'east', (lambda x, z: (0, z))
+            elif wall == 'E': cells, F, wc = [(x1, z) for z in range(1, z1 + 1)], 'west', (lambda x, z: (x1 + 1, z))
+            elif wall == 'N': cells, F, wc = [(x, 1) for x in range(2, x1)], 'south', (lambda x, z: (x, 0))
+            else: cells, F, wc = [(x, z1) for x in range(2, x1)], 'north', (lambda x, z: (x, z1 + 1))
+            it = list(items)
+            dx, dz = INWARD[F]
+            for i, (x, z) in enumerate(cells):
+                if not it: break
+                wx, wz = wc(x, z)
+                if (x, z) in res or not free(x, y, z) or not solid(wx, y, wz): continue
+                item = it[0]
+                if item == 'BED':
+                    if wall in ('N', 'S') or (x, z + 1) in res or z + 1 > z1 or not free(x, y, z + 1): continue
+                    it.pop(0)
+                    b.set(x, y, z, '%s_bed[facing=north,part=head]' % st['bed']); b.set(x, y, z + 1, '%s_bed[facing=north,part=foot]' % st['bed'])
+                    continue
+                it.pop(0)
+                if item == 'TABLE':
+                    b.set(x, y, z, 'spruce_fence'); b.set(x, y + 1, z, 'spruce_pressure_plate')
+                    if (x + dx, z + dz) not in res and free(x + dx, y, z + dz): b.set(x + dx, y, z + dz, 'spruce_stairs[facing=%s,half=bottom,shape=straight]' % F)
+                    continue
+                window = not solid(wx, y + 1, wz)
+                for j, blk in enumerate(item):
+                    if blk is None: continue
+                    if j and (window or not free(x, y + j, z)): break
+                    b.set(x, y + j, z, blk.replace('{F}', F).replace('{C}', st['bed']))
+        for side in 'ABNS': place(side, R[side])
+        # the middle of the room
+        cz = d // 2
+        if role == 'inn':                                  # trestle tables either side of a clear way two wide, the bar in the east
+            for tx in (4, 7, 14):
+                for z0 in (4, 8, 11) if tx < 10 else (4,):
+                    for z in (z0, z0 + 1): b.set(tx, y, z, 'spruce_fence'); b.set(tx, y + 1, z, 'spruce_pressure_plate')
+                    b.set(tx - 1, y, z0, 'spruce_stairs[facing=west,half=bottom,shape=straight]'); b.set(tx + 1, y, z0 + 1, 'spruce_stairs[facing=east,half=bottom,shape=straight]')
+            for z in range(8, 13):
+                b.set(x1 - 3, y, z, 'spruce_slab[type=top]'); b.set(x1, y, z, 'barrel[facing=west]')
+                if z % 2: b.set(x1, y + 1, z, 'barrel[facing=west]')
+            b.set(x1 - 3, y + 1, 9, 'flower_pot'); b.set(x1 - 3, y + 1, 12, 'candle[candles=3,lit=false]'); b.set(x1 - 2, y, 13, 'spruce_slab[type=top]'); b.set(x1 - 1, y, 13, 'spruce_slab[type=top]')
+        if role == 'guild':                                # the council table, seats down both sides
+            for z in range(4, 11):
+                b.set(5, y, z, 'spruce_fence'); b.set(5, y + 1, z, 'spruce_pressure_plate')
+                if z % 2 == 0: b.set(4, y, z, 'spruce_stairs[facing=west,half=bottom,shape=straight]'); b.set(6, y, z, 'spruce_stairs[facing=east,half=bottom,shape=straight]')
+            b.set(5, y + 2, 4, 'candle[candles=3,lit=false]'); b.set(5, y + 2, 10, 'candle[candles=3,lit=false]')
+            for z in (5, 6): b.set(14, y, z, 'spruce_fence'); b.set(14, y + 1, z, 'spruce_pressure_plate')
+            b.set(13, y, 5, 'spruce_stairs[facing=west,half=bottom,shape=straight]')
+        if role == 'shop':                                 # wares in the open counters, a display table each side of the door
+            for x in range(1, w - 1):
+                v = b.get(x, y, d - 1)
+                if v and 'slab' in v and x % 2: b.set(x, y + 1, d - 1, 'flower_pot' if x % 4 == 1 else 'candle[candles=2,lit=false]')
+            for tx in (3, w - 4):
+                if (tx, cz) not in res: b.set(tx, y, cz, 'spruce_fence'); b.set(tx, y + 1, cz, 'spruce_pressure_plate')
+        if role in ('archive', 'guest') and w >= 17:       # a reading table / a long runner
+            for x in (w // 2 - 1, w // 2):
+                if role == 'archive': b.set(x, y, cz, 'spruce_fence'); b.set(x, y + 1, cz, 'spruce_pressure_plate')
+            if role == 'archive': b.set(w // 2 - 2, y, cz, 'spruce_stairs[facing=west,half=bottom,shape=straight]'); b.set(w // 2 + 1, y, cz, 'spruce_stairs[facing=east,half=bottom,shape=straight]')
+            else:
+                for z in range(4, z1 - 1): b.set(w // 2, y, z, 'red_carpet')
+        if R['rug']:
+            c = R['rug'].replace('{C}', st['bed'])
+            for x in range(3, min(5, x1 - 1) + 1):
+                for z in (cz, cz + 1):
+                    if (x, z) not in res and free(x, y, z) and x < x1 - 1: b.set(x, y, z, c + '_carpet')
+        # light: lanterns hang from the floor above, or from a tie beam under the roof
+        xs = [x for x in range(2, (x1 if k == 0 else w - 2), 4)]
+        for x in xs:
+            lz = cz if (x, cz) not in res or k else cz + 1
+            if k == floors - 1:
+                if not free(x, y + 3, lz): continue
+                for bx in range(1, w - 1):
+                    if free(bx, y + 3, lz): b.set(bx, y + 3, lz, 'stripped_spruce_log[axis=x]')
+            elif not solid(x, y + 3, lz): continue
+            if free(x, y + 2, lz): b.set(x, y + 2, lz, 'lantern[hanging=true]')
 
 
 KINDS = {

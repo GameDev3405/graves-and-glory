@@ -39,7 +39,7 @@ def toll():
     for x, blk in ((17, 'hay_block[axis=x]'), (18, 'hay_block[axis=z]'), (20, 'water_cauldron[level=3]')): b.set(x, B0, 3, blk)
     b.set(17, B0 + 1, 3, 'hay_block[axis=x]'); b.set(19, B0 + 2, 4, 'lantern[hanging=true]')
     # the collector's table by the gate, strongbox, stacks along the walls, clear of the yard ring
-    b.set(15, B0, 21, 'spruce_fence'); b.set(15, B0 + 1, 21, 'spruce_pressure_plate'); b.set(16, B0, 21, 'spruce_stairs[facing=west,half=bottom,shape=straight]')
+    b.set(15, B0, 21, 'spruce_fence'); b.set(15, B0 + 1, 21, 'spruce_pressure_plate'); b.set(16, B0, 21, 'spruce_stairs[facing=east,half=bottom,shape=straight]')
     b.set(15, B0, 22, 'chest[facing=north]'); b.set(16, B0, 22, 'barrel[facing=up]')
     for x, z, h in ((20, 10, 2), (21, 10, 1), (21, 11, 2), (21, 12, 1)):
         for y in range(h): b.set(x, B0 + y, z, 'barrel[facing=up]')
