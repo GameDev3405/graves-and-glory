@@ -21,7 +21,9 @@ into a scratch folder under `work/` if you need a frame the author did not rende
 - Scorecard: `<json path>` from `python tools/anim/scorecard.py --troop <troop> --json <path>`.
 - Focus check: `<json path>` from `python tools/anim/focus_check.py --troop <troop> --json <path>`.
 - Harness (if run): `<work/ingame-check/<root>>` screens and `gradle.log`.
-- Animation file: `src/main/resources/assets/gravesandglory/animations/troop/<troop>.animation.json`.
+- Animation file: `src/main/resources/assets/gravesandglory/animations/troop/<troop>.animation.json`
+  (or the work copy `<path>` when the clip is a proposal for another lane's troop; then the exported clip is the
+  PREVIOUS version to compare against).
 - Timing: `sheets/design.json` attackVariants rows for the troop's family.
 - The bar: `docs/anim-rebuild/STYLE.md`, `KNIGHT-REVIEW.md` (approved template), the troop's own review md.
 - Rubric, caps and report format: `.claude/skills/troop-animation/references/review-loop.md`.
@@ -31,6 +33,18 @@ into a scratch folder under `work/` if you need a frame the author did not rende
    stagnant motion (and its opposite, too much sway); a blade or weapon facing the wrong way; limbs glitching or
    bending the wrong direction. The focus check measured them; you are looking for what it missed. Confirm a
    suspected clip in a second view before you list it as real.
+   Three things Kort marked on 2026-11-11 that two reviewers before you let through. Look for each one by name:
+   (a) the weapon turning about its own length in the hand during the wind-up ("weapons spins around in hand");
+   compare the blade's flat and edge from one tick to the next before the strike;
+   (b) any piece of the unit that stands still while the body moves: cape, crest or plume, skirt and shoulder
+   plates, quiver, pouches, trophies ("i want the whole unit to be animated including pieces of its armor");
+   (c) armour plates of two different parts drawn in the same place, even shallowly ("the textures on its chest are
+   glitching into each other"): look at the chest, the shoulders and the hips on every tick.
+   Before you report a flicker, hatch or speckle as the clip's fault, look for it at tick 0 and in the PREVIOUS
+   frames: if it is there too, it is the model or the renderer, so say that and do not ask for a key change. When you
+   name a place where two parts meet, give the measured pair:
+   `python tools/anim/fit_pairs.py --troop <troop> --clip <clip> --part <bone text> [--anim <work copy>]`
+   (what the clip adds over the model's own fit, per pair; the focus check's row shows only the single worst pair).
 1. Check the evidence is truthful: each folder is the clip it names, cameras match across ticks, the frame shows the
    troop under review (not its opponent). If not, that is finding F1 and the affected cells are "not checked".
 2. For every clip group, look at front, side and three-quarter. Check weapon direction at wind-up, contact and

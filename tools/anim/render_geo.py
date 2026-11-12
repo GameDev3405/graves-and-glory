@@ -763,8 +763,13 @@ class Frame:
 
 
 class Scene:
-    def __init__(self, model, textures=None, clips=None, speed=0.0):
+    DRAW_FRAMES = ("rest", "pull_0", "pull_1", "pull_2")
+
+    def __init__(self, model, textures=None, clips=None, speed=0.0, look=None):
         self.model = model
+        # look = (troop_rig rules, armour/weapon tier, face): draw only what the game shows (GeoTroopRenderer.preRender),
+        # and of a bow's draw frames only the one the clips key on the "draw" bone's x position. None draws every bone.
+        self.look = look
         self.tex = compose_textures(textures)
         self.clips = list(clips or [])
         self.speed = float(speed)
@@ -817,6 +822,7 @@ class Scene:
             M = parent @ _T(-pos[0] / 16.0, pos[1] / 16.0, pos[2] / 16.0) @ _T(*pv)
             M = M @ _Rz(rot[2]) @ _Ry(rot[1]) @ _Rx(rot[0]) @ _S(*sc) @ _T(*(-pv))
             bone_M[n] = M
+        hidden = self.hidden_bones(pose)
         nF = len(m.face_verts)
         fv = np.zeros((nF, 4, 3))
         fn = np.zeros((nF, 3))
@@ -824,6 +830,10 @@ class Scene:
         cube_M = []
         for ci, cube in enumerate(m.cube_list):
             M = bone_M[m.cube_bone[ci]]
+            if m.cube_bone[ci] in hidden:       # zero-area faces: nothing is drawn; the pivot keeps the bounds honest
+                cube_M.append(M)
+                corners.append(np.tile((M @ np.append(m.bones[m.cube_bone[ci]].pivot / 16.0, 1.0))[:3], (8, 1)))
+                continue
             cp = cube.pivot / 16.0
             Mc = M @ _T(*cp) @ _Rz(cube.rot[2]) @ _Ry(cube.rot[1]) @ _Rx(cube.rot[0]) @ _T(*(-cp))
             cube_M.append(Mc)
@@ -858,6 +868,28 @@ class Scene:
         fr.shade = shade_of(fn) if nF else np.zeros(0)
         fr.corners = np.array(corners) if corners else np.zeros((0, 8, 3))
         return fr
+
+    def hidden_bones(self, pose):
+        if not self.look:
+            return set()
+        rules, tier, face = self.look
+        spec = rules.get("bones", {})
+        frame = 0
+        d = pose.get("draw", {}).get("position")
+        if d is not None:
+            frame = int(max(0, min(len(self.DRAW_FRAMES) - 1, round(abs(float(d[0]))))))
+        hidden = set()
+        for n in self.model.order:
+            r = spec.get(n, {})
+            show = tier in r.get("stages", [tier]) and face in r.get("variants", [face])
+            if r.get("tag") == "draw":
+                for i, f in enumerate(self.DRAW_FRAMES):
+                    if n.endswith("_" + f) and i != frame:
+                        show = False
+            par = self.model.bones[n].parent
+            if not show or (par is not None and par in hidden):
+                hidden.add(n)
+        return hidden
 
     def aabb(self, fr):
         if len(fr.corners) == 0:
@@ -1033,6 +1065,9 @@ def render_background(cam, ss):
     return img
 
 
+DEPTH_TIE = 1e-7   # blocks: two faces closer than this are in one plane
+
+
 def rasterize(cam, fr, tex, ss):
     """Z-buffered flat-face rasterisation at ss x resolution. Returns (colour float32, hit bool)."""
     Ws, Hs = cam.W * ss, cam.H * ss
@@ -1095,7 +1130,9 @@ def rasterize(cam, fr, tex, ss):
         dd = den[yy, xx] if den.ndim == 2 and den.shape == inside.shape else np.broadcast_to(den, inside.shape)[yy, xx]
         d = (cl[i, 0] * X[xx] + cl[i, 1] * Y[yy] + cl[i, 2]) / dd
         gy, gx = y0 + yy, x0 + xx
-        sel = d < zbuf[gy, gx]
+        # LEQUAL, as the game's depth test: of two faces in one plane (the two sides of a zero-depth cube) the later
+        # one wins everywhere. A strict "<" let float noise pick per pixel and drew a hatch that is not in the game.
+        sel = d <= zbuf[gy, gx] + DEPTH_TIE
         if persp:
             sel &= d > 0.01
         if not sel.any():
@@ -1361,10 +1398,17 @@ def render_tick(scene, cams, tick, cfg):
     return imgs
 
 
+def _look(cfg):
+    if not cfg.get("rig"):
+        return None
+    with open(cfg["rig"], encoding="utf-8") as f:
+        return json.load(f), int(cfg.get("tier", 3)), int(cfg.get("face", 0))
+
+
 def build_scene_from_cfg(cfg):
     model = load_geo(cfg["geo"])
     clips = [load_clip(p, n) for p, n in cfg["clips"]]
-    scene = Scene(model, cfg["textures"], clips, cfg["speed"])
+    scene = Scene(model, cfg["textures"], clips, cfg["speed"], _look(cfg))
     cams = make_cameras(cfg["views"], cfg["bounds"], cfg["distance"], cfg["scale"])
     return scene, cams
 
@@ -1386,6 +1430,10 @@ def build_parser():
     p.add_argument("--out", default="render_out", help="output directory")
     p.add_argument("--report", action="store_true", help="print JSON report (AABBs, feet, foot slide)")
     p.add_argument("--bones", action="store_true", help="draw pivot dots with bone names")
+    p.add_argument("--rig", help="troop_rig/<troop>.json: draw only the bones the game shows for --tier and --face, and "
+                                 "only the bow draw frame the clip keys (without it every tier and frame is drawn at once)")
+    p.add_argument("--tier", type=int, default=3, help="armour and weapon tier with --rig (default 3)")
+    p.add_argument("--face", type=int, default=0, help="face variant with --rig (default 0)")
     p.add_argument("--ss", type=int, default=2, help="supersampling factor (default 2)")
     p.add_argument("--jobs", type=int, default=0, help="worker processes (default: auto)")
     p.add_argument("--foot-bones", default=None, help="comma list of bone names to treat as feet "
@@ -1415,10 +1463,10 @@ def main(argv=None):
         views = [v.strip() for v in args.views.split(",") if v.strip()]
         cfg = {"geo": args.geo, "textures": args.texture, "clips": list(zip(args.anim, args.clip)),
                "speed": args.speed, "views": views, "distance": args.distance, "scale": args.scale,
-               "ss": args.ss, "bones": args.bones}
+               "ss": args.ss, "bones": args.bones, "rig": args.rig, "tier": args.tier, "face": args.face}
         model = load_geo(args.geo)
         clips = [load_clip(p, n) for p, n in cfg["clips"]]
-        scene = Scene(model, args.texture, clips, args.speed)   # raises on overlapping bones
+        scene = Scene(model, args.texture, clips, args.speed, _look(cfg))   # raises on overlapping bones
         lo, hi = compute_bounds(scene, ticks)
         cfg["bounds"] = (lo.tolist(), hi.tolist())
         cfg["marker_top"] = float(hi[1])

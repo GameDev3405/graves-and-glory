@@ -15,7 +15,7 @@ checklist; it points back here.
 |---|---|
 | `references/kort-verdicts.md` | Before authoring anything: what Kort approved and rejected, in his words, with dates. |
 | `references/four-focus-points.md` | Before showing a clip to anyone: `focus_check.py`, what each check means, the fix. |
-| `references/fullbody-kit.md` | When authoring an attack or other action clip: the world-space kit and the order that works. |
+| `references/fullbody-kit.md` | When authoring an attack or other action clip: the world-space kit, the order that works, soft motion for the whole unit, and the procedure for bows and two-handed weapons. |
 | `references/frame-grading.md` | When Kort grades a clip frame by frame: the page, reading his grades, folding them back. |
 | `references/pipeline.md` | Before any build: builder per troop, commands, rig, export, scorecard, renderer, harness. |
 | `references/lessons.md` | Before changing a clip: what failed before and the fix that worked. |
@@ -40,10 +40,14 @@ grep -n "APPROVED =\|PREVIEW =" src/main/java/gg/gravesandglory/GeoTroopRenderer
 
 Every animation session works on these four, and proves each one before showing a clip:
 
-1. **No clipping.** Weapon, shield, arms and legs never pass through the body, each other or the ground.
+1. **No clipping.** Weapon, shield, arms and legs never pass through the body, each other or the ground, and armour
+   plates never sit inside each other ("the textures on its chest are glitching into each other", 2026-11-11).
 2. **Nothing stale or stagnant.** The whole body drives every move; a hold still drifts; a shield is never glued.
+   **Every piece of the unit moves**: cape, crest, skirt and shoulder plates, quiver, trophies ("i want the whole
+   unit to be animated including pieces of its armor that way it feels alive", 2026-11-11).
    But not swaying either: he cut sway to 25-40% and rejected hits that "break their back".
-3. **The blade or weapon faces the right way on every frame.** Edge leading through a cut, point leading a thrust.
+3. **The blade or weapon faces the right way on every frame.** Edge leading through a cut, point leading a thrust,
+   and **never turning in the hand during a wind-up** ("weapons spins around in hand", 2026-11-11).
 4. **No limb glitches.** No joint bends the wrong way, no one-frame pops, no feet swapping or sliding.
 
 `python tools/anim/focus_check.py --troop <troop>` measures all four on every quarter tick and names the tick and
@@ -71,7 +75,9 @@ geometry, not taste: a clip that passes can still be wrong, so the reviewer and 
 
 1. **Find the builder** (pipeline.md section 2) and read its docstring. Check who else it builds.
 2. **Edit the builder**, not its output. A new or reworked attack is authored whole-body in world space with
-   `art/anim/common/fullbody.py` (`references/fullbody-kit.md`): hips and feet first, then torso, hand, blade, shield.
+   `art/anim/common/fullbody.py` (`references/fullbody-kit.md`): hips and feet first, then torso, hand, blade, shield,
+   then `soft_motion` for everything that hangs. A bow or a two-handed weapon: follow "Other rigs" in that file
+   (baseline the exported clip, look at the weapon model, measure the rig, solve from targets).
 3. **Build** with the troop's env var (Git Bash form; PowerShell in pipeline.md section 2), e.g.
    `GG_ANIM_TROOP=sentinel python art/anim/knight/build_anims.py`. Expect
    `art/anim/<troop>/out/<troop>.animation.json` to change. Rebuild every other troop on that builder: their
@@ -84,7 +90,9 @@ geometry, not taste: a clip that passes can still be wrong, so the reviewer and 
 6. **Render** the changed clips with `tools/anim/render_geo.py` (front, side, three-quarter; near and `game16`).
    Look at **every tick at full size** yourself before asking anyone else to. Small sheet cells get misread.
 7. **Review:** a fresh Sonnet 5.5 high reviewer (`references/reviewer-prompt.md`). At most two fix rounds, then
-   escalate with evidence.
+   escalate with evidence. What counts: build-and-check cycles before your first full look (every tick, three
+   views) are authoring and are free. A fix round is one pass over a list of faults that a full look, a reviewer or
+   Kort returned. Undoing a change that made a row worse belongs to the round that made it.
 8. **Harness:** the geo-knight suite for the troop (pipeline.md section 6). Pass = 22 `[p1] p1-` lines, 0 `=false`.
 9. **Verify and commit:** `python tools/verify.py fast` PASS; commit the builder, `out/`, exported assets and the
    review md together on the lane branch.
@@ -129,7 +137,8 @@ subagent returns its questions to its caller; the lead asks Kort, through AskUse
 For a new kind of move or whenever Kort asks: `tools/anim/grade_page.py` builds a phone page with every tick
 embedded, a player and a grade, tags and a note per tick, saved in the page's database; `tools/anim/grade_video.py`
 builds the PREVIOUS | NEW phone video. His grades are folded back into `kort-verdicts.md` and, where a fault can be
-measured, into a new `focus_check.py` check. Full loop: `references/frame-grading.md`.
+measured, into a new `focus_check.py` check. Full loop: `references/frame-grading.md`. First round (knight overhead,
+2026-11-11): he scored 7 and three new checks came out of it (`kort-verdicts.md`, "Grading rounds").
 
 ## Review booth (GeckoLib lanes)
 

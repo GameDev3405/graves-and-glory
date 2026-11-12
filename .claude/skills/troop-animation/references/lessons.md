@@ -94,6 +94,48 @@ lessons into this file with their commit hashes.
 - The mechanical checks did not separate the stalker Kort rejected from the one he kept. Numbers gate the four
   faults; they do not grade the move. Kort's frame grades do (`frame-grading.md`).
 
+## 7c. From Kort's first frame grades and the two harder rigs (2026-11-11)
+
+Kort scored the knight overhead demo 7. Reviewers had scored it 7 twice. What he caught that the checks and both
+reviewers let through, and what the archer and the Warmaw tusk taught on top:
+
+- **A clean check run is not a graded clip.** All three of his complaints (weapon turning in the hand, still cape and
+  crest, chest plates flickering) were measurable, and none was measured. Each is now a check with a test
+  (`grip_roll`, `secondary_life`, `armour_clip`). When he marks a tick, first ask what number would have shown it.
+- **Edge-on-the-path belongs to the strike only.** Rolling the hand to keep the edge on the tip's line during the
+  wind-up reads as the weapon spinning in the hand. The kit now limits it to the strike window.
+- **Nothing on the unit stands still in an action.** A cape lag alone is not enough; crest, plates, skirts, quivers
+  and trophies all get `fullbody.soft_motion`. This is the cheapest gain there is: one call before baking.
+- **Shallow overlaps flicker.** Two textured plates 1.7 px inside each other z-fight even though no limb is
+  "through" anything. Judge armour against armour, not only limbs against the body.
+- **Look at the model before the motion.** The bow of every bow troop is exported with its limb cubes turned the
+  wrong way (`troop_rig.py` copies a Blockbench turn into a Bedrock geo without changing its sign). Hours can go into
+  "fixing" a clip around a broken model. One big still frame of the weapon first.
+- **A stance's faults travel into every clip that starts from it.** The tusk's guard holds the left arm 1.8 px in the
+  chest and the rear fist in the hip skull; 11 of its clips fail the scorecard's `pen_limb` for that reason alone.
+  Baseline the stance first and report it to its owner.
+- **Limits measured on the knight are not laws for other rigs.** They still found the real faults on the archer and
+  the tusk, but each new rig needed one rule taught to the check (a second hand's grip, hinge neighbours of one limb,
+  inherited stance clipping). Add the rule with a test; never raise the number.
+- **Solve, do not key, anything that has to touch.** String hand to nock, fist to ear, two fists on a shaft. And ease
+  the target, not the joint angles, when leaving a solved pose.
+- **Signs differ between tracks** (hips z is back, steps z is forward, spear head keys are world-relative). The table
+  is in `fullbody-kit.md`, "Other rigs". Getting one wrong costs a round.
+- **Render tiered troops with `--rig`**, or every armour tier is drawn at once and reads as clipping that is not there.
+
+- **Prove whose fault a flicker is before you move a key.** Round 2's reviewer blocked the knight on a red hatch on
+  the leg cloth; the archer's and the tusk's reviewers saw the same family. It was the renderer: the two faces of a
+  zero-depth cube tied in depth. Test: does it show at tick 0, and in the previous version? Then it is not the clip.
+  Fixed in `render_geo.py` (`DEPTH_TIE`), with a test.
+- **The check reports one worst pair per row.** The pauldron sat 1.88 px in the helm at tick 4.5 of round 2 while the
+  row showed another pair with the same number, at another tick. When a reviewer names a place the row does not,
+  list every pair there: `python tools/anim/fit_pairs.py --troop <troop> --clip <clip> --part pauldron`.
+- **A hold needs life from three places**: the body (a breath: a quarter pixel up and down again into the move), the
+  held things (the shield trails a little), and the hanging pieces (soft_motion's own sway). Any one alone still
+  reads as a statue to someone grading tick by tick.
+- **Do not "fix" a tick Kort graded good.** Round 2's reviewer wanted the blade tipped further down at the contact
+  (tick 10). Kort had graded ticks 9 and 10 good in round 1. It was left as it was and noted on the page.
+
 ## 8. Legacy clip pipeline (for old-model fixes only)
 
 - 18 of 30 troops once had no attack clip and every check passed: a missing clip must fail the build, never be shot

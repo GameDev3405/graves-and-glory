@@ -113,6 +113,14 @@ the body), `edge_lead` (slash edge leads the tip's travel), `impact_tick` (conta
   full-body clip is wired into the troop's normal build order, say so in the report.
 - `tools/anim/grade_page.py` and `tools/anim/grade_video.py` build Kort's frame grading page and phone video
   (`frame-grading.md`).
+- Demo builders that write only to `work/` (another lane's troop, a proposal until Kort grades it):
+  `art/anim/archer/build_direct_demo.py` (bow) and `art/anim/wm_tusk/build_thrust_demo.py` (spear in two hands).
+  They import the troop's own builder and never write the exported file (`fullbody-kit.md`, "Other rigs").
+- Known model fault (2026-11-11, open, the weapons lead's): bow cubes are exported with their turn's sign
+  unchanged from Blockbench (`art/anim/common/troop_rig.py`, where `c["rotation"] = [0, 0, sc.turn]`), so in a
+  Bedrock geo every bow limb tilts the wrong way and a drawn string opens behind the archer. Affects archer,
+  longbow, wm_hunter and bonebow. Do not judge a bow clip on those frames; render with a copy whose `bow_*`
+  cubes have rotation z negated.
 
 ## 5. Offline renderer
 
@@ -131,6 +139,13 @@ value per call gives full-size frames per view; several give one side-by-side st
 `--distance game16` for the 16-block read; `--speed <blocks/tick>` moves the root for gaits (walk about 0.16,
 run 0.26 for the knight; the booth config holds each troop's value) and `--report` prints AABBs and foot slide;
 `--tick` for one frame; `--bones` labels pivots. Always pair an upper clip with its legs clip, as the game does.
+Two faces in one plane (the two sides of a zero-depth cube: every skirt, tabard and flat trim) are drawn as the
+game draws them: the later face wins everywhere (`DEPTH_TIE`, the game's LEQUAL depth test). Until 2026-11-11 the
+renderer let float noise pick per pixel and drew a fine hatch there; three reviewers reported it as cloth flicker and
+it was never in the game. A hatch or speckle that shows on a flat piece at REST is the renderer or the model, not
+your clip: check tick 0 and the previous version before you change a key.
+`--rig $A/troop_rig/<troop>.json --tier 3` draws one armour and weapon tier (and only the bow draw frame the clip
+keys), as the game does; without it every tier's cubes are drawn on top of each other.
 Write renders under `work/` (untracked); commit only what a review record cites.
 
 ## 6. In-game harness (geo-knight)

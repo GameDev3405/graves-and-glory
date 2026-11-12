@@ -61,6 +61,42 @@ has a history below and a mechanical check in `references/four-focus-points.md`.
 
 Add one block per round, newest first: date, clip, his overall score, then one line per tick he marked, in his words.
 
-### 2026-11-11, knight `attack_overhead` (round `knight-attack_overhead-r1`)
-Built as this skill's demo with the full-body kit. Grading page: https://claude.ai/artifact/LVqUBq4SUWYHH5iVrrsmLS
-(grades under `rounds/knight-attack_overhead-r1`). Awaiting his grades.
+### 2026-11-11, knight `attack_overhead` (round `knight-attack_overhead-r1`): score 7
+Built as this skill's first demo with the full-body kit. Grading page:
+https://claude.ai/artifact/LVqUBq4SUWYHH5iVrrsmLS (grades saved in
+`work/grade/knight-attack_overhead-r1/grades/`).
+
+Overall, his words: "i like that the legs flow into the attack, i like that the arm is in full motion. i do not like
+that the sword switches angels mid wind up, and i also don't like how stale the cape, and his red fur on the helmet,
+i want the whole unit to be animated including pieces of its armor that way it feels alive."
+
+| Tick | Grade | Tags | His note |
+|---|---|---|---|
+| 0-4 | good | | |
+| 5 | bad | weapon facing | "weapons spins around in hand" |
+| 6 | ok | weapon facing | "still spun around" |
+| 7, 8 | ok | | "the textures on its chest are glitching into each other." |
+| 9, 10 | good | | |
+| 11 | bad | limb wrong, clipping | |
+| 12, 13 | ok | | |
+| 14 | ok | limb wrong, clipping | |
+| 15 | good | | |
+| 16 | not graded | | |
+| 17 | good | pose | |
+| 18-21 | good | | |
+
+**Keep doing** (he said so): legs that flow into the attack; an arm in full motion.
+
+**Stop doing**, and what now stops it:
+
+| What he saw | Cause | Rule from now on | Check |
+|---|---|---|---|
+| The sword turns in the hand during the wind-up (ticks 5, 6) | The kit rolled the hand to put the edge on the tip's path whenever the tip was fast, the wind-up included | **The grip only turns inside the strike** (3 ticks before the impact to 2 after). In a wind-up the wrist carries the blade; it never spins about its own length. | `grip_roll` |
+| Cape and the red crest stand still | Only the cape had a lag, scaled small; crest, plates and skirts had no keys | **Every piece that hangs or sits on the body moves**: cloth, crest, plume, skirt plates, shoulder plates, hung trophies. `fullbody.soft_motion` does it for any rig. | `secondary_life` |
+| Chest textures "glitching into each other" (ticks 7, 8) | The shield arm's plates sat inside the chest plates by under 2 px: too shallow for `limb_in_body`, but two textures in one place flicker | **Armour on one bone never sits inside armour on another**, even shallowly. | `armour_clip` |
+| Limb wrong and clipping (ticks 11, 14) | The shield arm folded across the chest in the cut and the follow-through; the pauldron rode the arm into the helm | Keep the shield fist outside the chest's width while the body turns; a shoulder plate follows only part of the upper arm (`PLATE_FOLLOW`) | `armour_clip`, `limb_in_body` |
+
+Round 2 of the same clip carries these fixes (focus check: 0 FAIL, 2 WARN). He also asked that the next test be on
+harder units: "work on a unit that isnt so easy, like a archer and a wildenmoot unit". Those are
+`art/anim/archer/build_direct_demo.py` (the shot) and `art/anim/wm_tusk/build_thrust_demo.py` (a spear in two
+hands); see `fullbody-kit.md`, "Other rigs".

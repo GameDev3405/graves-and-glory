@@ -4,6 +4,7 @@
   python tools/anim/grade_page.py --troop knight --clip attack_overhead --base attack_overhead_legs \
       --round knight-attack_overhead-r1 --out work/grade/knight-attack_overhead-r1 \
       [--prev-anim old.animation.json] [--phases "0-2.5 anticipation,2.5-7.6 load,..."] [--note "one line"]
+      [--anim work/copy.animation.json] [--tier 3] [--geo corrected.geo.json]
 
 Writes <out>/index.html: every tick rendered near, from the side, three-quarter and front, embedded as JPEG data URIs
 (Kort's phone cannot load published files), with a player, and per tick a grade (good / ok / bad), problem tags and a
@@ -38,14 +39,17 @@ VIEWS = ("side", "three_quarter", "front")
 TAGS = ("clipping", "stale", "weapon facing", "limb wrong", "timing", "pose", "keep this")
 
 
-def render(anim, troop, clip, base, texture, out, ticks, scale):
-    geo = os.path.join(REPO, "%s/geo/troop/%s.geo.json" % (sc.ASSETS, troop))
+def render(anim, troop, clip, base, texture, out, ticks, scale, geo=None, tier=None):
+    geo = geo or os.path.join(REPO, "%s/geo/troop/%s.geo.json" % (sc.ASSETS, troop))
+    rig = os.path.join(REPO, "%s/troop_rig/%s.json" % (sc.ASSETS, troop))
     frames = {}
     for v in VIEWS:
         d = os.path.join(out, "render", v)
         for f in glob.glob(os.path.join(d, "*.png")):
             os.remove(f)
         cmd = [sys.executable, os.path.join(HERE, "render_geo.py"), "--geo", geo, "--texture", texture]
+        if tier is not None and os.path.isfile(rig):      # one armour tier, as the game draws it
+            cmd += ["--rig", rig, "--tier", str(tier)]
         for b in list(base) + [clip]:
             cmd += ["--anim", anim, "--clip", b]
         cmd += ["--ticks", "0:%d:1" % (ticks - 1), "--views", v, "--scale", str(scale), "--out", d, "--no-gif"]
@@ -113,6 +117,9 @@ def main(argv=None):
     ap.add_argument("--anim", help="animation.json to show (default: the troop's exported one)")
     ap.add_argument("--prev-anim", help="animation.json holding the previous version of the clip, for comparison")
     ap.add_argument("--texture")
+    ap.add_argument("--geo", help="geo.json to draw (default: the troop's exported one); for a corrected model copy")
+    ap.add_argument("--tier", type=int, help="draw only this armour and weapon tier (needs the troop's troop_rig json); "
+                                             "without it every tier's cubes are drawn at once")
     ap.add_argument("--round", help="id the grades are saved under, e.g. knight-attack_overhead-r1")
     ap.add_argument("--out")
     ap.add_argument("--phases", default="")
@@ -139,10 +146,11 @@ def main(argv=None):
     texture = a.texture or sorted(glob.glob(os.path.join(REPO, "%s/textures/entity/troop/%s_geo/*.png"
                                                          % (sc.ASSETS, a.troop))))[0]
     os.makedirs(a.out, exist_ok=True)
-    sets = {"new": render(anim, a.troop, a.clip, a.base, texture, os.path.join(a.out, "new"), ticks, a.scale)}
+    geo = os.path.abspath(a.geo) if a.geo else None
+    sets = {"new": render(anim, a.troop, a.clip, a.base, texture, os.path.join(a.out, "new"), ticks, a.scale, geo, a.tier)}
     if a.prev_anim:
         sets["prev"] = render(os.path.abspath(a.prev_anim), a.troop, a.clip, a.base, texture,
-                              os.path.join(a.out, "prev"), ticks, a.scale)
+                              os.path.join(a.out, "prev"), ticks, a.scale, geo, a.tier)
     payload = {
         "round": a.round, "troop": a.troop, "clip": a.clip, "ticks": ticks, "impact": impact,
         "phases": phases(a.phases, ticks), "note": a.note, "tags": list(TAGS), "views": list(VIEWS),

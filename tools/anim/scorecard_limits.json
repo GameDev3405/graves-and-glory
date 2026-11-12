@@ -99,7 +99,7 @@
     ],
     "attack": [
      39.53,
-     98.47
+     96.85
     ],
     "fallback": [
      41.07,
@@ -129,7 +129,7 @@
     ],
     "attack": [
      -5.0,
-     108.47
+     106.85
     ],
     "fallback": [
      -5.0,
@@ -179,7 +179,7 @@
    "knight": {
     "gait": 153.02,
     "stance": 2.61,
-    "attack": 39.13,
+    "attack": 41.1,
     "fallback": 52.23,
     "hit": 42.61,
     "death": 55.31,
@@ -188,7 +188,7 @@
    "limit": {
     "gait": 191.275,
     "stance": 8.0,
-    "attack": 48.9125,
+    "attack": 51.375,
     "fallback": 65.2875,
     "hit": 53.2625,
     "death": 69.1375,
@@ -248,7 +248,7 @@
    "knight": {
     "gait": 0.029,
     "stance": 0.0004,
-    "attack": 0.0019,
+    "attack": 0.0077,
     "fallback": 0.5242,
     "hit": 0.4928,
     "death": 0.2542,
@@ -257,7 +257,7 @@
    "limit": {
     "gait": 0.079,
     "stance": 0.0504,
-    "attack": 0.0519,
+    "attack": 0.0577,
     "fallback": 0.5742,
     "hit": 0.5428,
     "death": 0.3042,
@@ -312,10 +312,10 @@
    "unit": "deg",
    "how": "knight max over its slash attacks + 10 deg",
    "knight": {
-    "all": 9.1
+    "all": 3.53
    },
    "limit": {
-    "all": 19.1
+    "all": 13.53
    }
   },
   "impact_tick": {

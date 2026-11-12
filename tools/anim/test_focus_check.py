@@ -117,5 +117,108 @@ class Caught(unittest.TestCase):
         self.fails(data, "settle")
 
 
+def rig_of(troop):
+    geo = "%s/geo/troop/%s.geo.json" % (sc.ASSETS, troop)
+    return sc.Rig(rg.load_geo(os.path.join(REPO, geo)), sc.rig_rules_for(REPO, geo), troop)
+
+
+def freeze(data, clips=(CLIP, LEGS)):
+    """Every channel of the clips held on its first key."""
+    for name in clips:
+        for bone in data["animations"][name]["bones"].values():
+            for ch in ("rotation", "position"):
+                if isinstance(bone.get(ch), dict):
+                    first = bone[ch][min(bone[ch], key=float)]
+                    bone[ch] = {k: first for k in bone[ch]}
+    return data
+
+
+class Graded(unittest.TestCase):
+    """Kort's grades of knight-attack_overhead-r1 (2026-11-11, score 7), each as a mutation the checks must catch, and
+    the rules added for a two-handed troop (the Warmaw tusk)."""
+
+    def test_weapon_spun_in_the_hand_in_the_wind_up(self):          # tick 5: "weapons spins around in hand"
+        hand = RIG.full.bones[RIG.blade_bone].parent
+        data = mutate(hand, "rotation", lambda t, v: [v[0], v[1], v[2] + (70.0 if 0.2 < t < 0.3 else 0.0)])
+        r = run(data)["grip_roll"]
+        self.assertEqual(r["status"], "FAIL", r)
+
+    def test_cape_crest_and_plates_standing_still(self):            # "i want the whole unit to be animated"
+        alive = fc.alive_pieces(RIG.full)
+        data = copy.deepcopy(ANIM)
+        for name in (CLIP, LEGS):
+            for bone in [b for b in data["animations"][name]["bones"] if b in alive]:
+                del data["animations"][name]["bones"][bone]
+        r = run(data)["secondary_life"]
+        self.assertEqual(r["status"], "FAIL", r)
+        for piece in ("cape", "crest", "left_pauldron"):
+            self.assertIn(piece, r["detail"])
+
+    def test_the_demo_moves_every_piece(self):
+        r = run(ANIM)["secondary_life"]
+        self.assertEqual(r["status"], "pass", r)
+        self.assertGreaterEqual(r["value"], fc.LIMITS["secondary_life"][0])
+
+    def test_arm_sunk_in_the_chest_mid_clip(self):                  # ticks 7, 8: "textures on its chest are glitching"
+        data = mutate("left_arm", "rotation", lambda t, v: [v[0], v[1], v[2] + (30.0 if 0.3 < t < 0.6 else 0.0)])
+        r = run(data)["armour_clip"]
+        self.assertEqual(r["status"], "FAIL", r)
+        self.assertNotIn("stance", r["detail"])
+
+    def test_clipping_the_stance_already_has_is_reported_against_the_stance(self):
+        data = freeze(mutate("left_arm", "rotation", lambda t, v: [v[0], v[1], v[2] + 45.0]))
+        r = run(data)["armour_clip"]
+        self.assertEqual(r["status"], "WARN", r)
+        self.assertIn("fix the stance", r["detail"])
+
+    def test_alive_pieces_by_troop(self):
+        self.assertTrue({"cape", "crest", "left_pauldron", "right_pauldron"} <= set(fc.alive_pieces(RIG.full)))
+        tusk = set(fc.alive_pieces(rig_of("wm_tusk").full))
+        self.assertTrue({"kilt", "trophy", "tooth_necklace", "hip_skull", "pauldron", "left_pauldron"} <= tusk, tusk)
+        for bone in ("torso", "head", "right_forearm", "weapon"):
+            self.assertNotIn(bone, tusk)
+
+    def test_limb_root(self):
+        tusk = rig_of("wm_tusk").full
+        self.assertEqual(fc._limb_root(tusk, "right_shin_guard"), "right_leg")
+        self.assertEqual(fc._limb_root(tusk, "left_knee"), "left_leg")
+        self.assertEqual(fc._limb_root(RIG.full, "right_forearm"), "right_arm")
+        self.assertIsNone(fc._limb_root(RIG.full, "torso"))
+
+    def second_grip(self, troop, clip, legs):
+        rig = RIG if troop == "knight" else rig_of(troop)
+        anim = ANIM if troop == "knight" else sc._read(os.path.join(REPO, "%s/animations/troop/%s.animation.json"
+                                                                    % (sc.ASSETS, troop)))
+        fr = rg.Scene(rig.model, None, [rg.load_clip(anim, legs), rg.load_clip(anim, clip)], 0.0).evaluate(0.0)
+        P = fc.Parts(rig)
+        side = "left" if P.holder.get("weapon") == "right" else "right"
+        return fc._second_grip(rig, fr, P, P.idx(["weapon"]), side)
+
+    def test_second_hand_on_a_shaft_is_a_grip(self):                # a spear in two fists is not "weapon in the arm"
+        grip = self.second_grip("wm_tusk", "attack_thrust", "attack_thrust_legs")
+        self.assertIsNotNone(grip)
+        self.assertAlmostEqual(grip[1] * 16.0, fc.GRIP_FREE)
+
+    def test_shield_hand_is_not_a_grip(self):
+        self.assertIsNone(self.second_grip("knight", CLIP, LEGS))
+
+
+class FitPairs(unittest.TestCase):
+    """The row armour_clip names one pair; fit_pairs lists them all (round 2: a pauldron 1.88 px in the helm was hidden
+    behind an arm 1.88 px in the torso)."""
+
+    def test_lists_every_pair_naming_the_part(self):
+        import fit_pairs
+        worst, per_tick = fit_pairs.pairs("knight", CLIP, part="pauldron", t0=3.0, t1=6.0)
+        self.assertTrue(worst)
+        for pair, (gain, tick, depth) in worst.items():
+            self.assertTrue("pauldron" in pair[0] or "pauldron" in pair[1], pair)
+            self.assertTrue(3.0 <= tick <= 6.0)
+            self.assertLessEqual(gain, depth + 1e-9)        # what the clip adds is never more than the depth itself
+        self.assertEqual(sorted(per_tick), [3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0])
+        helm = [g for pair, (g, _, _) in worst.items() if "helm_great" in pair]
+        self.assertTrue(helm and max(helm) < 1.5, helm)     # the plate gives way to the helm (fullbody._plates_yield)
+
+
 if __name__ == "__main__":
     unittest.main()

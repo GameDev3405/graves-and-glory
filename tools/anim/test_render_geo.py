@@ -84,6 +84,37 @@ class BoxUvTest(unittest.TestCase):
         self.assertGreater(right[2], right[0])  # blue on the viewer's right
 
 
+class FlatCubeTest(unittest.TestCase):
+    """A zero-depth cube has two faces in one plane. The game's depth test (LEQUAL) lets one of them win everywhere;
+    a strict test let float noise choose per pixel and drew a hatch on every skirt and tabard (2026-11-11: three
+    reviewers reported it as flicker, and it was not in the game)."""
+
+    def plane_colours(self, tie):
+        sx, sy = 8, 8
+        u, v = 4, 2
+        tex = np.zeros((64, 64, 4), np.uint8)
+        tex[v:v + sy, u:u + sx] = (0, 0, 255, 255)              # north, sz = 0
+        tex[v:v + sy, u + sx:u + 2 * sx] = (255, 255, 0, 255)    # south
+        bones = [{"name": "b", "pivot": [0, 4, 0], "rotation": [20, 30, 10],
+                  "cubes": [{"origin": [-4, 0, 0], "size": [sx, sy, 0], "uv": [u, v]}]}]
+        sc = rg.Scene(rg.load_geo(geo_of([], bones=bones)), [tex])
+        fr = sc.evaluate(0)
+        cam = rg.make_cameras(["three_quarter"], sc.aabb(fr), "near", 100.0)[0].bind((0, 0, 0))
+        old, rg.DEPTH_TIE = rg.DEPTH_TIE, tie
+        try:
+            img = rg.render_view(sc, fr, cam, ss=1, marker=False, bg_cache=False).astype(int)
+        finally:
+            rg.DEPTH_TIE = old
+        blue = int(((img[..., 2] > img[..., 0] + 40) & (img[..., 2] > img[..., 1] + 40)).sum())
+        yellow = int(((img[..., 0] > img[..., 2] + 40) & (img[..., 1] > img[..., 2] + 40)).sum())
+        return blue, yellow
+
+    def test_one_side_wins_everywhere(self):
+        blue, yellow = self.plane_colours(rg.DEPTH_TIE)
+        self.assertGreater(blue + yellow, 200)
+        self.assertEqual(blue, 0, "the later face (south) wins the tie, as with LEQUAL: %d blue pixels" % blue)
+
+
 class AnimTest(unittest.TestCase):
     def clip(self, bones, loop=True, length=1.0, name="c"):
         return rg.load_clip({"animations": {name: {"loop": loop, "animation_length": length, "bones": bones}}}, name)

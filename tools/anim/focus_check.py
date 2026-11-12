@@ -75,6 +75,75 @@ FRONT = np.array([0.0, 0.0, 1.0])
 UP = np.array([0.0, 1.0, 0.0])
 SOFT = {"cape", "cloak", "skirt", "tail", "tails", "mantle", "surcoat", "tippet", "tabard", "hair", "plume", "crest",
         "pelt", "wrap", "sash", "scarf", "kelp", "fur", "tassel", "ribbon", "banner", "hood", "cowl", "beard", "string"}
+# Pieces that must visibly move in an action clip, by a token of the bone's name (art/anim/common/fullbody.py reads the
+# same table to find what to swing): cloth, plumes, hanging gear, shoulder plates.
+ALIVE_KINDS = {
+    "cloth": {"cape", "cloak", "skirt", "tail", "tails", "tippet", "tabard", "pelt", "sash", "scarf", "kelp", "ribbon",
+              "banner", "tasset", "kilt", "fringe", "shawl"},
+    "plume": {"hair", "plume", "crest", "fur", "tassel", "beard", "mane", "feather", "feathers", "tuft"},
+    "gear": {"quiver", "pouch", "trophy"},
+    "plate": {"pauldron"},
+}
+ALIVE = set().union(*ALIVE_KINDS.values())
+# Hanging gear whose name has no telling token, by its whole bone name.
+ALIVE_NAMED = {"signal_horn": "gear", "tusk_necklace": "gear", "tooth_necklace": "gear", "hip_skull": "gear"}
+
+
+def rest_box(model, bone):
+    """Corners (model px: the geo's pixels with x mirrored) of every cube on the bone and the bones under it."""
+    names, todo = {bone}, [bone]
+    while todo:
+        b = todo.pop()
+        for n in model.order:
+            if model.bones[n].parent == b and n not in names:
+                names.add(n)
+                todo.append(n)
+    pts = []
+    for ci, cube in enumerate(model.cube_list):
+        if model.cube_bone[ci] not in names:
+            continue
+        cp = cube.pivot / 16.0
+        Mc = rg._T(*cp) @ rg._Rz(cube.rot[2]) @ rg._Ry(cube.rot[1]) @ rg._Rx(cube.rot[0]) @ rg._T(*(-cp))
+        pts.append((cube.corners @ Mc[:3, :3].T + Mc[:3, 3]) * 16.0)
+    return np.concatenate(pts) if pts else np.zeros((0, 3))
+
+
+def alive_pieces(model):
+    """{bone: (kind, attach point, free end, length)} in model px for every piece of the rig that should trail its
+    parent: a name token of ALIVE_KINDS, cubes of its own, and a free end at least 1.5 px from where it is attached.
+    Cloth and gear must hang (a band that stands up from its hinge is part of the body). Shoulder plates are listed with
+    kind "plate" and no geometry test."""
+    out = {}
+    for n in model.order:
+        bone = model.bones[n]
+        toks = set(n.split("_"))
+        kind = ALIVE_NAMED.get(n) or next((k for k, names in ALIVE_KINDS.items() if toks & names), None)
+        if kind is None or bone.parent is None:
+            continue
+        box = rest_box(model, n)
+        if not len(box):
+            continue
+        piv = np.array(bone.pivot, dtype=float)
+        lo, hi = box.min(axis=0), box.max(axis=0)
+        centre = (lo + hi) / 2.0
+        att = np.minimum(np.maximum(piv, lo), hi)     # the pivot, or the piece's nearest point
+        if kind in ("cloth", "gear") and np.linalg.norm(att - piv) > 1.0:
+            att = np.array([centre[0], hi[1], centre[2]])       # the bone's pivot is elsewhere: it hangs from its top
+        u = centre - att
+        if np.linalg.norm(u) < 0.6:            # hinged at its middle: it can only rock, end down
+            u = np.array([0.0, -1.0, 0.0])
+        u = u / np.linalg.norm(u)
+        along = (box - att) @ u
+        if kind in ("cloth", "gear") and min(along) < -1.5 and max(along) > 1.5:
+            if u[1] > 0:                        # hinged inside itself: the lower end is the free one
+                u, along = -u, -along
+        elif -float(min(along)) > float(max(along)):
+            u, along = -u, -along
+        length = float(max(along))
+        if kind != "plate" and (length < 1.5 or (kind in ("cloth", "gear") and u[1] > 0.5)):
+            continue
+        out[n] = (kind, att, att + u * length, length)
+    return out
 SKELETON = ("hips", "torso", "head", "right_arm", "right_forearm", "right_hand", "left_arm", "left_forearm", "left_hand",
             "right_leg", "right_shin", "right_foot", "left_leg", "left_shin", "left_foot")
 
@@ -86,10 +155,13 @@ LIMITS = {
     "prop_in_body": (1.25, 2.0, "px. A shield is carried against the body; its rim brushes the thigh in a stride"),
     "limb_in_body": (1.0, 2.0, "px. Armour is modelled a pixel proud of the limb, so a pixel of overlap is contact"),
     "floor": (0.5, 1.0, "px under the ground"),
+    "armour_clip": (1.7, 1.9, "px any two pieces (plates, cloth, limbs) sink into each other beyond their rest fit. The approved knight never passes 1.6; Kort 2026-11-11 marked the ticks at 2.0 ('textures on its chest are glitching into each other')"),
     "dead_hold": (2.0, 3.0, "ticks. A held pose still breathes; three frozen ticks read as a stuck frame"),
     "loop_life": (0.6, 0.4, "px, a minimum. Kort cut the sway to 25-40% on 2026-11-07 ('way too much sway'), so a loop is small on purpose; under 0.4 px it is a statue"),
     "edge_lead": (25.0, 40.0, "deg off the cut's line while the tip is fast"),
     "point_lead": (25.0, 40.0, "deg between the blade and the hand's travel while the hand drives forward"),
+    "grip_roll": (12.0, 20.0, "deg per tick the weapon turns about its own length (in the world and against the forearm) before the strike, or anywhere in a clip with no strike. Kort 2026-11-11, tick 5 of a wind-up: 'weapons spins around in hand'"),
+    "secondary_life": (4.0, 2.0, "deg, a minimum: how far the stillest cape, crest, skirt or shoulder plate turns in an action clip. Kort 2026-11-11: 'i want the whole unit to be animated including pieces of its armor'"),
     "roll_spin": (100.0, 140.0, "deg per tick about the blade's length (the edge roll may turn 100 a tick)"),
     "wrist": (135.0, 150.0, "deg between the blade and the forearm's line (0 is a thrust in line with the arm, 90 a hammer grip, 180 folded back on the elbow)"),
     "elbow": (105.0, 130.0, "deg the upper arm would have to twist at the shoulder for the elbow to bend the way it does (180 is an elbow bending backward)"),
@@ -176,8 +248,37 @@ class Parts:
         return [i for i, s in enumerate(self.soft) if not s]
 
 
-def _depth(fr, P, movers, boxes, roots=None):
-    """Deepest mover lattice point inside any box (px), and the (mover, box) cube pair it belongs to."""
+GRIP_NEAR = 1.5     # px: a second fist this close to the weapon is holding it
+GRIP_FREE = 3.5     # px around that fist where the weapon is in the hand, not through the arm
+ARRIVE = 0.5        # share of the peak tip speed the weapon still has over the half tick before the impact
+INHERIT = 0.15      # px an action clip may add to the clipping its stance already starts with before it owns the FAIL
+
+
+def _second_grip(rig, fr, P, weapon, side):
+    """(fist, radius) in blocks when the other hand holds the weapon too (a spear, a greataxe, the string hand on a
+    nocked bow): the shaft inside that fist is a grip. None when the hand is off it."""
+    bone = side + "_hand"
+    if bone not in rig.full.bones or bone not in fr.bone_M:
+        return None
+    fist = _pivot(rig, fr, bone) / 16.0
+    near = min(float(np.linalg.norm(sc.cube_points(fr.corners[i], P.lat[i]) - fist, axis=1).min()) for i in weapon)
+    return (fist, GRIP_FREE / 16.0) if near * 16.0 <= GRIP_NEAR else None
+
+
+def _limb_root(model, bone):
+    """The arm or leg a bone hangs on (its gear included), or None for the trunk."""
+    n = bone
+    while n is not None:
+        t = n.split("_")
+        if len(t) == 2 and t[0] in ("right", "left") and t[1] in ("arm", "leg"):
+            return n
+        n = model.bones[n].parent if n in model.bones else None
+    return None
+
+
+def _depth(fr, P, movers, boxes, roots=None, free=None):
+    """Deepest mover lattice point inside any box (px), and the (mover, box) cube pair it belongs to. free = (point,
+    radius): mover points inside that ball are not judged (a second hand's grip)."""
     if not movers or not boxes:
         return 0.0, None
     best, pair = 0.0, None
@@ -191,10 +292,39 @@ def _depth(fr, P, movers, boxes, roots=None):
         half = np.abs(proj).max(axis=1)
         q = np.einsum("bpc,bca->bpa", pts[None] - c[:, None], R)
         d = (half[:, None, :] - np.abs(q)).min(axis=2)          # B x N
+        if free is not None:
+            d = np.where((np.linalg.norm(pts - free[0], axis=1) < free[1])[None, :], -1.0, d)
         k = np.unravel_index(int(np.argmax(d)), d.shape)
         if d[k] * 16.0 > best:
             best, pair = float(d[k] * 16.0), (i, boxes[k[0]])
     return best, pair
+
+
+def _fits(fr, P, bone_of):
+    """{(bone a, bone b): px} for every pair of cubes on different bones that overlap (weapons and held props are judged
+    by their own checks). The deepest lattice point of either cube inside the other."""
+    n = len(bone_of)
+    keep = [i for i in range(n) if P.part[i] not in ("weapon", "prop")]
+    lo = fr.corners.min(axis=1)
+    hi = fr.corners.max(axis=1)
+    out = {}
+    for i in keep:
+        cand = [j for j in keep if bone_of[j] != bone_of[i] and np.all(lo[i] <= hi[j]) and np.all(lo[j] <= hi[i])]
+        if not cand:
+            continue
+        pts = sc.cube_points(fr.corners[i], P.lat[i])
+        J = np.array(cand)
+        Rm = np.array([sc._rot(fr.cube_M[j]) for j in cand])
+        C = fr.corners[J]
+        c = C.mean(axis=1)
+        half = np.abs(np.einsum("bvc,bca->bva", C - c[:, None], Rm)).max(axis=1)
+        q = np.einsum("bpc,bca->bpa", pts[None] - c[:, None], Rm)
+        d = (half[:, None, :] - np.abs(q)).min(axis=2).max(axis=1) * 16.0
+        for k, j in enumerate(cand):
+            if d[k] > 0:
+                key = tuple(sorted((bone_of[i], bone_of[j])))
+                out[key] = max(out.get(key, 0.0), float(d[k]))
+    return out
 
 
 def _ang(a, b):
@@ -254,7 +384,15 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
     other = lambda s: "left" if s == "right" else "right"  # noqa: E731
     w, p = P.idx(["weapon"]), P.idx(["prop"])
     ws, ps = P.holder.get("weapon"), P.holder.get("prop")
-    worst("weapon_in_body", "CLIP", w, P.idx(body + (arm(other(ws)) if ws else [])), "no weapon")
+    r = R("weapon_in_body", "CLIP")
+    wtgt = P.idx(body + (arm(other(ws)) if ws else []))
+    if w and wtgt:
+        vals = [_depth(fr, P, w, wtgt, free=_second_grip(rig, fr, P, w, other(ws)) if ws else None) for fr in frames]
+        series["weapon_in_body"] = [v[0] for v in vals]
+        k = int(np.argmax(series["weapon_in_body"]))
+        r.set(vals[k][0], ts[k], name_pair(vals[k][1]))
+    else:
+        r.note("no weapon")
     worst("weapon_in_arm", "CLIP", w, P.idx([ws + "_arm"]) if ws else [], "no weapon")
     worst("weapon_in_prop", "CLIP", w, p, "no weapon and held prop together")
     worst("prop_in_body", "CLIP", p, P.idx(body + (arm(other(ps)) + [ps + "_arm"] if ps else [])), "no held prop")
@@ -288,6 +426,27 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
         series["floor"] = [max(0.0, v[0]) for v in lows]
         k = int(np.argmax(series["floor"]))
         r.set(series["floor"][k], ts[k], lows[k][1] + " under the ground" if series["floor"][k] > 0 else "")
+
+    r = R("armour_clip", "CLIP")
+    if kind != "death":
+        if not hasattr(rig, "_rest_fit"):
+            rig._rest_fit = _fits(rg.Scene(rig.model, None, [], 0.0).evaluate(0.0), P, bone_of)
+        best, ser = (0.0, 0.0, ""), []
+        for k in range(0, len(frames), 2):
+            top_g = 0.0
+            for pair, v in _fits(frames[k], P, bone_of).items():
+                la, lb = _limb_root(rig.full, pair[0]), _limb_root(rig.full, pair[1])
+                if la is not None and la == lb:      # one limb's own pieces fold over its elbow or knee: elbow / knee judge that
+                    continue
+                g = v - rig._rest_fit.get(pair, 0.0)
+                top_g = max(top_g, g)
+                if g > best[0]:
+                    best = (g, ts[k], "%s into %s" % pair)
+            ser += [top_g, top_g]
+        series["armour_clip"] = ser[:len(frames)] + [0.0] * (len(frames) - len(ser))
+        r.set(best[0], best[1], best[2])
+    else:
+        r.note("a fall lies on its gear")
 
     # ---------------------------------------------------------------- shared signals
     pts = np.array([fr.corners[hard].reshape(-1, 3) for fr in frames]) * 16.0 if hard else np.zeros((len(frames), 0, 3))
@@ -392,9 +551,12 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
             faults.append("fastest at tick %.2f, impact is %g" % (ts[kp], impact))
         if carry < 0.15:
             faults.append("stops at the impact, no follow-through")
+        arrive = float(tspeed[max(0, ii - PER // 2):ii + 1].mean()) / max(1e-6, peak)
+        if arrive < ARRIVE:
+            faults.append("lands at %.0f%% of its fastest: the blow has slowed before it hits (needs %.0f%%)" % (100 * arrive, 100 * ARRIVE))
         r.status = "FAIL" if len(faults) >= 2 else "WARN" if faults else "pass"
         r.value, r.tick = round(ratio, 2), ts[kp]
-        r.detail = "; ".join(faults) or "load %.2f ticks, strike %.1fx, peak %.0f px/tick at tick %.2f" % (load, ratio, peak, ts[kp])
+        r.detail = "; ".join(faults) or "load %.2f ticks, strike %.1fx, peak %.0f px/tick at tick %.2f, lands at %.0f%% of it" % (load, ratio, peak, ts[kp], 100 * arrive)
     else:
         r.note("only melee attacks with a design.json variant")
 
@@ -451,10 +613,48 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
         spins = [0.0]
         for k in range(1, len(frames)):
             spins.append(abs(_swing_twist(Rb[k - 1].T @ Rb[k])[1]) / STEP)
+        series["roll_spin"] = spins
         k = int(np.argmax(spins))
         r.set(spins[k], ts[k])
     else:
         r.note("no weapon")
+    r = R("grip_roll", "FACE")
+    if has_blade and len(frames) > 2 and kind != "death":
+        hand_b = rig.full.bones[rig.blade_bone].parent
+        fore_b = rig.full.bones[hand_b].parent if hand_b else None
+        if fore_b:
+            rel = [sc._rot(fr.bone_M[fore_b]).T @ Rb[k] for k, fr in enumerate(frames)]
+            # Judged where a spin has no reason: all of a clip with no strike, and an attack up to a tick before its
+            # strike (the wind-up Kort marked). From the strike on the edge is turning onto the cut's line and letting go
+            # again, which roll_spin bounds.
+            inside = set(range(min(arc) - PER, len(frames))) if arc else set()
+            # A spin is the weapon turning about its own length both in the world and against the forearm: a blade held
+            # steady while the arm turns under it is not one, nor is a blade carried round by the forearm.
+            turn = [0.0] + [min(abs(_swing_twist(rel[k - 1].T @ rel[k])[1]) / STEP, spins[k]) for k in range(1, len(frames))]
+            # a turn of the wrist is judged over a whole tick, so one sample of solver noise is not a spin
+            per = [float(np.mean(turn[max(0, k - PER + 1):k + 1])) if k not in inside else 0.0 for k in range(len(frames))]
+            series["grip_roll"] = per
+            k = int(np.argmax(per))
+            r.set(per[k], ts[k], "the weapon turns about its own length in the hand" if per[k] > LIMITS["grip_roll"][0] else "")
+        else:
+            r.note("the weapon is not held in a hand on a forearm")
+    else:
+        r.note("no weapon, or a fall")
+    r = R("secondary_life", "STALE")
+    if not hasattr(rig, "_alive"):
+        rig._alive = alive_pieces(rig.full)
+    alive = sorted({b for b in bone_of if b in rig._alive})
+    if kind in ("attack", "hit") and alive and "light" not in name:
+        rng = {}
+        for b in alive:
+            par = rig.full.bones[b].parent
+            Rs = [(sc._rot(fr.bone_M[par]).T if par else np.eye(3)) @ sc._rot(fr.bone_M[b]) for fr in frames]
+            rng[b] = max(sc._angle(Rs[0], x) for x in Rs)
+        still = [b for b in alive if rng[b] < LIMITS["secondary_life"][0]]
+        low = min(rng, key=rng.get)
+        r.set(rng[low], None, ("still: " + ", ".join(still)) if still else "%d pieces move, least %s" % (len(alive), low), lower=True)
+    else:
+        r.note("only attacks and heavy hits of a rig with cloth, plumes or hanging plates")
     r = R("wrist", "FACE")
     if has_blade:
         hand = rig.full.bones[rig.blade_bone].parent
@@ -609,6 +809,17 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
         for key, rr in res.items():
             if rr.status == "FAIL" and (rr.group == "CLIP" or key in ("wrist", "knee_aim", "elbow")):
                 rr.status, rr.detail = "WARN", (rr.detail + "; a fall, so not gated").strip("; ")
+    if top.loop != "loop" and kind != "death":
+        # An action clip starts and ends on its stance. Clipping the stance already has is the stance's to fix: the clip
+        # owns a FAIL only for what it adds on top.
+        for key in ("weapon_in_body", "limb_in_body", "armour_clip"):
+            rr, ser = res.get(key), series.get(key)
+            if rr is None or rr.status != "FAIL" or not ser:
+                continue
+            start = float(ser[0])
+            if start > LIMITS[key][0] and rr.value <= start + INHERIT:
+                rr.status = "WARN"
+                rr.detail = (rr.detail + "; the stance it starts from already has %.2f: fix the stance" % start).strip("; ")
     for key in exempt:
         if key in res and res[key].status == "FAIL":
             res[key].status = "exempt"

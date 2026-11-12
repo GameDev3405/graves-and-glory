@@ -23,6 +23,9 @@ python tools/anim/grade_video.py work/grade/knight-attack_overhead-r1 \
 
 - `--round` is the id the grades are saved under: `<troop>-<clip>-r<N>`. A new round after fixes gets a new N, so
   the old grades stay readable.
+- A clip that lives in a work copy (another lane's troop): `--anim work/<job>/<troop>.animation.json`, and
+  `--prev-anim` the exported file. A troop with armour tiers: `--tier 3`, or every tier is drawn at once. A
+  corrected model copy: `--geo`. Say on the page (`--note`) when the model shown is not the game's.
 - `--prev-anim` is the previous version of the same clip (for a landed clip:
   `git show HEAD:<exported animation file> > work/<troop>-head.animation.json`). The page then has a
   "Show previous cut" switch and the video is PREVIOUS | NEW.
@@ -66,3 +69,7 @@ fix the clip, pass the checks and the reviewer again, and build round N+1. Two f
 what is still wrong instead of guessing a third time.
 
 A round is finished when Kort scores it, not when the checks pass.
+
+Worked example of the whole loop: `kort-verdicts.md`, round `knight-attack_overhead-r1` (his notes, the cause of
+each, the rule and the check that came out of it) and `tools/anim/test_focus_check.py`, class `Graded` (one test
+per fault he marked).

@@ -11,7 +11,8 @@ change; build_anims.py and every other troop are as they were.
 The move, in the reference reel's phases (docs/anim-rebuild/STYLE.md):
   0-2.2    anticipation  weight goes back onto the rear foot, the blade starts up, the shield comes in to the chest
   2.0-4.6  gather        the lead foot draws back a pixel under the body as the pelvis coils and sinks
-  4.8-7.6  load          the blade stands high over the sword shoulder; it keeps drifting up so the held pose never freezes
+  4.8-7.6  load          the blade stands high over the sword shoulder and keeps drifting up; the chest and pelvis
+                         rise a quarter pixel (a breath in) and drop into the step, the shield trails: no frozen tick
   7.0-9.6  step          the lead foot lunges 5.4 px and plants just before the blow
   7.6-10   strike        the pelvis drives forward and drops, the torso uncoils, the blade comes down edge first
   10-12.5  follow        the cut carries on through, low and across the body; the shield swings out as the counterweight
@@ -36,7 +37,8 @@ OVERHEAD = {
     "hips": [(0, *B.READY_HIPS),
              (2.2, (-3, 13, 1), (0.6, -1.8, 1.2)),
              (4.8, (-6, 19, 2), (1.0, -2.6, 2.3)),
-             (7.6, (-7, 21, 2), (1.0, -2.8, 2.5)),
+             (6.2, (-7, 20.5, 2), (1.0, -2.3, 2.45)),      # a breath in at the top of the hold, then the drop
+             (7.6, (-7, 21, 2), (1.0, -3.0, 2.5)),
              (10, (7, -8, -1), (-0.5, -2.9, -2.4)),
              (12.5, (8, -12, -2), (-0.6, -3.1, -2.9)),
              (14.8, (5, -6, 0), (-0.3, -2.5, -2.2)),
@@ -50,6 +52,7 @@ OVERHEAD = {
     "torso": [(0, B.GUARD["torso"]),
               (2.2, (0, 20, 1)),
               (4.8, (-9, 30, 3)),
+              (6.2, (-12.5, 32.5, 3.5)),
               (7.6, (-12, 34, 3)),
               (8.8, (0, 16, 0)),
               (10, (15, -10, -2)),
@@ -61,30 +64,31 @@ OVERHEAD = {
              (T, (0, 0, 0))],
     "reach": [(0, None),
               (2.2, (-5.6, 0.4, 4.6)),
-              (4.8, (-6.2, 4.6, 1.0)),
-              (7.6, (-6.2, 4.8, 0.2)),
+              (4.8, (-5.6, 3.6, 1.6)),
+              (7.6, (-5.6, 3.9, 0.9)),
               (9.0, (-5.8, 3.6, 3.9)),
-              (10, (-2.0, 1.4, 6.5)),
-              (11.0, (0.6, -2.6, 5.2)),
-              (12.5, (1.8, -4.2, 3.2)),
-              (14.8, (-0.9, -3.0, 4.6)),
+              (10, (-2.6, 1.2, 6.6)),
+              (11.0, (-2.2, -2.8, 5.8)),
+              (12.5, (-2.4, -4.4, 4.2)),
+              (14.8, (-2.8, -3.2, 4.8)),
               (18.5, (-2.9, -3.0, 5.9)),
               (T, None)],
     "blade": [(0, G_BLADE),
               (2.2, (-62, 0, -6)),
-              (4.8, (-118, 0, -14)),
-              (7.6, (-130, 0, -17)),
+              (4.8, (-118, 0, -20)),
+              (7.6, (-130, 0, -24)),
               (9.0, (-78, 0, -8)),
               (10, (8, 3, 0)),
-              (11.0, (30, 18, 0)),
-              (12.5, (37, 30, 0)),
-              (14.8, (20, 11, 0)),
+              (11.0, (32, 6, 0)),
+              (12.5, (42, 8, 0)),
+              (14.8, (22, 6, 0)),
               (18.5, (-24, 5, -5)),
               (T, G_BLADE)],
     "fist": [(0, B.FIST_GUARD),
              (2.2, (4.7, 19.7, 5.5)),
              (4.8, (4.3, 20.3, 5.3)),
-             (7.6, (4.3, 20.4, 5.2)),
+             (6.2, (4.4, 20.7, 5.2)),
+             (7.6, (4.4, 20.8, 5.0)),
              (10, (7.4, 18.0, 3.8)),
              (12.5, (8.4, 16.6, 3.2)),
              (14.8, (7.2, 17.9, 3.8)),
