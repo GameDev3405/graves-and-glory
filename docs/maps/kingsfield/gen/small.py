@@ -42,9 +42,10 @@ def s1_beacon(ox, oz):
             if x in (ox - 1, ox + 7) or z in (oz - 1, oz + 7):
                 b.set(x, top, z, 'stone_brick_slab[type=top]')
                 b.set(x, top + 1, z, b.pick(MASON))
-                if (x + z) % 2 == 0: b.set(x, top + 2, z, 'stone_brick_wall')
-    b.box(ox + 3, top + 1, oz + 3, ox + 3, top + 2, oz + 3, 'cobblestone_wall')    # fire basket
-    for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)): b.set(ox + 3 + dx, top + 3, oz + 3 + dz, 'iron_bars')
+                if (x + z) % 2 == 0: b.set(x, top + 2, z, b.pick(MASON))
+    b.box(ox + 3, top + 1, oz + 3, ox + 3, top + 2, oz + 3, 'stone_bricks')         # fire bowl on a stone pedestal
+    for dx, dz, f in ((1, 0, 'west'), (-1, 0, 'east'), (0, 1, 'north'), (0, -1, 'south')):
+        b.set(ox + 3 + dx, top + 2, oz + 3 + dz, 'stone_brick_stairs[facing=%s,half=top,shape=straight]' % f)
     b.set(ox + 3, top + 3, oz + 3, 'netherrack'); b.set(ox + 3, top + 4, oz + 3, 'fire')
     for y in range(B0, top): b.set(ox + 1, y, oz + 1, 'ladder[facing=south]')
     b.set(ox + 1, top, oz + 1, 'air')
@@ -56,7 +57,7 @@ def s2_lodge(ox, oz):
     frame(ox, oz, 9, 9, 5, 'stone_bricks', stone=2, doors=((4, 8),), windows=((2, 8), (6, 8), (0, 4), (4, 0)), roof='z')
     for x in range(ox + 9, ox + 12):
         for z in range(oz + 1, oz + 8): b.set(x, B0 + 3, z, 'dark_oak_slab[type=bottom]'); b.set(x, G, z, 'gravel')
-    for z in (oz + 1, oz + 7): b.box(ox + 11, B0, z, ox + 11, B0 + 2, z, 'oak_fence')
+    for z in (oz + 1, oz + 7): b.box(ox + 11, B0, z, ox + 11, B0 + 2, z, 'oak_log[axis=y]')
     b.set(ox + 10, B0, oz + 4, 'smooth_stone'); b.set(ox + 10, B0, oz + 3, 'stone_brick_stairs[facing=south,half=bottom,shape=straight]')
     b.set(ox + 10, B0, oz + 6, 'chiseled_stone_bricks')
     return (ox - 1, G, oz - 1, ox + 12, B0 + 11, oz + 9)
@@ -95,9 +96,8 @@ def s5_haybarn(ox, oz):
     for x in range(x0 + 1, x0 + 5):
         for z in range(z0 + 1, z0 + 5):
             for y in range(B0, B0 + max(0, 3 - (x - x0 - 1) // 2 - (z - z0 - 1) // 2)): b.set(x, y, z, 'hay_block[axis=y]')
-    for x in (x0 + 7, x0 + 8, x0 + 9): b.set(x, B0, z0 + 3, 'spruce_slab[type=top]')      # cart bed
-    for x in (x0 + 7, x0 + 9):
-        b.set(x, B0, z0 + 2, 'spruce_trapdoor[facing=north,half=bottom,open=true]'); b.set(x, B0, z0 + 4, 'spruce_trapdoor[facing=south,half=bottom,open=true]')
+    for x in (x0 + 7, x0 + 8, x0 + 9): b.set(x, B0, z0 + 2, 'oak_log[axis=x]')              # log pile and barrels
+    b.set(x0 + 8, B0 + 1, z0 + 2, 'oak_log[axis=x]'); b.set(x0 + 10, B0, z0 + 4, 'barrel[facing=up]'); b.set(x0 + 10, B0, z0 + 5, 'barrel[facing=up]')
     return (ox - 1, G, oz - 1, ox + 12, B0 + 9, oz + 8)
 
 
@@ -106,8 +106,7 @@ def s7_cross(ox, oz):
     b.box(ox, G, oz, ox + 2, G, oz + 2, FOOT)
     for x in range(ox, ox + 3):
         for z in range(oz, oz + 3): b.set(x, B0, z, 'cobblestone_slab[type=bottom]' if (x, z) != (ox + 1, oz + 1) else 'mossy_cobblestone')
-    b.box(ox + 1, B0 + 1, oz + 1, ox + 1, B0 + 3, oz + 1, 'cobblestone_wall')
-    b.set(ox + 1, B0 + 4, oz + 1, 'chiseled_stone_bricks')
+    b.box(ox + 1, B0 + 1, oz + 1, ox + 1, B0 + 4, oz + 1, 'stone_brick_wall')
     b.set(ox, B0 + 3, oz + 1, 'stone_brick_wall'); b.set(ox + 2, B0 + 3, oz + 1, 'stone_brick_wall')
     return (ox, G, oz, ox + 2, B0 + 4, oz + 2)
 

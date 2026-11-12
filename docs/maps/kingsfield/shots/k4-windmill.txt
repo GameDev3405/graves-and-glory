@@ -11,3 +11,5 @@ shot k4-windmill-north 6 208 -34 6 212 0
 shot k4-windmill-nw -22 216 -22 6 210 6
 shot k4-windmill-south 10 204 36 6 210 6
 shot k4-windmill-soldier 2 201.7 -18 6 214 0
+shot k4-windmill-stair 16 204 28 6 204 14
+shot k4-windmill-stair-side 22 203 16 6 203 15

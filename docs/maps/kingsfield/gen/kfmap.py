@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.normpath(os.path.join(HERE, '..', '..', '..', '..', '
 from mapforge.world import World, Cell
 from mapforge.structure import Structure, parse_state, state_string, normalize
 from mapforge.terrain import fbm, seed_of, hash01
+from trees import TREES, turned
 
 PIECES = os.path.join(HERE, '..', 'pieces')
 X0, X1, Z0, Z1 = -288, 287, -192, 191
@@ -199,7 +200,7 @@ def placements():
     both('k1_base', -251, 64, -40, dusk='k1_base_dusk')
     both('k2_grange', -157, 64, -29)
     out.append(('k3_barn', -18, 67, -96, False, False))
-    out.append(('k4_windmill', -1, 67, 76, False, False))
+    out.append(('k4_windmill', -1, 67, 73, False, False))
     out.append(('k5_hand', -22, 56, -24, False, False))
     out.append(('k6_crane', 10, 64, -63, False, False))
     out.append(('s9_hold', -83, 64, -108, False, False)); out.append(('s9_hold', -83, 64, -108, True, True))
@@ -235,9 +236,10 @@ class Map:
         self.steps()
         for (x, z), (h, s, u, top) in self.col.items():
             for i, b in enumerate(top):
-                if b.startswith('@tree'): self.tree(x, h, z, int(b[5]), b[6])
+                if b.startswith('@tree'): continue
                 else: self.extra[(x, h + 1 + i, z)] = b
         self.mill_yard()
+        self.forest()
         self.works()
         for p in placements(): place(self.extra, *p)
 
@@ -271,7 +273,6 @@ class Map:
                     if x % 4 == 2:
                         for y in (61, 62): self.put(sx * x, y, sz * 47, 'oak_fence'); self.put(sx * x, y, sz * 45, 'oak_fence')
                     for z in (45, 46, 47): self.put(sx * x, 63, sz * z, 'spruce_slab[type=top]')
-                self.put(sx * 27, 61, sz * 46, 'ladder[facing=%s]' % ('east' if sx > 0 else 'west'))
                 # cut stone waiting on the bench
                 for x, z, n in ((32, 40, 2), (33, 40, 1), (32, 41, 1), (56, 20, 2), (56, 21, 2), (57, 20, 1), (12, 44, 1), (13, 44, 2)):
                     for i in range(n): self.put(sx * x, 61 + i, sz * z, 'stone_bricks' if (x + i) % 2 else 'smooth_stone')
@@ -287,7 +288,7 @@ class Map:
                 # orchard: rows of small trees behind the knoll
                 for x in range(10, 36, 6):
                     for z in range(138, 170, 7):
-                        if (sx * x, sz * z) in self.col: self.tree(sx * x, self.col[(sx * x, sz * z)][0], sz * z, 4, 'o')
+                        self.plant('apple', x, z, sx, sz, (x + z) % 4)
                 # well beside the first cottage
                 wx, wz = sx * 133, sz * 76
                 if (wx, wz) in self.col:
@@ -307,13 +308,43 @@ class Map:
                     if abs(dx) == r and abs(dz) == r and r > 1: continue
                     self.extra.setdefault((x + dx, h + dy, z + dz), leaf)
 
+    def plant(self, name, ax, az, sx, sz, k=0):
+        """one of the nine trees with its trunk at (sx*ax, sz*az), mirrored like everything else"""
+        x0, z0 = sx * ax, sz * az
+        if (x0, z0) not in self.col: return
+        h = self.col[(x0, z0)][0]
+        for (dx, dy, dz), b in turned(TREES[name], k).items():
+            pos = (x0 + sx * dx, h + dy, z0 + sz * dz)
+            if 'leaves' in b: self.extra.setdefault(pos, b)
+            else: self.extra[pos] = b
+
+    def forest(self):
+        """the corner woods, the tree line on the edge bank and a few lone trees; the same in all four quarters"""
+        WOOD = ['oak_medium', 'oak_great', 'birch_tall', 'dark_oak', 'oak_small', 'birch_pair', 'oak_medium', 'spruce_small']
+        BANK = ['spruce_tall', 'spruce_small', 'oak_medium', 'birch_tall', 'spruce_tall', 'oak_small']
+        spots = []
+        for gx in range(174, 258, 7):
+            for gz in range(124, 178, 7):
+                ax, az = gx + int(hash01(SEED, gx, gz, 21) * 5) - 2, gz + int(hash01(SEED, gx, gz, 22) * 5) - 2
+                if hash01(SEED, gx, gz, 23) < 0.78 and wood(ax, az) and not wall_at(ax, az):
+                    spots.append((WOOD[int(hash01(SEED, gx, gz, 24) * len(WOOD))], ax, az, int(hash01(SEED, gx, gz, 25) * 4)))
+        for gx in range(0, 290, 6):
+            for gz in range(0, 194, 6):
+                ax, az = gx + int(hash01(SEED, gx, gz, 31) * 4) - 1, gz + int(hash01(SEED, gx, gz, 32) * 4) - 1
+                if bank(ax, az) >= 4 and hash01(SEED, gx, gz, 33) < 0.72:
+                    spots.append((BANK[int(hash01(SEED, gx, gz, 34) * len(BANK))], ax, az, int(hash01(SEED, gx, gz, 35) * 4)))
+        spots += [('oak_great', 190, 70, 0), ('oak_great', 60, 150, 1), ('birch_pair', 140, 112, 2), ('oak_small', 196, 62, 3)]
+        for name, ax, az, k in spots:
+            for sx in (1, -1):
+                for sz in (1, -1): self.plant(name, ax, az, sx, sz, k)
+
     def mill_yard(self):
         """the windmill's yard wall, the mirror of the barn's cover: 34 x 22, 3 high, gates north and south on the road"""
-        for x in range(-17, 17):
-            for z in range(74, 97):
-                if not (x in (-17, 16) or z in (74, 96)) or (abs(x) <= 3 and z in (74, 96)): continue
+        for x in range(-17, 18):
+            for z in range(71, 97):
+                if not (x in (-17, 17) or z in (71, 96)) or (abs(x) <= 3 and z in (71, 96)) or (x, z) not in self.col: continue
                 r = hash01(SEED, x, z, 5)
-                for y in (68, 69): self.extra[(x, y, z)] = 'mossy_cobblestone' if r < 0.25 else 'cobblestone'
+                for y in range(self.col[(x, z)][0] + 1, 70): self.extra[(x, y, z)] = 'mossy_cobblestone' if r < 0.25 else 'cobblestone'
                 self.extra[(x, 70, z)] = 'cobblestone_wall' if r < 0.8 else 'cobblestone'
 
     def cells(self, lo, hi, solid=True):

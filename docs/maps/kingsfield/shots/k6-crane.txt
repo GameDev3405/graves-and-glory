@@ -10,3 +10,4 @@ shot k6-crane-commander 4 236 40 4 205 8
 shot k6-crane-east 34 210 8 4 208 8
 shot k6-crane-sw -18 214 30 4 207 8
 shot k6-crane-soldier 14 201.7 16 4 210 6
+shot k6-crane-braces 12 211 14 4 211 4

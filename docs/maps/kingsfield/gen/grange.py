@@ -37,7 +37,6 @@ for cx, cz in ((0, 0), (49, 0), (0, 49), (49, 49)):
     for px, pz in ((cx, cz), (cx + 6, cz), (cx, cz + 6), (cx + 6, cz + 6)):     # roof posts; the walk stays open below
         b.box(px, WT + 1, pz, px, WT + 4, pz, 'oak_log[axis=y]')
     b.pyramid(cx - 1, cz - 1, cx + 7, cz + 7, WT + 5, ROOF, ROOF_SLAB)
-    b.set(cx + 3, WT + 4, cz + 3, 'lantern[hanging=true]')
 
 # west gatehouse (the east one is mirrored below): 6 deep, 14 wide, 9 high, passage 6 wide and 5 high
 GT = B0 + 8
@@ -118,12 +117,13 @@ b.gable_z(gx0, gx1, gz0, gz1, B0 + 7, 'spruce_stairs', 'spruce_slab', fill=[('sp
 for x in range(37, 51):
     for z in range(47, 53):
         b.set(x, B0 + 3, z, 'dark_oak_slab[type=bottom]' if z == 47 else 'dark_oak_slab[type=top]')
-for x in (37, 41, 46, 50): b.box(x, B0, 48, x, B0 + 2, 48, 'oak_fence')
+for x in (37, 41, 46, 50): b.box(x, B0, 48, x, B0 + 2, 48, 'oak_log[axis=y]')
 for x, z, h in ((39, 51, 2), (40, 51, 1), (39, 50, 1), (48, 51, 2), (47, 52, 1)):
     b.box(x, B0, z, x, B0 + h - 1, z, 'hay_block[axis=y]')
 b.set(43, B0, 51, 'composter')
 b.set(44, B0, 52, 'barrel[facing=up]')
-for x in (43, 44, 45): b.set(x, B0, 49, 'spruce_slab[type=top]')     # a cart bed
+for x in (43, 44, 45): b.set(x, B0, 50, 'oak_log[axis=x]')            # a log pile
+b.set(44, B0 + 1, 50, 'oak_log[axis=x]')
 
 # well, north-east corner
 wx, wz = 45, 9

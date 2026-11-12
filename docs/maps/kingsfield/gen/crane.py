@@ -26,7 +26,9 @@ for x in (2, 6):
     for z in (2, 6): b.set(x, TM, z, 'oak_log[axis=y]'); b.set(x, TT, z, 'oak_log[axis=y]')
 for k in (1, 2):                                             # braces under the top tie
     for z in (2, 6):
-        b.set(2 + k, TT - k, z, 'oak_fence'); b.set(6 - k, TT - k, z, 'oak_fence')
+        if k == 1:
+            b.set(3, TT - 1, z, 'spruce_stairs[facing=west,half=top,shape=straight]')
+            b.set(5, TT - 1, z, 'spruce_stairs[facing=east,half=top,shape=straight]')
 
 # treadwheel: a 7-wide ring in the y-z plane, axle along x
 WY, WZ = B0 + 5, 4
@@ -44,10 +46,9 @@ tip = None
 for z in range(6, 19):
     y = TT - 2 + round((z - 6) * 7 / 12)
     b.set(4, y, z, 'stripped_spruce_log[axis=z]')
-    if z > 6: b.set(4, y - 1, z - 1, b.get(4, y - 1, z - 1) or 'oak_fence')
+    if z > 6 and not b.get(4, y - 1, z): b.set(4, y - 1, z, 'spruce_stairs[facing=north,half=top,shape=straight]')
     tip = (4, y, z)
-for i, z in enumerate(range(1, -4, -1)):                     # back stay down to an anchor stone
-    b.set(4, TT - 1 - i * 2, z, 'oak_fence'); b.set(4, TT - 2 - i * 2, z, 'oak_fence')
+for z in (5, 4, 3): b.set(4, TT - 2, z, 'stripped_spruce_log[axis=z]')      # the jib's heel runs back through the frame
 for y in range(tip[1] - 4, tip[1]): b.set(4, y, tip[2], 'chain[axis=y]')
 b.box(3, tip[1] - 6, tip[2], 4, tip[1] - 5, tip[2] + 1, 'smooth_stone')      # the block on the hook
 b.set(1, B0 + 2, 7, 'barrel[facing=up]')

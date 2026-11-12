@@ -12,3 +12,7 @@ shot k1-base-se 104 240 112 36 200 40
 shot k1-base-lane 66 201.7 40 12 204 40
 shot k1-base-dais 19 203.7 40 71 204 40
 shot k1-base-barracks 36 201.7 26 30 204 10
+shot k1-base-tents 54 204 46 54 200 58
+shot k1-base-tent-door 49.5 201.7 50 49.5 200.5 58
+shot k1-base-butts 31 201.7 27 31 200 21
+shot k1-base-wallwalk 30 202 8 10 203 3

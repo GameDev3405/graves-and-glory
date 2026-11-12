@@ -34,9 +34,9 @@ for z in range(2, 78):
     b.set(2, WT, z, 'spruce_slab[type=top]')
     if z not in LANE: b.set(69, WT, z, 'spruce_slab[type=top]')
 for x in range(6, 70, 7):
-    for z in (2, 77): b.box(x, B0, z, x, WT - 1, z, 'oak_fence')
+    for z in (2, 77): b.box(x, B0, z, x, WT - 1, z, 'oak_log[axis=y]')
 for z in range(6, 78, 7):
-    b.box(2, B0, z, 2, WT - 1, z, 'oak_fence')
+    b.box(2, B0, z, 2, WT - 1, z, 'oak_log[axis=y]')
 
 def tower(x0, z0, size, top, roof=True):
     x1, z1 = x0 + size - 1, z0 + size - 1
@@ -106,15 +106,15 @@ def hall(x0, z0, x1, z1, h, wall, door_z, doors, roof='x'):
 # barracks: long hall on the north side, doors to the yard
 hall(14, 5, 45, 14, 5, DAUB, 14, (21, 29, 37))
 b.box(13, B0, 9, 13, B0 + 9, 9, FOOT); b.set(13, B0 + 10, 9, 'cobblestone_wall')
-for x in (17, 25, 33, 41): b.set(x, B0, 15, 'oak_fence'); b.set(x, B0 + 1, 15, 'lantern[hanging=false]') if x in (17, 41) else None
+for x in (17, 41): b.box(x, B0, 16, x, B0 + 1, 16, 'oak_fence'); b.set(x, B0 + 2, 16, 'lantern[hanging=false]')   # lamp posts
 # armoury: small stone store beside the barracks
 hall(50, 5, 60, 13, 5, 'stone_bricks', 13, (54,))
 for x, z in ((48, 16), (49, 16), (62, 15)): b.set(x, B0, z, 'barrel[facing=up]')
 # weapon racks and practice posts north of the lane
-for x in (24, 30, 36):
-    b.box(x, B0, 21, x + 2, B0, 21, 'oak_fence'); b.box(x, B0 + 1, 21, x + 2, B0 + 1, 21, 'oak_fence')
-for x in (46, 52, 58):
-    b.box(x, B0, 21, x, B0 + 1, 21, 'oak_fence'); b.set(x, B0 + 2, 21, 'hay_block[axis=y]')
+for x in (24, 30, 36):                                       # archery butts: straw bales with a target on top
+    b.set(x, B0, 21, 'hay_block[axis=x]'); b.set(x + 1, B0, 21, 'hay_block[axis=x]')
+    b.set(x, B0 + 1, 21, 'target')
+b.set(40, B0, 21, 'fletching_table'); b.set(41, B0, 21, 'barrel[facing=up]')
 
 # stores: hall on the south side; stable: open-fronted, stalls and hay
 hall(14, 65, 31, 74, 5, 'spruce_planks', 65, (20, 26))
@@ -130,12 +130,32 @@ for x in range(sx0, sx1 + 1, 4):
     b.box(x, B0, sz0 + 1, x, B0, sz1 - 1, 'oak_fence')
 for x in (40, 48, 56): b.set(x, B0, sz1 - 1, 'hay_block[axis=x]'); b.set(x + 1, B0, sz1 - 1, 'water_cauldron[level=3]')
 # tents in the north-east and south-east corners of the yard (clear of the lane)
-for tx, tz in ((52, 17 + 0), (58, 60), (48, 58)):
-    if tz < 28: continue
-    for i in range(3):
-        for z in range(tz, tz + 5):
-            b.set(tx + i, B0 + i, z, 'white_wool'); b.set(tx + 5 - i, B0 + i, z, 'white_wool')
-    b.air(tx + 1, B0, tz, tx + 4, B0, tz + 4); b.air(tx + 2, B0 + 1, tz, tx + 3, B0 + 1, tz + 4)
+def tent(tx, tz, door):
+    """ridge tent 7 wide (x) and 8 long (z), 4 high: canvas over a ridge pole, the side's stripe along the foot,
+    closed back, open front with the flaps drawn back, bedrolls and a barrel inside. door: -1 = north end, 1 = south"""
+    zs = list(range(tz, tz + 8))
+    front, back = (zs[0], zs[-1]) if door < 0 else (zs[-1], zs[0])
+    for x in range(tx, tx + 7):
+        for z in zs: b.set(x, G, z, 'coarse_dirt' if x in (tx, tx + 6) else 'spruce_planks')
+    for z in zs:
+        for i in range(3):
+            cloth = CLOTH if i == 0 else 'white_wool'
+            b.set(tx + i, B0 + i, z, cloth); b.set(tx + 6 - i, B0 + i, z, cloth)
+        b.set(tx + 3, B0 + 3, z, 'stripped_spruce_log[axis=z]')                               # ridge pole
+    for z in (front + door, back - door): b.set(tx + 3, B0 + 3, z, 'stripped_spruce_log[axis=z]')   # pole ends stick out
+    for x in range(tx + 1, tx + 6):                               # the back wall, closed
+        for y in range(B0, B0 + 3):
+            if abs(x - tx - 3) + (y - B0) <= 2: b.set(x, y, back, 'white_wool')
+    for x in (tx + 1, tx + 5): b.set(x, B0, front, 'white_wool')  # the front: flaps drawn to the sides, door 3 wide
+    b.set(tx + 2, B0 + 1, front, 'white_wool'); b.set(tx + 4, B0 + 1, front, 'white_wool')
+    inz = back + door                                             # inside, against the back wall
+    for x in (tx + 1, tx + 5):
+        b.set(x, B0, inz, 'hay_block[axis=z]'); b.set(x, B0, inz + door, 'hay_block[axis=z]')
+    b.set(tx + 3, B0, inz, 'barrel[facing=up]')
+    b.set(tx - 1, B0, front, 'barrel[facing=up]'); b.set(tx + 7, B0, front, 'spruce_planks')   # kit outside
+    b.set(tx + 7, B0 + 1, front, 'lantern[hanging=false]')
+
+tent(46, 55, -1); tent(56, 56, -1); tent(51, 17, 1)
 # campfire and benches south of the lane
 b.set(40, B0, 58, 'campfire[lit=true]')
 for x, z in ((38, 58), (42, 58), (40, 56), (40, 60)): b.set(x, B0, z, 'spruce_slab[type=bottom]')

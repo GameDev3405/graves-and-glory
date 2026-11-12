@@ -89,8 +89,9 @@ for x0, x1 in ((1, 6), (27, 32)):
 for x, z in ((11, 1), (12, 1), (11, 2), (22, 14), (21, 14)):
     b.set(x, B0, z, 'barrel[facing=up]')
 b.set(11, B0 + 1, 1, 'barrel[facing=up]')
-for x in (9, 24):
-    b.set(x, EAVE - 1, 4, 'lantern[hanging=true]')
-    b.set(x, EAVE - 1, 11, 'lantern[hanging=true]')
+for x in (9, 24):                                   # lamps on chains from the tie beams, in the open aisle
+    for z in (6, 9):
+        b.set(x, EAVE - 1, z, 'chain[axis=y]')
+        b.set(x, EAVE - 2, z, 'lantern[hanging=true]')
 
 print(b.emit(sys.argv[1], 'kf-k3-barn', 'K3 Tithe Barn, workshop build', pad=((-8, 40, -8), (48, 120, 32))), 'ops', b.bounds())

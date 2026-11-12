@@ -17,9 +17,8 @@ for x in range(-1, 14):
             b.set(x, B0 + 5, z, 'dark_oak_slab[type=bottom]' if r > 4.4 else 'dark_oak_planks')
         elif r <= 7.2:
             b.set(x, B0 + 4, z, 'dark_oak_slab[type=top]')
-b.air(6, B0, 12, 6, B0 + 1, 12)
-b.air(5, B0, 12, 5, B0 + 1, 12)
-for x, z in ((0, 6), (12, 6)): b.set(x, B0 + 2, z, 'air')                 # slit windows
+b.air(12, B0, 6, 12, B0 + 1, 7)                                             # base door, east
+b.set(0, B0 + 2, 6, 'air')                                                  # slit window, west
 b.box(CX, B0, CZ, CX, B0 + 5, CZ, 'oak_log[axis=y]')                        # the post
 for dx, dz, ax in ((1, 0, 'x'), (-1, 0, 'x'), (0, 1, 'z'), (0, -1, 'z')):   # cross trees
     for k in (1, 2, 3): b.set(CX + dx * k, B0, CZ + dz * k, 'stripped_oak_log[axis=%s]' % ax)
@@ -45,13 +44,17 @@ b.gable_z(x0, x1, z0, z1, Y1 + 1, 'spruce_stairs', 'dark_oak_slab', fill=[('spru
 
 # back door, stair ladder and tail pole to the south
 b.air(6, Y0 + 1, z1, 6, Y0 + 2, z1)
-for i in range(7):
-    z, y = z1 + 1 + i, Y0 - i
-    for x in (5, 6, 7):
-        if x == 6: b.set(x, y, z, 'spruce_stairs[facing=north,half=bottom,shape=straight]')
-        else: b.set(x, y + 1, z, 'spruce_fence')
-    if i in (3, 6): b.box(6, B0, z, 6, y - 1, z, 'oak_fence')
-b.set(6, Y0, z1 + 1, 'spruce_planks')
+for x in (5, 6, 7): b.set(x, Y0, z1 + 1, 'spruce_planks')                   # landing at the door
+for i in range(7):                                                         # solid stone stair, 3 wide, stepped cheek walls
+    z, y = z1 + 2 + i, Y0 - i
+    for x in (4, 5, 6, 7, 8):
+        b.set(x, G, z, b.pick(FOOT))
+        if x in (4, 8):
+            b.box(x, B0, z, x, y, z, FOOT)
+        else:
+            if y > B0: b.box(x, B0, z, x, y - 1, z, FOOT)
+            b.set(x, y, z, 'cobblestone_stairs[facing=north,half=bottom,shape=straight]')
+for x in (4, 8): b.set(x, B0 + 1, z1 + 8, 'lantern[hanging=false]')        # lamps on the foot of the cheek walls
 
 # sails on the north face: windshaft, hub, four arms 10 long with cloth on the trailing side
 HY, SZ = B0 + 13, z0 - 3
@@ -63,9 +66,7 @@ for dx, dy in ((1, 0), (0, 1), (-1, 0), (0, -1)):
         b.set(x, y, SZ, 'stripped_spruce_log[axis=%s]' % ('x' if dx else 'y'))
         if r >= 3:
             for k in (1, 2):
-                b.set(x + px * k, y + py * k, SZ, 'oak_fence' if (k == 2 and r in (3, 10)) else 'white_wool')
+                b.set(x + px * k, y + py * k, SZ, 'white_wool')
 b.set(CX, HY, SZ, 'dark_oak_log[axis=z]')
-b.set(CX, HY, SZ - 1, 'dark_oak_button[face=wall,facing=north]')
-b.set(6, Y0 - 1, z1 + 1, 'lantern[hanging=true]')
 
 print(b.emit(sys.argv[1], 'kf-k4-windmill', 'K4 Windmill, workshop build', pad=((-12, 40, -12), (28, 130, 28))), 'ops', b.bounds())
