@@ -1623,6 +1623,14 @@ final class HoldLineChecks {
                     boolean nothing = alive && m.isAlive() && h2 == h && b.strikes.size() == queued && Tactics.swings == swings && hit == null;
                     impPass &= nothing;
                     impWhy.add("Abilities.attack called for the Squire (a melee troop) on tick " + b.time + ": the dummy lost " + fmt(h - h2) + ", blows queued " + (b.strikes.size() - queued) + ", swings begun " + (Tactics.swings - swings) + ", hits logged " + (hit == null ? 0 : 1) + " (want 0 each; the dummy alive before: " + alive + ")=" + nothing);
+                    // C02-F3: a Charge-impact blow the dummy does not take (invulnerable: damage() answers false) leaves the impact unspent for a later blow
+                    var heldBlow = impKnight.blow; long heldHitAt = impKnight.chargeHitAt;
+                    impKnight.blow = new Combat.Charge(true, false, b.time); impKnight.chargeHitAt = -1; m.timeUntilRegen = 0; m.hurtTime = 0; m.setInvulnerable(true);
+                    float absorbed; try { absorbed = Combat.resolve(b, impKnight, m, 1f, "melee", false); } finally { m.setInvulnerable(false); }
+                    long spentAt = impKnight.chargeHitAt; impKnight.blow = heldBlow; impKnight.chargeHitAt = heldHitAt;
+                    boolean unspent = absorbed == 0 && spentAt < b.time;
+                    impPass &= unspent;
+                    impWhy.add("a charging blow under a fresh stamp (" + b.time + ") on the invulnerable dummy dealt " + fmt(absorbed) + " and left the Squire's last impact on " + spentAt + " (want 0 and -1, before the stamp: no impact landed)=" + unspent);
                     impStrike = null; impBrace = 0; impOwnOrder = own.order; impDuskOrder = dusk.order; impDuskTarget = dusk.target; next(b, 98);
                 }
                 case 98 -> impBraced(b); // fix round 2: Hold judged with the Charge on the swing tick

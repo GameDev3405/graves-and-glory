@@ -108,7 +108,6 @@ public final class Combat {
         LAST.addLast(new HitLog(attacker.mob.getId(), target.getId(), base, counters, stance, traits, auras, commander, veteran, status, total, rows));
         while (LAST.size() > LOG_SIZE) LAST.removeFirst();
 
-        if (impact) attacker.chargeHitAt = b.time;
         if (victim != null) { victim.lastHitBy = attacker.squad; victim.lastHitAt = b.time; victim.lastHitTroop = attacker.temporary ? null : attacker.spec.id(); } // the troop type too, for the mastery ledger (a shot whose archer fell still credits it)
         // Command UI Task 6, each its own factor outside the clamp: a front-rank Shield wall man's raised shield stops arrowBlock of an arrow from
         // his front arc (FormationRules.arrowBlock), and a charging troop's first landed blow after its run crashes in (FormationRules.firstChargeHit:
@@ -130,6 +129,7 @@ public final class Combat {
         // and that is exactly the block the player should hear, so it sounds before the early return.
         if (!secondary && (hurt || raised)) Audio.hit(b, attacker, target, victim, kind, raised);
         if (!hurt) return 0;
+        if (impact) attacker.chargeHitAt = b.time; // only a LANDED blow spends the Charge's impact (C02-F3), as the first charge hit below
         LANDED.put(attacker, b.time);
         if (crash) FormationRules.spendChargeHit(attacker); // the first LANDED blow spends it (Task 6 review I1): one that did not land (hurt cooldown, invulnerable) keeps it
         if (crash) Abilities.knock(b, target, attacker.mob.getPos(), target.getPos().subtract(attacker.mob.getRotationVector().multiply(1, 0, 1)), D.chargeKnockback()); // an anchored troop stays (knock)
