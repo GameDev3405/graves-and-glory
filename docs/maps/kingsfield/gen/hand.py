@@ -2,6 +2,7 @@
 Usage: python hand.py OUT.json    Hand centre (0,0), wrist south, fingers north, 44 x 30, at most 2 high."""
 import json, math, random, sys
 FLOOR = 56
+CURL = len(sys.argv) > 2 and sys.argv[2] == 'curled'   # fingers bend up off the floor, tips 4 high
 rng = random.Random(5)
 
 def cap(px, pz, ax, az, bx, bz):
@@ -25,6 +26,9 @@ def cell(x, z):
     """returns (height above floor, block) or None. height 0 = flush inlay."""
     best = None
     for i, (a, b, r) in enumerate(FINGERS + [THUMB]):
+        if CURL:
+            k = 0.74 if i < 4 else 0.82
+            b = (a[0] + k * (b[0] - a[0]), a[1] + k * (b[1] - a[1]))
         d, t = cap(x, z, *a, *b)
         if i == BROKEN and 0.58 < t < 0.74: continue
         rr = r * (1.0 - 0.18 * t)
@@ -34,6 +38,9 @@ def cell(x, z):
             joint = any(abs(t - k) < 0.07 for k in ((0.45, 0.78) if not thumb else (0.6,)))
             h = 2 if (joint and d < rr - 0.6) else 1
             if t > 0.9: h = 0.5                      # fingertip: a slab
+            if CURL:
+                h = 1 + int((3.4 if not thumb else 2.4) * t ** 1.5)
+                if i == BROKEN and t >= 0.74: h = 1
             blk = None
             if any(abs(t - k - 0.09) < 0.035 for k in (0.45, 0.78)) and not thumb: h, blk = 1, 'andesite'
             if best is None or h > best[0]: best = (h, blk)
@@ -71,7 +78,7 @@ for z in range(-26, 27):
             ops.append({'op': 'set', 'pos': [x, FLOOR, z], 'block': 'diorite'})
             for y in range(1, int(h) + 1):
                 ops.append({'op': 'set', 'pos': [x, FLOOR + y, z], 'block': (blk if y == h and blk else skin(x, z))})
-plan = {'format': 'gg-mapforge-plan/1', 'id': 'kf-k5-hand', 'world': 'kf-workshop', 'author': 'maps-lead',
+plan = {'format': 'gg-mapforge-plan/1', 'id': 'kf-k5-hand' + ('-curled' if CURL else ''), 'world': 'kf-workshop', 'author': 'maps-lead',
         'purpose': 'K5 the Hand, workshop build', 'limits': {'maxChangedBlocks': 20000},
         'locks': [{'id': 'pad', 'mode': 'allow', 'min': [-32, 50, -32], 'max': [31, 80, 31], 'reason': 'workshop pad'}],
         'operations': ops}
