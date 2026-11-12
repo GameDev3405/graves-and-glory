@@ -679,6 +679,26 @@ if REVIEW_FIX:
     # hit_medium_back: floor 1.6 at t2.25, the axe head into the ground as the chest is thrown forward; the arms lift a
     # little more against the blow so the haft stays nearer level.
     SP.HIT_PEAK["back"] = K.off(torso=(12, 0, 0), head=(5, 0, 0), rarm=(-12, 0, 4), larm=(-12, 0, -4))
+    if os.environ.get("GG_BREAKER_FIX1") != "0":   # fix round 1: the axe head into the helm 1.84 at t2: the head is thrown back
+        SP.HIT_PEAK["back"] = K.off(torso=(12, 0, 0), head=(-6, 0, 0), rarm=(-12, 0, 4), larm=(-12, 0, -4))
+
+FIX1 = REVIEW_FIX and os.environ.get("GG_BREAKER_FIX1") != "0"   # fix round 1 (2026-11-12); =0 rebuilds the reviewed clips
+if FIX1:
+    # ---- overhead_chop, the heave (t4-10.75). The fists were held before the brow at shoulder height: the left gauntlet sank
+    # into the helm (2.27 px at t8.5) and the haft stood straight up before the helm's face as the drop began (weapon into
+    # helm 1.66 at t10.5). The fists now ride a little lower, under the chin, and the haft leans out over the right shoulder
+    # as it comes over the top, so it passes beside the helm instead of before its face. The axe head still hangs behind
+    # the back; the drop's keys from t11 on are unchanged.
+    for _t, _dy, _yaw in ((4.0, -0.8, 0.0), (8.0, -2.4, 0.0), (10.0, -2.4, 0.0), (10.25, -2.2, 0.05), (10.5, -1.6, 0.1),
+                          (10.75, -0.8, 0.06)):
+        _k = _key("overhead_chop", _t)
+        _nd = _un(np.asarray(_k["d"]) + (-_yaw, 0.0, 0.0))
+        _edit("overhead_chop", _t, O=np.asarray(_k["O"]) + (0.0, _dy, 0.0), d=_nd, u=_arc(_k["d"], _nd) @ np.asarray(_k["u"]))
+    # ---- side_hew, the coil (t4-10) and the carry (t14): pen_limb 1.49 (the left forearm across the breastplate as both
+    # fists wind to the right). The fists are held a little further out before the body there (the swing's path and the
+    # impact key are unchanged).
+    for _t, _dz in ((4.0, 0.5), (8.0, 1.0), (10.0, 1.0), (14.0, 0.8)):
+        _edit("side_hew", _t, O=np.asarray(_key("side_hew", _t)["O"]) + (0.0, 0.0, _dz))
 
 
 SP.GUARD, SP.ATTACKS, SP.IMPACT, SP.ATTACK_LEGS, SP.ATTACK_TICKS = GUARD, ATTACKS, IMPACT, ATTACK_LEGS, ATTACK_TICKS
@@ -907,11 +927,14 @@ def _slide(p):
     return float((f - a) @ (b - a))
 
 
-def left_clear(p, warm=None, s_range=(1.0, 14.0), margin=0.6):
+def left_clear(p, warm=None, s_range=(1.0, 14.0), margin=0.6, chest=False):
     """The left arm solved again so its fist stays on the haft while the cuff and gauntlet stay off the helm and the elbow
-    bends within the shoulder's reach. Returns (left_arm rot, left_forearm x, slide) or None when the pose needs nothing."""
+    bends within the shoulder's reach (chest: and the forearm out of the breastplate, fix round 1). Returns (left_arm rot,
+    left_forearm x, slide) or None when the pose needs nothing."""
     pen, elb = _helm_pen(p), _elbow(p)
-    if pen <= 0.0 and elb <= ELBOW_MAX:
+    if chest == "only":
+        pen = 0.0
+    if pen <= 0.0 and elb <= ELBOW_MAX and (not chest or chest_pen(p, "left") <= CHEST_MAX):
         return None
     a0 = np.asarray(p["left_arm"][0], float)
     f0 = float(p["left_forearm"][0][0])
@@ -925,8 +948,12 @@ def left_clear(p, warm=None, s_range=(1.0, 14.0), margin=0.6):
         res = [4.0 * (fl - SP.wpoint(q, SP.S(x[4])))]
         Mhq = K.world(q, "head")
         Mf = K.world(q, "left_forearm")
-        res.append([3.0 * max(0.0, _box_pen(_local_px(Mhq, K.point(Mf, c)), r + margin)) for c, r in ARM_PTS])
+        res.append([(0.0 if chest == "only" else 3.0) * max(0.0, _box_pen(_local_px(Mhq, K.point(Mf, c)), r + margin)) for c, r in ARM_PTS])
         res.append([0.25 * max(0.0, _elbow(q) - (ELBOW_MAX - 7.0))])
+        if chest:
+            res.append([3.0 * max(0.0, chest_pen(q, "left") - (CHEST_MAX - CHEST_MARGIN))])
+            res.append([2.0 * max(0.0, _spike_pen(q, "left") - 0.2)])
+            res.append([2.0 * haft_in_left_arm(q)])
         res.append(0.03 * (x[:4] - prior[:4]))
         res.append([0.15 * (x[4] - prior[4])])
         return np.concatenate([np.ravel(r_) for r_ in res])
@@ -934,6 +961,141 @@ def left_clear(p, warm=None, s_range=(1.0, 14.0), margin=0.6):
     clamp = lambda x: np.r_[x[:3], min(-2.0, max(-150.0, x[3])), min(s_range[1], max(s_range[0], x[4]))]  # noqa: E731
     x = SP.gn(f, prior, iters=40, clamp=clamp)
     return tuple(float(v) for v in x[:3]), float(x[3]), float(x[4])
+
+
+# Fix round 1 (2026-11-12): the forearms' clearance of the breastplate and the belt (scorecard pen_limb, measured as it does:
+# each forearm cube's points inside the torso or hips box, the depth counted from the face the elbow is outside of).
+_GEO_BONES = {b["name"]: b for b in SP._GEO}
+_FLIP = np.diag([-1.0, 1.0, 1.0])
+
+
+def _grid(c, step=1.0):
+    inf = float(c.get("inflate", 0.0) or 0.0)
+    lo = np.asarray(c["origin"], float) - inf
+    sz = np.asarray(c["size"], float) + 2 * inf
+    axes = [np.linspace(lo[k], lo[k] + sz[k], max(2, int(math.ceil(abs(sz[k]) / step)) + 1)) for k in range(3)]
+    return np.stack(np.meshgrid(*axes, indexing="ij"), axis=-1).reshape(-1, 3)
+
+
+FORE_CUBES = {s: [(b, np.vstack([_grid(c) for c in _GEO_BONES[b].get("cubes", [])]))
+                  for b in (s + "_forearm", s + "_cuff", s + "_gauntlet") if _GEO_BONES.get(b, {}).get("cubes")]
+              for s in ("right", "left")}
+CHEST_BOXES = [(b, np.asarray(c["origin"], float) - float(c.get("inflate", 0.0) or 0.0),
+                np.asarray(c["origin"], float) + np.asarray(c["size"], float) + float(c.get("inflate", 0.0) or 0.0))
+               for b in ("torso", "hips") for c in _GEO_BONES[b].get("cubes", [])]
+
+
+def _to_local(Mb, Mf):
+    """Bedrock px in bone f's frame -> bedrock px in bone b's frame."""
+    T = np.linalg.inv(Mb) @ Mf
+    R, t = _FLIP @ T[:3, :3] @ _FLIP, _FLIP @ T[:3, 3] * 16.0
+    return R, t
+
+
+RIGHT_TRIGGER = 1.0   # px: the guard itself holds the right forearm 0.9 px into the breastplate; right_clear leaves it be
+CHEST_MAX = 0.85      # px: the scorecard's pen_limb limit is 1.391; the solves aim under it with room for the bake
+CHEST_MARGIN = 0.3
+
+
+def right_clear(upper, legs, report=""):
+    """Fix round 1: where the right forearm sinks into the breastplate (the chop's heave: the arm straight out before the
+    face, its 4 px forearm across the chest), the right arm is solved again with the forearm held out of the torso; the
+    fist may move (the axe goes with it, its turn in the world unchanged). The change is eased over a tick either side,
+    then the left fist is put back on the haft at the same place along it."""
+    n = len(upper)
+    sols = [None] * n
+    for i in range(n):
+        p = SP.fk_pose(upper[i], legs[i])
+        if chest_pen(p, "right") <= RIGHT_TRIGGER:
+            continue
+        x0 = np.r_[np.asarray(upper[i]["right_arm"][0], float), float(upper[i]["right_forearm"][0][0])]
+        g0 = K.point(K.world(p, "right_hand"), SP.GRIP)
+
+        def f(x, p=p, x0=x0, g0=g0):
+            q = SP._arm("right", p, x)
+            return np.concatenate([1.0 * (K.point(K.world(q, "right_hand"), SP.GRIP) - g0),
+                                   [4.0 * max(0.0, chest_pen(q, "right") - (CHEST_MAX - 1.5 * CHEST_MARGIN))],
+                                   0.03 * (x - x0)])
+        clamp = lambda x: np.r_[x[:3], min(-2.0, max(-150.0, x[3]))]  # noqa: E731
+        sols[i] = SP.gn(f, x0.copy(), iters=40, clamp=clamp) - x0
+    need = [i for i in range(n) if sols[i] is not None]
+    if not need:
+        return upper
+    D = np.zeros((n, 4))
+    for i in need:
+        D[i] = sols[i]
+    for k in range(4):
+        D[:, k] = _smooth_series(list(D[:, k]), SUB)
+    for _ in range(4):
+        D[1:-1] = 0.25 * D[:-2] + 0.5 * D[1:-1] + 0.25 * D[2:]
+    env = edge_env(n)
+    for i in range(n):
+        d = D[i] * env[i]
+        if not np.abs(d).max() > 1e-6:
+            continue
+        p = SP.fk_pose(upper[i], legs[i])
+        Rh = K.world(p, "right_hand")[:3, :3]
+        s = _slide(p)
+        x = np.r_[np.asarray(upper[i]["right_arm"][0], float), float(upper[i]["right_forearm"][0][0])] + d
+        q = SP._arm("right", p, x)
+        hand = K.decompose_zyx(K.world(q, "right_forearm")[:3, :3].T @ Rh)
+        u = dict(upper[i], right_arm=(tuple(float(v) for v in x[:3]), upper[i]["right_arm"][1]),
+                 right_forearm=((float(x[3]), upper[i]["right_forearm"][0][1], upper[i]["right_forearm"][0][2]), upper[i]["right_forearm"][1]),
+                 right_hand=(tuple(float(v) for v in hand), upper[i]["right_hand"][1]))
+        q = SP.fk_pose(u, legs[i])
+        y0 = np.r_[np.asarray(u["left_arm"][0], float), float(u["left_forearm"][0][0])]
+
+        def fl(y, q=q, s=s, y0=y0):
+            qq = SP._arm("left", q, y)
+            return np.concatenate([4.0 * (K.point(K.world(qq, "left_forearm"), SP.FIST_L) - SP.wpoint(qq, SP.S(s))),
+                                   0.05 * (y - y0)])
+        y = SP.gn(fl, y0.copy(), iters=30)
+        u["left_arm"] = (tuple(float(v) for v in y[:3]), u["left_arm"][1])
+        u["left_forearm"] = ((float(y[3]), u["left_forearm"][0][1], u["left_forearm"][0][2]), u["left_forearm"][1])
+        upper[i] = u
+    if report:
+        print("  %s right forearm off the chest: %d samples solved; after: %.2f px" % (
+            report, len(need), max(chest_pen(SP.fk_pose(s_, l_), "right") for s_, l_ in zip(upper, legs))))
+    return upper
+
+
+def chest_pen(p, side):
+    """How deep (px) the side's forearm, cuff and gauntlet sink into the torso or hips box, from the elbow's side."""
+    Mf = K.world(p, side + "_forearm")
+    elbow = K.point(Mf, _GEO_BONES[side + "_forearm"]["pivot"])
+    worst = 0.0
+    for body, lo, hi in CHEST_BOXES:
+        Mb = K.world(p, body)
+        r = _local_px(Mb, elbow)
+        half, c = (hi - lo) / 2.0, (hi + lo) / 2.0
+        qr = r - c
+        a = int(np.argmax(np.abs(qr) - half))
+        sa = 1.0 if qr[a] >= 0 else -1.0
+        for bone, pts in FORE_CUBES[side]:
+            R, t = _to_local(Mb, K.world(p, bone))
+            q = pts @ R.T + t - c
+            side_d = half - np.abs(q)
+            side_d[:, a] = half[a] - sa * q[:, a]
+            d = side_d.min(axis=1)
+            worst = max(worst, float(d.max()))
+    return max(0.0, worst)
+
+
+LARM_BOX = (np.array([4.0, 18.0, -2.0]), np.array([8.0, 24.0, 2.0]))   # left_arm-local px (the upper arm's cube)
+_HAFT_S = np.arange(-6.0, 22.01, 1.0)
+
+
+def haft_in_left_arm(p, r=0.7):
+    """How far the haft (a 1 px rod) sinks into the left upper arm (px), the part near the left fist (its grip) skipped."""
+    Ma = K.world(p, "left_arm")
+    fist = K.point(K.world(p, "left_forearm"), SP.FIST_L)
+    worst = 0.0
+    for s_ in _HAFT_S:
+        w = SP.wpoint(p, SP.S(float(s_)))
+        if np.linalg.norm(w - fist) < 3.5:
+            continue
+        worst = max(worst, _box_pen(_local_px(Ma, w), r, LARM_BOX))
+    return worst
 
 
 def _spike_pen(p, side):
@@ -959,6 +1121,12 @@ def head_roll_for(p):
 
 
 _TURNS = [(x, y, z) for x in (-10.0, -5.0, 0.0, 5.0, 10.0) for y in np.arange(-15.0, 15.01, 3.0) for z in np.arange(-16.0, 16.01, 4.0)]
+TURN_LIM = (12.0, 16.0, 18.0)
+TURN_REG = 0.002
+if FIX1:   # fix round 1: the hew's impact (helm into right_spikes 3.1 at t13) needs a little more tuck than the grid reached
+    _TURNS = [(x, y, z) for x in (-10.0, -5.0, 0.0, 5.0, 10.0) for y in np.arange(-21.0, 21.01, 3.0) for z in np.arange(-24.0, 24.01, 4.0)]
+    TURN_LIM = (12.0, 22.0, 24.0)
+    TURN_REG = 0.0012   # and a deep spike is worth a bigger tuck
 
 
 def _head_cost(q):
@@ -978,7 +1146,7 @@ def head_turn_for(p):
         nonlocal best
         q = dict(p)
         q["head"] = ((h[0][0] + t[0], h[0][1] + t[1], h[0][2] + t[2]), h[1])
-        c = _head_cost(q) + 0.002 * (t[0] ** 2 + t[1] ** 2 + t[2] ** 2)
+        c = _head_cost(q) + TURN_REG * (t[0] ** 2 + t[1] ** 2 + t[2] ** 2)
         if c < best[0] - 1e-6:
             best = (c, tuple(float(a) for a in t))
     for t in _TURNS:
@@ -987,7 +1155,7 @@ def head_turn_for(p):
     for dx in (-2.5, 0.0, 2.5):
         for dy in (-1.5, 0.0, 1.5):
             for dz in (-2.0, 0.0, 2.0):
-                tryt((max(-12.0, min(12.0, b[0] + dx)), max(-16.0, min(16.0, b[1] + dy)), max(-18.0, min(18.0, b[2] + dz))))
+                tryt(tuple(max(-L, min(L, v)) for L, v in zip(TURN_LIM, (b[0] + dx, b[1] + dy, b[2] + dz))))
     return best[1]
 
 
@@ -1032,6 +1200,26 @@ def head_clear(upper, legs, env=None):
     return upper, rolls
 
 
+def head_clear_loop(upper, legs, passes=24):
+    """head_clear for a looping clip (fix round 1, charge_run_upper: loop_pose 3.6 deg at the seam and a 15 deg head dodge
+    at t4.5-6.5): the turns are smoothed round the loop (the last sample is the first), so the seam closes and a short
+    dodge is spread into a gentler tuck."""
+    n = len(upper)
+    m = n - 1
+    turns = [head_turn_for(SP.fk_pose(s, l)) for s, l in zip(upper[:m], legs[:m])]
+    for k in range(3):
+        v = np.array([t[k] for t in turns], float)
+        for _ in range(passes):
+            v = 0.25 * np.roll(v, 1) + 0.5 * v + 0.25 * np.roll(v, -1)
+        for i in range(n):
+            a = float(v[i % m])
+            h = upper[i]["head"]
+            r = list(h[0])
+            r[k] += a
+            upper[i] = dict(upper[i], head=(tuple(r), h[1]))
+    return upper
+
+
 def _ease_left_arm(upper, legs, touched, passes=8):
     """Per-sample solves can land a few degrees apart (a pop on the left arm): the re-solved samples' left arm and forearm
     angles are eased with a [1 2 1] filter (unwrapped, the untouched samples either side held), then the fist is put back on
@@ -1073,10 +1261,119 @@ def depop_left_arm(upper, legs, step=6.0):
     return upper
 
 
+def despike_left(upper, legs, step=5.0, rounds=3, protect=()):
+    """Fix round 1: a left arm that jumps on one sample and back on the next (the hew's t11.5: the forearm -38, -22, -30) is
+    put back between its neighbours, the fist's place along the haft too, and the fist re-put on the haft from there."""
+    n = len(upper)
+    for _ in range(rounds):
+        A = np.array([list(upper[i]["left_arm"][0]) + [upper[i]["left_forearm"][0][0]] for i in range(n)], float)
+        A = np.degrees(np.unwrap(np.radians(A), axis=0))
+        S = np.array([_slide(SP.fk_pose(upper[i], legs[i])) for i in range(n)])
+        mid = 0.5 * (A[:-2] + A[2:])
+        bad = [i + 1 for i in range(n - 2) if np.abs(A[i + 1] - mid[i]).max() > step and SUB // 2 <= i + 1 < n - SUB // 2
+               and i + 1 not in protect]
+        if not bad:
+            break
+        for i in bad:
+            y0 = 0.5 * (A[i - 1] + A[i + 1])
+            s = 0.5 * (S[i - 1] + S[i + 1])
+            p = SP.fk_pose(upper[i], legs[i])
+
+            def fl(y, p=p, s=s, y0=y0):
+                qq = SP._arm("left", p, y)
+                return np.concatenate([4.0 * (K.point(K.world(qq, "left_forearm"), SP.FIST_L) - SP.wpoint(qq, SP.S(s))),
+                                       0.05 * (y - y0)])
+            y = SP.gn(fl, y0.copy(), iters=30)
+            upper[i] = dict(upper[i], left_arm=(tuple(float(v) for v in y[:3]), upper[i]["left_arm"][1]),
+                            left_forearm=((float(y[3]), upper[i]["left_forearm"][0][1], upper[i]["left_forearm"][0][2]),
+                                          upper[i]["left_forearm"][1]))
+    return upper
+
+
+def left_chest_final(upper, legs, report="", target=0.9, passes=5, prior=0.12):
+    """Fix round 1: the last word on the left forearm's clearance of the breastplate and belt (scorecard pen_limb). The
+    helm clearance's blends and eases put the fist back on the haft without the chest term, so a forearm cleared there can
+    sink again. Here each sample still over `target` is solved again (fist on the haft, its place along the haft free within
+    a few px; the helm, elbow, spike and haft terms kept), the angle changes are spread and eased like right_clear's, and the
+    fist is put back on the haft from the eased angles. A few passes, each on the samples still over."""
+    n = len(upper)
+    env = edge_env(n)
+    upper = despike_left(upper, legs)
+    raw = set()
+    for pss in range(passes + 1):
+        last = pss == passes   # the last pass: a sample still over (the hew's strike, where the haft whips through a
+        D = np.zeros((n, 5))   # quarter tick and a blend of its neighbours' changes misses it) takes its own solve, held
+        need = 0               # near the middle of its neighbours (no pop)
+        if last:
+            A = np.array([list(u["left_arm"][0]) + [u["left_forearm"][0][0]] for u in upper], float)
+            A = np.degrees(np.unwrap(np.radians(A), axis=0))
+        for i in range(n):
+            p = SP.fk_pose(upper[i], legs[i])
+            if env[i] <= 0.0 or (chest_pen(p, "left") <= (target + 0.15 if last else target)
+                                 and (last or haft_in_left_arm(p) <= 0.4)):   # (the jab's load: the haft through the upper arm)
+                continue
+            a0 = np.asarray(upper[i]["left_arm"][0], float)
+            x0 = np.r_[a0, float(upper[i]["left_forearm"][0][0]), _slide(p)]
+            h0, sp0 = _helm_pen(p), _spike_pen(p, "left")
+            pr = x0[:4].copy()
+            if last and 0 < i < n - 1:
+                pr = pr + 0.5 * (A[i - 1] + A[i + 1]) - A[i]
+
+            def f(x, p=p, x0=x0, h0=h0, sp0=sp0, pr=pr, w=(0.3 if last else prior)):
+                q = SP._arm("left", p, x[:4])
+                fl = K.point(K.world(q, "left_forearm"), SP.FIST_L)
+                return np.concatenate([4.0 * (fl - SP.wpoint(q, SP.S(x[4]))),
+                                       [4.0 * max(0.0, chest_pen(q, "left") - (target - CHEST_MARGIN))],
+                                       [3.0 * max(0.0, _helm_pen(q) - h0)],
+                                       [2.0 * max(0.0, _spike_pen(q, "left") - max(0.2, sp0))],
+                                       [4.0 * haft_in_left_arm(q)],
+                                       [0.25 * max(0.0, _elbow(q) - ELBOW_MAX + 7.0)],
+                                       w * (x[:4] - pr), [0.1 * (x[4] - x0[4])]])
+            clamp = lambda x, s0=x0[4]: np.r_[x[:3], min(-2.0, max(-150.0, x[3])), min(s0 + 3.0, max(s0 - 3.0, x[4]))]  # noqa: E731
+            D[i] = SP.gn(f, x0.copy(), iters=40, clamp=clamp) - x0
+            need += 1
+            if last:
+                x = x0 + D[i]
+                upper[i] = dict(upper[i], left_arm=(tuple(float(v) for v in x[:3]), upper[i]["left_arm"][1]),
+                                left_forearm=((float(x[3]), upper[i]["left_forearm"][0][1], upper[i]["left_forearm"][0][2]),
+                                              upper[i]["left_forearm"][1]))
+                raw.add(i)
+        if not need or last:
+            break
+        for k in range(5):
+            D[:, k] = _smooth_series(list(D[:, k]), SUB)
+        for _ in range(4):
+            D[1:-1] = 0.25 * D[:-2] + 0.5 * D[1:-1] + 0.25 * D[2:]
+        for i in range(n):
+            d = D[i] * env[i]
+            if not np.abs(d).max() > 1e-6:
+                continue
+            p = SP.fk_pose(upper[i], legs[i])
+            y0 = np.r_[np.asarray(upper[i]["left_arm"][0], float), float(upper[i]["left_forearm"][0][0])] + d[:4]
+            s = _slide(p) + d[4]
+
+            def fl(y, p=p, s=s, y0=y0):
+                qq = SP._arm("left", p, y)
+                return np.concatenate([4.0 * (K.point(K.world(qq, "left_forearm"), SP.FIST_L) - SP.wpoint(qq, SP.S(s))),
+                                       0.05 * (y - y0)])
+            y = SP.gn(fl, y0.copy(), iters=30)
+            upper[i] = dict(upper[i], left_arm=(tuple(float(v) for v in y[:3]), upper[i]["left_arm"][1]),
+                            left_forearm=((float(y[3]), upper[i]["left_forearm"][0][1], upper[i]["left_forearm"][0][2]),
+                                          upper[i]["left_forearm"][1]))
+    upper = despike_left(upper, legs, protect=raw)
+    if report:
+        print("  %s left forearm off the chest (final): after %.2f px, helm %.2f px, elbow %.0f deg" % (
+            report, max(chest_pen(SP.fk_pose(s_, l_), "left") for s_, l_ in zip(upper, legs)),
+            max(_helm_pen(SP.fk_pose(s_, l_)) for s_, l_ in zip(upper, legs)),
+            max(_elbow(SP.fk_pose(s_, l_)) for s_, l_ in zip(upper, legs))))
+    return upper
+
+
 CLEAR_WINDOW = {"haft_jab": (10.0, 28.0)}   # the jab's wind-up and shove keep their own left arm (a re-solve there popped)
+CHEST_WINDOW = {}   # fix round 1: a window for the chest term alone (tried on the jab's load: it popped the left arm; left_chest_final does it)
 
 
-def clear_helm(upper, legs, report="", edges=False, head=True, window=None):
+def clear_helm(upper, legs, report="", edges=False, head=True, window=None, chest=False):
     """Both helm fixes over a clip's samples (absolute upper and legs), each eased in and out over a tick around the samples
     that need it. The left fist stays on the haft on every sample. edges: the first and last tick are left exactly as they
     are (an attack starts and ends on the stance) and the fixes ease in over the tick after and out over the tick before."""
@@ -1087,12 +1384,14 @@ def clear_helm(upper, legs, report="", edges=False, head=True, window=None):
     env_head = list(env)
     if window:
         env = [e * fullbody.B.smooth(min(1.0, max(0.0, (i / float(SUB) - window[0]) / 1.0))) for i, e in enumerate(env)]
+        if len(window) > 2:   # (start, end, ...): eased out over the tick before the end too
+            env = [e * fullbody.B.smooth(min(1.0, max(0.0, (window[1] - i / float(SUB)) / 1.0))) for i, e in enumerate(env)]
     sols, warm = [None] * n, None
     for i in range(n):
         if env[i] <= 0.0:
             warm = None
             continue
-        r = left_clear(SP.fk_pose(upper[i], legs[i]), warm)
+        r = left_clear(SP.fk_pose(upper[i], legs[i]), warm, chest=chest)
         sols[i] = r
         warm = None if r is None else (*r[0], r[1], r[2])
     need = [i for i, r in enumerate(sols) if r is not None]
@@ -1142,11 +1441,15 @@ def clear_helm(upper, legs, report="", edges=False, head=True, window=None):
     return upper
 
 
-ATTACK_CAPE = 0.6   # the cape swings a little less in the attacks: it hung into the tabard's back at the chop's follow-through (t14.5)
+ATTACK_CAPE = 0.45 if FIX1 else 0.6   # (fix round 1: cape_cloth into the tabard 2.06 at the chop's t15) the cape swings a little less in the attacks: it hung into the tabard's back at the chop's follow-through (t14.5)
 
 
-def calm_cape(upper, scale):
-    for b in HIT_CAPE:
+APRON_LIFT = {"overhead_chop": (-5.0, (2.0, 8.0, 20.0, 27.0))}   # deg on x, eased in t2-8 and out t20-27
+ATTACK_APRON = 0.7 if FIX1 else None   # fix round 1: apron into left_leg 1.96 at the chop's t13.5 (the lunge's front thigh)
+
+
+def calm_cape(upper, scale, bones=None):
+    for b in bones or HIT_CAPE:
         if b not in upper[0]:
             continue
         r0 = np.asarray(upper[0][b][0], float)
@@ -1161,12 +1464,29 @@ def review_attack_clips(names=None):
     out = {}
     for name in names or ATTACKS:
         upper, legs = attack_clip(name)
-        upper = clear_helm(upper, legs, report="attack_" + name, edges=True, window=CLEAR_WINDOW.get(name))
+        if FIX1:
+            upper = right_clear(upper, legs, report="attack_" + name)
+        if FIX1 and name in CHEST_WINDOW:   # a window clear_helm leaves alone still keeps the left forearm off the chest
+            upper = clear_helm(upper, legs, report="attack_%s (chest)" % name, edges=True, window=CHEST_WINDOW[name], head=False,
+                               chest="only")
+        upper = clear_helm(upper, legs, report="attack_" + name, edges=True, window=CLEAR_WINDOW.get(name), chest=FIX1)
         upper = depop_left_arm(upper, legs)
+        if FIX1:
+            upper = left_chest_final(upper, legs, report="attack_" + name)
         upper = SP.gear(upper, legs)
         print("attack_%s soft motion:" % name)
         upper, legs = soften(upper, legs, report=True)
         upper = calm_cape(upper, ATTACK_CAPE)
+        if ATTACK_APRON:
+            upper = calm_cape(upper, ATTACK_APRON, bones=("apron",))
+        if FIX1 and name in APRON_LIFT:   # the apron rides a little forward off the lunging thigh, eased in and out
+            dx, (a, b, c, d) = APRON_LIFT[name]
+            for i in range(len(upper)):
+                t = i / float(SUB)
+                w = fullbody.B.smooth(min(1.0, max(0.0, (t - a) / (b - a)))) * fullbody.B.smooth(min(1.0, max(0.0, (d - t) / (d - c))))
+                if w > 0.0 and "apron" in upper[i]:
+                    r, pv = upper[i]["apron"]
+                    upper[i] = dict(upper[i], apron=((r[0] + dx * w, r[1], r[2]), pv))
         clip = K.bake(upper, ATTACK_TICKS, loop=False)
         clip["timeline"] = {K.fmt_t(IMPACT[name] / SP.TPS): "impact"}
         out["attack_" + name] = clip
@@ -1203,6 +1523,8 @@ def soft_additive(offs, legs_abs, ticks):
 
 HIT_CAPE = ("cape", "cape_cloth")
 HIT_CAPE_SCALE = 0.45   # the cape hangs 1 px off the tabard's back: in a hit it swings a little less (hit_medium_back t5)
+if FIX1:   # fix round 1: cape_cloth into the tabard 1.96 (hit_medium_back t3.5) and 2.29 (hit_pulled t4)
+    HIT_CAPE_SCALE = 0.3
 PLATE_JOLT = 5.0        # deg: a pauldron knocked on its strap by the blow, where the arm itself barely moves (hit_block)
 
 
@@ -1238,6 +1560,84 @@ def hit_pieces(up, lg):
     return plate_clear(up, lg)
 
 
+def haft_offsets(offs, loffs, report="", slide=(-2.5, 4.0), settle=False):
+    """Fix round 1 (2026-11-12): an additive hit over the guard with both fists on the haft. The shared reaction tables add
+    the same arm offsets to both arms, and on this guard (the left arm reaching across, turned 92 deg on its z) that folds
+    the left elbow backward with the fist into the helm (hit_pulled 151 deg / 2.7 px, hit_knockback 160 / 3.1). Here the
+    blow moves the body, the head and the right arm (the axe goes with the right fist); the left arm is solved each sample
+    so its fist stays on the haft near its guard place, the cuff and gauntlet off the helm and the breastplate and the elbow
+    within the shoulder's reach, warm-started from the sample before (no branch change), then eased. Returns the offsets
+    with new left_arm / left_forearm channels (0 where the clip's own offsets are 0)."""
+    g_up, g_legs = guard_pose()
+    n = len(offs)
+    gp = SP.fk_pose(g_up, g_legs)
+    s0 = _slide(gp)
+    a_g = np.r_[np.asarray(g_up["left_arm"][0], float), float(g_up["left_forearm"][0][0])]
+    comp = []
+    for i in range(n):
+        u = {b: (tuple(float(x) for x in v[0]), v[1]) for b, v in g_up.items()}
+        for b, (r, _p) in offs[i].items():
+            if b in SP.GEO_BONES and b not in piece_bones():
+                r0, p0 = u.get(b, (Z3, None))
+                u[b] = (_add(r0, r), p0)
+        lg = {b: (tuple(float(x) for x in v[0]), v[1]) for b, v in g_legs.items()}
+        for b, (r, p) in (loffs[i].items() if loffs else ()):
+            if b in ("hips", "right_leg", "left_leg", "right_shin", "left_shin", "right_foot", "left_foot"):
+                r0, p0 = lg.get(b, (Z3, None))
+                lg[b] = (_add(r0, r), p0 if p is None else _add(p0 or Z3, p))
+        comp.append((u, lg))
+    quiet = [max([abs(float(a)) for b, (r, _p) in offs[i].items() for a in r] + [0.0]) < 1e-6 for i in range(n)]
+    X = np.tile(np.r_[a_g, s0], (n, 1))
+    warm = np.r_[a_g, s0]
+    for i in range(n):
+        if quiet[i]:
+            warm = np.r_[a_g, s0]
+            continue
+        p = SP.fk_pose(*comp[i])
+
+        def f(x, p=p):
+            q = SP._arm("left", p, x[:4])
+            Mh, Mf = K.world(q, "head"), K.world(q, "left_forearm")
+            res = [4.0 * (K.point(Mf, SP.FIST_L) - SP.wpoint(q, SP.S(x[4])))]
+            res.append([6.0 * max(0.0, _box_pen(_local_px(Mh, K.point(Mf, c)), r + 0.9)) for c, r in ARM_PTS])
+            res.append([3.0 * max(0.0, chest_pen(q, "left") - (CHEST_MAX - CHEST_MARGIN))])
+            res.append([0.25 * max(0.0, _elbow(q) - (ELBOW_MAX - 7.0))])
+            res.append(0.08 * (x[:4] - a_g))   # (the elbow's swing about the shoulder-fist line held near the guard's)
+            res.append([0.15 * (x[4] - s0)])
+            return np.concatenate([np.ravel(r_) for r_ in res])
+        clamp = lambda x: np.r_[x[:3], min(-2.0, max(-150.0, x[3])), min(s0 + slide[1], max(s0 + slide[0], x[4]))]  # noqa: E731
+        X[i] = warm = SP.gn(f, warm.copy(), iters=40, clamp=clamp)
+    X[:, :4] = np.degrees(np.unwrap(np.radians(X[:, :4]), axis=0))
+    for _ in range(6):
+        X[1:-1] = 0.25 * X[:-2] + 0.5 * X[1:-1] + 0.25 * X[2:]
+    g = np.r_[a_g, s0]
+    for i in range(n if settle else 0):   # a layered clip's last two ticks settle on the guard's own left arm (the pull and
+        e = fullbody.B.smooth(min(1.0, (n - 1 - i) / float(2 * SUB)))   # the knockback ended 20 deg off it: settle)
+        X[i] = g + e * (X[i] - g)
+    out = [dict(o) for o in offs]
+    worst = [0.0, 0.0, 0.0]
+    for i in range(n):
+        if quiet[i]:
+            out[i]["left_arm"] = (Z3, None)
+            out[i]["left_forearm"] = (Z3, None)
+            continue
+        p = SP.fk_pose(*comp[i])
+        x0, s = X[i, :4], float(X[i, 4])
+
+        def fl(x, p=p, s=s, x0=x0):
+            q = SP._arm("left", p, x)
+            return np.concatenate([4.0 * (K.point(K.world(q, "left_forearm"), SP.FIST_L) - SP.wpoint(q, SP.S(s))), 0.05 * (x - x0)])
+        x = SP.gn(fl, x0.copy(), iters=30)
+        q = SP._arm("left", p, x)
+        worst = [max(worst[0], _helm_pen(q)), max(worst[1], chest_pen(q, "left")), max(worst[2], _elbow(q))]
+        lf0 = offs[i].get("left_forearm", (Z3, None))[0]
+        out[i]["left_arm"] = (tuple(float(a - b) for a, b in zip(x[:3], a_g[:3])), None)
+        out[i]["left_forearm"] = ((float(x[3] - a_g[3]), float(lf0[1]), float(lf0[2])), None)
+    if report:
+        print("  %s both fists on the haft: left cuff in helm %.2f px, in chest %.2f px, elbow %.0f deg" % (report, *worst))
+    return out
+
+
 def _hit_legs_abs():
     """K.hit_legs_clips' leg samples before they are made offsets: {clip: (absolute samples, ticks)}."""
     out = {}
@@ -1254,6 +1654,9 @@ def _hit_legs_abs():
     return out
 
 
+HAFT_HITS = ("hit_medium_front", "hit_medium_back", "hit_medium_left")   # fix round 1: the left fist kept on the haft
+
+
 def review_hit_clips():
     """SP.hit_clips with the pieces swinging: the same offsets and footwork, each piece's keys added to both."""
     out = _hit_clips()
@@ -1264,6 +1667,10 @@ def review_hit_clips():
         ut = K.HIT_TICKS[weight]
         keys = K.front_onset(SP.hit_keys(SP.HIT_PEAK[d], weight), d, weight)
         offs = [K.sample_keys(keys, min(i, ut * SUB) / SUB) for i in range(lt * SUB + 1)]
+        haft = FIX1 and name in HAFT_HITS
+        if haft:
+            lo0 = K.legs_offset([dict(f) for f in labs])
+            offs = haft_offsets(offs, lo0, report=name)
         up_keys, leg_keys = soft_additive(offs, labs, lt)
         if lt != ut:   # the block: its upper (the light flinch, 9 ticks) settles on its own length, the legs on theirs
             up_keys = soft_additive(offs[:ut * SUB + 1], labs[:ut * SUB + 1], ut)[0]
@@ -1271,6 +1678,9 @@ def review_hit_clips():
         new_up = dict(clip)
         new_up["bones"] = dict(clip["bones"])
         new_up["bones"].update(K.bake(up_keys[:ut * SUB + 1], ut, loop=False)["bones"])
+        if haft:
+            new_up["bones"].update(K.bake([{b: f[b] for b in ("left_arm", "left_forearm")} for f in offs[:ut * SUB + 1]], ut,
+                                          loop=False)["bones"])
         out[name] = new_up
         # The legs layer again from its own samples: a shin offset that would bend the knee backward is held at -1 deg
         # (hit_medium_back's left shin, -9 at t11.5) and a boot that dips under the ground lifts the hips (hit_medium_right)
@@ -1413,12 +1823,29 @@ def legs_raise(legs, upper, margin=0.35, report=""):
     return legs
 
 
-def hips_lift(upper, legs, margin=0.3, report=""):
+def _over_guard(up_off, leg_off):
+    """An additive sample laid on the guard (fix round 1: the hits are judged over the ready stance)."""
+    g_up, g_legs = guard_pose()
+    u = {b: (tuple(float(x) for x in v[0]), v[1]) for b, v in g_up.items()}
+    for b, (r, _p) in up_off.items():
+        r0, p0 = u.get(b, (Z3, None))
+        u[b] = (_add(r0, r), p0)
+    lg = {b: (tuple(float(x) for x in v[0]), v[1]) for b, v in g_legs.items()}
+    for b, (r, p) in leg_off.items():
+        r0, p0 = lg.get(b, (Z3, None))
+        lg[b] = (_add(r0, r), p0 if p is None else _add(p0 or Z3, p))
+    return u, lg
+
+
+def hips_lift(upper, legs, margin=0.3, report="", guard=False):
     """Additive legs (a hit layer, judged and played as offsets): where a boot or knee plate dips under the ground, the
-    hips' offset is raised by that much, eased over a tick either side."""
+    hips' offset is raised by that much, eased over a tick either side. guard: measured over the guard (fix round 1)."""
     n = len(legs)
     for _ in range(3):
-        dep = [floor_depth(SP.fk_pose(_at(upper, i), legs[i]))[0] for i in range(n)]
+        if guard:
+            dep = [floor_depth(SP.fk_pose(*_over_guard(_at(upper, i), legs[i])))[0] for i in range(n)]
+        else:
+            dep = [floor_depth(SP.fk_pose(_at(upper, i), legs[i]))[0] for i in range(n)]
         need = [d + margin if d > FLOOR_TOL else 0.0 for d in dep]
         if not any(need):
             break
@@ -1556,7 +1983,10 @@ def fix_layered(tr, clips):
     # charge_run_upper (on the run legs): left_cuff and the axe head into the helm, the left elbow out of reach
     up, t = _unbake(clips["charge_run_upper"])
     run, _ = _unbake(tr.anims["run_legs"])
-    up = clear_helm(up, [_at(run, i) for i in range(len(up))], report="charge_run_upper")
+    lr = [_at(run, i) for i in range(len(up))]
+    up = clear_helm(up, lr, report="charge_run_upper", head=not FIX1)
+    if FIX1:
+        up = head_clear_loop(up, lr)
     clips["charge_run_upper"] = _rebake(up, t, clips["charge_run_upper"]["loop"])
 
     # stun: the axe and right forearm into the hips (the arms hung 4-8 deg too low for this rig's tassets), right_knee_wing
@@ -1588,8 +2018,10 @@ def fix_layered(tr, clips):
     for name in ("hit_knockback", "hit_pulled"):
         off, t = _unbake(clips[name])
         loff, tl = _unbake(clips[name + "_legs"])
+        if FIX1:
+            off = haft_offsets(off, [_at(loff, i) for i in range(len(off))], report=name, settle=True)
         o_u, o_l = soft_offsets(off, loff)
-        o_l = hips_lift(o_u, o_l, report=name)
+        o_l = hips_lift(o_u, o_l, report=name, guard=FIX1)
         clips[name] = _rebake(o_u, t, clips[name]["loop"])
         clips[name + "_legs"] = _rebake(o_l, tl, clips[name + "_legs"]["loop"])
 
