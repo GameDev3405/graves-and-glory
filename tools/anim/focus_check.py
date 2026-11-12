@@ -383,9 +383,10 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
     top = clips[-1]
     held = None
     if under:
-        hold, add = rg.additive_split(name, list(base), under)     # a pose base (stun_legs) is held, not added
+        hold, add, hand = rg.additive_split(name, list(base), under)
         held = rg.Scene(rig.model, None, [rg.load_clip(anim, u) for u in hold], 0.0)
-        scene = rg.Scene(rig.model, None, held.clips, 0.0, None, [rg.load_clip(anim, a) for a in add])
+        scene = rg.Scene(rig.model, None, held.clips, 0.0, None, [rg.load_clip(anim, a) for a in add],
+                         (rg.load_clips_if_present(anim, hand), rg.STUN_OUT_TICKS, rg.STUN_ENTRY_TICKS))
     else:
         scene = rg.Scene(rig.model, None, clips, speed if kind == "gait" else 0.0)
     n = max(1, int(math.floor(top.length / STEP + 1e-6)))
@@ -548,7 +549,8 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
     else:
         r.note("only looping stances and idle")
     r = R("whole_body", "STALE")
-    legs_played = any(c.name.endswith("_legs") for c in clips[:-1])
+    # the stun shake-off has no legs clip of its own: stun_legs under it is the stun handing over, not a step
+    legs_played = any(c.name.endswith("_legs") for c in clips[:-1]) and not name.startswith("stun_out")
     if kind in ("attack", "hit") and rig.biped and legs_played:
         hips = np.array([_pivot(rig, fr, "hips") for fr in frames])
         hip_go = float(np.linalg.norm(hips.max(axis=0) - hips.min(axis=0)))

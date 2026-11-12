@@ -674,6 +674,17 @@ class Clip:
         return t
 
 
+def load_clips_if_present(src, names):
+    """The clips of `names` this animation file has (a troop without a stun has no stun to hand over from)."""
+    out = []
+    for n in names:
+        try:
+            out.append(load_clip(src, n))
+        except GeoError:
+            pass
+    return out
+
+
 def load_clip(src, name):
     if isinstance(src, (str, os.PathLike)):
         with open(src, "r", encoding="utf-8") as fh:
@@ -773,24 +784,34 @@ def additive_under(name, names):
     return [c for c in ("stance_ready_upper", "stance_ready_legs") if c in names]
 
 
+STUN_OUT_TICKS, STUN_ENTRY_TICKS = 8.0, 4.0      # StanceController.STUN_OUT and STUN_ENTRY
+
+
 def additive_split(name, base, under):
-    """(held, added) clip names for an additive clip `name` shown with its base clips over the stance clips `under`.
-    A base that is additive itself (a hit's legs) is added with the clip. A base that is a pose of its own (stun_legs
-    under stun_out_upper: the game still holds the stun's legs when the shake-off starts, StanceController's handover)
-    takes the place of the stance clip of the same half; adding it onto stance_ready_legs bent the knees twice
-    (ic_hearthguard stun_out_upper, a false 1.87 px floor row, 2026-11-12)."""
+    """(held, added, handover) clip names for an additive clip `name` shown with its base clips over the stance clips
+    `under`. A base that is additive itself (a hit's legs) is added with the clip. The stun shake-off starts while the
+    stun still stands: StanceController ramps stun_upper and stun_legs out and the stance in over STUN_OUT ticks, and
+    stun_out_upper is added onto that blend. So for it the stun clips are the `handover` (Scene(handover=...)), not a
+    pose added onto stance_ready_legs: that bent the knees twice and gave every troop a false floor row
+    (ic_hearthguard 1.87, wm_stalker 4.26, 2026-11-12). Any other pose base takes the place of the stance clip of
+    its half."""
     added = [b for b in base if b.startswith(("hit_", "stun_out"))] + [name]
     poses = [b for b in base if b not in added]
+    if name.startswith("stun_out"):
+        return list(under), added, ["stun_upper", "stun_legs"]
     half = lambda c: "legs" if c.endswith("_legs") else "upper"
     held = [u for u in under if u not in base and half(u) not in {half(q) for q in poses}] + poses
-    return held, added
+    return held, added, []
 
 
 class Scene:
     DRAW_FRAMES = ("rest", "pull_0", "pull_1", "pull_2")
 
-    def __init__(self, model, textures=None, clips=None, speed=0.0, look=None, additive=None):
+    def __init__(self, model, textures=None, clips=None, speed=0.0, look=None, additive=None, handover=None):
         self.model = model
+        # handover = (clips, ticks, start): the pose starts as these clips' (played from tick `start`) and gives way to
+        # `clips` linearly over `ticks`, before the additive clips are added: the stun under the stun shake-off.
+        self.handover = (list(handover[0]), float(handover[1]), float(handover[2])) if handover and handover[0] else None
         # additive: clips ADDED onto the pose the other clips make, as HitController and the stun shake-off do in game
         # (rotation and position offsets; they may key bones the other clips key). They do not change the root motion.
         self.additive = list(additive or [])
@@ -815,9 +836,9 @@ class Scene:
     def clip_label(self):
         return "+".join([c.name for c in self.clips] + ["(+)" + c.name for c in self.additive]) or "static"
 
-    def _pose(self, tick):
+    def _held(self, clips, tick):
         pose = {}
-        for c in self.clips:
+        for c in clips:
             et = c.effective_tick(tick)
             if et is None:
                 continue
@@ -830,6 +851,19 @@ class Scene:
                     if v is not None:
                         d[ch] = v
                 pose[b] = d
+        return pose
+
+    def _pose(self, tick):
+        pose = self._held(self.clips, tick)
+        if self.handover and tick < self.handover[1]:
+            src, w = self._held(self.handover[0], tick + self.handover[2]), max(0.0, tick / self.handover[1])
+            for b in set(src) | set(pose):
+                d, s0 = pose.setdefault(b, {}), src.get(b, {})
+                for ch in set(d) | set(s0):
+                    rest = 1.0 if ch == "scale" else 0.0
+                    a = np.asarray(s0[ch], dtype=float) if ch in s0 else np.full(3, rest)
+                    z = np.asarray(d[ch], dtype=float) if ch in d else np.full(3, rest)
+                    d[ch] = a * (1.0 - w) + z * w
         for c in self.additive:
             et = c.effective_tick(tick)
             if et is None:

@@ -74,10 +74,11 @@ def _scene(source, viewer):
         with open(path, encoding="utf-8") as f:
             under = rg.additive_under(name, set(json.load(f).get("animations", {})))
         if under:       # a hit is added onto the ready stance in game: show it that way, not over the rest pose
-            hold, add = rg.additive_split(name, [n for _, n in source.clips[:-1]], under)
-            where = dict((n, q) for q, n in source.clips)       # a pose base (stun_legs) is held, not added
+            hold, add, hand = rg.additive_split(name, [n for _, n in source.clips[:-1]], under)
+            where = dict((n, q) for q, n in source.clips)       # the shake-off starts from the stun, see additive_split
             scene = rg.Scene(model, list(source.textures), [rg.load_clip(where.get(u, path), u) for u in hold], 0.0, None,
-                             [rg.load_clip(where[a], a) for a in add])
+                             [rg.load_clip(where[a], a) for a in add],
+                             (rg.load_clips_if_present(path, hand), rg.STUN_OUT_TICKS, rg.STUN_ENTRY_TICKS))
         else:
             scene = rg.Scene(model, list(source.textures), clips, source.speed)
     except (rg.GeoError, OSError, ValueError, KeyError) as e:
