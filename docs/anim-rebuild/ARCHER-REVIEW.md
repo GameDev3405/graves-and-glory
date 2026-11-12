@@ -116,3 +116,16 @@ Bow-family batch review on `anim/review-bow` (Opus lane, two fix rounds). Timing
 - **Proposed exemption.** archer, `run_upper` / `charge_run_upper`, `armour_clip`, 1.97, `jerkin_t3_skirt` into `left_skirt_t3`: two cloth skirt layers overlapping at the stride, not visible at game size.
 - **Tests.** Scorecard exit 0 (35 clips, 0 fail). Unit tests OK: `test_scorecard`, `test_focus_check` (22), `test_render_geo`, all six `test_booth*`. Booth config valid, every listed clip present.
 - **Drift not shipped.** A full rebuild also changes the deaths (weapon_t3 channel) and `hit_medium_front` arm keys through common-module commits after 151790bd; only the clips above were spliced, so that drift is not in this commit.
+
+## Batch review fix round 1 (2026-11-12)
+
+Review `work/reviewer/BOW-sonnet-review.md` (FIX, 8/10). Fixes live in `art/anim/archer/bow_fix_layer.py`, a per-troop late layer run after
+`reactions.py` / `charge.py` and before `export.py` (fingerprints in `out/archer.fixlayer.json`, so a second run changes nothing). The shared
+modules are untouched. Timing and markers unchanged.
+
+- **Focus check** FAIL rows 10 -> 0 (clips with a FAIL 6 -> 0). Scorecard exit 0.
+- **A1 floor**: hips lift 1.9 px on `hit_pulled_legs` (1.81 -> 0.04), 1.3 px snap + 0.6 px loop on `stun_legs` (1.70 -> 0.42), 1.7 px on `hit_knockback_legs` (1.61 -> 0.84 WARN at the recovery).
+- **A2 still gear**: `soft_motion` over `hit_pulled`, `hit_knockback`, `stun_upper`/`stun_legs` (loop 4..24 closed) and `stun_out_upper` (judged over the stun legs); the stun's snap shakes the hip gear. The right skirt swings back and out only (into the jerkin skirt otherwise).
+- **A3 knockback** hood into quiver 2.04 -> gone: head pitches 8 deg less at ticks 2.5-3.5, the bow arm opens 9 deg, the quiver turns 8 deg off the stumbling leg (worst row now 1.78 WARN, bow arm at the torso).
+- **Run skirts** (`run_upper`, `charge_run_upper` 1.97): the skirt trails its thigh 9 deg at the stride (`run_legs`), 1.72 WARN. No exemption needed.
+- Changed clips: `run_legs`, `hit_pulled`(+legs), `hit_knockback`(+legs), `stun_upper`, `stun_legs`, `stun_out_upper`; every other clip byte-identical to ae138367.

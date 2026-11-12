@@ -13,6 +13,9 @@ The shot (attack_volley / attack_direct, impactTicks 22; 16 until Kort, 2026-11-
 take the string there and push-pull draw (the bow arm drives the bow out as the hand draws the last few px) to the anchor (the
 "full" marker), hold, loose on the server's impact tick, the string hand flying back past the ear, then settle to the ready guard.
 AttackController holds the clip at "full" for the troop's seeded hold ticks, so a line of archers never looses in lockstep.
+
+The in-game bow troops (archer, longbow, bonebow, wm_hunter) then take a late fix layer, after reactions.py and charge.py:
+python art/anim/archer/bow_fix_layer.py <troop> (its docstring has the order and what it changes).
 """
 import json, math, os, sys
 from pathlib import Path
