@@ -1159,6 +1159,7 @@ final class LevelChecks {
 
         @Override public void cleanup(MinecraftClient c) {
             Veterans.override = null; goldPin = -1;
+            try { restoreKeys(c); } catch (RuntimeException ignored) {}
             try { c.options.setKeyCode(GravesAndGloryClient.armoury, GravesAndGloryClient.armoury.getDefaultKey()); KeyBinding.updateKeysByCode(); } catch (RuntimeException ignored) {}
             if (oldW > 0) Phase1Checks.window(c, oldW, oldH, oldGui);
             super.cleanup(c);
@@ -1263,9 +1264,9 @@ final class LevelChecks {
                     if (pt == 17) { KeyBinding.onKeyPressed(InputUtil.Type.KEYSYM.createFromCode(GLFW.GLFW_KEY_U)); }
                     if (pt == 19) { staleKeyOpened = c.currentScreen != null; }
                     if (pt == 20) press(GravesAndGloryClient.armoury);
-                    if (pt == 26) { keyScreen(c, "the key J"); rebind(c, InputUtil.Type.MOUSE.createFromCode(2)); c.setScreen(null); }
+                    if (pt == 26) { keyScreen(c, "the key J"); freeKey(c, InputUtil.Type.MOUSE.createFromCode(2)); rebind(c, InputUtil.Type.MOUSE.createFromCode(2)); c.setScreen(null); }
                     if (pt == 32) press(GravesAndGloryClient.armoury);
-                    if (pt == 38) { keyScreen(c, "the middle mouse button"); rebind(c, InputUtil.UNKNOWN_KEY); c.setScreen(null); }
+                    if (pt == 38) { keyScreen(c, "the middle mouse button"); restoreKeys(c); rebind(c, InputUtil.UNKNOWN_KEY); c.setScreen(null); }
                     if (pt == 44) c.setScreen(new GravesAndGloryClient.BarracksScreen());
                     if (pt == 50 && s != null) click(s, s.armouryTab);
                     if (pt == 56) { keyScreen(c, "no key"); rebind(c, InputUtil.Type.KEYSYM.createFromCode(GLFW.GLFW_KEY_U)); c.setScreen(null); }
@@ -1417,11 +1418,26 @@ final class LevelChecks {
             keyOk &= ok;
             keyNotes.add("key.gravesandglory.armoury defaults to " + def.getTranslationKey() + " (U=" + u + "); of " + mine + " mod bindings none else defaults to it=" + mod.isEmpty() + (mod.isEmpty() ? "" : " " + mod) + (other.isEmpty() ? "" : " (vanilla or other mods on it: " + other + ")") + "; its Controls name is translated=" + lang + "; hint(armoury)=\"" + hint + "\"");
         }
+        /** The bindings freeKey took off a key, to give back. */
+        final List<Map.Entry<KeyBinding, InputUtil.Key>> freed = new ArrayList<>();
+        /** Minecraft hands a press of a key shared by two bindings to only one of them (KeyBinding.KEY_TO_BINDINGS holds the last registered), and which one depends on the registry's order: the vanilla Pick Block shares the middle mouse button by default.
+         *  A player who binds the Armoury there sees the red conflict in Controls and frees it; this does the same, so the check tests the Armoury's own handling of the button. */
+        void freeKey(MinecraftClient c, InputUtil.Key key) {
+            for (var other : c.options.allKeys) if (other != GravesAndGloryClient.armoury && KeyBindingHelper.getBoundKeyOf(other).equals(key)) { freed.add(Map.entry(other, key)); c.options.setKeyCode(other, InputUtil.UNKNOWN_KEY); }
+            KeyBinding.updateKeysByCode();
+        }
+        void restoreKeys(MinecraftClient c) { for (var e : freed) c.options.setKeyCode(e.getKey(), e.getValue()); freed.clear(); KeyBinding.updateKeysByCode(); }
+        /** The translation keys of every other binding on this key. */
+        static List<String> sharing(MinecraftClient c, InputUtil.Key key) {
+            List<String> out = new ArrayList<>();
+            for (var other : c.options.allKeys) if (other != GravesAndGloryClient.armoury && KeyBindingHelper.getBoundKeyOf(other).equals(key)) out.add(other.getTranslationKey());
+            return out;
+        }
         void rebind(MinecraftClient c, InputUtil.Key key) { c.options.setKeyCode(GravesAndGloryClient.armoury, key); KeyBinding.updateKeysByCode(); }
         /** The key line on the open tab: the player's own key for the Armoury as the hints name it, or how to bind one. */
         void keyScreen(MinecraftClient c, String label) {
             var s = rs(c); var k = GravesAndGloryClient.armoury;
-            if (s == null || s.tab != 1) { keyOk = false; keyNotes.add(label + ": the Armoury tab is not open (" + c.currentScreen + ")"); return; }
+            if (s == null || s.tab != 1) { keyOk = false; keyNotes.add(label + ": the Armoury tab is not open (" + c.currentScreen + "); other bindings on its key: " + sharing(c, KeyBindingHelper.getBoundKeyOf(k))); return; }
             var bound = KeyBindingHelper.getBoundKeyOf(k); String hint = GravesAndGloryClient.hint("armoury"), line = s.page.hintDrawn;
             String name = bound.getCategory() == InputUtil.Type.MOUSE ? HintText.mouseChip(bound.getCode()) : k.getBoundKeyLocalizedText().getString();
             String want = k.isUnbound() ? UNBOUND_LINE : name + " opens the Armoury anywhere in battle";
