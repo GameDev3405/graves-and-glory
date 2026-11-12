@@ -311,7 +311,7 @@ def scope(plan, world, manifest=None):
     if 'section' not in plan:
         return plan['locks'], (protect_locks(manifest) if manifest else ()), []
     if manifest is None:
-        return plan['locks'], (), [f'plan names section {plan["section"]}; give the map manifest (--map) so its '
+        return plan.get('locks', []), (), [f'plan names section {plan["section"]}; give the map manifest (--map) so its '
                                    'bounds and protect locks apply']
     locks, protect, problems = plan_scope(plan, manifest)
     if 'expectSection' in plan and not problems:

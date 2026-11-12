@@ -169,7 +169,7 @@ def plan_scope(plan, m):
     except ManifestError as e:
         return [], (), errors + e.errors
     lo, hi = section_box(s)
-    own = [l for l in plan['locks'] if l['mode'] == 'allow']
+    own = [l for l in plan.get('locks', []) if l['mode'] == 'allow']
     if own:
         allows = [c for c in (intersect(l, lo, hi) for l in own) if c]
         if not allows:
@@ -180,7 +180,7 @@ def plan_scope(plan, m):
     if 'reopen' not in plan and want != next_pass(status):
         errors.append(f'section {s["id"]} is at {status}; a plan may only do the next pass '
                       f'({next_pass(status) or "none, the section is done"}), not {want}, unless it gives "reopen" with a reason')
-    locks = allows + [l for l in plan['locks'] if l['mode'] == 'deny']
+    locks = allows + [l for l in plan.get('locks', []) if l['mode'] == 'deny']
     return locks, protect_locks(m), errors
 
 

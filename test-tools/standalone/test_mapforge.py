@@ -541,6 +541,14 @@ class ManifestTest(unittest.TestCase):
         self.assertTrue(any('kind must be' in e for e in errors))
         self.assertTrue(mf.validate_manifest({'format': 'x'}))
 
+    def test_sectioned_plan_without_locks_runs(self):
+        # T04-F1: locks may be left out of a sectioned plan; dry_run and plan_scope must not need validate first
+        m, w = sample_map(), flat(64)
+        p = self.sectioned([{'op': 'set', 'pos': [5, 65, 5], 'block': 'stone'}])
+        del p['locks']
+        self.assertTrue(dry_run(json.loads(json.dumps(p)), w, manifest=m)['ok'])
+        mf.plan_scope(p, m)
+
     def test_section_bounds_are_the_allow_region_and_cut_plan_locks(self):
         m, w = sample_map(), flat(64)
         ok = self.sectioned([{'op': 'set', 'pos': [5, 65, 5], 'block': 'stone'}])
