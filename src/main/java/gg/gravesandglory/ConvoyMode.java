@@ -199,6 +199,11 @@ public final class ConvoyMode extends BattleMode {
         return Math.hypot(x - at.x, z - at.z) <= PUSH_RADIUS && Math.abs(y - at.y) <= PUSH_HEIGHT;
     }
 
+    /** Within the wagon's push range (6 blocks, 3 high) while it is on the road. */
+    @Override public boolean onObjective(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Vec3d pos) {
+        return !finished && wagon != null && !wagon.isRemoved() && inRange(wagon.getPos(), pos.x, pos.y, pos.z);
+    }
+
     /** Counts this tick's pushers (living escort troops and on-foot escort commanders) and defenders (any living defence troop or commander) in range. */
     void count(GravesAndGlory.Battle b, Vec3d at) {
         int push = 0, stop = 0;

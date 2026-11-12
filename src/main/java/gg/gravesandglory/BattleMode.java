@@ -63,6 +63,12 @@ public abstract class BattleMode {
     public Vec3d botTarget(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return null;}
     /** Called at the end of Houses.recompute: a mode may replace an army's House trait tiers (Survival's director takes its tier's waveTraitTier). */
     public void traits(GravesAndGlory.Battle b,GravesAndGlory.Squad s){}
+    /** Whether a troop or commander of squad s standing at pos counts for the round's objective seconds this second: by default within any capture point's radius while the points play. Modes with their own objective override it. */
+    public boolean onObjective(GravesAndGlory.Battle b,GravesAndGlory.Squad s,Vec3d pos){
+        if(!capturesPoints(b))return false;
+        for(var p:b.points)if(GravesAndGlory.Battle.horizontalDistance(pos,new Vec3d(p.spec.x(),65,p.spec.z()))<p.spec.radius()*p.spec.radius())return true;
+        return false;
+    }
     /** Each running tick, after captureTick: the mode's scoring and its own timers. */
     public void tick(GravesAndGlory.Battle b){}
     /** The objective panel's line as the round starts; a mode without points to capture says its own. */

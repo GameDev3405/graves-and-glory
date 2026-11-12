@@ -175,7 +175,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(!victim.temporary&&battle.campaign.bonusTracker!=null&&winner!=null&&victim.squad.team!=winner.team)battle.campaign.bonusTracker.killed(victim.spec.id(),winner.team==0&&!winner.bot); // March bonus kill_unit: a troop of the target id fell to the commander's own banner
                 if(victim.temporary)continue; // a Grave Bloom Risen is no loss, no kill and no fallen troop to raise
                 victim.squad.stats.lost++;victim.squad.fallen.merge(victim.spec.id(),1,Integer::sum);Houses.logDeath(battle,victim);Houses.recompute(victim.squad);
-                if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;if(troop!=null)winner.stats.troopKills.merge(troop,1,Integer::sum);if(attacker instanceof ServerPlayerEntity&&source.getSource()==attacker)Commander.playerKill(battle,winner);} // a kill by the commander's own hand (not his arrow, not a troop of his, not a fall in his credit window): a Reaver's Bloodrush gives a troop back
+                if(winner!=null&&winner.team!=victim.squad.team){winner.earn(Spec.ECONOMY[0].killGold());winner.stats.kills++;if(attacker instanceof ServerPlayerEntity&&winner==battle.squads.get(attacker.getUuid()))winner.stats.commanderKills++;if(troop!=null)winner.stats.troopKills.merge(troop,1,Integer::sum);if(attacker instanceof ServerPlayerEntity&&source.getSource()==attacker)Commander.playerKill(battle,winner);} // a kill by the commander's own hand (not his arrow, not a troop of his, not a fall in his credit window): a Reaver's Bloodrush gives a troop back
                 FeedEvents.died(battle,victim,winner);
             }
         });
@@ -843,7 +843,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(time%20==0){Morale.tick(this);Houses.tick(this);}
                 if(time%10==0)Houses.countTargeters(this);
                 for(Unit u:new ArrayList<>(units))unitTick(u);
-                if(time%20==0)captureTick();
+                if(time%20==0){captureTick();objectiveTick();}
                 if(time%20==0&&campaign.bonusTracker!=null&&mode.capturesPoints(this)){int own=0;for(Capture c:points)if(c.owner==0)own++;campaign.bonusTracker.held(own,points.size());} // March bonus hold_all: the commander's side (Dawn) holds every point at once
                 mode.tick(this);
                 if(R.automaticReinforcements()&&time%20==0)for(Squad s:new ArrayList<>(squads.values())){if(!s.seated)continue;
@@ -1083,7 +1083,7 @@ public final class GravesAndGlory implements ModInitializer {
         }
         void manage(ServerPlayerEntity p,Squad s,String cmd){
             if(!atBarracks(p,s)){p.sendMessage(Text.literal("Return to your faction's barracks to train or disband troops."),true);return;}
-            if(cmd.equals("cancel-training")){for(Training t:s.training)s.gold+=t.paid();s.training.clear();return;}
+            if(cmd.equals("cancel-training")){for(Training t:s.training){s.gold+=t.paid();s.stats.goldSpent-=t.paid();}s.training.clear();return;}
             String id=cmd.substring(cmd.indexOf(':')+1);
             var spec=Campaign.troop(id);if(spec==null)return;
             if(cmd.startsWith("disband:")){
@@ -1094,7 +1094,7 @@ public final class GravesAndGlory implements ModInitializer {
             int price=spec.cost();
             if(s.gold<price){p.sendMessage(Text.literal("Not enough gold. Battle supplies arrive over time; holding points increases them."),true);return;}
             if(s.training.size()>=Spec.ECONOMY[0].maxQueue())return;
-            s.gold-=price;long previous=s.training.isEmpty()?time:s.training.getLast().finished();
+            s.gold-=price;s.stats.goldSpent+=price;long previous=s.training.isEmpty()?time:s.training.getLast().finished();
             s.training.addLast(new Training(spec,Math.max(time,previous)+Commander.trainingTicks(spec),price));
         }
         /** Round gold a squad earns per income tick: the mode's income, Domination's passive gold plus its team's held points. */
@@ -1104,8 +1104,8 @@ public final class GravesAndGlory implements ModInitializer {
                 Training t=s.training.removeFirst();Set<Integer> used=new HashSet<>();fielded(s).forEach(u->used.add(u.slot));
                 int slot=-1;for(int i=0;i<s.banner.size()&&i<R.squadSize();i++)if(s.banner.get(i).equals(t.spec().id())&&!used.contains(i)){slot=i;break;} // its own banner slot, so it forms where the banner puts it
                 if(slot<0){slot=0;while(used.contains(slot))slot++;}
-                if(slot>=R.squadSize()){s.gold+=t.paid();continue;}
-                var at=deploy(s,slot,t.spec());var fresh=spawn(s,t.spec(),slot,at.at());Morale.fielded(this,s,t.spec().group());
+                if(slot>=R.squadSize()){s.gold+=t.paid();s.stats.goldSpent-=t.paid();continue;}
+                var at=deploy(s,slot,t.spec());var fresh=spawn(s,t.spec(),slot,at.at());s.stats.trained++;Morale.fielded(this,s,t.spec().group());
                 if(s.bot&&!MatchRules.waiting(time,s.takeoverAt))campaign.musterRefill(s,fresh); // a bot's refill gathers with the others before it moves up (bot-AI plan step 2)
                 FeedEvents.deployed(this,s,t.spec());
             }
@@ -1239,7 +1239,8 @@ public final class GravesAndGlory implements ModInitializer {
             Unit u=new Unit(mob,s,spec,slot);u.stance=Tactics.stance(this,u);
             spawning=u;try{world.spawnEntity(mob);}finally{spawning=null;} // the players in range start tracking it here (its stance goes with that)
             joinSide(mob,s.team);
-            units.add(u);if(recompute)Houses.recompute(s);return u;
+            units.add(u);if(slot<R.squadSize())s.stats.fielded.merge(spec.id(),1,Integer::sum); // a temporary troop takes a slot past the squad's own
+            if(recompute)Houses.recompute(s);return u;
         }
         /**
          * A troop's hidden custom name at a level: its level name (ArmyMobs.levelName) and, for a commander's Mastery II troop, the veteran suffix. Battle.spawn names a new troop at
@@ -1257,15 +1258,24 @@ public final class GravesAndGlory implements ModInitializer {
             unitChunks.clear();unitChunks.addAll(wanted);
         }
         void unitTick(Unit u){ Abilities.unitTick(this,u,time);Tactics.tick(this,u,time);FormationRules.tick(this,u); }
+        /** Once a second: every seated army with a troop or its commander on the mode's objective (BattleMode.onObjective) gains one objective second, however many of them are there. */
+        void objectiveTick(){
+            Set<Squad> on=new LinkedHashSet<>();
+            for(Unit u:units)if(u.mob.isAlive()&&u.squad.seated&&!on.contains(u.squad)&&mode.onObjective(this,u.squad,u.mob.getPos()))on.add(u.squad);
+            for(ServerPlayerEntity player:server.getPlayerManager().getPlayerList()){
+                Squad s=squads.get(player.getUuid());
+                if(s!=null&&s.seated&&!player.isSpectator()&&player.isAlive()&&mode.onObjective(this,s,player.getPos()))on.add(s);
+            }
+            for(Squad s:on)s.stats.objectiveSeconds++;
+        }
         void captureTick(){
             if(!mode.capturesPoints(this)){for(Capture p:points){p.contested=false;p.progress=0;p.challenger=-1;}return;} // flags down: no point is taken, held or scored
-            Set<Squad> onPoint=new HashSet<>(); // armies with a troop or their commander inside any point radius this second
             for(Capture p:points){
                 int[] presence={0,0};Vec3d center=new Vec3d(p.spec.x(),65,p.spec.z());
-                for(Unit u:units)if(u.mob.isAlive()&&horizontalDistance(u.mob.getPos(),center)<p.spec.radius()*p.spec.radius()){presence[u.squad.team]++;onPoint.add(u.squad);}
+                for(Unit u:units)if(u.mob.isAlive()&&horizontalDistance(u.mob.getPos(),center)<p.spec.radius()*p.spec.radius())presence[u.squad.team]++;
                 for(ServerPlayerEntity player:server.getPlayerManager().getPlayerList()){
                     Squad s=squads.get(player.getUuid());
-                    if(s!=null&&s.seated&&!player.isSpectator()&&horizontalDistance(player.getPos(),center)<p.spec.radius()*p.spec.radius()){presence[s.team]+=R.capturePlayersWeight();onPoint.add(s);}
+                    if(s!=null&&s.seated&&!player.isSpectator()&&horizontalDistance(player.getPos(),center)<p.spec.radius()*p.spec.radius())presence[s.team]+=R.capturePlayersWeight();
                 }
                 p.contested=presence[0]>0&&presence[1]>0;
                 int team=presence[0]>0&&presence[1]==0?0:presence[1]>0&&presence[0]==0?1:-1;
@@ -1274,11 +1284,13 @@ public final class GravesAndGlory implements ModInitializer {
                 p.progress++;
                 if(p.progress>=p.spec.captureSeconds()){
                     p.owner=team;p.ownedSince=time;p.challenger=-1;p.progress=0;Arena.flag(world,p.spec,team);FeedEvents.point(this,p,team);Audio.captured(this,p.spec.name(),team);
-                    for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList()){var squad=squads.get(pl.getUuid());if(squad!=null&&squad.seated&&squad.team==team&&horizontalDistance(pl.getPos(),center)<p.spec.radius()*p.spec.radius())campaign.progressEvent(pl.getUuid(),true);}
+                    Set<Squad> took=new LinkedHashSet<>(); // every seated squad of the capturing team with a troop or its commander on the point
+                    for(Unit u:units)if(u.mob.isAlive()&&u.squad.team==team&&u.squad.seated&&horizontalDistance(u.mob.getPos(),center)<p.spec.radius()*p.spec.radius())took.add(u.squad);
+                    for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList()){var squad=squads.get(pl.getUuid());if(squad!=null&&squad.seated&&squad.team==team&&horizontalDistance(pl.getPos(),center)<p.spec.radius()*p.spec.radius()){campaign.progressEvent(pl.getUuid(),true);if(!pl.isSpectator())took.add(squad);}}
+                    for(Squad s:took)s.stats.captures++;
                     for(ServerPlayerEntity pl:server.getPlayerManager().getPlayerList())if(squads.containsKey(pl.getUuid())&&squads.get(pl.getUuid()).seated)pl.sendMessage(Text.literal(side(team).name()+" captured "+p.spec.name()).setStyle(net.minecraft.text.Style.EMPTY.withColor(side(team).color())),true);
                 }
             }
-            for(Squad s:onPoint)s.stats.objectiveSeconds++;
             MatchStats.teamPointSeconds(pointSeconds,points.stream().mapToInt(c->c.owner).toArray());
         }
         static double horizontalDistance(Vec3d a,Vec3d b){double x=a.x-b.x,z=a.z-b.z;return x*x+z*z;}
@@ -1305,9 +1317,11 @@ public final class GravesAndGlory implements ModInitializer {
                 if(scale!=1||feeds){
                     float before=entity.getHealth()+entity.getAbsorptionAmount();
                     scalingDamage=true;try{entity.damage(source,(float)(amount*scale));}finally{scalingDamage=false;}
+                    dealt(attackerSquad,entity,Math.max(0,before-(entity.getHealth()+entity.getAbsorptionAmount())),before); // what the target really lost, after armour
                     if(feeds){float after=entity.getHealth()+entity.getAbsorptionAmount();Commander.lifesteal(this,attackerSquad,p,after>before?before:before-after);} // more than before: a commander struck down and respawned, or a troop that rose again, lost all it had
                     return false;
                 }
+                dealt(attackerSquad,entity,amount*scale,entity.getHealth()+entity.getAbsorptionAmount()); // an unscaled blow (a commander target): the blow, no more than the target had
             }
             Squad hitter=attackerSquad;Unit striker=null;for(Unit u:units)if(u.mob==attacker){hitter=u.squad;striker=u;}
             Squad side=hitter!=null?hitter:fallenSquad(attacker); // a commander's view of the blow: a shot that lands after its troop fell is still his army's (a troop victim has it from Combat.resolve's lastHitBy already)
@@ -1315,6 +1329,12 @@ public final class GravesAndGlory implements ModInitializer {
             if(side!=null&&victimSquad!=null&&side.team!=team){victimSquad.hitBy=side;victimSquad.hitAt=time;} // a commander's last enemy blow, as lastHitBy is a troop's: a death with no attacker soon after is that army's (Veterans.onCommanderDeath)
             if(striker!=null)Veterans.helped(this,striker,entity); // every troop blow the battle lets through (Combat.resolve's and any other) logs its striker as a helper on the victim (kill credit, design 3.2)
             return true;
+        }
+        /** The commander's own damage to an enemy troop or commander: lost is what it took, capped at left (an overkill adds no more than the target had); stats.damageDealt is the rounded total. */
+        void dealt(Squad s,LivingEntity victim,double lost,double left){
+            if(s==null||!s.seated||lost<=0)return;
+            int team=teamOf(victim);if(team<0||team==s.team)return;
+            s.stats.damageExact+=Math.min(lost,left);s.stats.damageDealt=(int)Math.round(s.stats.damageExact);
         }
         /** ALLOW_DEATH for a player: a commander seated in a running round whose blow, after mitigation, took his health to 0 is not killed.
          *  second_chance catches the downing blow once a match; otherwise he stands at full health at his base as a spectator until his respawn. */
@@ -1326,6 +1346,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(Unit u:units)if(u.mob==attacker){hitter=u.squad;striker=u;}
             Squad side=hitter!=null?hitter:fallenSquad(attacker);
             if(Diagnostics.active())System.out.println("[Graves and Glory damage] respawn cause="+source.getType().msgId()+" amount="+amount+" pos="+p.getPos()+" fall="+p.fallDistance);
+            if(victimSquad!=null)victimSquad.stats.deaths++;if(side!=null&&side.team!=team)side.stats.commanderDowns++; // the downed commander's deaths, the enemy army's downs
             p.setHealth(p.getMaxHealth());toBase(p,team);p.changeGameMode(GameMode.SPECTATOR);
             respawns.put(p.getUuid(),time+R.respawnSeconds()*20L);FeedEvents.commander(this,p,false);
             Veterans.onCommanderDeath(this,p,victimSquad,team,attacker,striker,side); // a commander struck down never reaches AFTER_DEATH: his killers get the commander bounty here, and his credit log is forgotten (he stands again within its window)

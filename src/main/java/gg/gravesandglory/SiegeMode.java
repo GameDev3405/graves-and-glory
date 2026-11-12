@@ -177,6 +177,18 @@ public final class SiegeMode extends BattleMode {
         return false;
     }
 
+    /** How far from the gate's centre counts as at the breach (the gate row has no ring of its own). */
+    static final double GATE_OBJECTIVE_RADIUS = 8;
+
+    /** The keep, or the site of the stage being fought: the yard, the gate's breach, then the keep. Nothing once the keep has fallen. */
+    @Override
+    public boolean onObjective(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Vec3d pos) {
+        if (stage >= 3) return false;
+        if (GravesAndGlory.Battle.horizontalDistance(pos, new Vec3d(KEEP_X, 65, KEEP_Z)) < KEEP_RADIUS * KEEP_RADIUS) return true;
+        return stage == 0 ? GravesAndGlory.Battle.horizontalDistance(pos, new Vec3d(YARD_X, 65, YARD_Z)) < YARD_RADIUS * YARD_RADIUS
+            : stage == 1 && GravesAndGlory.Battle.horizontalDistance(pos, new Vec3d(GATE_SITE.x(), 65, GATE_SITE.z())) < GATE_OBJECTIVE_RADIUS * GATE_OBJECTIVE_RADIUS;
+    }
+
     /** Stages taken, then the current stage's strength in percent. */
     @Override
     public int[] ledger(GravesAndGlory.Battle b) {

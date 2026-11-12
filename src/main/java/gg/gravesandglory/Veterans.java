@@ -328,6 +328,8 @@ final class Veterans {
     /** The army pays and the tier is bought for the round: no refund, and no gear cost on rebuys (design 4.2). Every soldier of the type whose level allows it wears it at once (wear). */
     static void purchase(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.TroopsRow t, String track, int tier, int price) {
         s.gold -= price;
+        s.stats.goldSpent += price;
+        s.stats.upgrades++;
         var k = kit(b, s, t.id());
         if (LevelMath.ARMOUR.equals(track)) k.armour = Math.max(k.armour, tier); else k.weapon = Math.max(k.weapon, tier);
         tally(s.team).bought.add(new Bought(s.owner, t.id(), track, tier, price, b.time));

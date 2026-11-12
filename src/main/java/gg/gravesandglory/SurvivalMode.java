@@ -236,6 +236,12 @@ public final class SurvivalMode extends BattleMode {
         if (result >= 0) end(b, result);
     }
 
+    /** Within the shrine's ring. */
+    @Override public boolean onObjective(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Vec3d pos) {
+        var r = shrine(b);
+        return GravesAndGlory.Battle.horizontalDistance(pos, new Vec3d(r.x(), 65, r.z())) < r.radius() * r.radius();
+    }
+
     /** The defenders (troops and seated players) and the dead inside the shrine ring. */
     int[] shrineCount(GravesAndGlory.Battle b) {
         int[] in = {0, 0};

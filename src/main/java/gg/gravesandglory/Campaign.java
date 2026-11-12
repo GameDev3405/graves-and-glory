@@ -747,7 +747,7 @@ public final class Campaign {
                 for(var want:wanted.entrySet()){var type=troop(want.getKey());
                     long have=b.fielded(s).filter(u->u.spec==type).count()+s.training.stream().filter(q->q.spec()==type).count();
                     int price=type.cost();
-                    while(have<want.getValue()&&s.gold>=price&&weight+type.slotWeight()<=GravesAndGlory.R.squadSize()){s.gold-=price;long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+Commander.trainingTicks(type),price));weight+=type.slotWeight();have++;}
+                    while(have<want.getValue()&&s.gold>=price&&weight+type.slotWeight()<=GravesAndGlory.R.squadSize()){s.gold-=price;s.stats.goldSpent+=price;long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+Commander.trainingTicks(type),price));weight+=type.slotWeight();have++;}
                 }
                 Veterans.botBuy(b,s); // then gear, from what the refill left, keeping its tier's reserve for rebuys (in-match progression design 9.1)
             }

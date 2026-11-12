@@ -24,6 +24,30 @@ public final class MatchStats {
         public final Map<String, Integer> traitSeconds = new LinkedHashMap<>();
         /** This round's kills by troop id, for the mastery ledger: a troop's own blow, or a death in the credit window after it. A commander's kill and a temporary troop's (a Grave Bloom Risen) count in kills only. */
         public final Map<String, Integer> troopKills = new LinkedHashMap<>();
+        /** Enemy troops killed by the commander's own blow or shot (also counted in kills). */
+        public int commanderKills;
+        /** Enemy commanders downed and credited to this army. */
+        public int commanderDowns;
+        /** Times this army's commander was downed. */
+        public int deaths;
+        /** Damage the commander's own blows and shots dealt to enemy troops and commanders, after mitigation, rounded from damageExact. */
+        public int damageDealt;
+        /** The unrounded running total behind damageDealt. */
+        public double damageExact;
+        /** Capture points this army took: every seated squad of the capturing team with a troop or commander on the point at the capture. */
+        public int captures;
+        /** Gold paid for training and gear this round, refunds taken off. */
+        public int goldSpent;
+        /** Troops that finished training. */
+        public int trained;
+        /** Gear upgrades bought. */
+        public int upgrades;
+        /** Orders the commander gave. */
+        public int orders;
+        /** This army's living non-temporary troops at the end of the fight (set when the match ends). */
+        public int kept;
+        /** Every spawn or refill of a troop type this round, by troop id. */
+        public final Map<String, Integer> fielded = new LinkedHashMap<>();
     }
     /** One House row of the battle report: the banner's trait tier in that House (0 when its slots reach none), the seconds its trait held this round, and the shards and Renown the match paid it. */
     public record HouseRow(String house, int tier, int traitSeconds, int shards, int renown) {}
