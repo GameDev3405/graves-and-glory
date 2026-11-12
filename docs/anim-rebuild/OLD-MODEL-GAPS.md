@@ -58,6 +58,15 @@ that runs `geoTroops=all` or `false` against a dedicated server on default setti
   the rise pose; DeathController's collapse rule is GeckoLib-only. Reaper, stalker, bonebow and hexer rises were
   not filmed. They use the same biped fall clip and code path as the revenant.
 
+- **Minors (review 2026-11-12, recorded, not fixed).**
+  - A troop killed during its rise pops: `rise()` drops the overlay the moment the troop is dead (TroopMotion.java:284),
+    so the body jumps from lying to the engine's pose for a frame, then plays its death. DeathController's `riseDeath`
+    handles this on GeckoLib.
+  - The stand-up ends on a fade: the last RISE_OUT (4) ticks blend to the engine pose while the reversed clip is
+    still a few ticks from its start (about 7 ticks in the quickened 20-tick case). It is continuous, but reads as a
+    quick straightening rather than a finished stand.
+- **Video.** oldmodel_rise.mp4 shows the revenant (Rise Again, 20 ticks), then the Hollow King (70 ticks).
+
 ## Gap 2: caster bolts start in the wrong place
 
 - **Cause.** b6563fd0 (caster v2 tip origin) made `Projectiles.castFrom` start every caster's bolt and mend at
@@ -68,8 +77,9 @@ that runs `geoTroops=all` or `false` against a dedicated server on default setti
 - **Fix.** `castFrom` takes the tip only when `GeoTroops.castTip(troop)` holds, which means the troop is drawn
   through GeckoLib. Otherwise it uses the eyes, the origin before b6563fd0. Flight ticks, arc, damage and
   targeting were already worked out from the eyes and are unchanged.
-- **Check.** GeoTroopsCheck covers the sets (disjoint; the knight approved), `drawn` under default, `all` and
-  `false`, and `castTip` for mage, hexer, tc_mist and wm_seer under each setting. PASS.
+- **Check.** GeoTroopsCheck tests the contract, not today's membership: the sets are disjoint and in the sheet;
+  `drawn` follows them under default, `all` and `false`; every troop with a cast_tip resource takes its tip exactly
+  when it draws through GeckoLib. A lane moving a troop into APPROVED needs no edit to the check. PASS.
 - **In game (after).** p1-old-gaps-bolt-origin passes: the bolt starts 0.000 blocks from the eyes.
 
 ## Gap 3: caster cast about 10 ticks out of step (hexer, tc_mist)

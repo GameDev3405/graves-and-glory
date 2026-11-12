@@ -1,6 +1,10 @@
 package gg.gravesandglory;
 
-import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * The server-side choices that follow which model a troop is drawn on (GeoTroops; docs/anim-rebuild/OLD-MODEL-GAPS.md gaps 2 and 4): a caster's
@@ -31,23 +35,33 @@ public final class GeoTroopsCheck {
         }
         check(!GeoTroops.drawn("revenant_not_a_troop") && !GeoTroops.drawn(null), "an unknown troop or none draws on the old model");
 
-        // gap 2: the bolt's origin. Every caster with a cast_tip resource is a preview troop today: by default its tip is not used (the eyes), with
-        // geoTroops=all it is; an approved caster would use it by default.
-        for (String t : Set.of("mage", "hexer", "tc_mist", "wm_seer")) {
-            check(!GeoTroops.castTip(t, true, false), t + ": by default the bolt starts at the eyes (old model), not the GeckoLib staff tip");
-            check(GeoTroops.castTip(t, true, true), t + ": with geoTroops=all the bolt starts at the GeckoLib staff tip");
+        // gap 2: the bolt's origin, as a contract over the sets (not today's membership): a troop with a cast_tip resource takes its tip exactly when it
+        // draws through GeckoLib (approved by default; approved or preview with geoTroops=all; never with geoTroops=false), else its eyes.
+        List<String> casters = new ArrayList<>();
+        try (var files = Files.list(Path.of("src/main/resources/data/gravesandglory/cast_tip"))) {
+            files.map(f -> f.getFileName().toString()).filter(n -> n.endsWith(".json")).map(n -> n.substring(0, n.length() - 5)).sorted().forEach(casters::add);
+        } catch (Exception e) { check(false, "cast_tip resources: " + e); }
+        check(!casters.isEmpty(), "at least one troop has a cast_tip resource");
+        for (String t : casters) {
+            boolean approved = GeoTroops.APPROVED.contains(t), geo = approved || GeoTroops.PREVIEW.contains(t);
+            check(GeoTroops.castTip(t, true, false) == approved, t + ": by default the bolt starts at the " + (approved ? "GeckoLib staff tip (approved)" : "eyes (old model)"));
+            check(GeoTroops.castTip(t, true, true) == geo, t + ": with geoTroops=all the bolt starts at the " + (geo ? "staff tip" : "eyes"));
             check(!GeoTroops.castTip(t, false, true), t + ": with geoTroops=false the bolt starts at the eyes");
         }
-        check(GeoTroops.castTip("knight", true, false), "an approved troop takes its tip (where it has one) by default");
+        for (String t : GeoTroops.APPROVED) check(GeoTroops.castTip(t, true, false), t + ": an approved troop takes its tip (where it has one) by default");
 
-        // gap 4: the sweep. Old model: shown; GeckoLib: not (Kort, 2026-11-08: the swing carries the blow).
-        check(!GeoTroops.sweeps("knight", true, false), "the knight (GeckoLib by default) shows no sweep");
-        check(GeoTroops.sweeps("knight", false, false), "the knight on the old model (geoTroops=false) shows the sweep");
-        for (String t : Set.of("revenant", "sentinel", "reaper", "gb_hollowking", "tc_raider")) {
-            check(GeoTroops.sweeps(t, true, false), t + " (old model by default) shows the sweep");
+        // gap 4: the sweep, over every troop in the sheet: shown exactly when the troop is on the old model (Kort, 2026-11-08: a GeckoLib swing
+        // carries the blow; the old clips do not).
+        for (Spec.TroopsRow r : Spec.TROOPS) {
+            String t = r.id();
+            boolean approved = GeoTroops.APPROVED.contains(t), geo = approved || GeoTroops.PREVIEW.contains(t);
+            check(GeoTroops.sweeps(t, true, false) == !approved, t + " by default: sweep " + !approved);
+            check(GeoTroops.sweeps(t, true, true) == !geo, t + " with geoTroops=all: sweep " + !geo);
+            check(GeoTroops.sweeps(t, false, false), t + " with geoTroops=false (old model) shows the sweep");
+            check(GeoTroops.sweeps(t) == !GeoTroops.drawn(t), t + ": the default overload follows this JVM's settings");
         }
-        check(!GeoTroops.sweeps("sentinel", true, true), "sentinel with geoTroops=all (GeckoLib) shows no sweep");
-        check(GeoTroops.sweeps("revenant") == !GeoTroops.drawn("revenant") && GeoTroops.sweeps("knight") == !GeoTroops.drawn("knight"), "the default overload follows this JVM's settings");
+        for (String t : GeoTroops.APPROVED) check(Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(t)), t + " (approved) is a troop in the sheet");
+        for (String t : GeoTroops.PREVIEW) check(Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(t)), t + " (preview) is a troop in the sheet");
 
         if (failed > 0) {
             System.out.println("GeoTroopsCheck: " + failed + " checks FAILED");

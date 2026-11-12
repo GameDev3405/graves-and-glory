@@ -12,8 +12,9 @@ import net.minecraft.util.math.Vec3d;
 import java.util.*;
 
 /**
- * The four old-model gaps (docs/anim-rebuild/OLD-MODEL-GAPS.md), GRAVES_PHASE1_CHECKS=old-gaps, on default settings (no geoTroops=all): the troops below
- * outside GeoTroopRenderer's approved set draw on the old model (TroopMotion), the knight on GeckoLib. In a practice battle, one subject at a time stands
+ * The four old-model gaps (docs/anim-rebuild/OLD-MODEL-GAPS.md), GRAVES_PHASE1_CHECKS=old-gaps, on default settings (no geoTroops=all). Each segment's
+ * subject is the first of its candidates still outside GeoTroops.APPROVED (old model, TroopMotion); sweep-knight's is an approved melee troop (GeckoLib).
+ * A segment whose candidates are all approved is reported skipped. Named below as they are today. In a practice battle, one subject at a time stands
  * frozen (AI off) at the centre and the real server paths run on it:
  * <ol>
  * <li>rise: a tier III revenant with Rise Again forced (Houses.forceRise) takes a lethal blow (Houses.allowDeath, rise_v1, its 20-tick stun);</li>
@@ -38,12 +39,20 @@ final class OldModelGaps implements Phase1Checks.Suite {
 
     record Seg(int no, String slug, String troop, int lead, int active, double dist, boolean shots) { int total() { return lead + active; } }
     static final List<Seg> SEGS = List.of(
-        new Seg(1, "rise", "revenant", 6, 50, 5.0, true),
-        new Seg(2, "rise-king", "gb_hollowking", 6, 92, 6.5, true),
-        new Seg(3, "cast", "hexer", 6, 45, 6.0, true),
-        new Seg(4, "sweep", "revenant", 6, 30, 4.5, true),
-        new Seg(5, "sweep-knight", "knight", 6, 30, 4.5, false),
-        new Seg(6, "cast-live", "hexer", 6, 400, 6.0, false));
+        new Seg(1, "rise", oldModel("revenant", "reaper", "bonebow", "stalker"), 6, 50, 5.0, true),
+        new Seg(2, "rise-king", oldModel("gb_hollowking"), 6, 92, 6.5, true),
+        new Seg(3, "cast", oldModel("hexer", "tc_mist"), 6, 45, 6.0, true),
+        new Seg(4, "sweep", oldModel("revenant", "reaper", "sentinel", "tc_raider"), 6, 30, 4.5, true),
+        new Seg(5, "sweep-knight", approvedMelee(), 6, 30, 4.5, false),
+        new Seg(6, "cast-live", oldModel("hexer", "tc_mist"), 6, 400, 6.0, false));
+
+    /** The first candidate still drawn on the old model (GeoTroops), or null once a lane has approved them all: that segment is then skipped. */
+    static String oldModel(String... candidates) { for (String t : candidates) if (!GeoTroops.drawn(t)) return t; return null; }
+    /** An approved (GeckoLib) melee troop: the knight while it is approved, else the first other. */
+    static String approvedMelee() {
+        if (GeoTroops.APPROVED.contains("knight")) return "knight";
+        return Arrays.stream(Spec.TROOPS).filter(r -> GeoTroops.APPROVED.contains(r.id()) && !r.ranged()).map(Spec.TroopsRow::id).sorted().findFirst().orElse(null);
+    }
 
     static volatile OldModelGaps live;
     static {
@@ -317,6 +326,11 @@ final class OldModelGaps implements Phase1Checks.Suite {
             }
             case 2 -> {
                 Seg s = SEGS.get(i);
+                if (k == 0 && s.troop() == null) { // every candidate is approved (drawn through GeckoLib): nothing on the old model to film; re-point the segment
+                    Phase1Checks.report("p1-old-gaps-" + s.slug(), true, "skipped: every candidate troop now draws through GeckoLib (GeoTroops.APPROVED)");
+                    if (++i >= SEGS.size()) { Phase1Checks.report("p1-old-gaps", !failedAny, SEGS.size() + " segments"); next(tick, 9); } else next(tick, 2);
+                    return;
+                }
                 if (k == 0) {
                     frames = 0; missing = 0; sweeps = 0; stanceClips.clear(); riseLog.clear(); riseFrames = 0; riseHeavy = 0; riseMaxW = 0;
                     liveCasts.clear();
