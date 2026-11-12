@@ -40,3 +40,17 @@ The same Knight v2 feel as the archer (see `ARCHER-REVIEW.md`, "v2 feel"), built
   - Brace and hold the line are close at thumbnail size.
 - **Harness.** Not run: the 5-client budget for this pass ran out (see the family report). The clips share the archer's code path, and the archer was harnessed.
 - Video: `bonebow_v2feel`.
+
+## Batch review 2026-11-11
+
+Bow-family batch review on `anim/review-bow`. Timing unchanged: `ATTACK_TICKS` 32, `FULL_AT` 16.5, `IMPACT` 22; both attacks keep `full` 0.825 and `impact` 1.1.
+
+- **Rows before -> after** (`work/review/bonebow.{before,after}.json`): clips with a FAIL 24 -> 22, FAIL rows 45 -> 32, WARN rows 43 -> 35 (no PASS became a WARN).
+- **Changed clips (16, spliced; every other clip byte-identical to HEAD).** The hit `_legs` clips came out identical, so they are unchanged.
+  - `attack_direct`, `attack_volley` (+legs): Kort's archer r3 shot fitted to the bonebow (`direct_shot.FIT["bonebow"]`): anchor 1 px higher and chest roll weight 0.2 on the direct shot, so the body no longer leans 23 deg sideways at full draw; bow canted -30 deg and raised 20 deg, head turned away at the nock (`nock_head`), so the bow clears the skull; higher, further-out nock and set grips, the nock grip 1 px further forward so the string bracer clears the jerkin (scorecard `pen_limb` 1.68 -> 1.35, limit 1.39). Fist through the head (3.14) and the loose pop are gone.
+  - Aim stances: from the r3 full-draw frame, chest takes 85% of the pitch.
+  - Hits and `hit_block`: gear swings (bone quiver, bands, pauldrons, skull) soft and low-passed: `secondary_life` and `dead_hold` FAILs cleared.
+- **Remaining FAIL rows: the right pauldron fit (model).** `right_pauldron` overlaps the jerkin and `rag_hood` by 2.1-2.4 px whenever the string arm rises: both attacks at the set and hold, the three aim stances (new here, because they now hold the real full-draw arm), rally, ward and fallback. `bow_plate` sits into the head in brace, wall, hold and the front/back/left medium hits; `skull_pauldron` into `rag_hood` in the side hits. These are geometry, not motion: the pauldron cubes are larger than the shoulder they ride on.
+- **Other remaining rows.** Aim stances `loop_life` 0.26-0.30 (pre-existing: the held aim barely breathes). Common modules: `hit_pulled`, `stun_upper`, `stun_out_upper`, `hit_knockback`, `charge_run_upper`.
+- **Proposed exemption or model fix.** bonebow, every clip with the string arm raised, `armour_clip`, 2.0-2.4, `right_pauldron` into jerkin/rag_hood: shrink or lift the right pauldron in the hand model (preferred), else exempt that pair. bonebow, stances and hits, `armour_clip`, up to 2.5, `bow_plate` into head.
+- **Tests.** Scorecard exit 0 (35 clips, 0 fail) after the nock-grip fix (it failed `pen_limb` on both attacks before it). Unit tests OK (see ARCHER-REVIEW batch section). Booth config valid.

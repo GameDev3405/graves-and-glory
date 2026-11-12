@@ -96,7 +96,7 @@ FIT = {
     # string bracer lay 2.3 px in the jerkin).
     "bonebow": {"quiver": "bone_quiver", "roll": -26.0, "fletch": (-1.2, 24.6, 4.9), "anchor": (-6.5, 26.0, 0.0),
                 "chest_roll_w": 0.2, "cant": -30.0, "cant_out": (7.5, 11.5), "bow_raise": 20.0, "nock_head": (-10, -30, 0),
-                "nock_grip": (5.0, 22.2, -7.6), "set_grip": (5.0, 22.0, -7.6)},
+                "nock_grip": (5.0, 22.2, -8.6), "set_grip": (5.0, 22.0, -7.6)},  # nock grip 1 px further forward (z -8.6): the string bracer cleared the jerkin (scorecard pen_limb 1.68 -> 1.35)
     # the hide quiver: arrow shafts x -3..0, y 23..27, z 3..4, grabbed on its outer (string-side) shafts, clear of the
     # collar; the anchor clears the boar ear (x 4..5, turned 14 out). The snout and the bulky jerkin: the bow is nocked
     # canted 30 degrees (upright again by the set) and carried higher through the reach, so its top limb passes in front of
