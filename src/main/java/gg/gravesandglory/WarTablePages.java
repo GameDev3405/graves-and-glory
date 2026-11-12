@@ -256,7 +256,7 @@ final class WarTablePages {
      *  page last claimed (its stamp is the wet one); and the tick the track began to slide. */
     boolean paged;
     int pagedFirst = 1, shownFirst = -1, freshTier = -1;
-    /** The tooltips the Claim plate and the Rare chip carry now (set again only when their words change). */
+    /** The tooltips the Claim plate and the Rare chip carry now (set again only when their words change; init clears them with the widgets). */
     String claimTip = "", rareTip = "";
     double slideAt = -1000;
 
@@ -288,6 +288,8 @@ final class WarTablePages {
     /** Builds the widgets (CampScreen.init on the page): again whenever the camp state or a rail badge changes. */
     void init() {
         buttons.clear();
+        claimTip = rareTip = ""; // the new widgets carry no tooltip yet: refresh sets each again (an empty why needs none)
+        Arrays.fill(addTips, null);
         builtContracts = WarTableHome.contractsBadge();
         builtFriends = WarTableHome.friendsBadge();
         add("back", WarTable.backPlaque(b -> back()));
