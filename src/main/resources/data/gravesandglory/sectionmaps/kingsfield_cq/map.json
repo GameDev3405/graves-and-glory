@@ -1,0 +1,736 @@
+{
+ "baseY": 64,
+ "columns": "columns.bin.gz",
+ "depth": 384,
+ "design_sha256": "93f1916ae2747689f0bb8bca03a835e95acdb9b8b887b921c86c7734c79393bf",
+ "field": {
+  "halfX": 270,
+  "halfZ": 190
+ },
+ "floorY": 54,
+ "format": 1,
+ "id": "kingsfield_cq",
+ "origin": [
+  -288,
+  -192
+ ],
+ "points": [
+  {
+   "id": "A",
+   "name": "West Grange",
+   "radius": 17,
+   "x": 160,
+   "y": 65,
+   "z": 192
+  },
+  {
+   "id": "B",
+   "name": "Tithe Barn",
+   "radius": 17,
+   "x": 288,
+   "y": 68,
+   "z": 78
+  },
+  {
+   "id": "C",
+   "name": "The Hand",
+   "radius": 17,
+   "x": 288,
+   "y": 57,
+   "z": 192
+  },
+  {
+   "id": "D",
+   "name": "Mill Rise",
+   "radius": 17,
+   "x": 288,
+   "y": 68,
+   "z": 306
+  },
+  {
+   "id": "E",
+   "name": "East Grange",
+   "radius": 17,
+   "x": 416,
+   "y": 65,
+   "z": 192
+  }
+ ],
+ "roads": [],
+ "routes": [
+  {
+   "point": "West Grange",
+   "spawn": "dawn",
+   "straight": 87.0,
+   "walk": 87
+  },
+  {
+   "point": "Tithe Barn",
+   "spawn": "dawn",
+   "straight": 243.35,
+   "walk": 329
+  },
+  {
+   "point": "The Hand",
+   "spawn": "dawn",
+   "straight": 215.0,
+   "walk": 273
+  },
+  {
+   "point": "Mill Rise",
+   "spawn": "dawn",
+   "straight": 243.35,
+   "walk": 329
+  },
+  {
+   "point": "East Grange",
+   "spawn": "dawn",
+   "straight": 343.0,
+   "walk": 447
+  },
+  {
+   "point": "West Grange",
+   "spawn": "dusk",
+   "straight": 343.0,
+   "walk": 447
+  },
+  {
+   "point": "Tithe Barn",
+   "spawn": "dusk",
+   "straight": 243.35,
+   "walk": 329
+  },
+  {
+   "point": "The Hand",
+   "spawn": "dusk",
+   "straight": 215.0,
+   "walk": 273
+  },
+  {
+   "point": "Mill Rise",
+   "spawn": "dusk",
+   "straight": 243.35,
+   "walk": 329
+  },
+  {
+   "point": "East Grange",
+   "spawn": "dusk",
+   "straight": 87.0,
+   "walk": 87
+  }
+ ],
+ "routesBy": "floors",
+ "spawns": [
+  {
+   "id": "dawn",
+   "team": "dawn",
+   "x": 73,
+   "y": 65,
+   "z": 192
+  },
+  {
+   "id": "dusk",
+   "team": "dusk",
+   "x": 503,
+   "y": 65,
+   "z": 192
+  }
+ ],
+ "tiles": [
+  {
+   "file": "kf_a1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 0,
+   "z": 0
+  },
+  {
+   "file": "kf_b1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 64,
+   "z": 0
+  },
+  {
+   "file": "kf_c1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 128,
+   "z": 0
+  },
+  {
+   "file": "kf_d1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 192,
+   "z": 0
+  },
+  {
+   "file": "kf_e1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 256,
+   "z": 0
+  },
+  {
+   "file": "kf_f1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 320,
+   "z": 0
+  },
+  {
+   "file": "kf_g1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 384,
+   "z": 0
+  },
+  {
+   "file": "kf_h1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 448,
+   "z": 0
+  },
+  {
+   "file": "kf_i1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 512,
+   "z": 0
+  },
+  {
+   "file": "kf_a2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 0,
+   "z": 64
+  },
+  {
+   "file": "kf_b2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 64,
+   "z": 64
+  },
+  {
+   "file": "kf_c2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 128,
+   "z": 64
+  },
+  {
+   "file": "kf_d2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 192,
+   "z": 64
+  },
+  {
+   "file": "kf_e2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 256,
+   "z": 64
+  },
+  {
+   "file": "kf_f2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 320,
+   "z": 64
+  },
+  {
+   "file": "kf_g2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 384,
+   "z": 64
+  },
+  {
+   "file": "kf_h2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 448,
+   "z": 64
+  },
+  {
+   "file": "kf_i2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 512,
+   "z": 64
+  },
+  {
+   "file": "kf_a3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 0,
+   "z": 128
+  },
+  {
+   "file": "kf_b3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 64,
+   "z": 128
+  },
+  {
+   "file": "kf_c3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 128,
+   "z": 128
+  },
+  {
+   "file": "kf_d3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 192,
+   "z": 128
+  },
+  {
+   "file": "kf_e3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 256,
+   "z": 128
+  },
+  {
+   "file": "kf_f3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 320,
+   "z": 128
+  },
+  {
+   "file": "kf_g3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 384,
+   "z": 128
+  },
+  {
+   "file": "kf_h3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 448,
+   "z": 128
+  },
+  {
+   "file": "kf_i3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 512,
+   "z": 128
+  },
+  {
+   "file": "kf_a4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 0,
+   "z": 192
+  },
+  {
+   "file": "kf_b4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 64,
+   "z": 192
+  },
+  {
+   "file": "kf_c4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 128,
+   "z": 192
+  },
+  {
+   "file": "kf_d4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 192,
+   "z": 192
+  },
+  {
+   "file": "kf_e4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 256,
+   "z": 192
+  },
+  {
+   "file": "kf_f4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 320,
+   "z": 192
+  },
+  {
+   "file": "kf_g4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 384,
+   "z": 192
+  },
+  {
+   "file": "kf_h4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 448,
+   "z": 192
+  },
+  {
+   "file": "kf_i4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 512,
+   "z": 192
+  },
+  {
+   "file": "kf_a5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 0,
+   "z": 256
+  },
+  {
+   "file": "kf_b5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 64,
+   "z": 256
+  },
+  {
+   "file": "kf_c5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 128,
+   "z": 256
+  },
+  {
+   "file": "kf_d5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 192,
+   "z": 256
+  },
+  {
+   "file": "kf_e5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 256,
+   "z": 256
+  },
+  {
+   "file": "kf_f5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 320,
+   "z": 256
+  },
+  {
+   "file": "kf_g5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 384,
+   "z": 256
+  },
+  {
+   "file": "kf_h5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 448,
+   "z": 256
+  },
+  {
+   "file": "kf_i5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 512,
+   "z": 256
+  },
+  {
+   "file": "kf_a6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 0,
+   "z": 320
+  },
+  {
+   "file": "kf_b6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 64,
+   "z": 320
+  },
+  {
+   "file": "kf_c6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 128,
+   "z": 320
+  },
+  {
+   "file": "kf_d6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 192,
+   "z": 320
+  },
+  {
+   "file": "kf_e6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 256,
+   "z": 320
+  },
+  {
+   "file": "kf_f6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 320,
+   "z": 320
+  },
+  {
+   "file": "kf_g6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 384,
+   "z": 320
+  },
+  {
+   "file": "kf_h6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 448,
+   "z": 320
+  },
+  {
+   "file": "kf_i6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    39,
+    64
+   ],
+   "x": 512,
+   "z": 320
+  }
+ ],
+ "width": 576
+}

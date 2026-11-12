@@ -38,7 +38,7 @@ final class BuildWorlds {
         var R=GravesAndGlory.R;String id=Spec.MAPS[m].id();
         var areas=new ArrayList<LobbyCanvas.Area>();var lines=new ArrayList<LobbyCanvas.Line>();
         areas.add(new LobbyCanvas.Area("","CANVAS EDGE","A battle lays ground out to this line. Build inside it.",Blocks.LIGHT_GRAY_CONCRETE,-R.worldHalfX(),-R.worldHalfZ(),R.worldHalfX(),R.worldHalfZ(),false));
-        areas.add(new LobbyCanvas.Area("","PLAYABLE BORDER","Battles stay inside this line: the barrier wall stands on it.",Blocks.WHITE_CONCRETE,-R.arenaHalfX(),-R.arenaHalfZ(),R.arenaHalfX(),R.arenaHalfZ(),false));
+        areas.add(new LobbyCanvas.Area("","PLAYABLE BORDER","Battles stay inside this line: the barrier wall stands on it.",Blocks.WHITE_CONCRETE,-Field.halfX(m),-Field.halfZ(m),Field.halfX(m),Field.halfZ(m),false));
         String[] team={"Dawn","Dusk"},palette={"dawn","dusk"};Block[] colour={Blocks.LIGHT_BLUE_CONCRETE,Blocks.BLUE_CONCRETE};
         for(int t=0;t<2;t++){
             String low=palette[t],name=team[t];

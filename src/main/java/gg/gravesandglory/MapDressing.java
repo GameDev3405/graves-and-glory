@@ -62,7 +62,7 @@ final class MapDressing {
     /** Open ground a prop may stand on: off props (one block round their footprint), off roads (with a shoulder), river, bridges, structures, muster lanes and trees, and level. */
     boolean free(int x,int z,double shoulder){
         if(nearProps.contains(ChunkPos.toLong(x,z)))return false; // on or next to a prop
-        if(Math.abs(x)>GravesAndGlory.R.arenaHalfX()-4||Math.abs(z)>GravesAndGlory.R.arenaHalfZ()-4)return false;
+        if(Math.abs(x)>Field.halfX()-4||Math.abs(z)>Field.halfZ()-4)return false;
         if(CampaignMaps.roadDistance(x,z)<shoulder||Math.abs(x-Arena.riverX(z))<(map==3?12:9)||onStructure(x,z,1)||muster(x,z)||nearTree(x,z))return false;
         int y=h(x,z);return Math.abs(h(x+1,z)-y)<=1&&Math.abs(h(x-1,z)-y)<=1&&Math.abs(h(x,z+1)-y)<=1&&Math.abs(h(x,z-1)-y)<=1;
     }
@@ -243,7 +243,7 @@ final class MapDressing {
      *  still alone. Nothing is scattered and nothing lies against a wall, on the water, on a deck or on a parade ground; a cell that holds anything but plain ground (paving, the stone ring, a prop's foot) is left as it is. */
     void worn(){
         laid.clear();despeckled=0;
-        int hx=GravesAndGlory.R.arenaHalfX(),hz=GravesAndGlory.R.arenaHalfZ(),wz=2*hz+1;
+        int hx=Field.halfX(),hz=Field.halfZ(),wz=2*hz+1;
         var road=new BitSet((2*hx+1)*wz);
         for(int x=-hx;x<=hx;x++)for(int z=-hz;z<=hz;z++)if(CampaignMaps.road(x,z))road.set((x+hx)*wz+(z+hz));
         for(int x=-hx+1;x<hx;x++)for(int z=-hz+1;z<hz;z++){

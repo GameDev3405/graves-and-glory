@@ -521,7 +521,7 @@ final class WarTableHome {
     static void seals(DrawContext g, int x, int y) {
         var font = MinecraftClient.getInstance().textRenderer;
         for (var p : Spec.POINTS) {
-            int px = x + (p.x() + 350) * 136 / 700, py = y + (p.z() + 250) * 80 / 500;
+            int px = x + (p.x() +Field.halfX())*136/(2*Field.halfX()), py = y + (p.z() +Field.halfZ())*80/(2*Field.halfZ());
             UiTex.draw(g, "table/map-seal", px - 8, py - 8);
             g.drawText(font, p.id(), px - font.getWidth(p.id()) / 2 + 1, py - 3, DarkUi.CHIP_TEXT, false);
         }

@@ -830,7 +830,7 @@ public final class GravesAndGlory implements ModInitializer {
                 Long until=respawns.get(p.getUuid());
                 if(until!=null){
                     if(time>=until){respawns.remove(p.getUuid());p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);FeedEvents.commander(this,p,true);}
-                } else if(running&&(Math.abs(p.getX())>R.arenaHalfX()-2||Math.abs(p.getZ())>R.arenaHalfZ()-2||p.getY()<56))toBase(p,squads.get(p.getUuid()).team);
+                } else if(running&&(Math.abs(p.getX())>Field.halfX()-2||Math.abs(p.getZ())>Field.halfZ()-2||p.getY()<56))toBase(p,squads.get(p.getUuid()).team);
             }
             if(running&&campaign.bonusTracker!=null){int fell=0;for(Unit u:units)if(!u.mob.isAlive()&&!u.temporary&&u.squad.team==0&&!u.squad.bot)fell++;if(fell>0)campaign.bonusTracker.lost(fell);} // March bonus: troops of the commander's banner that fell this tick
             units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
@@ -980,7 +980,7 @@ public final class GravesAndGlory implements ModInitializer {
                     // Target is derived on the server, never trusted from the client.
                     HitResult hit=p.raycast(R.orderRange(),0,false);
                     Vec3d target=hit.getType()==HitResult.Type.MISS?p.getPos().add(p.getRotationVec(1).multiply(32)):hit.getPos();
-                    int tx=MathHelper.clamp((int)target.x,-R.arenaHalfX()+10,R.arenaHalfX()-10),tz=MathHelper.clamp((int)target.z,-R.arenaHalfZ()+10,R.arenaHalfZ()-10);
+                    int tx=MathHelper.clamp((int)target.x,-Field.halfX()+10,Field.halfX()-10),tz=MathHelper.clamp((int)target.z,-Field.halfZ()+10,Field.halfZ()-10);
                     if(Arena.river(tx,tz)&&Arena.ground(tx,tz)<64)tx=(int)Arena.riverX(tz)+(tx>Arena.riverX(tz)?12:-12);
                     s.target=new Vec3d(tx,Arena.ground(tx,tz)+1,tz);
                 }else s.target=p.getPos();
@@ -1005,7 +1005,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** Whether a Charge order on the named group(s) starts a charge: some named group is not charging already. */
         boolean startsCharge(Squad s,String group){return Arrays.stream(Morale.GROUPS).anyMatch(g->(group.equals("all")||group.equals(g))&&!storedAssignment(s,g).order.equals("charge"));}
         /** An order's spot lies inside the arena: finite, and at least 10 blocks off its edge. */
-        static boolean inArena(double x,double z){return Double.isFinite(x)&&Double.isFinite(z)&&Math.abs(x)<=R.arenaHalfX()-10&&Math.abs(z)<=R.arenaHalfZ()-10;}
+        static boolean inArena(double x,double z){return Double.isFinite(x)&&Double.isFinite(z)&&Math.abs(x)<=Field.halfX()-10&&Math.abs(z)<=Field.halfZ()-10;}
         /** River water below the crossings: no order sends a group there (a bridge or a ford is ground at 64 or above). */
         static boolean wet(double x,double z){return Arena.river((int)x,(int)z)&&Arena.ground((int)x,(int)z)<64;}
         /** The point an order to (x, z) sends a group to: the ground there, one block up, whatever height whoever gave it stands at. */

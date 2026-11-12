@@ -283,9 +283,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     }
     static void invalidateMap(MinecraftClient c){if(mapTexture!=null){c.getTextureManager().destroyTexture(mapTexture);mapTexture=null;}preparingMap=false;}
     static void prepareMap(MinecraftClient c){
-        if(preparingMap)return;preparingMap=true;final int generation=CampaignMaps.selected;
+        if(preparingMap)return;preparingMap=true;final int generation=CampaignMaps.selected,hx=Field.halfX(),hz=Field.halfZ();
         // Arena.mapColor gives ARGB and NativeImage takes ABGR: the bit mask 0xff00ff00 keeps alpha and green, and red and blue swap.
-        CompletableFuture.supplyAsync(()->{NativeImage image=new NativeImage(281,201,false);for(int x=0;x<281;x++)for(int z=0;z<201;z++){int col=Arena.mapColor((int)((x-140)*2.5),(int)((z-100)*2.5));image.setColor(x,z,(col&0xff00ff00)|((col>>16)&255)|((col&255)<<16));}return image;}).thenAccept(image->c.execute(()->{if(generation!=CampaignMaps.selected){image.close();preparingMap=false;return;}mapTexture=c.getTextureManager().registerDynamicTexture("gravesandglory_map",new NativeImageBackedTexture(image));}));
+        CompletableFuture.supplyAsync(()->{NativeImage image=new NativeImage(281,201,false);for(int x=0;x<281;x++)for(int z=0;z<201;z++){int col=Arena.mapColor((int)((x-140)*hx/140.0),(int)((z-100)*hz/100.0));image.setColor(x,z,(col&0xff00ff00)|((col>>16)&255)|((col&255)<<16));}return image;}).thenAccept(image->c.execute(()->{if(generation!=CampaignMaps.selected){image.close();preparingMap=false;return;}mapTexture=c.getTextureManager().registerDynamicTexture("gravesandglory_map",new NativeImageBackedTexture(image));}));
     }
     // The point arrays refill with the next state packet after a map switch, so until then they can be shorter or longer than Spec.POINTS.
     static boolean contestedAt(int i){var a=contested;return i>=0&&i<a.length&&a[i];}
@@ -303,20 +303,20 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         var font=MinecraftClient.getInstance().textRenderer;
         if(mapTexture!=null)g.drawTexture(mapTexture,x,y,w,h,0f,0f,281,201,281,201);else g.fill(x,y,x+w,y+h,0xff34473b);
         g.fill(x,y,x+w,y+h,0x66303c39);
-        var pts=Spec.POINTS;for(int i=0;i<pts.length;i++){var p=pts[i];int px=x+(p.x()+350)*w/700,pz=y+(p.z()+250)*h/500;
+        var pts=Spec.POINTS;for(int i=0;i<pts.length;i++){var p=pts[i];int px=x+(p.x()+Field.halfX())*w/(2*Field.halfX()),pz=y+(p.z()+Field.halfZ())*h/(2*Field.halfZ());
             g.fill(px-4,pz-4,px+5,pz+5,DarkUi.MAP_PIN);DarkUi.teamMark(g,ownerAt(i),px-3,pz-3);g.drawTextWithShadow(font,p.id(),px+7,pz-3,DarkUi.IVORY);
             if(contestedAt(i))g.drawBorder(px-6,pz-6,13,13,DarkUi.CONTEST);
             if(progressAt(i)>0){int ch=challengerAt(i);g.fill(px-5,pz+6,px-5+10*progressAt(i)/p.captureSeconds(),pz+8,DarkUi.teamColor(ch));DarkUi.teamMark(g,ch,px+7,pz+6);}
             if(labels)g.drawTextWithShadow(font,p.name(),px-22,pz+14,DarkUi.IVORY);}
-        for(Marker m:markers){int px=x+(int)((m.x()+350)*w/700),pz=y+(int)((m.z()+250)*h/500);int color=m.fighting()?DarkUi.WARN:DarkUi.MAP_TROOP;DarkUi.mapMark(g,m.own()?"own":"ally",px,pz,color);if(m.fighting())g.fill(px-3,pz-4,px+4,pz-3,color);}
-        for(var group:CommandMode.groups){int gx=x+(int)((group.cx()+350)*w/700),gz=y+(int)((group.cz()+250)*h/500);boolean selected=CommandSelection.isSelected(group.id());
-            if(selected){int dx=x+(int)((group.x()+350)*w/700),dz=y+(int)((group.z()+250)*h/500);for(int k=0;k<=20;k++){int lx=gx+(dx-gx)*k/20,lz=gz+(dz-gz)*k/20;g.fill(lx,lz,lx+1,lz+1,DarkUi.GOLD);}g.drawBorder(dx-3,dz-3,7,7,DarkUi.GOLD);}
+        for(Marker m:markers){int px=x+(int)((m.x()+Field.halfX())*w/(2*Field.halfX())),pz=y+(int)((m.z()+Field.halfZ())*h/(2*Field.halfZ()));int color=m.fighting()?DarkUi.WARN:DarkUi.MAP_TROOP;DarkUi.mapMark(g,m.own()?"own":"ally",px,pz,color);if(m.fighting())g.fill(px-3,pz-4,px+4,pz-3,color);}
+        for(var group:CommandMode.groups){int gx=x+(int)((group.cx()+Field.halfX())*w/(2*Field.halfX())),gz=y+(int)((group.cz()+Field.halfZ())*h/(2*Field.halfZ()));boolean selected=CommandSelection.isSelected(group.id());
+            if(selected){int dx=x+(int)((group.x()+Field.halfX())*w/(2*Field.halfX())),dz=y+(int)((group.z()+Field.halfZ())*h/(2*Field.halfZ()));for(int k=0;k<=20;k++){int lx=gx+(dx-gx)*k/20,lz=gz+(dz-gz)*k/20;g.fill(lx,lz,lx+1,lz+1,DarkUi.GOLD);}g.drawBorder(dx-3,dz-3,7,7,DarkUi.GOLD);}
             g.fill(gx-4,gz-4,gx+5,gz+5,DarkUi.MAP_GROUP);g.drawTextWithShadow(font,pinLetter(group.id()),gx-2,gz-3,group.fighting()?DarkUi.WARN:DarkUi.GOLD);
             if(group.fighting())g.fill(gx-4,gz+5,gx+5,gz+7,DarkUi.WARN); // a bar under the pin: fighting is a shape as well as the orange letter (4F.5)
         }
-        for(var sight:sightings){int px=x+(int)((sight.x()+350)*w/700),pz=y+(int)((sight.z()+250)*h/500);if(sight.age()<20)DarkUi.mapMark(g,"enemy",px,pz,DarkUi.MAP_ENEMY);else DarkUi.mapMark(g,"enemy-old",px,pz,DarkUi.MAP_STALE);}
-        for(var ping:CommandMode.pings){int px=x+(int)((ping.x()+350)*w/700),pz=y+(int)((ping.z()+250)*h/500);g.drawBorder(px-6,pz-6,13,13,DarkUi.PING);if(labels)g.drawTextWithShadow(font,ping.kind().toUpperCase(),px+8,pz,DarkUi.PING);}
-        var p=MinecraftClient.getInstance().player;if(p!=null){int px=x+(int)((p.getX()+350)*w/700),pz=y+(int)((p.getZ()+250)*h/500);g.fill(px-1,pz-2,px+2,pz+3,DarkUi.MAP_YOU);}
+        for(var sight:sightings){int px=x+(int)((sight.x()+Field.halfX())*w/(2*Field.halfX())),pz=y+(int)((sight.z()+Field.halfZ())*h/(2*Field.halfZ()));if(sight.age()<20)DarkUi.mapMark(g,"enemy",px,pz,DarkUi.MAP_ENEMY);else DarkUi.mapMark(g,"enemy-old",px,pz,DarkUi.MAP_STALE);}
+        for(var ping:CommandMode.pings){int px=x+(int)((ping.x()+Field.halfX())*w/(2*Field.halfX())),pz=y+(int)((ping.z()+Field.halfZ())*h/(2*Field.halfZ()));g.drawBorder(px-6,pz-6,13,13,DarkUi.PING);if(labels)g.drawTextWithShadow(font,ping.kind().toUpperCase(),px+8,pz,DarkUi.PING);}
+        var p=MinecraftClient.getInstance().player;if(p!=null){int px=x+(int)((p.getX()+Field.halfX())*w/(2*Field.halfX())),pz=y+(int)((p.getZ()+Field.halfZ())*h/(2*Field.halfZ()));g.fill(px-1,pz-2,px+2,pz+3,DarkUi.MAP_YOU);}
     }
     /** Lesson text wraps to this width (the small style) inside the 280 px lesson note BattleHud draws, its first line the LESSON
      *  k/4 tag and 6 px narrower (UiMath.lessonLines, UI Task 8c). */
@@ -426,9 +426,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         MapScreen(Screen parent){super("Battlefield map");this.parent=parent;}
         @Override protected void init(){int n=Math.max(1,Spec.PINGS.length),gap=3,cols=(width-16-gap*(n-1))/n>=62?n:(n+1)/2,rows=(n+cols-1)/cols,slot=Math.max(30,Math.min(74,(width-16-gap*(cols-1))/cols)),rowW=cols*slot+(cols-1)*gap,rowX=Math.max(2,(width-rowW)/2);h=Math.min(height-86-(rows-1)*22,230);w=Math.min(width-40,h*280/200);h=w*200/280;x=(width-w)/2;y=34;button("Back",12,8,55,b->client.setScreen(parent));int i=0;for(var ping:Spec.PINGS){String id=ping.id();button(ping.label(),rowX+(i%cols)*(slot+gap),height-22-(rows-1-i/cols)*22,slot,b->pingMode=id);i++;}}
         @Override public boolean keyPressed(int key,int scan,int mods){if(mapKey.matchesKey(key,scan)){client.setScreen(parent);return true;}return super.keyPressed(key,scan,mods);}
-        @Override public boolean mouseClicked(double mx,double my,int b){if(!pingMode.isEmpty()&&b==0&&mx>=x&&mx<=x+w&&my>=y&&my<=y+h){CommandMode.ping(pingMode,(mx-x)*700/w-350,(my-y)*500/h-250);pingMode="";return true;}if(b==1&&mx>=x&&mx<=x+w&&my>=y&&my<=y+h){double tx=(mx-x)*700/w-350,tz=(my-y)*500/h-250;CommandSelection.issueSelected("hold",CommandMode.formation,new net.minecraft.util.math.Vec3d(tx,65,tz),client.player.getYaw(),-1);return true;}
-            for(var group:CommandMode.groups){double gx=x+(group.cx()+350)*w/700,gz=y+(group.cz()+250)*h/500;if(b==0&&Math.hypot(mx-gx,my-gz)<8){CommandSelection.select(group.id(),hasShiftDown());return true;}}
-            for(Marker m:markers){double px=x+(m.x()+350)*w/700,pz=y+(m.z()+250)*h/500;if(Math.hypot(mx-px,my-pz)<6){selected=m;return true;}}return super.mouseClicked(mx,my,b);}
+        @Override public boolean mouseClicked(double mx,double my,int b){if(!pingMode.isEmpty()&&b==0&&mx>=x&&mx<=x+w&&my>=y&&my<=y+h){CommandMode.ping(pingMode,(mx-x)*(2*Field.halfX())/w-Field.halfX(),(my-y)*(2*Field.halfZ())/h-Field.halfZ());pingMode="";return true;}if(b==1&&mx>=x&&mx<=x+w&&my>=y&&my<=y+h){double tx=(mx-x)*(2*Field.halfX())/w-Field.halfX(),tz=(my-y)*(2*Field.halfZ())/h-Field.halfZ();CommandSelection.issueSelected("hold",CommandMode.formation,new net.minecraft.util.math.Vec3d(tx,65,tz),client.player.getYaw(),-1);return true;}
+            for(var group:CommandMode.groups){double gx=x+(group.cx()+Field.halfX())*w/(2*Field.halfX()),gz=y+(group.cz()+Field.halfZ())*h/(2*Field.halfZ());if(b==0&&Math.hypot(mx-gx,my-gz)<8){CommandSelection.select(group.id(),hasShiftDown());return true;}}
+            for(Marker m:markers){double px=x+(m.x()+Field.halfX())*w/(2*Field.halfX()),pz=y+(m.z()+Field.halfZ())*h/(2*Field.halfZ());if(Math.hypot(mx-px,my-pz)<6){selected=m;return true;}}return super.mouseClicked(mx,my,b);}
         @Override public void render(DrawContext g,int mx,int my,float delta){g.fill(0,0,width,height,DarkUi.SCRIM);g.drawCenteredTextWithShadow(textRenderer,"BATTLEFIELD / FRIENDLY FORCES",width/2,12,DarkUi.GOLD);panel(g,x-4,y-4,w+8,h+8);map(g,x,y,w,h,true);key(g,width/2,y+h+12);if(selected!=null)g.drawCenteredTextWithShadow(textRenderer,selected.name()+" / "+(selected.own()?"Your troop":"Allied troop")+(selected.fighting()?" / IN COMBAT":" / moving or holding"),width/2,y+h+24,DarkUi.IVORY);super.render(g,mx,my,delta);}
         /** The map's controls, named by the player's own bindings (a mouse button as LMB, RMB or MMB). */
         public static String legend(){return hint("hit")+" a group to select / "+hint("use")+" to move";}

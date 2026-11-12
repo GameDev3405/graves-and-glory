@@ -5,6 +5,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.zip.GZIPInputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -19,43 +21,58 @@ import java.util.List;
 public final class EngineMap {
  public static final int NONE=-32768,MAX_STEP=1,MAX_WADE=1;
  public static final double DETOUR=2.0;
- public record Point(String name,double x,double z,int y,int radius){}
+ public record Point(String id,String name,double x,double z,int y,int radius){}
  public record Spawn(String id,String team,double x,double z,int y){}
  public record Route(String spawn,String point,double straight,Integer walk){}
- public record Tile(String file,int x,int z,int sx,int sy,int sz){}
+ /** format "stack" (tools/sectionmap.py: size, palette, a big-endian int16 palette index per cell) or a structure template */
+ public record Tile(String file,String format,int x,int z,int sx,int sy,int sz){}
+ /** Opens a file of the build by its name in map.json: a folder (the opt-in -Dgravesandglory.engineMap) or a folder inside the mod (a bundled map). */
+ public interface Opener{InputStream open(String name)throws IOException;}
  public record Road(String id,List<double[]> path,double width){}
- public final Path dir;public final String id,sha;public final int width,depth,ox,oz,baseY,floorY;
+ public final Opener files;public final String id,sha;public final int width,depth,ox,oz,baseY,floorY;
+ /** the field (playable half sizes) the build names, 0 when it names none; the maps sheet row is what the game plays */
+ public final int fieldHalfX,fieldHalfZ;
+ /** routes were walked over every floor of a column (tools/sectionmap.py), not over the top block only: check() then compares columns, points and spawns, not walks */
+ public final boolean floorRoutes;
  public final int[] solid,water;
  public final List<Point> points=new ArrayList<>();public final List<Spawn> spawns=new ArrayList<>();
  public final List<Route> routes=new ArrayList<>();public final List<Tile> tiles=new ArrayList<>();public final List<Road> roads=new ArrayList<>();
  private final double[] riverX;
 
- private EngineMap(Path dir,JsonObject m,int[] solid,int[] water){
-  this.dir=dir;id=m.get("id").getAsString();sha=m.get("design_sha256").getAsString();
+ private EngineMap(Opener files,JsonObject m,int[] solid,int[] water){
+  this.files=files;id=m.get("id").getAsString();sha=m.get("design_sha256").getAsString();
   width=m.get("width").getAsInt();depth=m.get("depth").getAsInt();
   JsonArray o=m.getAsJsonArray("origin");ox=o.get(0).getAsInt();oz=o.get(1).getAsInt();
   baseY=m.get("baseY").getAsInt();floorY=m.get("floorY").getAsInt();this.solid=solid;this.water=water;
-  for(JsonElement e:m.getAsJsonArray("points")){JsonObject p=e.getAsJsonObject();points.add(new Point(p.get("name").getAsString(),p.get("x").getAsDouble()+ox,p.get("z").getAsDouble()+oz,p.get("y").getAsInt(),p.get("radius").getAsInt()));}
+  JsonObject f=m.has("field")?m.getAsJsonObject("field"):null;fieldHalfX=f==null?0:f.get("halfX").getAsInt();fieldHalfZ=f==null?0:f.get("halfZ").getAsInt();
+  floorRoutes=m.has("routesBy")&&m.get("routesBy").getAsString().equals("floors");
+  for(JsonElement e:m.getAsJsonArray("points")){JsonObject p=e.getAsJsonObject();points.add(new Point((p.has("id")?p.get("id"):p.get("name")).getAsString(),p.get("name").getAsString(),p.get("x").getAsDouble()+ox,p.get("z").getAsDouble()+oz,p.get("y").getAsInt(),p.get("radius").getAsInt()));}
   for(JsonElement e:m.getAsJsonArray("spawns")){JsonObject p=e.getAsJsonObject();spawns.add(new Spawn(p.get("id").getAsString(),p.get("team").getAsString(),p.get("x").getAsDouble()+ox,p.get("z").getAsDouble()+oz,p.get("y").getAsInt()));}
   for(JsonElement e:m.getAsJsonArray("routes")){JsonObject p=e.getAsJsonObject();JsonElement w=p.get("walk");routes.add(new Route(p.get("spawn").getAsString(),p.get("point").getAsString(),p.get("straight").getAsDouble(),w==null||w.isJsonNull()?null:w.getAsInt()));}
-  for(JsonElement e:m.getAsJsonArray("tiles")){JsonObject p=e.getAsJsonObject();JsonArray s=p.getAsJsonArray("size");tiles.add(new Tile(p.get("file").getAsString(),p.get("x").getAsInt()+ox,p.get("z").getAsInt()+oz,s.get(0).getAsInt(),s.get(1).getAsInt(),s.get(2).getAsInt()));}
+  for(JsonElement e:m.getAsJsonArray("tiles")){JsonObject p=e.getAsJsonObject();JsonArray s=p.getAsJsonArray("size");tiles.add(new Tile(p.get("file").getAsString(),p.has("format")?p.get("format").getAsString():"structure",p.get("x").getAsInt()+ox,p.get("z").getAsInt()+oz,s.get(0).getAsInt(),s.get(1).getAsInt(),s.get(2).getAsInt()));}
   for(JsonElement e:m.getAsJsonArray("roads")){JsonObject p=e.getAsJsonObject();List<double[]> path=new ArrayList<>();for(JsonElement q:p.getAsJsonArray("path")){JsonArray a=q.getAsJsonArray();path.add(new double[]{a.get(0).getAsDouble()+ox,a.get(1).getAsDouble()+oz});}roads.add(new Road(p.get("id").getAsString(),path,p.get("width").getAsDouble()));}
   riverX=new double[depth];
   for(int z=0;z<depth;z++){double sum=0;int n=0;for(int x=0;x<width;x++)if(wetCell(water[z*width+x],solid[z*width+x])){sum+=x+ox;n++;}riverX[z]=n==0?-100000:sum/n;}
  }
 
  /** Reads dir/map.json and its columns.bin; throws IOException with a reason when either is missing or does not fit. */
- public static EngineMap read(Path dir)throws IOException{
-  JsonObject m=JsonParser.parseString(Files.readString(dir.resolve("map.json"),StandardCharsets.UTF_8)).getAsJsonObject();
-  if(!m.has("width")||!m.has("routes"))throw new IOException(dir+"/map.json is from an older engine: rebuild it with python tools/mapengine build");
+ public static EngineMap read(Path dir)throws IOException{return read(name->Files.newInputStream(dir.resolve(name)),dir.toString());}
+ /** A map bundled in the mod under /root (data/gravesandglory/sectionmaps/<id>). */
+ public static EngineMap resource(String root)throws IOException{
+  return read(name->{InputStream in=EngineMap.class.getResourceAsStream("/"+root+"/"+name);if(in==null)throw new IOException("/"+root+"/"+name+" is not in the mod");return in;},root);
+ }
+ static EngineMap read(Opener files,String where)throws IOException{
+  JsonObject m;try(InputStream in=files.open("map.json")){m=JsonParser.parseString(new String(in.readAllBytes(),StandardCharsets.UTF_8)).getAsJsonObject();}
+  if(!m.has("width")||!m.has("routes"))throw new IOException(where+"/map.json is from an older engine: rebuild it with python tools/mapengine build");
   int w=m.get("width").getAsInt(),d=m.get("depth").getAsInt();
-  byte[] raw=Files.readAllBytes(dir.resolve(m.has("columns")?m.get("columns").getAsString():"columns.bin"));
+  String columns=m.has("columns")?m.get("columns").getAsString():"columns.bin";byte[] raw;
+  try(InputStream in=files.open(columns);InputStream body=columns.endsWith(".gz")?new GZIPInputStream(in):in){raw=body.readAllBytes();}
   if(raw.length!=4*w*d)throw new IOException("columns.bin holds "+raw.length+" bytes, expected "+4*w*d);
   ByteBuffer b=ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN);
   int[] solid=new int[w*d],water=new int[w*d];
   for(int i=0;i<w*d;i++)solid[i]=b.getShort();
   for(int i=0;i<w*d;i++)water[i]=b.getShort();
-  return new EngineMap(dir,m,solid,water);
+  return new EngineMap(files,m,solid,water);
  }
 
  static boolean wetCell(int water,int solid){return water!=NONE&&water>solid;}
@@ -99,6 +116,7 @@ public final class EngineMap {
   for(Spawn s:m.spawns){int i=m.cellZ(s.z())*w+m.cellX(s.x());
    if(solid[i]+1!=s.y())out.add("moved: spawn "+s.id()+" stands at y "+(solid[i]+1)+", design "+s.y());
    if(wetCell(water[i],solid[i]))out.add("in_water: spawn "+s.id()+" is in water");}
+  if(m.floorRoutes)return out; // the column walk cannot pass under a roof (a gatehouse): tools/sectionmap.py walked these routes floor by floor
   for(Spawn s:m.spawns){int[] dist=distances(solid,water,w,d,m.cellX(s.x()),m.cellZ(s.z()));
    for(Point p:m.points){int walk=dist[m.cellZ(p.z())*w+m.cellX(p.x())];
     if(walk<0){out.add("unreachable: point "+p.name()+" from spawn "+s.id()+" ("+s.team()+")");continue;}

@@ -125,7 +125,7 @@ public final class CommandMode {
             boolean foe=false;int side=nameTeam(e);if(ArmyMobs.named(e.getCustomName().getString())!=null&&GravesAndGloryClient.team>=0&&side>=0&&side!=GravesAndGloryClient.team)foe=true;
             if(foe&&along>0&&along<best&&v.subtract(look.multiply(along)).length()<1.3){best=along;enemy=e.getId();destination=e.getPos();}
         }
-        if(destination==null||Math.abs(destination.x)>GravesAndGlory.R.arenaHalfX()-10||Math.abs(destination.z)>GravesAndGlory.R.arenaHalfZ()-10){destination=null;return;}
+        if(destination==null||Math.abs(destination.x)>Field.halfX()-10||Math.abs(destination.z)>Field.halfZ()-10){destination=null;return;}
         var f=java.util.Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(formation)).findFirst().orElse(Spec.FORMATIONS[0]);
         var dust=new DustParticleEffect(new Vector3f(.95f,.82f,.44f),1.15f);
         for(Group group:groups)if(CommandSelection.isSelected(group.id())){ // the full selection, as issueSelected sends it (C04-F2)

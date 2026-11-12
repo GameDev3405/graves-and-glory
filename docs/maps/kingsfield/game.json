@@ -1,0 +1,18 @@
+{
+ "id": "kingsfield_cq",
+ "note": "What the game needs from Kingsfield \"Crown Quarry\" (maps hand-over 2026-11-12). tools/sectionmap.py packs the 54 exported sections with this into src/main/resources/data/gravesandglory/sectionmaps/kingsfield_cq.",
+ "sections": {"prefix": "kf_", "columns": "abcdefghi", "rows": 6, "x0": -288, "z0": -192, "y0": 54, "size": 64},
+ "baseY": 64,
+ "field": {"halfX": 270, "halfZ": 190},
+ "spawns": [
+  {"id": "dawn", "team": "dawn", "x": -215, "z": 0},
+  {"id": "dusk", "team": "dusk", "x": 215, "z": 0}
+ ],
+ "points": [
+  {"id": "A", "name": "West Grange", "x": -128, "z": 0, "radius": 17},
+  {"id": "B", "name": "Tithe Barn", "x": 0, "z": -114, "radius": 17},
+  {"id": "C", "name": "The Hand", "x": 0, "z": 0, "radius": 17},
+  {"id": "D", "name": "Mill Rise", "x": 0, "z": 114, "radius": 17},
+  {"id": "E", "name": "East Grange", "x": 128, "z": 0, "radius": 17}
+ ]
+}

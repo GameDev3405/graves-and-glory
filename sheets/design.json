@@ -1283,7 +1283,7 @@
     {
       "id": "domination",
       "name": "Domination",
-      "maps": "0,1,2,3,4",
+      "maps": "0,1,2,3,4,5",
       "roundSeconds": 900,
       "winTarget": 300,
       "scoreInterval": 80,
@@ -3062,31 +3062,55 @@
       "id": "rivergate",
       "name": "Rivergate Valley",
       "theme": "river",
-      "description": "A river town: mill, farms, trade crossing and hilltop shrine."
+      "description": "A river town: mill, farms, trade crossing and hilltop shrine.",
+      "fieldHalfX": 350,
+      "fieldHalfZ": 250,
+      "source": "-"
     },
     {
       "id": "ironhold",
       "name": "Ironhold Siege",
       "theme": "fortress",
-      "description": "A breached fortress: supply yards, gate roads and exposed flanks."
+      "description": "A breached fortress: supply yards, gate roads and exposed flanks.",
+      "fieldHalfX": 350,
+      "fieldHalfZ": 250,
+      "source": "-"
     },
     {
       "id": "frostmarch",
       "name": "Frostmarch Pass",
       "theme": "snow",
-      "description": "A mountain pass: sheltered camps, ridge routes and a frozen gorge."
+      "description": "A mountain pass: sheltered camps, ridge routes and a frozen gorge.",
+      "fieldHalfX": 350,
+      "fieldHalfZ": 250,
+      "source": "-"
     },
     {
       "id": "hollowwood",
       "name": "Hollowwood Reach",
       "theme": "forest",
-      "description": "A woodland road: logging camps, shrines and marsh crossings."
+      "description": "A woodland road: logging camps, shrines and marsh crossings.",
+      "fieldHalfX": 350,
+      "fieldHalfZ": 250,
+      "source": "-"
     },
     {
       "id": "kingsfield",
       "name": "Kingsfield Crossroads",
       "theme": "plains",
-      "description": "Five objectives: two fords, a central bridge, an outpost on each flank."
+      "description": "Five objectives: two fords, a central bridge, an outpost on each flank.",
+      "fieldHalfX": 350,
+      "fieldHalfZ": 250,
+      "source": "-"
+    },
+    {
+      "id": "kingsfield_cq",
+      "name": "New Kingsfield",
+      "theme": "plains",
+      "description": "Crown Quarry (test): five points A to E round the quarry pit and two walled granges.",
+      "fieldHalfX": 270,
+      "fieldHalfZ": 190,
+      "source": "kingsfield_cq"
     }
   ],
   "gearRarities": [

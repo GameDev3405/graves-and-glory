@@ -17,7 +17,7 @@ public final class CampaignMaps {
     record Road(int ax,int az,int bx,int bz,int width){}
     static List<Road> roads=new ArrayList<>(),building=roads;
     /** How many objectives (capture points) a map has: the three crossings, plus the two flank outposts of Kingsfield (map 4). Read by the lobby without building the map. */
-    public static int objectiveCount(int map){return map==4?5:3;}
+    public static int objectiveCount(int map){var e=EngineMaps.map(map);return e!=null?e.points.size():map==4?5:3;}
     public static synchronized void select(int index){
         selected=Math.max(0,Math.min(Spec.MAPS.length-1,index));
         var structures=new ArrayList<Spec.StructuresRow>();var scenery=new ArrayList<Spec.SceneryRow>();
@@ -25,7 +25,7 @@ public final class CampaignMaps {
         String[] names=switch(selected){case 1->new String[]{"Supply Yard","Iron Gate","Watch Hill"};case 2->new String[]{"Caravan Refuge","Pass Crossing","Signal Ridge"};case 3->new String[]{"Logging Camp","Old Causeway","Moon Shrine"};case 4->new String[]{"North Ford","Kings Bridge","South Ford"};default->new String[]{"Mill Hamlet","Trade Crossing","River Shrine"};};
         int[] zs=selected==1?new int[]{-130,0,130}:selected==4?new int[]{-160,0,160}:selected==2?new int[]{-155,0,155}:new int[]{-145,0,145};
         // Kingsfield adds a raised outpost on each flank, placed with half-turn symmetry so neither side is favoured.
-        boolean flanks=selected==4;var points=new Spec.PointsRow[objectiveCount(selected)];
+        boolean flanks=selected==4;var points=new Spec.PointsRow[flanks?5:3]; // an engine slot (EngineMaps.apply) replaces these with its own points
         for(int i=0;i<3;i++){
             int z=zs[i],rx=(int)riverX(z),px=rx+(flanks?0:i==0?-29:i==2?29:0);
             points[flanks?i*2:i]=new Spec.PointsRow(""+(char)('A'+(flanks?i*2:i)),names[i],px,z,17,8,64);
@@ -101,7 +101,7 @@ public final class CampaignMaps {
     }
     /** The spawn x of a team (0 Dawn, 1 Dusk) on a map; every spawn is at z 0. The one source for the team rows, the barracks and the client's map check. Ironhold uses Kort's signed
      *  D1a values (docs/maps/ironhold/layout-draft-2026-10-30.md, make_manifest.py): Dawn on the siege camp shelf at -314, Dusk in the Donjon Court at 128. Other maps: the camp muster at ±283. */
-    public static int spawnX(int map,int team){if(EngineMaps.on(map))return EngineMaps.spawnX(team);return map==1?(team==0?-314:128):(team==0?-283:283);}
+    public static int spawnX(int map,int team){if(EngineMaps.on(map))return EngineMaps.spawnX(map,team);return map==1?(team==0?-314:128):(team==0?-283:283);}
     /** The barracks of a team: 3 blocks behind its spawn in the camp (±286), except Ironhold's Dawn barracks, which keep their camp place (-286) because the spawn moved onto the gate shelf.
      *  Ironhold's Dusk barracks hall stands in the Donjon Court, clear of the north supply house. */
     static int barracksX(int map,int team){return team==0?-286:map==1?spawnX(map,1)+3:286;}

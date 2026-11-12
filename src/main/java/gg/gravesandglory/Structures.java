@@ -171,7 +171,7 @@ public final class Structures {
     /** CRC32 (hex) of what the landmarks of a map are made of: its landmarks rows, the pieces rows and the bytes of their templates' structure files, the landmarkLines rows of those templates, its supplyHouses rows, the revision of the
      *  landmark pass (PASS, on a map with landmarks rows only) and salt. It is in the map cache marker, so a world whose map was built with other landmarks builds that map once more. */
     public static String hash(int map){
-        if(EngineMaps.on(map))return "engine-"+EngineMaps.map.sha;
+        if(EngineMaps.on(map))return "engine-"+EngineMaps.map(map).sha;
         var crc=new CRC32();boolean any=false;
         for(var r:Spec.LANDMARKS)if(r.map()==map){
             any=true;crc.update(r.toString().getBytes(StandardCharsets.UTF_8));
