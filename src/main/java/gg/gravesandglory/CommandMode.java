@@ -128,7 +128,7 @@ public final class CommandMode {
         if(destination==null||Math.abs(destination.x)>GravesAndGlory.R.arenaHalfX()-10||Math.abs(destination.z)>GravesAndGlory.R.arenaHalfZ()-10){destination=null;return;}
         var f=java.util.Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(formation)).findFirst().orElse(Spec.FORMATIONS[0]);
         var dust=new DustParticleEffect(new Vector3f(.95f,.82f,.44f),1.15f);
-        for(Group group:groups)if(selected.equals("all")||selected.equals(group.id())){
+        for(Group group:groups)if(CommandSelection.isSelected(group.id())){ // the full selection, as issueSelected sends it (C04-F2)
             for(double[] place:places(troops(group),group.count(),group.id(),pending,f)){
                 double side=place[0],back=place[1];
                 double angle=Math.toRadians(facing),x=destination.x+Math.cos(angle)*side+Math.sin(angle)*back,z=destination.z+Math.sin(angle)*side-Math.cos(angle)*back;
