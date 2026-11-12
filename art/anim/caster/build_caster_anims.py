@@ -28,6 +28,7 @@ sys.path.insert(0, str(HERE.parent / "knight"))
 import build_anims as K  # noqa: E402
 sys.path.insert(0, str(HERE.parent / "common"))
 import hang_swing  # noqa: E402
+import fullbody  # noqa: E402  (the batch review's soft motion: the same build_anims module as K)
 
 SUB, TPS, Z3 = K.SUB, K.TPS, K.Z3
 np = K.np
@@ -389,15 +390,17 @@ def mage_set():
     load = nudge(g, torso=(-2, 2, 0), head=(-2, -2, 0), R=(0.3, 0.6, 0.1), d=aim(84, -18))
     # the raise: both hands come onto the staff and lift it, the left fist above the right (the staff slants up across the
     # chest to the left, the only place both 8 px arms reach the shaft one over the other, clear of the cowl)
+    # (batch review 2026-11-11: the left fist 5.5 px up the shaft, not 4.5: at 4.5 the left bell sleeve closed over the right
+    # forearm as the light was held)
     gather = KEY((-3, 6, 0), (-4, -8, 0), (2.0, -2.5, 6.8), unit((0.35, 0.9, 0.2)), u=FWD, rp=(-80, 0, 10, -40),
-                 lp=(-60, 0, -15, -50), lh=0.6, ls=4.5)
+                 lp=(-60, 0, -15, -50), lh=0.6, ls=5.5)
     up = KEY((-6, 4, 0), (-10, -16, 0), (2.4, -0.5, 7.0), unit((0.45, 0.85, 0.2)), u=FWD, rp=(-110, 0, 10, -40),
-             lp=(-90, 0, -20, -50), lh=1, ls=4.5)
+             lp=(-90, 0, -20, -50), lh=1, ls=5.5)
     # the light is held: a tremor, the arch deepening a little
     held = nudge(up, torso=(-1, 1, 0), head=(-2, 0, 0), R=(0.0, 0.2, 0.0))
     held2 = nudge(up, torso=(-2, 2, 0), head=(-1, 0, 0), R=(0.1, 0.3, 0.1), d=unit((0.48, 0.83, 0.24)))
     # the drive: the hips have gone first; the torso follows, the left hand comes off and the staff starts to tip
-    drive = KEY((6, -4, 0), (2, -6, 0), (0.0, 1.2, 7.3), aim(56, 0), u=FWD, rp=(-100, 0, 0, -20), lp=(-90, 0, 0, -30),
+    drive = KEY((6, -4, 0), (2, -6, 0), (0.0, 1.2, 7.3), aim(56, 0), u=FWD, rp=(-100, 0, 0, -20), lp=(-90, 0, -12, -30),
                 lh=0.0, ls=4.5)   # the left is off: tipped forward, the shaft above the right fist is out of its reach
     # the release: the staff tipped at the ally, the heal leaves the sun, the left hand open forward after it
     release = KEY((16, -10, 0), (6, 0, 0), (-1.0, 0.0, 7.8), aim(30, 10), u=FWD, rp=(-95, 0, 0, -10), lp=(-85, 0, 10, -10))
@@ -421,13 +424,14 @@ def mage_set():
     stances = {
         "ready": g,
         # brace (Hold position): upright, both arms up, the staff held crosswise as a guard bar at the brow, in front of the
-        # cowl (the 8 px arms cannot lift it over the crown), the sun out to the left; no crouch
-        "brace": KEY((4, 4, 0), (-16, 0, 0), (1.5, 3.5, 7.0), unit((1, 0.12, 0)), u=FWD, rp=(-150, 0, 10, -30),
+        # cowl (the 8 px arms cannot lift it over the crown), the sun out to the left; no crouch (batch review 2026-11-11:
+        # the right fist a px further out and lower, its bell sat in the cowl)
+        "brace": KEY((4, 4, 0), (-16, 0, 0), (0.6, 2.0, 7.6), unit((1, 0.12, 0)), u=FWD, rp=(-150, 0, 10, -30),
                      lp=(-150, 0, -10, -20), lh=1, ls=9),
         # wall (Hold the line): the staff levelled at the foe in both hands like a pike, the sun head out front at chest
         # height, the butt by the right hip; the shoulders turn to bring the left hand forward on the shaft, the head stays on
         # the foe (v1's one-handed raised staff read as the guard from the front)
-        "wall": KEY((8, 30, 0), (-2, -21, 0), (-0.5, -4.6, 6.0), aim(12, 15), u=FWD, rp=(-60, 0, 10, -30), lp=(-70, 0, -10, -30),
+        "wall": KEY((8, 30, 0), (-2, -21, 0), (-1.3, -4.6, 6.0), aim(12, 15), u=FWD, rp=(-60, 0, 10, -30), lp=(-70, 0, -10, -30),
                     lh=1, ls=6),
         # ward (fall back): both hands on the staff, slanted across the body as a bar, low on the right, the sun high left
         "ward": KEY((2, 12, 0), (2, 0, 0), (1.2, -4.6, 6.3), unit((0.62, 0.56, 0.26)), u=FWD, rp=(-40, 0, 20, -40),
@@ -435,8 +439,10 @@ def mage_set():
         # shield_up (the caster's shield): the staff lifted high before the face in both fists and held upright, a pillar
         # between the Sunweaver and the blow, the sun over the cowl, the left fist above the right (review F3 2026-11-10: held
         # at the belly it read as the guard at 16 blocks)
-        "shield_up": KEY((-2, 4, 0), (-6, 0, 0), (1.5, 2.5, 6.6), aim(88, -4), u=FWD, rp=(-120, 0, 10, -30),
-                         lp=(-120, 0, -10, -30), lh=1, ls=5),
+        # (batch review 2026-11-11: the staff tipped 12 deg toward the foe and the fists 5.5 px apart, the left bell sat
+        # on the face and on the right bell)
+        "shield_up": KEY((-2, 4, 0), (-6, 0, 0), (1.5, 1.2, 7.5), aim(76, -4), u=FWD, rp=(-120, 0, 10, -30),
+                         lp=(-120, 0, -10, -30), lh=1, ls=5.5),
     }
     # the walk carries the staff higher in the fist (upper arm forward, forearm near level), so the longer butt clears the ground
     carry = {"walk": 75.0, "run": 35.0, "u": FWD, "R": (-30.0, 0.0, 6.0), "RF": -75.0}
@@ -463,7 +469,8 @@ def hexer_set():
     # the push: the arm drives the lantern out at the foe, heavy, the shoulder coming round
     push = KEY((6, -10, 0), (3, 0, 0), (0.2, 0.2, 7.5), aim(14, 2), u=UP, rp=(-88, 0, 5, -15), lp=(-4, 0, -12, -38))
     # held at arm's length while the light gathers: the arm locked, a heavy tremor, the lantern swaying on its pole
-    held = KEY((7, -12, 0), (3, 0, 0), (0.0, 0.4, 7.9), aim(9, 0), u=UP, rp=(-90, 0, 0, -5), lp=(-2, 0, -12, -36))
+    # (batch review 2026-11-11: 1.2 px out to the right, the hood sat on the cuff at full reach)
+    held = KEY((7, -12, 0), (3, 0, 0), (-1.2, 0.4, 7.8), aim(9, 0), u=UP, rp=(-90, 0, 0, -5), lp=(-2, 0, -12, -36))
     held2 = nudge(held, torso=(0.5, -0.5, 0), R=(0.05, -0.12, -0.05), d=aim(7.5, 0.8))
     held3 = nudge(held, torso=(0.8, -1, 0), R=(-0.05, 0.1, -0.08), d=aim(10.5, -0.6))
     # the heave: the hips have gone forward; the shoulder holds back a beat and the lantern lifts a touch on its pole
@@ -484,10 +491,11 @@ def hexer_set():
     # the right side coming round over the lead foot, before the shoulder does
     legs = {"hips": [(0, R0, R1), (1.5, (-2.0, 22.0, 0.0), (0.0, -1.0, -0.4)), (4.6, (-3.0, 24.0, 0.0), (0.0, -1.1, -0.5)),
                      (6.4, (0.0, 14.0, 0.0), (0.0, -1.0, -0.1)), (8.6, (0.0, 13.0, 0.0), (0.0, -1.0, -0.1)),
-                     (9.4, (6.0, 2.0, 0.0), (0.0, -1.3, 0.8)), (IMPACT, (8.0, -2.0, 0.0), (0.0, -1.5, 1.2)),
-                     (11.8, (8.0, -4.0, 0.0), (0.0, -1.6, 1.3)), (16.0, (4.0, 6.0, 0.0), (0.0, -1.3, 0.7)),
+                     (9.4, (6.0, 2.0, 0.0), (0.0, -1.3, 0.8)), (IMPACT, (8.0, -2.0, 0.0), (0.0, -1.5, 1.5)),
+                     (11.8, (8.0, -4.0, 0.0), (0.0, -1.6, 1.6)), (16.0, (4.0, 6.0, 0.0), (0.0, -1.3, 0.7)),
                      (24.0, (1.0, 12.0, 0.0), (0.0, -1.0, 0.3)), (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
             # short glides under the robe: the lead foot slides forward as the hips drive, the rear foot drags after
+            # (batch review 2026-11-11: the drive carries 0.3 px further, the hips travelled 1.9 of the 2.0 a heavy cast needs)
             "steps": [("left", 8.2, 10.0, (2.9, 2.0, 2.6), 12.0, 0.8), ("right", 10.2, 13.0, (-2.8, 2.0, 0.2), -4.0, 0.8),
                       home("left", 20.0, 25.0), home("right", 23.0, 28.0)]}
     stances = {
@@ -495,13 +503,14 @@ def hexer_set():
         # brace (Hold position): upright, both arms up, the lantern lifted high over the head on its pole as a warding light,
         # the off hand raised flat beside it; no crouch
         "brace": KEY((-2, 4, 0), (2, 0, 0), (0.0, 5.0, 6.0), aim(30, 20), u=UP, rp=(-150, 0, 10, -30),
-                     lp=(-165, 0, -20, -10)),
+                     lp=(-165, 0, 5, -10)),   # batch review 2026-11-11: the raised off arm swung 25 deg off the hood (its cuff was in it)
         # wall (Hold the line): leaning in, the lantern held out at the foe at arm's length, high, the off hand pushed
         # forward open below it
-        "wall": KEY((6, 2, 0), (0, 0, 0), (0.5, 3.0, 7.2), aim(30, 0), u=UP, rp=(-120, 0, 5, -10), lp=(-95, 0, -20, -10)),
+        # (batch review 2026-11-11: the fist a px lower and out to the right, its cuff was in the hood)
+        "wall": KEY((6, 2, 0), (0, 0, 0), (-1.4, 1.6, 7.5), aim(30, 0), u=UP, rp=(-120, 0, 5, -10), lp=(-95, 0, -20, -10)),
         # ward (fall back): drawn back, the head ducked, the lantern lifted up before the face at shoulder height to keep
         # the foe off with its light, the claw open out wide (review F1 2026-11-10: the old low ward read as the guard)
-        "ward": KEY((-4, 6, 0), (6, 0, 0), (-3.0, 4.5, 5.5), aim(45, -40), u=UP, rp=(-130, 0, 30, -10),
+        "ward": KEY((-4, 6, 0), (6, 0, 0), (-4.4, 3.4, 5.4), aim(45, -40), u=UP, rp=(-130, 0, 30, -10),   # review: clear of the hood
                     lp=(-90, 0, -30, -50)),
         # shield_up: the body turned away, the lantern held up beside the hood on the arm raised out to the side, a light
         # to hide behind, the claw up before the face
@@ -544,24 +553,28 @@ def tc_mist_set():
               (11.4, recoil), (14.0, back), (19.0, recover), (24.0, near), (29.0, settle), (ATTACK_TICKS, g)]
     R0, R1 = READY_HIPS
     side_on = (0.0, -14.0, 0.0)
-    legs = {"hips": [(0, R0, R1), (2.0, (0.0, 2.0, 0.0), (0.0, -0.9, 0.0)), (4.5, side_on, (0.0, -1.0, -0.1)),
-                     (9.0, (0.0, -15.0, 0.0), (0.0, -1.0, -0.1)), (IMPACT, (0.0, -15.0, 0.0), (0.0, -1.0, -0.1)),
-                     (11.4, (-1.0, -14.0, 0.0), (0.0, -1.0, 0.4)), (14.0, (0.0, -13.0, 0.0), (0.0, -1.0, 0.2)),
+    # Batch review 2026-11-11 (Kort: a cast is a whole-body move): the hips load back as the body turns, carry forward over
+    # the gliding right foot through the point and the charge, and drive on into the release (they travelled 0.5 px before)
+    legs = {"hips": [(0, R0, R1), (2.0, (0.0, 2.0, 0.0), (0.0, -0.95, -0.5)), (4.5, side_on, (0.0, -1.05, 0.3)),
+                     (9.0, (1.0, -15.0, 0.0), (0.0, -1.15, 0.9)), (IMPACT, (3.0, -15.0, 0.0), (0.0, -1.3, 1.6)),
+                     (11.4, (1.0, -14.0, 0.0), (0.0, -1.2, 1.2)), (14.0, (0.0, -13.0, 0.0), (0.0, -1.05, 0.6)),
                      (22.0, (0.0, 4.0, 0.0), (0.0, -0.9, 0.1)), (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
             # short glides: the right foot slides forward under the robe as the body turns side-on, the left eases back
-            "steps": [("right", 0.8, 4.2, (-2.6, 2.0, 1.2), -24.0, 0.8), ("left", 2.0, 5.0, (2.9, 2.0, -0.4), 2.0, 0.8),
+            "steps": [("right", 0.8, 4.2, (-2.6, 2.0, 2.4), -24.0, 0.8), ("left", 2.0, 5.0, (2.9, 2.0, -0.4), 2.0, 0.8),
                       home("left", 18.0, 23.0), home("right", 21.0, 27.0)]}
     stances = {
         "ready": g,
         # brace (Hold position): upright, both arms up, the rod held overhead crosswise as a guard bar, the off hand
         # raised to its far end; no crouch
-        "brace": KEY((-2, -6, 0), (2, 0, 0), (-0.5, 3.5, 6.0), aim(80, 0), u=FWD, rp=(-140, 0, 10, -30),
-                     lp=(-110, 0, -25, -10)),
+        # (batch review 2026-11-11: the rod fist a px out and the off arm 25 deg round, the right bell sleeve sat 2.7 px in
+        # the hood; the left still touches it, see TC_MIST-REVIEW)
+        "brace": KEY((-2, -6, 0), (2, 0, 0), (-1.5, 3.3, 6.2), aim(80, 0), u=FWD, rp=(-140, 0, 10, -30),
+                     lp=(-110, 0, -50, -10)),
         # wall (Hold the line): side-on, the rod thrust out level at the foe, low, the off palm pressed out behind it
         "wall": KEY((6, -18, 0), (0, 0, 0), (-0.5, -1.0, 7.8), aim(-5, 0), u=UP, rp=(-90, 0, 5, -10), lp=(-60, 0, -30, -20)),
         # ward (fall back): turned away, the rod slanted across the body, the off hand up beside the face
         "ward": KEY((2, -25, 0), (0, 0, 0), (2.5, -2.0, 5.8), unit((0.7, 0.45, 0.5)), u=UP, rp=(-60, 0, 30, -70),
-                    lp=(-70, 0, -30, -70)),
+                    lp=(-70, 0, -18, -70)),   # (batch review 2026-11-11: the off arm 12 deg off the mantle, its bell was in it)
         # shield_up: the rod stood upright before the face, the off palm flat behind it, a veil of mist between
         "shield_up": KEY((2, -8, 0), (0, 0, 0), (1.0, 1.5, 6.5), aim(75, 0), u=FWD, rp=(-100, 0, 10, -40),
                          lp=(-95, 0, -5, -40)),
@@ -597,29 +610,35 @@ def wm_seer_set():
     back = KEY((0, -24, 0), GAZE, (0.4, -0.4, 6.8), aim(4, 0), u=UP, rp=(-80, 0, 5, -25), lp=(-10, 0, -12, -42))
     recover = KEY((8, -2, 0), GAZE, (-0.6, -4.0, 6.5), aim(-6, -4), u=UP, rp=(-55, 0, 10, -20), lp=lp_rest)
     near = nudge(g, torso=(0, -2, 0), R=(0.0, 0.2, 0.0), d=aim(-9, -7))
-    settle = nudge(g, R=(0.0, 0.05, 0.0))
+    # (batch review 2026-11-11: the settle was 0.05 px off the guard and the cast froze for 5 ticks from tick 29; the body
+    # now breathes down onto the guard, the wand tip dipping and coming back up)
+    settle = nudge(g, torso=(2, -2, 0), R=(0.0, 0.35, -0.2), d=aim(-16, -12))
+    rise = nudge(g, torso=(-1, 1, 0), R=(0.0, -0.15, 0.1), d=aim(-5, -5))   # (round 2: still 4 ticks; a breath back up)
     attack = [(0, g), (2.0, turn), (3.6, chest), (5.0, point), (7.0, charge), (8.6, held), (9.4, cock), (IMPACT, release),
-              (11.4, recoil), (14.0, back), (19.0, recover), (24.0, near), (29.0, settle), (ATTACK_TICKS, g)]
+              (11.4, recoil), (14.0, back), (19.0, recover), (24.0, near), (29.0, settle), (32.5, rise), (ATTACK_TICKS, g)]
     R0, R1 = READY_HIPS
     side_on = (0.0, -14.0, 0.0)
-    legs = {"hips": [(0, R0, R1), (2.0, (0.0, 2.0, 0.0), (0.0, -0.9, 0.0)), (4.5, side_on, (0.0, -1.0, -0.1)),
-                     (9.0, (0.0, -15.0, 0.0), (0.0, -1.0, -0.1)), (IMPACT, (0.0, -15.0, 0.0), (0.0, -1.0, -0.1)),
-                     (11.4, (-1.0, -14.0, 0.0), (0.0, -1.0, 0.4)), (14.0, (0.0, -13.0, 0.0), (0.0, -1.0, 0.2)),
+    # Batch review 2026-11-11 (Kort: a cast is a whole-body move): the hips load back as the body turns, carry forward over
+    # the gliding right foot through the point and the charge, and drive on into the release (they travelled 0.5 px before)
+    legs = {"hips": [(0, R0, R1), (2.0, (0.0, 2.0, 0.0), (0.0, -0.95, -0.5)), (4.5, side_on, (0.0, -1.05, 0.3)),
+                     (9.0, (1.0, -15.0, 0.0), (0.0, -1.15, 0.9)), (IMPACT, (3.0, -15.0, 0.0), (0.0, -1.3, 1.6)),
+                     (11.4, (1.0, -14.0, 0.0), (0.0, -1.2, 1.2)), (14.0, (0.0, -13.0, 0.0), (0.0, -1.05, 0.6)),
                      (22.0, (0.0, 4.0, 0.0), (0.0, -0.9, 0.1)), (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
             # short glides: the right foot slides forward under the robe as the body turns side-on, the left eases back
-            "steps": [("right", 0.8, 4.2, (-2.6, 2.0, 1.2), -24.0, 0.8), ("left", 2.0, 5.0, (2.9, 2.0, -0.4), 2.0, 0.8),
+            "steps": [("right", 0.8, 4.2, (-2.6, 2.0, 2.4), -24.0, 0.8), ("left", 2.0, 5.0, (2.9, 2.0, -0.4), 2.0, 0.8),
                       home("left", 18.0, 23.0), home("right", 21.0, 27.0)]}
     stances = {
         "ready": g,
         # brace (Hold position): upright, both arms up, the wand held overhead crosswise as a guard bar, the off hand
         # raised flat to the other end; no crouch
         "brace": KEY((-4, 8, 0), (-6, 0, 0), (-1.5, 6.0, 3.0), aim(70, -10), u=FWD, rp=(-150, 0, 10, -30),
-                     lp=(-150, 0, -30, -40)),
+                     lp=(-125, 0, -10, -40)),   # (batch review 2026-11-11: the raised off arm 25 deg lower and 20 out, its cuff was in the head)
         # wall (Hold the line): crouched in, the wand thrust low at the foe's legs, the claw spread out wide beside it
         "wall": KEY((14, 4, 0), (0, 0, 0), (0.0, -2.5, 7.6), aim(-20, 0), u=UP, rp=(-80, 0, 5, -10), lp=(-50, 0, -40, -30)),
         # ward (fall back): the wand across the chest, the left forearm up across the muzzle
-        "ward": KEY((6, 14, 0), (0, 0, 0), (1.5, -0.5, 6.8), unit((0.8, 0.2, 0.5)), u=UP, rp=(-60, 0, 30, -70),
-                    lp=(-110, 0, -10, -90)),
+        # (batch review 2026-11-11: the wand fist 0.6 px further out from the chest, its cuff was in the shawl)
+        "ward": KEY((6, 14, 0), (0, 0, 0), (1.2, -0.8, 7.4), unit((0.8, 0.2, 0.5)), u=UP, rp=(-60, 0, 30, -70),
+                    lp=(-100, 0, -10, -90)),   # (batch review 2026-11-11: the forearm 10 deg lower, its cuff was in the head)
         # shield_up: the wand up before the face, the claw thrust out to rake whatever comes
         "shield_up": KEY((8, 6, 0), (0, 0, 0), (-0.5, 1.0, 7.2), aim(45, -10), u=FWD, rp=(-100, 0, 10, -40),
                          lp=(-85, 0, -30, -15)),
@@ -780,10 +799,11 @@ def mend_sunweaver():
     g = GUARD
     breath = nudge(g, torso=(-1, -2, 0), head=(-2, -2, 0), R=(0.2, 0.3, 0.0), d=aim(85, -16))
     # both hands on the shaft, the left above the right (as the cast's raise), the staff slanting up across the chest
-    gather = KEY((-3, 5, 0), (-6, -6, 0), (2.5, -2.5, 6.5), unit((0.35, 0.9, 0.2)), u=FWD, rp=(-80, 0, 10, -40),
-                 lp=(-60, 0, -15, -50), lh=0.7, ls=4.5)
-    up = KEY((-7, 2, 0), (-18, -4, 0), (3.5, 0.0, 6.0), unit((0.45, 0.86, 0.2)), u=FWD, rp=(-110, 0, 10, -40),
-             lp=(-95, 0, -20, -50), lh=1, ls=4.5)
+    # (batch review 2026-11-11: the fists out of the cowl and the vestment, the left 5.5 px up the shaft, clear of the right)
+    gather = KEY((-3, 5, 0), (-6, -6, 0), (2.3, -2.3, 6.9), unit((0.35, 0.9, 0.2)), u=FWD, rp=(-80, 0, 10, -40),
+                 lp=(-60, 0, -15, -50), lh=0.7, ls=5.5)
+    up = KEY((-7, 2, 0), (-18, -4, 0), (2.9, 0.0, 6.6), unit((0.45, 0.86, 0.2)), u=FWD, rp=(-110, 0, 10, -40),
+             lp=(-95, 0, -20, -50), lh=1, ls=5.5)
     peak = nudge(up, torso=(-1, 0, 0), head=(-3, 0, 0), R=(0.0, 0.3, 0.0))
     # the arms open: the right fist out to the right, the staff leaning out with it; the left arm raised wide, open
     opened = KEY((-9, 0, 0), (-20, 0, 0), (-4.2, 1.2, 5.6), unit((-0.5, 0.85, 0.0)), u=FWD, rp=(-100, 0, 30, -20),
@@ -809,7 +829,8 @@ def blight_gravecaller():
     g = GUARD
     load = nudge(g, torso=(-2, 4, 0), head=(-1, 0, 0), R=(0.0, 0.4, -0.4), d=aim(20, -8))
     claw = (-80, 0, 4, -40)        # the left arm out at the foe, the elbow bent: a claw
-    lift = KEY((0, 10, 0), (0, 0, 0), (-0.5, 3.0, 5.5), aim(60, 10), u=UP, rp=(-130, 0, 10, -40), lp=(-55, 0, -6, -45))
+    # (batch review 2026-11-11: the fist rises outside the hood, the cuff went through the head on its way up)
+    lift = KEY((0, 10, 0), (0, 0, 0), (-1.8, 3.0, 5.4), aim(60, 10), u=UP, rp=(-130, 0, 10, -40), lp=(-55, 0, -6, -45))
     over = KEY((4, 6, 0), (2, 0, 0), (-2.6, 7.4, 1.0), aim(50, -25), u=UP, rp=(-170, 0, 10, -30), lp=claw)
     # drawing in: the hunch deepens, the claw pulls in a little, a tremor in both arms
     hunch = KEY((10, 4, 0), (4, 0, 0), (-2.6, 7.3, 1.2), aim(48, -22), u=UP, rp=(-170, 0, 10, -30), lp=(-75, 0, 6, -55))
@@ -817,7 +838,8 @@ def blight_gravecaller():
     hunch3 = nudge(hunch, torso=(2, 1, 0), R=(-0.1, 0.1, -0.05), d=aim(50, -24), lp=(-2, 0, -1, 2))
     hunch4 = nudge(hunch, torso=(3, 0, 0), R=(0.05, -0.1, 0.1), d=aim(47, -21), lp=(1, 0, 1, -5))
     # the last lift: the lantern up and back, the chest arching, the claw drawn back to strike
-    coil = KEY((-3, 4, 0), (-2, 0, 0), (-2.4, 7.6, 0.4), aim(62, -15), u=UP, rp=(-175, 0, 10, -30), lp=(-110, 0, -4, -60))
+    # (batch review 2026-11-11: the claw drawn back 12 deg further off the hood, its cuff was 2.9 px in it)
+    coil = KEY((-3, 4, 0), (-2, 0, 0), (-2.4, 7.6, 0.4), aim(62, -15), u=UP, rp=(-175, 0, 10, -30), lp=(-110, 0, 8, -60))
     # the slam: both arms down at the foe's ground, the torso driven forward
     slam = KEY((18, 0, 0), (12, 0, 0), (0.4, -2.6, 7.3), aim(-42, 0), u=UP, rp=(-75, 0, 0, -8), lp=(-55, 0, 0, -8))
     sink = nudge(slam, torso=(2, 0, 0), head=(1, 0, 0), R=(0.0, -0.3, -0.1), d=aim(-46, 0), lp=(3, 0, 0, 0))
@@ -882,7 +904,11 @@ def howl():
         keys.append((t, nudge(spread, torso=tz, head=hd, R=r, lp=(0, 0, (1.5 if j % 2 else -1.5), 0))))
         t += 1.3
         j += 1
-    keys += [(19.5, nudge(spread, torso=(2, 0, 0), head=(4, 0, 0))), (22.5, nudge(g, torso=(2, 0, 0), R=(0.0, -0.3, 0.0))), (25, g)]
+    # batch review 2026-11-11: the wand comes back from wide right to the guard through a key half way, aimed half way: in
+    # one span the hand's turn rolled the wand 20 deg about its own length (tick 21.75)
+    back = KEY((-1, 8, 0), (-15, 0, 0), (-3.3, -4.1, 4.6), aim(-20, -44), u=UP, rp=(-35, 0, 35, -17), lp=(-22, 0, -51, -32))
+    keys += [(19.5, nudge(spread, torso=(2, 0, 0), head=(4, 0, 0))), (21.0, back), (22.5, nudge(g, torso=(2, 0, 0), R=(0.0, -0.3, 0.0))),
+             (25, g)]
     R0, R1 = READY_HIPS
     legs = {"hips": [(0, R0, R1), (3.0, (5.0, 15.0, 0.0), (0.0, -1.45, -0.3)), (5.0, (6.0, 15.0, 0.0), (0.0, -1.55, -0.35)),
                      (7.0, (-4.0, 16.0, 0.0), (0.0, -0.6, 0.1)), (19.5, (-3.0, 16.0, 0.0), (0.0, -0.65, 0.1)),
@@ -938,6 +964,459 @@ def splice(clips, paths):
         hang_swing.key_doc(TROOP, doc, log=False)   # a hanging focus (the hexer's lantern): its swing re-keyed over every clip
         path.write_bytes(json.dumps(doc, indent=1).encode("utf-8"))
         print("spliced", ", ".join(clips), "into", path)
+
+
+# ------------------------------------------------------------------------------------------------
+# Batch review 2026-11-11 (docs/anim-rebuild/<TROOP>-REVIEW.md): the whole unit alive in every action clip, and the feet on the
+# ground in the reaction layers. Kort: "i want the whole unit to be animated including pieces of its armor"; robes, hoods,
+# mantles and fringes move in every action clip and never pass through the body.
+#
+# life_pass  every hanging piece (focus_check.ALIVE_KINDS: cape, hood tail, kelp, shawl, feather mantle, sash, fringes, the robe
+#            panels, the shoulder plates) swings on fullbody.soft_motion's damped spring behind its parent, ADDED to whatever the
+#            clip already keys for it (the cast's cape lag, the stun's plumb hang, the robe solve), so nothing else changes. A
+#            robe panel only opens outward on its out axis (the solve's least opening keeps the legs inside) and swings freely
+#            in its own plane. A loop (the stun) gets the spring's steady lap, closed on its loop tick.
+# floor_pass a reaction layer (stun, knockback, pulled) whose foot dips under the ground is lifted at the hips by the dip,
+#            eased in and out over a tick each side: never the whole clip.
+# The builder's own clips get these in main(); the shared layers (art/anim/common/reactions.py: stun, stun_out, knockback,
+# pulled) are merged into the exported file after the builder runs, so GG_CAST_REVIEW=layers post-processes them there and
+# must be re-run after any reactions.py merge for this troop.
+# ------------------------------------------------------------------------------------------------
+
+DT = 1.0 / (SUB * TPS)
+STUN_FLARE = 7.0      # deg the robe hem flares out on the stun's snap (its first four ticks)
+LIFE_MIN = 5.0        # deg: the least a piece swings in a once-clip (focus_check.secondary_life warns under 4, fails under 2)
+
+
+def _chan_at(ch, t, length=None, loop=False):
+    if ch is None:
+        return None
+    if isinstance(ch, list):
+        return [float(v) for v in ch]
+    ks = sorted(ch, key=float)
+    ts = [float(k) for k in ks]
+
+    def vec(v):
+        v = v["vector"] if isinstance(v, dict) else v
+        return [float(x) for x in v]
+    if loop and length:
+        t = t % length if t < length - 1e-9 else t
+    if t <= ts[0]:
+        return vec(ch[ks[0]])
+    if t >= ts[-1]:
+        return vec(ch[ks[-1]])
+    j = next(i for i in range(1, len(ts)) if t <= ts[i])
+    a, b = vec(ch[ks[j - 1]]), vec(ch[ks[j]])
+    f = (t - ts[j - 1]) / (ts[j] - ts[j - 1])
+    return [x + f * (y - x) for x, y in zip(a, b)]
+
+
+def clip_samples(clip, n, t0=0.0):
+    """{bone: (rot, pos|None)} on the bake grid (SUB a tick) for n + 1 samples from t0 (a loop clip wraps)."""
+    L, loop = float(clip["animation_length"]), bool(clip.get("loop"))
+    out = []
+    for i in range(n + 1):
+        t = t0 + i * DT
+        s = {}
+        for b, ch in clip["bones"].items():
+            r = _chan_at(ch.get("rotation"), t, L, loop)
+            p = _chan_at(ch.get("position"), t, L, loop)
+            s[b] = (tuple(r) if r else Z3, tuple(p) if p else None)
+        out.append(s)
+    return out
+
+
+def write_bone(clip, bone, rots, poss):
+    """Re-keys one bone of a baked clip from per-sample values (thinned as K.bake does); every other bone is untouched."""
+    cols = [K.unwrap([r[i] for r in rots]) for i in range(3)]
+    rv = [[round(cols[0][i], 3), round(cols[1][i], 3), round(cols[2][i], 3)] for i in range(len(rots))]
+    ch = {"rotation": {K.fmt_t(i * DT): rv[i] for i in K.thin(rv, K.ROT_TOL)}}
+    if any(p is not None and any(abs(v) > 1e-4 for v in p) for p in poss):
+        pv = [[round(v, 4) for v in (p or Z3)] for p in poss]
+        ch["position"] = {K.fmt_t(i * DT): pv[i] for i in K.thin(pv, K.POS_TOL)}
+    clip["bones"][bone] = ch
+
+
+def _plate_parts(model):
+    """A shoulder plate hung on the torso (the hexer's) is not one fullbody.plates_for() rides on an arm: it gets a stiff
+    little spring of its own (the gear kind, capped at 6 deg) so it rocks with the chest and never leaves the shoulder."""
+    import focus_check as fc
+    out = {}
+    for n, (kind, att, tip, length) in fc.alive_pieces(model).items():
+        bone = model.bones[n]
+        if kind != "plate" or str(bone.parent).endswith("_arm") or n not in K.MODEL.bones:
+            continue
+        pbox = fc.rest_box(model, bone.parent)
+        axis = (pbox.min(axis=0) + pbox.max(axis=0)) / 2.0 if len(pbox) else np.array(model.bones[bone.parent].pivot, float)
+        c = dict(fullbody.SOFT_KINDS["gear"])
+        c.update(bones=(n,), parent=bone.parent, pivot=(-att[0], att[1], att[2]), tip=(-tip[0], tip[1], tip[2]),
+                 axis=(-axis[0], axis[1], axis[2]), kind="gear", max=6.0, gain=1.4, period=3.4, sway=2.0)
+        out[n] = c
+    return out
+
+
+def _parts():
+    model = fullbody._full_model(TROOP)
+    parts = fullbody.soft_parts_for(model)
+    parts.update(_plate_parts(model))
+    return parts
+
+
+def _sub(a, b):
+    return tuple(K.wrap(x - y) for x, y in zip(a, b))
+
+
+def _add(a, b):
+    return tuple(x + y for x, y in zip(a, b))
+
+
+def _panel_life(P, e):
+    """A robe panel's swing: free in its own plane, outward only on its out axis (the robe solve already holds the least
+    opening that keeps the legs inside it)."""
+    a = PANELS[P][0]
+    e = list(e)
+    i = 0 if a == 2 else 2                 # the out axis: x for the front and back panels, z for the sides
+    if e[i] * _SIGN[P] < 0:
+        e[i] = 0.0
+    return tuple(e)
+
+
+def _spring(upper, legs, parts):
+    """fullbody.soft_motion on copies: {bone: (per-sample rotation delta, per-sample position delta)} from its first sample."""
+    U = [dict(s) for s in upper]
+    L = [dict(s) for s in legs]
+    fullbody.soft_motion(U, L, parts, None, report=False)
+    plates = fullbody.plates_for()
+    if plates:
+        U2 = [dict(s) for s in upper]
+        fullbody.soft_motion(U2, [dict(s) for s in legs], {}, plates, report=False)
+    out = {}
+    for name, c in list(parts.items()) + [(p, {"bones": (p,), "clip": "upper"}) for p in plates]:
+        for b in c["bones"]:
+            src = (L if c.get("clip") == "legs" else (U2 if b in plates else U))
+            if b not in src[0]:
+                continue
+            r0 = src[0][b][0]
+            p0 = src[0][b][1] or Z3
+            out[b] = ([_sub(s[b][0], r0) for s in src], [_sub(s[b][1] or Z3, p0) for s in src], c.get("clip") == "legs")
+    return out
+
+
+CLOTH_SINK = 0.5     # px a hanging piece may sink into the body it hangs on beyond what its first sample has
+
+
+def _unsink(b, U, L, rots, poss):
+    """Eases a hanging piece back toward its first sample's pose on every sample where it would sink into the hard boxes of
+    the bone it hangs on (the cape into the chest on a yank) deeper than the first sample has it, by the least that clears."""
+    model = fullbody._full_model(TROOP)
+    par = model.bones[b].parent
+    mine = [(model.cube_bone[ci], c) for ci, c in enumerate(model.cube_list) if model.cube_bone[ci] == b]
+    body = [(model.cube_bone[ci], c) for ci, c in enumerate(model.cube_list) if model.cube_bone[ci] == par]
+    if not mine or not body:
+        return rots, poss
+
+    def depth(i, r, p):
+        pose = {}
+        for src in (L[i] if L else {}, U[i]):
+            for bn, (rr, pp) in src.items():
+                if bn in K.MODEL.bones:
+                    pose[bn] = (rr, pp if pp is not None else Z3)
+        pose[b] = (r, p if p is not None else Z3)
+        A = [fullbody._cube_world(fullbody._bone_world(pose, bn, model), c) for bn, c in mine]
+        Bx = [fullbody._cube_world(fullbody._bone_world(pose, bn, model), c) for bn, c in body]
+        return fullbody._sink(A, Bx)
+    d0 = depth(0, rots[0], poss[0])
+    out_r, out_p = list(rots), list(poss)
+    for i in range(1, len(rots)):
+        if depth(i, rots[i], poss[i]) - d0 <= CLOTH_SINK:
+            continue
+        lo, hi = 0.0, 1.0                  # the share of the way back to the first sample's pose
+        for _ in range(7):
+            mid = 0.5 * (lo + hi)
+            r = tuple(x + mid * (y - x) for x, y in zip(rots[i], rots[0]))
+            if depth(i, r, poss[i]) - d0 > CLOTH_SINK:
+                lo = mid
+            else:
+                hi = mid
+        out_r[i] = tuple(x + hi * (y - x) for x, y in zip(rots[i], rots[0]))
+    # the eased samples blended into their neighbours over half a tick, so the piece is never snapped
+    h = max(1, SUB // 2)
+    sm = [tuple(np.mean([out_r[j][k] for j in range(max(0, i - h), min(len(out_r), i + h + 1))]) for k in range(3))
+          if out_r[i] != rots[i] or any(out_r[j] != rots[j] for j in range(max(0, i - h), min(len(out_r), i + h + 1))) else out_r[i]
+          for i in range(len(out_r))]
+    return sm, out_p
+
+
+def _swing(d):
+    return max(math.sqrt(sum(v * v for v in e)) for e in d)
+
+
+# The seer's feather mantle and shawl are short stiff pieces: soft_motion drives them into its clamp and they flip from one
+# end of it to the other in a sample (pops of 14-21 deg in howl, the side blows and pulled). Their swing may turn at most
+# this many degrees a sample, run forward and back and averaged so the series keeps its first and last value.
+LIFE_RATE = {"wm_seer": 2.5}.get(TROOP)
+
+
+def _rate(d, cap):
+    def run(seq):
+        out = [seq[0]]
+        for e in seq[1:]:
+            out.append(tuple(p + max(-cap, min(cap, v - p)) for p, v in zip(out[-1], e)))
+        return out
+    f, b = run(d), run(d[::-1])[::-1]
+    return [tuple(0.5 * (x + y) for x, y in zip(u, v)) for u, v in zip(f, b)]
+
+
+def life_pass(upper_clip, legs_clip, loop_from=None, report=True, name="", upper_bones=()):
+    """Adds the spring swing of every hanging piece to a baked upper clip (and its legs clip). loop_from: the tick a
+    looping clip's loop starts on (the stun: 4); the spring then runs three laps and the steady middle lap is used."""
+    ticks = int(round(float(upper_clip["animation_length"]) * TPS))
+    n = ticks * SUB
+    nl = int(round(float(legs_clip["animation_length"]) * TPS)) * SUB if legs_clip else n
+    N = max(n, nl)                         # hit_block: its legs run two ticks past its upper body
+    if loop_from is None:
+        up, lg = clip_samples(upper_clip, N), clip_samples(legs_clip, N) if legs_clip else [{} for _ in range(N + 1)]
+    else:                                  # entry, then three laps: the fade-out of soft_motion lands on the third
+        m = (ticks - loop_from) * SUB
+        idx = list(range(n + 1)) + [loop_from * SUB + (k % m) for k in range(1, 3 * m + 1)]
+        U0, L0 = clip_samples(upper_clip, n), clip_samples(legs_clip, n)
+        up, lg = [U0[i] for i in idx], [L0[i] for i in idx]
+    parts = _parts()
+
+    def keyed_upper(b, in_legs):           # a piece the builder keys in the upper clip (the hexer's vestment), or that the guard
+        #                                    under an additive hit keys there (tc_mist's sash tail), stays in the upper clip: a
+        #                                    bone may be keyed by one of two clips played together, never both
+        return in_legs and not ((b in upper_clip["bones"] or b in upper_bones) and not (legs_clip and b in legs_clip["bones"]))
+
+    D = {b: (dr, dp, keyed_upper(b, il)) for b, (dr, dp, il) in _spring(up, lg, parts).items()}
+    if loop_from is None and nl != n:      # each clip's pieces settle by its own end (soft_motion fades out on the last sample)
+        Du = _spring(up[:n + 1], lg[:n + 1], parts)
+        D = {b: ((Du[b][0], Du[b][1], False) if not v[2] and b in Du else v) for b, v in D.items()}
+    U0 = clip_samples(upper_clip, n)
+    L0 = clip_samples(legs_clip, nl) if legs_clip else None
+    for b, (dr, dp, in_legs) in D.items():
+        k_end = nl if in_legs else n
+        if loop_from is not None:          # the steady lap (the second), closed on the loop tick; the entry blends onto it
+            m = (ticks - loop_from) * SUB
+            lap = [(dr[n + m + k], dp[n + m + k]) for k in range(m + 1)]
+            gap_r, gap_p = _sub(lap[-1][0], lap[0][0]), _sub(lap[-1][1], lap[0][1])
+            lap = [(_sub(r, tuple(g * k / m for g in gap_r)), _sub(p, tuple(g * k / m for g in gap_p)))
+                   for k, (r, p) in enumerate(lap)]
+            r_out, p_out = [], []
+            for i in range(n + 1):
+                if i >= loop_from * SUB:
+                    r, p = lap[i - loop_from * SUB]
+                else:
+                    w = K.smooth(max(0.0, min(1.0, (i / SUB - (loop_from - 2.0)) / 2.0)))
+                    lr, lp = lap[0]
+                    r = tuple((1 - w) * x + w * y for x, y in zip(dr[i], lr))
+                    p = tuple((1 - w) * x + w * y for x, y in zip(dp[i], lp))
+                r_out.append(r)
+                p_out.append(p)
+            for i in range(SUB + 1):       # the clip loops end to start: its first tick eases out of the lap's last pose
+                w = K.smooth(i / SUB)       # (tc_mist's kelp hood stood 23 deg apart across the wrap)
+                r_out[i] = tuple((1 - w) * x + w * y for x, y in zip(lap[-1][0], r_out[i]))
+                p_out[i] = tuple((1 - w) * x + w * y for x, y in zip(lap[-1][1], p_out[i]))
+            dr, dp = r_out, p_out
+            if b in PANELS:                # the snap that buckles the knees flares the hem out, and it falls back by the loop
+                io = 0 if PANELS[b][0] == 2 else 2
+                for i in range(int(loop_from * SUB) + 1):
+                    e = list(dr[i])
+                    e[io] += _SIGN[b] * STUN_FLARE * math.sin(math.pi * i / (loop_from * SUB))
+                    dr[i] = tuple(e)
+        else:
+            dr, dp = dr[:k_end + 1], dp[:k_end + 1]
+        if b in PANELS:
+            dr = [_panel_life(b, e) for e in dr]
+        if LIFE_RATE is not None:
+            dr = _rate(dr, LIFE_RATE)
+        sw = _swing(dr)
+        if 1e-3 < sw < LIFE_MIN:           # a small blow still shows on the cloth: the same swing, scaled up to the least
+            k = min(3.0, LIFE_MIN / sw)
+            dr = [tuple(k * v for v in e) for e in dr]
+            dp = [tuple(k * v for v in e) for e in dp]
+        clip, S = (legs_clip, L0) if in_legs else (upper_clip, U0)
+        if clip is None:
+            continue
+        rots = [_add(S[i].get(b, (Z3, None))[0], dr[i]) for i in range(k_end + 1)]
+        poss = [_add(S[i].get(b, (Z3, None))[1] or Z3, dp[i]) for i in range(k_end + 1)]
+        if not any(any(abs(v) > 1e-3 for v in p) for p in dp):
+            poss = [S[i].get(b, (Z3, None))[1] for i in range(k_end + 1)]
+        if not in_legs and b not in PANELS and parts.get(b, {}).get("kind") in ("cloth", "plume"):
+            rots, poss = _unsink(b, U0, L0, rots, poss)
+        write_bone(clip, b, rots, poss)
+        if report:
+            print("  life %-22s %-20s +%4.1f deg%s" % (name, b, _swing(dr), " (legs clip)" if in_legs else ""))
+    return upper_clip, legs_clip
+
+
+def _on_guard(clip, base):
+    """A copy of an additive clip with the base clip's first pose added on every key (HitController adds a hit's keys
+    onto the pose under it)."""
+    c = json.loads(json.dumps(clip))
+    for b, chans in base["bones"].items():
+        for ch in ("rotation", "position"):
+            if ch not in chans:
+                continue
+            v0 = _chan_at(chans[ch], 0.0)
+            mine = c["bones"].setdefault(b, {}).get(ch)
+            if mine is None:
+                c["bones"][b][ch] = [round(x, 4) for x in v0]
+            elif isinstance(mine, list):
+                c["bones"][b][ch] = [round(x + y, 4) for x, y in zip(mine, v0)]
+            else:
+                for k, v in mine.items():
+                    vec = v["vector"] if isinstance(v, dict) else v
+                    new = [round(x + y, 4) for x, y in zip(vec, v0)]
+                    if isinstance(v, dict):
+                        v["vector"] = new
+                    else:
+                        mine[k] = new
+    return c
+
+
+# wm_seer: the pulled hit's left hoof sank 1.2 px with the reaction played on the guard, though not on the bind pose
+FLOOR_ON_GUARD = TROOP == "wm_seer"
+
+
+def floor_lift(doc, upper, legs, margin=0.3, report=True, on_guard=False):
+    """Lifts the hips of the legs clip wherever a hard corner of the pair (played the way focus_check plays it) sinks under
+    the ground by more than `margin` px, by the sink, eased over a tick each side. Returns the most it lifts."""
+    sys.path.insert(0, str(HERE.parents[2] / "tools" / "anim"))
+    import focus_check as fc
+    import render_geo as rg
+    import scorecard as sc
+    geo = "%s/geo/troop/%s.geo.json" % (sc.ASSETS, TROOP)
+    model = rg.load_geo(str(HERE.parents[2] / geo))
+    rig = sc.Rig(model, sc.rig_rules_for(str(HERE.parents[2]), geo), TROOP)
+    hard = fc.Parts(rig).hard()
+    rest = rg.Scene(rig.model, None, [], 0.0).evaluate(0.0)
+    sole = max(0.0, -float(rest.corners[hard][:, :, 1].min()) * 16.0)
+    lc = doc["animations"][legs]
+    ticks = int(round(float(doc["animations"][upper]["animation_length"]) * TPS))
+    n = ticks * SUB
+    judged = doc
+    if on_guard:                           # an additive reaction is judged as the game plays it: on the guard's first pose
+        A = doc["animations"]
+        judged = {"animations": {legs: _on_guard(A[legs], A["stance_ready_legs"]),
+                                 upper: _on_guard(A[upper], A["stance_ready_upper"])}}
+    clips = [rg.load_clip(judged, legs), rg.load_clip(judged, upper)]
+    scene = rg.Scene(rig.model, None, clips, 0.0)
+    L = clips[-1].length                   # ticks, as focus_check plays it
+    sink = np.array([max(0.0, -float(scene.evaluate(min(i / SUB, L - 1e-4)).corners[hard][:, :, 1].min()) * 16.0 - sole - margin)
+                     for i in range(n + 1)])
+    if sink.max() <= 0:
+        return 0.0
+    wide = np.array([sink[max(0, i - SUB):i + SUB + 1].max() for i in range(n + 1)])
+    lift = np.array([wide[max(0, i - SUB // 2):i + SUB // 2 + 1].mean() for i in range(n + 1)])
+    nl = int(round(float(lc["animation_length"]) * TPS)) * SUB
+    S = clip_samples(lc, nl)
+    rots = [S[i]["hips"][0] for i in range(nl + 1)]
+    poss = [_add(S[i]["hips"][1] or Z3, (0.0, float(lift[min(i, n)]) if i <= n else 0.0, 0.0)) for i in range(nl + 1)]
+    write_bone(lc, "hips", rots, poss)
+    if report:
+        k = int(np.argmax(lift))
+        print("  floor %-20s hips lifted up to %.2f px (tick %.2f)" % (legs, float(lift[k]), k / SUB))
+    return float(lift.max())
+
+
+LAYER_LIFE = (("stun_upper", "stun_legs", 4), ("stun_out_upper", "stun_legs", None), ("hit_knockback", "hit_knockback_legs", None),
+              ("hit_pulled", "hit_pulled_legs", None))
+LAYER_FLOOR = (("stun_upper", "stun_legs"), ("hit_knockback", "hit_knockback_legs"), ("hit_pulled", "hit_pulled_legs"))
+
+
+def action_pairs(anims):
+    """(upper, legs) of every action clip the builder makes: the cast, the ability, every hit and the block."""
+    return [(n, n + "_legs") for n in anims if (n == "attack_cast" or n in ABILITY_NAMES or n.startswith("hit_"))
+            and not n.endswith("_legs") and n + "_legs" in anims]
+
+
+ABILITY_NAMES = ("mend_sunweaver", "blight_gravecaller", "mist", "howl")
+
+
+def alive_clips(anims):
+    if "hit_block" in anims and "hit_light_front" in anims and anims["hit_block"] is anims["hit_light_front"]:
+        anims["hit_block"] = json.loads(json.dumps(anims["hit_light_front"]))
+    guard = anims.get("stance_ready_upper") or json.loads(
+        (ASSET_ANIMS / f"{TROOP}.animation.json").read_text(encoding="utf-8"))["animations"]["stance_ready_upper"]
+    for up, lg in action_pairs(anims):
+        life_pass(anims[up], anims[lg], None, name=up, upper_bones=set(guard["bones"]) if up.startswith("hit_") else ())
+    return anims
+
+
+def replace_clips(clips, paths):
+    """Replaces these clips in place in each animation file (a new one goes at the end); every other clip stays as it was."""
+    for path in paths:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        A = doc["animations"]
+        for k, v in clips.items():
+            A[k] = v
+        hang_swing.key_doc(TROOP, doc, log=False)   # a hanging focus (the hexer's lantern): its swing re-keyed over every clip
+        path.write_bytes(json.dumps(doc, indent=1).encode("utf-8"))
+        print("replaced", ", ".join(clips), "in", path)
+
+
+GROUPS = {"hits": lambda: hit_clips(), "attack": lambda: attack_clips(), "ability": lambda: ability_clips(),
+          "stances": lambda: stance_clips(), "idle": lambda: dict(zip(("idle_legs", "idle_upper"), idle_clips()))}
+
+
+# per troop, stances.py layer clip: {bone: rotation added on every key}. Mage stance_aim_up_upper: the up aim lifts both arms
+# off the held light and the left sleeve bell sank 2.8 px into the cowl (tick 3.5); the left arm lowered 18 clears it.
+# Hexer: rally and fallback lift the lantern beside the wide burial hood (the cuff 2.3-2.7 px in it): the arm comes 30 out
+# and 15 forward; the up aim's death mask sank into the mantle (head up 8, arm out 8); the down aim's cuff sat in the mantle
+# (forearm 10 more bent).
+LAYER_NUDGE = {"mage": {"stance_aim_up_upper": {"left_arm": (18.0, 0.0, 0.0)}},
+               "hexer": {"stance_rally_upper": {"right_arm": (15.0, 0.0, -30.0)},
+                         "stance_fallback_upper": {"right_arm": (15.0, 0.0, -30.0)},
+                         "stance_aim_up_upper": {"head": (-8.0, 0.0, 0.0), "right_arm": (0.0, 0.0, -8.0)},
+                         "stance_aim_down_upper": {"right_forearm": (10.0, 0.0, 0.0)}},
+               # tc_mist: the rally's raised rod hand sat in the mantle plate, the up aim's bracer in the hood
+               # (25 forward, 5 out: further out put the forearm in the head, scorecard pen_limb 1.98 px)
+               "tc_mist": {"stance_rally_upper": {"right_arm": (25.0, 0.0, -5.0)},
+                           "stance_aim_up_upper": {"right_arm": (0.0, 0.0, -14.0)}},
+               # wm_seer: the rally's raised wand cuff sat 3.3 px in the head
+               "wm_seer": {"stance_rally_upper": {"right_arm": (15.0, 0.0, -20.0)}}}
+# per troop, more stance layers whose feet the floor pass lifts (wm_seer: the fallback's right hoof 1.1 px under at tick 0)
+LAYER_FLOOR_TROOP = {"wm_seer": (("stance_fallback_upper", "stance_fallback_legs"),)}
+
+
+def review_layers(path):
+    """GG_CAST_REVIEW=layers: the review pass over the shared reaction layers already merged into the exported file."""
+    import reactions                       # read only: the layers are rebuilt fresh, so the pass never stacks on itself
+    import stances
+    tr = stances.Troop(TROOP, path)
+    fresh = reactions.build_all(tr)
+    if True:                               # the stance layers (stances.py: rally, hold, fallback, rest, aim; the aim is cut
+        st = stances.build_all(tr)         # from attack_cast, so it follows a re-keyed cast), with the review's re-poses
+        for clip, bones in LAYER_NUDGE.get(TROOP, {}).items():
+            for b, d in bones.items():
+                ch = st[clip]["bones"][b]["rotation"]
+                for v in (ch.values() if isinstance(ch, dict) else [ch]):
+                    v = v["vector"] if isinstance(v, dict) else v
+                    for i in range(3):
+                        v[i] = round(v[i] + d[i], 3)
+        fresh.update(st)
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    A = doc["animations"]
+    for k, v in fresh.items():
+        if k in A and json.dumps(A[k], sort_keys=True) != json.dumps(v, sort_keys=True):
+            print("  layer %s: the file's copy differs from a fresh reactions.py build (an earlier review pass, or drift)" % k)
+        A[k] = v
+    stun_legs0 = json.loads(json.dumps(A["stun_legs"]))
+    for up, lg, loop in LAYER_LIFE:
+        if up not in A:
+            continue
+        if up == "stun_out_upper":         # it plays over the stun legs, which the stun's own pass keys: its upper pieces only
+            life_pass(A[up], json.loads(json.dumps(stun_legs0)), None, name=up, upper_bones=set(A["stun_upper"]["bones"]))
+        else:
+            life_pass(A[up], A[lg], loop, name=up,
+                      upper_bones=set(A["stance_ready_upper"]["bones"]) if up.startswith("hit_") else ())
+    for up, lg in LAYER_FLOOR + LAYER_FLOOR_TROOP.get(TROOP, ()):
+        if up in A:
+            floor_lift(doc, up, lg, on_guard=FLOOR_ON_GUARD and up.startswith("hit_"))
+    hang_swing.key_doc(TROOP, doc, log=False)
+    path.write_bytes(json.dumps(doc, indent=1).encode("utf-8"))
+    print("review layers written to", path)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -1079,18 +1558,40 @@ K.idle_clips = idle_clips    # the death falls start from the guard
 
 off = K.off
 hb, hb_front = K.hb, K.hb_front   # Kort's polish: how far a blow throws the spine and head BACK (art/anim/common/feel.py)
+# Batch review 2026-11-11: the front blow's left arm swings 22, not 32, toward the body (z- here is inward on the free left arm):
+# at 32 the sleeve sank 1.9 px into the vestment at tick 5.5 as the game plays it (over the guard).
 HIT_PEAK = {
-    "front": off(torso=(hb_front(-17), -10, 0), head=(hb(-12), 3, 0), rarm=(-10, 0, 14), larm=(-19, 0, -32), lfore=-12),
+    "front": off(torso=(hb_front(-17), -10, 0), head=(hb(-12), 3, 0), rarm=(-10, 0, 14), larm=(-19, 0, -22), lfore=-12),
     "back": off(torso=(12, 0, 0), head=(5, 0, 0), rarm=(10, 0, 10), larm=(14, 0, -24)),
     "right": off(torso=(hb(-5), 14, 8), head=(0, 6, 3), rarm=(6, 0, 10), larm=(-12, 0, -22)),
     "left": off(torso=(hb(-5), -14, -8), head=(0, -6, -3), rarm=(-10, 0, 14), larm=(12, 0, -30)),
 }
 
 
+# Batch review 2026-11-11: the tc_mist and wm_seer guards already hold the free arm 40-45 deg out to the side; the blow's
+# outward fling on top of that took the upper arm past 115 deg and the pauldron into the head (game: the hit adds onto the
+# guard). On these two the fling outward is cut to this share; the forward and back swing is kept.
+WIDE_GUARD_FLING = {"tc_mist": 0.4, "wm_seer": 0.4}.get(TROOP)
+
+
+# Batch review 2026-11-11, mage: the left blow threw the upright sun staff's head into the face (1.6 px at tick 2 over the
+# guard); the right arm swings 6 deg less forward with it.
+if TROOP == "mage":
+    HIT_PEAK["left"] = dict(HIT_PEAK["left"], right_arm=(-4, 0, 14))
+
+
+def _fling(peak):
+    if WIDE_GUARD_FLING is None:
+        return peak
+    x, y, z = peak["left_arm"]
+    return dict(peak, left_arm=(x, y, z * WIDE_GUARD_FLING))
+
+
 def hit_clips():
     out = {}
     for weight, ticks in K.HIT_TICKS.items():
         for dname, peak in HIT_PEAK.items():
+            peak = _fling(peak)
             keys = K.front_onset(K.hit_keys(peak, weight), dname, weight)
             out["hit_%s_%s" % (weight, dname)] = K.bake([K.sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)], ticks,
                                                        loop=False)
@@ -1836,6 +2337,24 @@ def main():
     if os.environ.get("CAST_DUMP"):
         dump(os.environ["CAST_DUMP"], [float(x) for x in os.environ.get("CAST_TICKS", "0,3,5.5,8,9.3,10,12,16,22,28").split(",")])
         return
+    if os.environ.get("GG_CAST_REVIEW") == "layers":   # after any reactions.py merge for this troop: see review_layers
+        review_layers(Path(os.environ["GG_CAST_DRY"]) / f"{TROOP}.animation.json" if os.environ.get("GG_CAST_DRY")
+                      else ASSET_ANIMS / f"{TROOP}.animation.json")
+        return
+    if os.environ.get("GG_CAST_ONLY"):   # rebuild only these groups (hits, attack, ability, stances, idle) in place in both files
+        clips = {}
+        for g in os.environ["GG_CAST_ONLY"].split(","):
+            clips.update(GROUPS[g]())
+        alive_clips(only_rig(clips))
+        paths = [K.OUT, ASSET_ANIMS / f"{TROOP}.animation.json"]
+        if os.environ.get("GG_CAST_DRY"):   # a trial: into a copy of the exported file in this folder, the real files untouched
+            dry = Path(os.environ["GG_CAST_DRY"]) / f"{TROOP}.animation.json"
+            if not dry.exists():
+                dry.parent.mkdir(parents=True, exist_ok=True)
+                dry.write_bytes(paths[1].read_bytes())
+            paths = [dry]
+        replace_clips(clips, paths)
+        return
     idle_legs, idle_upper = idle_clips()
     walk, run = GAITS.get(TROOP, (K.WALK, K.RUN))
     anims = {"walk_legs": K.gait_legs(walk), "walk_upper": gait_upper(walk, K.WALK_CARRY, False),
@@ -1843,6 +2362,7 @@ def main():
              "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **ability_clips(), **stance_clips(), **hit_clips(),
              **death_clips()}
     only_rig(anims)
+    alive_clips(anims)
     hang_swing.key_doc(TROOP, {"animations": anims})   # a hanging focus (the hexer's lantern): the swing baked over every clip
     K.OUT.parent.mkdir(parents=True, exist_ok=True)
     K.OUT.write_text(json.dumps({"format_version": "1.8.0", "animations": anims}, indent=1), encoding="utf-8")
