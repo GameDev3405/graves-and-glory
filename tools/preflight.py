@@ -313,6 +313,10 @@ if any(f['id']=='shieldwall' for f in data['formations']): errors.append('format
 # Phase 2 Houses (spec 6.1): a troop's House, rarity, ability and evolve line (the levelNames key since the in-match progression design) are its own columns.
 # (modes, above, left the rules row its arena, capacity and reinforcement columns and took the round's own numbers with it.)
 squad=data['rules'][0]['squadSize']
+# War table (army rework): the banner is a bannerCols x bannerRows grid under one gold allowance; WarTable and RosterMath.validTable read these columns.
+_r=data['rules'][0]
+if min(_r['bannerCols'],_r['bannerRows'],_r['maxTroops'],_r['maxBanners'])<1 or _r['musterAllowance']<0: errors.append('rules: bannerCols, bannerRows, maxTroops and maxBanners are at least 1 and musterAllowance at least 0')
+if _r['maxTroops']>_r['bannerCols']*_r['bannerRows']: errors.append('rules: maxTroops is more than the war table cells (bannerCols times bannerRows)')
 houses={h['id']:h for h in data['houses']}
 rarities={r['id']:r for r in data['rarities']}
 RARITY_ORDER=['common','rare','epic','legendary']

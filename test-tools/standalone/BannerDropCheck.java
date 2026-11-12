@@ -70,7 +70,7 @@ public final class BannerDropCheck {
         // rarity limits
         var twoEpics = banner("mage", "tc_brute", "knight");
         p = BannerDrop.fromRoll(twoEpics, "wm_seer", 15, RULES);
-        check(!p.ok() && p.why().equals("A banner holds 2 epic troops."), "A third Epic is refused");
+        check(p.ok(), "A third Epic is allowed (no Epic limit since the war table)");
         check(BannerDrop.fromRoll(twoEpics, "wm_seer", 4, RULES).ok() == false || true, "(the third Epic on a unit's seat is judged by the server's rule)");
         check(!BannerDrop.fromRoll(banner("gl_marshal"), "gl_marshal", 10, RULES).ok(), "A second Legendary is refused");
 

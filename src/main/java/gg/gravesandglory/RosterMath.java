@@ -15,8 +15,15 @@ public final class RosterMath {
     /** A banner slot with no unit. */
     public static final String EMPTY = "empty";
 
-    /** The House, rarity and slot weight of each troop id. */
-    public record Catalog(Map<String, String> house, Map<String, String> rarity, Map<String, Integer> slotWeight) {
+    /** The House, rarity, slot weight and muster cost of each troop id. */
+    public record Catalog(Map<String, String> house, Map<String, String> rarity, Map<String, Integer> slotWeight, Map<String, Integer> cost) {
+        /** A catalog with no costs (every troop costs 0), for callers that never price a banner. */
+        public Catalog(Map<String, String> house, Map<String, String> rarity, Map<String, Integer> slotWeight) { this(house, rarity, slotWeight, Map.of()); }
+        /** The troop's muster cost (troops.cost); 0 for a marker, an empty slot or an unknown id. */
+        public int cost(String id) {
+            Integer v = id == null ? null : cost.get(id);
+            return v == null ? 0 : v;
+        }
         /** The troop's rarity (a rarities id), or null for a marker, an empty slot or an unknown id. */
         public String rarityOf(String id) { return id == null ? null : rarity.get(id); }
         /** The troop's House id, or null for a marker, an empty slot or an unknown id. */
@@ -31,21 +38,50 @@ public final class RosterMath {
 
         private static Spec.TroopsRow[] cachedRows;
         private static Catalog cached;
-        /** The catalog of the troops sheet: each troop's house, rarity and slotWeight columns. */
+        /** The catalog of the troops sheet: each troop's house, rarity, slotWeight and cost columns. */
         public static synchronized Catalog fromSpec() {
             if (cachedRows != Spec.TROOPS) {
                 Map<String, String> house = new LinkedHashMap<>(), rarity = new LinkedHashMap<>();
-                Map<String, Integer> weight = new LinkedHashMap<>();
+                Map<String, Integer> weight = new LinkedHashMap<>(), cost = new LinkedHashMap<>();
                 for (var t : Spec.TROOPS) {
                     house.put(t.id(), t.house());
                     rarity.put(t.id(), t.rarity());
                     weight.put(t.id(), t.slotWeight());
+                    cost.put(t.id(), t.cost());
                 }
-                cached = new Catalog(Collections.unmodifiableMap(house), Collections.unmodifiableMap(rarity), Collections.unmodifiableMap(weight));
+                cached = new Catalog(Collections.unmodifiableMap(house), Collections.unmodifiableMap(rarity), Collections.unmodifiableMap(weight), Collections.unmodifiableMap(cost));
                 cachedRows = Spec.TROOPS;
             }
             return cached;
         }
+    }
+
+    /** The gold a banner may spend at muster (rules.musterAllowance). */
+    public static int allowance() { return Spec.RULES[0].musterAllowance(); }
+    /** The troops one banner may hold (rules.maxTroops). */
+    public static int maxTroops() { return Spec.RULES[0].maxTroops(); }
+    /** The banners one profile may keep (rules.maxBanners). */
+    public static int maxBanners() { return Spec.RULES[0].maxBanners(); }
+
+    /**
+     * Null when a war table banner is valid, else the first rule it breaks, checked in this order: range (a cell outside the
+     * table), unknown (not a troop), not_owned, house (a House outside houses), count (more than maxTroops), cost (more than the
+     * muster allowance), then the rarities.bannerMax limits, rarest first (legendary_limit, epic_limit).
+     */
+    public static String validTable(Map<Integer, String> table, Catalog c, Set<String> owned, Set<String> houses) {
+        for (int i : table.keySet()) if (!WarGrid.inRange(i)) return "range";
+        for (String id : table.values()) if (!c.known(id)) return "unknown";
+        for (String id : table.values()) if (!owned.contains(id)) return "not_owned";
+        for (String id : table.values()) if (!houses.contains(c.houseOf(id))) return "house";
+        if (table.size() > maxTroops()) return "count";
+        if (WarGrid.cost(table, c) > allowance()) return "cost";
+        Map<String, Integer> units = new HashMap<>();
+        for (String id : table.values()) units.merge(c.rarityOf(id), 1, Integer::sum);
+        for (int i = Spec.RARITIES.length - 1; i >= 0; i--) {
+            var r = Spec.RARITIES[i];
+            if (units.getOrDefault(r.id(), 0) > r.bannerMax()) return r.id() + "_limit";
+        }
+        return null;
     }
 
     /** Slots in a banner (rules.squadSize). */

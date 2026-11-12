@@ -410,10 +410,10 @@ public final class HousesCheck {
         // banners
         check(validBanner(SPEC_EXAMPLE_BANNER,cat,ALL)==null && "missing_marker".equals(validBanner(V1_DAWN_DEFAULT,cat,ALL)), "validation");
         check("size".equals(validBanner(banner("knight*19"),cat,ALL)) && "unknown".equals(validBanner(banner("oracle,knight*19"),cat,ALL)) && "not_owned".equals(validBanner(starterBanner(),cat,Set.of("knight")))
-            && "orphan_marker".equals(validBanner(banner("knight,^,knight*18"),cat,ALL)) && "legendary_limit".equals(validBanner(TWO_LEGENDARIES,cat,ALL)) && "epic_limit".equals(validBanner(THREE_EPICS,cat,ALL)), "each validation failure is named");
+            && "orphan_marker".equals(validBanner(banner("knight,^,knight*18"),cat,ALL)) && "legendary_limit".equals(validBanner(TWO_LEGENDARIES,cat,ALL)) && validBanner(THREE_EPICS,cat,ALL)==null, "each validation failure is named; Epics have no limit since the war table");
         check("missing_marker".equals(validBanner(banner("knight*19,mage"),cat,ALL)), "an Epic in the last slot has no room for its ^: missing_marker");
         check(repack(V1_DAWN_DEFAULT,cat,ALL).equals(EXPECTED_DAWN_REPACK), "v1 Dawn line repacks to knight x12, archer x6, mage, ^");
-        check(legendaries(repack(TWO_LEGENDARIES,cat,ALL))==1 && epics(repack(THREE_EPICS,cat,ALL))==2 && repack(THREE_EPICS,cat,ALL).size()==20, "limits and size");
+        check(legendaries(repack(TWO_LEGENDARIES,cat,ALL))==1 && epics(repack(THREE_EPICS,cat,ALL))==3 && repack(THREE_EPICS,cat,ALL).size()==20, "limits and size");
         check(repack(banner("knight*12,mage,^,oracle,archer*8"),cat,Set.of("knight","archer")).equals(banner("knight*12,archer*8")) && starterBanner().equals(banner("knight*12,archer*8")), "repack drops unowned and unknown ids; the starter banner");
         check(repack(banner("knight*17,gl_marshal,archer"),cat,ALL).equals(banner("knight*17,archer,empty*2")), "repack skips a Legendary that does not fit and still places the Common after it");
         for (var b : Spec.BOTBANNERS) check(validBanner(Arrays.asList(b.slots().split(",")),cat,ALL)==null, "bot banner " + b.id() + " is a valid banner");
@@ -425,7 +425,7 @@ public final class HousesCheck {
         var low=matchRewards(Map.of("gilded",5,"graveborn",5,"wildmoot",5,"ironclad",5),T,HOUSES,true); check(low.shards().equals(Map.of("gilded",1)) && low.renown().isEmpty(), "a win gives the largest House its shard even below tier I (a tie goes to the first in House order); Renown still needs tier I");
         check(masteryLevel(39,8,M)==0 && masteryLevel(40,8,M)==1 && masteryLevel(150,24,M)==1 && masteryLevel(400,60,M)==3, "mastery needs both");
         // the troops sheet (Task 2): the catalog, units and what a banner can field
-        check(Catalog.fromSpec().equals(cat), "Catalog.fromSpec() equals the fixture catalog: House, rarity and slot weight of all 30 troops");
+        check(Catalog.fromSpec().house().equals(cat.house()) && Catalog.fromSpec().rarity().equals(cat.rarity()) && Catalog.fromSpec().slotWeight().equals(cat.slotWeight()), "Catalog.fromSpec() equals the fixture catalog: House, rarity and slot weight of all 30 troops");
         check(units(SPEC_EXAMPLE_BANNER,cat)==15 && units(starterBanner(),cat)==20 && units(banner("mage,^,empty*18"),cat)==1 && units(null,cat)==0, "units: an Epic or a Legendary counts once, markers and empty slots not at all");
         check(fieldableHouses().equals(Set.of("gilded","graveborn","wildmoot","ironclad","tidecallers")), "Gilded, Graveborn, Wildmoot, Ironclad and Tidecallers are the fieldable Houses (every House since Task 10)");
         var wild=banner("wm_seer,^,knight*10,wm_hound*4,wm_oldhorn,^,^,^");var without=Set.of("gilded","graveborn","ironclad","tidecallers"); // a fieldable set without Wildmoot, as the sheet stood before Task 10
