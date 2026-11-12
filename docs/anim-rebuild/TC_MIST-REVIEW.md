@@ -109,3 +109,20 @@ MAGE-REVIEW.md, same date.
 - **Tests:** unit tests and verify fast as in MAGE-REVIEW.md (the same builder; `test_where` timing under machine load).
   In game: geo-knight suite through checkq, root `tc_mist-review1`: 22 `p1-geo-tc_mist` lines and the suite line all true,
   0 `=false`.
+
+### Re-check 2026-11-12 (tools merged at c0cb68a0: hits and stun_out judged over the stance)
+
+- The new focus check plays every hit over `stance_ready_*` (as `work/review/compose.py` did) and `stun_out_upper` over the
+  stun handing over to the stance in 8 ticks. The one row it found that the old tool hid, on all four casters:
+  `stun_out_upper` secondary_life (robe panels, keyed by the legs clips, hung still over the handover: mage 1.76,
+  hexer 0.95, tc_mist 1.42, wm_seer 1.05). Open, named: the stun_out life pass is now driven by the stun legs blending into the
+  stance legs (`_handover_legs`), which swings the upper cloth, but the robe panels belong to `stun_legs` /
+  `stance_ready_legs`, and the scorecard plays `stun_out_upper` with `stun_legs` and needs disjoint bones (exit 2 when
+  the panels were keyed in `stun_out_upper`). Fixing it needs the panels' swing in the legs clips (shared reactions.py /
+  stances.py) or a scorecard that plays stun_out over the handover; both are outside this lane.
+- The layer pass (`GG_CAST_REVIEW=layers`, documented in the builder's "Batch review" block) rebuilds every layer fresh
+  from reactions.py / stances.py before its own pass: running it twice gives the same bytes (checked on mage).
+- `out/` holds the builder's 40 clips; the exported asset holds those 40 byte-identical plus the 17 shared layers
+  (reactions.py, stances.py, charge.py), as before this review.
+- Rule 6: hold (stances.py, gear `staff`/`focus`) holds the caster's focus forward; brace, wall, ward and shield_up are this
+  builder's caster poses. The cast's `impact` stays tick 10, the release key (the bolt leaves).

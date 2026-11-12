@@ -1167,9 +1167,11 @@ def _rate(d, cap):
     return [tuple(0.5 * (x + y) for x, y in zip(u, v)) for u, v in zip(f, b)]
 
 
-def life_pass(upper_clip, legs_clip, loop_from=None, report=True, name="", upper_bones=()):
+def life_pass(upper_clip, legs_clip, loop_from=None, report=True, name="", upper_bones=(), legs_add=False):
     """Adds the spring swing of every hanging piece to a baked upper clip (and its legs clip). loop_from: the tick a
-    looping clip's loop starts on (the stun: 4); the spring then runs three laps and the steady middle lap is used."""
+    looping clip's loop starts on (the stun: 4); the spring then runs three laps and the steady middle lap is used.
+    legs_add: an additive upper clip played over legs another clip keys (the stun shake-off): the swing of the legs
+    clip's pieces is keyed in the upper clip as a pure offset (an additive clip may key bones the clips under it key)."""
     ticks = int(round(float(upper_clip["animation_length"]) * TPS))
     n = ticks * SUB
     nl = int(round(float(legs_clip["animation_length"]) * TPS)) * SUB if legs_clip else n
@@ -1192,6 +1194,11 @@ def life_pass(upper_clip, legs_clip, loop_from=None, report=True, name="", upper
     if loop_from is None and nl != n:      # each clip's pieces settle by its own end (soft_motion fades out on the last sample)
         Du = _spring(up[:n + 1], lg[:n + 1], parts)
         D = {b: ((Du[b][0], Du[b][1], False) if not v[2] and b in Du else v) for b, v in D.items()}
+    offset_only = set()
+    if legs_add:
+        Du = _spring(up[:n + 1], lg[:n + 1], parts)
+        offset_only = {b for b, v in D.items() if v[2] and b in Du}
+        D = {b: ((Du[b][0], Du[b][1], False) if b in offset_only else v) for b, v in D.items()}
     U0 = clip_samples(upper_clip, n)
     L0 = clip_samples(legs_clip, nl) if legs_clip else None
     for b, (dr, dp, in_legs) in D.items():
@@ -1236,13 +1243,15 @@ def life_pass(upper_clip, legs_clip, loop_from=None, report=True, name="", upper
             dr = [tuple(k * v for v in e) for e in dr]
             dp = [tuple(k * v for v in e) for e in dp]
         clip, S = (legs_clip, L0) if in_legs else (upper_clip, U0)
+        if b in offset_only:
+            S = [{} for _ in range(k_end + 1)]
         if clip is None:
             continue
         rots = [_add(S[i].get(b, (Z3, None))[0], dr[i]) for i in range(k_end + 1)]
         poss = [_add(S[i].get(b, (Z3, None))[1] or Z3, dp[i]) for i in range(k_end + 1)]
         if not any(any(abs(v) > 1e-3 for v in p) for p in dp):
             poss = [S[i].get(b, (Z3, None))[1] for i in range(k_end + 1)]
-        if not in_legs and b not in PANELS and parts.get(b, {}).get("kind") in ("cloth", "plume"):
+        if not in_legs and b not in PANELS and b not in offset_only and parts.get(b, {}).get("kind") in ("cloth", "plume"):
             rots, poss = _unsink(b, U0, L0, rots, poss)
         write_bone(clip, b, rots, poss)
         if report:
@@ -1277,6 +1286,24 @@ def _on_guard(clip, base):
 
 # wm_seer: the pulled hit's left hoof sank 1.2 px with the reaction played on the guard, though not on the bind pose
 FLOOR_ON_GUARD = TROOP == "wm_seer"
+
+
+def _handover_legs(stun_legs, ready_legs, length, ticks=8.0):
+    """A legs clip of `length` s: the stun legs giving way to the stance legs over `ticks`, as StanceController plays
+    them under the stun shake-off (the spring's driver only, never written to a file)."""
+    n = int(round(length * TPS)) * SUB
+    S, R = clip_samples(stun_legs, n), clip_samples(ready_legs, n)
+    out = {"loop": False, "animation_length": length, "bones": {}}
+    for b in set(stun_legs["bones"]) | set(ready_legs["bones"]):
+        rots, poss = [], []
+        for i in range(n + 1):
+            w = min(1.0, i / (ticks * SUB))
+            rs, ps = S[i].get(b, (Z3, None))
+            rr, pr = R[i].get(b, (Z3, None))
+            rots.append(tuple((1 - w) * x + w * y for x, y in zip(rs, rr)))
+            poss.append(tuple((1 - w) * x + w * y for x, y in zip(ps or Z3, pr or Z3)))
+        write_bone(out, b, rots, poss)
+    return out
 
 
 def floor_lift(doc, upper, legs, margin=0.3, report=True, on_guard=False):
@@ -1406,8 +1433,12 @@ def review_layers(path):
     for up, lg, loop in LAYER_LIFE:
         if up not in A:
             continue
-        if up == "stun_out_upper":         # it plays over the stun legs, which the stun's own pass keys: its upper pieces only
-            life_pass(A[up], json.loads(json.dumps(stun_legs0)), None, name=up, upper_bones=set(A["stun_upper"]["bones"]))
+        if up == "stun_out_upper":         # it plays while the stun legs hand over to the stance (StanceController.STUN_OUT,
+            #                                8 ticks): the spring is driven by that handover. Its upper pieces only: the
+            #                                robe panels belong to the legs clips (scorecard plays the clips together and
+            #                                a bone may be keyed by only one of them), so they move as the stun lap fades
+            life_pass(A[up], _handover_legs(stun_legs0, A["stance_ready_legs"], float(A[up]["animation_length"])), None,
+                      name=up, upper_bones=set(A["stun_upper"]["bones"]))
         else:
             life_pass(A[up], A[lg], loop, name=up,
                       upper_bones=set(A["stance_ready_upper"]["bones"]) if up.startswith("hit_") else ())
