@@ -397,6 +397,9 @@ def format_summary(s):
 # ---------------------------------------------------------------- dry-run, apply, rollback
 
 def _checked(plan, world, plan_dir, manifest):
+    errors = validate(plan, plan_dir)
+    if errors:
+        raise PlanError(errors)
     locks, protect, problems = scope(plan, world, manifest)
     changes = compile_plan(plan, world, plan_dir)
     summary = summarize(plan, world, changes, problems + lock_violations(plan, changes, protect, locks))

@@ -556,6 +556,30 @@ class ManifestTest(unittest.TestCase):
         self.assertTrue(dry_run(json.loads(json.dumps(p)), w, manifest=m)['ok'])
         mf.plan_scope(p, m)
 
+    def test_malformed_plan_gives_plan_error_not_traceback(self):
+        # T04-P2-F1: dry_run/apply validate the plan before scope, so a malformed plan raises PlanError
+        m, w = sample_map(), flat(64)
+        no_locks = plan([{'op': 'set', 'pos': [5, 65, 5], 'block': 'stone'}])
+        del no_locks['locks']
+        no_pass = self.sectioned([{'op': 'set', 'pos': [5, 65, 5], 'block': 'stone'}])
+        del no_pass['pass']
+        no_mode = plan([{'op': 'set', 'pos': [5, 65, 5], 'block': 'stone'}],
+                       locks=[{'id': 'a', 'min': [0, 0, 0], 'max': [9, 99, 9]}])
+        str_lock = plan([{'op': 'set', 'pos': [5, 65, 5], 'block': 'stone'}], locks=['a'])
+        for p in (no_locks, no_pass, no_mode, str_lock):
+            for run in (dry_run, apply):
+                with self.assertRaises(PlanError):
+                    run(p, w, manifest=m)
+
+    def test_unhashable_manifest_ids_rejected(self):
+        # T04-P2-F2: a list or dict id in a section or protect lock is a validation error, not a TypeError
+        bad = sample_map()
+        bad['sections'][0]['id'] = ['a']
+        bad['protect'][0]['id'] = {'a': 1}
+        errors = mf.validate_manifest(bad)
+        self.assertTrue(any('sections[0]' in e and 'id' in e for e in errors))
+        self.assertTrue(any('protect[0]' in e and 'id' in e for e in errors))
+
     def test_section_bounds_are_the_allow_region_and_cut_plan_locks(self):
         m, w = sample_map(), flat(64)
         ok = self.sectioned([{'op': 'set', 'pos': [5, 65, 5], 'block': 'stone'}])

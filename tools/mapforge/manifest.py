@@ -64,7 +64,8 @@ def validate_manifest(m):
         sid = s.get('id')
         if not isinstance(sid, str) or not sid or sid in seen or not all(c.isalnum() or c in '-_' for c in sid):
             errors.append(f'{where}: id must be a unique string of letters, digits, - and _')
-        seen.add(sid)
+        if isinstance(sid, str):
+            seen.add(sid)
         b = s.get('bounds')
         if not isinstance(b, dict) or not _box_ok(b):
             errors.append(f'{where} ({sid}): bounds must be a min/max box')
@@ -98,7 +99,8 @@ def validate_manifest(m):
             continue
         if not isinstance(lock.get('id'), str) or lock['id'] in ids:
             errors.append(f'{where}: id must be a unique string')
-        ids.add(lock.get('id'))
+        if isinstance(lock.get('id'), str):
+            ids.add(lock['id'])
         if lock.get('kind') not in PROTECT_KINDS:
             errors.append(f'{where}: kind must be one of {", ".join(PROTECT_KINDS)}')
         if not isinstance(lock.get('reason'), str) or not lock['reason'].strip():
