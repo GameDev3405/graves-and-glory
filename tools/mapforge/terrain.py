@@ -95,6 +95,12 @@ def validate_helper(where, op, errors):
     for key in ('only', 'replace', 'near'):
         if key in op and (not isinstance(op[key], list) or not op[key] or not all(isinstance(s, str) for s in op[key])):
             errors.append(f'{where}: {key} must be a non-empty list of block names')
+        else:
+            for s in op.get(key, []):
+                try:
+                    normalize(s)
+                except ValueError as e:
+                    errors.append(f'{where}: {key}: {e}')
     for key in ('clamp', 'scan'):
         if key in op and not (isinstance(op[key], list) and len(op[key]) == 2 and all(_int(c) for c in op[key])
                               and op[key][0] <= op[key][1]):

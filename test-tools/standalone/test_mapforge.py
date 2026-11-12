@@ -297,6 +297,16 @@ class TerrainHelperTest(unittest.TestCase):
         sunk = {'op': 'noise', 'min': [0, 0], 'max': [3, 3], 'amplitude': 1, 'scale': 4, 'offset': -0.25}
         self.assertEqual(validate(plan([sunk])), [], 'a negative noise offset is a valid bias')
 
+    def test_bad_block_names_in_lists_fail_validate(self):
+        for key in ('only', 'replace', 'near'):
+            op = {'op': 'breakup', 'min': [0, 0], 'max': [3, 3], 'replace': ['grass_block'], 'mix': 'gravel',
+                  'near': ['water'], 'width': 2}
+            op[key] = ['Grass Block']
+            if key == 'only':
+                op = {'op': 'erode', 'min': [0, 0], 'max': [3, 3], 'only': ['Grass Block']}
+            errors = validate(plan([op]))
+            self.assertTrue(any('Grass Block' in e for e in errors), (key, errors))
+
     def test_noise_is_seeded_clipped_clamped_and_fades_at_its_edge(self):
         w = ground()
         op = {'op': 'noise', 'min': [2, 2], 'max': [21, 21], 'amplitude': 4, 'scale': 8, 'octaves': 3, 'seed': 7,
