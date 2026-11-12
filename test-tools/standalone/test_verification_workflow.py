@@ -13,6 +13,16 @@ class EvidenceChecks(unittest.TestCase):
             p.write_text('pass mod-loads\npass p1-combat-suite\n')
             verify.require_game_evidence(p)
 
+    def test_game_guard_ignores_clients_of_nested_worktrees(self):
+        root='C:\\Users\\k\\bannerbound'
+        ours=lambda cmd: verify.client_in_checkout(cmd,root)
+        self.assertTrue(ours('java --gameDir C:\\Users\\k\\bannerbound\\run'))
+        self.assertTrue(ours('java -cp "C:/Users/k/bannerbound"'))
+        self.assertFalse(ours('java --gameDir C:\\Users\\k\\bannerbound-mainmerge\\run'))
+        self.assertFalse(ours('java --gameDir C:\\Users\\k\\bannerbound\\.claude\\worktrees\\lane\\run'))
+        self.assertTrue(verify.client_in_checkout('java --gameDir C:\\Users\\k\\bannerbound\\.claude\\worktrees\\lane\\run',
+                                                  root+'\\.claude\\worktrees\\lane'))
+
     def test_missing_graph_is_advisory_only_for_graph_query(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertIsNone(graph_hook.advisory({'cwd':tmp,'tool_input':{'command':'rg Campaign src'}}))

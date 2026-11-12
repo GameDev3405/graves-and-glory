@@ -16,6 +16,14 @@ def java_home():
         java=p/'bin'/('java.exe' if os.name=='nt' else 'java')
         if java.exists() and 'version "17.' in subprocess.run([str(java),'-version'],capture_output=True,text=True).stderr: return p
     raise RuntimeError('Java 17 JDK required; set JAVA_HOME')
+def client_in_checkout(cmd,root):
+    root=str(root).replace(chr(92),'/').lower().rstrip('/')
+    cmd=cmd.replace(chr(92),'/').lower(); i=cmd.find(root)
+    while i>=0:
+        # <root>/.claude/worktrees/<lane> is another checkout, not this one.
+        if (i+len(root)==len(cmd) or cmd[i+len(root)] in '/;" ') and not cmd.startswith('/.claude/worktrees/',i+len(root)): return True
+        i=cmd.find(root,i+1)
+    return False
 def game_guard():
     if os.name!='nt': raise RuntimeError('Game process guard currently supports Windows only')
     # Windows PowerShell 5.1 ships with Windows; pwsh is an optional install. Both run the same CIM query.
@@ -25,14 +33,7 @@ def game_guard():
     rows=json.loads(data or b'[]'); rows=rows if isinstance(rows,list) else [rows]
     clients=[p for p in rows if any(s in (p.get('CommandLine') or '') for s in ['devlaunchinjector','net.minecraft.client','--gameDir'])]
     # WORKFLOW.md forbids compiling in a checkout with a running client; clients of other checkouts don't block this one.
-    root=str(ROOT).replace(chr(92),'/').lower().rstrip('/')
-    def ours(cmd):
-        cmd=cmd.replace(chr(92),'/').lower(); i=cmd.find(root)
-        while i>=0:
-            if i+len(root)==len(cmd) or cmd[i+len(root)] in '/;" ': return True
-            i=cmd.find(root,i+1)
-        return False
-    clients=[p for p in clients if ours(p.get('CommandLine') or '')]
+    clients=[p for p in clients if client_in_checkout(p.get('CommandLine') or '',ROOT)]
     if clients: raise RuntimeError('Minecraft client already running in this checkout: defer compilation/game work; do not terminate it')
 def run(args):
     stamp=datetime.datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+str(os.getpid())
