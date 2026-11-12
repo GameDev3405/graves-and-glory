@@ -1,6 +1,6 @@
 # Match ending: design
 
-Date: 2026-11-12. Author: ending lead (Opus 5.5 high), branch `ui/match-ending` from `main` 3f732f0e. Status: **awaiting Kort's approval**. Kort's answers (2026-11-12) are marked "Kort"; everything marked "my call" is mine and open to correction.
+Date: 2026-11-12. Author: ending lead (Opus 5.5 high), branch `ui/match-ending` from `main` 3f732f0e. Status: **approved by Kort 2026-11-12** ("Build it as shown", after the mockups at https://claude.ai/artifact/VALkSWBGzHNCwVPnxzjKwE). Kort's answers (2026-11-12) are marked "Kort"; everything marked "my call" is mine and open to correction.
 
 Supersedes section 2 (Match end, F1) of `2026-11-10-match-flow-polish-design.md` (8 s "Ended" + 4 s best-commander orbit + results in camp). Kort's 2026-11-12 answers replace it: a freeze, a top-three podium, a stats screen and a rewards count-up. That spec's other sections (room page, Play again, surrender, leave) are untouched.
 
