@@ -102,3 +102,17 @@ Kort's approved archer direct shot (round 3, skill lane, 26-tick clock) now runs
   - Every tick seen in front, side and three-quarter on the corrected quiver geo.
 - **In game.** Runs `archer-port1` and `archer-port1b` each give 23 `[p1] p1-` lines, but not a pass: 7 and 6 checks are false. The false checks change from run to run: attack-plays, sync-walk, footwork, walk, frames and hit. All of them are on the volley, the walk and the hits, which this port does not touch. The lane failed 4 of the same checks before any change (`archer-geo1b`). The archer's duel plays the volley, so the harness never shows `attack_direct` in game.
 - **Video.** `status/booth-videos/archer_direct_port.mp4`: the approved clip on the left, re-timed onto the port's clock so the two play in step, and the port on the right.
+
+## Batch review 2026-11-11
+
+Bow-family batch review on `anim/review-bow` (Opus lane, two fix rounds). Timing unchanged: `ATTACK_TICKS` 32, `FULL_AT` 16.5, `IMPACT` 22; `attack_direct` and `attack_volley` keep `full` 0.825 and `impact` 1.1.
+
+- **Rows before -> after** (full focus check, `work/review/archer.{before,after}.json`): clips with a FAIL 13 -> 6, FAIL rows 22 -> 10, WARN rows 51 -> 51 (no new WARN).
+- **Changed clips (25, spliced; every other clip byte-identical to HEAD).**
+  - `attack_volley` (+legs): rebuilt on the r3 direct-shot engine (`direct_shot.clips(volley=True)`), so the fist no longer passes through the face and hood at tick 8 and the 126 deg forearm pop at the loose is gone. The archer's `attack_direct` pair is byte-identical to before.
+  - `stance_aim_upper`, `stance_aim_up_upper`, `stance_aim_down_upper`: aim from the r3 full-draw frame; the chest takes 85% of the pitch (`AIM_GAIN_INGAME`), so the string fist stays clear of the face on aim-up.
+  - All eight `hit_light/medium_*` pairs and `hit_block` (+legs): legs now come from the knight's absolute hit legs and the gear (quiver, skirts, pouch, tippet) swings through `fullbody.soft_motion`, low-passed so nothing pops. This clears the `secondary_life` FAILs.
+- **Remaining FAIL rows (outside this builder).** `hit_pulled`, `stun_upper`, `stun_out_upper`, `hit_knockback` and `charge_run_upper` are merged by the common modules (`reactions.py`, `charge.py`), which this lane may not edit: foot under the ground 1.6-1.8 px, `secondary_life` still gear, knockback hood into quiver 2.04 at t3. `run_upper` skirt into skirt 1.97 at t2 (gait, pre-existing, limit 1.9).
+- **Proposed exemption.** archer, `run_upper` / `charge_run_upper`, `armour_clip`, 1.97, `jerkin_t3_skirt` into `left_skirt_t3`: two cloth skirt layers overlapping at the stride, not visible at game size.
+- **Tests.** Scorecard exit 0 (35 clips, 0 fail). Unit tests OK: `test_scorecard`, `test_focus_check` (22), `test_render_geo`, all six `test_booth*`. Booth config valid, every listed clip present.
+- **Drift not shipped.** A full rebuild also changes the deaths (weapon_t3 channel) and `hit_medium_front` arm keys through common-module commits after 151790bd; only the clips above were spliced, so that drift is not in this commit.

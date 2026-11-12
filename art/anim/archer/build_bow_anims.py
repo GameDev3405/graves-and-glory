@@ -645,13 +645,19 @@ def attack_clips():
         clip["timeline"] = {K.fmt_t(FULL_AT / TPS): "full", K.fmt_t(IMPACT / TPS): "impact"}
         out["attack_" + name] = clip
         out["attack_%s_legs" % name] = K.bake(legs, ATTACK_TICKS, loop=False)
-    if TROOP == "archer":
+    if TROOP in INGAME_TROOPS:
         # Kort approved the archer's own direct shot (round 3, 2026-11-11): art/anim/archer/direct_shot.py, on this builder's
-        # clock. The shot above still runs for the archer: its full-draw frame is the aim stances' source (_SHOT_FULL).
+        # clock. The shot above still runs: its full-draw frame is the aim stances' source (_SHOT_FULL).
+        # Batch review 2026-11-12: every in-game bow troop shoots it, fitted to its own quiver and head gear (direct_shot.FIT),
+        # and the volley is the same shot lofted. The archer's attack_direct is unchanged.
         sys.modules.setdefault("build_bow_anims", sys.modules[__name__])   # one builder module, run as a script or imported
         sys.path.insert(0, str(HERE))
         import direct_shot
         out.update(direct_shot.clips())
+        out.update(direct_shot.clips(volley=True))
+        # Batch review 2026-11-12: the aim stances hold THIS shot's full draw (stance_aim_up_upper put the fist 2.6 px into the
+        # face: the old shot's anchor sat inside the head; the approved shot's is beside the ear, outside the hood).
+        _SHOT_FULL = direct_shot.FULL_FRAME
     return out
 
 
@@ -885,6 +891,7 @@ AIM_GAIN = (0.35, 0.65, -0.2)   # how much of the aim pitch the chest, the arms 
 # per troop: the held aim's character on the shared shot's full draw, a chest offset (the whole draw rides it, so the nock stays on
 # the anchor) and the tremble of the held draw (degrees): the archer textbook square, the longbowman leaning back into the heavy
 # stave and straining, the bone archer canted on its spine and dead still, the hunter hunched over the arrow and shaking
+AIM_GAIN_INGAME = (0.85, 0.15, 0.15)   # the in-game bow troops: the chest takes the pitch, arms and head move with it
 AIM_CHAR = {"archer": ((0.0, 0.0, 0.0), 0.25), "longbow": ((-4.0, 0.0, 0.0), 0.45),
             "bonebow": ((0.0, 0.0, -5.0), 0.05), "wm_hunter": ((5.0, 0.0, 0.0), 0.6)}
 _SHOT_FULL = None               # the direct shot's full-draw sample, set by attack_clips
@@ -957,7 +964,10 @@ def aim_upper(deg):
     sys.path.append(str(HERE.parent / "common"))
     import stances as S   # art/anim/common, read only: its pitch about the parent's lateral axis
     base = _SHOT_FULL if _SHOT_FULL is not None else _full_draw()
-    gt, ga, gh = AIM_GAIN
+    # Batch review 2026-11-12: a bowman aims up and down from the waist, the head, the bow arm and the drawing hand held
+    # together as one frame (the anchor stays at the ear). With the arms taking 0.65 of the pitch and the head -0.2, aiming up
+    # drove the drawing fist 2.6 px into the face and the hood (stance_aim_up_upper, all four troops).
+    gt, ga, gh = AIM_GAIN_INGAME if TROOP in INGAME_TROOPS else AIM_GAIN
     out = []
     n = 40 * SUB
     for i in range(n + 1):
@@ -1109,9 +1119,19 @@ def v2_hit_clips():
                 s.update({x: b[x] for x in ARM_BONES["left"]})
                 s.update({x: r[x] for x in ARM_BONES["right"]})
                 samples.append(s)
-            out["hit_%s_%s" % (weight, d)] = K.bake(samples, ticks, loop=False)
+            if TROOP in INGAME_TROOPS:
+                upper, legs = _soft_hit(samples, _hit_legs_abs(weight, d, ticks))
+                out["hit_%s_%s" % (weight, d)] = K.bake(upper, ticks, loop=False)
+                out["hit_%s_%s_legs" % (weight, d)] = K.bake(legs, ticks, loop=False)
+                out["hit_%s_%s" % (weight, d)]["_own_bones"] = out["hit_%s_%s_legs" % (weight, d)]["_own_bones"] = True
+            else:
+                out["hit_%s_%s" % (weight, d)] = K.bake(samples, ticks, loop=False)
     # no shield to block with; if the server ever reports a block, it reads as a light flinch from the front, legs included
     out["hit_block"] = out["hit_light_front"]
+    if TROOP in INGAME_TROOPS:          # copies: only_rig takes each clip's own-bones flag off as it goes
+        out["hit_block"] = json.loads(json.dumps(out["hit_light_front"]))
+        out["hit_block_legs"] = json.loads(json.dumps(out["hit_light_front_legs"]))
+        return out
     saved = K.HIT_LEGS
     K.HIT_LEGS = V2_HIT_LEGS     # K.hit_legs_clips reads the module global; restored at once (nothing else reads it here)
     try:
@@ -1121,6 +1141,48 @@ def v2_hit_clips():
     legs["hit_block_legs"] = legs["hit_light_front_legs"]
     out.update(legs)
     return out
+
+
+def _hit_legs_abs(weight, d, ticks):
+    """The absolute leg samples K.hit_legs_clips() offsets and bakes for hit_<weight>_<d>_legs (with V2_HIT_LEGS)."""
+    spec = V2_HIT_LEGS[d]
+    if weight == "medium":
+        return K.attack_legs(spec, ticks=ticks)
+    r_rot, r_pos = K.READY_HIPS
+    k2 = spec["hips"][1]
+
+    def mid(k):
+        return (tuple(a + k * (b - a) for a, b in zip(r_rot, k2[1])), tuple(a + k * (b - a) for a, b in zip(r_pos, k2[2])))
+    return K.attack_legs({"hips": [(0, *K.READY_HIPS), (1.5, *mid(0.45)), (4, *mid(-0.08)), (ticks, *K.READY_HIPS)], "steps": []},
+                         ticks=ticks)
+
+
+def _soft_hit(upper, legs_abs):
+    """Batch review 2026-11-12 (focus check secondary_life on every hit of the four in-game bow troops: the hood cape, quiver,
+    skirts, pouch and pauldrons stood still while the body was struck): the hit's samples pass through
+    fullbody.soft_motion, the way the approved shot's do. The upper body is the hit's additive delta and the legs are the
+    stagger's absolute footing, so each piece swings with the blow; it fades in and out, so the hit is still zero at both
+    ends. The legs are then offset from the ready footing as before; the pieces' swings are added as they are."""
+    sys.path.insert(0, str(HERE.parent / "common"))
+    import fullbody
+    core, core_up = set(legs_abs[0]), set(upper[0])
+    upper, legs = fullbody.soft_motion([dict(x) for x in upper], [dict(x) for x in legs_abs])
+    off = K.legs_offset([{b: v for b, v in x.items() if b in core} for x in legs])
+    for o, x in zip(off, legs):
+        o.update({b: v for b, v in x.items() if b not in core})
+    # A blow lands in one or two ticks: the springs answer that jerk in a sample or two (pop up to 31 degrees on the
+    # hunter's feathers). Each piece's swing is low-passed over a tick, its ends kept at zero.
+    for seq, own in ((upper, core_up), (off, core)):
+        for b in {b for x in seq for b in x} - own:
+            rots = np.array([x[b][0] for x in seq], dtype=float)
+            for _ in range(2):
+                pad = np.vstack([rots[:1], rots[:1], rots, rots[-1:], rots[-1:]])
+                sm = (pad[:-4] + 2 * pad[1:-3] + 3 * pad[2:-2] + 2 * pad[3:-1] + pad[4:]) / 9.0
+                sm[0], sm[-1] = rots[0], rots[-1]
+                rots = sm
+            for x, r in zip(seq, rots):
+                x[b] = (tuple(float(v) for v in r), x[b][1])
+    return upper, off
 
 
 # ------------------------------------------------------------------------------------------------
@@ -1250,9 +1312,12 @@ def only_rig(anims):
     builders key a cape)."""
     gear_map = BT["gear"]
     for clip in anims.values():
+        # direct_shot's clips (batch review 2026-11-12) are keyed on this troop's own bones already (soft_motion reads them
+        # from the geo): only the bones the rig lacks go. Remapping them dropped the Warmaw hunter's real quiver.
+        own = clip.pop("_own_bones", False)
         bones = {}
         for b, ch in clip["bones"].items():
-            b = gear_map.get(b, b)
+            b = b if own else gear_map.get(b, b)
             if b is not None and b in GEO_BONES:
                 bones[b] = ch
         clip["bones"] = bones
