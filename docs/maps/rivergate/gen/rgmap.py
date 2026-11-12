@@ -85,6 +85,7 @@ def pave(ax, az):
     if (az <= 129 and 127 <= az and ax <= 90) or (85 <= ax <= 86 and 99 <= az <= 129) or (51 <= ax <= 55 and 99 <= az <= 126) or (ax <= 3 and 114 <= az <= 126): return 'lane'
     if path(ax, az) <= 0: return 'path'
     if (23 <= ax <= 46 or 60 <= ax <= 85) and 60 <= az <= 72: return 'yard'
+    if 60 <= ax <= 86 and 36 <= az <= 59 and fbm(SEED, ax, az, 9) > -0.12: return 'yard'
     return None
 
 
@@ -125,6 +126,11 @@ def hedge(ax, az):
     return None
 
 
+def blend(x, z, r, table):
+    """like mix, but in drifts: neighbouring cells mostly agree, so made ground does not look like noise"""
+    return mix(max(0.0, min(0.999, 0.5 + 0.95 * fbm(SEED, x + 211, z - 97, 7) + 0.22 * (r - 0.5))), table)
+
+
 def mix(r, table):
     t = sum(w for _, w in table) * r
     for b, w in table:
@@ -147,7 +153,7 @@ def ring(x, z, r1):
     """the capture ring let into the paving, and a compass at its centre; None off the pattern"""
     for px, pz in POINTS.values():
         dd = math.hypot(x - px, z - pz)
-        if 15.0 <= dd < 17.0: return 'smooth_stone' if dd < 16 else ('polished_andesite' if (x + z) % 5 else 'chiseled_stone_bricks')
+        if 14.0 <= dd < 17.0: return 'smooth_stone' if dd < 16 else ('polished_andesite' if (x + z) % 5 else 'chiseled_stone_bricks')
         if 23.0 <= dd < 24.0 and (px, pz) == (0, 0): return 'polished_andesite' if (x + z) % 7 else 'chiseled_stone_bricks'
         if dd < 3.3 or (dd < 6.5 and (x == px or z == pz)): return 'chiseled_stone_bricks' if dd < 1 else ('smooth_stone' if dd >= 3.3 else 'polished_andesite')
     return None
@@ -183,10 +189,10 @@ def column(x, z):
         return 64, ring(x, z, r1) or kerb or mix(r1, PLAZA), under, top
     if k == 'quay': return 64, mix(r1, QUAY), under, top
     if k == 'street': return 64, mix(r1, STREET), under, top
-    if k == 'ford': return 64, mix(r1, FORD), under, top
+    if k == 'ford': return 64, blend(x, z, r1, FORD), under, top
     if k == 'lane': return 64, mix(r1, LANE), under, top
-    if k == 'yard': return 64, mix(r1, YARD), under, top
-    if k == 'path': return 64, ('dirt_path' if path(ax, az) < -0.8 or r1 < 0.5 else ('coarse_dirt' if r1 < 0.8 else 'cobblestone')), under, top
+    if k == 'yard': return 64, blend(x, z, r1, YARD), under, top
+    if k == 'path': return 64, ('dirt_path' if path(ax, az) < -0.8 or r1 < 0.5 else 'coarse_dirt'), under, top
     if hold(ax, az): return 64, 'grass_block', 'dirt', (['grass'] if r2 < 0.1 else [])
     g = garden(ax, az)
     if g == 'wall': return 64, 'coarse_dirt', 'dirt', ['mossy_cobblestone' if r1 < 0.3 else 'cobblestone', 'cobblestone_wall' if r2 < 0.85 else 'mossy_cobblestone_wall']
@@ -235,6 +241,8 @@ def column(x, z):
             s = 'grass_block' if r1 < 0.75 else ('coarse_dirt' if r1 < 0.9 else 'podzol')
             return 64, s, 'dirt', (['grass'] if r2 < 0.05 and s == 'grass_block' else [])
     town = ax <= 96 and az <= 130
+    if ax <= 120 and az <= 132 and r1 < 0.5 and any(pave(ax + i, az + j) in ('street', 'quay', 'plaza', 'ford') for i, j in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+        return 64, ('gravel' if r2 < 0.4 else ('coarse_dirt' if r2 < 0.75 else 'mossy_cobblestone')), 'dirt', top      # a ragged verge
     meadow = az <= 34 and ax > 113
     n = fbm(SEED, x + 500, z - 300, 17)
     s = 'grass_block' if n < 0.32 or meadow else ('coarse_dirt' if r1 < 0.45 else ('grass_block' if r1 < 0.8 else 'rooted_dirt'))
@@ -256,7 +264,7 @@ HOUSES = [(-84, -99, 's', ('s2a', 's2b', 's2b', 's2a')), (-73, -99, 's', ('s1a',
           (-66, -41, 's', ('s1c', 's1a', 's1a', 's1c')), (-46, -54, 's', ('s2a', 's2c', 's2c', 's2a')),
           (-93, -19, 's', ('s5a', 's5b', 's5b', 's5a')), (-101, -19, 's', ('s1a', 's1c', 's1c', 's1a')),
           (-112, -103, 's', (None, 's2c', 's2c', None)),
-          (-93, -99, 's', ('s1b', 's1a', 's1a', 's1b')), (-97, -84, 'n', ('s2b', 's2c', 's2c', 's2b')), (-77, -35, 's', ('s2a', 's2b', 's2b', 's2a'))]
+          (-93, -99, 's', ('s1b', 's1a', 's1a', 's1b')), (-85, -48, 's', ('s1a', 's1c', 's1c', 's1a')), (-97, -84, 'n', ('s2b', 's2c', 's2c', 's2b')), (-77, -35, 's', ('s2a', 's2b', 's2b', 's2a'))]
 
 
 def house_cells(name, x0, zf, face, seed):
@@ -278,6 +286,42 @@ def stall(colour, k=0):
     for x in (1, 2, 3): c[(x, 65, 0)] = ('barrel[facing=up]', 'spruce_slab[type=top]', 'hay_block[axis=x]', 'composter[level=6]')[(x + k) % 4]
     c[(2, 66, 2)] = 'lantern[hanging=true]'
     return c
+
+
+def shed(k=0):
+    """a lean-to shed, 5 x 3, open to the south"""
+    c = {}
+    for x in range(5):
+        for z in range(3):
+            if x in (0, 4) or z == 0:
+                for y in (65, 66): c[(x, y, z)] = 'spruce_planks' if not (x in (0, 4) and z == 2) else 'spruce_fence'
+            c[(x, 67, z)] = 'spruce_slab[type=%s]' % ('top' if z == 0 else 'bottom')
+    for x, blk in ((1, 'barrel[facing=up]'), (2, 'hay_block[axis=x]'), (3, 'composter[level=4]')): c[(x, 65, 1)] = blk if (x + k) % 3 else 'chest[facing=south]'
+    return c
+
+
+def pavilion():
+    """the butter market west of the ring: the hall's mass in open timber, x -42..-21, z -6..5, with the market cross under it"""
+    b = Build(seed=91)
+    for x in (-42, -35, -28, -21):
+        for z in (-6, 5):
+            b.set(x, 65, z, 'stone_bricks')
+            for y in range(66, 70): b.set(x, y, z, 'spruce_log[axis=y]')
+            for dx, f in ((-1, 'east'), (1, 'west')):
+                if -42 <= x + dx <= -21: b.set(x + dx, 69, z, 'spruce_stairs[facing=%s,half=top,shape=straight]' % f)
+    for x in range(-42, -20):
+        for z in (-6, 5): b.set(x, 70, z, 'stripped_spruce_log[axis=x]')
+    for x in (-42, -35, -28, -21):
+        for z in range(-5, 5): b.set(x, 70, z, 'stripped_spruce_log[axis=z]')
+    b.gable_x(-42, -21, -6, 5, 71, 'spruce_stairs', 'spruce_slab', fill=[('spruce_planks', 1)])
+    for x in (-38, -31, -25):
+        b.set(x, 69, -1, 'chain[axis=y]'); b.set(x, 68, -1, 'lantern[hanging=true]')
+    for x, z, blk in ((-40, -3, 'barrel[facing=up]'), (-39, -3, 'spruce_slab[type=top]'), (-38, -3, 'spruce_slab[type=top]'), (-37, -3, 'hay_block[axis=x]'),
+                      (-26, 2, 'barrel[facing=up]'), (-25, 2, 'spruce_slab[type=top]'), (-24, 2, 'spruce_slab[type=top]'), (-23, 2, 'composter[level=6]'),
+                      (-39, 2, 'spruce_slab[type=top]'), (-38, 2, 'barrel[facing=up]'), (-25, -3, 'spruce_slab[type=top]'), (-24, -3, 'barrel[facing=up]')):
+        b.set(x, 65, z, blk)
+    b.set(-40, 66, -3, 'barrel[facing=up]')
+    return dict(b.c)
 
 
 def well():
@@ -315,7 +359,11 @@ def quarter(i):
     v = i in (1, 2)
     xf.put(c, stall('red' if not v else 'blue', 0), -30, -16); xf.put(c, stall('yellow' if not v else 'green', 1), -40, -12)
     xf.put(c, stall('green' if not v else 'red', 2), -19, -67)
-    xf.put(c, well(), -14, -63)
+    xf.put(c, well(), -14, -63); xf.put(c, well(), -18, -109)
+    for k, (x, z) in enumerate(((-82, -64), (-44, -68), (-31, -65), (-70, -57))): xf.put(c, shed(k + i), x, z)
+    for x, z, y, blk in ((-20, -76, 65, 'cauldron'), (-21, -105, 65, 'barrel[facing=up]'), (-21, -104, 65, 'barrel[facing=up]'), (-21, -105, 66, 'barrel[facing=up]'), (-20, -103, 65, 'hay_block[axis=z]'),
+                         (-16, -70, 65, 'spruce_fence'), (-16, -70, 66, 'lantern[hanging=false]'), (16, -70, 65, 'spruce_fence') if False else (-18, -84, 65, 'composter[level=2]')):
+        c[(x, y, z)] = blk
     xf.put(c, standard(), -15, -15); xf.put(c, standard(), -21, -78)
     # the cart by the bridgehead well, crates on the plaza edge and in the yards
     for x, z, y, blk in ((-9, -66, 65, 'spruce_slab[type=top]'), (-8, -66, 65, 'spruce_slab[type=top]'), (-7, -66, 65, 'spruce_fence'), (-9, -67, 65, 'spruce_trapdoor[facing=north,half=bottom,open=true]'),
@@ -365,10 +413,9 @@ def singles():
     for y in range(66, 71): cross[(-32, y, -1)] = 'stone_brick_wall' if y < 70 else 'chiseled_stone_bricks'
     cross[(-32, 71, -1)] = 'stone_brick_wall'; cross[(-33, 70, -1)] = 'stone_brick_wall'; cross[(-31, 70, -1)] = 'stone_brick_wall'
     for x, z in ((-31, -1), (-32, 0), (-31, 0)): cross[(x, 66, z)] = 'stone_brick_slab[type=bottom]'
-    for k, (x, z) in enumerate(((-42, -8), (-42, 5))): xf.put(cross, stall(('orange', 'cyan')[k], k), x, z)
     for x, z, y, blk in ((-37, 3, 65, 'barrel[facing=up]'), (-37, 4, 65, 'barrel[facing=up]'), (-37, 3, 66, 'barrel[facing=up]'), (-36, -5, 65, 'hay_block[axis=x]'), (-36, -6, 65, 'composter[level=4]')):
         cross[(x, y, z)] = blk
-    out.append(cross)
+    out.append(pavilion()); out.append(cross)
     return out
 
 

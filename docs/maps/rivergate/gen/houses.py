@@ -68,7 +68,8 @@ def house(w, d, floors=2, style='slate', ridge=None, shop=False, arch=False, hoi
             b.set(w // 2, y0 + 1, 0, 'air')
         zs = d // 2 if (d // 2) % 4 else d // 2 + 1               # a side window on each floor (hidden where houses share a wall)
         for x in (0, w - 1):
-            if k: b.set(x, y0 + 1, zs, 'air')
+            if k:
+                for z in (zs, zs - 1 if (zs - 1) % 4 else zs + 1): b.set(x, y0 + 1, z, 'iron_bars[north=true,south=true]')
             elif not hoist and not (arch and x == w - 1): b.set(x, y0 + 1, zs, 'iron_bars[north=true,south=true]')
         top = y0 + 3
     # arch passage through the ground floor
@@ -92,7 +93,14 @@ def house(w, d, floors=2, style='slate', ridge=None, shop=False, arch=False, hoi
             for y in range(top, top + rise):
                 if b.get(w // 2, y, z) == st['infill']: b.set(w // 2, y, z, post(st['post']))
             if b.get(w // 2 - 1, top + 1, z) == st['infill'] and floors < 3: b.set(w // 2 - 1, top + 1, z, 'air')
-    else:                                                  # a dormer to the street
+    else:                                                  # framed gable ends, a dormer to the street
+        for x in (0, w - 1):
+            for z in range(d + 1):
+                if b.get(x, top, z) == st['infill']: b.set(x, top, z, st['beam'] + '[axis=z]')
+            for y in range(top + 1, top + rise + 1):
+                if b.get(x, y, d // 2) == st['infill']: b.set(x, y, d // 2, post(st['post']))
+            for z in (d // 2 - 2, d // 2 + 2):
+                if b.get(x, top + 1, z) == st['infill']: b.set(x, top + 1, z, 'iron_bars[north=true,south=true]')
         cx = w // 2
         for dx in (-1, 0, 1):
             b.set(cx + dx, top + 2, d - 1, 'air' if dx == 0 else post(st['post']))
