@@ -18,7 +18,8 @@ import java.util.*;
  * barracks with gold to spend; the lectern's screen opens on its barracks page, and every press goes through Mouse.onMouseButton at the centre of
  * the widget, as a player's click does: a troop row picks the troop, Disband removes one, Recruit queues one, Cancel training empties the queue.
  * The page's boxes are checked to lie inside the window and apart at 1920x1080, 854x480 and 2560x1440, with shots of the overview, a troop
- * picked and a training queue at each size in <run>/command-ui/shots. The suite is cmdui.BarracksSuite (GRAVES_COMMAND_UI_CHECKS=Barracks).
+ * picked and a training queue at each size in <run>/command-ui/shots. Enter held on the picked troop (a press, two repeats, the release) recruits once
+ * (Kort, C12-P3-F2b: one per press). The suite is cmdui.BarracksSuite (GRAVES_COMMAND_UI_CHECKS=Barracks).
  */
 public class BarracksUiChecks implements CommandUiChecks.Suite {
     static final int[][] SIZES = {{1920, 1080}, {854, 480}, {2560, 1440}};
@@ -28,7 +29,7 @@ public class BarracksUiChecks implements CommandUiChecks.Suite {
     int[] initialSize;
     final List<String> shotLog = new ArrayList<>(), fitFails = new ArrayList<>();
     final Map<String, String> results = new LinkedHashMap<>();
-    boolean openOk, pickOk, disbandOk; int recruitOk, cancelOk, fitsChecked;
+    boolean openOk, pickOk, disbandOk, enterOnceOk; int recruitOk, cancelOk, fitsChecked;
     int pickWant = -1, rosterBefore, queuedBefore, goldBefore;
     String openInfo = "";
 
@@ -59,6 +60,7 @@ public class BarracksUiChecks implements CommandUiChecks.Suite {
             CommandUiChecks.report("cu-barracks-row-click", pickOk, results.getOrDefault("pick", "not reached"));
             CommandUiChecks.report("cu-barracks-disband-click", disbandOk, results.getOrDefault("disband", "not reached"));
             CommandUiChecks.report("cu-barracks-recruit-click", recruitOk == 3, recruitOk + " of 3 sizes queued by clicking Recruit: " + results.getOrDefault("recruit", "not reached"));
+            CommandUiChecks.report("cu-barracks-enter-once", enterOnceOk, results.getOrDefault("enter", "not reached"));
             CommandUiChecks.report("cu-barracks-cancel-click", cancelOk == 3, cancelOk + " of 3 sizes emptied the queue by clicking Cancel training: " + results.getOrDefault("cancel", "not reached"));
             CommandUiChecks.report("cu-barracks-fits", fitFails.isEmpty() && fitsChecked == 3, fitsChecked + " sizes checked: " + (fitFails.isEmpty() ? "every row, plate and rail plaque inside the window, the plates apart and off the letter and the roll" : String.join("; ", fitFails)) + "; shots: " + String.join(", ", shotLog));
             c.setScreen(null);
@@ -133,7 +135,29 @@ public class BarracksUiChecks implements CommandUiChecks.Suite {
             if (ok) cancelOk++;
             results.merge("cancel", size + ": queued " + GravesAndGloryClient.queued + ", gold " + goldBefore + " -> " + GravesAndGloryClient.gold, (a, b) -> a + "; " + b);
         }
+        // Enter held on the picked troop (the first size only): a press, two GLFW repeats, the release; one recruit per press (C12-P3-F2b)
+        if (k == 0 && t == 116) enterOnce(screen(c));
         if (t == 120) c.setScreen(null);
+    }
+
+    /** Holds Enter on the barracks as Minecraft hands it to a screen (keyPressed for the press and each repeat, keyReleased at the end) and counts
+     *  the recruit commands. The picked troop's train action is swapped for a counter, so nothing reaches the server and the count is exact. */
+    void enterOnce(RecruitmentScreen s) {
+        if (s == null || s.selected < 0) { results.put("enter", "no barracks page with a troop picked"); return; }
+        int at = -1; for (int i = 0; i < s.controls.size(); i++) if (s.controls.get(i).index() == s.selected) at = i;
+        if (at < 0) { results.put("enter", "no controls for " + Spec.TROOPS[s.selected].name()); return; }
+        var real = s.controls.get(at); int[] sends = {0};
+        var counter = net.minecraft.client.gui.widget.ButtonWidget.builder(real.train().getMessage(), b -> sends[0]++).build();
+        s.controls.set(at, new RecruitmentScreen.Controls(real.index(), counter, real.disband()));
+        s.setFocused(null); counter.active = true; s.recruit.active = true; s.held.clear();
+        int key = GLFW.GLFW_KEY_ENTER, scan = GLFW.glfwGetKeyScancode(key);
+        s.keyPressed(key, scan, 0); int afterPress = sends[0];
+        s.keyPressed(key, scan, 0); s.keyPressed(key, scan, 0); // two repeats (GLFW_REPEAT reaches Screen.keyPressed like a press)
+        Set<Integer> heldBefore = new HashSet<>(s.held);
+        s.keyReleased(key, scan, 0);
+        s.controls.set(at, real);
+        enterOnceOk = afterPress == 1 && sends[0] == 1 && s.held.isEmpty();
+        results.put("enter", "Enter held on " + Spec.TROOPS[s.selected].name() + " (a press, two repeats, the release) sent " + sends[0] + " recruit command(s), " + afterPress + " on the press; held before the release " + heldBefore + ", after " + s.held);
     }
 
     /** Every widget inside the window; the three plates apart and off the letter; every row inside the roll. */
