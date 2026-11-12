@@ -68,7 +68,10 @@ def validate(d):
     seen = set()
     names = set()
     palettes = palette_keys()
-    objects = d.get('objects', [])
+    base_y = d.get('baseY')
+    if not (_int(base_y) and -64 <= base_y <= 300):
+        out.append('baseY must be an integer from -64 to 300')
+    objects = d.get('objects')
     if not isinstance(objects, list):
         out.append('objects: not a list')
         objects = []
@@ -76,7 +79,9 @@ def validate(d):
         if not isinstance(o, dict):
             out.append(f'object #{i}: not an object')
             continue
-        oid = o.get('id') if isinstance(o.get('id'), str) else f'object #{i}'
+        if not (isinstance(o.get('id'), str) and o['id']):
+            out.append(f'object #{i}: id must be a non-empty string')
+        oid = o.get('id') if isinstance(o.get('id'), str) and o['id'] else f'object #{i}'
         o = dict(o, id=oid)
         if oid in seen:
             out.append(f'{oid}: duplicate id')

@@ -29,6 +29,35 @@ class DesignTest(unittest.TestCase):
         self.assertEqual(validate(d), [])
         self.assertEqual((d['width'], d['depth'], d['baseY'], d['objects']), (700, 500, 64, []))
 
+    def test_shape_gaps_rejected(self):
+        # T03-F1: a missing or non-string id, a missing objects list or a missing/out-of-world baseY must not validate
+        for bad_id in (None, 7, ''):
+            d = new_design('t', 'T')
+            hill = base(kind='hill', outline=[[0, 0], [10, 0], [10, 10]], height=10, steepness=0.5)
+            if bad_id is not None:
+                hill['id'] = bad_id
+            d['objects'].append(hill)
+            self.assertTrue(any('id' in m for m in validate(d)), bad_id)
+        d = new_design('t', 'T')
+        del d['objects']
+        self.assertTrue(any('objects' in m for m in validate(d)))
+        for y in (None, 40000, 64.5):
+            d = new_design('t', 'T')
+            if y is None:
+                del d['baseY']
+            else:
+                d['baseY'] = y
+            self.assertTrue(any('baseY' in m for m in validate(d)), y)
+
+    def test_merge_refuses_draft_without_ids(self):
+        from mapengine import handoff
+        cur = new_design('t', 'T')
+        for draft in (obj(new_design('t', 'T'), **base(kind='hill', outline=[[0, 0], [10, 0], [10, 10]], height=10,
+                                                         steepness=0.5)),
+                      {k: v for k, v in new_design('t', 'T').items() if k != 'objects'}):
+            with self.assertRaises(handoff.DraftError):
+                handoff.merge(cur, draft)
+
     def test_bad_outlines(self):
         d = new_design('t', 'T')
         d['objects'].append(base(id='hill-1', kind='hill', outline=[[0, 0], [5, 5]], height=10, steepness=0.5))
