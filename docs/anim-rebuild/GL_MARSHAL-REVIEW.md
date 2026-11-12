@@ -44,3 +44,81 @@ The shared v2 and v4 minors recorded in SENTINEL-REVIEW.md apply here too (thrus
 - **Overhead cut:** at t=11-13 the blade passes close behind and beside the crown. No intersection is visible at sheet size; confirm in game.
 - **Hits:** subtle, as on the sentinel.
 - **Not seen in game by eye:** only the harness and the offline reel were run.
+
+# Batch review 2026-11-11
+
+Branch `anim/review-gl_marshal` (from `anim/troop-gl_marshal`). The sentinel's builder commit (89d82e46 on
+`anim/review-sentinel`) is cherry-picked as 86f8dc70; this branch adds the marshal to `ALIVE_TROOPS`, keeps the
+Templar-only low cut fixes (shield fist drop, wrist low-pass) on the sentinel (the marshal's shield into head is 1.28 WARN
+and its wrist runs smooth), tunes the soft pieces for the marshal's rig (`SOFT_TUNE`), and adds a `gl_marshal` entry to
+`art/anim/knight/soft_layers.py`. Knight, sentinel, revenant, tc_raider and gb_hollowking are untouched by construction:
+every change is gated on the troop (`ALIVE`, `TROOP == "sentinel"`, `SOFT_TUNE` and `LAYERS` keyed by troop); their
+exported files and out/ are not in the diff.
+
+**Focus check (raw, every clip over the bind pose):** before 14 of 41 clips with a FAIL (24 rows), after 7 (10 rows); all 10
+are rig differences or bind-pose artefacts (below). Composed the way the game plays it (`work/review/sen_compose.py`):
+k 1.0, 0 FAIL except stun_out_upper whole_body (the composition holds the legs still); k 1.55, only hit_knockback's two
+rows from reactions.py (below); hit_block at its top block scale 1.3, 0 FAIL. Scorecard: exit 0, 0 fails.
+
+**hit_medium_back weapon_t3 under the ground 1.39 px at t2.5** (raw): the clip is additive and the check plays it over the
+bind pose, where the sword hangs straight down from a lowered arm. Played over the ready stance the blade is well clear:
+k 1.0 and k 1.55 both pass the floor (k 1.55 has the shield rim at 0.81 px, WARN, unchanged). It is a tool artefact, so the
+clip was not re-authored; the same holds for its knee -13.01 at t11.5.
+
+## What changed, per clip
+
+- **Every attack, the medium hits and the block** (builder `soft()`): the cape, fur collar, skirt plates and pauldrons swing.
+  For this rig the fur collar (a plume by the kit's defaults) popped 14-24 deg in a sample on the hits, and the cape swung
+  into the hips: the collar is damped (gain 0.6, max 4 deg, zeta 0.8), the cape may not swing inward and is
+  capped at 10 deg. secondary_life FAIL -> pass.
+- **stance_wall (legs):** the hips sit 1.25 px higher: left knee 1.11 px under the ground -> pass.
+- **hit_pulled** (soft_layers): the same fix as the sentinel (sword arm wider of the helm, body lifted off its dragged feet,
+  toes 10 deg less); skirt swing capped at 5 deg, cape at 8 deg, collar damped. As played: blade 2.42 px into the head at t2
+  (3.56 at 1.55) and toe 2.51 px under the ground -> WARN only.
+- **hit_knockback** (soft_layers): hips sink 1.7 px less on the shove and the stumbling steps, the braced toe lifts:
+  right boot 1.61 px under -> WARN.
+- **stun_upper / stun_out_upper** (soft_layers): the pieces swing (collar damped so the loop keeps loop_pos under its limit;
+  the shake-off's cape and skirts at gain 2 so they read).
+
+Length, impact and timeline markers unchanged on every clip.
+
+## Remaining FAIL rows (raw), with reason
+
+| Clip | Row | Reason |
+|---|---|---|
+| stance_wall_upper | floor 1.17 t10, shield | the wall plants the shield rim on purpose (was 2.42; the raised hips lift it) |
+| stun_upper | floor 1.81 t7.75, shield | leans on its planted shield (unchanged) |
+| stun_out_upper | floor 1.72 t0.75, right_boot | additive over the bind pose; over the stun's last pose: pass |
+| hit_pulled | weapon_t3 into right_leg 1.92 t2.25; elbow 162.8 t2.75 | bind-pose artefact; composed k 1 and 1.55: pass |
+| hit_knockback | weapon_t3 into right_leg 1.82 t1.5; elbow 146.58 t8.5 | bind-pose artefact; composed: pass |
+| hit_medium_back | floor 1.39 t2.5 weapon; knee -13.01 t11.5 | bind-pose artefact (above); composed: pass |
+| hit_block | elbow 176.88 t8.25 | bind-pose artefact; composed: pass |
+
+New WARNs that were a pass: stun_upper cape_t3 into left_leg 1.80 t21.5 (the cape now swings), hit_pulled raw weapon_in_body
+(above).
+
+## Proposed exemptions (troop, clip, check, value, reason)
+
+- gl_marshal, stance_wall_upper, floor, 1.17, shield rim planted by design.
+- gl_marshal, stun_upper, floor, 1.81, leans on the planted shield by design.
+- gl_marshal, hit_pulled / hit_knockback / hit_medium_back / hit_block / stun_out_upper: the rows above, additive clip judged
+  over the bind pose (better: focus_check composing additive hits over the ready stance, a tool change).
+
+## Open
+
+- Heavy blows (k 1.55) on hit_knockback: gorget into head 1.91 t3 and left knee_aim 88.8 t5.5 come from
+  art/anim/common/reactions.py (every biped); not changed here.
+- `art/anim/gl_marshal/out/` is not regenerated: the full build of this troop takes over an hour on this machine and ran
+  out of memory before; the changed clips were rebuilt with the builder (`work/review/part.py`) and exported over the
+  committed asset. Re-running export.py from the stale out/ would drop them: rebuild out/ before any re-export.
+
+## Test results
+
+- `python -m unittest discover -s tools/anim`: 152 tests OK (`work/review/unittest.log`).
+- `python tools/verify.py fast`: build PASS, ui-assets PASS, python-tests 727 run, 1 failure:
+  test_where `test_extract_is_fast_and_covers_every_troop_and_section`, 44.6 s against its 30 s limit (a speed limit; the
+  machine was running several builds and test suites from other lanes). No animation test failed
+  (`work/review/verify_fast_final.log`).
+- In-game reel `gl_marshal-review2` (job 20261112-034324-299-560f): 22 `[p1] p1-` checks plus the suite line, 0 `=false`.
+  The first run (review1) failed march-run-front alone (client speed 0.273 against 0.255; side and three-quarter passed;
+  the run clip is unchanged in this batch).
