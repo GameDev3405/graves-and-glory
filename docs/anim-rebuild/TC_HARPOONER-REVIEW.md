@@ -93,4 +93,9 @@ Hold: harpoon levelled forward like a spear. Shield_up: harpoon low and level, l
 it reads close to hold. Wall: crouched and cocked to throw. Ward: an underhand fend. All suit a harpoon thrower.
 
 ### Tests
-See the commit message for unit tests, verify fast and the geo-knight reel.
+- `python -m unittest discover -s tools/anim`: 152 tests OK (`work/review/tc_harpooner.unittest.log`).
+- `python tools/verify.py fast`: FAIL on three tests outside animation, under heavy machine load: test_mapengine_check and
+  test_mapengine_plan2 (MemoryError; both pass when re-run alone) and test_where (extract took 86 s against a 30 s limit;
+  still slow on re-run). Log `work/review/tc_harpooner.verify.log`.
+- geo-knight reel through checkq at b2d5b8b1: `tc_harpooner-review1` had march rate and hit frame-capture misses (3/8 frames
+  in one view; gaits unchanged), read as load; re-run `tc_harpooner-review1b`: **22 `[p1] p1-geo-tc_harpooner` lines, 0 `=false`**.
