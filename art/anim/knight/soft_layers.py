@@ -53,6 +53,17 @@ LAYERS = {
                      pull_tune={n: dict(max=5.0) for n in ("right_skirt_t1", "left_skirt_t1")},
                      kb_lift=1.7, kb_heel=-10.0, kb_early=1.0,
                      kb_tune={"cape": dict(max=14.0)}),
+    # the marshal: the same reactions with the same faults as played (blade 2.4 px into the head at t2, 3.6 at 1.55; toe
+    # 2.5 px under the ground; the knockback's planted boot 1.6 px under), so the same fixes; its skirt plates are one piece a side
+    "gl_marshal": dict(soft=("stun_upper", "stun_out_upper", "hit_knockback", "hit_pulled"),
+                       pull_arm=(6.0, 0.0, -16.0), pull_toe=10.0, pull_lift=2.6, pull_step_lift=2.0,
+                       pull_tune=dict({n: dict(max=5.0) for n in ("right_skirt", "left_skirt")},
+                                      cape=dict(inward=0.0, max=8.0), cape_t2=dict(inward=0.0, max=8.0),
+                                      fur_collar=dict(gain=1.0, max=6.0, zeta=0.5)),
+                       kb_lift=1.7, kb_heel=-10.0, kb_early=1.0,
+                       kb_tune={"cape": dict(max=14.0), "fur_collar": dict(gain=1.0, max=6.0, zeta=0.5)},
+                       stun_tune={"fur_collar": dict(gain=1.0, max=6.0, zeta=0.5)},
+                       stun_out_tune={n: dict(gain=2.0) for n in ("cape", "cape_t2", "left_skirt", "right_skirt")}),
 }
 
 
@@ -177,12 +188,12 @@ def main():
     # the stun (absolute, over stun_legs) and its shake-off (additive, over the stun's last pose)
     if "stun_upper" in cfg["soft"]:
         up, sl = samples_of(A["stun_upper"]), samples_of(A["stun_legs"])
-        up, bones = soft_upper(up, sl)
+        up, bones = soft_upper(up, sl, tune=cfg.get("stun_tune"))
         new["stun_upper"] = loop_safe(up, bones, RX.STUN_ENTRY * S.SUB)
     if "stun_out_upper" in cfg["soft"]:
         up = samples_of(A["stun_out_upper"])
         last = samples_of(A["stun_legs"])[-1]
-        new["stun_out_upper"], _ = soft_upper(up, [last] * len(up))
+        new["stun_out_upper"], _ = soft_upper(up, [last] * len(up), tune=cfg.get("stun_out_tune"))
 
     for name, frames in list(new.items()) + list(legs_changed.items()):
         old = A[name]

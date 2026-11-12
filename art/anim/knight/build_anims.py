@@ -49,7 +49,7 @@ SHIELD = TROOP in ("knight", "sentinel", "ic_hearthguard", "gl_marshal")
 # attacks and the medium and blocked hits pass their samples through fullbody.soft_motion, the leg skirt plates hang off the
 # thigh in the run and the wall (so they stay out of the tabard skirt), and the wall's crouch keeps the knee cops off the ground.
 # The knight's approved clips are not in it and build byte for byte as before.
-ALIVE_TROOPS = ("sentinel",)
+ALIVE_TROOPS = ("sentinel", "gl_marshal")
 ALIVE = TROOP in ALIVE_TROOPS
 PREVIEW = HERE / "out" / "A" / "preview" if TROOP == "knight" else HERE.parent / TROOP / "out" / "preview"
 GEO = PREVIEW / "t1.geo.json"
@@ -916,7 +916,7 @@ if V2 and SHIELD and TROOP in ("knight", "sentinel", "gl_marshal"):
     # pommel through the tabard and torso as the blade sweeps in and through the gorget, collar and helm in the overhead
     # follow-through (and the marshal's tip below the floor); the fit nudges a window of keys only where that happened.
     ATTACK_LEGS.update({k: dict(v) for k, v in SLASH_LEGS.items()})
-    if ALIVE:
+    if ALIVE and TROOP == "sentinel":
         # Batch review 2026-11-11: the Templar's taller shield, thrown up beside the head as the low cut's counterweight, sank
         # 2.0 px into the helm at t10 (the knight's 1.5). Through the follow-through (t8 to t11.5, full from t8.8 to t10.8) the
         # shield fist rides 1.6 px lower and 0.5 px further out; the load, the drive and the gather are untouched.
@@ -1494,12 +1494,23 @@ def cape_lag(samples, legs=None):
     return samples
 
 
+# Per-troop spring settings over the kit's defaults (fullbody.soft_parts_for). The marshal's fur collar takes the kit's plume
+# spring (gain 2.4, light damping): on the hits' first jolt it snapped 14-24 deg in a sample (pop FAIL), so it rides heavy
+# and damped; its cape swung up to 30 deg and into the hips and legs (1.8-1.9 px), so it may not swing inward and is capped
+# at 10 deg. Swept over the attacks and the hits raw and composed at k 1 and 1.55 (work/review/gm_soft_try.py).
+SOFT_TUNE = {"gl_marshal": {"fur_collar": dict(gain=0.6, max=4.0, zeta=0.8),
+                            "cape": dict(inward=0.0, max=10.0), "cape_t2": dict(inward=0.0, max=10.0)}}
+
+
 def soft(upper, legs, additive=False):
     """ALIVE troops: every hanging piece of the rig (cape, tabard, skirt plates) on a spring behind its parent, and the
     shoulder plates trailing their arms (art/anim/common/fullbody.py). An additive clip (a hit) keeps every piece in the upper
     clip: its legs samples are the absolute footwork it is played over, used only to swing the pieces, and stay as they were."""
     import fullbody
     parts = fullbody.soft_parts_for()
+    for name, tune in SOFT_TUNE.get(TROOP, {}).items():
+        if name in parts:
+            parts[name].update(tune)
     if additive:
         for c in parts.values():
             c.pop("clip", None)
@@ -1562,7 +1573,7 @@ def attack_clips():
         else:
             upper = cape_lag([sample_keys(keys, i / SUB) for i in range(n + 1)], legs)
         if ALIVE:
-            if name == "low_cut":
+            if name == "low_cut" and TROOP == "sentinel":     # the marshal's low cut wrist runs smooth
                 upper = calm(upper, "right_hand", 8.75, 11.5)
             upper, legs = soft(upper, legs)
         clip = bake(upper, ATTACK_TICKS, loop=False)
