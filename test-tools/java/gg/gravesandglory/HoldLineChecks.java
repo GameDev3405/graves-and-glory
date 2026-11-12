@@ -208,6 +208,8 @@ final class HoldLineChecks {
         Vec3d arcHome, arcFireAim, arcAim;
         /** The roof case's blocks, with what stood there before. */
         final Map<BlockPos, net.minecraft.block.BlockState> arcRoof = new HashMap<>();
+        /** hl-arc's moving case: the dummy was walking a path when the shot was loosed (Projectiles.scatter leads only a marching target, 9ac2d05b). */
+        boolean arcMarched;
         /** The roof's block layer (its underside), and where the landed shot's arrow stood on its landing tick on the server. */
         int arcRoofY; Vec3d arcEnd;
         /** hl-arc's decoy (N8): an untagged no-clip, no-gravity arrow no battle fired. */
@@ -273,6 +275,8 @@ final class HoldLineChecks {
         GravesAndGlory.Unit cpBloomBody; Vec3d cpBloomAt;
         /** hl-corpse (Task 8 fix 1, R39): the settled body the client shoots drawn from its recorded buffers, drawn the normal way and not drawn; and what it found. */
         GravesAndGlory.Unit cpCacheBody;
+        /** The blocks round the cache shot's body as they were before cpFloor, to put back. */
+        final Map<BlockPos, net.minecraft.block.BlockState> cpFloorWas = new HashMap<>();
         volatile int cpShotId = -1;
         volatile boolean cpShotDone, cpShotPass;
         volatile String cpShotWhy = "";
@@ -435,7 +439,7 @@ final class HoldLineChecks {
         @Override public void cleanup(MinecraftClient c) {
             c.options.hudHidden = false;
             BodyCache.noGroups = false; // Task 13 fix round 1, M8: an hl-corpse-load that stops before its report leaves the fade's groups on for what runs next
-            server(c, b -> {if (cpRow != null) Spec.COMBATDISCIPLINE[0] = cpRow; Houses.forceRise = null; clearFixture(b, "cleanup"); if (site != null) platform(b, site, 12, Blocks.AIR.getDefaultState()); unforce(b); if (b.running) b.campaign.returnLobby();});
+            server(c, b -> {if (cpRow != null) Spec.COMBATDISCIPLINE[0] = cpRow; Houses.forceRise = null; clearFixture(b, "cleanup"); cpUnfloor(b); if (site != null) platform(b, site, 12, Blocks.AIR.getDefaultState()); unforce(b); if (b.running) b.campaign.returnLobby();});
         }
 
         @Override public void step(MinecraftClient c, int tick) {
@@ -1238,6 +1242,11 @@ final class HoldLineChecks {
                     if (since(b) < 2) return;
                     arcTarget.mob.timeUntilRegen = 0; arcTarget.mob.hurtTime = 0;
                     arcFireAim = Projectiles.aim(arcTarget.mob); arcAim = arcFireAim;
+                    arcMarched = false;
+                    if (ARC_CASES[arcIndex].kind().equals("moving")) { // the lead is for a troop walking a path: the dummy has one north, and last tick's step of ARC_WALK along it (the pin's teleport leaves none)
+                        var m = arcTarget.mob; arcMarched = m.getNavigation().startMovingTo(arcHome.x, arcHome.y, arcHome.z + 30, 1.0);
+                        m.prevX = m.getX(); m.prevZ = m.getZ() - ARC_WALK;
+                    }
                     Projectiles.fire(b, arcShooter, arcTarget.mob, Abilities.visual(arcShooter), 2f);
                     arcShot = b.shots.get(b.shots.size() - 1); arcArrow = arcShot.visual(); arcPath.clear(); arcTurn.clear(); arcHealth = arcTarget.mob.getHealth();
                     arcClient.clear(); arcClientId = arcArrow == null ? -1 : arcArrow.getId();
@@ -1254,7 +1263,7 @@ final class HoldLineChecks {
                         Projectiles.clear(b); arcPendingWhy = null;
                     } else arcLanded(b, cd, ac);
                     for (var r : arcRoof.entrySet()) b.world.setBlockState(r.getKey(), r.getValue());
-                    arcRoof.clear(); walk(arcHome);
+                    arcRoof.clear(); walk(arcHome); if (arcTarget != null) arcTarget.mob.getNavigation().stop();
                     unpin(b, List.of(arcShooter)); arcShooter = null; arcShot = null; arcArrow = null;
                     next(b, 74);
                 }
@@ -1894,14 +1903,15 @@ final class HoldLineChecks {
                     var p = sp(b);
                     if (evStep == 2) { // fix round 1, M1: a player's blow the guard's raised shield stops whole is a hit, blocked, of no weight
                         var g = evGuard.mob;
-                        if (!g.isBlocking()) {if (since(b) > 100) {evCheck(false, "the Dusk guard never blocked with its shield"); evStep = 3;} return;}
+                        dusk.order = "hold"; // since 3006847d a troop on Attack lowers its shield once it has picked an enemy; Hold keeps it up. Attack again for stage 107
+                        if (!g.isBlocking()) {if (since(b) > 100) {evCheck(false, "the Dusk guard never blocked with its shield"); evStep = 3; dusk.order = "attack";} return;}
                         g.timeUntilRegen = 0; g.hurtTime = 0; float before = g.getHealth(); int sends = MotionEvents.hitSends;
                         boolean hurt = g.damage(b.world.getDamageSources().playerAttack(p), 4f);
                         evCheck(!hurt && g.getHealth() == before && MotionEvents.hitSends > sends, "the player's blow on the guard's raised shield: damage returned " + hurt + ", health " + fmt(before) + " to " + fmt(g.getHealth()) + ", hit_v1 sent " + (MotionEvents.hitSends - sends) + " (want false, unchanged, one or more)");
                         String kind = BattleMath.weaponKind(net.minecraft.registry.Registries.ITEM.getId(p.getMainHandStack().getItem()).toString());
                         float bearing = (float) BattleMath.signedBearing(g.getYaw(), p.getX() - g.getX(), p.getZ() - g.getZ());
                         evHits.computeIfAbsent(g.getId(), x -> new ArrayList<>()).add(new MotionInput.Hit(kind, "body", bearing, 0, true, false, now));
-                        evStep = 3; return;
+                        evStep = 3; dusk.order = "attack"; return;
                     }
                     // fix round 1, M2: Combat's guard covers only its own target, so another troop struck inside it still sends its hit; its own target sends none
                     m.timeUntilRegen = 0; m.hurtTime = 0; int sends = MotionEvents.hitSends;
@@ -2123,7 +2133,7 @@ final class HoldLineChecks {
                         cpShotWhy = cpFadeWhy = "not run: " + String.join(", ", CP_LEGACY) + " are all drawn by GeckoLib, which never draws from BodyCache (legacy-only)"; return;
                     }
                     if (cpCacheBody == null && n > 1) {if (n < CP_STAND + 2) return;} // not run: straight to the report
-                    else if (n == 1) {cpShotDone = false; cpFadeDone = false; cpFadeK = 0; cpFadeId = -1; cpCacheBody = cpOwn(b, 65, cpHome, cpCacheTroop); var at = ground(b, cpHome.x, cpHome.z - 3); b.relocate(sp(b), at.x, at.y, at.z, 0f, 28f); return;}
+                    else if (n == 1) {cpShotDone = false; cpFadeDone = false; cpFadeK = 0; cpFadeId = -1; cpFloor(b); cpCacheBody = cpOwn(b, 65, cpHome, cpCacheTroop); var at = ground(b, cpHome.x, cpHome.z - 3); b.relocate(sp(b), at.x, at.y, at.z, 0f, 28f); return;}
                     // R43 / Task 13 carry 20: it falls once the client has it. The old animator settled a troop struck down within ~3 s of spawning
                     // only near its 60th tick of age (r2-lie20b), so this stood 60 ticks; TroopMotion.settled has no age in it (mo-settle: 1 and 197 ticks old both settle at death tick 22)
                     if (n == CP_STAND && cpCacheBody != null) {fall(b, cpCacheBody); return;}
@@ -2134,7 +2144,7 @@ final class HoldLineChecks {
                     cpCheck(cpShotDone && cpShotPass, (cpShotDone ? cpShotWhy : "the client never shot the cached body (by +" + (CP_STAND + 220) + "; BodyCache: " + BodyCache.diag() + ")") + cpNote(cpCacheTroop));
                     cpCheck(cpFadeDone && cpFadePass, (cpFadeDone ? cpFadeWhy : "the client never sampled the body's fade (by +" + (CP_STAND + 220) + "; BodyCache: " + BodyCache.diag() + ")") + cpNote(cpCacheTroop));
                     var p = sp(b); b.relocate(p, patch[0] + 12, Phase1Checks.top(b, patch[0] + 12, patch[2] - 24) + 6, patch[2] - 24, 0f, 15f); // the camera back where hl-corpse-load measures from
-                    clearFixture(b, "hl-corpse"); b.clearCorpses();
+                    clearFixture(b, "hl-corpse"); b.clearCorpses(); cpUnfloor(b);
                     next(b, CP_LOAD ? 129 : 140);
                 }
                 case 129 -> {if (since(b) >= 40) {BodyCache.noGroups = CP_NOGROUPS; System.out.println("[p2] hl-corpse-load fade overlap groups " + (CP_NOGROUPS ? "off (GRAVES_FADE_NOGROUPS=1)" : "on")); cpBegin(b);}} // the client has the chunks round the camera again
@@ -2227,7 +2237,7 @@ final class HoldLineChecks {
                     next(b, 140);
                 }
                 case 140 -> { // a round's end takes a lying body at once
-                    if (since(b) == 1) {cpVictim = cpOwn(b, 60, cpHome); return;}
+                    if (since(b) == 1) {cpKeepRound(b); cpVictim = cpOwn(b, 60, cpHome); return;}
                     if (since(b) == 6) {fall(b, cpVictim); return;}
                     if (since(b) < 36) return;
                     var v = cpVictim.mob; boolean lying = !v.isRemoved() && v.isDead();
@@ -2264,7 +2274,24 @@ final class HoldLineChecks {
             }
             return again;
         }
-        void cpBegin(GravesAndGlory.Battle b) {int[] run = cpArm(cpPlan.get(cpRun)); Spec.COMBATDISCIPLINE[0] = corpseRow(cpRow, run[0], run[1]); cpLoad.clear(); System.gc(); next(b, 130);}
+        /**
+         * hl-corpse-load's 30-odd runs outlast a Domination round (its score target ended it mid-run 21): each run, and the round-end step, start the
+         * round's clock and scores afresh, as OrderIntakeProbeBehaviour.keep and MotionGrade do. Only scores and the clock; nothing else of the round.
+         */
+        /**
+         * R44's measure is of the body: grass and tall grass under and round it alias under the 0.001-block camera nudge and the lying shield's face
+         * meets the grass top, which counted as the body's z-fight. The cache shot's body lies on smooth stone, plants cleared, 4 blocks round (the camera's spot too); put back after.
+         */
+        void cpFloor(GravesAndGlory.Battle b) {
+            var c = BlockPos.ofFloored(cpHome);
+            for (int x = -4; x <= 4; x++) for (int z = -4; z <= 4; z++) for (int y = -1; y <= 2; y++) {
+                var at = c.add(x, y, z); cpFloorWas.putIfAbsent(at, b.world.getBlockState(at));
+                b.world.setBlockState(at, y == -1 ? Blocks.SMOOTH_STONE.getDefaultState() : Blocks.AIR.getDefaultState());
+            }
+        }
+        void cpUnfloor(GravesAndGlory.Battle b) {for (var e : cpFloorWas.entrySet()) b.world.setBlockState(e.getKey(), e.getValue()); cpFloorWas.clear();}
+        static void cpKeepRound(GravesAndGlory.Battle b) {if (b.running) {b.scores[0] = 0; b.scores[1] = 0; b.roundStarted = b.time;}}
+        void cpBegin(GravesAndGlory.Battle b) {cpKeepRound(b); int[] run = cpArm(cpPlan.get(cpRun)); Spec.COMBATDISCIPLINE[0] = corpseRow(cpRow, run[0], run[1]); cpLoad.clear(); System.gc(); next(b, 130);}
         /** An arm's {corpseLieTicks, corpseFadeTicks}: A none, the warm-up and B the sheet's rows. */
         /** R43: the corpse rows' last lying death tick before the fade (20 + lie - 1) and the removal tick (20 + lie + fade). */
         static final int CP_STAND = 5;
@@ -2475,8 +2502,9 @@ final class HoldLineChecks {
          */
         void arcLanded(GravesAndGlory.Battle b, Spec.CombatDisciplineRow cd, ArcCase ac) {
             String id = ac.id(), kind = ac.kind(); boolean bolt = arcShot.kind().equals("bolt"), moving = kind.equals("moving");
-            Vec3d from = arcShot.from(), to = arcAim;
-            double dist = from.distanceTo(arcFireAim);
+            // since 9ac2d05b an archer's shot flies its fixed curve to its scattered (and, at a walking target, led) aim point: the curve and the landing are judged against that
+            Vec3d from = arcShot.from(), aimed = arcShot.aimPoint() != null ? arcShot.aimPoint() : arcFireAim, to = arcShot.aimPoint() != null ? arcShot.aimPoint() : arcAim;
+            double dist = from.distanceTo(aimed);
             int travel = BattleMath.travelTicks(dist, bolt ? cd.boltSpeed() : cd.arrowSpeed(), cd.projectileMinTicks(), cd.projectileMaxTicks());
             // the arc each weapon should take (animation rework section 5, R24): a bow the whole of it, a crossbow (the Arbalist's and the Ballista's) and a thrown trident their sheet scales, the Mortar's and a caster's bolt none
             double scale = bolt ? 0 : switch (id) {case "archer" -> 1; case "ic_arbalist", "ic_ballista" -> cd.crossbowArcScale(); case "tc_harpooner" -> cd.thrownArcScale(); default -> 0;};
@@ -2509,18 +2537,18 @@ final class HoldLineChecks {
             if (bolt) {shaped = arcShot.peak() == 0 && arcShot.visual() == null; shape = "a particle bolt, no arrow, peak " + fmt(arcShot.peak()) + " (want none)";}
             else if (kind.equals("short")) {double tol = Math.max(0.1 * wantPeak, 0.15); shaped = wantTicks <= 3 && Math.abs(peak - wantPeak) <= tol; shape = "peak " + fmt(peak) + " at tick " + peakAt + " of " + wantTicks + " (want the sheet's " + fmt(wantPeak) + " +/- " + fmt(tol) + ", in 3 ticks at most)";}
             else if (kind.equals("roof")) { // N2: an arc, capped by the roof: the roof's underside over the line's middle, less the margin (the shape there is 1)
-                double cap = arcRoofY - from.lerp(arcFireAim, .5).y - Projectiles.COVER_MARGIN;
+                double cap = arcRoofY - from.lerp(aimed, .5).y - Projectiles.COVER_MARGIN;
                 shaped = Math.abs(arcShot.peak() - cap) <= 0.02 && peak > 0 && peak <= cap + 0.02 && peak <= 2.5 && inBlock == 0;
                 shape = "under the roof, peak " + fmt(peak) + " at tick " + peakAt + ", the shot's own " + fmt(arcShot.peak()) + " of the open sky's " + fmt(wantPeak) + " (want the roof's cap " + fmt(cap) + " +/- 0.02, over 0 and 2.5 at most), " + inBlock + " ticks inside a block (want none)";
             }
-            else if (moving) {double walked = Math.sqrt(GravesAndGlory.Battle.horizontalDistance(arcFireAim, to)); shaped = walked >= ARC_WALK * (wantTicks - 2) && miss <= 0.05; shape = "at a dummy that walked " + fmt(walked) + " sideways in its flight (want " + fmt(ARC_WALK * (wantTicks - 2)) + " or more), peak " + fmt(peak) + ", the arrow led it onto its landing place (N6: want 0.05 at most of the miss)";}
+            else if (moving) {double walked = Math.sqrt(GravesAndGlory.Battle.horizontalDistance(arcFireAim, arcAim)); shaped = walked >= ARC_WALK * (wantTicks - 2) && miss <= 0.05; shape = "at a dummy walking a path at the loose (" + arcMarched + ") that walked " + fmt(walked) + " sideways in its flight (want " + fmt(ARC_WALK * (wantTicks - 2)) + " or more), peak " + fmt(peak) + ", the arrow led it onto its landing place (N6: want 0.05 at most of the led aim point)";}
             else if (id.equals("archer")) {bowPeak = peak; shaped = Math.abs(peak - 5.5) <= 0.15; shape = "peak " + fmt(peak) + " over the straight line at tick " + peakAt + " (want 5.5 +/- 0.15; the sheet's " + fmt(wantPeak) + ")";}
-            else if (scale > 0) {double ratio = peak / bowPeak, tol = id.equals("ic_ballista") ? 0.05 : 0.02; shaped = bowPeak > 0.5 && Math.abs(ratio - scale) <= tol; shape = "peak " + fmt(peak) + " at tick " + peakAt + ", " + String.format(Locale.ROOT, "%.3f", ratio) + " of the bow's (want " + fmt(scale) + " +/- " + fmt(tol) + ")";}
+            else if (scale > 0) {double ratio = peak / BattleMath.arcPeak(dist, cd.volleyPeakPerBlock(), cd.volleyPeakMax(), 1), tol = id.equals("ic_ballista") ? 0.05 : 0.02; shaped = bowPeak > 0.5 && Math.abs(ratio - scale) <= tol; shape = "peak " + fmt(peak) + " at tick " + peakAt + ", " + String.format(Locale.ROOT, "%.3f", ratio) + " of a bow's at this shot's own distance (want " + fmt(scale) + " +/- " + fmt(tol) + ")";}
             else {shaped = Math.abs(peak) <= 0.05 && arcShot.peak() == 0; shape = "peak " + fmt(peak) + " (want a straight flight, within 0.05 of the line)";}
             if (!bolt) shape += ", heights by tick " + heights;
             arcPendingPass = shaped && landed && onCurve && nosed; arcPendingArrow = !bolt; arcPendingArced = !bolt && arcShot.peak() > 0.5; arcPendingTicks = wantTicks;
             arcPendingWhy = id + (kind.isEmpty() ? "" : " " + kind) + " (" + arcShot.kind() + ", " + fmt(dist) + " blocks): " + shape + "; it left the queue " + age + " ticks after it was fired, queued for " + queued
-                + " (want travelTicks " + travel + " x arcTravelScale " + fmt(cd.arcTravelScale()) + " = " + wantTicks + ")" + (bolt ? "" : ", its arrow " + fmt(miss) + " from the dummy's body then (want 0.3 at most)") + ", the dummy hurt " + fmt(hurt)
+                + " (want travelTicks " + travel + " x arcTravelScale " + fmt(cd.arcTravelScale()) + " = " + wantTicks + ")" + (bolt ? "" : ", its arrow " + fmt(miss) + " from its aim point then (want 0.3 at most)") + ", the dummy hurt " + fmt(hurt)
                 + (bolt ? "" : (moving ? "" : "; every tick at most " + fmt(offCurve) + " off the curve (want 0.05)") + "; on the server the arrow's nose halfway through each tick at most " + fmt(turnOff) + " degrees off its move (want 1)"
                 + ", " + fmt(turnJump) + " from one tick's end to the next one's start" + (longArc ? " (want 2 at most)" : ""));
         }
