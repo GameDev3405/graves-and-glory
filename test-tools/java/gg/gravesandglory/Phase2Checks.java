@@ -79,6 +79,8 @@ public final class Phase2Checks implements ClientModInitializer {
         for(String part:spec.split(",")){String[] p=part.trim().split("[*]");int n=p.length>1?Integer.parseInt(p[1].trim()):1;for(int i=0;i<n;i++)out.add(p[0].trim());}
         return out;
     }
+    /** The schema number a profile file states, -1 when it has none. */
+    static int schemaOf(String json){try{return JsonParser.parseString(json).getAsJsonObject().get("schema").getAsInt();}catch(RuntimeException e){return -1;}}
     static byte[] fixture(String name)throws IOException{try(var in=Phase2Checks.class.getResourceAsStream("/fixtures/"+name)){if(in==null)throw new IOException("fixture "+name+" is not on the class path");return in.readAllBytes();}}
     static boolean houseFieldable(String house){for(var h:Spec.HOUSES)if(h.id().equals(house))return h.fieldable();return false;}
     /** Every troop of the row belongs to a fieldable House (worked out here from the sheets, not by Campaign). */
@@ -223,11 +225,15 @@ public final class Phase2Checks implements ClientModInitializer {
                         boolean refunded=Collections.disjoint(pr.owned.keySet(),Set.of("mage","hexer","oracle","wraith"))&&pr.gold==gold;
                         boolean warden=pr.commander.equals("warden");
                         boolean kept=Files.exists(backup)&&Arrays.equals(Files.readAllBytes(backup),fixture);
-                        boolean v2=Files.readString(file).contains("\"schema\": "+Profile.SCHEMA);
+                        // The file upgrade stops at schema 4 (ProfileMigration.upgradeFile); schema 5 and 6 (custom groups, the campaign reset) are in-memory steps of Profile.sanitize that reach the disk with the next save.
+                        int diskSchema=schemaOf(Files.readString(file));
+                        boolean upgraded=diskSchema>=4&&diskSchema<=Profile.SCHEMA&&pr.schema==Profile.SCHEMA;
+                        camp.save(player);int savedSchema=schemaOf(Files.readString(file));
+                        boolean v2=upgraded&&savedSchema==Profile.SCHEMA;
                         var cat=RosterMath.Catalog.fromSpec();
                         boolean line=RosterMath.validBanner(pr.banner,cat,pr.owned.keySet())==null&&pr.banner.equals(banner("knight*12,archer*6,empty*2"));
                         report("p2-migrate-live",owned&&refunded&&warden&&kept&&v2&&line,"owned "+pr.owned.keySet()+" is the 10 Commons and sentinel="+owned+"; mage, hexer, oracle and wraith not owned and gold "+pr.gold+" = 420 + 3 x "+refund+"="+refunded
-                            +"; commander "+pr.commander+"; "+backup.getFileName()+" equals the fixture="+kept+"; "+file.getFileName()+" rewritten as the current schema="+v2+"; banner "+String.join(",",pr.banner)+" is valid and the Dawn line without its refunded mages="+line);
+                            +"; commander "+pr.commander+"; "+backup.getFileName()+" equals the fixture="+kept+"; "+file.getFileName()+" rewritten off v1 as schema "+diskSchema+" at the first read and as the current schema "+Profile.SCHEMA+" by the next save (read back "+savedSchema+")="+v2+"; banner "+String.join(",",pr.banner)+" is valid and the Dawn line without its refunded mages="+line);
                     }catch(IOException e){report("p2-migrate-live",false,e.toString());}
                     next(b,2);
                 }
