@@ -481,9 +481,10 @@ def fallback_fit(tr, base):
 
 
 # per troop: the backward walk's (amplitude about the mean, extra hips drop px, hips yaw deg toward the shield side). The
-# hearthguard (Kort's rule 6, 2026-11-10) gives ground short-stepped and crouched, shield side leading; every other troop
-# keeps (0.7, 0, 0).
-FALLBACK_LEGS = {"ic_hearthguard": (0.55, -0.6, 7.0)}
+# hearthguard (Kort's rule 6, 2026-11-10) gives ground short-stepped, shield side leading; every other troop keeps (0.7, 0, 0).
+# Its extra 0.6 px hips drop is gone (batch review 2026-11-11): the walk is not re-solved here, so the drop pushed the boot 1.33 px
+# under the ground at tick 0 (focus check floor FAIL); without it the floor row is the family's 0.73 WARN.
+FALLBACK_LEGS = {"ic_hearthguard": (0.55, 0.0, 7.0)}
 
 
 def build_fallback(tr):
