@@ -14,6 +14,7 @@ pass is used for what they missed. Each fix names a clip, a bone and one channel
 
 The offset is added to that bone's channel in the clip (re-keyed at quarter ticks); every other bone and channel of the
 clip, and every other clip, stays byte for byte as it was."""
+import json
 import math
 import os
 import sys
@@ -203,9 +204,17 @@ def fix(doc, troop, clip, bone, chan="rotation", axis=0, signs=(1, -1), step=2.0
     loop = top.loop == "loop"
     if not const:
         W = _ease(W, loop)
+    old = json.loads(json.dumps(A[clip]["bones"].get(bone, {}).get(chan)))
     _write(A[clip], bone, chan, axis, W)
     g1 = measure(doc, troop, clip, bone, chan, involve=involve, metric=metric)[0]
     b0, b1 = max(g0.values(), key=lambda g: g[0]), max(g1.values(), key=lambda g: g[0])
+    if b1[0] > b0[0] - 0.02:     # it did not help: the clip keeps what it had (the least amount is none)
+        if old is None:
+            A[clip]["bones"][bone].pop(chan, None)
+        else:
+            A[clip]["bones"][bone][chan] = old
+        print("  focus %s: %s %s[%d] no help (%.2f -> %.2f px), left as it was" % (clip, bone, chan, axis, b0[0], b1[0]))
+        return None
     k = int(np.argmax(np.abs(W)))
     print("  focus %s: %s %s[%d] %+.1f%s (most at t%.2f): %.2f -> %.2f px (%s)" % (
         clip, bone, chan, axis, W[k], " held" if const else "", ts[k], b0[0], b1[0], "/".join(b1[1] or ("-",))))

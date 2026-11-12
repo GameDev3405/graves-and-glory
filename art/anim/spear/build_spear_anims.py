@@ -441,7 +441,8 @@ TRIM = {
     "tc_admiral": {"all": {"sash_end": ((-10.0, 0.0, 0.0), None), **{b: (None, (0.0, 0.0, 1.0)) for b in _AD_LEFT}},
                    "ward": {b: (None, (0.0, 0.0, 2.0)) for b in _AD_LEFT},
                    "brace": {"sash_end": ((-16.0, 0.0, 0.0), None)},
-                   "wall": {"sash_end": ((-10.0, 0.0, 8.0), None), **{b: (None, (-1.0, 0.0, 0.0)) for b in _AD_RIGHT}}},
+                   "wall": {"sash_end": ((-10.0, 0.0, 8.0), None), **{b: (None, (-1.0, 0.0, 0.0)) for b in _AD_RIGHT},
+                            "right_epaulette": (None, (-2.0, 0.0, 0.0))}},
 }.get(TROOP, {})
 
 
@@ -2100,15 +2101,32 @@ FIXES = {
              chan="rotation", axis=1),
     ],
     "tc_admiral": [
-        # the sash's end swings off the lead thigh in the stride, the run, the charge and the high thrust's lunge (1.93-2.30)
-        dict(clips=["walk_upper", "run_upper", "charge_run_upper", "attack_high_thrust"], bone="sash_end", chan="rotation",
-             axis=0),
+        # the sash's end rolls off the lead thigh and greave (the stride, the run, the charge, the thrusts' lunges, the fall
+        # back, the hits' steps: 1.93-2.30), then swings fore or aft for what is left; eased, the least either way
+        dict(clips=["walk_upper", "run_upper", "charge_run_upper", "attack_high_thrust", "attack_low_sweep",
+                    "stance_fallback_upper", "stun_upper", "hit_medium_front", "hit_medium_back", "hit_medium_left",
+                    "hit_block"],
+             bone="sash_end", chan="rotation", axis=2),
+        dict(clips=["walk_upper", "run_upper", "charge_run_upper", "attack_high_thrust", "attack_low_sweep",
+                    "stance_fallback_upper", "stun_upper", "hit_medium_front", "hit_medium_back", "hit_medium_left",
+                    "hit_block"],
+             bone="sash_end", chan="rotation", axis=0),
         # the coat tails off the greaves in the medium hit's step
         dict(clips=["hit_medium_right"], bone="tails_l", chan="rotation", axis=0),
         dict(clips=["hit_medium_left"], bone="tails_r", chan="rotation", axis=0),
-        # the head turns the least off the pauldrons where the body hunches into them
-        dict(clips=["stun_upper", "stance_fallback_upper", "hit_knockback", "hit_pulled", "charge_run_upper"] + _HITS,
-             bone="head", chan="rotation", axis=1),
+        # the stun's slump drops the head into the left pauldron (2.73): the pauldron, fringe and epaulette ride out
+        *[dict(clips=["stun_upper", "hit_knockback"], bone=b, chan="position", axis=2, signs=(1,), step=0.5, reach=2.0,
+               involve={b}) for b in _AD_LEFT],
+        # the right epaulette sits off the helm where the head turns into it (charge, the medium hit from the left)
+        dict(clips=["charge_run_upper", "hit_medium_left", "hit_medium_right", "hit_knockback"], bone="right_epaulette",
+             chan="position",
+             axis=0, signs=(-1,), step=0.5, reach=2.0),
+        # the thrust's load turns the head so the back hair met the right arm (1.96): it hangs a pixel back
+        dict(clips=["attack_thrust", "attack_high_thrust", "hit_medium_left"], bone="hair_back", chan="position", axis=2,
+             signs=(-1,), step=0.5, reach=1.5),
+        # what is left of the helm in a pauldron, the head turns off it, the least
+        dict(clips=["stun_upper", "stance_fallback_upper", "hit_knockback", "charge_run_upper"], bone="head",
+             chan="rotation", axis=2),
     ],
 }.get(TROOP, [])
 # (clip, bone, deg) a still hanging piece swings in an additive clip (focus_check secondary_life)
