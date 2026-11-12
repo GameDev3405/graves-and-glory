@@ -676,6 +676,13 @@ public final class MotionChecks {
      * clip time the first client's track shows; a second catch-up of the same swing 3 ticks later must not be kept twice (carry B6).
      * Then, 2 ticks past the clip's end (inside the server's ATTACK_CLIP_MAX_TICKS), the client forgets the knight again: for 10 ticks
      * no track of the swing may play (the client skips a swing whose clip has ended).
+     * <p>GeckoLib (GeoTroopRenderer, the knight first): TroopRenderer returns before its draw record and TroopMotion for a Geo troop, so
+     * mo-crowd reads a Geo knight's draws and bone pose from GeoDraws (the baked model's bones, laid out as TroopModel.snapshot), and
+     * mo-late-join reads a Geo knight's attack layer (AttackController.LIVE: the swing it shows, its clip time against the world clock it
+     * plays on) with the knight's own clip in place of a synthetic one; see lateJoinGeo. mo-settle, mo-light, mo-fade-overlap and mo-fade
+     * measure BodyCache (a settled body drawn from its recorded buffers, its per-part fade switches, its traced paths) and TroopMotion's death
+     * pick, which only the legacy renderer has: they run on BODY, the first of the knight, the sentinel, the Marshal and the hearthguard still
+     * drawn the legacy way (with a Geo knight, an extra one stands since the cast as mo-settle's old body), and say which.
      */
     static final class Live extends Phase2Checks.Stage {
         static final int COLS = 5, ROWS = 4; static final double GAP = 1.5, CAM_DZ = -30, CAM_EYE = 6; static final float YAW = 180;
@@ -686,11 +693,24 @@ public final class MotionChecks {
         /** Fix round 1, I2: the variant's impactTicks, the clip time (s) of the forget, and the probe past the clip's end (its ticks, the tracks and queued swings it saw). */
         int impactTicks, probeWait, probeTracks = -1, probeQueued; double forgetAt = -1, probeAt = -1; String lateWhy = "";
         Live(boolean chained) { this.chained = chained; }
+        /** The troop the BodyCache checks strike down (see the class comment); null when every candidate is drawn by GeckoLib. */
+        volatile String body;
+        /** With a Geo knight: mo-settle's old body, the BODY troop standing off the grid since the cast; null when the grid's knights serve. */
+        GravesAndGlory.Unit standOld;
+        boolean standIn() { return body != null && !body.equals("knight"); }
+        /** The 20 knights of the grid (posted first). */
+        List<GravesAndGlory.Unit> grid() { return posted.subList(0, Math.min(posted.size(), COLS * ROWS)); }
+        /** What the BodyCache checks say of their troop. */
+        String bodyNote() { return body == null ? "" : " [" + body + ", drawn the legacy way: BodyCache and TroopMotion's death pick are legacy-only" + (GeoDraws.geo("knight") ? "; the knight is GeckoLib" : "") + "]"; }
+        /** An entity's draws so far and its last pose, from whichever renderer drew it (GeoDraws for a GeckoLib troop, TroopRenderer.drawn else). */
+        static int drawCount(Entity e) { if (GeoDraws.geo(e)) return GeoDraws.count(e); var d = TroopRenderer.drawn(e); return d == null ? 0 : d.count; }
+        static float[] lastPose(Entity e) { if (GeoDraws.geo(e)) { var g = GeoDraws.drawn(e); return g == null ? null : g.pose; } var d = TroopRenderer.drawn(e); return d == null ? null : d.pose; }
         String name() { return chained ? "motion" : "motion-live"; }
         static float pitch() { return (float) Math.toDegrees(Math.atan2(CAM_EYE - 1.5, -CAM_DZ + (ROWS - 1) * GAP / 2)); }
 
         void cast(GravesAndGlory.Battle b) {
             for (int r = 0; r < ROWS; r++) for (int k = 0; k < COLS; k++) post(b, gold, "knight", (k - (COLS - 1) / 2.0) * GAP, r * GAP, YAW);
+            if (standIn()) standOld = post(b, gold, body, -(COLS + 1) * GAP, 0, YAW); // mo-settle's old body: stands from the cast, off the grid
             camera(b, 0, CAM_EYE, CAM_DZ, 0, pitch());
         }
         void end(MinecraftClient c) {
@@ -704,13 +724,13 @@ public final class MotionChecks {
         }
 
         public void step(MinecraftClient c, int tick) {
-            if (tick == 1) { stanceRule(); cull(); }
+            if (tick == 1) { stanceRule(); cull(); GeoDraws.install(); body = GeoDraws.legacy("knight", "sentinel", "gl_marshal", "ic_hearthguard"); } // the models are loaded by now
             if (tick == 20) { c.setScreen(null); var id = c.player.getUuid(); server(c, b -> { player = id; stage = 1; }); }
             if (finished) return;
             if (tick > 12000) { report("p2-motion-live-timeout", false, "stuck at client step " + cs + " (late join step " + ls + "), server stage " + stage); end(c); return; }
             switch (cs) {
                 case 0 -> {
-                    if (litStart(c) && ready && posted.size() == COLS * ROWS && posted.stream().allMatch(u -> client(c, u.mob) != null)) {
+                    if (litStart(c) && ready && posted.size() == COLS * ROWS + (standIn() ? 1 : 0) && posted.stream().allMatch(u -> client(c, u.mob) != null)) {
                         c.options.hudHidden = true; cloudsBefore = c.options.getCloudRenderMode().getValue(); c.options.getCloudRenderMode().setValue(CloudRenderMode.OFF);
                         wait = 0; cs = 1;
                     } else if (++wait % 600 == 0) System.out.println("[p2-wait] motion-live step 0 after " + wait + " ticks: ready=" + ready + ", posted " + posted.size() + "; " + litWhy(c));
@@ -733,7 +753,7 @@ public final class MotionChecks {
         void stances(MinecraftClient c) {
             wait++;
             List<String> off = new ArrayList<>(); Map<String, Integer> seen = new TreeMap<>();
-            for (var u : posted) {
+            for (var u : grid()) {
                 var e = client(c, u.mob); String server = u.stance, client = e == null ? "?" : MotionEvents.Client.stance(e.getId()).name();
                 boolean sh = u.tags.contains("shield"), sp = u.tags.contains("spear");
                 boolean rule = server.equals(BattleMath.holdStance(sh, sp, false)) || server.equals(BattleMath.holdStance(sh, sp, true));
@@ -742,7 +762,7 @@ public final class MotionChecks {
             }
             steady = off.isEmpty() ? steady + 1 : 0;
             if (steady >= 10 || wait > 300) {
-                report("mo-stance-live", steady >= 10, posted.size() + " knights on Hold, client stances " + seen + (off.isEmpty() ? ", each its server's and the plain-hold rule's for 10 ticks" : " after " + wait + " ticks, off: " + off));
+                report("mo-stance-live", steady >= 10, grid().size() + " knights on Hold, client stances " + seen + (off.isEmpty() ? ", each its server's and the plain-hold rule's for 10 ticks" : " after " + wait + " ticks, off: " + off));
                 cs = 2; wait = 0;
             }
         }
@@ -750,12 +770,12 @@ public final class MotionChecks {
         /** mo-crowd: 60 ticks to settle, then up to 80 ticks of frames in which every knight drew a new pose. */
         void crowd(MinecraftClient c) {
             if (++wait <= 60) return;
-            int n = posted.size(); if (lastCount == null) lastCount = new int[n];
+            int n = grid().size(); if (lastCount == null) lastCount = new int[n];
             float[][] frame = new float[n][]; boolean fresh = true;
             for (int i = 0; i < n; i++) {
-                var e = client(c, posted.get(i).mob); var d = e == null ? null : TroopRenderer.drawn(e);
-                if (d == null || d.pose == null || d.count <= lastCount[i]) fresh = false; else frame[i] = d.pose.clone();
-                lastCount[i] = d == null ? 0 : d.count;
+                var e = client(c, posted.get(i).mob); int count = e == null ? 0 : drawCount(e); float[] pose = e == null ? null : lastPose(e);
+                if (pose == null || count <= lastCount[i]) fresh = false; else frame[i] = pose.clone();
+                lastCount[i] = count;
             }
             if (fresh && wait > 61) samples.add(frame);
             if (samples.size() < 80 && wait < 60 + 400) return;
@@ -763,7 +783,8 @@ public final class MotionChecks {
             cs = 3; wait = 0;
         }
         void judgeCrowd(int ticks) {
-            if (samples.size() < 60) { report("mo-crowd", false, "only " + samples.size() + " frames in " + ticks + " ticks had a new pose from all " + posted.size() + " knights (want 60 or more)"); return; }
+            String via = GeoDraws.geo("knight") ? " (GeckoLib: GeoDraws, the baked bones)" : " (TroopRenderer.drawn)";
+            if (samples.size() < 60) { report("mo-crowd", false, "only " + samples.size() + " frames in " + ticks + " ticks had a new pose from all " + grid().size() + " knights" + via + " (want 60 or more)"); return; }
             int n = samples.get(0).length, len = samples.get(0)[0].length;
             boolean[] moves = new boolean[len];
             for (int k = 0; k < len; k++) {
@@ -787,7 +808,7 @@ public final class MotionChecks {
                 minAll = Math.min(minAll, rAll); sumMove += rMove; pairs++;
             }
             boolean pass = minMove > 1;
-            report("mo-crowd", pass, String.format(Locale.ROOT, "%d knights idle on Hold, %d frames over %d ticks (%.1f s) with every knight newly drawn; %d of %d bone rotation channels move; pair RMS over the moving channels: least %.2f degrees (%s), mean %.2f; over every rotation channel: least %.2f; %s",
+            report("mo-crowd", pass, String.format(Locale.ROOT, "%d knights" + via + " idle on Hold, %d frames over %d ticks (%.1f s) with every knight newly drawn; %d of %d bone rotation channels move; pair RMS over the moving channels: least %.2f degrees (%s), mean %.2f; over every rotation channel: least %.2f; %s",
                 n, samples.size(), ticks, ticks / 20.0, moving, len / 2, minMove, closest, sumMove / pairs, minAll, pass ? "no two within 1 degree" : "two within 1 degree"));
         }
 
@@ -795,6 +816,7 @@ public final class MotionChecks {
         void lateJoin(MinecraftClient c) {
             var u = posted.get(0); var e = client(c, u.mob);
             if (e == null) { report("mo-late-join", false, "the front knight has no client entity"); afterLate(); return; }
+            if (GeoDraws.geo(e)) { lateJoinGeo(c, u, e); return; }
             int id = e.getId(); wait++;
             switch (ls) {
                 case 0 -> {
@@ -865,6 +887,94 @@ public final class MotionChecks {
                 default -> {}
             }
         }
+        // ---- mo-late-join on a GeckoLib knight ----
+        /** The swing's variant, its clip (name, length and impact marker, ticks), its start tick on the world clock, and the attack layer's last frame read. */
+        int gVariant = -1; String gClip = ""; double gLen = -1, gImpact = -1, gLastAt = -1; long gStart = Long.MIN_VALUE; boolean gRate1 = true; int gProbeQueued = -1;
+        /**
+         * mo-late-join for a Geo knight. GeckoLib plays the swing on the world clock from its start tick (AttackController), not on a
+         * TroopMotion track, and its clips are the knight's own: no synthetic clip can stand in, so the variant whose clip leaves the most room
+         * past the old impactTicks + 10 window is sent (the knight's 22-tick thrust, impact 7, leaves ticks 18 and 19). The first client must
+         * show it (the attack layer's newest swing, weight above 0); once its clip time is past impactTicks + 10 and with 3 ticks or more of the
+         * clip left, the client forgets the knight and the server sends what a late tracker is owed (MotionEvents.startTracking). Every frame
+         * the swing shows again, its clip time must be within 2 ticks of the world clock's (now - start, the time the first client showed),
+         * at rate 1 (no late wind-up quickening past the impact); it must be back within 5 ticks and before its clip ends, and kept once after a
+         * repeated catch-up (queued at most once). 2 ticks past its clip's end, forgotten and caught up again (the server still holds it
+         * current), no frame may show it for 10 ticks.
+         */
+        void lateJoinGeo(MinecraftClient c, GravesAndGlory.Unit u, Entity e) {
+            int id = e.getId(); wait++;
+            AttackController ac = AttackController.LIVE.get(e);
+            double now = c.world.getTime(), raw = gStart == Long.MIN_VALUE ? -1 : now - gStart;
+            boolean fresh = ac != null && ac.shownAt > gLastAt; if (fresh) gLastAt = ac.shownAt;
+            boolean showing = fresh && ac.shownWeight > 0 && ac.shownStart == gStart && gClip.equals(ac.shownClip);
+            int queued = 0; for (var a : MotionEvents.Client.attacks(id)) if (a.startTick() == gStart && a.variant() == gVariant) queued++;
+            switch (ls) {
+                case 0 -> {
+                    String family = u.spec.family(); var rows = Tactics.variants(family);
+                    var anims = software.bernie.geckolib.cache.GeckoLibCache.getBakedAnimations().get(new net.minecraft.util.Identifier("gravesandglory", "animations/troop/knight.animation.json"));
+                    double best = Double.NEGATIVE_INFINITY;
+                    for (int v = 0; v < rows.size(); v++) {
+                        var clip = anims == null ? null : anims.getAnimation(AttackController.clipName(family, rows.get(v).id()));
+                        if (clip == null) continue;
+                        double imp = AttackController.impact(clip) >= 0 ? AttackController.impact(clip) : rows.get(v).impactTicks();
+                        double room = clip.length() - 3 - (imp + 10);
+                        if (room > best) { best = room; gVariant = v; gClip = clip.name(); gLen = clip.length(); gImpact = imp; impactTicks = rows.get(v).impactTicks(); }
+                    }
+                    if (gVariant < 0) { report("mo-late-join", false, "the GeckoLib knight has no attack clip for its " + family + " variants"); afterLate(); return; }
+                    final int vi = gVariant;
+                    server(c, b -> { u.lastVariant = vi; u.catchVariant = vi; u.swingTick = b.world.getTime(); MotionEvents.sendAttack(u, vi, u.swingTick); });
+                    ls = 1; wait = 0;
+                }
+                case 1 -> {
+                    if (gStart == Long.MIN_VALUE) for (var a : MotionEvents.Client.attacks(id)) if (a.variant() == gVariant) gStart = a.startTick();
+                    if (gStart != Long.MIN_VALUE && fresh && ac.shownWeight > 0 && ac.shownStart == gStart && gClip.equals(ac.shownClip)) { ls = 2; wait = 0; return; }
+                    if (wait > 60) { report("mo-late-join", false, "the swing never played on the first client (60 ticks; GeckoLib attack layer " + (ac == null ? "never drawn" : "showing " + ac.shownClip + " weight " + ac.shownWeight) + ")"); afterLate(); }
+                }
+                case 2 -> {
+                    double after = impactTicks + 10, latest = gLen - 3;
+                    if (raw > latest) { report("mo-late-join", false, String.format(Locale.ROOT, "the forget came too late (GeckoLib): clip time %.0f ticks, past the clip's end less 3 ticks (%.0f)", raw, latest)); afterLate(); return; }
+                    if (!(raw > after)) { if (wait > 60) { report("mo-late-join", false, "the swing never passed impactTicks + 10 ticks (GeckoLib)"); afterLate(); } return; }
+                    forgetAt = raw;
+                    MotionEvents.Client.forget(id); TroopMotion.forget(id);
+                    server(c, b -> { var p = sp(b); if (p != null) MotionEvents.startTracking(u, p); });
+                    ls = 3; wait = 0; forgetWait = 0;
+                }
+                case 3 -> {
+                    forgetWait++;
+                    maxQueue = Math.max(maxQueue, queued);
+                    if (showing) {
+                        if (backAt < 0) backAt = forgetWait;
+                        maxDiff = Math.max(maxDiff, Math.abs(ac.shownT - (ac.shownAt - gStart - ac.shownLead))); compared++;
+                        gRate1 &= Math.abs(ac.shownRate - 1) < 1e-6;
+                    }
+                    if (backAt >= 0 && !dupSent && forgetWait >= backAt + 1) { dupSent = true; server(c, b -> { var p = sp(b); if (p != null) MotionEvents.catchUpAttack(u, p); }); }
+                    if (raw >= gLen || forgetWait > 60) { ls = 4; wait = 0; }
+                }
+                case 4 -> {
+                    maxQueue = Math.max(maxQueue, queued);
+                    if (raw < gLen + 2) { if (wait > 60) { lateWhy = "the clip's end never came"; judgeLateGeo(); } return; }
+                    probeAt = raw;
+                    MotionEvents.Client.forget(id); TroopMotion.forget(id);
+                    server(c, b -> { var p = sp(b); if (p != null) MotionEvents.startTracking(u, p); });
+                    ls = 5; probeWait = 0; probeTracks = 0; gProbeQueued = 0;
+                }
+                case 5 -> {
+                    probeWait++;
+                    if (showing) probeTracks++;
+                    gProbeQueued = Math.max(gProbeQueued, queued);
+                    if (probeWait >= 10) judgeLateGeo();
+                }
+                default -> {}
+            }
+        }
+        void judgeLateGeo() {
+            boolean pass = lateWhy.isEmpty() && forgetAt > impactTicks + 10 && backAt >= 0 && backAt <= 5 && maxDiff <= 2 && gRate1 && maxQueue == 1 && compared >= 1 && dupSent
+                && probeTracks == 0 && probeWait >= 10;
+            report("mo-late-join", pass, String.format(Locale.ROOT, "GeckoLib knight (AttackController, the world clock): its clip %s (%.0f ticks, impact marker %.0f, variant impactTicks %d) forgotten and caught up %.0f ticks in, where the old impactTicks + 10 window had closed at tick %d: back %s (want 5 or less, before the clip ends), shown on %d frames read, largest gap between its clip time and the world clock's %.2f ticks (want 2 or less), rate 1 throughout %b; queued at most %d after a repeated catch-up %b (want 1); forgotten again %s: %d frames showed the ended swing over %d ticks (want 0 over 10), the catch-up queued it %d times%s",
+                gClip, gLen, gImpact, impactTicks, forgetAt, impactTicks + 10, backAt < 0 ? "never" : "after " + backAt + " ticks", compared, maxDiff, gRate1, maxQueue, dupSent,
+                probeAt < 0 ? "never" : String.format(Locale.ROOT, "%.0f ticks in, past the clip's end", probeAt), probeTracks, probeWait, gProbeQueued, lateWhy.isEmpty() ? "" : "; " + lateWhy));
+            afterLate();
+        }
         void judgeLate(MinecraftClient c) {
             int at = (int) Math.round(forgetAt * Clip.TICKS), probe = (int) Math.round(probeAt * Clip.TICKS);
             boolean pass = lateWhy.isEmpty() && forgetAt > (impactTicks + 10) / (double) Clip.TICKS && backAt >= 0 && backAt <= 5 && maxDiff <= 2.0 / Clip.TICKS && maxTracks == 1 && maxQueue == 1 && compared >= 5 && dupSent
@@ -917,9 +1027,16 @@ public final class MotionChecks {
             wait++;
             int lie = Spec.COMBATDISCIPLINE[0].corpseLieTicks(), lieEnd = BattleMath.DEATH_FALL_TICKS + lie - 1;
             switch (ss) {
-                case 0 -> { old = posted.get(COLS - 1); server(c, b -> young = post(b, gold, "knight", 0, -5, YAW)); ss = 1; wait = 0; }
+                case 0 -> {
+                    if (body == null) { // every candidate draws through GeckoLib: nothing here draws from BodyCache's buffers
+                        String why = "not run: the knight, the sentinel, the Marshal and the hearthguard are all drawn by GeckoLib, which never draws from BodyCache (legacy-only)";
+                        for (String k : new String[]{"mo-settle", "mo-light", "mo-fade-overlap", "mo-fade", "mo-fade-smoke"}) report(k, false, why);
+                        ss = 30; wait = 0; return;
+                    }
+                    old = standIn() ? standOld : posted.get(COLS - 1); server(c, b -> young = post(b, gold, body, 0, -5, YAW)); ss = 1; wait = 0;
+                }
                 case 1 -> {
-                    if (young == null || client(c, young.mob) == null) { if (wait > 100) { report("mo-settle", false, "the new knight never reached the client"); report("mo-light", false, "not run: mo-settle could not start"); ss = 10; } return; }
+                    if (young == null || client(c, young.mob) == null) { if (wait > 100) { report("mo-settle", false, "the new " + body + " never reached the client"); report("mo-light", false, "not run: mo-settle could not start"); ss = 10; } return; }
                     server(c, b -> { for (var u : List.of(young, old)) { u.mob.timeUntilRegen = 0; u.mob.hurtTime = 0; u.mob.damage(b.world.getDamageSources().generic(), 10000f); } });
                     ss = 2; wait = 0;
                 }
@@ -932,14 +1049,14 @@ public final class MotionChecks {
                     if (eo instanceof net.minecraft.entity.LivingEntity lo) { if (oldLies < 0 && TroopMotion.lies(lo)) oldLies = lo.deathTime; if (oldAt < 0 && BodyCache.cached(lo)) oldAt = lo.deathTime; }
                     if ((youngAt >= 0 && oldAt >= 0) || wait > 120) {
                         boolean pass = youngAt >= 0 && oldAt >= 0 && youngAt <= lieEnd && oldAt <= lieEnd && youngDur >= 0 && oldDur >= 0 && Math.abs((youngAt - youngDur) - (oldAt - oldDur)) <= 2;
-                        report("mo-settle", pass, String.format(Locale.ROOT, "struck down on the same tick: a knight %d ticks old at the blow lies from death tick %d and draws from its buffers from death tick %s; one %d ticks old lies from %d and draws from its buffers from %s; want both by %d (the fade starts after; lie %d) and within 2 ticks of each other once each one's death clip length is taken off (%.1f and %.1f ticks); BodyCache: %s",
+                        report("mo-settle", pass, String.format(Locale.ROOT, "struck down on the same tick" + bodyNote() + ": a " + body + " %d ticks old at the blow lies from death tick %d and draws from its buffers from death tick %s; one %d ticks old lies from %d and draws from its buffers from %s; want both by %d (the fade starts after; lie %d) and within 2 ticks of each other once each one's death clip length is taken off (%.1f and %.1f ticks); BodyCache: %s",
                             young.mob.age - wait, youngLies, youngAt < 0 ? "never" : String.valueOf(youngAt), old.mob.age - wait, oldLies, oldAt < 0 ? "never" : String.valueOf(oldAt), lieEnd, lie, youngDur, oldDur, BodyCache.diag()));
-                        if (oldAt >= 0) ss = 3; else { report("mo-light", false, "not run: the old knight's body never drew from its buffers"); ss = 10; }
+                        if (oldAt >= 0) ss = 3; else { report("mo-light", false, "not run: the old " + body + "'s body never drew from its buffers" + bodyNote()); ss = 10; }
                         wait = 0;
                     }
                 }
                 case 3 -> {
-                    var eo = client(c, old.mob); if (eo == null) { report("mo-light", false, "the old knight's body left the client"); ss = 10; return; }
+                    var eo = client(c, old.mob); if (eo == null) { report("mo-light", false, "the old " + body + "'s body left the client"); ss = 10; return; }
                     listen(); PROBE = new LightProbe(eo, lightOf(c, eo, 1f));
                     var at = net.minecraft.util.math.BlockPos.ofFloored(eo.getPos()); lamp = at;
                     server(c, b -> b.world.setBlockState(at, net.minecraft.block.Blocks.LIGHT.getDefaultState().with(net.minecraft.block.LightBlock.LEVEL_15, 15)));
@@ -949,7 +1066,7 @@ public final class MotionChecks {
                     var p = PROBE;
                     if (p.changedFrame < 0 && wait < 40) return;
                     boolean shown = p.changedFrame >= 0 && (p.drew == p.now || p.drew == -1 && p.counted);
-                    report("mo-light", shown && p.cachedBefore, String.format(Locale.ROOT, "a settled knight's body (death tick %d) drew from its buffers in its light (%s) the frame before a level-15 light block went into its block=%b; the first frame its light read another value (%s; frame %d of the probe) it drew %s=%b",
+                    report("mo-light", shown && p.cachedBefore, String.format(Locale.ROOT, "a settled " + body + "'s body" + bodyNote() + " (death tick %d) drew from its buffers in its light (%s) the frame before a level-15 light block went into its block=%b; the first frame its light read another value (%s; frame %d of the probe) it drew %s=%b",
                         old.mob.deathTime, hex(p.before), p.cachedBefore, p.changedFrame < 0 ? "never, in 40 ticks" : hex(p.now), p.changedFrame,
                         p.drew == -1 ? (p.counted ? "the normal way, which reads the light of the frame" : "nothing") : "from its buffers in light " + hex(p.drew), shown));
                     PROBE = null; ss = 10;
@@ -959,13 +1076,13 @@ public final class MotionChecks {
                     server(c, b -> {
                         var foot = at(OX, OZ); var blk = net.minecraft.util.math.BlockPos.ofFloored(foot.x, foot.y + OLIFT - 1, foot.z); barrier = blk;
                         b.world.setBlockState(blk, net.minecraft.block.Blocks.BARRIER.getDefaultState());
-                        low = post(b, gold, "knight", OX, OZ, YAW); var up = foot.add(0, OLIFT, 0);
+                        low = post(b, gold, body, OX, OZ, YAW); var up = foot.add(0, OLIFT, 0);
                         // the death clip is picked from the troop's UUID (MotionEngine.death: variantBias ^ const ^ deaths, mod 6) and the variants lie differently, so
                         // two random knights overlap on screen by anything from nothing to most of the body: post the high one again until it falls as the low one does
-                        GravesAndGlory.Unit h = post(b, gold, "knight", OX, OZ, YAW);
+                        GravesAndGlory.Unit h = post(b, gold, body, OX, OZ, YAW);
                         for (int tries = 0; tries < 200 && deathPick(h.mob) != deathPick(low.mob); tries++) {
                             final var gone = h; gone.mob.discard(); b.units.remove(gone); posted.remove(gone); pins.removeIf(q -> q.mob() == gone.mob);
-                            h = post(b, gold, "knight", OX, OZ, YAW);
+                            h = post(b, gold, body, OX, OZ, YAW);
                         }
                         final var hh = h; pins.removeIf(q -> q.mob() == hh.mob); pins.add(new Pin(hh.mob, up, YAW)); pin(hh.mob, up, YAW); high = hh;
                         camera(b, OX, OLIFT + 6, OZ, 0, 90);
@@ -974,7 +1091,7 @@ public final class MotionChecks {
                 }
                 case 11 -> {
                     if (low == null || high == null || client(c, low.mob) == null || client(c, high.mob) == null || wait < 20) {
-                        if (wait > 200) { report("mo-fade-overlap", false, "the two knights never reached the client"); ss = 99; }
+                        if (wait > 200) { report("mo-fade-overlap", false, "the two " + body + " bodies never reached the client"); ss = 99; }
                         return;
                     }
                     server(c, b -> { for (var u : List.of(low, high)) { u.mob.timeUntilRegen = 0; u.mob.hurtTime = 0; u.mob.damage(b.world.getDamageSources().generic(), 10000f); } });
@@ -1065,7 +1182,7 @@ public final class MotionChecks {
             for (int i = 0; i < oShots.length; i++) try { oShots[i].writeTo(new File(dir, "mo-fade-overlap-" + O_NAMES[i] + ".png")); } catch (java.io.IOException ex) { ex.printStackTrace(); }
             String regions = String.format(Locale.ROOT, "regions by each body's opaque frame alone: low only %d px, its alpha alone (HB) %.3f and in F %.3f (want %.3f); high only %d px, its alpha alone (HA) %.3f and in F %.3f (want %.3f); shared %d px, the low body's share through the high one %.3f (want %.3f), F off a over (1 - a) composited from O and OL by %.3f of F's difference from the background",
                 rn[0], div(rOwn[0], rDen[0]), div(rF[0], rDen[0]), oAlphaLow, rn[1], div(rOwn[1], rDen[1]), div(rF[1], rDen[1]), oAlpha, rn[2], div(sThrough, sAlone), want, div(resid, mag));
-            report("mo-fade-overlap", pass, String.format(Locale.ROOT, "a knight lying 3 blocks over another, both fading (death ticks %d and %d at partial tick %.3f, alpha %.3f and %.3f), the game paused with no HUD %b, both drawn from their buffers %b; footprints %d (low) and %d (high) pixels, %d shared; over the shared pixels the low body's share through the high one is %.3f of its share alone (want %.3f = 1 - alpha, within %.2f); drawn in one group as before the fix %.3f (want under 0.1); most fade groups in a pass %d (want 2 or more); R62 %s; screenshots mo-fade-overlap-f/f0/ha/hb/hab/o/ol/oh.png; BodyCache: %s",
+            report("mo-fade-overlap", pass, String.format(Locale.ROOT, "a " + body + bodyNote() + " lying 3 blocks over another, both fading (death ticks %d and %d at partial tick %.3f, alpha %.3f and %.3f), the game paused with no HUD %b, both drawn from their buffers %b; footprints %d (low) and %d (high) pixels, %d shared; over the shared pixels the low body's share through the high one is %.3f of its share alone (want %.3f = 1 - alpha, within %.2f); drawn in one group as before the fix %.3f (want under 0.1); most fade groups in a pass %d (want 2 or more); R62 %s; screenshots mo-fade-overlap-f/f0/ha/hb/hab/o/ol/oh.png; BodyCache: %s",
                 oDeath, oDeathLow, oTd, oAlpha, oAlphaLow, oPaused, oCached, footLow, footHigh, both, r, want, OTOL, r0, BodyCache.fadeGroupsMax, regions, BodyCache.diag()));
             System.out.println("[p2] mo-fade-overlap trace: " + String.join(" | ", oTrace));
             overlapEnd(c); ss = 99;
@@ -1118,12 +1235,12 @@ public final class MotionChecks {
                     String red = System.getProperty("gravesandglory.fadeRed", "");
                     fRed = "1".equals(red) || "true".equalsIgnoreCase(red);
                     shadowsBefore = c.options.getEntityShadows().getValue(); c.options.getEntityShadows().setValue(false);
-                    server(c, b -> { fUnit = post(b, gold, "knight", FX, FZ, YAW); camera(b, FX, FEYE, FZ, 0, 90); });
+                    server(c, b -> { fUnit = post(b, gold, body, FX, FZ, YAW); camera(b, FX, FEYE, FZ, 0, 90); });
                     ss = 21; wait = 0;
                 }
                 case 21 -> {
                     if (fUnit == null || client(c, fUnit.mob) == null || wait < 40) {
-                        if (wait > 300) { report("mo-fade", false, "the knight never reached the client"); report("mo-fade-smoke", false, "not run: mo-fade could not start"); fadeEnd(c); ss = 30; wait = 0; }
+                        if (wait > 300) { report("mo-fade", false, "the " + body + " never reached the client"); report("mo-fade-smoke", false, "not run: mo-fade could not start"); fadeEnd(c); ss = 30; wait = 0; }
                         return;
                     }
                     server(c, b -> { fUnit.mob.timeUntilRegen = 0; fUnit.mob.hurtTime = 0; fUnit.mob.damage(b.world.getDamageSources().generic(), 10000f); });
@@ -1189,7 +1306,7 @@ public final class MotionChecks {
         }
         void smokeReport() {
             smokeCounting = false;
-            report("mo-fade-smoke", smokeArmedAt >= 0 && fRemovedAfter >= 0 && smokePoofs == 0, String.format(Locale.ROOT, "a knight's body faded and removed (client death tick %s to %s past its removal): poofs the client spawned within 2 blocks of it %d (want 0), anywhere %d",
+            report("mo-fade-smoke", smokeArmedAt >= 0 && fRemovedAfter >= 0 && smokePoofs == 0, String.format(Locale.ROOT, "a " + body + "'s body faded and removed (client death tick %s to %s past its removal): poofs the client spawned within 2 blocks of it %d (want 0), anywhere %d",
                 smokeArmedAt < 0 ? "never 85" : String.valueOf(smokeArmedAt), fRemovedAfter < 0 ? "never removed" : "5 unpaused ticks", smokePoofs, smokeAll));
             SMOKE_AT = null;
         }
@@ -1293,7 +1410,7 @@ public final class MotionChecks {
             if (!fWrongPath.isEmpty()) bad.add("fading draws on the wrong path: " + fWrongPath);
             if (fAfterPixels != 0) bad.add(fAfterPixels < 0 ? "no body footprint for the frame after removal" : "the frame after removal is " + fAfterPixels + " px off the body-hidden frame over the body's footprint");
             if (!sheet) bad.add("no contact sheet");
-            report("mo-fade", bad.isEmpty(), String.format(Locale.ROOT, "a knight fading alone (lie %d, fade %d), paused with no menu or HUD at death ticks %d/%d/%d (alpha %.3f/%.3f/%.3f)%s; R59 the body's alpha against BattleMath.corpseAlpha (within %.2f each path, %.2f apart): %s; per part alpha (|F - H| over |O - H|) and opaque footprint at the three samples%s; the frame after its removal (seen %d ticks after the last shots) %d px off the body-hidden frame over the body's footprint of %d px (want 0; whole frame %d px, for information); contact sheet mo-fade-contact.png (52, 70, 88, after) %b%s",
+            report("mo-fade", bad.isEmpty(), String.format(Locale.ROOT, "a " + body + bodyNote() + " fading alone (lie %d, fade %d), paused with no menu or HUD at death ticks %d/%d/%d (alpha %.3f/%.3f/%.3f)%s; R59 the body's alpha against BattleMath.corpseAlpha (within %.2f each path, %.2f apart): %s; per part alpha (|F - H| over |O - H|) and opaque footprint at the three samples%s; the frame after its removal (seen %d ticks after the last shots) %d px off the body-hidden frame over the body's footprint of %d px (want 0; whole frame %d px, for information); contact sheet mo-fade-contact.png (52, 70, 88, after) %b%s",
                 Spec.COMBATDISCIPLINE[0].corpseLieTicks(), Spec.COMBATDISCIPLINE[0].corpseFadeTicks(), fDeath[0], fDeath[1], fDeath[2], fAlpha[0], fAlpha[1], fAlpha[2], fRed ? " [red switch: held items opaque]" : "", FWANT, FPATHS, want, t, fRemovedAfter, fAfterPixels, fMaskPixels, fAfterWhole, sheet,
                 bad.isEmpty() ? "" : "; off: " + bad));
         }
