@@ -301,7 +301,7 @@ public final class SurvivalMode extends BattleMode {
             if (spec == null) continue;
             var s = rise(b.campaign.map, (String) next[1]);
             double r = s.radius(), x = s.x() + (b.world.random.nextDouble() * 2 - 1) * r, z = s.z() + (b.world.random.nextDouble() * 2 - 1) * r;
-            var u = b.spawn(director, spec, slot++ % Spec.RULES[0].squadSize(), surface(b, x, z).add(0, 0.1, 0));
+            var u = b.spawn(director, spec, WarGrid.cells() + slot++ % 20, surface(b, x, z).add(0, 0.1, 0));
             u.mob.addCommandTag(TAG);
             alive++;
         }

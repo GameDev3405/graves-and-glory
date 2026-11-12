@@ -374,8 +374,14 @@ public final class Campaign {
     static List<String> bannerRow(String id){for(var row:Spec.BOTBANNERS)if(row.id().equals(id))return new ArrayList<>(Arrays.asList(row.slots().split(",")));return RosterMath.starterBanner();}
     /** The banner a squad fields this round: a bot's from botBanner; a War Table room member's own banner with only the units of
      *  the House he took on the lobby (lobbyHouse; Kort, 2026-10-31); anyone else's own banner with the units of Houses that
-     *  cannot be fielded yet left empty. */
-    List<String> banner(GravesAndGlory.Squad s){
+     *  cannot be fielded yet left empty. Always the dense war table (table): a 20-entry botBanners row is moved onto it. */
+    List<String> banner(GravesAndGlory.Squad s){return table(bannerLine(s));}
+    /** The war table of a banner list: a dense list of WarGrid.cells() entries is copied as it is; an old 20-entry banner (a botBanners row, a test squad's) is moved onto columns 2-6 (WarGrid.fromLine), so it deploys in the shape it had. */
+    static List<String> table(List<String> line){
+        if(line.size()==WarGrid.cells())return new ArrayList<>(line);
+        return WarGrid.dense(WarGrid.fromLine(line,RosterMath.Catalog.fromSpec(),t->true).table());
+    }
+    private List<String> bannerLine(GravesAndGlory.Squad s){
         if(s.bot)return botBanner(s);
         String house=MarchMath.houseBannerRow(activeBattle,Spec.CAMPAIGNCHAPTERS);if(house!=null)return bannerRow(house); // a house chapter fields its fixed House banner, never the collection (brief G1)
         var room=activeRoom.isEmpty()?null:social.rooms.get(activeRoom);
@@ -989,13 +995,13 @@ public final class Campaign {
             if(economy){
                 long living=b.fielded(s).count();
                 if(living==0){long until=botRespawns.computeIfAbsent(s.owner,k->b.time+240);if(b.time<until)continue;}else botRespawns.remove(s.owner);
-                // Buy toward the banner: each troop up to its count there, while fielded and queued slot weights fit rules.squadSize.
+                // Buy toward the banner: each troop up to its count there, while fielded and queued troops stay below rules.maxTroops.
                 Map<String,Integer> wanted=new LinkedHashMap<>();for(String id:s.banner)if(troop(id)!=null)wanted.merge(id,1,Integer::sum);
-                int weight=b.fielded(s).mapToInt(u->u.spec.slotWeight()).sum()+s.training.stream().mapToInt(q->q.spec().slotWeight()).sum();
+                long army=b.fielded(s).count()+s.training.size();
                 for(var want:wanted.entrySet()){var type=troop(want.getKey());
                     long have=b.fielded(s).filter(u->u.spec==type).count()+s.training.stream().filter(q->q.spec()==type).count();
                     int price=type.cost();
-                    while(have<want.getValue()&&s.gold>=price&&weight+type.slotWeight()<=GravesAndGlory.R.squadSize()){s.gold-=price;s.stats.goldSpent+=price;long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+Commander.trainingTicks(type),price));weight+=type.slotWeight();have++;}
+                    while(have<want.getValue()&&s.gold>=price&&army<RosterMath.maxTroops()){s.gold-=price;s.stats.goldSpent+=price;long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+Commander.trainingTicks(type),price));army++;have++;}
                 }
                 Veterans.botBuy(b,s); // then gear, from what the refill left, keeping its tier's reserve for rebuys (in-match progression design 9.1)
             }

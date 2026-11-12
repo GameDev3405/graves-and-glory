@@ -227,17 +227,35 @@ public final class BattleMathCheck {
             if (slack < worstRing) {worstRing = slack; worstPair = i + " and " + j;}
         }
         check(ringCell[0] == 0.7 && ringCell[2] == 2 && worstRing >= -1e-9, "a mixed Hearthguard and Brassjaw banner: every two deploy points stand at least their half widths and 0.1 apart (least slack " + worstRing + ", slots " + worstPair + ")");
+        int cols = WarGrid.cols();
         double[] twos = new double[12]; java.util.Arrays.fill(twos, 2);
         double[][] oldRing = BattleMath.deployRing(new boolean[12], twos, 2); boolean asBefore = oldRing.length >= 12;
-        for (int i = 0; i < 12; i++) asBefore &= Math.abs(oldRing[i][0] - (i % 5 - 2) * 2) < 1e-9 && Math.abs(oldRing[i][1] - (i / 5 - 2) * 2) < 1e-9;
-        check(asBefore, "no shield troop: the old ring, 2 apart, centred on slot 12");
-        double[] sevens = new double[10]; java.util.Arrays.fill(sevens, .7); boolean[] tens = new boolean[10]; java.util.Arrays.fill(tens, true);
+        for (int i = 0; i < 12; i++) asBefore &= Math.abs(oldRing[i][0] - (i % cols - 4) * 2) < 1e-9 && Math.abs(oldRing[i][1] - (i / cols - 2) * 2) < 1e-9;
+        check(asBefore, "no shield troop: the ring 2 apart, nine wide, centred on column 4 and two rows behind the first");
+        double[] sevens = new double[cols + 1]; java.util.Arrays.fill(sevens, .7); boolean[] tens = new boolean[cols + 1]; java.util.Arrays.fill(tens, true);
         double[][] wallRing = BattleMath.deployRing(tens, sevens, 2);
-        check(Math.abs(wallRing[1][0] - wallRing[0][0] - 0.7) < 1e-9 && Math.abs(wallRing[5][1] - wallRing[0][1] - 0.7) < 1e-9 && Math.abs(wallRing[5][0] - wallRing[0][0]) < 1e-9, "two rows of shield troops: shoulder to shoulder, their cell apart, one deep wall");
+        check(Math.abs(wallRing[1][0] - wallRing[0][0] - 0.7) < 1e-9 && Math.abs(wallRing[cols][1] - wallRing[0][1] - 0.7) < 1e-9 && Math.abs(wallRing[cols][0] - wallRing[0][0]) < 1e-9, "two rows of shield troops: shoulder to shoulder, their cell apart, one deep wall");
+        double[] gapTwos = new double[cols * 3]; boolean[] gapShield = new boolean[cols * 3];
+        gapTwos[4] = 2; gapTwos[2 * cols + 4] = 2; // a troop in row 0 and one in row 2, row 1 empty
+        double[][] gapRing = BattleMath.deployRing(gapShield, gapTwos, 2);
+        check(Math.abs(gapRing[2 * cols + 4][1] - gapRing[4][1] - 2) < 1e-9, "the deploy ring: an empty row takes no depth");
         double[] depths = BattleMath.deployDepths(new boolean[]{true,true,false,true,true}, new double[]{.7,.7,0,.7,1.0}, 3);
         check(depths[0] == 0 && Math.abs(depths[1] - 0.7) < 1e-9 && Math.abs(depths[2] - 3.7) < 1e-9 && Math.abs(depths[3] - 6.7) < 1e-9 && Math.abs(depths[4] - 7.7) < 1e-9, "deploy rows: shield rows a cell apart (the wider of the two), any other row 3 back");
+        double[] skipped = BattleMath.deployDepths(new boolean[]{false,true,false,true,true}, new boolean[]{false,false,false,true,true}, new double[]{0,0,0,.7,.7}, 3);
+        check(skipped[1] == 0 && Math.abs(skipped[3] - 3) < 1e-9 && Math.abs(skipped[4] - 3.7) < 1e-9, "deploy rows: rows with no troop take no depth, the first filled row stands at 0");
         double[] row = BattleMath.deployRow(new double[]{2.5,2.5,2.5,2.5,2.5}), wall = BattleMath.deployRow(new double[]{.7,.7,.7,2.5,2.5});
         check(row[0] == -5 && row[2] == 0 && row[4] == 5 && Math.abs(wall[1] - wall[0] - 0.7) < 1e-9 && Math.abs(wall[2] - wall[1] - 0.7) < 1e-9 && wall[2] == 0 && Math.abs(wall[3] - wall[2] - 1.6) < 1e-9, "a deploy row: the old 2.5 places, and shield troops shoulder to shoulder at 0.7");
+        // deployRowNineWide: a 9-place row centres on column 4; the old 5-wide row moved to columns 2-6 stands where it stood
+        double[] nine = new double[cols]; java.util.Arrays.fill(nine, 2.5);
+        double[] row9 = BattleMath.deployRow(nine);
+        double[] wall9 = BattleMath.deployRow(new double[]{2.5,2.5,.7,.7,.7,2.5,2.5,2.5,2.5});
+        check(cols == 9 && row9[4] == 0 && row9[0] == -10 && row9[8] == 10 && Math.abs(row9[2] - row[0]) < 1e-9 && Math.abs(row9[6] - row[4]) < 1e-9
+            && Math.abs(wall9[2] - wall[0]) < 1e-9 && Math.abs(wall9[3] - wall[1]) < 1e-9 && Math.abs(wall9[5] - wall[3]) < 1e-9 && Math.abs(wall9[6] - wall[4]) < 1e-9,
+            "deployRowNineWide: nine places 2.5 apart centred on column 4; columns 2-6 stand as the old five-wide row");
+        // tableOffsetCentres: {side, back} = {(col - 4) x colGap, row x rowGap}
+        double[] c4 = BattleMath.tableOffset(4, 2.5, 3), c0 = BattleMath.tableOffset(0, 2.5, 3), c13 = BattleMath.tableOffset(13, 2.5, 3), c53 = BattleMath.tableOffset(53, 2.5, 3);
+        check(c4[0] == 0 && c4[1] == 0 && c0[0] == -10 && c0[1] == 0 && c13[0] == 0 && c13[1] == 3 && c53[0] == 10 && c53[1] == 15,
+            "tableOffsetCentres: cell 4 at side 0, cell 0 at -4 gaps, cell 13 one row back, cell 53 at +4 gaps and five rows back");
         double[] px={-44,0,44}, pz={-43,0,43}; int[] own={-1,-1,-1};
         check(BattleMath.leastDefended(0,0,px,pz,own,new int[]{0,9,0},1,25) != 1, "nine defenders push hard bots off the centre");
         check(BattleMath.leastDefended(0,0,px,pz,own,new int[]{0,0,0},1,25) == 1, "undefended nearest point wins");

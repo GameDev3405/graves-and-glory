@@ -541,9 +541,33 @@ public final class BattleMath {
      * uncommanded shield group deploys as one deep wall.
      */
     public static double[] deployDepths(boolean[] wall, double[] cell, double rowGap) {
+        boolean[] troops = new boolean[wall.length];
+        Arrays.fill(troops, true);
+        return deployDepths(troops, wall, cell, rowGap);
+    }
+    /**
+     * As deployDepths(wall, cell, rowGap), with the rows that hold troops (troops[r]): a row with no troop takes no depth, so the army stands
+     * from its first filled row (depth 0) and two filled rows with only empty rows between them stand as neighbours. An empty row takes the
+     * depth of the filled row before it (0 before the first).
+     */
+    public static double[] deployDepths(boolean[] troops, boolean[] wall, double[] cell, double rowGap) {
         double[] depth = new double[wall.length];
-        for (int r = 1; r < wall.length; r++) depth[r] = depth[r - 1] + (wall[r - 1] && wall[r] ? Math.max(cell[r - 1], cell[r]) : rowGap);
+        int last = -1;
+        for (int r = 0; r < wall.length; r++) {
+            if (!troops[r]) { depth[r] = last < 0 ? 0 : depth[last]; continue; }
+            if (last >= 0) depth[r] = depth[last] + (wall[last] && wall[r] ? Math.max(cell[last], cell[r]) : rowGap);
+            last = r;
+        }
         return depth;
+    }
+    /**
+     * A war table cell's offset from the army's anchor at even spacing (army rework design 4.5): {side, back} = {(col - 4) x colGap,
+     * row x rowGap}, so the table is centred on its middle column (4 of 9) and row 0 is the front. Battle.reinforce spaces its rows the same
+     * way through deployRow and deployDepths, which also close shield walls.
+     */
+    public static double[] tableOffset(int cell, double colGap, double rowGap) {
+        int middle = (WarGrid.cols() - 1) / 2;
+        return new double[]{(WarGrid.col(cell) - middle) * colGap, WarGrid.row(cell) * rowGap};
     }
     /**
      * A held group's places (Battle.heldPlace): its members (slot order), the shape (formation, columns, wedge) and layout they stood in, and
@@ -573,29 +597,37 @@ public final class BattleMath {
     /** A troop's cell in the deploy ring (Battle.deploy): a shield troop's wall cell (shieldCell), any other 2, the old ring's, or its width and 0.1 when that is more. */
     public static double deployCell(boolean shield, double width, double wallCell) { return shield ? shieldCell(width, wallCell) : Math.max(2, width + 0.1); }
     /**
-     * Where each slot of a squad stands in its deploy ring (Battle.deploy: trained troops at the barracks or a forward anchor), {x, z} from the
-     * ring's centre: rows of five, as the reinforce rows (deployRow, deployDepths). cell[i] is slot i's cell (deployCell; 0 or less: an empty
-     * slot), shield[i] whether it carries a shield. In a row neighbours stand half of each one's cell apart; two rows of nothing but shield troops
-     * stand their wall cell apart, one deep wall (a wall row's empty places take its cell); any other two rows stand `gap` apart, or half of
-     * the two rows' widest cells when that is more. So no two troops of any mix stand closer than their cells allow. At least three rows, centred
-     * on the middle of the third (slot 12): with every cell `gap` this is the old ring, (slot % 5 - 2, slot / 5 - 2) x gap.
+     * Where each war table cell of a squad stands in its deploy ring (Battle.deploy: trained troops at the barracks or a forward anchor), {x, z}
+     * from the ring's centre: rows of the table's width (WarGrid.cols), as the reinforce rows (deployRow, deployDepths). cell[i] is cell i's
+     * room (deployCell; 0 or less: an empty cell), shield[i] whether it carries a shield. In a row neighbours stand half of each one's cell apart,
+     * centred on the middle column (4 of 9); two rows of nothing but shield troops stand their wall cell apart, one deep wall (a wall row's empty
+     * places take its cell); any other two filled rows stand `gap` apart, or half of the two rows' widest cells when that is more. A row with no
+     * troop takes no depth. The ring is centred two rows behind the first filled row (on the third filled row, or `gap` per missing row past the
+     * last): with every cell `gap` this is ((col - 4) x gap, (row - 2) x gap) for a table filled from row 0.
      */
     public static double[][] deployRing(boolean[] shield, double[] cell, double gap) {
-        int size = Math.max(15, (shield.length + 4) / 5 * 5), rows = size / 5;
+        int cols = WarGrid.cols(), rows = Math.max(1, (shield.length + cols - 1) / cols), size = rows * cols;
         boolean[] wall = new boolean[rows], troops = new boolean[rows]; double[] rowCell = new double[rows], widest = new double[rows], cells = new double[size], depth = new double[rows];
         Arrays.fill(wall, true);
         for (int i = 0; i < shield.length; i++) {
             if (cell[i] <= 0) continue;
-            troops[i / 5] = true;
-            if (shield[i]) rowCell[i / 5] = Math.max(rowCell[i / 5], cell[i]); else wall[i / 5] = false;
+            troops[i / cols] = true;
+            if (shield[i]) rowCell[i / cols] = Math.max(rowCell[i / cols], cell[i]); else wall[i / cols] = false;
         }
         for (int r = 0; r < rows; r++) wall[r] &= troops[r];
-        for (int i = 0; i < size; i++) { cells[i] = i < cell.length && cell[i] > 0 ? cell[i] : wall[i / 5] ? rowCell[i / 5] : gap; widest[i / 5] = Math.max(widest[i / 5], cells[i]); }
-        for (int r = 1; r < rows; r++) depth[r] = depth[r - 1] + (wall[r - 1] && wall[r] ? Math.max(rowCell[r - 1], rowCell[r]) : Math.max(gap, (widest[r - 1] + widest[r]) / 2));
+        for (int i = 0; i < size; i++) { cells[i] = i < cell.length && cell[i] > 0 ? cell[i] : wall[i / cols] ? rowCell[i / cols] : gap; widest[i / cols] = Math.max(widest[i / cols], cells[i]); }
+        int last = -1, filled = 0; double centre = 0;
+        for (int r = 0; r < rows; r++) {
+            if (!troops[r]) { depth[r] = last < 0 ? 0 : depth[last]; continue; }
+            if (last >= 0) depth[r] = depth[last] + (wall[last] && wall[r] ? Math.max(rowCell[last], rowCell[r]) : Math.max(gap, (widest[last] + widest[r]) / 2));
+            last = r;
+            if (filled++ == 2) centre = depth[r];
+        }
+        if (filled < 3) centre = (last < 0 ? 0 : depth[last]) + (3 - Math.max(filled, 1)) * gap;
         double[][] ring = new double[size][];
         for (int r = 0; r < rows; r++) {
-            double[] row = deployRow(Arrays.copyOfRange(cells, r * 5, r * 5 + 5));
-            for (int i = 0; i < 5; i++) ring[r * 5 + i] = new double[]{row[i], depth[r] - depth[2]};
+            double[] row = deployRow(Arrays.copyOfRange(cells, r * cols, r * cols + cols));
+            for (int i = 0; i < cols; i++) ring[r * cols + i] = new double[]{row[i], depth[r] - centre};
         }
         return ring;
     }
@@ -609,8 +641,8 @@ public final class BattleMath {
     }
     /**
      * The sideways offsets of one deploy row (Battle.reinforce) from the cells of its places: neighbours stand half of each one's cell apart, so
-     * shield troops form their default Hold at the wall cell, and the row is centred on its middle place (index 2 of a row of 5). With every cell
-     * the same c this is (i - 2) x c, the old row.
+     * shield troops form their default Hold at the wall cell, and the row is centred on its middle place (index 4 of a war table row of 9, index
+     * 2 of a row of 5). With every cell the same c this is (i - middle) x c.
      */
     public static double[] deployRow(double[] cells) {
         double[] at = new double[cells.length];

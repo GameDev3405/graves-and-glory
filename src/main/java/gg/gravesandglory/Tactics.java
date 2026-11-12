@@ -491,7 +491,7 @@ final class Tactics {
                 if(d<score){score=d;best=bridge;}
             }
             if(best!=null){
-                var battle=GravesAndGlory.battle;double offset=(u.slot%5-2)*(battle==null?GravesAndGlory.Battle.spacing(u):battle.cell(u)); // its lane: a wall troop's cell on Hold, else its body's room
+                var battle=GravesAndGlory.battle;double offset=(u.hasCell()?WarGrid.col(u.slot)-(WarGrid.cols()-1)/2:u.slot%5-2)*(battle==null?GravesAndGlory.Battle.spacing(u):battle.cell(u)); // its lane: a wall troop's cell on Hold, else its body's room
                 double entry=best.x()+Math.signum(side)*(best.width()/2.0-N.bridgeEntryInset());
                 boolean onBridge=Math.abs(here.z-best.z())<best.depth()/2.0-1&&Math.abs(here.x-best.x())<best.width()/2.0+2;
                 double x=onBridge?best.x()+Math.signum(destination)*(best.width()/2.0+2):entry;
@@ -503,7 +503,7 @@ final class Tactics {
     /** A goal inside the walled yard of a supply house (Phase 3 Task 8b): the point just outside a gate (HouseRoute) until the unit stands at it, then the goal itself, so that the units do not stand at the wall. Any other goal comes back as it is. */
     static Vec3d houseGate(GravesAndGlory.Unit u,Vec3d goal){
         for(var r:housesOfMap()){
-            double[] p=HouseRoute.next(r.x(),r.z(),r.rotation(),u.mob.getX(),u.mob.getZ(),goal.x,goal.z,(u.slot%5-2)*0.8);
+            double[] p=HouseRoute.next(r.x(),r.z(),r.rotation(),u.mob.getX(),u.mob.getZ(),goal.x,goal.z,(u.hasCell()?WarGrid.col(u.slot)-(WarGrid.cols()-1)/2:u.slot%5-2)*0.8);
             if(p!=null)return new Vec3d(p[0],goal.y,p[1]);
         }
         return goal;

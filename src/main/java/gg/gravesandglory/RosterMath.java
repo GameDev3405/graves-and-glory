@@ -98,21 +98,14 @@ public final class RosterMath {
     }
 
     /**
-     * Banner slots per House: a unit counts 1 for its House and each of its ^ markers 1 more, so a ^ counts for the unit
-     * before it. A ^ the unit does not need (an orphan) counts for nothing. Houses with no slots are absent.
+     * Banner slots per House (army rework R5): each troop of the banner adds its slotWeight to its House, so a war table troop that takes one
+     * cell still counts its weight toward House tiers. Markers, empty cells and unknown ids count for nothing. Houses with no slots are absent.
      */
     public static Map<String, Integer> houseSlots(List<String> banner, Catalog c) {
         Map<String, Integer> slots = new LinkedHashMap<>();
-        String owner = null;
-        int markers = 0;
         if (banner != null) for (String id : banner) {
-            if (MARKER.equals(id)) {
-                if (owner != null && markers > 0) { slots.merge(owner, 1, Integer::sum); markers--; }
-                continue;
-            }
-            owner = c.houseOf(id);
-            markers = owner == null ? 0 : Math.max(0, c.weight(id) - 1);
-            if (owner != null) slots.merge(owner, 1, Integer::sum);
+            String house = c.houseOf(id);
+            if (house != null) slots.merge(house, Math.max(1, c.weight(id)), Integer::sum);
         }
         return slots;
     }

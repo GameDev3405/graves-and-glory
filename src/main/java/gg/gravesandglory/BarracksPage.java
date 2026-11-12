@@ -228,7 +228,7 @@ final class BarracksPage {
         UiTex.draw(g, "recruit/coin-m", px, py + 2);
         g.drawText(font, heading(purse), px + 10, py, DarkUi.IVORY, true);
         purseBox = new int[]{px, py, pw, 12};
-        String army = "Army " + RecruitmentScreen.weight(false) + " of " + GravesAndGlory.R.squadSize() + " slots" + (queued > 0 ? ", " + (RecruitmentScreen.weight(true) - RecruitmentScreen.weight(false)) + " queued" : "");
+        String army = "Army " + RecruitmentScreen.count(false) + " of " + RosterMath.maxTroops() + " troops" + (queued > 0 ? ", " + (RecruitmentScreen.count(true) - RecruitmentScreen.count(false)) + " queued" : "");
         int aw = bodyW(army);
         g.drawText(font, body(army), axis - aw / 2, oy + ARMY_Y, DarkUi.IVORY, true);
     }
@@ -259,7 +259,7 @@ final class BarracksPage {
         if (!nearBarracks) return "Not here";
         if (listed == 0) return "Not in banner";
         if (roster[i] + pending[i] >= listed) return "All fielded";
-        if (RecruitmentScreen.weight(true) + t.slotWeight() > GravesAndGlory.R.squadSize()) return "Army full";
+        if (RecruitmentScreen.count(true) >= RosterMath.maxTroops()) return "Army full";
         if (gold < RecruitmentScreen.price(t)) return "Need " + RecruitmentScreen.price(t);
         return null;
     }

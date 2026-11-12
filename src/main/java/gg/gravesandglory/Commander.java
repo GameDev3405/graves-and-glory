@@ -34,7 +34,7 @@ public final class Commander {
     static GravesAndGlory.Unit temporary(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.TroopsRow spec, Vec3d at, long until) {
         Set<Integer> used = new HashSet<>();
         for (var u : b.units) if (u.squad == s) used.add(u.slot);
-        int slot = GravesAndGlory.R.squadSize();
+        int slot = WarGrid.cells(); // a temporary has no war table cell (Unit.hasCell)
         while (used.contains(slot)) slot++;
         var u = b.spawn(s, spec, slot, at);
         u.temporary = true;

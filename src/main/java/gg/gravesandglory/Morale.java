@@ -31,7 +31,7 @@ public final class Morale {
     /** Full health and full head count per group from the squad's lineup; only ever raised during a round. */
     static void lineup(GravesAndGlory.Battle b,GravesAndGlory.Squad s,List<String> line){
         Map<String,Double> full=new HashMap<>();Map<String,Integer> heads=new HashMap<>();int position=0;
-        for(String id:line){if(position++>=GravesAndGlory.R.squadSize()||id.equals(RosterMath.EMPTY)||id.equals(RosterMath.MARKER))continue;
+        for(String id:line){if(position++>=WarGrid.cells()||id.equals(RosterMath.EMPTY)||id.equals(RosterMath.MARKER))continue;
             var spec=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(id)).findFirst().orElse(null);if(spec==null)continue;
             full.merge(spec.group(),spec.health()*b.campaign.health(s,spec),Double::sum);heads.merge(spec.group(),1,Integer::sum);}
         for(var e:full.entrySet())s.fullHealth.merge(e.getKey(),e.getValue(),Math::max);

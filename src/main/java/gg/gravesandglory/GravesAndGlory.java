@@ -216,7 +216,7 @@ public final class GravesAndGlory implements ModInitializer {
         boolean bot, seated=true; int lane;
         /** The tick a dropped owner's bot takes command (MatchRules.takeoverAt); 0 when no one is waited for. */
         long takeoverAt;
-        /** The banner this squad fields this round (rules.squadSize entries: troop ids, ^ for a slot of the unit before it, empty), set by Campaign.prepareRound. */
+        /** The banner this squad fields this round: the dense war table, WarGrid.cells() entries indexed row * cols + col (a troop id, or empty where nothing stands), set by Campaign.prepareRound through Campaign.banner. */
         List<String> banner=new ArrayList<>();
         /** A bot's difficulty: the id of its Spec.BOTCOMMAND row. Set from Campaign.difficulty when the round is prepared. */
         String tier="normal";
@@ -283,7 +283,10 @@ public final class GravesAndGlory implements ModInitializer {
         MobEntity mob;
         Squad squad;
         Spec.TroopsRow spec;
+        /** The troop's war table cell (0 to WarGrid.cells() - 1), or WarGrid.cells() + n for a troop with no cell (a Commander temporary, a Survival wave, a test squad's); see hasCell. */
         int slot;
+        /** True when the troop stands at a war table cell of its banner (army rework R2): slot within the table. A troop with no cell is never refilled into a cell. */
+        boolean hasCell(){return slot>=0&&slot<WarGrid.cells();}
         /** A bot army's refill waiting at its rally (Squad.muster) since this battle tick, -1 when it is with its army (Campaign.musterRefill, musterRelease). */
         long musterSince=-1;
         long nextAttack;long abilityAt,windupUntil;Vec3d spellCenter;
@@ -850,7 +853,7 @@ public final class GravesAndGlory implements ModInitializer {
                 if(!campaign.ending())mode.tick(this); // a finish earlier this tick began the ending
                 if(!campaign.ending()){ // reinforcements and income stop with the round
                 if(R.automaticReinforcements()&&time%20==0)for(Squad s:new ArrayList<>(squads.values())){if(!s.seated)continue;
-                    if(time>=s.reinforceAt && fielded(s).mapToInt(u->u.spec.slotWeight()).sum()<R.squadSize()){
+                    if(time>=s.reinforceAt && fielded(s).count()<RosterMath.units(s.banner,RosterMath.Catalog.fromSpec())){ // fewer troops stand than the banner lists
                         s.reinforceAt=time+R.reinforceSeconds()*20L;reinforce(s);
                     }
                 }
@@ -1073,14 +1076,13 @@ public final class GravesAndGlory implements ModInitializer {
             return horizontalDistance(p.getPos(),fieldBarracks(s.team))<=Spec.ECONOMY[0].accessRadius()*Spec.ECONOMY[0].accessRadius();
         }
         void openBarracks(ServerPlayerEntity p){if(running)campaign.tutorialDid(p,3);if(ServerPlayNetworking.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,OPEN_BARRACKS,PacketByteBufs.create());}
-        /** Why a troop cannot join the squad's training queue now, or null when it can: a troop trains only while its living and queued units are below its count in the squad's banner, and slot weights stay within rules.squadSize. */
+        /** Why a troop cannot join the squad's training queue now, or null when it can: a troop trains only while its living and queued units are below its count in the squad's banner, and all living and queued troops stay below rules.maxTroops. */
         String roomFor(Squad s,Spec.TroopsRow spec){
             int listed=Collections.frequency(s.banner,spec.id());
             if(listed==0)return spec.name()+" is not in your banner. Only your banner's troops train here.";
             long fielded=fielded(s).filter(u->u.spec==spec).count()+s.training.stream().filter(t->t.spec()==spec).count();
             if(fielded>=listed)return "All "+listed+" "+spec.name()+" of your banner are fielded or in training.";
-            int weight=fielded(s).mapToInt(u->u.spec.slotWeight()).sum()+s.training.stream().mapToInt(t->t.spec().slotWeight()).sum();
-            if(weight+spec.slotWeight()>R.squadSize())return "Army full: disband a troop to make room for a different unit.";
+            if(fielded(s).count()+s.training.size()>=RosterMath.maxTroops())return "Army full: your banner has no free place for this troop.";
             return null;
         }
         /** A free troop at the back of the squad's training queue (a Bloodrush refund), done after the one before it; false, and nothing queued, when the queue is full or roomFor says no. */
@@ -1110,9 +1112,8 @@ public final class GravesAndGlory implements ModInitializer {
         void trainingTick(){
             for(Squad s:squads.values())while(!s.training.isEmpty()&&s.training.getFirst().finished()<=time){
                 Training t=s.training.removeFirst();Set<Integer> used=new HashSet<>();fielded(s).forEach(u->used.add(u.slot));
-                int slot=-1;for(int i=0;i<s.banner.size()&&i<R.squadSize();i++)if(s.banner.get(i).equals(t.spec().id())&&!used.contains(i)){slot=i;break;} // its own banner slot, so it forms where the banner puts it
-                if(slot<0){slot=0;while(used.contains(slot))slot++;}
-                if(slot>=R.squadSize()){s.gold+=t.paid();s.stats.goldSpent-=t.paid();continue;}
+                int slot=-1;for(int i=0;i<s.banner.size()&&i<WarGrid.cells();i++)if(s.banner.get(i).equals(t.spec().id())&&!used.contains(i)){slot=i;break;} // the lowest free war table cell holding its id, so it forms where the banner puts it
+                if(slot<0){s.gold+=t.paid();s.stats.goldSpent-=t.paid();continue;} // no free cell of its own: the gold comes back
                 var at=deploy(s,slot,t.spec());var fresh=spawn(s,t.spec(),slot,at.at());s.stats.trained++;Morale.fielded(this,s,t.spec().group());
                 if(s.bot&&!MatchRules.waiting(time,s.takeoverAt))campaign.musterRefill(s,fresh); // a bot's refill gathers with the others before it moves up (bot-AI plan step 2)
                 FeedEvents.deployed(this,s,t.spec());
@@ -1150,7 +1151,7 @@ public final class GravesAndGlory implements ModInitializer {
         Deploy deploy(Squad s,int slot){return deploy(s,slot,null);}
         /**
          * As deploy(s,slot), for a troop of this kind (null: the banner's): its place in the ring of the squad's banner (BattleMath.deployRing),
-         * every slot at its own cell as the reinforce rows, so trained shield troops stand shoulder to shoulder at their wall cell (animation rework
+         * every war table cell at its own room as the reinforce rows, so trained shield troops stand shoulder to shoulder at their wall cell (animation rework
          * spec decision 7) and no troop of a mixed squad stands closer to another than their cells allow.
          */
         Deploy deploy(Squad s,int slot,Spec.TroopsRow spec){
@@ -1166,8 +1167,9 @@ public final class GravesAndGlory implements ModInitializer {
             return new Deploy(new Vec3d(x,Arena.ground(gx,gz)+1,z),anchor);
         }
         Vec3d deployPoint(Squad s,int slot){return deploy(s,slot).at();}
-        /** A slot's offset in its squad's deploy ring (deploy): the banner's troops at their cells (BattleMath.deployCell), the slot's own troop (spec, null: the banner's) at the wider of its cell and the banner's. */
+        /** A war table cell's offset in its squad's deploy ring (deploy): the banner's troops at their cells (BattleMath.deployCell), nine to a row, the cell's own troop (spec, null: the banner's) at the wider of its room and the banner's. */
         static Vec3d ringPlace(Squad s,int slot,Spec.TroopsRow spec){
+            if(s.banner.size()!=WarGrid.cells())s.banner=Campaign.table(s.banner); // a banner set by hand (a test squad's old 20-entry list) is moved onto the table first
             double wall=Spec.COMBATDISCIPLINE[0].shieldWallCell();int size=Math.max(s.banner.size(),slot+1);boolean[] shield=new boolean[size];double[] cell=new double[size];
             for(int i=0;i<s.banner.size();i++){var t=Campaign.troop(s.banner.get(i));if(t==null)continue;shield[i]=ArmyMobs.tags(t).contains("shield");cell[i]=BattleMath.deployCell(shield[i],ArmyMobs.width(t),wall);}
             if(spec!=null){boolean own=ArmyMobs.tags(spec).contains("shield");shield[slot]=cell[slot]>0?shield[slot]&&own:own;cell[slot]=Math.max(cell[slot],BattleMath.deployCell(own,ArmyMobs.width(spec),wall));}
@@ -1202,29 +1204,30 @@ public final class GravesAndGlory implements ModInitializer {
             mode.mark(this); // the mode says what it changed: flags down, saved pieces
         }
         void reinforce(Squad s){
+            if(s.banner.size()!=WarGrid.cells())s.banner=Campaign.table(s.banner); // a banner set by hand (a test squad's old 20-entry list) is moved onto the table first
             Set<Integer> occupied=new HashSet<>();fielded(s).forEach(u->occupied.add(u.slot));
-            int slot=0,index=0,count=1;for(Squad other:squads.values()){if(other==s)break;if(other.seated&&other.team==s.team)index++;}
+            int index=0,count=1;for(Squad other:squads.values()){if(other==s)break;if(other.seated&&other.team==s.team)index++;}
             for(Squad other:squads.values())if(other!=s&&other.seated&&other.team==s.team)count++; // this team's armies, this one included (a joining squad is not in squads yet)
-            List<String> line=s.banner; // from Campaign.prepareRound: the slot index is the position, and empty and ^ slots stay empty
+            List<String> line=s.banner; // from Campaign.prepareRound: the dense war table, the index is the cell (row * cols + col), empty cells stay empty
             Morale.lineup(this,s,line);
-            // each row of 5 places: 2.5 apart, a shield troop's at its wall cell, so the player's default Hold (his troops stand where they deployed) already closes the wall (BattleMath.deployRow);
-            // rows 3 apart, but two rows of nothing but shield troops their cell apart, one deep wall (BattleMath.deployDepths); a wall row's empty places take its cell, so a short row stands behind the files
-            double wall=Spec.COMBATDISCIPLINE[0].shieldWallCell();double[] cells=new double[(Math.max(line.size(),1)+4)/5*5];Arrays.fill(cells,2.5);
-            int rows=cells.length/5;boolean[] wallRow=new boolean[rows],troops=new boolean[rows];double[] rowCell=new double[rows];Arrays.fill(wallRow,true);
-            for(int i=0;i<line.size();i++){var spec=Campaign.troop(line.get(i));if(spec==null)continue;troops[i/5]=true;
-                if(ArmyMobs.tags(spec).contains("shield")){cells[i]=BattleMath.shieldCell(ArmyMobs.width(spec),wall);rowCell[i/5]=Math.max(rowCell[i/5],cells[i]);}else wallRow[i/5]=false;}
-            for(int r=0;r<rows;r++){wallRow[r]&=troops[r];if(wallRow[r])for(int i=r*5;i<r*5+5;i++)if(i>=line.size()||Campaign.troop(line.get(i))==null)cells[i]=rowCell[r];}
-            double[] depth=BattleMath.deployDepths(wallRow,rowCell,3);
+            // each war table row of 9 places: 2.5 apart, centred on column 4, a shield troop's at its wall cell, so the player's default Hold (his troops stand where they deployed) already closes the wall (BattleMath.deployRow);
+            // rows 3 apart, but two rows of nothing but shield troops their cell apart, one deep wall, and a row with no troop takes no depth, so the first filled row stands where row 0 stood (BattleMath.deployDepths);
+            // a wall row's empty places take its cell, so a short row stands behind the files
+            int cols=WarGrid.cols();double wall=Spec.COMBATDISCIPLINE[0].shieldWallCell();double[] cells=new double[(Math.max(line.size(),1)+cols-1)/cols*cols];Arrays.fill(cells,2.5);
+            int rows=cells.length/cols;boolean[] wallRow=new boolean[rows],troops=new boolean[rows];double[] rowCell=new double[rows];Arrays.fill(wallRow,true);
+            for(int i=0;i<line.size();i++){var spec=Campaign.troop(line.get(i));if(spec==null)continue;troops[i/cols]=true;
+                if(ArmyMobs.tags(spec).contains("shield")){cells[i]=BattleMath.shieldCell(ArmyMobs.width(spec),wall);rowCell[i/cols]=Math.max(rowCell[i/cols],cells[i]);}else wallRow[i/cols]=false;}
+            for(int r=0;r<rows;r++){wallRow[r]&=troops[r];if(wallRow[r])for(int i=r*cols;i<r*cols+cols;i++)if(i>=line.size()||Campaign.troop(line.get(i))==null)cells[i]=rowCell[r];}
+            double[] depth=BattleMath.deployDepths(troops,wallRow,rowCell,3);
             Vec3d from=mode.lineup(this,s.team);
-            for(String id:line){int position=slot++;if(position>=R.squadSize()||occupied.contains(position))continue;
-                var spec=Campaign.troop(id);if(spec==null)continue;
-                double row=BattleMath.deployRow(Arrays.copyOfRange(cells,position/5*5,position/5*5+5))[position%5];
-                double side=s.team==0?1:-1,x=from.x+side*(20-depth[position/5]),z=from.z+side*((index-(count-1)/2.0)*22+row); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
+            for(int position=0;position<line.size()&&position<WarGrid.cells();position++){if(occupied.contains(position))continue;
+                var spec=Campaign.troop(line.get(position));if(spec==null)continue;
+                int r=position/cols;double row=BattleMath.deployRow(Arrays.copyOfRange(cells,r*cols,r*cols+cols))[position%cols];
+                double side=s.team==0?1:-1,x=from.x+side*(20-depth[r]),z=from.z+side*((index-(count-1)/2.0)*22+row); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
                 spawn(s,spec,position,new Vec3d(x,Arena.ground((int)x,(int)z)+1,z),false);
             }
             Houses.recompute(s); // once for the whole line (spawn(...,false) skips the per-troop pass: same traits, a fraction of the round-start tick)
         }
-
         Unit spawn(Squad s,Spec.TroopsRow spec,int slot,Vec3d pos){return spawn(s,spec,slot,pos,true);}
         /** recompute false: the caller recomputes the squad's House traits itself once its whole batch is in (reinforce). */
         Unit spawn(Squad s,Spec.TroopsRow spec,int slot,Vec3d pos,boolean recompute){
@@ -1438,7 +1441,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(testStage==0){
                 for(var s:squads.values())s.seated=true;startRound();testSquad=squads.values().iterator().next();
                 var point=points.get(0).spec;
-                for(Unit u:units)if(u.squad==testSquad)u.mob.refreshPositionAndAngles(point.x()-22+(u.slot%5)*1.4,65,point.z()+(u.slot/5)*1.4,0,0);
+                for(Unit u:units)if(u.squad==testSquad)u.mob.refreshPositionAndAngles(point.x()-22+(WarGrid.col(u.slot)-2)*1.4,65,point.z()+WarGrid.row(u.slot)*1.4,0,0);
                 testSquad.order="move";testSquad.target=new Vec3d(point.x(),65,point.z());testSquad.yaw=180;
                 testStart=units.get(0).mob.getPos();testAt=campaign.introUntil;testStage=1; // units do not tick until the round intro ends, so the wait starts there
             } else if(testStage==1&&time-testAt>100){
@@ -1465,8 +1468,8 @@ public final class GravesAndGlory implements ModInitializer {
                     Squad synthetic=new Squad(UUID.randomUUID(),team,fieldBase(team).add(0,0,i==0?28:(i-1)*35-20));
                     synthetic.order="hold";testOwners.add(synthetic.owner);
                     int slot=0;
-                    synthetic.banner=Campaign.bannerRow(team==0?"gilded_easy":"graveborn_easy");
-                    for(String id:synthetic.banner){var spec=Campaign.troop(id);if(spec!=null)spawn(synthetic,spec,slot,synthetic.target.add((slot%5-2)*2,0,slot/5*2));slot++;}
+                    synthetic.banner=Campaign.table(Campaign.bannerRow(team==0?"gilded_easy":"graveborn_easy"));
+                    for(String id:synthetic.banner){var spec=Campaign.troop(id);double[] at=BattleMath.tableOffset(slot,2,2);if(spec!=null)spawn(synthetic,spec,slot,synthetic.target.add(at[0],0,at[1]));slot++;}
                 }
                 testStage=4;testAt=time;
             }else if(testStage==4&&time-testAt>100){
@@ -1512,7 +1515,7 @@ public final class GravesAndGlory implements ModInitializer {
         }
         void prepareNavigation(double x,double z,Vec3d target,float yaw){
             testSquad.order="move";testSquad.target=target;testSquad.yaw=yaw;
-            for(Unit u:units)if(u.squad==testSquad){double px=x+(u.slot%5)*1.5,pz=z+(u.slot/5-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Arena.ground((int)px,(int)pz)+1,pz,yaw,0);u.nextPath=0;u.stuckTicks=0;}
+            for(Unit u:units)if(u.squad==testSquad){double px=x+(WarGrid.col(u.slot)-2)*1.5,pz=z+(WarGrid.row(u.slot)-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Arena.ground((int)px,(int)pz)+1,pz,yaw,0);u.nextPath=0;u.stuckTicks=0;}
         }
         /** Rivergate's dawn ridge is the climb: troops start on its flat eastern foot, march west to the crest, and must end at least eight blocks above where they began, or on the crest when that is lower. */
         void prepareHillTest(){
@@ -1531,7 +1534,8 @@ public final class GravesAndGlory implements ModInitializer {
         }
         void spawnVisualSquad(Squad s,int x,int z){
             if(s.banner.isEmpty())s.banner=Campaign.bannerRow(s.team==0?"gilded_easy":"graveborn_easy");
-            int slot=0;for(String id:s.banner){var spec=Campaign.troop(id);int px=x+(slot%5-2)*2,pz=z+(slot/5-2)*2;if(spec!=null)spawn(s,spec,slot,new Vec3d(px,Arena.ground(px,pz)+1,pz));slot++;}
+            if(s.banner.size()!=WarGrid.cells())s.banner=Campaign.table(s.banner);
+            int slot=0;for(String id:s.banner){var spec=Campaign.troop(id);double[] at=BattleMath.tableOffset(slot,2,2);int px=x+(int)at[0],pz=z+(int)at[1]-4;if(spec!=null)spawn(s,spec,slot,new Vec3d(px,Arena.ground(px,pz)+1,pz));slot++;}
         }
     }
 }

@@ -378,6 +378,8 @@ public final class HousesCheck {
         check(traitTier(5,T)==0 && traitTier(6,T)==1 && traitTier(10,T)==2 && traitTier(14,T)==3 && traitTier(20,T)==3, "tiers 6/10/14");
         check(houseSlots(SPEC_EXAMPLE_BANNER,cat).equals(Map.of("gilded",15,"graveborn",5)), "spec 6.2 banner: Gilded 15, Graveborn 5");
         check(houseSlots(starterBanner(),cat).equals(Map.of("gilded",20)) && houseSlots(banner("knight,^,empty*18"),cat).equals(Map.of("gilded",1)), "a ^ counts only for the unit it belongs to");
+        List<String> table = new ArrayList<>(Collections.nCopies(54, EMPTY)); table.set(4, "mage"); table.set(13, "knight"); table.set(40, "gl_marshal"); table.set(53, "revenant");
+        check(houseSlots(table,cat).equals(Map.of("gilded",7,"graveborn",1)) && houseSlots(List.of("mage"),cat).equals(Map.of("gilded",2)), "houseSlotsSumsWeights: a war table banner with no markers sums slotWeight per House (mage 2, knight 1, Marshal 4)");
         check(trait("gilded",0)==null && trait("gilded",2).id().equals("gilded_2") && bulwark(null,true,"arrow")==1, "tier 0 has no trait row");
         check(eq(bulwark(trait("gilded",3),true,"arrow"),0.55) && eq(bulwark(trait("gilded",3),true,"blight"),0.55) && bulwark(trait("gilded",3),false,"arrow")==1 && bulwark(trait("gilded",3),true,"melee")==1, "bulwark");
         check(eq(bulwark(trait("gilded",3),true,"bolt"),0.55), "bulwark: a bolt is a ranged hit too");

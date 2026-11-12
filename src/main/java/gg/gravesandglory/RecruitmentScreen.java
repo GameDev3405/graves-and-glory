@@ -57,18 +57,20 @@ class RecruitmentScreen extends ArmyScreen {
     /** How many of a troop the banner lists: the most that may be fielded and in training at once. */
     static int listed(Spec.TroopsRow t){return Collections.frequency(CampaignClient.banner,t.id());}
     /** Banner slots the living and queued troops fill. */
+    /** Troops in the army (queued: and in the training queue), one each whatever their weight; the army holds at most rules.maxTroops. */
+    static int count(boolean queued){int n=0;for(int i=0;i<Spec.TROOPS.length;i++)n+=roster[i]+(queued?pending[i]:0);return n;}
     static int weight(boolean queued){int w=0;for(int i=0;i<Spec.TROOPS.length;i++)w+=(roster[i]+(queued?pending[i]:0))*Spec.TROOPS[i].slotWeight();return w;}
     static int index(Spec.TroopsRow t){for(int i=0;i<Spec.TROOPS.length;i++)if(Spec.TROOPS[i]==t)return i;return 0;}
     /** Whether the barracks would train one more of this troop now: banner count, slot weights and gold. */
     /** A troop's round price: the sheet cost, as the server charges it (no class discount: the classes are gone). */
     static int price(Spec.TroopsRow t){return t.cost();}
-    static boolean trainable(Spec.TroopsRow t){int i=index(t);return nearBarracks&&gold>=price(t)&&roster[i]+pending[i]<listed(t)&&weight(true)+t.slotWeight()<=GravesAndGlory.R.squadSize();}
+    static boolean trainable(Spec.TroopsRow t){int i=index(t);return nearBarracks&&gold>=price(t)&&roster[i]+pending[i]<listed(t)&&count(true)<RosterMath.maxTroops();}
     String unavailable(Spec.TroopsRow t){
         if(!nearBarracks)return "Return to your barracks to recruit.";
         int i=index(t),listed=listed(t);
         if(listed==0)return "Not in your banner. Change your banner in the war council.";
         if(roster[i]+pending[i]>=listed)return "All "+listed+" of your banner are fielded or in training.";
-        if(weight(true)+t.slotWeight()>GravesAndGlory.R.squadSize())return "Army and training queue are full.";
+        if(count(true)>=RosterMath.maxTroops())return "Army and training queue are full.";
         if(gold<price(t))return "You need "+(price(t)-gold)+" more gold.";
         return trainingTime(t);
     }
