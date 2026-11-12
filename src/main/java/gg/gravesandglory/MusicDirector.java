@@ -40,6 +40,7 @@ public final class MusicDirector {
             this.pitch = cue.pitch;
             this.relative = true;
             this.attenuationType = SoundInstance.AttenuationType.NONE;
+            this.level = 1f / (category == SoundCategory.AMBIENT ? BED_FADE_IN_TICKS : FADE_IN_TICKS); // the first fade step: vanilla skips a play whose volume is 0
         }
 
         @Override public float getVolume() { return super.getVolume() * level; }

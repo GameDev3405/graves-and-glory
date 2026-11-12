@@ -118,6 +118,8 @@ public final class AudioCuesCheck {
   for(var c:beds)check(c.category.equals("ambient"),c.id+": a bed is in the ambient category, so the vanilla Ambient slider governs it");
   check(director.contains("AudioCues.bed(")&&director.contains("SoundCategory.AMBIENT")&&director.contains("this.repeat = loop")&&director.contains("bed = new Track("),"MusicDirector plays the bed as a looping ambient stream");
   check(director.contains("BED_FADE_IN_TICKS")&&director.contains("BED_FADE_OUT_TICKS"),"The bed fades in and out");
+  // C14-F1: vanilla SoundSystem.play drops an instance whose first getVolume() is 0 (it never registers, so isPlaying stays false and the fade never runs).
+  check(java.util.regex.Pattern.compile("Track\\([^)]*\\) \\{[^}]*this\\.level = [^;]*FADE_IN_TICKS").matcher(director).find(),"A Track starts at the first fade-in step, not at volume 0, so vanilla registers its play");
   // Briefing music: the director asks the screen, and the screen answers for the campaign sheet.
   check(director.contains("Cue.CAMPAIGN_BRIEFING_MUSIC")&&director.contains("briefingOpen(c)"),"MusicDirector plays the briefing music while the briefing screen is up");
   check(Files.readString(Path.of("src/main/java/gg/gravesandglory/CampScreen.java")).contains("boolean briefing()"),"The camp screen says when it is the briefing");
