@@ -1,0 +1,437 @@
+package gg.gravesandglory;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.mojang.authlib.GameProfile;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.network.OtherClientPlayerEntity;
+import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.WorldRenderer;
+import net.minecraft.client.render.entity.EntityRenderDispatcher;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.projectile.ProjectileEntity;
+import net.minecraft.item.DyeableItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.registry.Registries;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
+
+/**
+ * The client side of the match ending (spec 3, 6, 7): the step this player is on (the server's, from the camp snapshot's "ending", or
+ * further on after a skip this client sent), the RESULT banner, the freeze (troops stop ticking and their animation clocks stand still),
+ * and the PODIUM shot: a fixed camera at PodiumLayout.viewSpot with an 8 s push-in, letterboxed, a night sky, the top three commanders
+ * drawn as client-side figures on the plinths with up to three of their troops, and name plates projected under each plinth.
+ * STATS and REWARDS are Task 6's screens (openStats).
+ */
+public final class EndingClient {
+    private EndingClient() {}
+
+    /** The server's step for this player, null while no ending runs for him; its ticks left (may exceed total after a skip) and length. */
+    static MatchEnding.Step serverStep;
+    static int left, total;
+    static String outcome = "", line = "";
+    /** The step this client skipped to ahead of the server's answer (null for none): the step shown is the later of the two, as the server's playerStep. */
+    static MatchEnding.Step skippedTo;
+    /** The report id this ending belongs to ("" before one). */
+    static String resultId = "";
+    /** Client ticks while in a world; when the shown step began; the world time the animation clocks stand at while frozen (-1 none). */
+    static long ticks, stepAt;
+    static MatchEnding.Step shown;
+    static long freezeTime = -1;
+    /** This client's ending finished while the match still runs (others still in their sequence): the camp treats him as waiting. */
+    static boolean doneEarly;
+
+    /** The podium camera: non-null from PODIUM until STATS (the same approach as CampaignClient's entrance camera). */
+    static net.minecraft.entity.decoration.ArmorStandEntity camera;
+    static boolean previousHud;
+    public static double cameraX, cameraY, cameraZ;
+    public static float cameraYaw, cameraPitch;
+    /** The podium shot's vertical field of view and its push-in toward the stage, blocks. */
+    public static final double FOV = 50, PUSH = 3;
+
+    /** One podium figure: the commander (an OtherClientPlayerEntity) or one of his troops, with the podium row it belongs to. */
+    record Figure(LivingEntity entity, int slot, boolean commander) {}
+    static final List<Figure> figures = new ArrayList<>();
+    /** The podium rows the figures were built from: rank, name, score, headline, house, team. */
+    record Plate(int slot, String name, String stats, String origin, boolean mvp) {}
+    static final List<Plate> plates = new ArrayList<>();
+    /** Harness only: the plate rectangles last drawn (x0, y0, x1, y1), the banner word last drawn and the frames that drew it. */
+    static final List<int[]> plateRects = new ArrayList<>();
+    static volatile String bannerDrawn = "";
+    static volatile long bannerFrames;
+
+    // ---- state -------------------------------------------------------------------------------------------------------------------
+
+    /** The step this player sees: the later of the server's and his own skip; null with no ending. */
+    public static MatchEnding.Step step() {
+        if (serverStep == null) return null;
+        return skippedTo == null ? serverStep : MatchEnding.playerStep(serverStep, skippedTo);
+    }
+    /** Whether the battlefield is frozen for this client: from RESULT until the ending ends. */
+    public static boolean frozen() { MatchEnding.Step s = step(); return s != null && s != MatchEnding.Step.DONE; }
+    /** Whether the podium camera holds the view. */
+    public static boolean cinematic() { return camera != null; }
+    /** Whether the ending draws the HUD (InGameHud is replaced by hud()). */
+    public static boolean hudActive() { return frozen(); }
+
+    /** What a camp snapshot means for the ending: RUNNING while it runs for this player, DONE once when it ends for him, NONE otherwise. */
+    enum Change { NONE, RUNNING, DONE }
+
+    /** Reads the snapshot's "ending" (null when absent) with the report id of the snapshot's result. */
+    static Change accept(MinecraftClient c, JsonObject ending, String reportId, boolean running) {
+        if (!running) doneEarly = false;
+        if (ending != null && ending.has("step")) {
+            MatchEnding.Step next;
+            try { next = MatchEnding.Step.valueOf(ending.get("step").getAsString()); } catch (RuntimeException e) { return Change.NONE; }
+            if (serverStep == null) { skippedTo = null; freezeTime = c.world == null ? -1 : c.world.getTime(); }
+            serverStep = next; resultId = reportId; doneEarly = false;
+            left = ending.has("left") ? ending.get("left").getAsInt() : 0; total = ending.has("total") ? ending.get("total").getAsInt() : 0;
+            outcome = ending.has("outcome") ? ending.get("outcome").getAsString() : "";
+            line = ending.has("line") ? ending.get("line").getAsString() : "";
+            sync(c);
+            return Change.RUNNING;
+        }
+        if (serverStep == null) return Change.NONE;
+        boolean same = resultId.equals(reportId);
+        stop(c);
+        if (!same) return Change.NONE;
+        doneEarly = running;
+        return Change.DONE;
+    }
+
+    /** Sends one skip: this player alone moves to the next step at once (the server's answer follows within half a second). */
+    static void skip(MinecraftClient c) {
+        MatchEnding.Step s = step();
+        if (s == null || s == MatchEnding.Step.DONE) return;
+        GravesAndGloryClient.send("ending:skip");
+        skippedTo = MatchEnding.next(s);
+        sync(c);
+    }
+
+    /** Puts the client in the shown step: the podium camera and figures on entering PODIUM, the camera off from STATS on. */
+    static void sync(MinecraftClient c) {
+        MatchEnding.Step s = step();
+        if (s != shown) {
+            shown = s; stepAt = ticks;
+            if (s == MatchEnding.Step.PODIUM) { buildFigures(c); begin(c); }
+            else if (s == MatchEnding.Step.STATS || s == MatchEnding.Step.REWARDS) { endCamera(c); if (figures.isEmpty()) buildFigures(c); openStats(c); }
+            else if (s == MatchEnding.Step.DONE) stop(c);
+        }
+    }
+
+    /** Escape (EndingKeyMixin): the same skip as the menu key. */
+    public static void escape(MinecraftClient c) { skip(c); }
+
+    /** Task 6 opens the stats and rewards screen here; for now it keeps the podium camera off. */
+    static void openStats(MinecraftClient c) { endCamera(c); }
+
+    static void tick(MinecraftClient c) {
+        ticks++;
+        if (serverStep == null) return;
+        if (c.player == null || c.world == null) { stop(c); return; }
+        sync(c);
+        if (camera != null) c.getToastManager().clear();
+    }
+
+    /** Ends everything this client shows for the ending (DONE, a disconnect, or the ending leaving the snapshot). */
+    static void stop(MinecraftClient c) {
+        endCamera(c); clearFigures();
+        serverStep = null; skippedTo = null; shown = null; freezeTime = -1; bannerDrawn = "";
+    }
+    static void forget(MinecraftClient c) { stop(c); resultId = ""; doneEarly = false; }
+
+    // ---- the freeze ----------------------------------------------------------------------------------------------------------------
+
+    /** The world time troop animation reads: the moment the freeze began while frozen, else the world's own. */
+    public static long worldTime(World w) { return frozen() && freezeTime >= 0 ? freezeTime : w.getTime(); }
+    /** Whether the client world must not tick this entity: a troop or a projectile while frozen. The figures are never in the world. */
+    public static boolean holds(Entity e) {
+        if (!frozen()) return false;
+        return e instanceof ProjectileEntity || e instanceof MobEntity m && TroopModels.troopOf(m) != null;
+    }
+    /** GeckoLib's tick for a frozen troop: constant (GeoModel adds the frame's partial tick to it). */
+    static double geoTick(Entity e) { return frozen() ? e.age + 1 - MinecraftClient.getInstance().getTickDelta() : e.age; }
+    /** Harness only: the clock a troop's clips read now (seconds), as TroopRenderer would draw it this frame. */
+    static double clock(Entity e) { return TroopMotion.time(e, e.age + (frozen() ? 1f : MinecraftClient.getInstance().getTickDelta())); }
+
+    // ---- the podium camera ---------------------------------------------------------------------------------------------------------
+
+    static void begin(MinecraftClient c) {
+        if (c.player == null || c.world == null || camera != null) return;
+        double[] v = PodiumLayout.viewSpot();
+        previousHud = c.options.hudHidden; c.options.hudHidden = false;
+        camera = new net.minecraft.entity.decoration.ArmorStandEntity(c.world, v[0], v[1], v[2]); camera.setInvisible(true);
+        if (c.currentScreen != null) c.setScreen(null);
+    }
+    static void endCamera(MinecraftClient c) {
+        if (camera == null) return;
+        camera = null; c.options.hudHidden = previousHud;
+    }
+    /** The push-in: 0 to 1 over the podium step (local clock from when this client entered it), smoothstepped. */
+    static double push(float partial) {
+        int len = Math.max(1, Spec.ENDING[0].podiumSeconds() * 20);
+        double t = Math.max(0, Math.min(1, (ticks - stepAt + partial) / len));
+        return t * t * (3 - 2 * t);
+    }
+    /** Render-frame sampling: the view spot, moved PUSH blocks toward the stage along its look. */
+    public static void sampleCamera(float partial) {
+        double[] v = PodiumLayout.viewSpot();
+        double e = push(partial), yaw = Math.toRadians(v[3]);
+        cameraX = v[0] - Math.sin(yaw) * PUSH * e; cameraY = v[1] + .35; cameraZ = v[2] + Math.cos(yaw) * PUSH * e;
+        cameraYaw = (float) v[3]; cameraPitch = (float) v[4] + 4;
+    }
+    /** The night the stage is shown at (client only: ClientWorld's time of day while the podium is up). */
+    public static boolean night() { MatchEnding.Step s = step(); return s == MatchEnding.Step.PODIUM || s == MatchEnding.Step.STATS || s == MatchEnding.Step.REWARDS; }
+    public static final long NIGHT = 18000;
+
+    // ---- the figures ---------------------------------------------------------------------------------------------------------------
+
+    /** A commander figure: his profile (so his skin), every skin layer shown, and never drawn as a spectator (the local player is one at the stage,
+     *  and his own figure shares his player-list entry, which would draw the head alone). */
+    static final class Statue extends OtherClientPlayerEntity {
+        Statue(net.minecraft.client.world.ClientWorld w, GameProfile p) { super(w, p); dataTracker.set(PLAYER_MODEL_PARTS, (byte) 0x7f); }
+        @Override public boolean isSpectator() { return false; }
+        @Override public boolean isCreative() { return false; }
+    }
+
+    /** A bot's figure: one fixed profile, so it wears the default skin. */
+    static final UUID BOT = new UUID(0x67726176657367L, 0x626f74L);
+
+    static void buildFigures(MinecraftClient c) {
+        clearFigures();
+        if (c.world == null) return;
+        JsonArray rows = CampaignClient.result.has("podium") ? CampaignClient.result.getAsJsonArray("podium") : new JsonArray();
+        double[][] pl = PodiumLayout.plinths();
+        double[] view = PodiumLayout.viewSpot();
+        for (int i = 0; i < rows.size() && i < 3; i++) {
+            JsonObject r;
+            try { r = rows.get(i).getAsJsonObject(); } catch (RuntimeException e) { continue; }
+            int rank = r.has("rank") ? r.get("rank").getAsInt() : i + 1, slot = Math.max(0, Math.min(2, rank - 1));
+            int team = r.has("team") ? r.get("team").getAsInt() : 0;
+            boolean bot = r.has("bot") && r.get("bot").getAsBoolean();
+            String name = r.has("name") ? r.get("name").getAsString() : "Commander";
+            String side = team >= 0 && team < CampaignClient.sides.length ? CampaignClient.sides[team] : "linen";
+            var faction = faction(side);
+            double[] at = pl[slot];
+            // the commander, a little forward on his plinth so his troops stand behind his shoulders
+            GameProfile profile = bot ? new GameProfile(BOT, display(name)) : profile(c, r, name);
+            var cmd = new Statue(c.world, profile);
+            cmd.setId(-7100 - slot * 4);
+            JsonArray gear = r.has("gear") ? r.getAsJsonArray("gear") : new JsonArray();
+            boolean any = false;
+            for (int k = 0; k < gear.size() && k < CommanderGearFeature.SLOTS.length; k++) {
+                String id = gear.get(k).getAsString(); if (id.isEmpty()) continue;
+                var item = Registries.ITEM.get(new Identifier(id)); if (item == Items.AIR) continue;
+                cmd.equipStack(CommanderGearFeature.SLOTS[k], new ItemStack(item)); any = true;
+            }
+            if (!any) { // a bot (or a commander with nothing worn): leather in the side's colour and a sword
+                int colour = faction == null ? 0xb0a080 : faction.color();
+                cmd.equipStack(EquipmentSlot.CHEST, dyed(Items.LEATHER_CHESTPLATE, colour)); cmd.equipStack(EquipmentSlot.LEGS, dyed(Items.LEATHER_LEGGINGS, colour));
+                cmd.equipStack(EquipmentSlot.FEET, dyed(Items.LEATHER_BOOTS, colour)); cmd.equipStack(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+            }
+            place(cmd, at[0], at[1], at[2] + .3, view);
+            figures.add(new Figure(cmd, slot, true));
+            // up to three of his troops in an arc behind him
+            JsonArray troops = r.has("troops") ? r.getAsJsonArray("troops") : new JsonArray();
+            int n = Math.min(3, troops.size());
+            double[][] arcs = {{}, {-62}, {-62, 62}, {-70, 70, 22}};
+            for (int j = 0; j < n; j++) {
+                var spec = troop(troops.get(j).getAsString()); if (spec == null) continue;
+                MobEntity m = ArmyMobs.portrait(spec.entity(), c.world);
+                m.setCustomName(Text.literal(ArmyMobs.levelName(spec, 1))); m.setCustomNameVisible(false); m.setSilent(true);
+                RankSync.setLocal(m, new RankSync.Rank(1, 1, 1));
+                m.equipStack(EquipmentSlot.MAINHAND, new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))));
+                m.equipStack(EquipmentSlot.HEAD, new ItemStack(Registries.ITEM.get(new Identifier(spec.helmet()))));
+                var chest = new ItemStack(Registries.ITEM.get(new Identifier(spec.chest())));
+                if (chest.getItem() instanceof DyeableItem dye && faction != null) dye.setColor(chest, faction.color());
+                m.equipStack(EquipmentSlot.CHEST, chest);
+                if (ArmyMobs.tags(spec).contains("shield")) m.equipStack(EquipmentSlot.OFFHAND, GravesAndGlory.Battle.shield(spec, faction == null ? GravesAndGlory.Battle.PORTRAIT_FIELD : faction.dye()));
+                TroopModels.dress(m, side);
+                m.setId(-7100 - slot * 4 - 1 - j);
+                double a = Math.toRadians(arcs[n][j]), radius = 1.2;
+                // the arc opens away from the camera (north): angle 0 is straight behind, positive to the viewer's right (east)
+                place(m, at[0] + Math.sin(a) * radius, at[1], at[2] + .3 - Math.cos(a) * radius, view);
+                figures.add(new Figure(m, slot, false));
+            }
+            String house = houseName(r.has("house") ? r.get("house").getAsString() : "");
+            String headline = r.has("headline") ? r.get("headline").getAsString().toUpperCase(Locale.ROOT) : "";
+            int score = r.has("score") ? r.get("score").getAsInt() : 0;
+            String sideName = faction == null ? "" : faction.name();
+            plates.add(new Plate(slot, display(name), score + (headline.isEmpty() ? "" : " · " + headline),
+                house.isEmpty() ? sideName : sideName.isEmpty() ? house : house + " · " + sideName, rank == 1));
+        }
+    }
+    static void clearFigures() {
+        for (var f : figures) { TroopMotion.forget(f.entity().getId()); MotionEvents.Client.forget(f.entity().getId()); }
+        figures.clear(); plates.clear(); plateRects.clear();
+    }
+    /** Stands e at x,y,z facing the view spot, with every previous-frame value the same (a statue under any partial tick). */
+    static void place(LivingEntity e, double x, double y, double z, double[] view) {
+        float yaw = (float) Math.toDegrees(Math.atan2(-(view[0] - x), view[2] - z));
+        e.refreshPositionAndAngles(x, y, z, yaw, 0);
+        e.prevX = e.lastRenderX = x; e.prevY = e.lastRenderY = y; e.prevZ = e.lastRenderZ = z;
+        e.bodyYaw = e.prevBodyYaw = e.headYaw = e.prevHeadYaw = yaw; e.prevYaw = yaw; e.prevPitch = 0;
+    }
+    static GameProfile profile(MinecraftClient c, JsonObject r, String name) {
+        try {
+            UUID id = UUID.fromString(r.get("uuid").getAsString());
+            var entry = c.getNetworkHandler() == null ? null : c.getNetworkHandler().getPlayerListEntry(id);
+            return entry != null ? entry.getProfile() : new GameProfile(id, name);
+        } catch (RuntimeException e) { return new GameProfile(BOT, name); }
+    }
+    static ItemStack dyed(net.minecraft.item.Item item, int colour) {
+        var s = new ItemStack(item); if (item instanceof DyeableItem d) d.setColor(s, colour); return s;
+    }
+    static Spec.TroopsRow troop(String id) { for (var t : Spec.TROOPS) if (t.id().equals(id)) return t; return null; }
+    static Spec.FactionsRow faction(String id) { for (var f : Spec.FACTIONS) if (f.id().equals(id)) return f; return null; }
+    static String houseName(String id) { for (var h : Spec.HOUSES) if (h.id().equals(id)) return h.name(); return ""; }
+    /** "normal bot" reads "Normal bot". */
+    static String display(String name) { return name.isEmpty() ? name : name.substring(0, 1).toUpperCase(Locale.ROOT) + name.substring(1); }
+
+    /** Draws the figures after the world's entities (WorldRenderEvents.AFTER_ENTITIES): never in the world, so nothing ticks or collides. */
+    static void renderFigures(net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext ctx) {
+        if (figures.isEmpty()) return;
+        var c = MinecraftClient.getInstance(); if (c.world == null) return;
+        EntityRenderDispatcher d = c.getEntityRenderDispatcher();
+        var cam = ctx.camera().getPos(); MatrixStack m = ctx.matrixStack();
+        var consumers = c.getBufferBuilders().getEntityVertexConsumers();
+        boolean hud = c.options.hudHidden; c.options.hudHidden = true; // no vanilla name tags over the figures: the plates name them
+        try {
+            for (var f : figures) {
+                var e = f.entity();
+                int light = WorldRenderer.getLightmapCoordinates(c.world, BlockPos.ofFloored(e.getX(), e.getY() + 1, e.getZ()));
+                light = LightmapTextureManager.pack(Math.max(13, LightmapTextureManager.getBlockLightCoordinates(light)), LightmapTextureManager.getSkyLightCoordinates(light));
+                d.render(e, e.getX() - cam.x, e.getY() - cam.y, e.getZ() - cam.z, e.getYaw(), 1f, m, consumers, light);
+            }
+        } catch (RuntimeException ex) {
+            System.err.println("[Graves and Glory] Podium figure could not be drawn: " + ex);
+        } finally { c.options.hudHidden = hud; }
+        consumers.draw();
+    }
+
+    // ---- the HUD -------------------------------------------------------------------------------------------------------------------
+
+    static final int DRAW_INK = 0xffc9c3b4, VICTORY_INK = 0xffe8c26a, SHADOW = 0xc0000000, PLATE_FILL = 0xdc14100c, LINE_INK = 0xfff3ead6;
+
+    /** The ending's HUD, in place of InGameHud while frozen: the banner during RESULT, the letterbox and plates during PODIUM, the hint always. */
+    public static void hud(DrawContext g, int w, int h) {
+        var c = MinecraftClient.getInstance(); var font = c.textRenderer;
+        MatchEnding.Step s = step(); if (s == null) return;
+        float partial = c.getTickDelta();
+        String hint = HintText.expand("{key:menu} or Escape to skip", GravesAndGloryClient::hint);
+        if (s == MatchEnding.Step.PODIUM) {
+            int bar = Math.max(18, h / 10);
+            g.fill(0, 0, w, bar, DarkUi.LETTERBOX); g.fill(0, h - bar, w, h, DarkUi.LETTERBOX);
+            plates(g, w, h, bar, partial);
+            g.drawCenteredTextWithShadow(font, hint, w / 2, h - bar + (bar - 8) / 2, DarkUi.MUTED);
+            return;
+        }
+        if (s == MatchEnding.Step.RESULT) banner(g, w, h, partial);
+        g.drawCenteredTextWithShadow(font, hint, w / 2, h - 18, 0xffcfc3a8);
+    }
+
+    static int ink(String word) { return switch (word) { case "VICTORY" -> VICTORY_INK; case "DEFEAT" -> DarkUi.ALARM_TEXT; default -> DRAW_INK; }; }
+
+    /** The word (title font, about 11% of the screen's width tall) landing with a 6-tick scale-in, a brass rule under it, then the score line. */
+    static void banner(DrawContext g, int w, int h, float partial) {
+        var font = MinecraftClient.getInstance().textRenderer;
+        String word = outcome.isEmpty() ? "DRAW" : outcome;
+        Text t = Text.literal(word).setStyle(Style.EMPTY.withFont(DarkUi.TITLE));
+        int tw = Math.max(1, font.getWidth(t));
+        float scale = Math.min(w * .11f / 10f, w * .86f / tw);
+        double in = Math.max(0, Math.min(1, (ticks - stepAt + partial) / 6.0)), ease = 1 - Math.pow(1 - in, 3);
+        float land = (float) (scale * (1.7 - .7 * ease));
+        int alpha = (int) (255 * Math.min(1, in * 1.6));
+        int top = (int) (h * .24f);
+        int ink = (alpha << 24) | (ink(word) & 0xffffff), shade = ((alpha * 3 / 4) << 24);
+        var mx = g.getMatrices();
+        mx.push(); mx.translate(w / 2f, top + 5 * scale, 0); mx.scale(land, land, 1);
+        g.drawText(font, t, -tw / 2, -5 + 1, shade, false);
+        g.drawText(font, t, -tw / 2, -5, ink, false);
+        mx.pop();
+        int y = (int) (top + 5 * scale + 6 * scale);
+        if (in < 1) { bannerFrames++; bannerDrawn = word; return; }
+        // the brass rule: fading out at both ends
+        int rw = (int) (w * .40f), x0 = w / 2 - rw / 2;
+        for (int i = 0; i < rw; i++) {
+            double f = 1 - Math.abs((i - rw / 2.0) / (rw / 2.0)); int a = (int) (255 * Math.min(1, f * 1.8));
+            g.fill(x0 + i, y, x0 + i + 1, y + 2, (a << 24) | (DarkUi.BRASS & 0xffffff));
+        }
+        Text sub = Text.literal(line).setStyle(Style.EMPTY.withFont(DarkUi.TITLE));
+        int sw = font.getWidth(sub); float ss = Math.min(1.35f, (w - 24f) / Math.max(1, sw));
+        mx.push(); mx.translate(w / 2f, y + 8, 0); mx.scale(ss, ss, 1);
+        g.drawText(font, sub, -sw / 2, 1, SHADOW, false); g.drawText(font, sub, -sw / 2, 0, LINE_INK, false);
+        mx.pop();
+        bannerFrames++; bannerDrawn = word;
+    }
+
+    /** Projects a world point to scaled-screen x,y through the podium camera; null behind it. */
+    static double[] project(double x, double y, double z, int w, int h, float partial) {
+        sampleCamera(partial);
+        double yaw = Math.toRadians(cameraYaw), pitch = Math.toRadians(cameraPitch);
+        double rx = x - cameraX, ry = y - cameraY, rz = z - cameraZ;
+        double fx = -Math.sin(yaw) * Math.cos(pitch), fy = -Math.sin(pitch), fz = Math.cos(yaw) * Math.cos(pitch);
+        double sx = -Math.cos(yaw), sz = -Math.sin(yaw); // screen right
+        double ux = -Math.sin(yaw) * Math.sin(pitch), uy = Math.cos(pitch), uz = Math.cos(yaw) * Math.sin(pitch);
+        double depth = rx * fx + ry * fy + rz * fz; if (depth <= .1) return null;
+        double tan = Math.tan(Math.toRadians(FOV) / 2), aspect = (double) w / h;
+        double nx = (rx * sx + rz * sz) / depth / (tan * aspect), ny = (rx * ux + ry * uy + rz * uz) / depth / tan;
+        return new double[]{w / 2.0 * (1 + nx), h / 2.0 * (1 - ny)};
+    }
+
+    /** The name plates: one per podium row under its plinth, on one line above the bottom bar; narrowed (text scaled down) so neighbours never overlap. */
+    static void plates(DrawContext g, int w, int h, int bar, float partial) {
+        var font = MinecraftClient.getInstance().textRenderer;
+        plateRects.clear();
+        double[][] pl = PodiumLayout.plinths();
+        int n = plates.size(); if (n == 0) return;
+        double[] cx = new double[n];
+        for (int i = 0; i < n; i++) { var p = plates.get(i); double[] at = pl[p.slot()]; double[] s = project(at[0], at[1], at[2] + 1.5, w, h, partial); cx[i] = s == null ? w / 2.0 : s[0]; }
+        int lineH = 11, pad = 5, ph = pad * 2 + lineH * 3 - 2, bottom = h - bar - 6, top = bottom - ph;
+        for (int i = 0; i < n; i++) {
+            var p = plates.get(i);
+            Text name = Text.literal(p.name()).setStyle(Style.EMPTY.withFont(DarkUi.TITLE));
+            int chip = p.mvp() ? font.getWidth("MVP") + 6 : 0;
+            int want = Math.max(Math.max(font.getWidth(name) + chip, font.getWidth(p.stats())), font.getWidth(p.origin())) + pad * 2 + 4;
+            // the room to the nearest neighbour's centre, split evenly, less a gap
+            double room = w - 8;
+            for (int j = 0; j < n; j++) if (j != i) room = Math.min(room, Math.abs(cx[j] - cx[i]) - 6);
+            room = Math.min(room, 2 * Math.min(cx[i], w - cx[i]) - 4);
+            int pw = (int) Math.max(40, Math.min(want, room));
+            int x0 = (int) Math.round(cx[i] - pw / 2.0), x1 = x0 + pw;
+            g.fill(x0, top, x1, bottom, PLATE_FILL); g.drawBorder(x0, top, pw, ph, DarkUi.BRASS);
+            int inner = pw - pad * 2;
+            int y = top + pad;
+            // line 1: MVP chip and name
+            int nw = font.getWidth(name) + chip; float s1 = Math.min(1f, inner / (float) Math.max(1, nw));
+            var mx = g.getMatrices();
+            mx.push(); mx.translate((float) cx[i] - nw * s1 / 2f, y, 0); mx.scale(s1, s1, 1);
+            if (p.mvp()) { g.fill(0, -1, chip - 2, 9, VICTORY_INK); g.drawText(font, "MVP", 2, 0, DarkUi.INK_TEXT, false); }
+            g.drawText(font, name, chip, 0, DarkUi.PAPER, false);
+            mx.pop(); y += lineH;
+            fitted(g, p.stats(), cx[i], y, inner, VICTORY_INK); y += lineH;
+            fitted(g, p.origin(), cx[i], y, inner, 0xffcdbf9f);
+            plateRects.add(new int[]{x0, top, x1, bottom});
+        }
+    }
+    static void fitted(DrawContext g, String text, double cx, int y, int inner, int ink) {
+        var font = MinecraftClient.getInstance().textRenderer;
+        int tw = font.getWidth(text); float s = Math.min(1f, inner / (float) Math.max(1, tw));
+        var mx = g.getMatrices(); mx.push(); mx.translate((float) cx - tw * s / 2f, y, 0); mx.scale(s, s, 1);
+        g.drawText(font, text, 0, 0, ink, false); mx.pop();
+    }
+}

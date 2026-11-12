@@ -130,7 +130,11 @@ public final class CampaignClient {
             if(round!=serial&&running&&intro>0){cameraTicks=120-intro;begin(c);}serial=round;
             if(!running)end(c);
             result=j.has("result")?j.getAsJsonObject("result"):new JsonObject();
-            if(!running&&result.has("id")&&!result.get("id").getAsString().equals(shownResult)){reportOpened(result.get("id").getAsString());c.setScreen(new CampScreen("results"));}
+            // The match ending (EndingClient): no report opens while it runs for this player; when it ends he lands on the war council page in a room, else the War Table home, and the report counts as shown (reopenable from Last battle).
+            String rid=result.has("id")?result.get("id").getAsString():"";var change=EndingClient.accept(c,j.has("ending")&&j.get("ending").isJsonObject()?j.getAsJsonObject("ending"):null,rid,running);if(EndingClient.doneEarly)waiting=true;
+            if(change==EndingClient.Change.DONE){reportOpened(rid);c.setScreen(new CampScreen(text(social,"room").isEmpty()?"home":"lobby"));}
+            else if(change==EndingClient.Change.RUNNING){}
+            else if(!running&&result.has("id")&&!result.get("id").getAsString().equals(shownResult)){reportOpened(result.get("id").getAsString());c.setScreen(new CampScreen("results"));}
             else if(!running&&lastRunning&&c.currentScreen==null)c.setScreen(new CampScreen("home"));lastRunning=running;
             if(!j.get("collectionReady").getAsBoolean()){sendProfile(c);return;}if(c.getServer()==null)return; /* the local collection is written only from an integrated (single-player or LAN-host) world, never from a dedicated server or a LAN guest */String saved=Campaign.JSON.toJson(profile);if(saved.equals(lastSaved))return;lastSaved=saved;Path path=collection(c);Files.createDirectories(path.getParent());Path tmp=path.resolveSibling(path.getFileName()+".tmp");Files.writeString(tmp,saved);Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);
         }catch(Exception e){System.err.println("[Graves and Glory] Collection sync could not be saved: "+e.getClass().getSimpleName());}

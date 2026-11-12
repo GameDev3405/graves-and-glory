@@ -121,7 +121,7 @@ final class AttackController extends AnimationController<GeoTroop> {
         shownLegsWeight = 0;
         List<Spec.AttackVariantsRow> variants = Tactics.variants(family);
         if (variants.isEmpty()) return;
-        double now = e.getWorld().getTime() + state.getPartialTick();
+        double now = EndingClient.worldTime(e.getWorld()) + state.getPartialTick();
         double death = 1;
         shownAt = now; shownDeath = -1;
         if (e instanceof LivingEntity l && (l.isDead() || l.deathTime > 0)) {

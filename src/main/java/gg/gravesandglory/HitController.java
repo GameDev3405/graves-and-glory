@@ -69,7 +69,7 @@ final class HitController extends AnimationController<GeoTroop> {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e == null || e.getWorld() == null) return;
         if (listed == null || listed.get() != e) { listed = new java.lang.ref.WeakReference<>(e); LIVE.put(e, this); }
-        double now = e.getWorld().getTime() + state.getPartialTick();
+        double now = EndingClient.worldTime(e.getWorld()) + state.getPartialTick();
         MotionInput.Hit latest = null;
         for (MotionInput.Hit h : MotionEvents.Client.hits(e.getId())) if (h.tick() <= now && (latest == null || h.tick() >= latest.tick())) latest = h;
         if (latest != null && latest.tick() != seenTick) { seenTick = latest.tick(); seenAt = now; }

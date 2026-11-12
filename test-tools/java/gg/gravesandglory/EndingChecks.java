@@ -10,6 +10,9 @@ import net.minecraft.world.GameMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.entity.Entity;
 
 /**
  * The match ending on a real integrated server (GRAVES_PHASE4_CHECKS=ending, run with GRAVES_INSTANT_ENDING=false). Five rounds, each started
@@ -32,11 +35,91 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         });
     }
     public void step(MinecraftClient c, int tick) {
-        if (tick == 20) { c.setScreen(null); player = c.player.getUuid(); }
+        if (tick == 20) { c.setScreen(null); player = c.player.getUuid(); Phase1Checks.window(c, 1280, 720, 3); }
         if (skips > 0 && tick % 3 == 0) { GravesAndGloryClient.send("ending:skip"); skips--; }
         String s = shot;
         if (s != null) { if (s.startsWith("!")) { Phase4Checks.shot(c, s.substring(1)); shot = null; } else shot = "!" + s; }
-        if (done) Phase4Checks.finish(c, "ending");
+        client(c, tick);
+        if (done) {
+            boolean all = banners.size() == 3; for (var e : banners.entrySet()) all &= e.getKey().equals(e.getValue());
+            report("ending-client-banner", all, "outcome -> banner word drawn: " + banners);
+            Phase4Checks.finish(c, "ending");
+        }
+    }
+
+    // ---- the client half (Task 5): EndingClient through the same rounds, on the client thread ----
+    /** Set by the server rounds: the skip round wants the menu key pressed in RESULT; the 4v4 round holds into PODIUM for the three plates. */
+    volatile boolean pressMenu, podiumThree;
+    /** Outcome -> the banner word EndingClient drew for it. */
+    final Map<String, String> banners = new LinkedHashMap<>();
+    String clientShot; int shotAt = -1, resultAt = -1, podiumAt = -1, pressAt = -1, resizeAt = -1, restoreAt = -1;
+    MatchEnding.Step lastStep; String lastOutcome = "";
+    boolean frozenDone, podiumDone, skipDone, threeDone;
+    Entity watched; double clock0; int age0; Vec3d pos0;
+
+    /** The client checks, each tick: the step EndingClient shows and what it drew. Screens at 1280x720 gui 3; the defeat banner and one podium shot at 854x480 gui 2. */
+    void client(MinecraftClient c, int tick) {
+        var st = EndingClient.step();
+        if (st != null) c.options.hudHidden = false; // the harness hides the HUD each tick; the ending draws its own
+        if (clientShot != null && tick >= shotAt) { Phase4Checks.shot(c, clientShot); clientShot = null; }
+        if (resizeAt >= 0 && tick >= resizeAt) { resizeAt = -1; Phase1Checks.window(c, 854, 480, 2); }
+        if (restoreAt >= 0 && tick >= restoreAt) { restoreAt = -1; Phase1Checks.window(c, 1280, 720, 3); }
+        if (st != lastStep || !EndingClient.outcome.equals(lastOutcome)) {
+            if (st == MatchEnding.Step.RESULT) resultAt = tick;
+            if (st == MatchEnding.Step.PODIUM) podiumAt = tick;
+            if (st == MatchEnding.Step.RESULT && EndingClient.outcome.equals("DEFEAT") && !banners.containsKey("DEFEAT")) { Phase1Checks.window(c, 854, 480, 2); restoreAt = tick + 30; }
+            lastStep = st; lastOutcome = EndingClient.outcome;
+        }
+        // ending-client-banner: the word drawn for each outcome, after its 6-tick scale-in
+        if (st == MatchEnding.Step.RESULT && resultAt >= 0 && tick == resultAt + 16 && !pressMenu && !banners.containsKey(EndingClient.outcome)) {
+            banners.put(EndingClient.outcome, EndingClient.bannerFrames > 0 ? EndingClient.bannerDrawn : "nothing");
+            clientShot = "ending-banner-" + EndingClient.outcome.toLowerCase(Locale.ROOT); shotAt = tick;
+        }
+        // ending-client-frozen: a troop's animation clock, age and position across 20 ticks of RESULT (the first round)
+        if (st == MatchEnding.Step.RESULT && !frozenDone && resultAt >= 0 && scenario == 0) {
+            if (tick == resultAt + 4) {
+                watched = null;
+                for (Entity e : c.world.getEntities()) if (e instanceof MobEntity m && m.isAlive() && TroopModels.troopOf(m) != null) { watched = e; break; }
+                if (watched != null) { clock0 = EndingClient.clock(watched); age0 = watched.age; pos0 = watched.getPos(); }
+            }
+            if (tick == resultAt + 24) {
+                frozenDone = true;
+                if (watched == null) report("ending-client-frozen", false, "no troop in the client world during RESULT");
+                else {
+                    double clock1 = EndingClient.clock(watched);
+                    boolean same = clock1 == clock0 && watched.age == age0 && watched.getPos().equals(pos0) && EndingClient.frozen();
+                    report("ending-client-frozen", same, TroopModels.troopOf(watched).id() + ": clock " + clock0 + " -> " + clock1 + " s, age " + age0 + " -> " + watched.age + ", moved "
+                        + String.format(Locale.ROOT, "%.4f", watched.getPos().distanceTo(pos0)) + " over 20 ticks");
+                }
+            }
+        }
+        // ending-client-podium: the camera off the player near the view spot, figures on the stage (the first round), shot at both window sizes
+        if (st == MatchEnding.Step.PODIUM && !podiumDone && podiumAt >= 0 && scenario == 0) {
+            if (tick == podiumAt + 40) {
+                double[] v = PodiumLayout.viewSpot(); var cam = c.gameRenderer.getCamera().getPos(); double[] p1 = PodiumLayout.plinths()[0];
+                boolean near = EndingClient.figures.stream().anyMatch(f -> f.commander() && f.entity().squaredDistanceTo(p1[0], p1[1], p1[2]) < 1.5 * 1.5);
+                double off = cam.distanceTo(new Vec3d(v[0], v[1], v[2])), eye = cam.distanceTo(c.player.getEyePos());
+                report("ending-client-podium", EndingClient.cinematic() && off < 3.6 && eye > .2 && near,
+                    String.format(Locale.ROOT, "camera %.2f blocks from the view spot, %.2f from the player's eye; ", off, eye) + EndingClient.figures.size() + " figures, rank 1 on plinth 1=" + near + ", plates " + EndingClient.plates.size());
+                clientShot = "ending-podium"; shotAt = tick; resizeAt = tick + 3;
+            }
+            if (tick == podiumAt + 70) { clientShot = "ending-podium-small"; shotAt = tick; restoreAt = tick + 3; podiumDone = true; }
+        }
+        // ending-client-skip: the menu key in RESULT moves this client to PODIUM at once; three more skips (sent) take him to camp
+        if (pressMenu && st == MatchEnding.Step.RESULT && pressAt < 0) { pressAt = tick; KeyBinding.onKeyPressed(KeyBindingHelper.getBoundKeyOf(GravesAndGloryClient.menu)); }
+        if (pressAt >= 0 && !skipDone && (st == MatchEnding.Step.PODIUM || tick - pressAt > 10)) {
+            skipDone = true; pressMenu = false; skips = 3;
+            report("ending-client-skip", st == MatchEnding.Step.PODIUM, "menu key in RESULT: step " + st + " after " + (tick - pressAt) + " ticks");
+        }
+        // ending-client-plates: the 4v4 podium's three plates never overlap
+        if (podiumThree && st == MatchEnding.Step.PODIUM && !threeDone && podiumAt >= 0 && tick >= podiumAt + 30) {
+            threeDone = true;
+            var r = new ArrayList<>(EndingClient.plateRects); boolean overlap = false;
+            for (int i = 0; i < r.size(); i++) for (int j = i + 1; j < r.size(); j++) { int[] a = r.get(i), b = r.get(j); if (a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]) overlap = true; }
+            StringBuilder why = new StringBuilder(); for (int[] a : r) why.append(Arrays.toString(a));
+            report("ending-client-plates", r.size() == 3 && !overlap, r.size() + " plates, overlap=" + overlap + " " + why + " at " + c.getWindow().getScaledWidth() + "x" + c.getWindow().getScaledHeight());
+            clientShot = "ending-podium-three"; shotAt = tick;
+        }
     }
 
     static void report(String id, boolean pass, String why) { Phase4Checks.report(id, pass, why); }
@@ -152,7 +235,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     /** ending-skip: four skips from the client take the lone commander to camp before the clock's DONE. */
     void skip(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p) {
         if (stage < 2) { started(b, p, false); return; }
-        if (stage == 2) { c.finish(b.squads.get(player).team); skips = 4; stage = 3; at = b.time; return; }
+        if (stage == 2) { c.finish(b.squads.get(player).team); pressMenu = true; stage = 3; at = b.time; return; } // the client presses the menu key, then sends three skips
         long took = b.time - at;
         if (b.running) { if (took > total(c) + 40) { report("ending-skip", false, "still running after " + took + " ticks"); c.returnLobby(); next(); } return; }
         report("ending-skip", took < total(c) - 100 && CampWorld.inCamp(p.getX(), p.getY(), p.getZ()) && !c.ending(), "camp after " + took + " ticks of " + total(c) + " (skips sent from the client)");
@@ -219,12 +302,18 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     /** ending-snapshot-size: a 4v4 report and snapshot fit the limit the client reads. */
     void size(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p) {
         if (stage < 2) { started(b, p, true); return; }
+        if (stage == 3) { sizeHold(b, c); return; }
         c.finish(b.squads.get(player).team);
         String raw = Campaign.JSON.toJson(c.results.get(player)), sent = c.snapshot(p);
         var sn = JsonParser.parseString(sent).getAsJsonObject();
         boolean whole = sn.has("result") && sn.getAsJsonObject("result").has("podium") && sn.getAsJsonObject("result").getAsJsonArray("squads").size() == 8 && sn.has("ending");
         report("ending-snapshot-size", sent.length() <= Campaign.SNAPSHOT_LIMIT && whole, "4v4: snapshot " + sent.length() + " of " + Campaign.SNAPSHOT_LIMIT + " characters with the report (" + raw.length() + " pretty) and ending=" + whole + " (" + b.squads.size() + " squads)");
         evidence("ending-report-4v4.json", raw);
+        podiumThree = true; stage = 3; at = b.time;
+    }
+    /** The 4v4 ending held into PODIUM for the client's three plates (ending-client-plates), then torn down. */
+    void sizeHold(GravesAndGlory.Battle b, Campaign c) {
+        if (c.ending() && b.time - at < c.endingTiming.resultTicks() + 80) return;
         c.returnLobby();
         next();
     }

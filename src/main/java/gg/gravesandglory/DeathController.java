@@ -123,7 +123,7 @@ final class DeathController extends AnimationController<GeoTroop> {
         if (!(e instanceof LivingEntity l) || !(l.isDead() || l.deathTime > 0)) {
             latched = null; riseDeath = null; lastRise = null;
             if (e.getWorld() == null) return;
-            double now = e.getWorld().getTime() + state.getPartialTick();
+            double now = EndingClient.worldTime(e.getWorld()) + state.getPartialTick();
             double[] at = rising(model, animatable, e, now);
             if (at == null) { lastRise = null; return; }
             Animation clip = model.getAnimation(animatable, at[0] == 0 ? FAKE : RISE);

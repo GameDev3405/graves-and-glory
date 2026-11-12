@@ -92,7 +92,8 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
      * (the dispatcher reads shadowOpacity after this), and its body, every layer of it, drawn translucent by BodyCache.fadePass
      * from the buffers it was recorded into, or from this draw caught into buffers (BodyCache.fading), until nothing is drawn.
      */
-    @Override public void render(T e,float yaw,float tickDelta,MatrixStack matrices,VertexConsumerProvider consumers,int light){
+    @Override public void render(T e,float yaw,float frameDelta,MatrixStack matrices,VertexConsumerProvider consumers,int light){
+        float tickDelta=EndingClient.frozen()?1:frameDelta; // the match ending's freeze: the troop is not ticked, so a fixed partial tick holds its pose
         float fade=BodyCache.fade(e,tickDelta);shadowOpacity=baseShadow*fade;
         if(BodyCache.hidden(e.getId()))return;
         float alpha=BodyCache.opaque?1f:fade;if(alpha<=0f)return;

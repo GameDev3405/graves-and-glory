@@ -133,7 +133,7 @@ final class StanceController extends AnimationController<GeoTroop> {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e == null || e.getWorld() == null) return;
         if (listed == null || listed.get() != e) { listed = new java.lang.ref.WeakReference<>(e); LIVE.put(e, this); }
-        double now = e.getWorld().getTime() + state.getPartialTick();
+        double now = EndingClient.worldTime(e.getWorld()) + state.getPartialTick();
         double dt = Double.isNaN(last) || now - last > 4 ? 1e9 : Math.max(0, now - last);
         last = now;
 

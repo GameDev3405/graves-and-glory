@@ -153,7 +153,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // thread, and not through client.execute: Fabric can fire this event on the network thread, and MinecraftClient.disconnect
         // wipes the queued tasks (the Task 3 re-review's race). The flag waits for the first client tick without a world, and the
         // next join clears them as well; no HUD frame runs without a world to clear them before the next one.
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{CommandPanel.disconnected(client);if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);CampaignClient.forget();MusicDirector.reset(client);TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{CommandPanel.disconnected(client);if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);EndingClient.forget(client);CampaignClient.forget();MusicDirector.reset(client);TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(!toolbarFreed&&client.options!=null){toolbarFreed=true;freeToolbarKeys(client,toolbarFlag());}
             if(hudResetPending&&client.world==null)resetHud();
@@ -162,11 +162,12 @@ public final class GravesAndGloryClient implements ClientModInitializer {
                 client.setScreen(error.isEmpty()?new FrontMenuScreen():new FailureScreen(error));
             }
             if(client.player!=null){
-                worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);MusicDirector.tick(client);Diagnostics.tick(client);
+                worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);EndingClient.tick(client);MusicDirector.tick(client);Diagnostics.tick(client);
                 while(panelEdit.wasPressed())CommandPanel.toggleEdit(client);
                 CommandPanel.editTick(client);
                 if(CommandPanel.editing()){for(KeyBinding k:new KeyBinding[]{menu,attack,charge,followMe,retreat,formation,confirmOrder,cancelOrder})while(k.wasPressed()){}} // no orders while the panel is being arranged
-                while(menu.wasPressed()){CampaignClient.end(client);if(battleActive()&&PanelLayout.hidden){client.player.sendMessage(Text.literal("Command panel hidden. Press "+hint("panel_edit")+" to arrange."),true);continue;} // keyboard-only mode: R opens nothing
+                while(menu.wasPressed()){if(EndingClient.step()!=null){EndingClient.skip(client);continue;} // the match ending: the menu key skips this player's step
+                    CampaignClient.end(client);if(battleActive()&&PanelLayout.hidden){client.player.sendMessage(Text.literal("Command panel hidden. Press "+hint("panel_edit")+" to arrange."),true);continue;} // keyboard-only mode: R opens nothing
                     CommandMode.cancel();if(battleActive())CommandSelection.setPanelOpen(!CommandSelection.panelOpen());else client.setScreen(new CampScreen("home"));}
                 while(armoury.wasPressed())if(battleActive())client.setScreen(new RecruitmentScreen(1));
                 while(gearKey.wasPressed())if(!battleActive())client.setScreen(new CampScreen("gear"));
@@ -187,6 +188,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         });
         HudRenderCallback.EVENT.register(GravesAndGloryClient::renderHud);
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(CommandMode::renderWorld);
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(EndingClient::renderFigures); // the match ending's podium figures
         ChargeCamera.register(); // the overhead charge camera: its option, its toggle binding and the ground arrow
         OrderOutlines.register(); // formation outlines, pulses and the rally pose; registered after the tick handler above so it reads the aim that handler left
         // Troop depth: the frame's cutoff from the game camera, once, before any pass draws (Iris's shadow pass among them).

@@ -60,4 +60,7 @@ final class GeoTroop implements GeoReplacedEntity {
     }
 
     @Override public AnimatableInstanceCache getAnimatableInstanceCache() { return cache; }
+
+    /** GeckoLib's animation tick: the troop's age, held still while the match ending freezes the field (EndingClient.geoTick). */
+    @Override public double getTick(Object entity) { return entity instanceof net.minecraft.entity.Entity e ? EndingClient.geoTick(e) : 0; }
 }

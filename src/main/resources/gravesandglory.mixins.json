@@ -21,7 +21,11 @@
     "KeybindTextMixin",
     "ArmorFeatureMixin",
     "HeldItemFeatureMixin",
-    "PlayerModelMixin"
+    "PlayerModelMixin",
+    "EndingWorldMixin",
+    "EndingTimeMixin",
+    "EndingViewMixin",
+    "EndingKeyMixin"
   ],
   "injectors": {
     "defaultRequire": 1
