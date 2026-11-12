@@ -29,6 +29,7 @@
   {"troop": "sentinel", "clip": "stance_wall_upper", "check": "floor", "reason": "the shield is planted on the ground on purpose (shield wall); side view shows its foot at boot level, not sunk (Sonnet review 2026-11-12)"},
   {"troop": "sentinel", "clip": "stun_upper", "check": "floor", "reason": "the shield is planted on the ground on purpose (leaning on it while stunned); side view shows its foot at boot level, not sunk (Sonnet review 2026-11-12)"},
   {"troop": "gl_marshal", "clip": "stance_wall_upper", "check": "floor", "reason": "the shield is planted on the ground on purpose (shield wall); side view shows its foot at boot level, not sunk (Sonnet review 2026-11-12)"},
-  {"troop": "gl_marshal", "clip": "stun_upper", "check": "floor", "reason": "the shield is planted on the ground on purpose (leaning on it while stunned); side view shows its foot at boot level, not sunk (Sonnet review 2026-11-12)"}
+  {"troop": "gl_marshal", "clip": "stun_upper", "check": "floor", "reason": "the shield is planted on the ground on purpose (leaning on it while stunned); side view shows its foot at boot level, not sunk (Sonnet review 2026-11-12)"},
+  {"troop": "revenant", "clip": "stun_upper", "check": "armour_clip", "reason": "model debt: the 1 px right_spike2 on the shoulder touches the side of the coif (2.52) in the stun slump; not visible at 16 blocks; head tilt, arm and head slide do not clear it and moving the spike 3 px detaches it (review 2026-11-12). Fix in the model (shorten or move the spike)"}
  ]
 }

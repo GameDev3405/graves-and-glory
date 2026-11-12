@@ -98,7 +98,9 @@ aimed: go to that tick in the builder, do not nudge the whole clip. The limits a
   it, `stun_upper` + `stun_legs` giving way to the ready stance over 8 ticks with the clip added on top
   (`render_geo.Scene(handover=...)`). Added onto `stance_ready_legs`, the stun's knee bend counted twice and every troop
   showed a false floor row (hearthguard 1.87, spider 4.26). Its tick 0 is the stun pose: a floor row there belongs to
-  `stun_upper`. `whole_body` is n/a for it (it has no legs clip of its own).
+  `stun_upper`. `whole_body` is n/a for it (it has no legs clip of its own). `secondary_life` skips pieces the legs layer
+  keys (robe panels, a kilt): the upper clip may not key them (one layer per bone), so their life in the shake-off is
+  the stun legs handing over to the stance legs (2026-11-12, found on the casters).
 - **Booth sheets end on the clip's last pose (2026-11-12).** A play-once clip has stopped at its length and the renderer
   returns the bind pose there; `booth_render` now takes that last frame a hair before the end. A sheet whose last frame
   stands in the bind pose was built before this fix: rebuild it.

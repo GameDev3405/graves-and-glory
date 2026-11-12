@@ -686,6 +686,12 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
     if not hasattr(rig, "_alive"):
         rig._alive = alive_pieces(rig.full)
     alive = sorted({b for b in bone_of if b in rig._alive})
+    if name.startswith("stun_out"):
+        # The shake-off has no legs clip: a piece the legs layer keys (robe panels, a kilt) is carried by the stun
+        # legs handing over to the stance legs, and the upper clip may not key it (one layer per bone).
+        legs_own = set().union(*[c.touched() for c in list(scene.clips) + list((scene.handover or ([],))[0])
+                                 if c.name.endswith("_legs")] or [set()])
+        alive = [b for b in alive if b not in legs_own]
     if kind in ("attack", "hit") and alive and "light" not in name:
         rng = {}
         for b in alive:
