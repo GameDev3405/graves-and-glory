@@ -127,3 +127,11 @@ Same grid as Kingsfield: columns A to I from x -288, rows 1 to 6 from z -192. Th
 - AI lead / coordinator: can troops and bots path over a causeway with slab steps, through an 8-wide gate passage and across a 16-wide bridge with parapets? Do they avoid deep water? The plan assumes deep water is a barrier.
 - Mode code: Siege sites per map; Escort route with three stops.
 - Field box is the same as Kingsfield (arenaHalfX 270, arenaHalfZ 190).
+
+## 9. Changes agreed or made while building (2026-11-12)
+- Ribs: one more pair added, and a guard (parapet in town, fence outside) along all open water so nothing falls in (Kort).
+- Bank road runs straight along z -91 / 90 in town. Mill stands east of A, inn west of A; shrine west of C, guild east of C.
+- The two "rise" sites became gated quay landings near (±61, ±27). A butter-market pavilion stands on the island (x -42..-21, z -6..5).
+- Base yards: tents and drill gear. Base gates face the field (Kort).
+- After the built map was shown (Kort): mill gets a timber upper storey and a bigger wheel, shrine tower 5 higher with pale quoins and a spire, base walls get buttresses, barred loops, banners and raised corners. One house east of the mill removed so the wheel shows.
+- Every map review now includes the inventory of non-full blocks: `nonfull-blocks.md`, made by `gen/nonfull.py`.

@@ -108,7 +108,8 @@ def house(w, d, floors=2, style='slate', ridge=None, shop=False, arch=False, hoi
     # chimney and hearth at the back
     hx = 2 if not hoist else None
     if hx:
-        b.box(hx, G, -1, hx, top + rise - 1, -1, FOOT); b.box(hx, top + rise - 1, -1, hx, top + rise + 1, -1, 'bricks'); b.set(hx, top + rise + 2, -1, 'brick_wall')
+        ch = top + max(2, rise // 2)                         # a stack that clears the roof slope by two, not a spike
+        b.box(hx, G, -1, hx, ch - 1, -1, FOOT); b.box(hx, ch, -1, hx, ch + 1, -1, 'bricks'); b.set(hx, ch + 2, -1, 'brick_wall')
         b.set(hx, G + 1, 0, 'campfire[lit=true]'); b.set(hx, G + 2, 0, 'bricks'); b.set(hx - 1, G + 1, 0, 'bricks'); b.set(hx + 1, G + 1, 0, 'bricks')
     # ladders up the back wall
     lx = (ax0 - 1) if arch else w - 2

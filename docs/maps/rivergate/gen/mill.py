@@ -21,6 +21,19 @@ def build(b):
                 corner = x in (X0, X1) and z in (Z0, Z1)
                 for y in range(G + 1, T): b.set(x, y, z, b.pick(FOOT) if y == G + 1 or (corner and y < G + 4) else b.pick(MASON))
             b.set(x, T, z, ('stripped_spruce_log[axis=%s]' % ('x' if z in (Z0, Z1) else 'z')) if edge else 'spruce_planks')
+    U = T + 4                                             # eaves plate over the timber upper storey
+    for x in range(X0, X1 + 1):
+        for z in range(Z0, Z1 + 1):
+            if not (x in (X0, X1) or z in (Z0, Z1)): continue
+            post = (x in (X0, X1) and z in (Z0, Z1)) or (z in (Z0, Z1) and (x - X0) % 4 == 1) or (x in (X0, X1) and (z - Z0) % 4 == 1)
+            for y in range(T + 1, U): b.set(x, y, z, 'dark_oak_log[axis=y]' if post else 'white_terracotta')
+            b.set(x, U, z, 'stripped_dark_oak_log[axis=%s]' % ('x' if z in (Z0, Z1) else 'z'))
+    for x in (21, 25, 29):
+        for z, dz, f in ((Z0, -1, 'north'), (Z1, 1, 'south')):
+            if x == 25 and z == Z0: continue
+            b.set(x, T + 2, z, 'air')
+            for k in (-1, 1): b.set(x + k, T + 2, z + dz, 'spruce_trapdoor[facing=%s,half=top,open=true]' % f)
+    for z in (-110, -103): b.set(X0, T + 2, z, 'air')
     # doors: west (2 wide) to the square, south loading door
     b.air(X0, G + 1, -107, X0, G + 2, -106); b.set(X0, G + 3, -107, 'stripped_spruce_log[axis=z]'); b.set(X0, G + 3, -106, 'stripped_spruce_log[axis=z]')
     b.air(24, G + 1, Z1, 24, G + 2, Z1); b.set(24, G + 3, Z1, 'stripped_spruce_log[axis=x]')
@@ -33,15 +46,18 @@ def build(b):
         b.set(X0, G + 2, z, 'air')
         for k in (-1, 1): b.set(X0 - 1, G + 2, z + k, 'spruce_trapdoor[facing=west,half=top,open=true]')
     # roof: shingle, timbered gables, a hoist beam over the loading door
-    b.gable_x(X0, X1, Z0, Z1, T + 1, 'spruce_stairs', 'spruce_slab', fill=[('white_terracotta', 1)])
+    b.gable_x(X0, X1, Z0, Z1, U + 1, 'dark_oak_stairs', 'dark_oak_slab', fill=[('white_terracotta', 1)])
     for x in (X0, X1):
-        for y in range(T + 1, T + 9):
+        for y in range(U + 1, U + 9):
             for z in range(Z0, Z1 + 1):
-                if b.get(x, y, z) == 'white_terracotta' and (z in (-107, -106) or y == T + 4): b.set(x, y, z, 'dark_oak_log[axis=%s]' % ('y' if z in (-107, -106) else 'z'))
-    b.set(X0, T + 2, -110, 'air'); b.set(X0, T + 2, -103, 'air')
-    for z in (Z1 + 1, Z1 + 2): b.set(24, T + 3, z, 'dark_oak_log[axis=z]')
-    b.set(24, T + 2, Z1 + 2, 'chain[axis=y]'); b.set(24, T + 1, Z1 + 2, 'chain[axis=y]'); b.set(24, T, Z1 + 2, 'barrel[facing=up]')
-    for y in (T + 1, T + 2): b.set(24, y, Z1 - 1, 'air')
+                if b.get(x, y, z) == 'white_terracotta' and (z in (-107, -106) or y == U + 4): b.set(x, y, z, 'dark_oak_log[axis=%s]' % ('y' if z in (-107, -106) else 'z'))
+    b.set(X0, U + 2, -109, 'air'); b.set(X0, U + 2, -104, 'air')
+    for x in (23, 24, 25, 26):                               # a louvred vent on the ridge
+        b.set(x, U + 9, -107, 'spruce_planks'); b.set(x, U + 9, -106, 'spruce_planks'); b.set(x, U + 10, -107, 'dark_oak_slab[type=bottom]'); b.set(x, U + 10, -106, 'dark_oak_slab[type=bottom]')
+    for z in (Z1 + 1, Z1 + 2): b.set(24, U, z, 'dark_oak_log[axis=z]')
+    for y in range(T + 1, U): b.set(24, y, Z1 + 2, 'chain[axis=y]')
+    b.set(24, T, Z1 + 2, 'barrel[facing=up]')
+    for y in (T + 1, T + 2): b.set(24, y, Z1, 'air')
     # the wheel pit: bed y 60, water y 61..62, stone walls, parapet all round
     for x in range(X1 + 1, 38):
         for z in range(Z0, Z1 + 1):
@@ -59,19 +75,19 @@ def build(b):
     for z in range(Z0 + 1, Z1):                            # the mill wall is stone down to the bed on the pit side
         for y in range(G - 4, G + 1): b.set(X1, y, z, b.pick(MASON if y > G - 2 else FOOT))
     # the wheel: 9 across, in the y-z plane, two rims with paddles, axle into the mill
-    cy, cz = G + 2, -106.5
-    for y in range(G - 3, G + 8):
+    cy, cz = G + 3, -106.5
+    for y in range(G - 3, G + 10):
         for z in range(-112, -100):
             r = math.hypot(y - cy, z - cz)
-            ang = math.degrees(math.atan2(y - cy, z - cz)) % 45
-            if 3.7 <= r <= 4.7:
+            ang = math.degrees(math.atan2(y - cy, z - cz)) % 30
+            if 4.7 <= r <= 5.7:
                 b.set(34, y, z, 'stripped_spruce_log[axis=x]')
-                if ang < 12 or ang > 40:                      # paddles stand out each side of the rim
+                if ang < 8 or ang > 24:                      # paddles stand out each side of the rim
                     for x in (33, 35): b.set(x, y, z, 'dark_oak_planks')
-            elif r < 3.7 and (abs(y - cy) < 0.6 or abs(z - cz) < 0.6):
+            elif r < 4.7 and (abs(y - cy) < 0.6 or abs(z - cz) < 0.6):
                 b.set(34, y, z, 'spruce_fence' if r > 1 else 'stripped_dark_oak_log[axis=x]')
     for x in range(28, 36):
-        for z in (-107, -106): b.set(x, G + 2, z, 'stripped_dark_oak_log[axis=x]')
+        for z in (-107, -106): b.set(x, G + 3, z, 'stripped_dark_oak_log[axis=x]')
     # inside: pit wheel, stones, hopper, sacks, flour, miller's hearth, ladder to the loft
     Y = G + 1
     for y in (Y, Y + 1, Y + 2):
@@ -88,7 +104,7 @@ def build(b):
         b.set(x, Y, z, blk)
     b.set(19, Y + 1, -101, 'barrel[facing=up]'); b.set(30, Y + 1, -101, 'lantern[hanging=false]')
     b.set(25, Y, Z0, 'campfire[lit=true]'); b.set(25, Y + 1, Z0, 'bricks'); b.set(24, Y, Z0, 'bricks'); b.set(26, Y, Z0, 'bricks')
-    b.box(25, G, Z0 - 1, 25, T + 7, Z0 - 1, FOOT); b.box(25, T + 7, Z0 - 1, 25, T + 9, Z0 - 1, 'bricks'); b.set(25, T + 10, Z0 - 1, 'brick_wall')
+    b.box(25, G, Z0 - 1, 25, U + 3, Z0 - 1, FOOT); b.box(25, U + 3, Z0 - 1, 25, U + 5, Z0 - 1, 'bricks'); b.set(25, U + 6, Z0 - 1, 'brick_wall')
     for y in range(Y, T + 1): b.set(19, y, -112, 'ladder[facing=east]')
     for x in (21, 28): b.set(x, T - 1, -106, 'lantern[hanging=true]')
     # loft: the miller's bed, sacks, hay

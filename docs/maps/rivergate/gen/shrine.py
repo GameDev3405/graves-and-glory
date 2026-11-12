@@ -65,19 +65,33 @@ def build(b):
             edge = x in (tx0, tx1) or z in (tz0, tz1)
             b.set(x, G, z, b.pick(FLAGS))
             if edge:
-                for y in range(G + 1, G + 16):
-                    open_ = y in (G + 13, G + 14) and ((x in (34, 35)) or (z in (106, 107)))
+                for y in range(G + 1, G + 21):
+                    open_ = y in (G + 18, G + 19) and ((x in (34, 35)) or (z in (106, 107)))
                     b.set(x, y, z, 'air' if open_ else b.pick(FOOT) if y == G + 1 else b.pick(MASON))
-                if (x in (34, 35)) or (z in (106, 107)): b.set(x, G + 12, z, 'chiseled_stone_bricks')
+                if (x in (34, 35)) or (z in (106, 107)): b.set(x, G + 17, z, 'chiseled_stone_bricks')
             else:
-                b.set(x, G + 12, z, 'spruce_planks')
-    b.pyramid(tx0 - 1, tz0 - 1, tx1 + 1, tz1 + 1, G + 16, 'deepslate_tile_stairs', 'deepslate_tile_slab')
-    b.box(34, G + 15, 105, 35, G + 15, 108, 'dark_oak_log[axis=z]'); b.set(34, G + 14, 106, 'bell[attachment=ceiling,facing=north]')
+                b.set(x, G + 17, z, 'spruce_planks')
+    b.pyramid(tx0 - 1, tz0 - 1, tx1 + 1, tz1 + 1, G + 21, 'deepslate_tile_stairs', 'deepslate_tile_slab')
+    b.box(34, G + 20, 105, 35, G + 20, 108, 'dark_oak_log[axis=z]'); b.set(34, G + 19, 106, 'bell[attachment=ceiling,facing=north]')
     b.air(X1, G + 1, 106, tx0, G + 2, 106)                     # vestry door from the chapel
-    for y in range(G + 1, G + 13): b.set(33, y, 105, 'ladder[facing=east]')
+    for y in range(G + 1, G + 18): b.set(33, y, 105, 'ladder[facing=east]')
     b.set(36, G + 1, 108, 'chest[facing=west]'); b.set(36, G + 1, 105, 'barrel[facing=up]'); b.set(36, G + 2, 105, 'candle[candles=2,lit=true]')
-    for y in (G + 4, G + 5, G + 8, G + 9):
+    for y in (G + 4, G + 5, G + 9, G + 10, G + 14, G + 15):
         b.set(tx1, y, 106, 'air'); b.set(34, y, tz0, 'air'); b.set(34, y, tz1, 'air')
+    for x in (tx0, tx1):                                       # pale stone: quoins up the corners, two string courses, a spire finial
+        for z in (tz0, tz1):
+            for y in range(G + 1, G + 21):
+                b.set(x, y, z, 'polished_diorite')
+    for x in range(tx0, tx1 + 1):
+        for z in range(tz0, tz1 + 1):
+            if (x in (tx0, tx1) or z in (tz0, tz1)) and b.get(x, G + 11, z) not in (None, 'air'): b.set(x, G + 11, z, 'polished_diorite')
+            if (x in (tx0, tx1) or z in (tz0, tz1)) and b.get(x, G + 20, z) not in (None, 'air'): b.set(x, G + 20, z, 'polished_diorite' if (x + z) % 2 else 'chiseled_stone_bricks')
+    for x in (34, 35):
+        for z in (106, 107):
+            for y in range(G + 25, G + 30):
+                if b.get(x, y, z) is None: b.set(x, y, z, 'deepslate_tiles')
+            b.set(x, G + 30, z, 'deepslate_tile_wall'); b.set(x, G + 31, z, 'deepslate_tile_wall')
+    b.set(34, G + 32, 106, 'lightning_rod[facing=up]')
     # closed graveyard strips north and south of the tower
     for x in range(X1 + 1, 38):
         for z in list(range(Z0, tz0)) + list(range(tz1 + 1, Z1 + 1)):

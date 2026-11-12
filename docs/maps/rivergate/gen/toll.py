@@ -45,7 +45,7 @@ def toll():
         for y in range(h): b.set(x, B0 + y, z, 'barrel[facing=up]')
     for z in (18, 19, 20): b.set(21, B0, z, 'stripped_spruce_log[axis=z]')
     b.set(2, B0, 19, 'hay_block[axis=x]'); b.set(2, B0 + 1, 19, 'hay_block[axis=x]'); b.set(2, B0, 20, 'hay_block[axis=z]'); b.set(3, B0, 20, 'barrel[facing=up]')
-    b.set(2, B0, 13, 'grindstone[face=floor,facing=east]'); b.set(19, B0, 16, 'campfire[lit=true]')
+    b.set(2, B0, 13, 'grindstone[face=floor,facing=east]'); b.set(19, B0, 16, 'campfire[lit=false]')
     return b
 
 

@@ -258,7 +258,7 @@ def column(x, z):
 
 # houses of the north-west quarter: (x of the west wall, z of the jetty, front 's' or 'n', kinds for NW, NE, SW, SE)
 HOUSES = [(-84, -99, 's', ('s2a', 's2b', 's2b', 's2a')), (-73, -99, 's', ('s1a', 's1b', 's1b', 's1a')), (-66, -99, 's', ('s1b', 's1c', 's1c', 's1b')),
-          (-45, -99, 's', ('s1c', 's1a', 's1a', 's1c')), (-38, -99, 's', ('s4inn', None, None, 's4guild')),
+          (-45, -99, 's', ('s1c', None, 's1a', 's1c')), (-38, -99, 's', ('s4inn', None, None, 's4guild')),
           (-85, -84, 'n', ('s2c', 's2a', 's2a', 's2c')), (-72, -84, 'n', ('s3a', 's3b', 's3b', 's3a')),
           (-46, -84, 'n', ('s2b', 's2c', 's2c', 's2b')), (-35, -84, 'n', ('s3b', 's3a', 's3a', 's3b')),
           (-66, -41, 's', ('s1c', 's1a', 's1a', 's1c')), (-46, -54, 's', ('s2a', 's2c', 's2c', 's2a')),
@@ -339,7 +339,8 @@ def standard(colour='white'):
     c = {(0, y, 0): 'stripped_spruce_log[axis=y]' for y in range(65, 75)}
     c[(0, 75, 0)] = 'lantern[hanging=false]'
     for y in range(71, 75):
-        for j in (1, 2): c[(0, y, -j)] = '%s_wool' % colour
+        for j in (1, 2, 3):
+            if j < 3 or y in (71, 74): c[(0, y, -j)] = ('%s_wool' % colour) if y in (72, 73) else 'yellow_wool'   # a swallow-tailed pennant, gold edged
     return c
 
 

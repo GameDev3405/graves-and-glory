@@ -77,6 +77,23 @@ def build(b, colour='cyan'):
                     b.set(x, G + 5, z, 'spruce_fence')
                     if (x + z) % 5 == 0 and not river:
                         for y in range(G + 1, G + 4): b.set(x, y, z, 'dark_oak_log[axis=y]')
+    # outer faces: buttresses every 8, a barred loop and a banner between them, corners 3 higher
+    for x in range(X0 + 4, X1 - 7, 8):
+        for y in range(G + 1, G + 4): M(x, y, Z0 - 1, b.pick(FOOT) if y == G + 1 else b.pick(MASON))
+        M(x, G + 4, Z0 - 1, 'stone_brick_stairs[facing=south,half=bottom,shape=straight]')
+        for y in (G + 2, G + 3): M(x + 4, y, Z0, 'iron_bars[east=true,west=true]')
+        if (x - X0) % 16 == 4: M(x + 4, G + 5, Z0 - 1, '%s_wall_banner[facing=north]' % colour)
+    for z in range(Z0 + 4, -12, 8):
+        for y in range(G + 1, G + 4): M(X0 - 1, y, z, b.pick(FOOT) if y == G + 1 else b.pick(MASON))
+        M(X0 - 1, G + 4, z, 'stone_brick_stairs[facing=east,half=bottom,shape=straight]')
+        if z + 4 < -12:
+            for y in (G + 2, G + 3): M(X0, y, z + 4, 'iron_bars[north=true,south=true]')
+            M(X0 - 1, G + 5, z + 4, '%s_wall_banner[facing=west]' % colour)
+    for cx, sx in ((X0, 1), (X1, -1)):
+        for i in range(4):
+            for x, z in ((cx + sx * i, Z0), (cx, Z0 + i)):
+                for y in range(G + 6, G + 9): M(x, y, z, b.pick(MASON))
+                if i % 2 == 0: M(x, G + 9, z, b.pick(MASON))
     # twin towers at each gate: 6 x 6, 13 high, on the east wall
     for tz in (-35, -21):
         for x in range(X1 - 5, X1 + 1):
@@ -165,7 +182,7 @@ def build(b, colour='cyan'):
     for x in (-204, -203, -202, -201): M(x, G + 1, -34, 'spruce_fence' if x in (-204, -201) else 'spruce_fence_gate[facing=north,open=false]')
     M(-205, G + 1, -34, 'barrel[facing=up]'); M(-200, G + 1, -34, 'fletching_table')
     for z in (-14, 13):                                    # watch fires
-        b.set(-216, G + 1, z, 'campfire[lit=true]')
+        b.set(-216, G + 1, z, 'campfire[lit=false]')
 
 
 if __name__ == '__main__':

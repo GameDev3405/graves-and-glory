@@ -249,3 +249,14 @@ shot st-hall 14 201.6 -12 34 205 0
 shot st-isle-rim -40 201.6 -10 -55 202 -40
 shot cmd-east 150 232 0 215 199 0
 shot cmd-south 0 226 135 0 199 85
+shot st-mill-e 47 201.6 -98 34 204 -106
+shot st-mill-s 26 201.6 -86 26 207 -106
+shot cmd-mill 48 222 -84 26 205 -106
+shot st-shrine -8 201.6 88 -35 213 105
+shot cmd-shrine -62 226 78 -35 212 105
+shot st-wall-n -215 201.6 -64 -215 203 -40
+shot st-wall-nw -277 214 -66 -251 203 -40
+shot st-wall-w -280 212 0 -251 203 0
+shot cmd-wall -262 222 -64 -220 201 -30
+shot st-landing -61 201.6 -20 -61 200 -30
+shot st-camp -74 201.6 -104 -82 200 -110
