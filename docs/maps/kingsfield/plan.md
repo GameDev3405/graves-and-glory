@@ -32,7 +32,7 @@ Changes from the signed sheet, forced by the shrink (tell Kort):
 - Escort "Tithe Run" (about 375): start (-98, 0) > west ramp > stop 1 the Hand (0, 0) at 95 > north ramp > stop 2 Tithe Barn (0, -114) at 210 > stop 3 beacon crossroads (95, -100) at 305 > end East Grange north door (128, -30).
 - Siege (East Grange): yard (84, 8) on the rim road; gate = grange west gate (100, 0); keep = the hall (142, 8). East gate and side doors walled for the round. Attackers' camp at the pit's east ramp.
 - Survival: shrine = the Hand (0, 0); rise sites at the ramp heads (0, -62), (0, 62), (-78, 14), (78, -14).
-- Supply houses (current game has two on Kingsfield): plots reserved at (-70, -96) and (70, 96). Whether they stay is the coordinator's and Kort's call.
+- Neutral holds (Kort 2026-11-12: "little locations/strong holds of separate npc/bots that are neutral to both sides which you can hire, fight/steal from, or stay neutral with"): two plots, about 24 x 24, at (-70, -96) and (70, 96). They replace supply houses. The mechanic is the coordinator's lane; the building is piece S9.
 
 ## 3. Palette
 
@@ -80,7 +80,7 @@ Supporting pieces (I check these myself):
 | S6 | Field wall and hedge kit: straight 8, corner, gap with posts, stile | - | laid by generator |
 | S7 | Wayside cross and milestone | 3 x 3 | 6 |
 | S8 | Well, trough, stooks, cart | small | scattered |
-| S9 | Supply house (if kept) | existing rules, new look | 2 |
+| S9 | Neutral hold: small walled steading with a yard, a hall and a stores shed | 24 x 24 | 2 |
 
 ## 5. Terrain
 
@@ -123,6 +123,6 @@ Grid: columns A to I from x -288 (A = -288..-225, B = -224..-161, C = -160..-97,
 
 ## 8. Needs from other lanes
 
-- Field box: the sheet has arenaHalfX 350, arenaHalfZ 250. The new field is 270 by 190. Needs the sheet changed, or the game keeps an empty strip outside the edge bank.
+- Field box: Kort approved changing it ("Yes, change it"): arenaHalfX 270, arenaHalfZ 190.
 - Escort: three stops and this route. Siege: read sites per map. Both in the mode code.
-- Supply houses: keep, move or drop on the new layout.
+- Neutral holds: new mechanic to scope (hire, raid, or ignore).
