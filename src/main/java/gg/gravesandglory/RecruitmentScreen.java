@@ -18,7 +18,7 @@ class RecruitmentScreen extends ArmyScreen {
     /** The page shown: 0 the barracks, 1 the Armoury. The Armoury key opens the screen on page 1 (GravesAndGloryClient), the lectern on page 0. */
     int tab; final ArmouryTab page=new ArmouryTab(this); final BarracksPage barracks=new BarracksPage(this);
     RecruitmentScreen(){this(0);}
-    /** Keys whose press this screen took and which are not released since: the Armoury key (also when it was down as the screen opened, the key that opened it) and an Enter or Space that pressed the Disband plate. Minecraft hands a screen each repeat of a held key as another keyPressed; those stop here until keyReleased, so a held Armoury key does not close the page it opened and a held Enter does not disband a troop per repeat (as CampScreen.held). Enter repeats on Recruit are left as they were. */
+    /** Keys whose press this screen took and which are not released since: the Armoury key (also when it was down as the screen opened, the key that opened it), an Enter that recruited the picked troop, and an Enter or Space that pressed the Recruit or Disband plate. Minecraft hands a screen each repeat of a held key as another keyPressed; those stop here until keyReleased, so a held Armoury key does not close the page it opened and a held Enter neither recruits nor disbands a troop per repeat: one per press (Kort, C12-P3-F2b; as CampScreen.held). */
     final Set<Integer> held=new HashSet<>();
     RecruitmentScreen(int tab){super("Barracks");this.tab=tab;if(armoury!=null){var bound=net.minecraft.client.util.InputUtil.fromTranslationKey(armoury.getBoundKeyTranslationKey());if(bound.getCategory()==net.minecraft.client.util.InputUtil.Type.KEYSYM&&bound.getCode()>=0&&net.minecraft.client.util.InputUtil.isKeyPressed(net.minecraft.client.MinecraftClient.getInstance().getWindow().getHandle(),bound.getCode()))held.add(bound.getCode());}}
     /** The page's widgets are added through the screen (addDrawableChild is protected), and the screen is built again when its rows change or scroll. */
@@ -90,10 +90,10 @@ class RecruitmentScreen extends ArmyScreen {
         if(armoury!=null&&armoury.matchesKey(key,scan)&&!(tab==1&&page.editing>0)){held.add(key);if(tab==1)close();else show(1);return true;}
         if(tab==1&&(key==GLFW.GLFW_KEY_PAGE_UP||key==GLFW.GLFW_KEY_PAGE_DOWN)&&page.scroll(key==GLFW.GLFW_KEY_PAGE_UP?-1:1))return true;
         if(tab==0){ // Enter recruits the picked troop (the key its plate shows); Up and Down pick the row above or below; Page Up and Down scroll the roll
-            if((key==GLFW.GLFW_KEY_ENTER||key==GLFW.GLFW_KEY_KP_ENTER)&&recruit!=null&&recruit.active&&!(getFocused() instanceof ButtonWidget f&&f!=recruit&&f.isFocused()&&client.getNavigationType().isKeyboard())){recruit.onPress();return true;}
+            if((key==GLFW.GLFW_KEY_ENTER||key==GLFW.GLFW_KEY_KP_ENTER)&&recruit!=null&&recruit.active&&!(getFocused() instanceof ButtonWidget f&&f!=recruit&&f.isFocused()&&client.getNavigationType().isKeyboard())){held.add(key);recruit.onPress();return true;}
             if(key==GLFW.GLFW_KEY_UP||key==GLFW.GLFW_KEY_DOWN){barracks.step(key==GLFW.GLFW_KEY_UP?-1:1);setFocused(null);return true;}
             if((key==GLFW.GLFW_KEY_PAGE_UP||key==GLFW.GLFW_KEY_PAGE_DOWN)&&barracks.scroll(key==GLFW.GLFW_KEY_PAGE_UP?-1:1))return true;
-            if((key==GLFW.GLFW_KEY_ENTER||key==GLFW.GLFW_KEY_KP_ENTER||key==GLFW.GLFW_KEY_SPACE)&&disband!=null&&getFocused()==disband){boolean r=super.keyPressed(key,scan,mods);if(r)held.add(key);return r;}
+            if((key==GLFW.GLFW_KEY_ENTER||key==GLFW.GLFW_KEY_KP_ENTER||key==GLFW.GLFW_KEY_SPACE)&&getFocused()!=null&&(getFocused()==disband||getFocused()==recruit)){boolean r=super.keyPressed(key,scan,mods);if(r)held.add(key);return r;}
         }
         return super.keyPressed(key,scan,mods);
     }
