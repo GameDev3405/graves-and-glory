@@ -113,7 +113,10 @@ GRIP = 8.0
 #            weapon's grip section is thicker than the shaft there).
 LEAD = 5.4         # the lead foot's plant (the guard has it at 2.4)
 REAR = -0.2        # where the rear foot catches up to (the guard: -2.2)
-G = nudge(SP.GUARD, Ls=GRIP)
+# Kort approved round 3 as built on the spear builder's guard of that day (fist (-4.5, 13.5, 2.0), aim(12, 18)). The builder
+# has since moved the tusk's stance onto the wide guard; SP.GUARD here rebuilt a different clip (9 upper bones off at ticks
+# 0-2 and 13-21). The approved guard is pinned (SP.R3_GUARD): this file rebuilds round 3 byte for byte (fix round 1, 2026-11-12).
+G = nudge(SP.R3_GUARD, Ls=GRIP)
 RH = SP.READY_HIPS
 
 # torso, head, O (right fist, troop px: -x the troop's right, +z forward), shaft aim(elevation, yaw to the left),

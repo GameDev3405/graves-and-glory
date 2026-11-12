@@ -405,6 +405,12 @@ if WIDE:
 GUARD_GRIP = {"wm_tusk": 8.0}
 if WIDE and TROOP in GUARD_GRIP:
     GUARD = nudge(GUARD, Ls=GUARD_GRIP[TROOP])
+# Spear trio fix round 1 (2026-11-12): Kort approved the tusk's attack_thrust round 3 as it was built, on the pre-wide guard
+# (R3_GUARD below). Tried as the tusk's GUARD so the stances match it: idle_upper, stance_ready_upper, stance_shield_up_upper
+# and stance_rally_upper then fail scorecard pen_limb (1.92 to 1.98 px, stance limit 1.79: that guard's left forearm sits in
+# the chest), so the stances keep this wide guard at 8.0 until the lead decides (a stance allowance or a re-pose); the thrust
+# demo starts from R3_GUARD itself.
+R3_GUARD = KEY((14, 15, 0), GAZE, (-4.5, 13.5, 2.0), aim(12, 18), Ls=8.0)
 ATTACK_TICKS = K.ATTACK_TICKS     # 22
 IMPACT = {"thrust": 7, "high_thrust": 7, "low_sweep": 8}
 
@@ -913,13 +919,42 @@ POP_AT = 12.0       # deg: a sample's turn this much over both neighbours' (focu
 POP_BONES = ("right_arm", "right_forearm", "right_hand", "left_arm", "left_forearm", "left_hand")
 
 
-def despike(upper, label):
+LIMB_SLACK = 0.05   # px deeper in the torso than the solve itself that a despiked sample may put a forearm or hand
+_LIMBFIT = []
+
+
+def _limb_depth(u, l):
+    """px the forearms and hands (with everything on them) sit in the torso and hips beyond the rest model's own fit: the
+    scorecard's pen_limb pairs, judged the way the armour passes judge theirs."""
+    if not _LIMBFIT:
+        bones = K.MODEL.bones
+
+        def under(b, roots):
+            while b:
+                if b in roots:
+                    return True
+                b = getattr(bones[b], "parent", None) if b in bones else None
+            return False
+        by = _actx()[4]
+        mine = [b for b in by if under(b, ("right_forearm", "left_forearm"))]
+        core = [b for b in by if b in ("torso", "hips", "body", "chest", "waist")]
+        _LIMBFIT.append((_Fit(mine, core), mine, core))
+    fit, mine, core = _LIMBFIT[0]
+    pose = _posed(u, l)
+    return fit.deep(_wcubes(pose, mine), _wcubes(pose, core))[0]
+
+
+def despike(upper, label, legs=None):
     """Where the two-arm solve flips an elbow between one sample and the next (the refit thrusts at t6.25 to t6.5: an arm
     turned 18 to 23 deg in one quarter tick, as much again as either neighbour), the two samples either side of the flip
-    are laid on the line between the samples around them, so the flip is spread over three steps. Nothing else moves."""
+    are laid on the path between the samples around them, so the flip is spread over three steps. Nothing else moves.
+    Fix round 1 (2026-11-12): laid on the straight Euler line, the admiral's thrusts swung a forearm through the chest at
+    t6.5 (scorecard pen_limb 1.405 and 1.585, new). With the legs given, each spread is tried on that line and on the
+    shortest turn (slerp); one that sinks a forearm or hand deeper in the torso than the solve itself did (plus
+    LIMB_SLACK) is not used, and a flip no spread can take without it is left as the solve had it."""
     n = len(upper)
-    worst = 0.0
-    for _ in range(4):
+    worst, kept = 0.0, set()
+    for _ in range(8):
         hit = False
         for b in POP_BONES:
             if b not in upper[0]:
@@ -928,17 +963,48 @@ def despike(upper, label):
             s = [math.degrees(math.acos(max(-1.0, min(1.0, (np.trace(R[k].T @ R[k + 1]) - 1.0) / 2.0)))) for k in range(n - 1)]
             for k in range(1, n - 2):
                 spike = s[k] - max(s[k - 1], s[k + 1])
-                if spike > POP_AT and s[k] > 2.5 * max(s[k - 1], s[k + 1], 0.5):
-                    worst = max(worst, spike)
-                    a, c = upper[k - 1], upper[k + 2]
+                if (b, k) in kept or not (spike > POP_AT and s[k] > 2.5 * max(s[k - 1], s[k + 1], 0.5)):
+                    continue
+                a, c = upper[k - 1], upper[k + 2]
+
+                def spread(how):
+                    out = {}
                     for j, f in ((k, 1.0 / 3.0), (k + 1, 2.0 / 3.0)):
+                        q = dict(upper[j])
                         for bb in POP_BONES:
                             if bb in a and bb in c:
-                                ra, rc = np.array(a[bb][0]), np.array(c[bb][0])
-                                rr = ra + np.array([K.wrap(x) for x in (rc - ra)]) * f
-                                upper[j][bb] = (tuple(float(x) for x in rr), upper[j][bb][1])
-                    hit = True
-                    break
+                                if how == "line":
+                                    ra, rc = np.array(a[bb][0]), np.array(c[bb][0])
+                                    rr = ra + np.array([K.wrap(x) for x in (rc - ra)]) * f
+                                else:
+                                    rr = near_euler(slerp_rot(a[bb][0], c[bb][0], f), upper[j][bb][0])
+                                q[bb] = (tuple(float(x) for x in rr), upper[j][bb][1])
+                        out[j] = q
+                    return out
+                best = None
+                if legs is None:
+                    best = spread("line")
+                else:
+                    own = max(_limb_depth(upper[j], legs[j]) for j in (k, k + 1))
+                    for how in ("line", "slerp"):
+                        cand = spread(how)
+                        d = max(_limb_depth(cand[j], legs[j]) for j in (k, k + 1))
+                        if d <= own + LIMB_SLACK:
+                            best = (d, cand, how)
+                            break       # the line first: where it keeps the forearms out, the clip is as before
+                    if best is None:
+                        print("  %s: an arm flip of %.1f deg at sample %d left as solved (every spread sinks a forearm, %.2f px own)"
+                              % (label, spike, k, own))
+                        kept.add((b, k))
+                        hit = True
+                        break
+                    print("  %s: flip at sample %d spread on the %s (limb depth %.2f px, solve %.2f)" % (label, k, best[2], best[0], own))
+                    best = best[1]
+                worst = max(worst, spike)
+                for j, q in best.items():
+                    upper[j] = q
+                hit = True
+                break
             if hit:
                 break
         if not hit:
@@ -1261,7 +1327,7 @@ def attack_clips():
     for name in ATTACKS:
         upper, legs = attack_clip(name)
         if REVIEW:
-            upper = despike(upper, "attack_" + name)
+            upper = despike(upper, "attack_" + name, legs)
         upper = gear(upper, legs)
         if REVIEW:
             upper, legs = soft(upper, legs, "attack_" + name)
@@ -1830,6 +1896,32 @@ def post_common(path=ASSET_ANIM):
                 (r1, p1), (r0, p0) = ups[i][b], ups[loop0][b]
                 pos = None if p1 is None and p0 is None else tuple(a + (c - a) * k for a, c in zip(p1 or Z3, p0 or Z3))
                 ups[i][b] = (tuple(a + (c - a) * k for a, c in zip(r1, r0)), pos)
+    # Fix round 1 (2026-11-12): the game loops ticks 4..24, but the clip's first key (the stance hand-off) and its last
+    # must agree too (scorecard loop_pos 1.37 tusk, 1.76 admiral: the springs had moved the pieces' positions by tick 4).
+    # Each piece's position offset at tick 4 is faded out over the entry (ticks 0..4) and held off through the loop, so
+    # ticks 0, 4 and 24 put every piece where the stance has it; rotations and the loop's own motion are untouched.
+    ups = [dict(u) for u in ups]
+    for b in pieces:
+        if b not in ups[0] or b not in ups[loop0]:
+            continue
+        p0, p4 = ups[0][b][1], ups[loop0][b][1]
+        if p0 is None and p4 is None:
+            continue
+        off = np.array(p4 if p4 is not None else Z3, float) - np.array(p0 if p0 is not None else Z3, float)
+        if not off.any():
+            continue
+        for i in range(1, n_st + 1):
+            k = K.smooth(min(1.0, i / float(loop0)))
+            r, p = ups[i][b]
+            ups[i][b] = (r, tuple(float(a - c * k) for a, c in zip(p if p is not None else Z3, off)))
+    # Fix round 1: the tusk's daze sank the left forearm into the chest (scorecard pen_limb 2.785, hit limit 2.336). The
+    # forearm swings out from the elbow over the first 2 ticks and stays out through the loop (ticks 4 and 24 alike).
+    turn = STUN_FOREARM_OPEN.get(TROOP, 0.0)
+    if turn and "left_forearm" in ups[0]:
+        for i in range(1, n_st + 1):
+            k = K.smooth(min(1.0, i / (2.0 * SUB)))
+            r, p = ups[i]["left_forearm"]
+            ups[i]["left_forearm"] = ((r[0], r[1], r[2] + turn * k), p)
     ups, lgs = floor_guard(ups, lgs, "stun_upper")
     # (no plate_clear here: on the stun it barely helped, 2.56 to 2.5, and the slide broke the loop seam: scorecard loop_pos)
     A["stun_upper"], A["stun_legs"] = STN.bake(ups, n_st // SUB, su.get("loop", False)), STN.bake(lgs, n_st // SUB, A["stun_legs"].get("loop", False))
@@ -1860,6 +1952,7 @@ def post_common(path=ASSET_ANIM):
 
 
 STUN_LOOP_START = 4
+STUN_FOREARM_OPEN = {"wm_tusk": -12.0}   # deg about the forearm's z: the left forearm out of the chest in the stun
 
 
 def deploy(only=None):
