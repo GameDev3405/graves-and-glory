@@ -74,3 +74,39 @@ The Bloodhowl Seer (wm_seer), the Wildmoot caster and the pilot for caster style
 ## Caster fix round 1 (2026-11-10, branch anim/fix-caster)
 
 - **death_right:** the rebuilt fall is deployed, with the wand's world turn capped at 30 deg per tick (`FOCUS_WORLD_TURN`). ang_speed_weapon is 60.7 against a limit of 83.2, and there is no snap on tick 0. The scorecard has 35 clips, 0 failing.
+
+## Batch review 2026-11-11 (branch anim/review-caster)
+
+Kort's four focus points, checked with `tools/anim/focus_check.py`; additive clips also judged on the guard
+(`work/review/compose.py`). The family-wide part of the fix (life pass, reaction layers, front blow, stun loop) is in
+MAGE-REVIEW.md, same date.
+
+- **Baseline:** the rebuild at the lane commit matched `out/` clip for clip (CRLF only): no drift.
+- **Rows:** lead's first run 24 clips with a FAIL (55 rows). Before, composed: 20 clips (40). After, composed: 14 clips
+  (15 rows), 13 of them the shoulder tusks (below). Scorecard 35 clips, 0 failing.
+- **Changes:**
+  - **Life pass** on the cast, howl, every hit, stun, stun_out, knockback, pulled: the feather mantle, shawl, sash tail, the
+    robe panels and their fringes swing (all stood still before). The mantle and shawl are short and stiff: soft_motion drove
+    them into its clamp and they flipped end to end in a sample (pops 14-21 deg in howl, the side blows, pulled), so on this
+    troop their swing may turn at most 2.5 deg a sample (`LIFE_RATE`, run both ways and averaged).
+  - **attack_cast (whole_body 0.67, dead_hold):** the hips load back, carry over the gliding right foot and drive into the
+    release; the settle dips the body and the wand tip and a breath brings it back up (tick 29 key, tick 32.5 key), it froze
+    3.5-5 ticks before.
+  - **howl (grip_roll 20.4 at t21.75):** the wand comes back from wide right through a key half way, aimed half way.
+  - **Blows:** a blow adds 0.4 of its outward swing to the guard's free arm, already 45 deg out (shoulder 122 in medium back).
+  - **Floor:** stun hips up 1.38 px (hoof 1.68 under), knockback 1.02, pulled 1.63 (judged with the pull played on the guard:
+    the hoof was 1.2 px under there and not on the bind pose), fallback 0.78 (hoof 1.08 under).
+  - **Stances:** brace off arm 25 deg lower and 20 out (cuff 3.1 px in the head), ward wand fist 0.6 px out (cuff in the
+    shawl 2.2) and the off forearm 10 deg lower; rally (stances.py layer) wand arm 15 forward and 20 out (cuff 3.3 in the head).
+  - **Stun loop:** the first tick eases out of the lap's last pose.
+- **Rig difference (proposed exemption):** wm_seer, every upper clip, armour_clip head into left_shoulder_tusks 2.3-2.9.
+  The inner tusk cube (x 4..5) is flush against the head box (x -4..4) at bind; head and arm nudges barely move the value.
+  Frame `work/review/frames/wm_ready_38`.
+- **Proposed exemption:** death_forward shoulder 106 at t20: prone, the arm forward past the head (`frames/wm_df_20`).
+- **Open:** stun_out_upper secondary_life 1.35: two skirt fringes (in the stun legs clip) hardly swing over the stun_out
+  window, since the stun loop now starts on its lap pose; stun_out's own pieces swing.
+- **Looked at:** all ticks, three views: attack_cast, howl (`work/review/frames/all_wm_*.jpg`); the brace, ward, rally
+  and tusk ticks at full size.
+- **Tests:** unit tests and verify fast as in MAGE-REVIEW.md (the same builder; `test_where` timing under machine load).
+  In game: geo-knight suite through checkq, root `wm_seer-review1`: 22 `p1-geo-wm_seer` lines and the suite line all true,
+  0 `=false`.
