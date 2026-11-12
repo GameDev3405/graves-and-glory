@@ -17,6 +17,10 @@ The shot (attack_loose, impactTicks 4): the crossbow snaps from the low guard to
 tick; the kick throws it up off the cheek. Then the reload: the stock swings across the body, prod high at the left, the left fist
 takes the string and hauls it down into the nut with the hips sunk and the back twisted into it, reaches over the left shoulder
 to the quiver, lays the bolt on the rail, and both hands bring the crossbow back down to the guard.
+
+WARNING: this build also writes the clips art/anim/common/stances.py, reactions.py and charge.py make (the fall-back legs, stun,
+knockback, pulled and charge) and finishes them for the arbalist. Running those modules on ic_arbalist afterwards puts their
+unfinished versions back (their "all" skips ic_arbalist for that reason): rebuild with this file instead.
 """
 import json, math, os, sys
 from pathlib import Path
@@ -246,8 +250,11 @@ def attack_keys():
     tense = nudge(AIM, torso=(0.5, 1.0, 0.0), head=(1.0, 0.0, 0.0))
     # the kick: the stock drives back into the shoulder (2.8 px) and the prod jumps, the chest rocks back and the right shoulder
     # turns away with it (review round 1: the old 5 degree kick did not read at 16 blocks)
-    kick = nudge(pitched(AIM, 12.0), O=(-0.6, 2.2, -2.8), torso=(-9.0, 4.0, 0.0), head=(-6.0, 3.0, 0.0))
-    kick2 = nudge(pitched(AIM, 6.0), O=(-0.3, 0.9, -1.2), torso=(-4.0, 2.0, 0.0), head=(-2.0, 1.5, 0.0))
+    # (fix round 1, 2026-11-12: the chest rocks 11 degrees, not 9, the stock 3.7 px back, and the rock carries into kick2: at 16
+    # blocks the old kick read as a twitch of the head and arm. 14 put the left forearm 1.47 px into the chest, over the
+    # scorecard's 1.39)
+    kick = nudge(pitched(AIM, 12.0), O=(-0.9, 2.8, -3.7), torso=(-11.0, 6.0, 0.0), head=(-8.0, 4.0, 0.0))
+    kick2 = nudge(pitched(AIM, 6.0), O=(-0.3, 0.9, -1.2), torso=(-6.0, 3.0, 0.0), head=(-2.0, 1.5, 0.0))
     lower = about_butt(AIM, 20.0, 10.0, torso=(-1.2, -1.3, 0.0), head=(6.0, 14.0, 6.0), shift=(-1.37, 3.27, 0.1),
                        Lw=(FORE_STOCK[0], AIM["Lw"][1] + 1.8, FORE_STOCK[2]))
     span = nudge(SPAN, O=(-1.5, 0.75, -2.6), torso=(1.9, 3.0, 0.0))
@@ -303,7 +310,7 @@ def attack_legs():
     # batch review 2026-11-11: the kick rocks the hips back off the shot (0.45 px) and the haul sinks them deeper and over the
     # stepped-out left foot, so the hips travel the 2 px a shot is driven by (they moved 1.6)
     spec = {"hips": [(0, R0, R1), (2.6, (0.0, 9.0, 0.0), (0.0, -1.3, 0.1)), (IMPACT, (0.0, 9.0, 0.0), (0.0, -1.35, 0.1)),
-                     (5.4, (-2.5, 10.0, 0.0), (0.0, -1.1, 0.45)), (8.0, (0.0, 8.0, 0.0), (0.0, -1.2, 0.1)),
+                     (5.4, (-2.5, 10.0, 0.0), (0.0, -1.1, 0.65)), (8.0, (0.0, 8.0, 0.0), (0.0, -1.2, 0.1)),
                      (14.0, (2.0, -6.0, 0.0), (0.2, -1.7, -0.2)), (19.0, (4.0, -9.0, -1.0), (0.45, -2.5, -0.5)),
                      (21.0, (5.0, -11.0, -1.5), (0.55, -2.85, -0.65)), (23.0, (3.0, -9.0, -1.0), (0.4, -2.35, -0.45)),
                      (28.0, (1.0, 2.0, 0.0), (0.0, -1.4, 0.0)), (34.0, (2.0, 4.0, 0.0), (0.0, -1.3, 0.1)),
@@ -420,6 +427,24 @@ def solve_keys(keys, legs_at, t):
     return v, left_target(v["Lw"])
 
 
+# (fix round 1, 2026-11-12) the bolt carry: the left shoulder held 30 degrees further out from the haul to the rail, eased in over
+# ticks 22.5-24 and out over 31.5-33, so the forearm passes outside the helm's cheek instead of through it (the bracer sat 1.9 to
+# 2.4 px in the helm on 7 of the 8 ticks from 24 to 31; with it the deepest is 1.7 px)
+LEFT_OUT = 30.0
+CARRY_OUT = (22.5, 24.0, 31.5, 33.0)
+
+
+def carry_out(t):
+    t0, t1, t2, t3 = CARRY_OUT
+    if t <= t0 or t >= t3:
+        return 0.0
+    if t < t1:
+        return K.smooth((t - t0) / (t1 - t0))
+    if t > t2:
+        return K.smooth((t3 - t) / (t3 - t2))
+    return 1.0
+
+
 def attack_clip():
     keys = attack_keys()
     legs = attack_legs()
@@ -431,6 +456,10 @@ def attack_clip():
         s = sol.pose(legs[i], v["torso"], v["head"], v["O"], v["d"], v["u"], left, v["rp"][:4], v["lp"][:4],
                      lm=min(1.0, max(0.0, v["lm"][0])), quiver=quiver_target(v["Lq"]), m=v["mq"], pw=v["pw"][0])
         s["draw"] = (Z3, (draw_at(t), 0.0, 0.0))
+        k = carry_out(t)
+        if k:
+            r, q = s["left_arm"]
+            s["left_arm"] = ((r[0], r[1], r[2] + LEFT_OUT * k), q)
         out.append(s)
     print("attack_loose: grip err max %.3f px, left fist err max %.3f px" % (sol.worst["right"], sol.worst["left"]))
     return out, legs
@@ -679,6 +708,7 @@ STANCE_LEGS = {
     "wall": {"hips": ((7.0, 22.0, 0.0), (0.0, -3.1, -0.2)), "left": (3.8, 2.0, 4.2), "right": (-3.6, 2.0, -4.6), "yaw": (-34.0, 4.0)},
 }
 STANCE_LEGS_LIFE = dict(K.STANCE_LIFE)
+WALL_SKIRT = -12.0
 
 
 def _onto_hips(k, hips):
@@ -691,7 +721,9 @@ STANCE_KEYS = {
     "ready": READY,
     # brace: the stock shouldered on the outer shoulder and the cheek on it, levelled a touch low at the charge's chest, side-on
     # over the braced legs
-    "brace": _onto_hips(about_butt(pitched(AIM, -6.0), -1.5, 1.8, torso=(3.8, 3.0, 0.0), head=(3.7, 10.0, 6.0),
+    # (fix round 1, 2026-11-12: the prod dipped 16 degrees, not 6, at a charge's legs and the horses' chests, so the brace no
+    # longer reads as the aim over lower legs; the wall still dips 27 crouched lower)
+    "brace": _onto_hips(about_butt(pitched(AIM, -16.0), -1.5, 1.8, torso=(3.8, 3.0, 0.0), head=(3.7, 10.0, 6.0),
                                    shift=(-0.88, -0.76, 0.49), Lw=(FORE_STOCK[0], 17.15, FORE_STOCK[2])), STANCE_LEGS["brace"]["hips"]),
     # wall: the line crouched behind its front, folded over the crossbow; the stock still at the shoulder, the prod dipped 27
     # degrees at the ground a few strides ahead (the brace levels it at the charge: 23 degrees apart, review round 1)
@@ -702,11 +734,6 @@ STANCE_KEYS = {
     # (the chest square to the threat, not turned: turned 10 degrees the left fist sat on the left shoulder, the elbow at 107)
     "ward": KEY((-6, -5, 0), (4, 3, 0), (-4.5, 18.0, 7.5), (1.0, 0.12, 0.2), u=(0.0, 0.0, 1.0), rp=(-70, 0, 20, -60),
                 lp=(-60, -10, -10, -50)),
-    # shield_up: moving with the guard up: the crossbow held upright before the face, the prod a cover across it
-    # (batch review 2026-11-11: held 1 px further out and 0.5 px lower, the left fist 3 px lower on the fore-stock: the left
-    # bracer went 2.2 px into the helm on the breath)
-    "shield_up": KEY((2, 6, 0), (-2, -6, 0), (-3.5, 16.0, 8.0), (0.25, 1.0, 0.15), u=(0.0, 0.0, 1.0), rp=(-80, 0, 15, -60),
-                     lp=(-80, -10, -10, -60), Lw=(FORE_STOCK[0], 17.0, FORE_STOCK[2])),
 }
 # (batch review 2026-11-11) the ready's prod lifted a degree: at the bottom of the breath the tip hung 2.15 px under the hand
 NOSE = {"ready": 0.02}
@@ -752,8 +779,33 @@ def stance_clips():
         hips = STANCE_LEGS.get(k, STANCE_LEGS["ready"])["hips"]
         out["stance_%s_upper" % k] = stance_upper(v, LIFE[k], hips, k in READY_LIKE, k in PREWARM, NOSE.get(k, 0.0))
     out.update({"stance_%s_legs" % k: K.stance_legs(v, STANCE_LEGS_LIFE.get(k, 1.0), k in READY_LIKE) for k, v in STANCE_LEGS.items()})
+    out["stance_shield_up_upper"] = shield_up_upper()
+    # (fix round 1, 2026-11-12) the wall's left skirt hangs 12 degrees off the thigh: the fauld met it 1.96 px deep at tick 30
+    out["stance_wall_legs"]["bones"]["left_skirt"] = {"rotation": {"0.0": [WALL_SKIRT, 0.0, 0.0]}}
     out.update(order_clips())
     return out
+
+
+# shield_up (fix round 1, 2026-11-12, Kort's rule 6): a crossbowman has no shield, so he covers with the steel he has. The body
+# turned side-on and ducked, the left bracer raised before the visor, the loaded crossbow lowered to the right hip, prod forward.
+# (It was the crossbow held upright across the face: a shield fighter's guard without the shield.) Searched in scratch
+# exp_shield.py: the bracer 1.3 px off the helm at its nearest, against ward's crossbow-across-the-chest silhouette. The elbow
+# bends 90, not 105 (the scorecard's elbow limit is 94), the upper arm 5 degrees higher to keep the bracer at the visor.
+SHIELD_UP = dict(torso=(18.0, 62.0, 0.0), head=(-8.0, -54.0, 0.0), ra=(-18.0, 0.0, 12.0), rf=-35.0, la=(-100.0, 0.0, -12.0),
+                 lf=-90.0, pitch=-8.0)
+
+
+def shield_up_upper():
+    hips, P = K.READY_HIPS, SHIELD_UP
+
+    def fn(u):
+        br = math.sin(2 * math.pi * u)
+        tx, ty, tz = P["torso"]
+        hx, hy, hz = P["head"]
+        la = P["la"]
+        return one_hand((tx + 0.8 * br, ty, tz), (hx - 0.5 * br, hy - hips[0][1], hz), P["ra"], P["rf"],
+                        (la[0] - 1.0 * br, la[1], la[2]), P["lf"], P["pitch"] + 0.5 * br, hips, 0.3 * br)
+    return fk_loop(fn, K.STANCE_TICKS)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -1358,10 +1410,40 @@ def finish_hits(anims):
         up, lg = unbake(anims[nm], ticks), unbake(anims[nm + "_legs"], ticks)
         lg = lift_hips(lg, base=ready_legs, name=nm + "_legs")
         up, lg = soft(up, lg, nm)
+        if nm == "hit_medium_front":       # the quiver's first swing a quarter smaller: it went 1.9 px into the tabard skirt at t1
+            for x in up:
+                r, q = x.get("quiver", (Z3, None))
+                x["quiver"] = (tuple(QUIVER_FRONT * v for v in r), q)
+        up, lg = liven(up, nm), liven(lg, nm + "_legs")
         anims[nm], anims[nm + "_legs"] = S.bake(settle_ends(up), ticks, False), S.bake(settle_ends(lg), ticks, False)
 
 
+QUIVER_FRONT = 0.75
+# (fix round 1, 2026-11-12, Kort 2026-11-11 "every piece that hangs moves") the pieces soft motion left near still in a hit (the
+# quiver in the pulled and the medium back hit, the quiver and skirts in the block) get a damped swing
+# of their own from the blow: LIVEN_AMP degrees about their hinge, a 4-tick swing dying over 2 ticks
+LIVEN = {"hit_pulled": ("quiver",), "hit_medium_back": ("quiver",), "hit_block": ("quiver", "right_skirt"),
+         "hit_block_legs": ("left_skirt", "right_skirt")}
+# (not stun_out_upper: it plays over stun_legs, which owns the skirts and swings them; the scorecard needs the two disjoint)
+LIVEN_AMP, LIVEN_PERIOD, LIVEN_TAU = 8.0, 4.0, 2.0
+LIVEN_GAIN = {"hit_block": 1.5}     # the block's quiver: 8 degrees only cancelled its soft dip (range 3.96); reversed it hits the skirt
+
+
+def liven(samples, name):
+    bones = LIVEN.get(name, ())
+    for b in bones:
+        if b.endswith("_skirt") and name in ("hit_block",):
+            continue                    # the block's skirts hang from the legs: its legs clip carries them
+        for i, x in enumerate(samples):
+            t = i / SUB
+            k = LIVEN_GAIN.get(name, 1.0) * LIVEN_AMP * math.exp(-t / LIVEN_TAU) * math.sin(2 * math.pi * t / LIVEN_PERIOD)
+            r, q = x.get(b, (Z3, None))
+            x[b] = ((r[0] + k, r[1], r[2]), q)
+    return samples
+
+
 STUN_OUT = 5.0
+STUN_FWD = -10.0     # (fix round 1, 2026-11-12) and 10 degrees further forward: wider alone left it 1.99 px in the tabard
 
 
 def shared_clips(path):
@@ -1381,7 +1463,7 @@ def shared_clips(path):
     su, sl = unbake(rx["stun_upper"]), unbake(rx["stun_legs"])
     for s in su:                       # the crossbow arm hangs 5 degrees wider: its forearm went 2 px into the tabard
         r, q = s.get("right_arm", (Z3, None))
-        s["right_arm"] = ((r[0], r[1], r[2] + STUN_OUT), q)
+        s["right_arm"] = ((r[0] + STUN_FWD, r[1], r[2] + STUN_OUT), q)
     sl = lift_hips(sl, name="stun_legs")
     su, sl = soft_loop(su, sl, RX.STUN_ENTRY, RX.STUN_LOOP, "stun")
     rx["stun_upper"], rx["stun_legs"] = S.bake(su, RX.STUN_TICKS, True), S.bake(sl, RX.STUN_TICKS, True)
@@ -1397,6 +1479,7 @@ def shared_clips(path):
         up, lg = unbake(rx[nm]), unbake(rx[nm + "_legs"])
         lg = lift_hips(lg, base=ready_legs, name=nm + "_legs")
         up, lg = soft(up, lg, nm)
+        up, lg = liven(up, nm), liven(lg, nm + "_legs")
         rx[nm], rx[nm + "_legs"] = S.bake(settle_ends(up), ticks, False), S.bake(settle_ends(lg), ticks, False)
     clips.update(rx)
     S.merge(tr, clips, path)

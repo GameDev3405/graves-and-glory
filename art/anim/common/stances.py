@@ -845,7 +845,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("troop"); ap.add_argument("--out")
     a = ap.parse_args()
-    for tid in (list(GEAR) if a.troop == "all" else [a.troop]):
+    # ic_arbalist is left out of "all": its crossbow builder merges and finishes these clips itself (run it, not this)
+    for tid in ([t for t in GEAR if t != "ic_arbalist"] if a.troop == "all" else [a.troop]):
         tr = Troop(tid)
         clips = build_all(tr)
         dst = Path(a.out) / f"{tid}.animation.json" if a.out else tr.path

@@ -103,3 +103,27 @@ their unfinished versions.**
   min 0). The swing's length and impact tick are unchanged, and the same check failed intermittently for archer, knight and
   ic_hearthguard in other lanes' reels today, so it is likely not from these clips. Not proven: no reel was run at HEAD.
 - **Score** 7/10. Weakest clip: attack_loose (the left forearm across the helm at t31-32 as the bolt comes to the rail).
+
+## Fix round 1 (2026-11-12, from the Sonnet review FIX 6/10)
+
+- **Changed clips (11, against 28c0f6e0).** attack_loose(+legs), stance_brace_upper, stance_shield_up_upper, stance_wall_legs,
+  stun_upper, hit_pulled, hit_medium_front, hit_medium_back, hit_block(+legs). The other 44 clips, the deaths among them, are
+  byte-identical; lengths, loops, the 50-tick shot and impact tick 4 kept.
+- **attack_loose.** The left arm turns 30 degrees out (+z) over the bolt carry, eased in over t22.5-24 and out over t31.5-33: the
+  bracer no longer crosses the helm (worst now 1.72 px at t21, WARN). The kick is stronger: the chest rocks 11 degrees (was 9),
+  the stock comes 3.7 px back, the rock carries into the second key, and the hips take more of it. 14 degrees put the left
+  forearm 1.47 px into the chest, over the scorecard's 1.39.
+- **shield_up (rule 6).** A crossbowman's own cover: side-on and ducked, the left bracer raised before the visor, the loaded
+  crossbow lowered to the right hip. It reads apart from ward (crossbow across the chest) in all three views.
+- **brace** pitched 16 degrees down (was 6), apart from ready and aim. Ready and aim kept: ready is the shot's first key and the
+  guard_up check holds it, and aim keeps its line of fire.
+- **wall** left skirt -12 degrees; **stun** crossbow arm 10 degrees forward; **hit_medium_front** quiver swing x0.75.
+- **Hanging pieces.** A damped swing (8 degrees, 4 ticks, dying over 2) on the quiver in hit_pulled and hit_medium_back, and on the
+  quiver (12) and the skirts in hit_block. Not in stun_out_upper: it plays over stun_legs, which owns the skirts (the scorecard
+  needs the two disjoint), so its "still skirts" WARN stays until focus_check holds a pose base.
+- **Rig.** Ported af51daad's weapon cube turn `[0, 0, -sc.turn]` in `common/troop_rig.py`; the ic_arbalist geo is byte-identical
+  to the bow lane's and the prod limbs render straight.
+- **Shared modules.** stances.py, reactions.py and charge.py leave ic_arbalist out of `all` (one comment line each); a warning in
+  the crossbow builder's docstring.
+- **focus_check** (hits over stance_ready): 4 clips / 5 FAIL rows -> 0 / 0. **Scorecard** 0 fail. **Unit tests** after the last
+  builder change: test_scorecard 22, test_focus_check 22, test_render_geo 20 OK, plus the booth tests.

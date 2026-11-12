@@ -379,7 +379,8 @@ def main():
     ap.add_argument("troop"); ap.add_argument("--out")
     ap.add_argument("--only", help="comma list of clips to merge (each with its _legs); the rest of the file is left as it is")
     a = ap.parse_args()
-    for tid in (list(GEAR) if a.troop == "all" else [a.troop]):
+    # ic_arbalist is left out of "all": its crossbow builder merges and finishes these clips itself (run it, not this)
+    for tid in ([t for t in GEAR if t != "ic_arbalist"] if a.troop == "all" else [a.troop]):
         tr = Troop(tid)
         clips = build_all(tr)
         if a.only:
