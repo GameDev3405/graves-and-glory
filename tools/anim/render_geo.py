@@ -762,11 +762,25 @@ class Frame:
     pass
 
 
+def additive_under(name, names):
+    """The stance clips an ADDITIVE clip is shown over, or None for a clip that is a pose of its own. The game adds
+    every hit clip (HitController.add) and the stun shake-off (StanceController, stun_out_upper) onto whatever the
+    other layers wrote; a troop taking a blow in a fight stands in its ready stance. Played over the rest pose
+    instead, a hit shows arms and feet the game never draws (false floor, elbow and knee findings) and hides real
+    clipping against the stance (wm_hound, 2026-11-12: chest 2.6 px into the skullcap)."""
+    if name.endswith("_legs") or not name.startswith(("hit_", "stun_out")):
+        return None
+    return [c for c in ("stance_ready_upper", "stance_ready_legs") if c in names]
+
+
 class Scene:
     DRAW_FRAMES = ("rest", "pull_0", "pull_1", "pull_2")
 
-    def __init__(self, model, textures=None, clips=None, speed=0.0, look=None):
+    def __init__(self, model, textures=None, clips=None, speed=0.0, look=None, additive=None):
         self.model = model
+        # additive: clips ADDED onto the pose the other clips make, as HitController and the stun shake-off do in game
+        # (rotation and position offsets; they may key bones the other clips key). They do not change the root motion.
+        self.additive = list(additive or [])
         # look = (troop_rig rules, armour/weapon tier, face): draw only what the game shows (GeoTroopRenderer.preRender),
         # and of a bow's draw frames only the one the clips key on the "draw" bone's x position. None draws every bone.
         self.look = look
@@ -786,7 +800,7 @@ class Scene:
         return np.array([0.0, 0.0, self.speed * tick])
 
     def clip_label(self):
-        return "+".join(c.name for c in self.clips) or "static"
+        return "+".join([c.name for c in self.clips] + ["(+)" + c.name for c in self.additive]) or "static"
 
     def _pose(self, tick):
         pose = {}
@@ -803,6 +817,18 @@ class Scene:
                     if v is not None:
                         d[ch] = v
                 pose[b] = d
+        for c in self.additive:
+            et = c.effective_tick(tick)
+            if et is None:
+                continue
+            for b in c.touched():
+                if b not in self.model.bones:
+                    continue
+                d = pose.setdefault(b, {})
+                for ch in ("rotation", "position"):
+                    v = c.sample(b, ch, et)
+                    if v is not None:
+                        d[ch] = np.asarray(d[ch], dtype=float) + np.asarray(v, dtype=float) if ch in d else v
         return pose
 
     def evaluate(self, tick):
@@ -1408,7 +1434,8 @@ def _look(cfg):
 def build_scene_from_cfg(cfg):
     model = load_geo(cfg["geo"])
     clips = [load_clip(p, n) for p, n in cfg["clips"]]
-    scene = Scene(model, cfg["textures"], clips, cfg["speed"], _look(cfg))
+    add = [load_clip(p, n) for p, n in cfg.get("additive", [])]
+    scene = Scene(model, cfg["textures"], clips, cfg["speed"], _look(cfg), add)
     cams = make_cameras(cfg["views"], cfg["bounds"], cfg["distance"], cfg["scale"])
     return scene, cams
 
@@ -1419,6 +1446,9 @@ def build_parser():
     p.add_argument("--texture", action="append", default=[], help="texture layer (repeatable, composited in order)")
     p.add_argument("--anim", action="append", default=[], help="animation.json (repeatable, pairs with --clip)")
     p.add_argument("--clip", action="append", default=[], help="clip name (repeatable)")
+    p.add_argument("--add-clip", action="append", default=[],
+                   help="clip ADDED on top of the --clip pose, from the first --anim file (repeatable): a hit clip and "
+                        "its _legs over the stance, as the game plays them")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--ticks", help="a:b[:step] inclusive tick range")
     g.add_argument("--tick", type=float, help="single (possibly fractional) tick")
@@ -1449,6 +1479,9 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     t0 = time.time()
     try:
+        if args.add_clip and not args.anim:
+            raise GeoError("--add-clip needs an --anim file")
+        add_anim = args.anim[0] if args.anim else None
         if len(args.anim) != len(args.clip):
             if len(args.anim) == 1 and args.clip:
                 args.anim = args.anim * len(args.clip)
@@ -1463,10 +1496,12 @@ def main(argv=None):
         views = [v.strip() for v in args.views.split(",") if v.strip()]
         cfg = {"geo": args.geo, "textures": args.texture, "clips": list(zip(args.anim, args.clip)),
                "speed": args.speed, "views": views, "distance": args.distance, "scale": args.scale,
-               "ss": args.ss, "bones": args.bones, "rig": args.rig, "tier": args.tier, "face": args.face}
+               "ss": args.ss, "bones": args.bones, "rig": args.rig, "tier": args.tier, "face": args.face,
+               "additive": [(add_anim, n) for n in args.add_clip]}
         model = load_geo(args.geo)
         clips = [load_clip(p, n) for p, n in cfg["clips"]]
-        scene = Scene(model, args.texture, clips, args.speed, _look(cfg))   # raises on overlapping bones
+        add = [load_clip(p, n) for p, n in cfg["additive"]]
+        scene = Scene(model, args.texture, clips, args.speed, _look(cfg), add)   # raises on overlapping bones
         lo, hi = compute_bounds(scene, ticks)
         cfg["bounds"] = (lo.tolist(), hi.tolist())
         cfg["marker_top"] = float(hi[1])

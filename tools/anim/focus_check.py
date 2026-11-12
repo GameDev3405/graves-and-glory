@@ -47,6 +47,11 @@ Limits are absolute and written in LIMITS below with the reason for each. They w
 2026-11-06/07): its clips pass, apart from the baseline findings listed in tools/anim/focus_exemptions.json. Never
 loosen a limit to make a clip pass; a real exception is recorded there (troop, clip, check, reason).
 
+Hit clips and the stun shake-off are ADDED onto the stance in game (HitController.add): they are judged added onto
+stance_ready_upper and stance_ready_legs (2026-11-12). Over the rest pose (--rest-pose, how it was before) a hit shows
+false floor, elbow and knee rows and hides real clipping against the stance. The scorecard still scores hits over the
+rest pose.
+
 What it does not do: it measures geometry, not taste, and it is calibrated for the knight skeleton with a one-handed
 blade. Run on the stalker Kort rejected and the one he kept (2026-11-11) it failed most clips of both and did not
 tell them apart. On another rig, run it on that troop's kept clips first and read which rows are rig differences.
@@ -351,12 +356,21 @@ def _pivot(rig, fr, bone):
     return (fr.bone_M[bone] @ np.append(b.pivot / 16.0, 1.0))[:3] * 16.0
 
 
-def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exempt=()):
-    """All checks of one clip played over its base clips. Returns {"name", "kind", "results": [...], "ticks": {...}}."""
+additive_under = rg.additive_under      # hit clips and the stun shake-off are judged added onto the ready stance
+
+
+def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exempt=(), under=None):
+    """All checks of one clip played over its base clips. Returns {"name", "kind", "results": [...], "ticks": {...}}.
+    under: stance clips the clip and its base are ADDED onto (see additive_under); None plays them as poses."""
     kind = kind or sc.clip_kind(name)
     clips = [rg.load_clip(anim, b) for b in base] + [rg.load_clip(anim, name)]
     top = clips[-1]
-    scene = rg.Scene(rig.model, None, clips, speed if kind == "gait" else 0.0)
+    held = None
+    if under:
+        held = rg.Scene(rig.model, None, [rg.load_clip(anim, u) for u in under if u not in base], 0.0)
+        scene = rg.Scene(rig.model, None, held.clips, 0.0, None, clips)
+    else:
+        scene = rg.Scene(rig.model, None, clips, speed if kind == "gait" else 0.0)
     n = max(1, int(math.floor(top.length / STEP + 1e-6)))
     ts = [min(i * STEP, top.length - (1e-4 if top.loop == "once" else 0.0)) for i in range(n + 1)]
     frames = [scene.evaluate(t) for t in ts]
@@ -798,8 +812,11 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
     r = R("settle", "LIMB")
     if sc.stem(name).startswith(("attack", "hit_")) and top.loop != "loop":
         worst_b = (0.0, "")
+        # an added clip hands back to the stance still looping under it: it must be zero at both ends
+        ends = [(frames[0], frames[-1])] if held is None else [(held.evaluate(ts[0]), frames[0]),
+                                                               (held.evaluate(ts[-1]), frames[-1])]
         for b in sorted(top.touched() & set(rig.full.bones)):
-            a = sc._angle(sc._rot(frames[0].bone_M[b]), sc._rot(frames[-1].bone_M[b]))
+            a = max(sc._angle(sc._rot(f0.bone_M[b]), sc._rot(f1.bone_M[b])) for f0, f1 in ends)
             if a > worst_b[0]:
                 worst_b = (a, b)
         r.set(worst_b[0], ts[-1], worst_b[1])
@@ -833,7 +850,7 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
                              for i in range(0, len(ts), PER)]
         elif isinstance(vals, dict):
             per_tick[key] = vals
-    return {"name": name, "base": list(base), "kind": kind, "length": top.length,
+    return {"name": name, "base": list(base), "under": list(under or ()), "kind": kind, "length": top.length,
             "results": [r.row() for r in res.values()], "ticks": per_tick}
 
 
@@ -846,7 +863,7 @@ def load_exemptions(path=EXEMPT_PATH):
     return out
 
 
-def check_troop(repo, troop, anim=None, geo=None, only=None):
+def check_troop(repo, troop, anim=None, geo=None, only=None, rest_pose=False):
     geo = geo or "%s/geo/troop/%s.geo.json" % (sc.ASSETS, troop)
     anim_path = anim or os.path.join(repo, "%s/animations/troop/%s.animation.json" % (sc.ASSETS, troop))
     model = rg.load_geo(os.path.join(repo, geo))
@@ -860,7 +877,8 @@ def check_troop(repo, troop, anim=None, geo=None, only=None):
         if only and name not in only:
             continue
         out.append(check_clip(rig, data, name, base, variant=design.variant(troop, name), speed=float(speed or 0.0),
-                              exempt=exempt.get((troop, name), ())))
+                              exempt=exempt.get((troop, name), ()),
+                              under=None if rest_pose else additive_under(name, set(data.get("animations", {})))))
     return out
 
 
@@ -893,6 +911,8 @@ def main(argv=None):
     ap.add_argument("--clip", action="append", help="only this clip (repeatable)")
     ap.add_argument("--anim", help="score this animation.json in place of the troop's exported one")
     ap.add_argument("--json")
+    ap.add_argument("--rest-pose", action="store_true",
+                    help="play hit clips over the rest pose (before 2026-11-12) instead of added onto the ready stance")
     ap.add_argument("--ticks", action="store_true", help="print the per-tick numbers")
     ap.add_argument("--verbose", action="store_true", help="print passing and n/a checks too")
     try:
@@ -903,7 +923,7 @@ def main(argv=None):
     report, fails = {}, 0
     for t in troops:
         try:
-            clips = check_troop(REPO, t, anim=a.anim, only=a.clip)
+            clips = check_troop(REPO, t, anim=a.anim, only=a.clip, rest_pose=a.rest_pose)
         except (OSError, rg.GeoError, sc.ScoreError) as e:
             print("error %s: %s" % (t, e), file=sys.stderr)
             return 2

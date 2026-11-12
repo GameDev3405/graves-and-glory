@@ -158,6 +158,27 @@ class AnimTest(unittest.TestCase):
         self.assertIn("head", str(cm.exception))
 
 
+    def test_additive_clip_adds_onto_the_pose(self):
+        # the game adds a hit clip onto the stance (HitController.add): same bone, offsets summed, zero means the stance
+        hold = self.clip({"head": {"rotation": {"0": [10, 0, 0], "1": [10, 0, 0]},
+                                   "position": {"0": [0, 2, 0], "1": [0, 2, 0]}}}, name="stance_ready_upper")
+        hit = self.clip({"head": {"rotation": {"0": [0, 0, 0], "1": [5, 0, 0]},
+                                  "position": {"0": [0, 0, 0], "1": [0, 1, 0]}}}, name="hit_light_front")
+        m = rg.load_geo(geo_of([{"origin": [0, 0, 0], "size": [1, 1, 1], "uv": [0, 0]}],
+                                bones=[{"name": "head", "pivot": [0, 0, 0],
+                                        "cubes": [{"origin": [0, 0, 0], "size": [1, 1, 1], "uv": [0, 0]}]}]))
+        sc = rg.Scene(m, [], [hold], 0.0, None, [hit])
+        self.assertEqual(float(sc._pose(0.0)["head"]["rotation"][0]), float(hold.sample("head", "rotation", 0.0)[0]))
+        want = hold.sample("head", "rotation", 10.0)[0] + hit.sample("head", "rotation", 10.0)[0]
+        self.assertAlmostEqual(float(sc._pose(10.0)["head"]["rotation"][0]), float(want), places=9)
+        want = hold.sample("head", "position", 10.0)[1] + hit.sample("head", "position", 10.0)[1]
+        self.assertAlmostEqual(float(sc._pose(10.0)["head"]["position"][1]), float(want), places=9)
+        self.assertEqual(sc.clip_label(), "stance_ready_upper+(+)hit_light_front")
+        self.assertEqual(rg.additive_under("hit_block", {"stance_ready_upper", "idle_legs"}), ["stance_ready_upper"])
+        self.assertIsNone(rg.additive_under("hit_block_legs", {"stance_ready_legs"}))
+        self.assertIsNone(rg.additive_under("stun_upper", {"stance_ready_legs"}))
+
+
 class FootSlideTest(unittest.TestCase):
     def drift(self, clip):
         m = rg.load_geo(os.path.join(FIX, "rig.geo.json"))

@@ -4,6 +4,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import io
+import json
 import math
 import os
 import sys
@@ -61,7 +62,14 @@ def _scene(source, viewer):
     try:
         model = rg.load_geo(source.geo)
         clips = [rg.load_clip(path, name) for path, name in source.clips]
-        scene = rg.Scene(model, list(source.textures), clips, source.speed)
+        path, name = source.clips[-1]
+        with open(path, encoding="utf-8") as f:
+            under = rg.additive_under(name, set(json.load(f).get("animations", {})))
+        if under:       # a hit is added onto the ready stance in game: show it that way, not over the rest pose
+            held = [rg.load_clip(path, u) for u in under if u not in [n for _, n in source.clips]]
+            scene = rg.Scene(model, list(source.textures), held, 0.0, None, clips)
+        else:
+            scene = rg.Scene(model, list(source.textures), clips, source.speed)
     except (rg.GeoError, OSError, ValueError, KeyError) as e:
         raise BoothError("%s viewer: %s" % (viewer, e))
     return scene, list(range(_ticks_of(clips[-1])))

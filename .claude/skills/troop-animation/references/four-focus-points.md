@@ -83,3 +83,11 @@ aimed: go to that tick in the builder, do not nudge the whole clip. The limits a
 - Tests: `python -m unittest discover -s tools/anim -p "test_focus_check.py"` proves each of the four faults, and each
   fault Kort graded on 2026-11-11 (class `Graded`), is caught when it is put into the knight's overhead cut on purpose. When a new kind of fault gets past the tool, add the check and a test
   that plants the fault.
+- **Hits are judged over the stance (2026-11-12).** The game adds every `hit_*` clip and `stun_out_upper` onto the pose
+  the other layers made (`HitController.add`), so the focus check, the booth sheets and the phone videos now play them
+  added onto `stance_ready_upper` + `stance_ready_legs`. Over the rest pose a hit showed false floor, elbow and knee
+  rows (five of the knight's old baseline exemptions were only that) and hid real clipping: the hound's medium hits
+  put the chest 2.6 px into its skullcap over the stance. Render a hit the same way:
+  `render_geo.py ... --clip stance_ready_upper --clip stance_ready_legs --add-clip hit_medium_front --add-clip hit_medium_front_legs`.
+  A hit must be zero at both ends (`settle` compares it with the stance under it). `scorecard.py` still scores hits
+  over the rest pose. `focus_check.py --rest-pose` gives the old numbers.
