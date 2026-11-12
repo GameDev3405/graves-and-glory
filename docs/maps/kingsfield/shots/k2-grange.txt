@@ -3,6 +3,7 @@ note K2 grange workshop shots
 mc time set 3000
 mc execute as @a at @s run forceload add -64 -64 95 95
 mc execute as @a at @s run fill -30 199 -30 85 199 85 minecraft:grass_block
+mc execute as @a at @s run fill -30 198 -30 85 198 85 minecraft:stone
 mc execute as @a at @s run place template ggmaps:kf/k2_grange -1 199 -1
 wait 40
 shot k2-grange-commander 27.5 262 70 27.5 200 30

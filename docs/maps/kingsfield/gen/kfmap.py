@@ -136,7 +136,7 @@ def column(x, z):
     if w == 'hedge': return h, 'coarse_dirt', 'dirt', ['oak_leaves[persistent=true]', 'oak_leaves[persistent=true]'] + (['oak_leaves[persistent=true]'] if r2 < 0.2 else [])
     if wood(ax, az):
         s = 'grass_block' if r1 < 0.6 else ('podzol' if r1 < 0.85 else 'coarse_dirt')
-        if hash01(SEED, x // 1, z // 1, 9) < 0.03: top = tree(x, z, r3)
+        if hash01(SEED, x // 1, z // 1, 9) < 0.016: top = tree(x, z, r3)
         elif r2 > 0.85: top = ['fern' if r3 < 0.4 else 'grass']
         return h, s, 'dirt', top
     strip = next((k for a, c, k in STRIPS if c <= ax < a), 'grass')
@@ -218,7 +218,7 @@ def place(cells, name, x, y, z, mx, mz):
     s = piece(name)
     sx, sy, sz = s.size
     for (lx, ly, lz), state, be in s.cells():
-        if state == 'minecraft:air': continue
+        if state == 'minecraft:air' or (ly == 0 and state == 'minecraft:grass_block'): continue   # air, and the workshop pad
         wx = -(x + lx) if mx else x + lx
         wz = -(z + lz) if mz else z + lz
         cells[(wx, y + ly, wz)] = mirror_state(state, mx, mz) if (mx or mz) else state
@@ -232,12 +232,71 @@ class Map:
         for x in range(self.x0 - pad, self.x1 + pad + 1):
             for z in range(self.z0 - pad, self.z1 + pad + 1):
                 self.col[(x, z)] = column(x, z)
+        self.steps()
         for (x, z), (h, s, u, top) in self.col.items():
             for i, b in enumerate(top):
                 if b.startswith('@tree'): self.tree(x, h, z, int(b[5]), b[6])
                 else: self.extra[(x, h + 1 + i, z)] = b
         self.mill_yard()
+        self.works()
         for p in placements(): place(self.extra, *p)
+
+    def steps(self):
+        """a slab on every road or ramp cell that has a road cell one higher beside it, so nothing has to jump"""
+        def way(x, z):
+            ax, az = abs(x), abs(z)
+            if ramp(ax, az) is not None: return 'stone'
+            if ell(ax, az, 76, 60) < 1 or bank(ax, az) >= 3: return None
+            d, kind = road(-ax, -az)
+            return ('stone' if kind == 'king' and d > -2 else 'dirt') if d <= 0 else None
+        for (x, z), (h, s, u, top) in list(self.col.items()):
+            k = way(x, z)
+            if not k or top: continue
+            for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                n = self.col.get((x + dx, z + dz))
+                if n and n[0] == h + 1 and way(x + dx, z + dz):
+                    self.col[(x, z)] = (h, 'cobblestone' if k == 'stone' else 'coarse_dirt', u, top)
+                    self.extra[(x, h + 1, z)] = 'cobblestone_slab[type=bottom]' if k == 'stone' else 'spruce_slab[type=bottom]'
+                    break
+
+    def put(self, x, y, z, b):
+        if (x, z) in self.col: self.extra[(x, y, z)] = b
+
+    def works(self):
+        """S3 quarry works on the bench, S8 wells, the orchards behind the barn and the mill; all mirrored four ways"""
+        for sx in (1, -1):
+            for sz in (1, -1):
+                # timber scaffold against the rim face, north and south of the pit (bench y 60, rim y 64)
+                for x in range(18, 27):
+                    if x % 4 == 2:
+                        for y in (61, 62): self.put(sx * x, y, sz * 47, 'oak_fence'); self.put(sx * x, y, sz * 45, 'oak_fence')
+                    for z in (45, 46, 47): self.put(sx * x, 63, sz * z, 'spruce_slab[type=top]')
+                self.put(sx * 27, 61, sz * 46, 'ladder[facing=%s]' % ('east' if sx > 0 else 'west'))
+                # cut stone waiting on the bench
+                for x, z, n in ((32, 40, 2), (33, 40, 1), (32, 41, 1), (56, 20, 2), (56, 21, 2), (57, 20, 1), (12, 44, 1), (13, 44, 2)):
+                    for i in range(n): self.put(sx * x, 61 + i, sz * z, 'stone_bricks' if (x + i) % 2 else 'smooth_stone')
+                # spoil heaps on the pit floor, low, clear of the Hand, the ramps and the middle
+                for cx, cz, r in ((30, 15, 3.2), (17, 24, 2.4), (37, 6, 0)):
+                    for x in range(cx - 4, cx + 5):
+                        for z in range(cz - 4, cz + 5):
+                            d = math.hypot(x - cx, z - cz)
+                            if d > r or ell(x, z, 44, 31) > 0.97: continue
+                            hh = hash01(SEED, sx * x, sz * z, 7)
+                            for i in range(2 if d < r - 1.8 else 1):
+                                self.put(sx * x, 57 + i, sz * z, 'gravel' if hh < 0.4 else ('cobblestone' if hh < 0.75 else 'andesite'))
+                # orchard: rows of small trees behind the knoll
+                for x in range(10, 36, 6):
+                    for z in range(138, 170, 7):
+                        if (sx * x, sz * z) in self.col: self.tree(sx * x, self.col[(sx * x, sz * z)][0], sz * z, 4, 'o')
+                # well beside the first cottage
+                wx, wz = sx * 133, sz * 76
+                if (wx, wz) in self.col:
+                    for dx in (-1, 0, 1):
+                        for dz in (-1, 0, 1):
+                            self.put(wx + dx, 65, wz + dz, 'water' if dx == dz == 0 else ('mossy_cobblestone' if (dx + dz) % 2 else 'cobblestone'))
+                    for dx in (-1, 1):
+                        for y in (66, 67): self.put(wx + dx, y, wz, 'oak_fence')
+                    for dx in (-1, 0, 1): self.put(wx + dx, 68, wz, 'spruce_slab[type=bottom]')
 
     def tree(self, x, h, z, n, kind):
         log, leaf = ('spruce_log[axis=y]', 'spruce_leaves[persistent=true]') if kind == 's' else ('oak_log[axis=y]', 'oak_leaves[persistent=true]')

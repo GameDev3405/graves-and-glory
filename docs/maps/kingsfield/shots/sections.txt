@@ -4,219 +4,219 @@ mc time set 3000
 mc execute as @a at @s run forceload add -32 0 31 63
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_e4 -32 189 0
 wait 10
-shot sec-e4 0 249 93 0 199 33
+shot sec-e4 0 243 83 0 199 35
 mc execute as @a at @s run forceload add -32 -64 31 -1
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_e3 -32 189 -64
 wait 10
-shot sec-e3 0 249 29 0 199 -30
+shot sec-e3 0 243 19 0 199 -28
 mc execute as @a at @s run forceload add 32 -64 95 -1
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_f3 32 189 -64
 wait 10
-shot sec-f3 63 249 29 63 199 -30
+shot sec-f3 63 243 19 63 199 -28
 mc execute as @a at @s run forceload add 32 0 95 63
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_f4 32 189 0
 wait 10
-shot sec-f4 63 249 93 63 199 33
+shot sec-f4 63 243 83 63 199 35
 mc execute as @a at @s run forceload add -96 -64 -33 -1
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_d3 -96 189 -64
 wait 10
-shot sec-d3 -64 249 29 -64 199 -30
+shot sec-d3 -64 243 19 -64 199 -28
 mc execute as @a at @s run forceload add -96 0 -33 63
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_d4 -96 189 0
 wait 10
-shot sec-d4 -64 249 93 -64 199 33
+shot sec-d4 -64 243 83 -64 199 35
 mc execute as @a at @s run forceload add -32 64 31 127
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_e5 -32 189 64
 wait 10
-shot sec-e5 0 249 157 0 199 97
+shot sec-e5 0 243 147 0 199 99
 mc execute as @a at @s run forceload add -32 -128 31 -65
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_e2 -32 189 -128
 wait 10
-shot sec-e2 0 249 -35 0 199 -94
+shot sec-e2 0 243 -45 0 199 -92
 mc execute as @a at @s run forceload add -96 64 -33 127
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_d5 -96 189 64
 wait 10
-shot sec-d5 -64 249 157 -64 199 97
+shot sec-d5 -64 243 147 -64 199 99
 mc execute as @a at @s run forceload add 32 64 95 127
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_f5 32 189 64
 wait 10
-shot sec-f5 63 249 157 63 199 97
+shot sec-f5 63 243 147 63 199 99
 mc execute as @a at @s run forceload add -96 -128 -33 -65
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_d2 -96 189 -128
 wait 10
-shot sec-d2 -64 249 -35 -64 199 -94
+shot sec-d2 -64 243 -45 -64 199 -92
 mc execute as @a at @s run forceload add 32 -128 95 -65
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_f2 32 189 -128
 wait 10
-shot sec-f2 63 249 -35 63 199 -94
+shot sec-f2 63 243 -45 63 199 -92
 mc execute as @a at @s run forceload add 96 0 159 63
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_g4 96 189 0
 wait 10
-shot sec-g4 127 249 93 127 199 33
+shot sec-g4 127 243 83 127 199 35
 mc execute as @a at @s run forceload add -160 0 -97 63
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_c4 -160 189 0
 wait 10
-shot sec-c4 -128 249 93 -128 199 33
+shot sec-c4 -128 243 83 -128 199 35
 mc execute as @a at @s run forceload add 96 -64 159 -1
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_g3 96 189 -64
 wait 10
-shot sec-g3 127 249 29 127 199 -30
+shot sec-g3 127 243 19 127 199 -28
 mc execute as @a at @s run forceload add -160 -64 -97 -1
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_c3 -160 189 -64
 wait 10
-shot sec-c3 -128 249 29 -128 199 -30
+shot sec-c3 -128 243 19 -128 199 -28
 mc execute as @a at @s run forceload add 96 64 159 127
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_g5 96 189 64
 wait 10
-shot sec-g5 127 249 157 127 199 97
+shot sec-g5 127 243 147 127 199 99
 mc execute as @a at @s run forceload add -160 64 -97 127
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_c5 -160 189 64
 wait 10
-shot sec-c5 -128 249 157 -128 199 97
+shot sec-c5 -128 243 147 -128 199 99
 mc execute as @a at @s run forceload add -32 128 31 191
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_e6 -32 189 128
 wait 10
-shot sec-e6 0 249 221 0 199 161
+shot sec-e6 0 243 211 0 199 163
 mc execute as @a at @s run forceload add 96 -128 159 -65
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_g2 96 189 -128
 wait 10
-shot sec-g2 127 249 -35 127 199 -94
+shot sec-g2 127 243 -45 127 199 -92
 mc execute as @a at @s run forceload add -160 -128 -97 -65
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_c2 -160 189 -128
 wait 10
-shot sec-c2 -128 249 -35 -128 199 -94
+shot sec-c2 -128 243 -45 -128 199 -92
 mc execute as @a at @s run forceload add -32 -192 31 -129
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_e1 -32 189 -192
 wait 10
-shot sec-e1 0 249 -99 0 199 -158
+shot sec-e1 0 243 -109 0 199 -156
 mc execute as @a at @s run forceload add -96 128 -33 191
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_d6 -96 189 128
 wait 10
-shot sec-d6 -64 249 221 -64 199 161
+shot sec-d6 -64 243 211 -64 199 163
 mc execute as @a at @s run forceload add 32 128 95 191
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_f6 32 189 128
 wait 10
-shot sec-f6 63 249 221 63 199 161
+shot sec-f6 63 243 211 63 199 163
 mc execute as @a at @s run forceload add -96 -192 -33 -129
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_d1 -96 189 -192
 wait 10
-shot sec-d1 -64 249 -99 -64 199 -158
+shot sec-d1 -64 243 -109 -64 199 -156
 mc execute as @a at @s run forceload add 32 -192 95 -129
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_f1 32 189 -192
 wait 10
-shot sec-f1 63 249 -99 63 199 -158
+shot sec-f1 63 243 -109 63 199 -156
 mc execute as @a at @s run forceload add 160 -64 223 -1
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_h3 160 189 -64
 wait 10
-shot sec-h3 191 249 29 191 199 -30
+shot sec-h3 191 243 19 191 199 -28
 mc execute as @a at @s run forceload add 160 0 223 63
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_h4 160 189 0
 wait 10
-shot sec-h4 191 249 93 191 199 33
+shot sec-h4 191 243 83 191 199 35
 mc execute as @a at @s run forceload add -224 -64 -161 -1
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_b3 -224 189 -64
 wait 10
-shot sec-b3 -192 249 29 -192 199 -30
+shot sec-b3 -192 243 19 -192 199 -28
 mc execute as @a at @s run forceload add -224 0 -161 63
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_b4 -224 189 0
 wait 10
-shot sec-b4 -192 249 93 -192 199 33
+shot sec-b4 -192 243 83 -192 199 35
 mc execute as @a at @s run forceload add 96 128 159 191
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_g6 96 189 128
 wait 10
-shot sec-g6 127 249 221 127 199 161
+shot sec-g6 127 243 211 127 199 163
 mc execute as @a at @s run forceload add -160 128 -97 191
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_c6 -160 189 128
 wait 10
-shot sec-c6 -128 249 221 -128 199 161
+shot sec-c6 -128 243 211 -128 199 163
 mc execute as @a at @s run forceload add 96 -192 159 -129
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_g1 96 189 -192
 wait 10
-shot sec-g1 127 249 -99 127 199 -158
+shot sec-g1 127 243 -109 127 199 -156
 mc execute as @a at @s run forceload add -160 -192 -97 -129
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_c1 -160 189 -192
 wait 10
-shot sec-c1 -128 249 -99 -128 199 -158
+shot sec-c1 -128 243 -109 -128 199 -156
 mc execute as @a at @s run forceload add 160 -128 223 -65
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_h2 160 189 -128
 wait 10
-shot sec-h2 191 249 -35 191 199 -94
+shot sec-h2 191 243 -45 191 199 -92
 mc execute as @a at @s run forceload add 160 64 223 127
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_h5 160 189 64
 wait 10
-shot sec-h5 191 249 157 191 199 97
+shot sec-h5 191 243 147 191 199 99
 mc execute as @a at @s run forceload add -224 -128 -161 -65
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_b2 -224 189 -128
 wait 10
-shot sec-b2 -192 249 -35 -192 199 -94
+shot sec-b2 -192 243 -45 -192 199 -92
 mc execute as @a at @s run forceload add -224 64 -161 127
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_b5 -224 189 64
 wait 10
-shot sec-b5 -192 249 157 -192 199 97
+shot sec-b5 -192 243 147 -192 199 99
 mc execute as @a at @s run forceload add 160 128 223 191
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_h6 160 189 128
 wait 10
-shot sec-h6 191 249 221 191 199 161
+shot sec-h6 191 243 211 191 199 163
 mc execute as @a at @s run forceload add -224 128 -161 191
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_b6 -224 189 128
 wait 10
-shot sec-b6 -192 249 221 -192 199 161
+shot sec-b6 -192 243 211 -192 199 163
 mc execute as @a at @s run forceload add 160 -192 223 -129
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_h1 160 189 -192
 wait 10
-shot sec-h1 191 249 -99 191 199 -158
+shot sec-h1 191 243 -109 191 199 -156
 mc execute as @a at @s run forceload add -224 -192 -161 -129
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_b1 -224 189 -192
 wait 10
-shot sec-b1 -192 249 -99 -192 199 -158
+shot sec-b1 -192 243 -109 -192 199 -156
 mc execute as @a at @s run forceload add 224 0 287 63
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_i4 224 189 0
 wait 10
-shot sec-i4 255 249 93 255 199 33
+shot sec-i4 255 243 83 255 199 35
 mc execute as @a at @s run forceload add -288 0 -225 63
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_a4 -288 189 0
 wait 10
-shot sec-a4 -256 249 93 -256 199 33
+shot sec-a4 -256 243 83 -256 199 35
 mc execute as @a at @s run forceload add 224 -64 287 -1
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_i3 224 189 -64
 wait 10
-shot sec-i3 255 249 29 255 199 -30
+shot sec-i3 255 243 19 255 199 -28
 mc execute as @a at @s run forceload add -288 -64 -225 -1
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_a3 -288 189 -64
 wait 10
-shot sec-a3 -256 249 29 -256 199 -30
+shot sec-a3 -256 243 19 -256 199 -28
 mc execute as @a at @s run forceload add 224 -128 287 -65
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_i2 224 189 -128
 wait 10
-shot sec-i2 255 249 -35 255 199 -94
+shot sec-i2 255 243 -45 255 199 -92
 mc execute as @a at @s run forceload add 224 64 287 127
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_i5 224 189 64
 wait 10
-shot sec-i5 255 249 157 255 199 97
+shot sec-i5 255 243 147 255 199 99
 mc execute as @a at @s run forceload add -288 -128 -225 -65
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_a2 -288 189 -128
 wait 10
-shot sec-a2 -256 249 -35 -256 199 -94
+shot sec-a2 -256 243 -45 -256 199 -92
 mc execute as @a at @s run forceload add -288 64 -225 127
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_a5 -288 189 64
 wait 10
-shot sec-a5 -256 249 157 -256 199 97
+shot sec-a5 -256 243 147 -256 199 99
 mc execute as @a at @s run forceload add 224 128 287 191
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_i6 224 189 128
 wait 10
-shot sec-i6 255 249 221 255 199 161
+shot sec-i6 255 243 211 255 199 163
 mc execute as @a at @s run forceload add -288 128 -225 191
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_a6 -288 189 128
 wait 10
-shot sec-a6 -256 249 221 -256 199 161
+shot sec-a6 -256 243 211 -256 199 163
 mc execute as @a at @s run forceload add 224 -192 287 -129
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_i1 224 189 -192
 wait 10
-shot sec-i1 255 249 -99 255 199 -158
+shot sec-i1 255 243 -109 255 199 -156
 mc execute as @a at @s run forceload add -288 -192 -225 -129
 mc execute as @a at @s run place template ggmaps:kf/sec/kf_a1 -288 189 -192
 wait 10
-shot sec-a1 -256 249 -99 -256 199 -158
+shot sec-a1 -256 243 -109 -256 199 -156
 shot view-dawn-gate -170 201.7 0 -215 203 0
 shot view-kings-road-east -60 201.7 0 0 195 0
 shot view-pit-from-west-rim -68 201.7 6 0 191 0
@@ -229,5 +229,9 @@ shot view-hold-nw -70 201.7 -70 -71 202 -93
 shot view-north-road -180 201.7 -50 -152 203 -95
 shot view-crane 30 201.7 -70 14 207 -56
 shot view-dusk-gate 170 201.7 0 215 203 0
-shot view-whole-south 0 349 330 0 199 20
-shot view-whole-west -420 319 0 -40 199 0
+shot view-high-nw -20 294 40 -120 199 -80
+shot view-high-ne 20 294 40 120 199 -80
+shot view-high-sw -20 294 -40 -120 199 80
+shot view-high-se 20 294 -40 120 199 80
+shot view-high-pit 0 279 95 0 191 0
+shot view-north-knoll-steps -34 201.7 -116 0 203 -114

@@ -63,9 +63,7 @@ for dx, dy in ((1, 0), (0, 1), (-1, 0), (0, -1)):
         b.set(x, y, SZ, 'stripped_spruce_log[axis=%s]' % ('x' if dx else 'y'))
         if r >= 3:
             for k in (1, 2):
-                t = b.rng.random()
-                if t < 0.72: b.set(x + px * k, y + py * k, SZ, 'white_wool')
-                elif t < 0.88: b.set(x + px * k, y + py * k, SZ, 'oak_fence')
+                b.set(x + px * k, y + py * k, SZ, 'oak_fence' if (k == 2 and r in (3, 10)) else 'white_wool')
 b.set(CX, HY, SZ, 'dark_oak_log[axis=z]')
 b.set(CX, HY, SZ - 1, 'dark_oak_button[face=wall,facing=north]')
 b.set(6, Y0 - 1, z1 + 1, 'lantern[hanging=true]')

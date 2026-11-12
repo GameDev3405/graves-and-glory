@@ -42,13 +42,11 @@ for x in range(4, X1, 5):
         b.box(x, B0, z, x, EAVE, z, 'oak_log[axis=y]')
     b.box(x, EAVE, 1, x, EAVE, 14, 'stripped_oak_log[axis=z]')
 
-# roof: spruce, ridge along x, dark ridge line, a few tiles gone
+# roof: spruce, ridge along x, dark ridge line
 b.gable_x(X0, X1, Z0, Z1, EAVE + 1, 'spruce_stairs', 'dark_oak_slab', fill=[('spruce_planks', 1)])
 top = max(k[1] for k in b.c)
 for (x, y, z) in list(b.c):
     if y == top - 0 and 'stairs' in b.c[(x, y, z)]: b.c[(x, y, z)] = b.c[(x, y, z)].replace('spruce_stairs', 'dark_oak_stairs')
-for x, i in ((7, 3), (8, 3), (24, 5), (27, 2), (28, 2), (28, 3)):   # holes on the south slope
-    b.c.pop((x, EAVE + 1 + i, Z1 + 1 - i), None)
 # wagon porches over both great doors: 3 deep, the swung-open door leaves are their sides, cross gable into the main roof
 for side in (-1, 1):
     zw = Z0 if side < 0 else Z1                       # wall line
