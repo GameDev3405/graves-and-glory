@@ -190,6 +190,21 @@ class MergeTest(unittest.TestCase):
         self.assertTrue(any(m.startswith('point-4:') for m in rep['refused']), rep)
         self.assertEqual(design.validate(merged), [])
 
+    def test_rename_onto_later_kort_point_dropped(self):
+        cur = base()
+        cur['objects'].insert(2, obj('point', 9, by='ai', state='proposed', name='Alpha', x=90, z=40, radius=8))
+        cur['objects'].append(obj('point', 5, name='Keep', x=30, z=50, radius=8))
+        draft = base()
+        draft['objects'].insert(2, obj('point', 9, by='ai', state='proposed', name='Keep', x=90, z=40, radius=8))
+        draft['objects'].append(ai_hill(7))
+        merged, rep = handoff.merge(cur, draft)
+        ids = [o['id'] for o in merged['objects']]
+        self.assertIn('point-5', ids)
+        self.assertNotIn('point-9', ids)
+        self.assertIn('hill-7', ids)
+        self.assertTrue(any(m.startswith('point-9:') for m in rep['refused']), rep)
+        self.assertEqual(design.validate(merged), [])
+
     def test_top_level_kept(self):
         draft = base()
         draft['brief'] = 'Sunny meadow.'

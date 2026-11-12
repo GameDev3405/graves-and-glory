@@ -317,6 +317,15 @@ def merge(current, draft):
     for _ in range(len(out) + 1):
         problems = design.validate(dict(merged, review=[]))
         bad = {p.split(':', 1)[0] for p in problems} & {o['id'] for o in merged['objects'] if not design.locked(o)}
+        # validate blames the later object, so a proposal taking an earlier Kort point name is blamed on Kort's.
+        kort = {o['id']: o.get('name') for o in merged['objects'] if design.locked(o) and o.get('kind') == 'point'}
+        for p in problems:
+            oid = p.split(':', 1)[0]
+            if oid in kort and 'duplicate point name' in p:
+                for o in merged['objects']:
+                    if o.get('kind') == 'point' and o.get('name') == kort[oid] and not design.locked(o):
+                        bad.add(o['id'])
+                        refused.append(f"{o['id']}: point name {kort[oid]!r} is Kort's (proposal dropped)")
         if not bad:
             break
         for p in problems:
