@@ -76,7 +76,7 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
         weaponTier = MathHelper.clamp(l.weaponTier(), 1, 3);
         face = TroopFaces.pick(e.getUuid(), faces, -1, 0, TroopModels.dressed(e), TroopModels.forcedFace(e));
         shieldShown = !e.getOffHandStack().isEmpty();
-        String side = l.side() != null && SIDES.contains(l.side()) ? l.side() : "linen";
+        String cloth = TroopModels.clothOf(e, l), side = cloth != null && SIDES.contains(cloth) ? cloth : "linen";
         geo.texture = new Identifier(MOD, "textures/entity/troop/" + animatable.troop + "_geo/t" + armour + "_" + side + ".png");
         render(e, yaw, tickDelta, matrices, consumers, light);
         Probe pr = PROBE;
