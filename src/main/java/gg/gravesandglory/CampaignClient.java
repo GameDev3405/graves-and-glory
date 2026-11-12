@@ -132,7 +132,7 @@ public final class CampaignClient {
             result=j.has("result")?j.getAsJsonObject("result"):new JsonObject();
             if(!running&&result.has("id")&&!result.get("id").getAsString().equals(shownResult)){reportOpened(result.get("id").getAsString());c.setScreen(new CampScreen("results"));}
             else if(!running&&lastRunning&&c.currentScreen==null)c.setScreen(new CampScreen("home"));lastRunning=running;
-            if(!j.get("collectionReady").getAsBoolean()){sendProfile(c);return;}String saved=Campaign.JSON.toJson(profile);if(saved.equals(lastSaved))return;lastSaved=saved;Path path=collection(c);Files.createDirectories(path.getParent());Path tmp=path.resolveSibling(path.getFileName()+".tmp");Files.writeString(tmp,saved);Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);
+            if(!j.get("collectionReady").getAsBoolean()){sendProfile(c);return;}if(c.getServer()==null)return; /* the local collection is written only from an integrated (single-player or LAN-host) world, never from a dedicated server or a LAN guest */String saved=Campaign.JSON.toJson(profile);if(saved.equals(lastSaved))return;lastSaved=saved;Path path=collection(c);Files.createDirectories(path.getParent());Path tmp=path.resolveSibling(path.getFileName()+".tmp");Files.writeString(tmp,saved);Files.move(tmp,path,StandardCopyOption.REPLACE_EXISTING);
         }catch(Exception e){System.err.println("[Graves and Glory] Collection sync could not be saved: "+e.getClass().getSimpleName());}
     }
     static void begin(MinecraftClient c){
