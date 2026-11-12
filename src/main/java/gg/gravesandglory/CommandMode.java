@@ -132,10 +132,10 @@ public final class CommandMode {
             for(double[] place:places(troops(group),group.count(),group.id(),pending,f)){
                 double side=place[0],back=place[1];
                 double angle=Math.toRadians(facing),x=destination.x+Math.cos(angle)*side+Math.sin(angle)*back,z=destination.z+Math.sin(angle)*side-Math.cos(angle)*back;
-                preview.add(new Vec3d(x,Arena.ground((int)x,(int)z)+1.05,z));
+                preview.add(new Vec3d(x,Arena.ground(net.minecraft.util.math.MathHelper.floor(x),net.minecraft.util.math.MathHelper.floor(z))+1.05,z));
             }
         }
-        double angle=Math.toRadians(facing);for(int i=0;i<6;i++){double x=destination.x-Math.sin(angle)*i,z=destination.z+Math.cos(angle)*i;preview.add(new Vec3d(x,Arena.ground((int)x,(int)z)+1.05,z));}
+        double angle=Math.toRadians(facing);for(int i=0;i<6;i++){double x=destination.x-Math.sin(angle)*i,z=destination.z+Math.cos(angle)*i;preview.add(new Vec3d(x,Arena.ground(net.minecraft.util.math.MathHelper.floor(x),net.minecraft.util.math.MathHelper.floor(z))+1.05,z));}
     }
     static void renderWorld(net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext context){
         if(!active()||context.consumers()==null||CommandSelection.aiming().equals("hold")||ChargeCamera.held())return; /* a Formation aim is drawn by OrderOutlines, an overhead Charge by ChargeCamera */ var matrices=context.matrixStack();var camera=context.camera().getPos();matrices.push();matrices.translate(-camera.x,-camera.y,-camera.z);
