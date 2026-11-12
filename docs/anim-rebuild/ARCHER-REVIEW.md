@@ -81,3 +81,24 @@ The Knight v2 feel, brought over in `art/anim/archer/build_bow_anims.py`; the kn
   - Wall stance: the string fist beside the helm can read as a salute (pre-existing pose).
   - Medium from behind pitches about 50 degrees, near the limit.
 - Video: `archer_v2feel`.
+
+## Archer shot port 2026-11-11
+
+Kort's approved archer direct shot (round 3, skill lane, 26-tick clock) now runs on the 22-tick bow builder.
+
+- **Files.**
+  - `art/anim/archer/direct_shot.py` holds the shot. The bow builder calls `direct_shot.clips()` for the archer only, at the end of `attack_clips()`.
+  - `art/anim/archer/build_direct_demo.py` is a thin runner that writes the pair into a copy, never the exported file.
+  - Only `attack_direct` and `attack_direct_legs` were spliced into `art/anim/archer/out/` and the exported animation. A scratch full build of the archer differs from the old builder's build in those two clips only, and its pair equals the spliced pair.
+- **Timing.** Every time comes from the builder: `ATTACK_TICKS` 32, `FULL_AT` 16.5, `IMPACT` 22, through `at()`. Kort's two pacing points (nock 8.75, set 11.5) are kept. Full draw is half a tick earlier than the approved clip mapped through `at()` (17).
+- **Hand-off.** Tick 0 and the last tick match the builder's own `attack_direct` to 1.32 deg (`hood_cape`, cloth) and 0.00 px. They match `stance_ready_upper` to 1.42 deg (torso). The other stance, idle and walk first frames differ from it by the same amounts as the builder's own clip.
+- **Time-warp against the approved clip** (every quarter tick, approved sampled at the mapped time):
+  - Largest difference 2.30 deg at tick 18.25, `right_arm`, and 0.27 px at 21.75, `draw`.
+  - Every row over 1 deg is in the hold, ticks 17 to 19.75, on `right_arm`. The hold tremble runs at a fixed 2.3-tick period over a hold that is now 5.5 ticks, not 5, so its phase moves. Its size does not change.
+  - The 0.27 px at 21.75 is the string's last creep before the loose, spread over the same longer hold.
+- **Checks.**
+  - Focus check: `attack_direct` 0 FAIL, 3 WARN. The approved clip had 2: bow in left shin 1.22 px at tick 7.25, and fist in jerkin 1.69 px at tick 8.75. The third is the fist at the quiver at tick 5 (1.74 px). That is the pluck, now that the quiver sits where the hand reaches. Before the splice, the old clip was FAIL here.
+  - Scorecard: exit 0, 35 clips, 0 failures.
+  - Every tick seen in front, side and three-quarter on the corrected quiver geo.
+- **In game.** Runs `archer-port1` and `archer-port1b` each give 23 `[p1] p1-` lines, but not a pass: 7 and 6 checks are false. The false checks change from run to run: attack-plays, sync-walk, footwork, walk, frames and hit. All of them are on the volley, the walk and the hits, which this port does not touch. The lane failed 4 of the same checks before any change (`archer-geo1b`). The archer's duel plays the volley, so the harness never shows `attack_direct` in game.
+- **Video.** `status/booth-videos/archer_direct_port.mp4`: the approved clip on the left, re-timed onto the port's clock so the two play in step, and the port on the right.

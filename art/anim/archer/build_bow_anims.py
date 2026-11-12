@@ -645,6 +645,13 @@ def attack_clips():
         clip["timeline"] = {K.fmt_t(FULL_AT / TPS): "full", K.fmt_t(IMPACT / TPS): "impact"}
         out["attack_" + name] = clip
         out["attack_%s_legs" % name] = K.bake(legs, ATTACK_TICKS, loop=False)
+    if TROOP == "archer":
+        # Kort approved the archer's own direct shot (round 3, 2026-11-11): art/anim/archer/direct_shot.py, on this builder's
+        # clock. The shot above still runs for the archer: its full-draw frame is the aim stances' source (_SHOT_FULL).
+        sys.modules.setdefault("build_bow_anims", sys.modules[__name__])   # one builder module, run as a script or imported
+        sys.path.insert(0, str(HERE))
+        import direct_shot
+        out.update(direct_shot.clips())
     return out
 
 
