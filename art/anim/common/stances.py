@@ -692,7 +692,21 @@ def build_aim(tr):
 
 
 # ---------------------------------------------------------------------------------------------- merge
+# Per troop: the clips its own builder authors, which this pass leaves as the build wrote them. The bow family's four (Kort's
+# rule 6, 2026-11-10: each troop's own bowman version, the bow across the forearm): art/anim/archer/build_bow_anims.py owns
+# rally, hold (upper and legs), fall back (upper; the walk-backwards legs stay here), rest and the aims. Stalker is not listed.
+_BOW_OWNS = {"stance_rally_upper", "stance_hold_upper", "stance_hold_legs", "stance_fallback_upper", "stance_rest_upper",
+             "stance_aim_upper", "stance_aim_up_upper", "stance_aim_down_upper"}
+BUILDER_OWNS = {t: _BOW_OWNS for t in ("archer", "longbow", "bonebow", "wm_hunter")}
+
+
 def build_all(tr):
+    clips = _build_all(tr)
+    own = BUILDER_OWNS.get(tr.tid, set())
+    return {k: v for k, v in clips.items() if k not in own}
+
+
+def _build_all(tr):
     clips = {"stance_rally_upper": build_rally(tr)}
     if tr.gear in HOLD:
         clips["stance_hold_upper"], clips["stance_hold_legs"] = build_hold(tr)

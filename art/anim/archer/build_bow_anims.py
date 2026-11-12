@@ -620,6 +620,12 @@ def shot_upper(volley):
                 worst = max(worst, e)
             s["right_arm"] = (tuple(a + (b - a) * ws for a, b in zip(s["right_arm"][0], ra)), None)
             s["right_forearm"] = (tuple(a + (b - a) * ws for a, b in zip(s["right_forearm"][0], rf)), None)
+        if TROOP in BOW_STANCES:
+            # the stance's bow-across-the-forearm wrist: the shot starts on it and turns the bow up off it over the first 6 ticks
+            # (before the nock), and turns back onto it as the guard returns, so the stance hand-offs never flick 73 deg of roll
+            g = max(1.0 - _ease(t / 6.0), _ease((t - at(22.5)) / (ATTACK_TICKS - at(22.5))))
+            if g > 0:
+                s["left_hand"] = (tuple(a + (b - a) * g for a, b in zip(s["left_hand"][0], GUARD_WRIST)), None)
         s["draw"] = (Z3, (float(amt), 0.0, 0.0))
         out.append(s)
     print("%s: aim yaw %.1f, anchor err %.3f px, string err max %.3f px, push nock err max %.3f px, delta %s"
@@ -632,6 +638,9 @@ def attack_clips():
     for name, volley in (("volley", True), ("direct", False)):
         upper, legs = shot_upper(volley)
         upper = gear(upper, legs)
+        if not volley:
+            global _SHOT_FULL
+            _SHOT_FULL = upper[int(round(FULL_AT * SUB))]
         clip = K.bake(upper, ATTACK_TICKS, loop=False)
         clip["timeline"] = {K.fmt_t(FULL_AT / TPS): "full", K.fmt_t(IMPACT / TPS): "impact"}
         out["attack_" + name] = clip
@@ -640,9 +649,13 @@ def attack_clips():
 
 
 # ------------------------------------------------------------------------------------------------
-# Stances: StanceController plays ready (fighting), brace / wall (Hold), ward (fall_back) and shield_up (a raised-shield order,
-# which a bowman answers with cover). Kort's rule 6 (2026-11-10): every clip suits its unit and its weapon, so each bow troop has
-# its own set and its own stance legs, each order read as a bowman's version of it:
+# Stances. What a bowman shows in game (StanceController.target: a stance's own clip first): no order -> ranged_rest
+# (stance_rest_upper), a foe in reach -> ranged_aim (stance_aim_upper, blended with stance_aim_up / _down by the aim pitch), Hold ->
+# stance_hold_upper / _legs, Fall Back -> stance_fallback_upper (over stances.py's walk-backwards legs), Rally -> stance_rally_upper.
+# These are built here for the four bow troops (stances.py BUILDER_OWNS skips them). The order set below (ready, brace, wall, ward,
+# shield_up) is what a troop without its own clip falls back to; for a bowman it is the source poses of the in-game set (hold is
+# the firing line, wall; fall back the bow-across parry, ward) and the shot's ready guard. Kort's rule 6 (2026-11-10): every clip
+# suits its unit and its weapon, so each bow troop has its own set and its own stance legs, each order read as a bowman's version:
 #   ready      the guard: bow low and forward, string hand by the string
 #   brace      make ready: the bow brought up to the half-aim, the string hand on the string
 #   wall       the firing line: side-on, the bow up on the line, the string hand at the quiver's mouth for the next arrow
@@ -673,7 +686,7 @@ BOW_STANCES = {
         "pose": {
             "ready": H((6, 19, 0), (-4, -23, 0), (-38, -18, -8), -14, (-34, -10, 6), (-30, 40, 0)),
             "brace": H((8, 18, 0), (-4, -24, 0), (-56, -10, -8), -30, (-60, -30, 20), (-50, 42, 0)),
-            "wall": H((3, 16, 0), (-4, -30, 0), (-74, -28, -4), -8, (-122, 6, -10), (-52, 0, 0), quiver=(0, 0, -4)),
+            "wall": H((3, 16, 0), (-4, -30, 0), (-78, -28, -4), -8, (-122, 6, -10), (-52, 0, 0), quiver=(0, 0, -4)),
             "ward": H((-7, 16, 0), (3, -18, 0), (-70, 10, 60), -80, (-40, -10, 20), (-60, 30, 0)),
             "shield_up": H((12, 16, 0), (12, -18, 0), (-75, -25, 0), -10, (-46, -18, 16), (-74, 40, 0)),
         },
@@ -689,8 +702,8 @@ BOW_STANCES = {
     "longbow": {
         "pose": {
             "ready": H((2, 18, 0), (-1, -20, 0), (-28, -12, -12), -8, (-24, -8, 8), (-26, 34, 0)),
-            "brace": H((1, 16, -2), (-2, -22, 0), (-76, -52, 28), -45, (-44, 12, -14), (-50, 30, 0)),
-            "wall": H((0, 18, 0), (-3, -36, 0), (-82, -32, -2), -4, (-150, 8, -8), (-44, 0, 0), quiver=(0, 0, -3)),
+            "brace": H((1, 16, -2), (-2, -22, 0), (-80, -52, 28), -45, (-44, 12, -14), (-50, 30, 0)),
+            "wall": H((0, 18, 0), (-3, -36, 0), (-90, -32, -2), -4, (-150, 8, -8), (-44, 0, 0), quiver=(0, 0, -3)),
             "ward": H((-10, 8, 0), (4, -10, 0), (-60, 0, 60), -80, (-56, -10, -10), (-64, 30, 0)),
             "shield_up": H((14, 12, 0), (12, -14, 0), (-90, 8, 14), -10, (-34, -10, 12), (-66, 30, 0)),
         },
@@ -728,7 +741,7 @@ BOW_STANCES = {
         "pose": {
             "ready": H((14, 22, 2), (-12, -24, 0), (-30, -16, -14), -24, (-38, -14, 16), (-46, 40, 0)),
             "brace": H((20, 22, 4), (-18, -26, -4), (-44, -20, -16), -28, (-56, -18, 22), (-60, 44, 0)),
-            "wall": H((16, 22, 0), (-14, -34, 0), (-100, -34, 0), -12, (-110, 0, -16), (-70, 0, 0)),
+            "wall": H((16, 22, 0), (-14, -34, 0), (-112, -34, 0), -12, (-110, 0, -16), (-70, 0, 0)),
             "ward": H((4, 18, -6), (-6, -20, 8), (-90, 0, 50), -50, (-60, -10, 36), (-80, 40, 0)),
             "shield_up": H((22, 20, 0), (-8, -18, 0), (-70, -12, -12), -34, (-50, -20, 20), (-90, 40, 0)),
         },
@@ -776,8 +789,11 @@ def _snap(u, on, off, w=0.03):
     return step((u - on) / w) * (1.0 - step((u - off) / w))
 
 
-def stance_upper(pose, life, ready=False):
-    n = K.STANCE_TICKS * SUB
+def stance_upper(pose, life, ready=False, ticks=None, scan=None, twitch=None):
+    ticks = ticks or K.STANCE_TICKS
+    scan_deg = SCAN if scan is None else scan
+    twitch = TWITCH if twitch is None else twitch
+    n = ticks * SUB
     out = []
     a_br, a_wt, a_lag = K.feel.stance_amps(life, ready)    # ready: everything at V2_READY_SWAY_SCALE; others: the rock at V2_SWAY_SCALE
     for i in range(n + 1):
@@ -789,7 +805,7 @@ def stance_upper(pose, life, ready=False):
         tx, ty, tz = pose["torso"]
         f["torso"] = ((tx + 0.8 * br + 1.8 * wt, ty - 1.4 * wt, tz - 1.2 * wt), None)
         hx, hy, hz = pose["head"]
-        scan = SCAN * math.sin(2 * math.pi * u - 1.2)
+        scan = scan_deg * math.sin(2 * math.pi * u - 1.2)
         f["head"] = ((hx - 0.5 * br - 1.3 * wt, hy + 0.9 * wt + scan, hz + 1.0 * wt), None)
         ax, ay, az = pose["right_arm"]
         f["right_arm"] = ((ax - 0.6 * br - 1.3 * wl, ay, az + 0.6 * wl), None)
@@ -797,12 +813,12 @@ def stance_upper(pose, life, ready=False):
         f["left_arm"] = ((sx - 0.5 * br - 0.8 * wl, sy, sz), None)
         lx, ly, lz = pose["left_hand"]
         f["left_hand"] = ((lx + 0.8 * math.sin(2 * math.pi * u - 0.6) * a_lag, ly, lz), None)
-        for bone, offset, on, off in TWITCH:
+        for bone, offset, on, off in twitch:
             k = _snap(u, on, off)
             f[bone] = (tuple(a + k * b for a, b in zip(f[bone][0], offset)), None)
         f["quiver"] = ((0.3 * br, 0.0, pose["quiver"][2]), None)
         out.append(f)
-    return K.bake(gear(out), K.STANCE_TICKS)
+    return K.bake(gear(out), ticks)
 
 
 def stance_clips():
@@ -810,6 +826,167 @@ def stance_clips():
     out.update({"stance_%s_legs" % k: K.stance_legs(v, STANCE_LEGS_LIFE.get(k, 1.0), k in READY_LIKE) for k, v in STANCE_LEGS.items()})
     return out
 
+
+# ------------------------------------------------------------------------------------------------
+# The in-game set for the four bow troops (stances.py BUILDER_OWNS hands these to this builder; stalker keeps stances.py's):
+#   rest      no order, no foe: at ease with the bow across the forearm, low; each troop's own look round
+#   hold      the firing line (the troop's wall pose) on its wall footing, a slow 48-tick breath
+#   fallback  the bow-across parry (the ward pose) bobbing with the backward step (stances.py's legs, the walk's 8 ticks)
+#   rally     the bow raised high over the line and shaken, then back to the ready guard
+#   aim       the troop's own full draw from its attack_direct (the shot's "full" frame), pitched level / up 45 / down 30
+# ------------------------------------------------------------------------------------------------
+
+INGAME_TROOPS = ("archer", "longbow", "bonebow", "wm_hunter")
+REST = {
+    # drilled at ease: square, the bow across the forearm at the belt, the free hand at the side; eyes along the line
+    "archer": {"pose": H((1, 12, 0), (-2, -14, 0), (-22, -12, -8), -30, (-8, -4, 6), (-24, 10, 0)), "life": 2.4, "scan": 5.0},
+    # tall and heavy: upright, the long stave carried low and level along the arm, the free arm hanging straight
+    "longbow": {"pose": H((-2, 10, 0), (0, -10, 0), (-18, -6, -12), -22, (-4, -6, 8), (-10, 10, 0)), "life": 3.2, "scan": 3.0},
+    # skeletal: slumped askew, the skull cocked, the bow arm hanging from a bent elbow, the string arm dangling
+    "bonebow": {"pose": H((6, 16, -6), (-4, -18, 14), (-26, -18, -4), -24, (-4, -10, 12), (-30, 20, 0)), "life": 1.1, "scan": 0.0},
+    # wild: hunched over the bow, head low and thrust out, sniffing along the ground ahead
+    "wm_hunter": {"pose": H((12, 18, 2), (-10, -20, 0), (-24, -14, -14), -36, (-26, -12, 14), (-40, 30, 0)), "life": 3.6, "scan": 10.0},
+}
+# rally: the bow arm lifts `lift` degrees with the wrist counter-turned so the bow keeps its across-the-forearm angle (it rises
+# whole, held up high over the line, instead of swinging: an upright bow turned up past the head swept the face and spun faster
+# than a weapon may), out `out` degrees; the free arm, chest and head go to their peak; then `pumps` shakes of the raised arms
+# (`amp` degrees) and back down to the ready guard. twitch: the bone archer's skull snaps aside with each pump.
+RALLY = {
+    # drilled: the bow up, the free fist out at the shoulder, two measured shakes
+    "archer": {"lift": 90.0, "out": -10.0, "rarm": (-80, 20, 75), "rfore": (-70, 0, 0), "torso": (-2, 12, 0), "head": (-14, -10, 0),
+               "pumps": 2, "amp": 6.0, "twitch": None},
+    # heavy: the long stave raised highest, the free hand a fist at the chest, one slow heave
+    "longbow": {"lift": 100.0, "out": -6.0, "rarm": (-50, -10, 20), "rfore": (-80, 30, 0), "torso": (0, 12, 0), "head": (-10, -8, 0),
+                "pumps": 1, "amp": 5.0, "twitch": None},
+    # skeletal: the bow up from a crooked elbow, the free arm cocked out, the skull jerking aside on three short shakes
+    "bonebow": {"lift": 85.0, "out": -14.0, "rarm": (-90, 10, 80), "rfore": (-50, 0, 0), "torso": (4, 14, -4), "head": (-14, -10, -16),
+                "pumps": 3, "amp": 4.0, "twitch": ("head", (0.0, 8.0, -10.0))},
+    # wild: both arms flung up, the head thrown back howling, two ragged shakes
+    "wm_hunter": {"lift": 95.0, "out": -10.0, "rarm": (-140, 0, 50), "rfore": (-20, 0, 0), "torso": (4, 16, 2), "head": (-22, -6, -6),
+                  "pumps": 2, "amp": 7.0, "twitch": None},
+}
+RALLY_UP, RALLY_DOWN = 6.0, 13.0    # ticks: up by 6, shaken to 13, back at the ready guard by 20
+# fall back: the ward parry, fitted for the backward step (scorecard pen_limb, fall-back limit 0.6 px: the folded bow forearm ran
+# 1.0-1.6 px into the chest under the step's bob): the bow forearm opened (+x) and the upper arm turned out (-y), and the string
+# arm swung a few degrees off the ribs (stances.py's bow fit).
+_FB_STRING = {"right_arm": (0.0, 0.0, 9.0), "right_forearm": (0.0, -12.0, 0.0)}
+FALLBACK_FIT = {"archer": {**_FB_STRING, "left_arm": (0.0, -10.0, 0.0), "left_forearm": (24.0, 0.0, 0.0)},
+                "longbow": {**_FB_STRING, "left_arm": (-8.0, -10.0, 0.0), "left_forearm": (24.0, 0.0, 0.0)},
+                "bonebow": {**_FB_STRING, "left_arm": (-10.0, -40.0, -24.0), "left_forearm": (40.0, 0.0, 0.0)},
+                "wm_hunter": dict(_FB_STRING)}
+AIM_GAIN = (0.35, 0.65, -0.2)   # how much of the aim pitch the chest, the arms and the head take (as stances.py's default)
+# per troop: the held aim's character on the shared shot's full draw, a chest offset (the whole draw rides it, so the nock stays on
+# the anchor) and the tremble of the held draw (degrees): the archer textbook square, the longbowman leaning back into the heavy
+# stave and straining, the bone archer canted on its spine and dead still, the hunter hunched over the arrow and shaking
+AIM_CHAR = {"archer": ((0.0, 0.0, 0.0), 0.25), "longbow": ((-4.0, 0.0, 0.0), 0.45),
+            "bonebow": ((0.0, 0.0, -5.0), 0.05), "wm_hunter": ((5.0, 0.0, 0.0), 0.6)}
+_SHOT_FULL = None               # the direct shot's full-draw sample, set by attack_clips
+
+
+def _legs_ticks(spec, life, ticks):
+    """K.stance_legs over `ticks` instead of the 40-tick stance loop."""
+    old = K.STANCE_TICKS
+    K.STANCE_TICKS = ticks
+    try:
+        return K.stance_legs(spec, life, False)
+    finally:
+        K.STANCE_TICKS = old
+
+
+def _ease(x):
+    """Three quarters linear, a quarter smoothstep: soft ends with a peak speed 1.125x the mean (a smoothstep's is 1.5x)."""
+    x = max(0.0, min(1.0, x))
+    return 0.75 * x + 0.25 * x * x * (3 - 2 * x)
+
+
+def _frames(pose):
+    return {b: (tuple(v), None) for b, v in pose.items()}
+
+
+def fallback_upper():
+    n_t = K.WALK.ticks
+    pose = dict(BOW_STANCES[TROOP]["pose"]["ward"])
+    for bone, d in FALLBACK_FIT[TROOP].items():
+        pose[bone] = tuple(x + y for x, y in zip(pose[bone], d))
+    out = []
+    for i in range(n_t * SUB + 1):
+        ph = 2 * math.pi * ((i % (n_t * SUB)) / (n_t * SUB))
+        f = _frames(pose)
+        tx, ty, tz = pose["torso"]
+        f["torso"] = ((tx + 0.9 * math.cos(2 * ph), ty + 1.6 * math.sin(ph), tz), None)
+        hx, hy, hz = pose["head"]
+        f["head"] = ((hx - 0.5 * math.cos(2 * ph), hy - 1.2 * math.sin(ph), hz), None)
+        out.append(f)
+    return K.bake(gear(out), n_t)
+
+
+def rally_upper():
+    sys.path.append(str(HERE.parent / "common"))
+    import stances as S   # art/anim/common, read only: its pitch about the parent's lateral axis
+    R = RALLY[TROOP]
+    ready = BOW_STANCES[TROOP]["pose"]["ready"]
+    out = []
+    for i in range(20 * SUB + 1):
+        t = i / SUB
+        e = _ease(t / RALLY_UP) if t < RALLY_DOWN else 1.0 - _ease((t - RALLY_DOWN) / (20.0 - RALLY_DOWN))
+        w = abs(math.sin(R["pumps"] * math.pi * (t - RALLY_UP) / (RALLY_DOWN - RALLY_UP))) if RALLY_UP <= t <= RALLY_DOWN else 0.0
+        p = dict(mix(ready, {**ready, "torso": R["torso"], "head": R["head"], "right_arm": R["rarm"], "right_forearm": R["rfore"]}, e))
+        lift = R["lift"] * e + R["amp"] * w
+        la = S.pitch(np.array(ready["left_arm"], float), -lift)
+        p["left_arm"] = (la[0], la[1], la[2] + R["out"] * e)
+        p["left_hand"] = tuple(S.pitch(np.array(ready["left_hand"], float), lift))
+        x, y, z = p["right_arm"]
+        p["right_arm"] = (x - R["amp"] * w, y, z)
+        hx, hy, hz = p["head"]
+        p["head"] = (hx - 0.6 * R["amp"] * w, hy, hz)
+        if R["twitch"]:
+            bone, d = R["twitch"]
+            p[bone] = tuple(a + w * b for a, b in zip(p[bone], d))
+        out.append(_frames(p))
+    return K.bake(gear(out), 20, loop=False)
+
+
+def aim_upper(deg):
+    sys.path.append(str(HERE.parent / "common"))
+    import stances as S   # art/anim/common, read only: its pitch about the parent's lateral axis
+    base = _SHOT_FULL if _SHOT_FULL is not None else _full_draw()
+    gt, ga, gh = AIM_GAIN
+    out = []
+    n = 40 * SUB
+    for i in range(n + 1):
+        u = (i % n) / n
+        tr = math.sin(2 * math.pi * u * 3)          # the held draw trembles a little
+        f = {b: (tuple(r), None if q is None else tuple(q)) for b, (r, q) in base.items()}
+        lean, amp = AIM_CHAR[TROOP]
+        f["torso"] = (tuple(S.pitch(np.array(base["torso"][0], float) + np.array(lean), gt * deg) + np.array([amp * tr, 0.0, 0.0])), None)
+        f["head"] = (tuple(S.pitch(np.array(base["head"][0], float), gh * deg)), None)
+        for side, sg in (("left", 1.0), ("right", -1.0)):
+            a = S.pitch(np.array(base[side + "_arm"][0], float), ga * deg)
+            f[side + "_arm"] = (tuple(a + np.array([1.2 * amp * tr * sg, 0.0, 0.0])), None)
+        out.append(f)
+    return K.bake(out, 40)
+
+
+def _full_draw():
+    global _SHOT_FULL
+    upper, legs = shot_upper(False)
+    upper = gear(upper, legs)
+    _SHOT_FULL = upper[int(round(FULL_AT * SUB))]
+    return _SHOT_FULL
+
+
+def ingame_clips():
+    if TROOP not in INGAME_TROOPS:
+        return {}
+    bs, rest = BOW_STANCES[TROOP], REST[TROOP]
+    out = {"stance_rally_upper": rally_upper(),
+           "stance_hold_upper": stance_upper(bs["pose"]["wall"], bs["life"]["wall"], False, ticks=48),
+           "stance_hold_legs": _legs_ticks(bs["legs"]["wall"], bs["life"]["wall"], 48),
+           "stance_fallback_upper": fallback_upper(),
+           "stance_rest_upper": stance_upper(rest["pose"], rest["life"], True, ticks=48, scan=rest["scan"])}
+    for name, deg in (("stance_aim_upper", 0.0), ("stance_aim_up_upper", -45.0), ("stance_aim_down_upper", 30.0)):
+        out[name] = aim_upper(deg)
+    return out
 
 # ------------------------------------------------------------------------------------------------
 # Hits: additive offsets, no shield to take the blow, so thrown hard with both arms flung (the bow rides the fist).
@@ -1079,7 +1256,7 @@ def main():
     idle_legs, idle_upper = idle_v2_clips() if V2 else idle_clips()
     anims = {"walk_legs": K.gait_legs(K.WALK), "walk_upper": gait_upper(K.WALK, K.WALK_CARRY, False),
              "run_legs": K.gait_legs(K.RUN), "run_upper": gait_upper(K.RUN, K.RUN_CARRY, True),
-             "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **(v2_hit_clips() if V2 else hit_clips()),
+             "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **ingame_clips(), **(v2_hit_clips() if V2 else hit_clips()),
              **death_clips()}
     only_rig(anims)
     K.OUT.parent.mkdir(parents=True, exist_ok=True)
