@@ -2283,7 +2283,7 @@ final class WarTablePages {
             for (int r = 0; r < e.glyph().length; r++)
                 for (int c = 0; c < 9; c++) {
                     char ch = e.glyph()[r].charAt(c);
-                    if (ch != ' ') g.fill(ix + c, ry + 1 + r, ix + c + 1, ry + 2 + r, ch == 'k' ? DarkUi.INK_TEXT : 0xff000000 | e.colour());
+                    if (ch != ' ') g.fill(ix + c, ry + 1 + r, ix + c + 1, ry + 2 + r, ch == 'k' ? DarkUi.INK_TEXT : DarkUi.OPAQUE | e.colour());
                 }
             rectsDrawn.put("status-" + e.id() + "-icon", new int[]{ix, ry + 1, 9, e.glyph().length});
             g.drawText(font, DarkUi.heading(e.name()), x + 24, ry, DarkUi.INK_TEXT, false);

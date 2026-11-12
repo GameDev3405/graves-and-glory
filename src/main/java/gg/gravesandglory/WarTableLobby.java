@@ -432,7 +432,7 @@ final class WarTableLobby {
                 int[] sheetBox = rectsDrawn.get("sheet"), noteBox = rectsDrawn.get("note");
                 rectsDrawn.clear(); rectsDrawn.putAll(rects); textsDrawn.clear(); textsDrawn.putAll(texts); colorsDrawn.clear(); colorsDrawn.putAll(colors); texturesDrawn.clear(); texturesDrawn.putAll(textures);
                 rectsDrawn.put("sheet", sheetBox); rectsDrawn.put("note", noteBox);
-                g.fill(0, 0, UiCanvas.width(), UiCanvas.height(), 0x99000000);
+                g.fill(0, 0, UiCanvas.width(), UiCanvas.height(), DarkUi.POPOVER_DIM);
                 popover(g, o[0] + SHEET_X, o[1] + TOP);
             } else if (waiting()) {
                 waitSheet(g, o[0] + SHEET_X, o[1] + TOP);
