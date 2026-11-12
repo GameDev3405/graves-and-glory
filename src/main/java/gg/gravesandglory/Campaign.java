@@ -216,7 +216,7 @@ public final class Campaign {
         if(cmd.startsWith("social:"))return socialCommand(p,cmd);
         if(cmd.startsWith("progress:"))return progressCommand(p,cmd);
         if(cmd.equals("camp:practice")){
-            String refused=soloRefusal(p.getUuid(),"Practice is solo. Use a private room to play with your party.");if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
+            String refused=soloRefusal(p.getUuid(),"Practice is solo. Use a private room to play with your party.");if(refused.isEmpty())refused=bannerRefusal(p.getUuid(),null);if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
             soloStart(p,null);return true;
         }
         if(cmd.startsWith("campaign:")){ // a Long March battle: solo, on its own map, which is built first if another map stands
@@ -226,7 +226,7 @@ public final class Campaign {
             var lock=MarchMath.lockedBy(row,profile(p.getUuid()).battlesWon,Spec.CAMPAIGNBATTLES);if(lock!=null){notice(p.getUuid(),"Win "+lock.name()+" first.");return true;} // plan 2C.3: the March is won in order
             var starts=seasonStarts();String closed=MarchMath.Seasons.lock(row,Spec.CAMPAIGNCHAPTERS,MarchMath.Seasons.current(starts,Progression.today()),starts);if(!closed.isEmpty()){notice(p.getUuid(),closed);return true;} // brief G2: a chapter opens with its season
             if(!Modes.registered(row.mode())||!Modes.hosts(row.mode(),row.map())){notice(p.getUuid(),row.name()+" cannot start yet: its mode arrives with the mode frame.");return true;} // survival and banner come with plan 2C.4
-            String refused=soloRefusal(p.getUuid(),MARCH_SOLO);if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
+            String refused=soloRefusal(p.getUuid(),MARCH_SOLO);if(refused.isEmpty())refused=bannerRefusal(p.getUuid(),row);if(!refused.isEmpty()){notice(p.getUuid(),refused);return true;}
             pendingBattle=row;pendingCommander=p.getUuid();
             if(row.map()!=map){switchMap(row.map());notice(p.getUuid(),"Preparing "+Spec.MAPS[map].name()+" for "+row.name()+".");}
             return true;
@@ -310,6 +310,8 @@ public final class Campaign {
         try{Path f=net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("gravesandglory").resolve("seasons.json");return Files.exists(f)?MarchMath.Seasons.parse(Files.readString(f)):List.of();}
         catch(Exception e){return List.of();}
     }
+    /** C06-F2: a solo battle needs a troop to field, as start asks of every commander; a House chapter fields its fixed House row instead, so it never refuses. Practice passes no row. */
+    String bannerRefusal(UUID id,Spec.CampaignBattlesRow row){return MarchMath.houseBannerRow(row,Spec.CAMPAIGNCHAPTERS)==null&&bannerUnits(id)==0?"Every commander needs at least one troop in their banner.":"";}
     String soloRefusal(UUID id,String soloRule){
         if(b.running)return "Wait until the current battle finishes.";
         if(social.group(id).size()>1||social.room(id)!=null)return soloRule;
@@ -713,7 +715,7 @@ public final class Campaign {
         if(b.running){BattleEffects.flickers(b);if(b.time%20==0)releaseExpiredHolds();if(b.time%600==0)checkpoint();}
         if(pendingBattle!=null&&b.ready){ // the map of a campaign battle is built: it starts unless something changed meanwhile
             var row=pendingBattle;UUID id=pendingCommander;pendingBattle=null;pendingCommander=null;
-            var host=b.server.getPlayerManager().getPlayer(id);String refused=host==null?"":soloRefusal(id,MARCH_SOLO);
+            var host=b.server.getPlayerManager().getPlayer(id);String refused=host==null?"":soloRefusal(id,MARCH_SOLO);if(host!=null&&refused.isEmpty())refused=bannerRefusal(id,row); // the banner may have changed while the map built
             if(host!=null&&refused.isEmpty()&&row.map()==map)soloStart(host,row);
             else if(host!=null)notice(id,refused.isEmpty()?"The battlefield changed. "+row.name()+" did not start.":refused);
         }
