@@ -32,8 +32,8 @@ final class StalkerReelChecks implements Phase1Checks.Suite {
     static final double CAM_LAG = 2.0;
     /** Ticks at the start of every segment that are not shot: the server's begin() (a move, a spawn) reaches the client. */
     static final int PRE = 3, PRE_DEATH = 6;
-    /** A bow troop's attack clip is 26 ticks plus its draw hold (0 to MotionMath.LOOSE_MAX = 3), plus 8 after. */
-    static final int ATTACK_FRAMES = 26 + MotionMath.LOOSE_MAX + 8;
+    /** A bow troop's attack clip is 32 ticks (the loose on tick 22) plus its draw hold (0 to MotionMath.LOOSE_MAX = 3), plus 8 after. */
+    static final int ATTACK_FRAMES = 32 + MotionMath.LOOSE_MAX + 8;
 
     interface Go { void run(StalkerReelChecks r, GravesAndGlory.Battle b); }
 

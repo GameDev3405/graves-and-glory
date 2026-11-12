@@ -67,3 +67,16 @@ A trial run: all 35 stalker animations rebuilt from scratch on the stalker's own
 
 - **Ward is unreachable in game.** A troop with fallback clips plays those for `fall_back` (StanceController), so `stance_ward_upper` never plays; the reel's ward segment shows fallback standing.
 - **Knockback and pulled** are filmed in place; the capture does not slide the body.
+
+## Loose on tick 22 (2026-11-11, branch anim/stalker-bow-22)
+
+Kort set the bow family's loose at tick 22 (it was 16), same damage per arrow. The stalker's two shots follow; nothing else changes.
+
+- **Base.** The own-builder commit (anim/stalker-fable-2, 9a54ce6d) replayed onto anim/bow-22 at 320f0423, which holds the family timing (`sheets/design.json`, `Spec.java`, `build_bow_anims.py`). One conflict: the exported `stalker.animation.json`, a generated file; the own builder's copy was taken and then rebuilt.
+- **Remap.** The shot's times stay written on the 16-tick clock and go through the bow builder's `at()`: stretched by 22/16 up to the loose, 6 ticks later after it. Clips are 32 ticks, `full` at 16.5, `impact` at 22. The builder reads `ATTACK_TICKS`, `FULL_AT` and `IMPACT` from the bow builder, so the family's timing has one home. The held draw's tremble (2.3 ticks a shake) and the kick after the loose keep their own speed.
+- **Proof that only timing changed.** Built unchanged at the start: 57 of 57 clips identical to the committed file. The 16-tick shot rebuilt on today's bow builder: identical to the committed clips. After the remap: 53 clips identical, the 4 shot clips changed. New tick `at(t)` against old tick `t` wherever both fall on the sample grid: no bone pivot moves more than 0.10 px and no bone turns more than 0.5 degrees (cloth aside, which is a spring in real time).
+- **Scorecard.** The same misses as before on the two shots (volley torso speed 76.1; direct arm speed 163.8; pen_limb 3.72 and 3.98, were 3.89 and 3.98); no new miss, none removed. The other 33 animations are byte-identical.
+- **Also changed.** `StalkerReelChecks.ATTACK_FRAMES` counts a 32-tick clip; `art/anim/archer/booth.stalker.json` has `impact_tick` 22.
+- **Tests.** `python tools/verify.py fast`: PASS. The in-game reel was not re-run.
+- **Footage.** `C:/Users/kortt/Melty/status/booth-videos/stalker_bow22_direct.mp4` and `stalker_bow22_volley.mp4`: the new shot beside the 16-tick one, tick by tick.
+- **Review (Sonnet high, sheets and the exported numbers, one round): ship with minors.** Nothing but timing differs; the loose and what follows match the 16-tick clip to the decimal; no stall in the slower lead-in. Minors, none changed: the tremble sits at a different phase in the last ticks of the hold (it keeps its own period by design), the first tick after `full` is a little softer than before (the stretched ease-out), and the lead foot's 10 degree roll in a quarter tick at the plant was already in the chosen clip. Not checked: the clips in motion in game, the seeded hold on top of the 5.5-tick hold.

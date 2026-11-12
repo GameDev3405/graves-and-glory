@@ -9,8 +9,8 @@ a turned-out back foot, and an arrow is always on the string, both hands joined 
 belt behind the right hip), so every shot ends with the string hand dipping to the belt and bringing the next arrow to the string.
 The head leads everything: it finds the target first and stays on it while the body coils and uncoils underneath.
 
-Gameplay timing is unchanged from the shipped stalker: both shots 26 ticks, "full" at 12, "impact" at 16; every clip keeps its
-length and its name.
+Gameplay timing: both shots are the bow family's (art/anim/archer/build_bow_anims.py: 32 ticks, "full" at 16.5, "impact" at 22,
+Kort 2026-11-11; they were 26, 12 and 16). Every other clip keeps its length and every clip its name.
 """
 import json, math, sys
 
@@ -75,13 +75,21 @@ def emit(out, name, samples, ticks, loop, legs=True, cloth_kw=None, upper_name=N
 
 
 # ------------------------------------------------------------------------------------------------
-# The shot. 0-5 the bow comes up onto the line as the body turns side-on; 5-12 one long draw that slows into the anchor ("full");
-# 12-16 the held aim (AttackController stretches it for the seeded hold); 16 the loose ("impact"): the string hand flies back
-# along the line, the bow tips forward out of the open hand's push; 18-25 the hand drops to the belt, takes an arrow and brings
-# it to the string as the body settles back over the lead leg.
+# The shot. On the clock it was authored and chosen on (the loose on tick 16): 0-5 the bow comes up onto the line as the body
+# turns side-on; 5-12 one long draw that slows into the anchor ("full"); 12-16 the held aim (AttackController stretches it for the
+# seeded hold); 16 the loose ("impact"): the string hand flies back along the line, the bow tips forward out of the open hand's
+# push; 18-25 the hand drops to the belt, takes an arrow and brings it to the string as the body settles back over the lead leg.
+#
+# Kort set the bow family's loose on tick 22 (2026-11-11, same damage per arrow). The timing lives in the bow builder; every time
+# below is still written on the 16-tick clock and goes through at(): all of it up to the loose stretched by 22/16, all of it
+# after the loose 6 ticks later. So: 0-7 up onto the line, 7-16.5 the draw, 16.5-22 the hold, 22 the loose, 24-31 the next
+# arrow. Only the two things that are physics keep their own speed: the tremble of the held draw (2.3 ticks a shake, a longer
+# hold has more of them) and the kick that rings out after the loose. No pose, reach or angle is changed.
 # ------------------------------------------------------------------------------------------------
 
-ATTACK_TICKS, FULL_AT, IMPACT = 26, 12, 16
+at = B.at                                                              # a time on the 16-tick clock, on the family's
+ATTACK_TICKS, FULL_AT, IMPACT = B.ATTACK_TICKS, B.FULL_AT, B.IMPACT    # 32, 16.5, 22
+FULL0 = 12.0                                                           # "full" on the 16-tick clock: the tremble's phase
 ANCHOR = (-7.4, 24.6, 1.5)         # head-local: beside the fur cowl at the jaw, drawn to the ear, where the string hand can be seen
 ELEV = {"volley": 35.0, "direct": 4.0}
 
@@ -146,26 +154,29 @@ def shot(volley):
              torso=(12, 20, 0), head=(-8, -27, 0), grip=add(READY["grip"], (0.4, 1.2, -0.4)), bow=(-6, 20, -34),
              rh=(-5.6, 14.2, 1.6), rhint=(14.0, 0.0, 10.0, -42.0), rhand=(0, 0, 0))
     keys = [(0, READY),
-            (1.6, G(READY, hips_p=add(READY["hips_p"], (0.1, -0.5, 0.2)), torso=add(READY["torso"], (3, 6, 0)),
+            (at(1.6), G(READY, hips_p=add(READY["hips_p"], (0.1, -0.5, 0.2)), torso=add(READY["torso"], (3, 6, 0)),
                     grip=add(READY["grip"], (0, -0.5, 0.2)))),                       # a breath down before he rises
-            (5.2, setp), (FULL_AT, drawn), (IMPACT, drawn), (IMPACT + 0.75, loose), (18.6, follow), (22.0, belt),
+            (at(5.2), setp), (FULL_AT, drawn), (IMPACT, drawn), (IMPACT + 0.75, loose), (at(18.6), follow), (at(22.0), belt),
             (ATTACK_TICKS, READY)]
-    steps = ([("right", 2.0, 5.0, (-3.9, 2.0, -4.3), -48.0, 1.0), ("right", 21.0, 24.5, C.FEET["right"][0], C.FEET["right"][1], 0.9)]
+    steps = ([("right", at(2.0), at(5.0), (-3.9, 2.0, -4.3), -48.0, 1.0),
+              ("right", at(21.0), at(24.5), C.FEET["right"][0], C.FEET["right"][1], 0.9)]
              if volley else
-             [("left", 2.0, 5.0, (2.6, 2.0, 4.8), 4.0, 1.0), ("left", 20.5, 24.0, C.FEET["left"][0], C.FEET["left"][1], 0.9)])
+             [("left", at(2.0), at(5.0), (2.6, 2.0, 4.8), 4.0, 1.0),
+              ("left", at(20.5), at(24.0), C.FEET["left"][0], C.FEET["left"][1], 0.9)])
 
     def mod(t, g):
-        # the draw: an arrow on the string, one pull that slows into the anchor, gone at the loose, the next arrow at 23
+        # the draw: an arrow on the string, one pull that slows into the anchor, gone at the loose, the next arrow at 23.5 (29.5)
         if t < IMPACT:
-            amt = K.curve([(5.2, (1.0,)), (6.4, (1.2,)), (9.6, (2.5,)), (FULL_AT, (3.0,)), (IMPACT, (3.0,))], t)[0] if t > 5.2 else 1.0
+            amt = (K.curve([(at(5.2), (1.0,)), (at(6.4), (1.2,)), (at(9.6), (2.5,)), (FULL_AT, (3.0,)), (IMPACT, (3.0,))], t)[0]
+                   if t > at(5.2) else 1.0)
             g["string"] = (1.0,)
         else:
-            amt = 0.0 if t < 23.5 else 1.0
-            g["string"] = (ramp(t, 22.2, 24.6),)
+            amt = 0.0 if t < at(23.5) else 1.0
+            g["string"] = (ramp(t, at(22.2), at(24.6)),)
         g["draw"] = (amt,)
         if FULL_AT <= t <= IMPACT:      # the held draw is alive: the bow arm fights the string
             k = math.sin(math.pi * (t - FULL_AT) / (IMPACT - FULL_AT))
-            tr = k * math.sin(TAU * t / 2.3)
+            tr = k * math.sin(TAU * (FULL0 + t - FULL_AT) / 2.3)      # the same shake at the same speed, from the same phase
             g["grip"] = add(g["grip"], (0.0, 0.16 * tr, 0.0))
             g["torso"] = add(g["torso"], (0.3 * tr, 0.5 * tr, 0.0))
             g["hips_p"] = add(g["hips_p"], (0.0, -0.25 * k, 0.0))
