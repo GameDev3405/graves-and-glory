@@ -227,7 +227,7 @@ public final class Phase2Checks implements ClientModInitializer {
                         boolean kept=Files.exists(backup)&&Arrays.equals(Files.readAllBytes(backup),fixture);
                         // The file upgrade stops at schema 4 (ProfileMigration.upgradeFile); schema 5 and 6 (custom groups, the campaign reset) are in-memory steps of Profile.sanitize that reach the disk with the next save.
                         int diskSchema=schemaOf(Files.readString(file));
-                        boolean upgraded=diskSchema>=4&&diskSchema<=Profile.SCHEMA&&pr.schema==Profile.SCHEMA;
+                        boolean upgraded=diskSchema==4&&pr.schema==Profile.SCHEMA;
                         camp.save(player);int savedSchema=schemaOf(Files.readString(file));
                         boolean v2=upgraded&&savedSchema==Profile.SCHEMA;
                         var cat=RosterMath.Catalog.fromSpec();

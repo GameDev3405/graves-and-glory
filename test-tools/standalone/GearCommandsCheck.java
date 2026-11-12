@@ -28,6 +28,7 @@ public final class GearCommandsCheck {
             check(o.refusal().equals(GearCommands.INVALID) && o.notice().equals(GearCommands.INVALID) && !o.ok() && o.rolled() == null, "'" + cmd + "' is refused as not valid, got '" + o.refusal() + "'");
             check(before.equals(JSON.toJson(p)), "'" + cmd + "' changes nothing");
         }
+        check(!GearCommands.arsenal("gear:knight:weapon:2") && GearCommands.arsenal("gear:equip:5") && GearCommands.arsenal("gear:unequip:helm") && GearCommands.arsenal("gear:relic:0:x") && GearCommands.arsenal("forge:roll:helm"), "arsenal(): the Arsenal verbs are the Arsenal's, the Armoury's gear:<troop>:<track>:<tier> is not");
         check(GearCommands.apply(null, "gear:equip:1", rng).refusal().equals(GearCommands.INVALID) && GearCommands.apply(p, null, rng).refusal().equals(GearCommands.INVALID), "null profile and null command are refused");
         check(GearCommands.apply(p, "gear:relic:0:nonesuch", rng).refusal().equals("You have not unlocked that relic.") && JSON.toJson(p).equals(JSON.toJson(p)), "an unknown relic id in a real slot is refused with Gear's reason");
 
