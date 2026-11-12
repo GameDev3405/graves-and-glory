@@ -294,6 +294,7 @@ final class Veterans {
         String track = part.length == 4 ? part[2] : "";
         int tier = -1;
         if (part.length == 4) try { tier = Integer.parseInt(part[3]); } catch (NumberFormatException ignored) {}
+        if (b != null && b.campaign.ending()) return "The battle is over"; // refused with no notice while the match ending plays
         String why = refusal(b, s, t, track, tier, buyHere(b, p, s));
         String said = why;
         if (why.isEmpty()) {

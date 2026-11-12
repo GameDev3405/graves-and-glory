@@ -695,7 +695,7 @@ public final class GravesAndGlory implements ModInitializer {
         public boolean forwardReinforcement=Spec.ECONOMY[0].forwardReinforcement();
         /** Round length in seconds, from the round's mode row; the bot simulation shortens it. */
         /** Whether the round is in overtime: its clock is out and the mode keeps it open (Convoy's wagon near a stop). Survival's open-ended round is no overtime. The snapshot's battleMode.overtime carries it to the client's music. */
-        public boolean inOvertime(){return running&&mode instanceof ConvoyMode&&time-roundStarted>=roundSeconds*20L&&mode.overtime(this);}
+        public boolean inOvertime(){return running&&!campaign.ending()&&mode instanceof ConvoyMode&&time-roundStarted>=roundSeconds*20L&&mode.overtime(this);}
         public int roundSeconds=Modes.row(Modes.DOMINATION).roundSeconds();
         /**
          * The mode this round plays (Phase 4 Task 2): its clock, scoring, income, bases and timeout. A fresh object each
@@ -829,23 +829,24 @@ public final class GravesAndGlory implements ModInitializer {
                 if(!squads.containsKey(p.getUuid())||!squads.get(p.getUuid()).seated)continue;
                 Long until=respawns.get(p.getUuid());
                 if(until!=null){
-                    if(time>=until){respawns.remove(p.getUuid());p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);FeedEvents.commander(this,p,true);}
-                } else if(running&&(Math.abs(p.getX())>Field.halfX()-2||Math.abs(p.getZ())>Field.halfZ()-2||p.getY()<56))toBase(p,squads.get(p.getUuid()).team);
+                    if(time>=until&&!campaign.ending()){respawns.remove(p.getUuid());p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);FeedEvents.commander(this,p,true);}
+                } else if(running&&!campaign.ending()&&(Math.abs(p.getX())>Field.halfX()-2||Math.abs(p.getZ())>Field.halfZ()-2||p.getY()<56))toBase(p,squads.get(p.getUuid()).team);
             }
             if(running&&campaign.bonusTracker!=null){int fell=0;for(Unit u:units)if(!u.mob.isAlive()&&!u.temporary&&u.squad.team==0&&!u.squad.bot)fell++;if(fell>0)campaign.bonusTracker.lost(fell);} // March bonus: troops of the commander's banner that fell this tick
             units.removeIf(u->!u.mob.isAlive()||u.mob.isRemoved());
             sweepCorpses();
-            if(running)trainingTick();
+            if(running&&!campaign.ending())trainingTick();
             campaign.tick();
             updateUnitChunks();
-            if(running&&time>=campaign.introUntil){
+            if(running&&time>=campaign.introUntil&&!campaign.ending()){ // the match ending freezes the field: nothing here runs while it plays
                 Projectiles.tick(this);Tactics.land(this);Commander.tick(this);Abilities.bannerTick(this);Houses.expire(this);Statuses.tick(this);
                 if(time%20==0){Morale.tick(this);Houses.tick(this);}
                 if(time%10==0)Houses.countTargeters(this);
                 for(Unit u:new ArrayList<>(units))unitTick(u);
                 if(time%20==0){captureTick();objectiveTick();}
                 if(time%20==0&&campaign.bonusTracker!=null&&mode.capturesPoints(this)){int own=0;for(Capture c:points)if(c.owner==0)own++;campaign.bonusTracker.held(own,points.size());} // March bonus hold_all: the commander's side (Dawn) holds every point at once
-                mode.tick(this);
+                if(!campaign.ending())mode.tick(this); // a finish earlier this tick began the ending
+                if(!campaign.ending()){ // reinforcements and income stop with the round
                 if(R.automaticReinforcements()&&time%20==0)for(Squad s:new ArrayList<>(squads.values())){if(!s.seated)continue;
                     if(time>=s.reinforceAt && fielded(s).mapToInt(u->u.spec.slotWeight()).sum()<R.squadSize()){
                         s.reinforceAt=time+R.reinforceSeconds()*20L;reinforce(s);
@@ -854,11 +855,12 @@ public final class GravesAndGlory implements ModInitializer {
                 if(time%(Spec.ECONOMY[0].incomeSeconds()*20)==0)for(Squad s:squads.values()){if(!s.seated)continue;
                     s.earn(income(s));
                 }
+                }
             }
             Audio.tick(this); // cues that wait for their moment (a blow's contact frame, the gate's crash, the wave's rise)
-            if(running)Audio.clock(this,roundSeconds*20L-(time-roundStarted)); // the last ten seconds tick
+            if(running&&!campaign.ending())Audio.clock(this,roundSeconds*20L-(time-roundStarted)); // the last ten seconds tick
             if(inOvertime())Audio.all(this,AudioCues.Cue.OVERTIME_DRUM_PULSE,"overtime"); // the clock is out and the wagon still holds the round open: a drum beat to every seat, throttled by its cooldown
-            if(running&&time-roundStarted>=roundSeconds*20L){
+            if(running&&!campaign.ending()&&time-roundStarted>=roundSeconds*20L){
                 if(!mode.overtime(this))campaign.finish(mode.timeoutWinner(this));
             }
             // Explicit revision checks are driven by the client test timeline.
@@ -875,6 +877,7 @@ public final class GravesAndGlory implements ModInitializer {
                 var room=campaign.social.rooms.get(campaign.activeRoom);
                 if(room==null||!room.members.contains(p.getUuid()))decision=new AdmissionPolicy.Decision(decision.team(),null,false);
             }
+            if(running&&campaign.ending())decision=new AdmissionPolicy.Decision(decision.team(),null,false); // nobody is seated (no army spawns) while the match ending plays; Campaign.joined sends him to camp
             int team=decision.team();
             Squad replacement=decision.replacement()==null?null:squads.get(decision.replacement());
             Squad s;
@@ -949,9 +952,11 @@ public final class GravesAndGlory implements ModInitializer {
         public void command(ServerPlayerEntity p,String cmd){
             if(cmd.startsWith("social:")){campaign.socialCommand(p,cmd);return;}
             if(cmd.startsWith("progress:")){campaign.progressCommand(p,cmd);return;}
+            if(cmd.equals("ending:skip")){campaign.skipEnding(p);return;} // before the respawn gate: a commander waiting to respawn skips too
             Squad s=squads.get(p.getUuid());if(s==null||!ready||respawns.containsKey(s.owner))return;
             if(campaign.handle(p,cmd))return;
             if(running&&!s.seated)return;
+            if(running&&campaign.ending())return; // no relic, barracks, training, gear or order once the match has ended
             if(cmd.startsWith("relic:")){int slot;try{slot=Integer.parseInt(cmd.substring(6));}catch(NumberFormatException e){return;}Commander.activate(this,p,slot);return;}
             if(cmd.equals("barracks")){openBarracks(p);return;}
             if(cmd.startsWith("train:")||cmd.startsWith("disband:")||cmd.equals("cancel-training")){manage(p,s,cmd);return;}
@@ -1308,6 +1313,7 @@ public final class GravesAndGlory implements ModInitializer {
             int team=teamOf(entity),attackTeam=teamOf(attacker);
             if(team<0)return true;
             if(!running)return false;
+            if(campaign.ending())return false; // the field is frozen: no troop or commander is hurt during the ending
             if(!R.friendlyFire()&&attackTeam==team)return false;
             // A commander's own blow: a troop takes it at combatDiscipline.damageScale, and the commander effects (his Mark Prey, the target side's Stand Fast) multiply in. Under his Bloodrush a blow by hand feeds him from what the target really loses (this hook fires before vanilla's shield block and hurt cooldown, which may take nothing), so the scaled blow is dealt here and measured.
             if(!scalingDamage&&attacker instanceof ServerPlayerEntity p){
@@ -1341,6 +1347,7 @@ public final class GravesAndGlory implements ModInitializer {
         boolean allowCommanderDeath(ServerPlayerEntity p,net.minecraft.entity.damage.DamageSource source,float amount){
             Squad victimSquad=squads.get(p.getUuid());int team=teamOf(p);
             if(!running||team<0)return true;
+            if(campaign.ending()){p.setHealth(p.getMaxHealth());return false;}
             if(GearCombat.secondChance(victimSquad,p))return false; // second_chance catches the downing blow once a match
             Entity attacker=source.getAttacker();Squad hitter=attacker==null?null:squads.get(attacker.getUuid());Unit striker=null;
             for(Unit u:units)if(u.mob==attacker){hitter=u.squad;striker=u;}

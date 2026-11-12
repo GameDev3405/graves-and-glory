@@ -57,7 +57,7 @@ final class OrderRules {
     /** One order to every group in the list (tactical_v2): see the class comment. */
     static void playerOrder(GravesAndGlory.Battle b, ServerPlayerEntity p, List<At> groups, String action, String formation, float yaw, int enemyId) {
         var s = b.squads.get(p.getUuid());
-        if (s == null || !b.ready || !b.running || !s.seated || b.time < b.campaign.introUntil || b.respawns.containsKey(s.owner) || b.time - s.lastOrder < R.commandCooldownTicks()) return;
+        if (s == null || !b.ready || !b.running || !s.seated || b.time < b.campaign.introUntil || b.campaign.ending() || b.respawns.containsKey(s.owner) || b.time - s.lastOrder < R.commandCooldownTicks()) return;
         if (groups == null || action == null || formation == null) return;
         if (Arrays.stream(Spec.FORMATIONS).noneMatch(f -> f.id().equals(formation))) return;
         List<At> named = known(b, s, groups);

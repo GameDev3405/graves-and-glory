@@ -130,7 +130,7 @@ public final class Commander {
      */
     public static void activate(GravesAndGlory.Battle b, ServerPlayerEntity p, int slot) {
         var s = b.squads.get(p.getUuid());
-        if (s == null || !b.running || b.time < b.campaign.introUntil || player(b, s) != p || slot < 0 || slot >= s.relicState.size()) return;
+        if (s == null || !b.running || b.time < b.campaign.introUntil || b.campaign.ending() || player(b, s) != p || slot < 0 || slot >= s.relicState.size()) return;
         String id = relicIn(s, slot);
         var t = tuning(id);
         var r = relic(id);
