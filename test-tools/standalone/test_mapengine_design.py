@@ -153,6 +153,19 @@ class DesignTest(unittest.TestCase):
         d['objects'] = 'x'
         self.assertTrue(validate(d))
 
+    def test_unhashable_palette_piece_and_infinite_points_rejected(self):
+        # T03-P2-F1/F2: list/dict palette or piece and Infinity/NaN coordinates give messages, not exceptions
+        d = new_design('t', 'T')
+        d['objects'] += [
+            base(id='zone-1', kind='zone', outline=[[0, 0], [9, 0], [9, 9]], palette=['stone']),
+            base(id='building-1', kind='building', piece={'a': 1}, rotation=0, x=10, z=10),
+            base(id='hill-1', kind='hill', outline=[[float('inf'), 0], [9, 0], [9, 9]], height=10, steepness=0.5),
+            base(id='hill-2', kind='hill', outline=[[float('nan'), 0], [9, 0], [9, 9]], height=10, steepness=0.5),
+        ]
+        msgs = validate(d)
+        for oid in ('zone-1', 'building-1', 'hill-1', 'hill-2'):
+            self.assertTrue(any(oid in m for m in msgs), oid)
+
     def test_cli_new(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(cli.main(['new', 'foo', 'Foo Map'], root=pathlib.Path(tmp)), 0)

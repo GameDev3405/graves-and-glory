@@ -1,5 +1,6 @@
 """Map engine design file: schema, validation, load/save. Pure data, no Minecraft."""
 import json
+import math
 import os
 import pathlib
 import tempfile
@@ -39,7 +40,8 @@ def _int(v):
 
 def _pts_ok(pts, n):
     return (isinstance(pts, list) and len(pts) >= n
-            and all(isinstance(p, (list, tuple)) and len(p) == 2 and _num(p[0]) and _num(p[1]) for p in pts))
+            and all(isinstance(p, (list, tuple)) and len(p) == 2 and _num(p[0]) and _num(p[1])
+                    and math.isfinite(p[0]) and math.isfinite(p[1]) for p in pts))
 
 
 def _range(o, key, lo, hi, out, integer=False):
@@ -120,11 +122,11 @@ def validate(d):
             text = o.get('text')
             if not isinstance(text, str) or not text.strip() or len(text) > MAX_NOTE:
                 out.append(f'{oid}: text must be 1 to {MAX_NOTE} characters')
-        elif kind == 'zone' and o.get('palette') not in palettes:
+        elif kind == 'zone' and not (isinstance(o.get('palette'), str) and o.get('palette') in palettes):
             out.append(f'{oid}: palette must be one of {", ".join(sorted(palettes))}')
         elif kind == 'building':
             from mapengine import library  # late: library imports mapforge, design stays importable alone
-            if o.get('piece') not in library.load():
+            if not (isinstance(o.get('piece'), str) and o.get('piece') in library.load()):
                 out.append(f"{oid}: piece must be a library id such as kit/house_a, not {o.get('piece')!r}")
             if not _int(o.get('rotation')) or o.get('rotation') not in ROTATIONS:
                 out.append(f'{oid}: rotation must be 0, 90, 180 or 270')
