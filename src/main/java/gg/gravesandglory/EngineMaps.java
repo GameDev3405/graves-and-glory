@@ -64,7 +64,8 @@ public final class EngineMaps {
   Object m=bundled.get(index);if(m!=UNREAD)return m;
   if(Spec.MAPS[index].source().equals("-"))m=NOT_READ;
   else{String root="data/gravesandglory/sectionmaps/"+Spec.MAPS[index].source();
-   try{var e=EngineMap.resource(root);m=e;System.out.println("[Graves and Glory] bundled map "+e.id+" ("+e.sha.substring(0,12)+") plays in map slot "+index);}
+   try{var e=EngineMap.resource(root);m=e;System.out.println("[Graves and Glory] bundled map "+e.id+" ("+e.sha.substring(0,12)+") plays in map slot "+index);
+    var row=Spec.MAPS[index];if(e.fieldHalfX!=row.fieldHalfX()||e.fieldHalfZ!=row.fieldHalfZ())System.out.println("[Graves and Glory] WARNING bundled map "+e.id+" was packed with field "+e.fieldHalfX+"x"+e.fieldHalfZ+" but the maps sheet says "+row.fieldHalfX()+"x"+row.fieldHalfZ()+": the barrier follows the sheet");}
    catch(Exception e){m=NOT_READ;System.out.println("[Graves and Glory] bundled map "+root+" not read: "+e.getMessage());}}
   bundled.set(index,m);return m;
  }
@@ -123,9 +124,14 @@ public final class EngineMaps {
   short s=stacks[t][((cz-(tile.z()-map.oz))*tile.sx()+cx-(tile.x()-map.ox))*heights[t]+ly];return s<0?Blocks.AIR.getDefaultState():palette[s];}
  /** the y above the highest block of a column, loading its chunk (World.getTopY answers the bottom of the world for an unloaded chunk) */
  static int top(ServerWorld w,int x,int z){return w.getChunk(x>>4,z>>4).sampleHeightmap(Heightmap.Type.WORLD_SURFACE,x&15,z&15)+1;}
- static void set(ServerWorld w,BlockPos.Mutable pos,BlockState s){if(w.getBlockState(pos)!=s)w.setBlockState(pos,s,FLAGS);}
+ /** true while set() places a block: CarvedPumpkinGuardMixin then skips the golem pattern search, which reads neighbours in chunks that are not ticking yet
+  *  (CachedBlockPosition answers null there and vanilla throws) and would otherwise build golems out of map dressing */
+ public static boolean placing;
+ static void set(ServerWorld w,BlockPos.Mutable pos,BlockState s){if(w.getBlockState(pos)!=s){placing=true;try{w.setBlockState(pos,s,FLAGS);}finally{placing=false;}}}
 
  /** One tick of building the engine map; true once it is placed and checked (the next call starts a new build). */
+ /** Drops a build in progress: the next step starts over with the map then selected (Campaign.switchMap). */
+ public static void reset(){stacks=null;tileOf=null;readSolid=null;readWater=null;phase=0;column=0;map=null;}
  public static boolean step(ServerWorld w){
   long t0=System.nanoTime();
   if(phase==0){startNs=t0;column=0;map=current();

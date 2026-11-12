@@ -315,17 +315,17 @@ final class CampWorld {
         var c=Spec.CAMP[0];
         for(int i=0;i<15;i++)for(int j=0;j<9;j++)w.setBlockState(new BlockPos(c.originX()+c.tableDx()+i,c.tableY(),c.originZ()+c.tableDz()+j),tableCell(i,j),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
     }
-    /** What cell (i,j), i 0..14 and j 0..8, of the table shows: the arena x from -350+i*700/15 to -350+(i+1)*700/15 and z from -250+j*500/9 to -250+(j+1)*500/9, sampled 7 by 7. First match wins: a capture point in it, the lit candle;
+    /** What cell (i,j), i 0..14 and j 0..8, of the table shows: the selected map's field (Field, 350 by 250 on the hand-made maps) cut 15 by 9, sampled 7 by 7. First match wins: a capture point in it, the lit candle;
      *  any bridge sample, light gray; any river sample, cyan; 7 or more road samples, brown; 25 or more samples above y 79, gray; otherwise white on Frostmarch and green elsewhere. */
     static BlockState tableCell(int i,int j){
-        double x0=-350+i*700.0/15,x1=-350+(i+1)*700.0/15,z0=-250+j*500.0/9,z1=-250+(j+1)*500.0/9;
+        int hx=Field.halfX(),hz=Field.halfZ();double x0=-hx+i*2.0*hx/15,x1=-hx+(i+1)*2.0*hx/15,z0=-hz+j*2.0*hz/9,z1=-hz+(j+1)*2.0*hz/9;boolean engine=EngineMaps.active();
         for(var p:Spec.POINTS)if(p.x()>=x0&&p.x()<x1&&p.z()>=z0&&p.z()<z1)return Blocks.CANDLE.getDefaultState().with(CandleBlock.LIT,true);
         boolean bridge=false,river=false;int road=0,high=0;
         for(int a=0;a<7;a++)for(int b=0;b<7;b++){
             double x=x0+(x1-x0)*(a+.5)/7,z=z0+(z1-z0)*(b+.5)/7;int bx=(int)Math.floor(x),bz=(int)Math.floor(z);
             for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2.0&&Math.abs(z-s.z())<=s.depth()/2.0)bridge=true;
-            if(CampaignMaps.river(bx,bz))river=true;
-            if(CampaignMaps.road(bx,bz))road++;
+            if(Arena.river(bx,bz))river=true;
+            if(!engine&&CampaignMaps.road(bx,bz))road++;
             if(Arena.height(bx,bz)>79)high++;
         }
         if(bridge)return Blocks.LIGHT_GRAY_CARPET.getDefaultState();

@@ -995,7 +995,7 @@ public final class Campaign {
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
     void switchMap(int index){if(b.mode.teardown(b))Modes.unmark(b);b.saves.clear(); // the next map's recover drops a kept marker and its files: the arena is rebuilt
-        Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);Houses.reset(b);b.clearCorpses();b.clearSides();b.clearProgression();FeedEvents.clear();map=index;if(!Modes.registered(battleMode)||!Modes.hosts(battleMode,map))battleMode=Modes.DOMINATION;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}
+        Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);Houses.reset(b);b.clearCorpses();b.clearSides();b.clearProgression();FeedEvents.clear();map=index;if(!Modes.registered(battleMode)||!Modes.hosts(battleMode,map))battleMode=Modes.DOMINATION;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;EngineMaps.reset();Structures.clearQueue();b.placing=false;}
     /** The lesson a commander is on, or -1: only a campaign battle whose sheet row teaches (lessons) shows them, to its commanders, until all four are done. They repeat on every replay. */
     int tutorialStep(UUID id){
         if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;
