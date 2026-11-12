@@ -315,7 +315,7 @@ final class ArmouryTab {
             for (int r = 0; r < portraitBoxes.size() && first + r < rows.size(); r++) {
                 var row = rows.get(first + r); var t = ArmyCards.spec(row.troop()); var pb = portraitBoxes.get(r);
                 var e = ArmyCards.portrait(t, bestTier(row, LevelMath.WEAPON), bestTier(row, LevelMath.ARMOUR));
-                if (e != null) { e.age = c.player == null ? 0 : c.player.age; Portrait.draw(g, e, pb.x(), pb.y(), PORTRAIT, 0); }
+                if (e != null) { e.age = c.player == null ? 0 : c.player.age; Portrait.draw(g, e, pb.x(), pb.y(), PORTRAIT); }
             }
         }
         nameDrawn = names; headerDrawn = head;

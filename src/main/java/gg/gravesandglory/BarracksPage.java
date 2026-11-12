@@ -134,7 +134,7 @@ final class BarracksPage {
         var font = font(); var t = Spec.TROOPS[index];
         UiTex.draw(g, "table/frame-back-48", x + 8, y + 8);
         var e = ArmyCards.portrait(t);
-        if (e != null) { var c = MinecraftClient.getInstance(); e.age = c.player == null ? 0 : c.player.age; Portrait.draw(g, e, x + 8, y + 8, 40, 0); }
+        if (e != null) { var c = MinecraftClient.getInstance(); e.age = c.player == null ? 0 : c.player.age; Portrait.draw(g, e, x + 8, y + 8, 40); }
         UiTex.draw(g, "table/frame-rim-48", x + 4, y + 4);
         String price = String.valueOf(RecruitmentScreen.price(t));
         int pw = bodyW(price), px = x + WarTableRecruit.ROLL_W - 12 - pw;
@@ -164,7 +164,7 @@ final class BarracksPage {
         var t = Spec.TROOPS[screen.selected]; int cx = x + 152, lw = WarTableRecruit.LINE_W;
         UiTex.draw(g, "table/frame-back-160", x + 72, y + 40);
         var e = ArmyCards.portrait(t);
-        if (e != null) { var c = MinecraftClient.getInstance(); e.age = c.player == null ? 0 : c.player.age; Portrait.draw(g, e, x + 72, y + 40, 160, 0); }
+        if (e != null) { var c = MinecraftClient.getInstance(); e.age = c.player == null ? 0 : c.player.age; Portrait.draw(g, e, x + 72, y + 40, 160); }
         UiTex.draw(g, "table/frame-ornate-184", x + 60, y + 28);
         String name = UiMath.trim(t.name(), lw, s -> font.getWidth(DarkUi.focal(s)));
         WarTableHome.centred(g, DarkUi.focal(name), cx, y + NAME_Y, DarkUi.INK_TEXT); drawn.add(name);

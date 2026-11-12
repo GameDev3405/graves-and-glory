@@ -65,7 +65,7 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
     /** Whether draws are recorded (DRAWN, the pose snapshot, TroopDepth's counts): only in a harness run (-Dgravesandglory.localIntegration), so normal play pays nothing for them. */
     static final boolean DIAGNOSTICS=Boolean.getBoolean("gravesandglory.localIntegration");
     /** The draws of an entity through its own model, or null for one never drawn so. */
-    public static Drawn drawn(Entity e){return DRAWN.get(e);}
+    public static Drawn drawn(Entity e){Drawn d=DRAWN.get(e);if(d!=null)return d;Entity t=Portrait.latest(e);return t==null?null:DRAWN.get(t);} // a framed portrait mob draws through its copy (Portrait.twin)
     /** Whether this draw binds the one-texel-a-px twins of a density above 1 troop's PNGs (TroopModels.far; set for the draw, read by getTexture and the layers). */
     boolean far;
     /** The face the current draw wears (TroopModels.face). */

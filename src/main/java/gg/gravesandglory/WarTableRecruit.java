@@ -469,7 +469,7 @@ final class WarTableRecruit {
         var e = model(r.troopId());
         boolean silhouette = !r.owned();
         if (e != null) {
-            Portrait.draw(g, e, x + 8, y + 8, 40, 0, silhouette);
+            Portrait.draw(g, e, x + 8, y + 8, 40, silhouette);
             portraitsDrawn.add(new PortraitDraw(r.troopId(), "row-" + i, Portrait.last())); // what reached drawEntity
         }
         UiTex.draw(g, "table/frame-rim-48", x + 4, y + 4);
@@ -502,7 +502,7 @@ final class WarTableRecruit {
         UiTex.draw(g, "table/frame-back-160", x + 72, y + 40);
         var e = model(r.troopId());
         if (e != null) {
-            Portrait.draw(g, e, x + 72, y + 40, 160, 0); // Phase 2: tall 2 for the troops it marks Tall
+            Portrait.draw(g, e, x + 72, y + 40, 160); // Phase 2: tall 2 for the troops it marks Tall
             var d = Portrait.last();
             portraitsDrawn.add(new PortraitDraw(r.troopId(), "letter", d));
             rectsDrawn.put("window", new int[]{d.left(), d.top(), d.window(), d.window()}); // the window Portrait scissored

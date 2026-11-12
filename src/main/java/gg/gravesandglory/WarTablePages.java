@@ -1021,7 +1021,7 @@ final class WarTablePages {
         UiTex.draw(g, "table/frame-back-48", x + 8, y + 8);
         var e = WarTableRecruit.model(r.troopId());
         if (e != null) {
-            Portrait.draw(g, e, x + 8, y + 8, 40, 0);
+            Portrait.draw(g, e, x + 8, y + 8, 40);
             portraitsDrawn.add(new PortraitDraw("row-" + i, r.troopId(), Portrait.last()));
         }
         accent(g, r.troopId(), x + 8, y + 8);
@@ -1089,7 +1089,7 @@ final class WarTablePages {
         else UiTex.draw(g, "table/frame-back-48", x + 4, y + 4);
         var e = empty ? null : WarTableRecruit.model(drawn);
         if (e != null) {
-            Portrait.draw(g, e, x + 4, y + 4, 40, 0);
+            Portrait.draw(g, e, x + 4, y + 4, 40);
             portraitsDrawn.add(new PortraitDraw(where, drawn, Portrait.last()));
         }
         if (!empty) accent(g, drawn, x + 4, y + 4);
@@ -1850,7 +1850,7 @@ final class WarTablePages {
         rectsDrawn.put("hero", UiTex.draw(g, "chapter/hero-letter", x, y));
         UiTex.draw(g, "table/frame-back-160", x + 20, y + 20);
         if (c.player != null) {
-            Portrait.draw(g, c.player, x + 20, y + 20, 160, 0);
+            Portrait.draw(g, c.player, x + 20, y + 20, 160);
             portraitsDrawn.add(new PortraitDraw("hero", c.player.getGameProfile().getName(), Portrait.last()));
         }
         UiTex.draw(g, "table/frame-ornate-184", x + 8, y + 8);
@@ -2141,7 +2141,7 @@ final class WarTablePages {
             LivingEntity e = m.me() ? c.player : null;
             if (!m.me() && c.world != null) for (var p : c.world.getPlayers()) if (p.getGameProfile().getName().equals(m.name())) e = p;
             if (e != null) {
-                Portrait.draw(g, e, x + 4, y + 4, 40, 0);
+                Portrait.draw(g, e, x + 4, y + 4, 40);
                 portraitsDrawn.add(new PortraitDraw("member-" + i, m.name(), Portrait.last()));
             } else {
                 var entry = c.getNetworkHandler() == null ? null : c.getNetworkHandler().getPlayerListEntry(m.name());

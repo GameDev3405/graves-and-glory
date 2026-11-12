@@ -55,6 +55,10 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     private final Box rest;
     /** The highest point at rest of the skin bones of every armour and weapon tier (no team cloth), in model pixels (y down), or NaN for a model without one: where the rank chevrons sit, so no tier's crest reaches them. */
     private final double crown;
+    /** The head at rest, for portraits (Portrait.fit): the highest point of the head and everything it carries over every tier (no team
+     *  cloth), the top and bottom of the head bone's own boxes (the face), and how far the face's centre stands in front of the feet
+     *  (model px toward the face, -z), all in model pixels (y down, the ground at y 24); null for a model with no head bone. */
+    private final double[] head;
     /** The frustum test's reach about the entity, in blocks: horizontal radius, and the bottom and top over its feet. */
     private final double cullRadius,cullBottom,cullTop;
     /** The outer layer's twin (rig boxes dilated by the rig's outer), or null; its bones copy this model's pose. */
@@ -93,7 +97,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     private TroopModel(){
         super(RenderLayer::getEntityCutout);top=new ModelPart(List.of(),Map.of());troop=rig=hand=idleArms=portrait=weapon=cloth="";
         veteran=glow=outer=null;glowFrom=1;density=1;faceCount=0;faceCard=0;faceFixed=-1;teamOn=new boolean[0];hands=Map.of();rest=new Box(0,0,0,0,0,0);outerTop=null;
-        cullRadius=cullBottom=cullTop=0;pivots=Map.of();crown=Double.NaN;teamBits=0;weaponPoints=List.of();relief=Map.of();reliefWalk=Map.of();
+        cullRadius=cullBottom=cullTop=0;pivots=Map.of();crown=Double.NaN;head=null;teamBits=0;weaponPoints=List.of();relief=Map.of();reliefWalk=Map.of();
     }
     /** An empty placeholder: TroopRenderer is built before TroopModelLoader may have loaded anything. */
     static <T extends MobEntity> TroopModel<T> empty(){return new TroopModel<>();}
@@ -186,6 +190,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         for(double[] s:spheres){radius=Math.max(radius,Math.hypot(s[0],s[2])+s[3]);high=Math.min(high,s[1]-s[3]);low=Math.max(low,s[1]+s[3]);}
         boolean any=low>-Double.MAX_VALUE;
         pivots=Map.copyOf(at);
+        head=headAtRest(corners);
         for(var c:corners.entrySet()){double r=0;for(double[] w:c.getValue())r=Math.max(r,dist(at.get(c.getKey()),w));ownReach.put(c.getKey(),r);}
         for(String side:List.of("right","left")){
             String h=this.hands.get(side);if(h==null||!info.containsKey(h))continue;double item=0;
@@ -204,6 +209,21 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         }
         relief=rel;reliefWalk=walk;
     }
+    private double[] headAtRest(Map<String,List<double[]>> corners){
+        if(!info.containsKey("head"))return null;
+        double top=Double.MAX_VALUE,faceTop=Double.MAX_VALUE,faceBottom=-Double.MAX_VALUE,front=0;int n=0;
+        for(var b:info.values()){
+            if(!(b.name().equals("head")||descends(b.name(),"head")))continue; // team bones too: a helm's House band is part of its height
+            for(double[] w:corners.getOrDefault(b.name(),List.of()))top=Math.min(top,w[1]);
+        }
+        List<double[]> own=corners.getOrDefault("head",List.of());
+        if(own.isEmpty())own=corners.getOrDefault("face_v0",List.of()); // a head bone with no boxes of its own carries its faces as children
+        for(double[] w:own){faceTop=Math.min(faceTop,w[1]);faceBottom=Math.max(faceBottom,w[1]);front+=-w[2];n++;}
+        if(n==0||top==Double.MAX_VALUE)return null;
+        return new double[]{top,faceTop,faceBottom,front/n};
+    }
+    /** The head at rest for portraits ({top, face top, face bottom, face forward}, model px, y down, the ground at y 24), or null. */
+    public double[] headAtRest(){return head==null?null:head.clone();}
     private double reachOf(String bone,double[] from,Map<String,List<double[]>> corners){
         double r=0;for(var b:info.values())if(b.name().equals(bone)||descends(b.name(),bone))for(double[] w:corners.get(b.name()))r=Math.max(r,dist(from,w));return r;
     }

@@ -2541,7 +2541,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     var r=WarTableHome.rects();var pt=WarTableHome.portraits();String name=c.player.getGameProfile().getName();int[] invite=box(c,"invite");
                     boolean seat=Arrays.equals(r.get("seat-0"),new int[]{56,206,48,48})&&r.containsKey("ready-0")&&!r.containsKey("seat-1")&&name.equals(WarTableHome.texts().get("seat-0"));
                     // 2 px per model pixel is size 32 for a model drawn at its own size; the player renderer draws its model at 0.9375, so 32 / 0.9375 = 34.1 reaches drawEntity
-                    boolean model=pt.size()==1&&pt.get(0).model()&&pt.get(0).name().equals(name)&&pt.get(0).size()==34&&pt.get(0).feet()==282&&pt.get(0).x()==80&&Portrait.last()!=null&&Portrait.last().window()==40&&Portrait.last().tall()==0&&Portrait.last().size()==34&&Portrait.last().scale()==0.9375f&&!Portrait.last().silhouette()&&Portrait.last().feet()==282&&Portrait.last().x()==80;
+                    boolean model=pt.size()==1&&pt.get(0).model()&&pt.get(0).name().equals(name)&&Portrait.last()!=null&&Portrait.last().x()==Portrait.last().left()+Portrait.fit(c.player,40).dx()&&Portrait.last().feet()==Portrait.last().top()+Portrait.fit(c.player,40).feet()&&Portrait.last().size()==Portrait.fit(c.player,40).size()&&Portrait.last().window()==40&&Portrait.last().scale()==0.9375f&&!Portrait.last().silhouette()&&pt.get(0).size()==Portrait.last().size()&&pt.get(0).feet()==Portrait.last().feet()&&pt.get(0).x()==Portrait.last().x();
                     report("p1-ui-home-party",seat&&model&&invite!=null&&invite[1]==262&&Arrays.equals(r.get("invite"),invite),"seat-0 "+str(r.get("seat-0"))+" named \""+WarTableHome.texts().get("seat-0")+"\" (player "+name+"), ready check "+str(r.get("ready-0"))+", seat-1 "+str(r.get("seat-1"))+"; Invite seat "+str(invite)+" (drawn "+str(r.get("invite"))+"); portraits "+pt);
                     stage=4;
                 }
@@ -2784,7 +2784,9 @@ public final class Phase1Checks implements ClientModInitializer {
         /** The portrait the last frame drew at a place (row-(i) or letter), or null. */
         static WarTableRecruit.PortraitDraw portrait(String where){for(var p:WarTableRecruit.portraits())if(p.where().equals(where))return p;return null;}
         /** The size a portrait window asks drawEntity for: UiMath.portraitSize over the scale the troop's renderer gives its model. */
-        static int size(String troop,int window){return Math.round(UiMath.portraitSize(window,0)/Portrait.modelScale(WarTableRecruit.model(troop)));}
+        static int size(String troop,int window){return Portrait.fit(WarTableRecruit.model(troop),window).size();}
+        /** The feet's y offset in a portrait window: where Portrait.fit stands the troop's model (its head framed by its bounds). */
+        static int feet(String troop,int window){return Portrait.fit(WarTableRecruit.model(troop),window).feet();}
         /** The kind line under a troop's name on the letter: its rarity and its group ("rare infantry"). */
         static String kind(String troop){var t=ArmyCards.spec(troop);return t.rarity()+" "+RecruitView.group(t.group()).toLowerCase(Locale.ROOT);}
         /** The first troop of a House's roll the commander does not own that a Buy can take (a Common or a Rare), or null. */
@@ -3195,12 +3197,12 @@ public final class Phase1Checks implements ClientModInitializer {
             boolean roll=rowTroops().equals(want)&&inks&&marks;
             // live portraits: 40 px on the roll at 2 px per model pixel, 160 px in the letter at 8, each over its renderer's scale
             boolean portraits=true;StringBuilder ptWhy=new StringBuilder();
-            for(int i=0;i<want.size();i++){var p=portrait("row-"+i);var d=p==null?null:p.drawn();portraits&=d!=null&&p.troop().equals(want.get(i))&&d.window()==40&&d.x()==84&&d.top()==148+56*i&&d.feet()==148+56*i+UiMath.portraitFeet(40,0)&&d.size()==size(want.get(i),40)&&d.silhouette()==!have.contains(want.get(i))&&d.left()==64;
+            for(int i=0;i<want.size();i++){var p=portrait("row-"+i);var d=p==null?null:p.drawn();portraits&=d!=null&&p.troop().equals(want.get(i))&&d.window()==40&&d.x()==64+Portrait.fit(WarTableRecruit.model(want.get(i)),40).dx()&&d.top()==148+56*i&&d.feet()==148+56*i+feet(want.get(i),40)&&d.size()==size(want.get(i),40)&&d.silhouette()==!have.contains(want.get(i))&&d.left()==64;
                 ptWhy.append(d==null?"none":d.size()+"@"+d.x()+","+d.feet()).append(" ");}
             // the letter: the first unowned troop, its kind and price, and its action tag with the words under it
             String sid=layoutSel;var sp=ArmyCards.spec(sid);var act=RecruitView.action(sid);var lp=portrait("letter");var ld=lp==null?null:lp.drawn();
             boolean letter=sp!=null&&act!=null&&sid.equals(text("letter-troop"))&&name(sid).equals(text("letter-name"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("letter-name"))
-                &&ld!=null&&ld.window()==160&&ld.x()==480&&ld.top()==164&&ld.feet()==164+UiMath.portraitFeet(160,0)&&ld.size()==size(sid,160)&&!ld.silhouette()
+                &&ld!=null&&ld.window()==160&&ld.x()==400+Portrait.fit(WarTableRecruit.model(sid),160).dx()&&ld.top()==164&&ld.feet()==164+feet(sid,160)&&ld.size()==size(sid,160)&&!ld.silhouette()
                 &&Arrays.equals(rect("window"),new int[]{400,164,160,160})&&kind(sid).equals(text("letter-line1"))&&Integer.valueOf(DarkUi.SEPIA).equals(color("letter-line1"))
                 &&("Deploys in battle for "+sp.cost()+" gold").equals(text("letter-line2"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("letter-line2"))&&!WarTableRecruit.rects().containsKey("broken")
                 &&Arrays.equals(box(c,"choose"),CHOOSE)&&Arrays.equals(rect("choose"),CHOOSE)&&act.label().equals(text("choose"))&&("buy:"+sid).equals(text("choose-command"))&&act.command().equals("buy:"+sid)&&act.active()

@@ -44,7 +44,20 @@ final class ArmyCards {
     static MobEntity portrait(Spec.TroopsRow spec,int weaponTier,int armourTier){
         var c=MinecraftClient.getInstance();if(world!=c.world){portraits.clear();world=c.world;}if(c.world==null)return null;
         int colour=troopColour();
-        return portraits.computeIfAbsent(spec.id()+"/"+weaponTier+"/"+armourTier+"/"+colour,key->{
+        return portraits.computeIfAbsent(spec.id()+"/"+weaponTier+"/"+armourTier+"/"+colour,key->make(spec,weaponTier,armourTier,colour,key));
+    }
+    /** What made each portrait mob: its key (troop/weapon tier/armour tier/colour) and the arguments, so Portrait can make a frame its own copy. Weak keys by identity. */
+    private static final Map<MobEntity,Object[]> MADE=new com.google.common.collect.MapMaker().weakKeys().makeMap();
+    /** The cache key of a portrait mob this class made, or null for any other entity. */
+    static String keyOf(MobEntity e){Object[] a=MADE.get(e);return a==null?null:(String)a[4];}
+    /** A fresh portrait mob dressed as e (a frame's own copy, Portrait.twin), or null when e is no portrait mob. Not cached here. */
+    static MobEntity copy(MobEntity e){
+        Object[] a=MADE.get(e);var c=MinecraftClient.getInstance();if(a==null||c.world==null)return null;
+        return make((Spec.TroopsRow)a[0],(int)a[1],(int)a[2],(int)a[3],(String)a[4]);
+    }
+    private static MobEntity make(Spec.TroopsRow spec,int weaponTier,int armourTier,int colour,String key){
+        var c=MinecraftClient.getInstance();
+        {
             // The sheet's entity type (ArmyMobs.portrait): a vanilla mob, so a card draws a House's beasts and crews before the House can take the field.
             MobEntity e=ArmyMobs.portrait(spec.entity(),c.world);
             e.setCustomName(Text.literal(ArmyMobs.levelName(spec,1)));e.setCustomNameVisible(false);e.setPersistent();e.setSilent(true);
@@ -52,8 +65,8 @@ final class ArmyCards {
             e.equipStack(EquipmentSlot.MAINHAND,new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))));e.equipStack(EquipmentSlot.HEAD,new ItemStack(Registries.ITEM.get(new Identifier(spec.helmet()))));
             var chest=new ItemStack(Registries.ITEM.get(new Identifier(spec.chest())));if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,colour);e.equipStack(EquipmentSlot.CHEST,chest);
             if(ArmyMobs.tags(spec).contains("shield"))e.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(spec,GravesAndGlory.Battle.PORTRAIT_FIELD));
-            TroopModels.dress(e,"company");return e;
-        });
+            TroopModels.dress(e,"company");MADE.put(e,new Object[]{spec,weaponTier,armourTier,colour,key});return e;
+        }
     }
     // ---- the troop card's counter lines (Task 12) ----
     /** The counter rows a troop's card shows (CounterMath.cardRows on its counter tags, ArmyMobs.tags, and its attack kind), in sheet order. */

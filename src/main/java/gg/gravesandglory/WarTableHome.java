@@ -424,7 +424,7 @@ final class WarTableHome {
             LivingEntity e = m.me() ? c.player : null;
             if (!m.me() && c.world != null) for (var p : c.world.getPlayers()) if (p.getGameProfile().getName().equals(m.name())) e = p;
             if (e != null) {
-                Portrait.draw(g, e, x + 4, y + 4, 40, 0);
+                Portrait.draw(g, e, x + 4, y + 4, 40);
                 var d = Portrait.last(); // what reached drawEntity
                 portraitsDrawn.add(new PortraitDraw(m.name(), d.x(), d.feet(), d.size(), true));
             } else {

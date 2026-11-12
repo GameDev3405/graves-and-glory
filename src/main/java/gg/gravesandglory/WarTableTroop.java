@@ -247,7 +247,7 @@ final class WarTableTroop {
         UiTex.draw(g, "table/frame-back-160", x + 72, y + 40);
         var e = WarTableRecruit.model(troop);
         if (e != null) {
-            Portrait.draw(g, e, x + 72, y + 40, 160, 0);
+            Portrait.draw(g, e, x + 72, y + 40, 160);
             var d = Portrait.last();
             portraitsDrawn.add(new PortraitDraw(troop, "letter", d));
             rectsDrawn.put("window", new int[]{d.left(), d.top(), d.window(), d.window()});
