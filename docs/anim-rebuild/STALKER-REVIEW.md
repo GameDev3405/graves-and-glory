@@ -80,3 +80,22 @@ Kort set the bow family's loose at tick 22 (it was 16), same damage per arrow. T
 - **Tests.** `python tools/verify.py fast`: PASS. The in-game reel was not re-run.
 - **Footage.** `C:/Users/kortt/Melty/status/booth-videos/stalker_bow22_direct.mp4` and `stalker_bow22_volley.mp4`: the new shot beside the 16-tick one, tick by tick.
 - **Review (Sonnet high, sheets and the exported numbers, one round): ship with minors.** Nothing but timing differs; the loose and what follows match the 16-tick clip to the decimal; no stall in the slower lead-in. Minors, none changed: the tremble sits at a different phase in the last ticks of the hold (it keeps its own period by design), the first tick after `full` is a little softer than before (the stretched ease-out), and the lead foot's 10 degree roll in a quarter tick at the plant was already in the chosen clip. Not checked: the clips in motion in game, the seeded hold on top of the 5.5-tick hold.
+
+## Replayed onto the reviewed bow lane (2026-11-12, branch anim/stalker-on-bow)
+
+The stalker as chosen (642f0027) replayed onto `anim/review-bow` at 8b2682cb so the two can land together.
+
+- **Conflicts.** `Phase1Checks.java` and `tools/release_config.py`: the bow lane already registers `stalker-reel` and lists
+  `StalkerReelChecks` (it holds an earlier copy of the own-builder commit) and adds `KnightOverheadReelChecks` and the `Ai*`
+  leak-guard entries; the bow lane's side was kept, which contains both intents. The second commit applied cleanly.
+- **Rebuild.** `python art/anim/stalker/build_stalker_anims.py`, then `python art/anim/common/export.py stalker`. The bow troops'
+  `bow_fix_layer.py` + `export.py` re-run for archer, longbow, bonebow and wm_hunter: no file changed.
+- **Clips against 642f0027.** 53 of 57 identical. The four deaths differ in `left_hand` rotation only (positions 0.00 px; largest
+  key delta 43 to 94 deg, Euler form of the bow's rest turn). Cause: af51daad (rig export mirrors a weapon cube's turn into the
+  geo) changes the bow cubes in `out/preview/*.geo.json`, which the flat-bow search (`rest_hand` over `K.body_corners`) reads.
+  Rebuilt against the 642f0027 preview geo, all four deaths are identical to 642f0027. Renders at ticks 8/14/20: the same falls;
+  in death left the bow lies along the ground at tick 14 instead of hanging below the body.
+- **Scorecard.** 18 of 35 clips miss (642f0027: 19); the same misses except death back is gone, death left weapon speed
+  121 -> 100, and hold / charge pen_weapon read 1.74 / 3.21 (were 1.62 / 2.94) on the corrected bow cubes (clips identical).
+- **Focus check.** 101 FAIL, 72 WARN, the same as the 642f0027 clips scored on today's geo; only death WARN values move.
+- **Timing.** Every clip length and marker identical to 642f0027.
