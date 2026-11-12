@@ -16,7 +16,7 @@
  },
  "edge_sign": {
   "tc_raider": -1.0,
-  "ic_hearthguard": 1.0,
+  "ic_hearthguard": -1.0,
   "ic_breaker": -1.0
  },
  "metrics": {

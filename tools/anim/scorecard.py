@@ -119,8 +119,11 @@ GLOBAL_METRICS = ("edge_lead", "impact_tick")   # attacks only: one limit
 # Single-edged weapons: the side of the blade bone's local x the edge is on (knight builder EDGE_SIGN). ic_breaker's
 # greataxe is not in the builder's table (art/anim/greataxe aims the bit by hand); its geo puts the bit, the wide head
 # cubes, on the weapon bone's local -x of the haft (x -0.12..0.31 against the haft at 0.31..0.44 blocks) and only a
-# small back spike on +x, so its edge is -1. Every other weapon is double-edged and either edge may lead.
-EDGE_SIGN = {"tc_raider": -1.0, "ic_hearthguard": 1.0, "ic_breaker": -1.0}
+# small back spike on +x, so its edge is -1. ic_hearthguard's bearded axe is the same way round (bit cubes at file
+# x +1..+6 of the haft, which is the bone's local -x; back spike on +x) and art/anim/axe aims it with -1; the +1 here
+# until 2026-11-12 was copied from the knight builder's table and failed every clip that led with the real bit.
+# Every other weapon is double-edged and either edge may lead.
+EDGE_SIGN = {"tc_raider": -1.0, "ic_hearthguard": -1.0, "ic_breaker": -1.0}
 # Family allowances (design.json troops[].family). The knight is sword_shield: its numbers are that family's limits.
 # Another family's limit is widened only where its fighting style needs the motion; each entry says why. Values are
 # limits in the metric's unit, per clip kind ("all" = every kind); they widen, never narrow.
