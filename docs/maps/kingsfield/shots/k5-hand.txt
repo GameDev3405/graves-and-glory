@@ -1,0 +1,12 @@
+# In-game look at K5 the Hand on a stone pad high above the world (workshop check, not the map).
+note K5 hand workshop shots
+mc time set 3000
+mc execute as @a at @s run forceload add -64 -64 63 63
+mc execute as @a at @s run fill -50 199 -50 50 199 50 minecraft:stone
+mc execute as @a at @s run place template ggmaps:kf/k5_hand -22 199 -24
+wait 40
+shot k5-hand-top 0 250 4 0 200 0
+shot k5-hand-rim-south -4 216 52 0 200 0
+shot k5-hand-rim-east 52 214 2 0 200 0
+shot k5-hand-soldier-south 0 201.2 32 0 202 0
+shot k5-hand-soldier-palm 0 201.2 8 0 202 -20

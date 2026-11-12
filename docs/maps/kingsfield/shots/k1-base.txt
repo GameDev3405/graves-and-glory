@@ -1,0 +1,13 @@
+# In-game look at K1 the base camp (Dawn) on a grass pad high above the world (workshop check, not the map).
+note K1 base camp workshop shots
+mc time set 3000
+mc execute as @a at @s run forceload add -64 -64 127 127
+mc execute as @a at @s run fill -30 199 -30 100 199 110 minecraft:grass_block
+mc execute as @a at @s run place template ggmaps:kf/k1_base 0 199 0
+wait 40
+shot k1-base-commander 36 270 96 36 200 44
+shot k1-base-front 112 222 40 60 203 40
+shot k1-base-se 104 240 112 36 200 40
+shot k1-base-lane 66 201.7 40 12 204 40
+shot k1-base-dais 19 203.7 40 71 204 40
+shot k1-base-barracks 36 201.7 26 30 204 10

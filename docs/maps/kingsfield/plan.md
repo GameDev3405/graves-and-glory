@@ -30,7 +30,7 @@ Changes from the signed sheet, forced by the shrink (tell Kort):
 
 - Domination: the five points above.
 - Escort "Tithe Run" (about 375): start (-98, 0) > west ramp > stop 1 the Hand (0, 0) at 95 > north ramp > stop 2 Tithe Barn (0, -114) at 210 > stop 3 beacon crossroads (95, -100) at 305 > end East Grange north door (128, -30).
-- Siege (East Grange): yard (84, 8) on the rim road; gate = grange west gate (100, 0); keep = the hall (142, 8). East gate and side doors walled for the round. Attackers' camp at the pit's east ramp.
+- Siege (East Grange): yard (84, 8) on the rim road; gate = grange west gate (100, 0); keep = the hall in the north-east corner of the yard (144, -20; it was moved out of the capture ring in the workshop). East gate and side doors walled for the round. Attackers' camp at the pit's east ramp.
 - Survival: shrine = the Hand (0, 0); rise sites at the ramp heads (0, -62), (0, 62), (-78, 14), (78, -14).
 - Neutral holds (Kort 2026-11-12: "little locations/strong holds of separate npc/bots that are neutral to both sides which you can hire, fight/steal from, or stay neutral with"): two plots, about 24 x 24, at (-70, -96) and (70, 96). They replace supply houses. The mechanic is the coordinator's lane; the building is piece S9.
 
@@ -63,7 +63,7 @@ Key pieces (Kort sees them before paste):
 |---|---|---|---|
 | K1 | Base camp (Dawn; Dusk is the mirror in purple) | 72 x 80, wall 5, gate tower 12 | Walled muster yard, open front 24 wide, command dais, barracks, stores, stable. Muster lane kept empty |
 | K2 | Grange (West; East is the mirror) | 56 x 56, wall 5, gatehouses 9 | Two gatehouses, two side doors, wall walk reached by straight stairs. Inside: point ring in the yard, hall (Siege keep) 18 x 12, granary, cart shed, well |
-| K3 | Tithe Barn | 34 x 16, eaves 6, ridge 13 | Wide and low, great doors both long sides so the wagon passes through. Point B on its forecourt |
+| K3 | Tithe Barn | 34 x 16 plus a 3-deep wagon porch on each long side (34 x 22 over all), eaves 6, ridge 14 | Wide and low, great doors both long sides so the wagon passes through. Point B on its forecourt |
 | K4 | Windmill | base 13 x 13, cap at 22, sails 21 across | Tall post mill on a stone base. Point D on its forecourt. Same cover as the barn: a 34 x 16 yard wall |
 | K5 | The Hand | 37 x 48 box (x by z), 4 high | Palm up, wrist south, fingers north toward the north ramp; the King's Road crosses the palm, which is flush with the pit floor. Kort picked "B: curled" (2026-11-12): fingers and thumb curl up, tips 4 high; heel 1 high. Cover only on the north side of the point. Little finger snapped. Piece `pieces/k5_hand.nbt` (run `gen/hand.py OUT curled`). Point C pad sits in the palm. Generator `gen/hand.py` |
 | K6 | Quarry crane | 9 x 9 base, 17 high, jib 12 out over the pit | Treadwheel crane on the north rim, east of the ramp |
