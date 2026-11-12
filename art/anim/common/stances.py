@@ -480,6 +480,12 @@ def fallback_fit(tr, base):
     base[hand][0] = from_mat((to_mat(base[arm][0]) @ to_mat(base[fore][0])).T @ world)
 
 
+# per troop: the backward walk's (amplitude about the mean, extra hips drop px, hips yaw deg toward the shield side). The
+# hearthguard (Kort's rule 6, 2026-11-10) gives ground short-stepped and crouched, shield side leading; every other troop
+# keeps (0.7, 0, 0).
+FALLBACK_LEGS = {"ic_hearthguard": (0.55, -0.6, 7.0)}
+
+
 def build_fallback(tr):
     """Upper: a guard (shield up, a ward, the weapon low across the body for ranged, the focus raised for casters) bobbing with the
     8 tick step. Legs: walk_legs backwards at 0.7 of its amplitude, same cycle."""
@@ -530,6 +536,7 @@ def build_fallback(tr):
     up_clip = bake(frames_of(N, up, loop=True), N, True)
 
     # legs: walk_legs reversed in time, amplitude 0.7 about its mean
+    amp, drop, yaw = FALLBACK_LEGS.get(tr.tid, (0.7, 0.0, 0.0))
     rots = {}
     for b in walk["bones"]:
         pr = {"rotation": [], "position": []}
@@ -545,13 +552,14 @@ def build_fallback(tr):
         for (b, chan), (ts, vs, mean) in rots.items():
             tt = (N - t) / TPS % L if t > 0 else 0.0
             v = np.array([np.interp(tt, ts, vs[:, i]) for i in range(3)])
-            v = mean + 0.7 * (v - mean)
+            v = mean + amp * (v - mean)
             r, q = out.get(b, (None, None))
             out[b] = (v, q) if chan == "rotation" else (r, v)
         for b, (r, q) in list(out.items()):
             if b == "hips":
-                q = (q if q is not None else np.zeros(3)) + np.array([0, -0.5, 0.0])
-                out[b] = (r if r is not None else np.zeros(3), q)
+                q = (q if q is not None else np.zeros(3)) + np.array([0, -0.5 + drop if drop else -0.5, 0.0])
+                r = r if r is not None else np.zeros(3)
+                out[b] = (r + np.array([0.0, yaw, 0.0]) if yaw else r, q)
             if r is None:
                 out[b] = (np.zeros(3), q)
         return out

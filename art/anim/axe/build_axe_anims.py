@@ -127,6 +127,41 @@ K.ROLL_LEFT = K._sweep("left", {14: ((-120, 0, -30), -60, (90, 0, 0)), 15: ((-15
 EDGE_PACE = {"overhead_chop": (15.0, 6.0)}
 
 
+# ------------------------------------------------------------------------------------------------
+# Stances (Kort's rule 6, 2026-11-10: every clip suits this unit and its weapon). The knight's stance set held a sword's
+# guard: the blade forward and angled up past the rim. The hearthguard's are an axe-bearer's, built on the same skey()
+# (blade = the haft's world pitch, + head down; the bit leads where the head pitches down, troop_rig.py's rest):
+#   ready      the axe cocked at the shoulder, haft near upright, the bit to the foe, ready to chop; the round shield up to
+#              the beard, over a lower, wider dwarf's footing.
+#   brace      sunk behind the shield, the axe low past its right rim with the head dropped forward: the hook set to drag a
+#              shield or a leg (hook_hew's pull).
+#   wall       chest down behind the shield, the axe raised over the rim, poised to chop down over the front rank.
+#   shield_up  the shield to the eyes, the axe drawn back high behind it, cocked to answer.
+#   ward       backing off, the axe low and across, the bit hooked at the foe.
+# The *_up forms raise the shield fist as the knight's do. The ready legs, the brace and the wall footing are set lower and
+# wider than the knight's (a short, broad troop under a heavy shield).
+# ------------------------------------------------------------------------------------------------
+if TROOP == "ic_hearthguard":
+    skey = K.skey
+    K.STANCE_UPPER.update({
+        "ready": skey((6, 18, 0), (-58, 0, 26), -70, -82, 16, (4.8, 19.8, 5.6), hips=(0, 8, 0)),
+        "brace": skey((14, 18, 0), (-30, 0, 30), -40, 20, 6, (5.5, 18.5, 6.0), hips=(2, 12, 0), tilt=6),
+        "brace_up": skey((15, 20, 0), (-32, 0, 30), -42, 18, 6, (5.5, 22.5, 6.0), hips=(2, 12, 0), tilt=2),
+        "wall": skey((22, 16, 0), (-100, 0, 26), -50, -70, 14, (6.0, 17.0, 6.0), hips=(4, 16, 0), tilt=9),
+        "wall_up": skey((24, 16, 0), (-108, 0, 26), -44, -66, 14, (6.0, 21.0, 6.0), hips=(4, 16, 0), tilt=4),
+        "shield_up": skey((6, 18, 0), (-50, 0, 40), -90, -84, 30, (5.5, 22.0, 6.0)),
+        "ward": skey((-6, 10, 0), (-26, 0, 26), -56, 30, 14, (5.0, 18.0, 5.6), tilt=-6),
+    })
+    K.STANCE_LEGS.update({
+        "ready": {"hips": ((0.0, 8.0, 0.0), (0.0, -1.5, 0.2)), "right": (-3.6, 2.0, 2.4), "left": (3.4, 2.0, -2.4),
+                  "yaw": (-14.0, 9.0)},
+        "brace": {"hips": ((2.0, 12.0, 0.0), (0.0, -2.0, 0.4)), "right": (-3.4, 2.0, 3.0), "left": (3.2, 2.0, -3.0),
+                  "yaw": (-18.0, 10.0)},
+        "wall": {"hips": ((4.0, 16.0, 0.0), (0.0, -3.9, 0.7)), "right": (-3.6, 2.0, 4.4), "left": (3.4, 2.0, -4.0),
+                 "yaw": (-22.0, 12.0)},
+    })
+
+
 def attack_clips():
     n = ATTACK_TICKS * SUB
     out = {}
