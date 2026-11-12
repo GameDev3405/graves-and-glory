@@ -28,6 +28,8 @@ Distances: base to causeway 109; base to A or C along the road about 235; A to B
 
 Water guard (Kort 2026-11-12: "add a fence ... so unit and players cant just fall in and get stuck in the water"): every water edge is closed. Stone parapet 1 high (stone_brick_wall) round the whole island, round the pool, along both river banks in town and on bridges and causeways; post-and-rail fence along the river banks out of town. No open river stairs: stairs end at a gated landing above the water. The whole-map check walks the water edge and fails on any gap.
 
+Changes agreed while building (Kort 2026-11-12): base gates face the field (east wall), one per bank, 8 wide, between twin towers; the bank roads start at (-180, -26) and (-180, 25). Base yards get tents and drill gear along the walls. Watermill has a closed wheel pit (no mill race). Market hall ridge y 80, gatehouse ridge y 77, shrine tower top y 84.
+
 ## 2. Mode sites
 
 - Domination: A, B, C above.

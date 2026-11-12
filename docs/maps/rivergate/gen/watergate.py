@@ -153,6 +153,17 @@ def build(b, colour='cyan'):
             for y in range(G + 1, G + 7): b.set(x, y, z, 'spruce_fence' if y > G + 1 else 'stone_bricks')
             b.set(x, G + 7, z, '%s_wool' % colour); b.set(x, G + 8, z, '%s_wool' % colour) if False else None
             b.set(x, G + 7, z, '%s_banner[rotation=4]' % colour)
+    # tents in a row on each bank, west of the court; targets on the drill posts; spear racks by the gates
+    for tx in (-246, -239, -232):
+        for dx in range(5):
+            for dz, y in ((0, 1), (4, 1), (1, 2), (3, 2), (2, 3)):
+                M(tx + dx, G + y, -24 + dz, ('%s_wool' % colour) if dz == 2 or dx in (0, 4) and y == 1 else 'white_wool')
+        for dx in (-1, 5):
+            for y in (1, 2, 3): M(tx + dx, G + y, -22, 'spruce_fence')
+        M(tx + 3, G + 1, -22, 'hay_block[axis=x]'); M(tx + 2, G + 1, -23, '%s_carpet' % colour); M(tx + 1, G + 1, -22, 'white_carpet')
+    for x in (-222, -218, -214): b.set(x, G + 2, -34, 'target')
+    for x in (-204, -203, -202, -201): M(x, G + 1, -34, 'spruce_fence' if x in (-204, -201) else 'spruce_fence_gate[facing=north,open=false]')
+    M(-205, G + 1, -34, 'barrel[facing=up]'); M(-200, G + 1, -34, 'fletching_table')
     for z in (-14, 13):                                    # watch fires
         b.set(-216, G + 1, z, 'campfire[lit=true]')
 
