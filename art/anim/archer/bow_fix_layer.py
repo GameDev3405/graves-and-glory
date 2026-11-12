@@ -54,10 +54,11 @@ def window(t, w):
 # knees are bent. Gear (A2, B6, L6, W3): soft_motion on the four shared reaction clips. Head (A3, L4): the knockback whips the head
 # forward into the string-side quiver at tick 3; it pitches less there.
 def _common(lift_pulled, lift_stun, lift_kb, head_kb=(8.0, 0.0, 0.0), kb_bow_arm=(0.0, 0.0, 0.0), kb_quiver=None,
-            kb_tune=None, out_tune=None, stun_tune=None, jolt=(), stun_jolt=6.0):
+            kb_tune=None, out_tune=None, stun_tune=None, jolt=(), stun_jolt=6.0, out_jolt=()):
     """lift_*: px the hips come up (lift_stun: (snap, dazed loop)); head_kb, kb_bow_arm: degrees added in the knockback;
     kb_quiver: (bone, degrees) added to a quiver after its swing; *_tune: soft_motion overrides per piece; jolt: the hip gear
-    the stun's snap shakes (the legs pieces the shake-off plays over: the shake-off clip may not key them itself)."""
+    the stun's snap shakes (the legs pieces the shake-off plays over: the shake-off clip may not key them itself); out_jolt:
+    (piece, degrees) the shake-off's shrug throws, on top of their swing."""
     ops = [
         ("pos", "hit_pulled_legs", "hips", (0.0, lift_pulled, 0.0), (0.0, 0.75, 10.5, 13.5)),
         ("pos", "stun_legs", "hips", (0.0, lift_stun[0], 0.0), (0.0, 0.0, 2.5, 4.0)),      # the snap
@@ -73,6 +74,7 @@ def _common(lift_pulled, lift_stun, lift_kb, head_kb=(8.0, 0.0, 0.0), kb_bow_arm
     if kb_quiver:      # after the swing: the quiver kept off the stumbling leg
         ops.append(("rot", "hit_knockback", kb_quiver[0], kb_quiver[1], (0.5, 2.5, 11.0, 15.0)))
     ops += [("rot", "stun_legs", b, (stun_jolt, 0.0, 0.0), (0.25, 1.25, 2.5, 4.0)) for b in jolt]
+    ops += [("rot", "stun_out_upper", b, d, (0.25, 1.5, 2.5, 5.0)) for b, d in out_jolt]
     return ops
 
 
@@ -83,11 +85,24 @@ def _run_skirt(side, deg, w=(0.5, 1.5, 2.5, 3.5)):
 
 
 _SKIRT_OUT = {"right_skirt_t1": {"lim": ((0.0, 6.0), (0.0, 0.0), (0.0, 10.0))}}   # swings back and out, never into the jerkin skirt
+CHARGE_OUT = 24.0     # wm_hunter charge_run_upper: the string arm hangs out from the jerkin all through the stride
 FIXES = {
     "archer": _run_skirt("left", 9.0) + _run_skirt("right", 9.0, (4.0, 5.0, 6.0, 7.0))
     + _common(1.9, (1.3, 0.6), 1.7, kb_bow_arm=(0.0, 0.0, -9.0), kb_quiver=("quiver", (0.0, 0.0, -8.0)),
               kb_tune={"quiver": {"plumb": 0.0, "max": 6.0}}, out_tune=_SKIRT_OUT, stun_tune=_SKIRT_OUT,
               jolt=[f"{s}_skirt_t{n}" for s in ("left", "right") for n in (1, 2, 3)] + ["pouch", "signal_horn"]),
+    # W1: the rally call. The string arm went up past the snout and the bracer hid the face (2.22 into the snout): the arm opens
+    # out and a little lower, the forearm unfolds, so the fist cups beside the snout, and the head lifts and turns off the arm,
+    # calling over the bow shoulder. W4: the charge run's string forearm swings into the bulky jerkin at the stride (2.50); the
+    # arm swings out there.
+    "wm_hunter": [("rot", "stance_rally_upper", "right_arm", (10.0, 0.0, 20.0), (3.0, 6.0, 13.0, 16.0)),
+                  ("rot", "stance_rally_upper", "right_forearm", (15.0, 0.0, 0.0), (3.0, 6.0, 13.0, 16.0)),
+                  ("rot", "stance_rally_upper", "head", (-10.0, -12.0, 0.0), (3.0, 6.0, 13.0, 16.0)),
+                  ("rot", "charge_run_upper", "right_arm", (0.0, 0.0, CHARGE_OUT), (0.0, 0.0, 7.0, 7.0)),
+                  # death_forward: the bow arm ended raised 108 deg behind the back, sticking up off the corpse; it lies lower
+                  ("rot", "death_forward", "left_arm", (-25.0, 0.0, 0.0), (14.0, 17.0, 20.0, 20.0))]
+    + _common(2.9, (1.2, 0.6), 2.0, head_kb=(0.0, 0.0, 0.0),
+                         out_jolt=[("cloak", (5.0, 0.0, 0.0)), ("pauldron", (5.0, 0.0, 4.0)), ("tusk_necklace", (5.0, 0.0, 0.0))]),
 }
 
 

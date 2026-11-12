@@ -61,3 +61,17 @@ Bow-family batch review on `anim/review-bow`. Timing unchanged: `ATTACK_TICKS` 3
 - **Remaining FAIL rows.** `stance_rally_upper` right bracer into the snout 2.22 at t6.5 (rally is not a bow clip of this batch; second fix round not spent on it). `death_forward` shoulder 108 at t20 (pre-existing). Common modules: `hit_pulled`, `stun_upper`, `stun_out_upper`, `hit_knockback` (hoof under the ground, still gear), `charge_run_upper` (forearm in the jerkin 2.50).
 - **Proposed exemptions.** None for the bow clips. The common-module rows belong to `reactions.py` / `charge.py`.
 - **Tests.** Scorecard exit 0 (35 clips, 0 fail) after the nock-grip fix (it failed `pen_limb` on both attacks before it). Unit tests OK (see ARCHER-REVIEW batch section). Booth config valid.
+
+## Batch review fix round 1 (2026-11-12)
+
+Review `work/reviewer/BOW-sonnet-review.md` (FIX, 7/10). Fixes in the bow family's late layer `art/anim/archer/bow_fix_layer.py` (after
+`reactions.py` / `charge.py`, before `export.py`; fingerprinted in `out/wm_hunter.fixlayer.json`). Shared modules untouched; timing unchanged.
+
+- **Focus check** FAIL rows 11 -> 0 (clips with a FAIL 7 -> 0). Scorecard exit 0.
+- **W1 rally** bracer into snout 2.22 -> 1.60 (limb 1.14 WARN): the string arm opens 20 deg out and 10 deg lower, the forearm unfolds 15,
+  the head lifts 10 and turns 12 off the arm (ticks 6-13): the fist cups beside the snout, calling over the bow shoulder.
+- **W2 floor**: hips lift 2.9 px on `hit_pulled_legs` (2.42 -> 0.04), 1.2 + 0.6 px on `stun_legs` (1.73 -> 0.43), 2.0 px on the knockback (1.82 -> 0.83 WARN).
+- **W3 still gear**: `soft_motion` on pulled, knockback, stun (loop closed) and shake-off; the shake-off's shrug throws cloak, pauldron and tusk necklace.
+- **W4 charge run** forearm into jerkin 2.50 -> 1.56 WARN: the string arm hangs 24 deg further out through the stride.
+- **death_forward** shoulder 108 -> pass: the bow arm lies 25 deg lower at the end (ticks 14-20) instead of standing up off the back; the bow still lies on the ground (floor 0.0).
+- Changed clips: `stance_rally_upper`, `charge_run_upper`, `death_forward`, `hit_pulled`(+legs), `hit_knockback`(+legs), `stun_upper`, `stun_legs`, `stun_out_upper`; every other clip byte-identical to ae138367.
