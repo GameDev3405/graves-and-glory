@@ -93,31 +93,46 @@ def _gap(troop, fr, involve):
     return best
 
 
+def _limb(troop, fr, involve=None):
+    """focus_check limb_in_body: the deepest forearm or hand inside the torso, hips, head or the other arm's upper arm and
+    forearm (`involve`, if given, a side: "left" or "right")."""
+    P = _ctx(troop)[1]
+    best = (0.0, None)
+    for side in ((involve,) if involve in ("left", "right") else ("right", "left")):
+        o = "left" if side == "right" else "right"
+        d, pair = fc._depth(fr, P, P.idx([side + "_forearm", side + "_hand"]),
+                            P.idx(["torso", "hips", "head", o + "_arm", o + "_forearm"]))
+        if d > best[0]:
+            best = (d, tuple(_ctx(troop)[2][i] for i in pair) if pair else None)
+    return best
+
+
 def _units(chan, v):
     v = np.asarray(v, float)
     return np.array([math.radians(-v[0]), math.radians(-v[1]), math.radians(v[2])]) if chan == "rotation" else v
 
 
-def measure(doc, troop, clip, bone, chan="rotation", vec=None, idx=None, involve=None):
+def measure(doc, troop, clip, bone, chan="rotation", vec=None, idx=None, involve=None, metric="armour"):
     """{sample: (px, pair)} of the deepest pair touching the bone's subtree (or `involve`), with `vec` (JSON units)
     added to the bone's channel."""
     rig = _ctx(troop)[0]
     scene, ts, top = _scene(doc, troop, clip)
-    inv = involve or _under(rig, bone)
+    inv = involve if involve and metric != "limb" else _under(rig, bone)
     if vec is not None:
         orig, add = scene._pose, _units(chan, vec)
 
         def pose(t):
             p = orig(t)
             d = p.setdefault(bone, {})
-            d[chan] = np.asarray(d.get(chan, np.zeros(3)), float) + add
+            d[chan] = np.asarray(d.get(chan, np.ones(3) if chan == "scale" else np.zeros(3)), float) + add
             return p
         scene._pose = pose
-    return {i: _gap(troop, scene.evaluate(ts[i]), inv) for i in (idx if idx is not None else range(len(ts)))}, ts, top
+    gap = (lambda fr: _limb(troop, fr, involve)) if metric == "limb" else (lambda fr: _gap(troop, fr, inv))
+    return {i: gap(scene.evaluate(ts[i])) for i in (idx if idx is not None else range(len(ts)))}, ts, top
 
 
-def _need(doc, troop, clip, bone, chan, axis, signs, step, reach, target, const, involve):
-    g0, ts, top = measure(doc, troop, clip, bone, chan, involve=involve)
+def _need(doc, troop, clip, bone, chan, axis, signs, step, reach, target, const, involve, metric="armour"):
+    g0, ts, top = measure(doc, troop, clip, bone, chan, involve=involve, metric=metric)
     bad = [i for i, g in g0.items() if g[0] > target]
     W = np.zeros(len(ts))
     if not bad:
@@ -128,7 +143,8 @@ def _need(doc, troop, clip, bone, chan, axis, signs, step, reach, target, const,
         for s in signs:
             vec = np.zeros(3)
             vec[axis] = s * k * step
-            gs = measure(doc, troop, clip, bone, chan, vec, idx=bad if const else sorted(left), involve=involve)[0]
+            gs = measure(doc, troop, clip, bone, chan, vec, idx=bad if const else sorted(left), involve=involve,
+                         metric=metric)[0]
             if const:
                 if max(g[0] for g in gs.values()) <= target:
                     W[:] = vec[axis]
@@ -168,27 +184,27 @@ def _write(clip, bone, chan, axis, W):
     frames = []
     for i in range(n + 1):
         v = STN.sample(clip, bone, chan, i / (SUBS * 20.0)) if bone in clip["bones"] else None
-        v = np.array(v if v is not None else np.zeros(3), float)
+        v = np.array(v if v is not None else (np.ones(3) if chan == "scale" else np.zeros(3)), float)
         v[axis] += W[i]
-        frames.append({bone: (v, None) if chan == "rotation" else (None, v)})
+        frames.append({bone: (v, None) if chan != "position" else (None, v)})
     ent = STN.bake(frames, n // SUBS, clip.get("loop", False))["bones"][bone]
-    clip["bones"].setdefault(bone, {})[chan] = ent[chan]
+    clip["bones"].setdefault(bone, {})[chan] = ent["rotation" if chan == "scale" else chan]
 
 
 def fix(doc, troop, clip, bone, chan="rotation", axis=0, signs=(1, -1), step=2.0, reach=20.0, const=False,
-        target=TARGET, involve=None):
+        target=TARGET, involve=None, metric="armour"):
     """One fix (see the module doc). Returns (before px, after px) of the bone's deepest pair, or None if it did not need one."""
     A = doc["animations"]
     if clip not in A:
         return None
-    W, g0, ts, top = _need(doc, troop, clip, bone, chan, axis, signs, step, reach, target, const, involve)
+    W, g0, ts, top = _need(doc, troop, clip, bone, chan, axis, signs, step, reach, target, const, involve, metric)
     if not W.any():
         return None
     loop = top.loop == "loop"
     if not const:
         W = _ease(W, loop)
     _write(A[clip], bone, chan, axis, W)
-    g1 = measure(doc, troop, clip, bone, chan, involve=involve)[0]
+    g1 = measure(doc, troop, clip, bone, chan, involve=involve, metric=metric)[0]
     b0, b1 = max(g0.values(), key=lambda g: g[0]), max(g1.values(), key=lambda g: g[0])
     k = int(np.argmax(np.abs(W)))
     print("  focus %s: %s %s[%d] %+.1f%s (most at t%.2f): %.2f -> %.2f px (%s)" % (

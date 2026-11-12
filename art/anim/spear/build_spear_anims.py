@@ -2060,6 +2060,8 @@ STUN_ARM_LIFT = {"wm_tusk": (-16.0, 0.0, 8.0)}   # deg: the right arm up and out
 # (stances.py, charge.py, reactions.py), fixed in post_common; the rest in main(), before out/ is written.
 SHARED = {"stun_upper", "stun_legs", "stun_out_upper", "hit_knockback", "hit_knockback_legs", "hit_pulled", "hit_pulled_legs",
           "stance_rally_upper", "stance_fallback_upper", "stance_fallback_legs", "charge_run_upper"}
+_HITS = ["hit_light_front", "hit_light_back", "hit_light_right", "hit_light_left", "hit_medium_front", "hit_medium_back",
+         "hit_medium_right", "hit_medium_left"]
 FIXES = {
     "wm_tusk": [
         # the kilt swings off the lead shin guard in the run's stride (1.95) and the charge's (1.94)
@@ -2071,11 +2073,50 @@ FIXES = {
         # the stun's spear drop swings the hip skull into the right wrap
         dict(clips=["stun_upper"], bone="hip_skull", chan="rotation", axis=0),
     ],
+    "tc_tideguard": [
+        # The tabard is two flat panels, front and back, on the torso: a thigh that swings into one (1.94-2.32 in the stride,
+        # the sweep's load, the thrust's lunge, the stun's sag, the hits' steps) swings both, eased, the least either way.
+        dict(clips=["attack_low_sweep", "attack_high_thrust", "stun_upper", "hit_knockback", "hit_block", "hit_light_front",
+                    "hit_light_back", "hit_light_right", "hit_light_left", "hit_medium_front", "hit_medium_back"],
+             bone="tabard", chan="rotation", axis=0),
+        # where a swing alone is not enough the panels ride forward or back half a pixel to a pixel and a half
+        dict(clips=["attack_high_thrust", "hit_medium_right", "hit_medium_left", "hit_pulled"], bone="tabard",
+             chan="position", axis=2, step=0.5, reach=1.5),
+        # in the walk both legs meet the panels' lower edges: the tabard rides up half a pixel
+        dict(clips=["walk_upper"], bone="tabard", chan="position", axis=1, signs=(1,), step=0.5, reach=1.5),
+        # the knockback flings the left forearm across the breastplate (limb_in_body 2.51): the arm lifts forward from the
+        # shoulder and the forearm opens from the elbow, eased over the fling
+        dict(clips=["hit_knockback"], bone="left_arm", chan="rotation", axis=0, signs=(1,), step=3.0, reach=18.0,
+             metric="limb", involve="left"),
+        dict(clips=["hit_knockback"], bone="left_forearm", chan="rotation", axis=0, signs=(-1,), step=3.0, reach=18.0,
+             metric="limb", involve="left"),
+        # the left plate rides off the helm where the head ducks into it (stun, fall back, knockback, the hits: 2.0-2.56)
+        dict(clips=["stun_upper", "stance_fallback_upper", "hit_knockback", "hit_pulled"] + _HITS, bone="left_plate",
+             chan="position", axis=2, signs=(1,), step=0.5, reach=2.0),
+        # the shake-off's shrug brings the breastplate into the left pauldron (1.98): it sits up to a pixel out
+        dict(clips=["stun_out_upper"], bone="left_pauldron", chan="position", axis=2, signs=(1,), step=0.5, reach=1.5),
+        # what is left of the helm in a plate, the head turns off it, the least (the rally's lift: head into right plate 1.9)
+        dict(clips=["stun_upper", "stance_fallback_upper", "stance_rally_upper", "hit_pulled"] + _HITS, bone="head",
+             chan="rotation", axis=1),
+    ],
+    "tc_admiral": [
+        # the sash's end swings off the lead thigh in the stride, the run, the charge and the high thrust's lunge (1.93-2.30)
+        dict(clips=["walk_upper", "run_upper", "charge_run_upper", "attack_high_thrust"], bone="sash_end", chan="rotation",
+             axis=0),
+        # the coat tails off the greaves in the medium hit's step
+        dict(clips=["hit_medium_right"], bone="tails_l", chan="rotation", axis=0),
+        dict(clips=["hit_medium_left"], bone="tails_r", chan="rotation", axis=0),
+        # the head turns the least off the pauldrons where the body hunches into them
+        dict(clips=["stun_upper", "stance_fallback_upper", "hit_knockback", "hit_pulled", "charge_run_upper"] + _HITS,
+             bone="head", chan="rotation", axis=1),
+    ],
 }.get(TROOP, [])
 # (clip, bone, deg) a still hanging piece swings in an additive clip (focus_check secondary_life)
-SWINGS = {"wm_tusk": [("stun_out_upper", "kilt", 6.0), ("stun_out_upper", "trophy", 6.0)]}.get(TROOP, [])
+SWINGS = {"wm_tusk": [("stun_out_upper", "kilt", 6.0), ("stun_out_upper", "trophy", 6.0)],
+          # the light hit from the front held every hard piece still for 3.5 ticks (focus dead_hold): the head nods
+          "tc_admiral": [("hit_light_front", "head", 3.0)]}.get(TROOP, [])
 # (clip, bone) a spring piece that overshoots in one sample (focus_check pop), smoothed
-SMOOTHS = {}.get(TROOP, [])
+SMOOTHS = {"tc_admiral": [("hit_medium_back", "cape")]}.get(TROOP, [])   # the cape popped 14.3 deg in a sample
 
 
 def focus_extras(doc, only):
