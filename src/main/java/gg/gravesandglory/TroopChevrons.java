@@ -28,10 +28,10 @@ final class TroopChevrons {
     static final int TEX_W=17,TEX_H=7,STACK=4;
     static final float WIDTH=0.55f,LIFT=0.2f,GROW_FROM=16f;
     static final int FULL_BRIGHT=0xF000F0;
-    /** One chevron draw as observed (the harness reads it, through drawn): the chevrons drawn, the colour they were tinted (0xRRGGBB), the camera distance in blocks and the world time of the draw. */
-    record Mark(int chevrons,int colour,double distance,long time){}
+    /** One chevron draw as observed (the harness reads it, through drawn): the chevrons drawn, the colour they were tinted (0xRRGGBB), the camera distance in blocks, the world time of the draw and the height over the feet of the first chevron's bottom edge in blocks. */
+    record Mark(int chevrons,int colour,double distance,long time,double base){}
     /** The last draw of each entity, overwritten in place (no allocation a frame after an entity's first chevron). */
-    private static final class Last{int chevrons,colour;double distance;long time;}
+    private static final class Last{int chevrons,colour;double distance,base;long time;}
     private static final Map<Entity,Last> DRAWN=new MapMaker().weakKeys().makeMap();
     /**
      * Chevron billboards drawn since the client started (one per soldier per draw, whatever its count), and the nanoseconds every call of draw took, drawn or not (the harness reads them: the draw cost).
@@ -46,7 +46,7 @@ final class TroopChevrons {
     /** progression.chevronRange, in blocks. */
     static double range(){return Spec.PROGRESSION[0].chevronRange();}
     /** The last chevron draw of an entity (a copy), or null for one that never drew a chevron. */
-    static Mark drawn(Entity e){var k=DRAWN.get(e);return k==null?null:new Mark(k.chevrons,k.colour,k.distance,k.time);}
+    static Mark drawn(Entity e){var k=DRAWN.get(e);return k==null?null:new Mark(k.chevrons,k.colour,k.distance,k.time,k.base);}
     /** The colour of a side (a factions id), or -1 for none. */
     static int colour(String side){if(side!=null)for(var f:Spec.FACTIONS)if(f.id().equals(side))return f.color();return -1;}
 
@@ -68,8 +68,8 @@ final class TroopChevrons {
         double dist=Math.sqrt(d.getSquaredDistanceToCamera(e));if(dist>range())return;
         int c=colour(side);if(c<0)return;
         float red=(c>>16&255)/255f,green=(c>>8&255)/255f,blue=(c&255)/255f;
-        m.push();
-        m.translate(0,top(e,model)+LIFT,0);m.multiply(d.getRotation());float k=WIDTH/TEX_W*(float)Math.max(1,dist/GROW_FROM);m.scale(-k,-k,k); // as a name tag: facing the camera, x to its right, y down, one unit a texel
+        m.push();double base=top(e,model)+LIFT;
+        m.translate(0,base,0);m.multiply(d.getRotation());float k=WIDTH/TEX_W*(float)Math.max(1,dist/GROW_FROM);m.scale(-k,-k,k); // as a name tag: facing the camera, x to its right, y down, one unit a texel
         Matrix4f mat=m.peek().getPositionMatrix();long f=System.nanoTime();VertexConsumer vc=v.getBuffer(RenderLayer.getText(TEXTURE));flushNanos+=System.nanoTime()-f;
         float x0=-TEX_W/2f,x1=TEX_W/2f;
         for(int i=0;i<n;i++){float y1=-i*STACK,y0=y1-TEX_H; // the first chevron's bottom edge on the lift point, the second STACK rows above it
@@ -79,7 +79,7 @@ final class TroopChevrons {
             vc.vertex(mat,x1,y0,0).color(red,green,blue,1f).texture(1,0).light(FULL_BRIGHT).next();}
         m.pop();
         Last last=DRAWN.get(e);if(last==null)DRAWN.put(e,last=new Last());
-        last.chevrons=n;last.colour=c;last.distance=dist;last.time=e.getWorld()==null?0:e.getWorld().getTime();draws++;
+        last.chevrons=n;last.colour=c;last.distance=dist;last.base=base;last.time=e.getWorld()==null?0:e.getWorld().getTime();draws++;
     }
     /** The top of a troop's head over its feet, in blocks: its model's crown (the highest helm or crest of any tier, no flag) when it has a model, else its vanilla box. One height for every tier, so the chevrons never move and no tier's crest reaches them. */
     static double top(Entity e,TroopModel<?> model){

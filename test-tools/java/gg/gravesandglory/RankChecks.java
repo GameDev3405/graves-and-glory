@@ -66,6 +66,18 @@ final class RankChecks {
         static String rank(RankSync.Rank r) { return r == null ? "none" : r.level() + "/" + r.weaponTier() + "/" + r.armourTier(); }
         static String file(Identifier id) { if (id == null) return "none"; String p = id.getPath(); return p.substring(p.lastIndexOf('/') + 1); }
         static String mark(TroopChevrons.Mark m) { return m == null ? "no chevron" : m.chevrons() + " chevron(s) in #" + String.format("%06X", m.colour()) + String.format(Locale.ROOT, " at %.1f blocks", m.distance()); }
+        /** The top of a GeckoLib troop rig's helm crown and crest cubes at rest (geo/troop/<id>.geo.json, 16 px a block), in blocks over the feet; -1 when unread. */
+        static double geoCrown(MinecraftClient c, String troop) {
+            var res = c.getResourceManager().getResource(new Identifier(TroopModels.NAMESPACE, "geo/troop/" + troop + ".geo.json")); if (res.isEmpty()) return -1;
+            try (var in = new InputStreamReader(res.get().getInputStream(), StandardCharsets.UTF_8)) {
+                double top = -1;
+                for (var bone : JsonParser.parseReader(in).getAsJsonObject().getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject().getAsJsonArray("bones")) {
+                    var b = bone.getAsJsonObject(); String n = b.get("name").getAsString(); if (!n.equals("helm_crown") && !n.equals("crest") || !b.has("cubes")) continue;
+                    for (var cube : b.getAsJsonArray("cubes")) { var q = cube.getAsJsonObject(); top = Math.max(top, (q.getAsJsonArray("origin").get(1).getAsDouble() + q.getAsJsonArray("size").get(1).getAsDouble()) / 16.0); }
+                }
+                return top;
+            } catch (Exception ex) { return -1; }
+        }
         /** Marks every scene entity's draw count, so a later check reads only draws made after this tick. */
         void markDraws(MinecraftClient c, List<GravesAndGlory.Unit> us) { counts.clear(); for (var u : us) { var x = e(c, u); if (x != null) counts.put(x, drawCount(x)); } }
         /** Whether each of these entities drew at least n times since markDraws. */
@@ -117,6 +129,10 @@ final class RankChecks {
                         report("p2-chevrons-both-teams", ok && texOk, "level-2 gold Squire: " + mark(a) + " (want 1 in gold #" + String.format("%06X", goldC) + "); level-3 violet Squire: " + mark(bb) + " (want 2 in violet #" + String.format("%06X", violetC)
                             + "); level-1 gold Squire: " + (one == null || now - one.time() > 30 ? "no chevron" : mark(one) + " (BAD)") + "; level-3 violet Revenant (vanilla renderer, own model drawn=" + (TroopRenderer.drawn(e(c, vr3)) != null) + "): " + mark(r)
                             + "; chevron.png " + size[0] + "x" + size[1] + " (want " + TroopChevrons.TEX_W + "x" + TroopChevrons.TEX_H + "); picture p2-ranks-chevrons.png at about " + (int) FAR + " blocks");
+                        // C15-F2: the level-3 violet Squire wears armour tier 3 and draws through GeckoLib; its chevrons sit clear of the rig's crown and crest
+                        double crown = geoCrown(c, "knight"); boolean geo = GeoTroopRenderer.handles(TroopModels.resolve(e(c, vk3)));
+                        report("p2-chevron-above-crown", geo && bb != null && crown > 0 && bb.base() >= crown, "level-3 violet Squire drawn by GeckoLib=" + geo + ": its first chevron's bottom edge "
+                            + (bb == null ? "not drawn" : String.format(Locale.ROOT, "%.3f", bb.base())) + String.format(Locale.ROOT, " blocks over its feet; the Geo rig's crown and crest top %.3f blocks (want the edge at or above it)", crown));
                         TroopDepth.enabled = false; markTime = now; wait = 0; cs = 3;
                     }
                 }
