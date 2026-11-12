@@ -13,6 +13,12 @@ final class GearCommands {
     private GearCommands() {}
     static final String INVALID = "That gear request is not valid.";
 
+    /** Whether the request is the commander's Arsenal (gear:equip, gear:unequip, gear:relic, forge:...). Any other gear: is the in-match Armoury's gear:<troop>:<weapon|armour>:<tier> (Veterans.buy), which the battle answers. */
+    static boolean arsenal(String cmd) {
+        if (cmd.startsWith("forge:")) return true;
+        return cmd.startsWith("gear:equip:") || cmd.startsWith("gear:unequip:") || cmd.startsWith("gear:relic:");
+    }
+
     /** refusal is "" on success; notice is the line to show the player; rolled is the roll's result (null for anything but forge:roll). */
     record Outcome(String refusal, String notice, Forge.Rolled rolled) {
         static Outcome refused(String why) { return new Outcome(why, why, null); }
