@@ -92,6 +92,16 @@ public final class ModeMath {
         if(wave>=waves&&(cleared||timerOut))return 0;
         return -1;
     }
+    /**
+     * Domination's winner on a score tick: -1 while neither side is at the target; the side at it; both at it on the same tick, the higher
+     * score (C05-F2), and team 0 on equal scores as before (an open question for Kort).
+     */
+    public static int dominationWinner(int score0,int score1,int target) {
+        if(score0>=target&&score1>=target)return score1>score0?1:0;
+        if(score0>=target)return 0;
+        if(score1>=target)return 1;
+        return -1;
+    }
     /** One second of the shrine: the dead on it with no defender add a second; a defender on it, or no dead, sets it back to 0 (the hold must be unbroken). */
     public static int shrineLost(int lostSeconds,int dead,int defenders) {
         return dead>0&&defenders==0?lostSeconds+1:0;

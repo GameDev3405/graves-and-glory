@@ -18,8 +18,7 @@ public final class DominationMode extends BattleMode {
     @Override public void tick(GravesAndGlory.Battle b){
         if(row.scoreInterval()<=0||b.time%row.scoreInterval()!=0)return;
         for(GravesAndGlory.Capture c:b.points)if(c.owner>=0)b.scores[c.owner]++;
-        for(int t=0;t<2;t++)if(b.scores[t]>=row.winTarget()){
-            b.campaign.finish(t); // the victory and defeat stings play from Campaign.finish
-        }
+        int t=ModeMath.dominationWinner(b.scores[0],b.scores[1],row.winTarget()); // both past the target on one tick: the higher score (C05-F2)
+        if(t>=0)b.campaign.finish(t); // the victory and defeat stings play from Campaign.finish
     }
 }
