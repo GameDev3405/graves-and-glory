@@ -1335,16 +1335,34 @@ def _lattice(box, n=5):
 _SKIRT_REST = {}
 
 
-def _skirt_depth(q, _rest=False):
+def _bunched(box, s):
+    """The skirt's box shortened to `s` of its length about its hinge (the hips pivot, SKIRT_HINGE of the way up from
+    the hem), as a [1, s, 1] scale key on the bone does in game."""
+    if s >= 1.0:
+        return box
+    o, axes = box
+    k = max(range(len(axes)), key=lambda j: axes[j][1])     # the long edge is the skirt's own y
+    a, L = axes[k]
+    h = (SKIRT_HINGE if a[1] > 0 else 1.0 - SKIRT_HINGE) * L
+    out = list(axes)
+    out[k] = (a, L * s)
+    return (o + a * h * (1.0 - s), out)
+
+
+SKIRT_HINGE = 0.7    # the hips pivot (y 12) on the skirt box (y 5 to 15)
+
+
+def _skirt_depth(q, _rest=False, bunch=1.0):
     """Deepest point of a boot or greave inside the skirt, or of the skirt inside it, past the pair's rest fit (px;
-    lattices of both boxes, as focus_check's armour_clip measures)."""
+    lattices of both boxes, as focus_check's armour_clip measures). `bunch`: the skirt shortened about its hinge."""
     if not _rest and not _SKIRT_REST:
         _skirt_depth({}, _rest=True)
     P, owner = _CORNERS(q)
     by = {}
     for c in range(0, len(owner), 8):
         if owner[c] == "skirt" or owner[c] in SKIRT_HITTERS:
-            by.setdefault(owner[c], []).append(_boxes(P[c:c + 8], [owner[c]] * 8)[0])
+            bx = _boxes(P[c:c + 8], [owner[c]] * 8)[0]
+            by.setdefault(owner[c], []).append(_bunched(bx, bunch) if owner[c] == "skirt" else bx)
     worst = 0.0
     for h in SKIRT_HITTERS:
         d = 0.0
@@ -1390,6 +1408,111 @@ def skirt_clear(upper, legs, loop, cloth=("skirt", "sash")):
     return upper
 
 
+
+# Fix round 2 (2026-11-12): the ankle-length skirt is cloth. A boot or the kelp on the shin that swings up into it pushes
+# it: on every sample the skirt turns (and the sash with it, same hinge) by the LEAST angle that keeps the leg outside,
+# capped at CLOTH_TURN; where turning alone cannot clear a high knee the skirt bunches (shortens about the hinge, a
+# [1, s, 1] scale key, never below CLOTH_BUNCH[-1]). The need is spread into a soft rise and a slower fall (cloth pushed,
+# then settling), periodic in loops. Additive hits carry only the turn over the stance's own (no scale: the game adds a
+# hit's rotation and position only). A clip already clear is left as it is, so the pass is a fixed point.
+SASH_SHARE = 0.6        # of the skirt's turn the sash over it takes (all of it put it into the right thigh)
+CLOTH_OK = 0.8                    # px past the rest fit, as SKIRT_OK
+CLOTH_SKIP = 1.75   # px: a clip whose deepest point is under this is left as it is (the pass leaves its clips
+                    # under it, so a second run changes nothing; focus_check armour_clip fails near 1.9)
+CLOTH_TURN = 60.0                 # deg, the most the skirt turns
+CLOTH_STEP = 2.0
+CLOTH_BUNCH = (1.0, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7)
+CLOTH_RISE, CLOTH_FALL = 4.0, 1.6     # deg a sample (a quarter tick) the turn rises / settles at most
+BUNCH_RISE, BUNCH_FALL = 0.04, 0.015  # of the length a sample
+CLOTH_PIECES = ("skirt", "sash")
+CLOTH_SHARE = {"skirt": 1.0, "sash": SASH_SHARE}
+
+
+def cloth_envelope(need, rise, fall, loop):
+    """The least curve over `need` (>= 0, one value a sample) that climbs at most `rise` and drops at most `fall` per
+    sample, softened by a [1 4 6 4 1] blur and kept over the need. A loop wraps (first value == last)."""
+    x = np.asarray(need, float)
+    n = len(x)
+    if not x.any():
+        return x
+    m = n - 1
+    if loop:
+        x = np.concatenate([x[:m]] * 3)
+
+    def tent(v):
+        v = v.copy()
+        for i in range(1, len(v)):
+            v[i] = max(v[i], v[i - 1] - fall)
+        for i in range(len(v) - 2, -1, -1):
+            v[i] = max(v[i], v[i + 1] - rise)
+        return v
+
+    k = np.array([1.0, 4.0, 6.0, 4.0, 1.0]) / 16.0
+    e = tent(x)
+    e = tent(np.maximum(np.convolve(np.pad(e, 2, mode="edge"), k, mode="valid"), x))
+    if loop:
+        e = e[m:2 * m]
+        e = np.append(e, e[0])
+    return e
+
+
+def _with_skirt(u, turn):
+    u = dict(u)
+    for c in CLOTH_PIECES:
+        r, p = u.get(c, (Z3, None))
+        u[c] = ((float(r[0]) + turn * CLOTH_SHARE[c], float(r[1]), float(r[2])), p)
+    return u
+
+
+def _cloth_need(u, l, scales):
+    """(least |turn| in deg, signed; bunch) that clears sample (u, l), trying each length in turn."""
+    if _skirt_depth(fk_pose(u, l)) <= CLOTH_OK:
+        return 0.0, 1.0
+    best = None
+    for sc in scales:
+        for a in np.arange(CLOTH_STEP, CLOTH_TURN + 1e-6, CLOTH_STEP):
+            for sg in (1.0, -1.0):
+                v = _skirt_depth(fk_pose(_with_skirt(u, sg * a), l), bunch=sc)
+                if v <= CLOTH_OK:
+                    return sg * a, sc
+                if best is None or v < best[0]:
+                    best = (v, sg * a, sc)
+    return best[1], best[2]
+
+
+def skirt_cloth(upper, legs, loop, base=None, scale0=None):
+    """The skirt pushed like cloth (see the note above). upper/legs: the clip's samples; base: the stance samples under an
+    additive clip ({"u", "l"} per sample, as lift_feet). scale0: the skirt's current scale y per sample (a re-run).
+    Returns (upper, scale y per sample or None)."""
+    n = len(upper)
+    comp = [_composed(upper, legs, base, i) for i in range(n)]
+    s0 = list(scale0) if scale0 is not None else [1.0] * n
+    if all(_skirt_depth(fk_pose(cu, cl), bunch=s0[i]) <= CLOTH_SKIP for i, (cu, cl) in enumerate(comp)):
+        return upper, None
+    scales = (1.0,) if base is not None else CLOTH_BUNCH
+    res = [_cloth_need(cu, cl, scales) for cu, cl in comp]
+    turn = np.array([a for a, _ in res])
+    if loop:
+        turn[-1] = turn[0] = turn[0] if abs(turn[0]) >= abs(turn[-1]) else turn[-1]
+    turn = cloth_envelope(np.maximum(turn, 0.0), CLOTH_RISE, CLOTH_FALL, loop) - \
+        cloth_envelope(np.maximum(-turn, 0.0), CLOTH_RISE, CLOTH_FALL, loop)
+    if base is not None:     # an additive clip starts and ends on the stance
+        fade = np.array([K.smooth(min(1.0, i / (2.0 * SUB), (n - 1 - i) / (2.0 * SUB))) for i in range(n)])
+        turn *= fade
+    bunch = np.zeros(n)
+    if base is None:     # with the eased turn, the least bunch that clears what the turn alone does not
+        for i, (cu, cl) in enumerate(comp):
+            q = fk_pose(_with_skirt(cu, float(turn[i])), cl)
+            for sc in CLOTH_BUNCH:
+                if _skirt_depth(q, bunch=sc) <= CLOTH_OK or sc == CLOTH_BUNCH[-1]:
+                    bunch[i] = 1.0 - sc
+                    break
+        if loop:
+            bunch[-1] = bunch[0] = max(bunch[0], bunch[-1])
+        bunch = np.minimum(cloth_envelope(bunch, BUNCH_RISE, BUNCH_FALL, loop), 1.0 - CLOTH_BUNCH[-1])
+    for i in range(n):
+        upper[i] = _with_skirt(upper[i], float(turn[i]))
+    return upper, (None if not bunch.any() else [round(1.0 - float(x), 4) for x in bunch])
 
 
 def _harpoon_low(pose):
@@ -1542,6 +1665,25 @@ def _keyed(samples):
     return sorted({b for f in samples for b in f})
 
 
+CLOTH_CLIPS = (("walk_upper", "walk_legs", False), ("stance_fallback_upper", "stance_fallback_legs", False), ("hit_knockback", "hit_knockback_legs", True),
+               ("hit_pulled", "hit_pulled_legs", True))
+
+
+def _ktime(i):
+    return str(round(i / SUB / TPS, 4))
+
+
+def _scale_y(clip, bone, n):
+    """The bone's scale y per sample (linear between its keys), None without a scale channel."""
+    ks = sorted((float(t), float(v[1])) for t, v in clip["bones"].get(bone, {}).get("scale", {}).items())
+    if not ks:
+        return None
+    return [float(x) for x in np.interp([i / SUB / TPS for i in range(n)], [k[0] for k in ks], [k[1] for k in ks])]
+
+
+def _skirt_turns(samples):
+    return [float(f.get("skirt", (Z3, None))[0][0]) for f in samples]
+
 def post_shared(path):
     """`--post`: the shared layers' clips on the exported file (see the note above clip_samples)."""
     import stances as S
@@ -1619,6 +1761,23 @@ def post_shared(path):
         if up_n != "stun_out_upper":     # last: the skirt clear of the boots over whatever swing the steps above gave it
             up = skirt_clear_additive(up, lg, base)
         put(up_n, up, ticks, sorted(set(_keyed(up)) - set(_LEGS)))
+
+    # last: the skirt pushed like cloth by the legs (fix round 2, skirt_cloth), on the clips whose boots reach into it
+    for up_n, lg_n, additive in CLOTH_CLIPS:
+        up, ticks = clip_samples(A[up_n])
+        before = _skirt_turns(up)
+        lg = clip_samples(A[lg_n])[0]
+        base = None
+        if additive:
+            base = [{"u": ready_u[i % (len(ready_u) - 1)], "l": ready_l[i % (len(ready_l) - 1)]} for i in range(len(up))]
+        up, sc = skirt_cloth(up, lg, A[up_n].get("loop", False) is True, base=base, scale0=_scale_y(A[up_n], "skirt", len(up)))
+        if sc is None and _skirt_turns(up) == before:
+            continue
+        put(up_n, up, ticks, sorted(set(_keyed(up)) - set(_LEGS)))
+        if sc is not None:
+            for c in CLOTH_PIECES:
+                A[up_n]["bones"][c]["scale"] = {_ktime(i): [1.0, sc[i], 1.0] for i in range(len(sc))}
+        done.append(up_n)
     with open(path, "w", newline="\n") as fh:
         fh.write(json.dumps(doc, indent=1))
     print("post:", ", ".join(dict.fromkeys(done)), "->", path)

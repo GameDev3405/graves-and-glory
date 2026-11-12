@@ -138,3 +138,21 @@ stance_hold_legs, stance_shield_up_upper, stun_out_upper. Every other clip, deat
 Game16 front/side: hold, shield_up and ready are three distinct silhouettes (`work/hp/r1f/g16_three.png`); reload strip
 `work/hp/r1f/reload/sheet.png`.
 Unit tests (one after another): test_scorecard 22, test_focus_check 24, test_render_geo 20, test_booth_* 74, all OK (`work/review/tc_harpooner.r1.unittest.log`).
+
+## Fix round 2 (2026-11-12): the skirt as cloth
+Same build command as round 1 (the new pass is the last step of `--post`, so `work/hp/full.sh` stays the one way to build).
+- **skirt_cloth (`--post`, last):** on walk_upper, stance_fallback_upper, hit_knockback and hit_pulled, every sample turns the
+  skirt (the sash takes 0.6 of it) by the least angle that keeps the boots and the shin kelp outside it (cap 60 deg), then a
+  soft rise and slower settle (cloth_envelope: 4 deg rise, 1.6 deg fall a quarter tick, a [1 4 6 4 1] blur; loops wrap). Where
+  the turn alone cannot clear the leg the skirt bunches about the hips hinge (scale y keys on skirt and sash, not below 0.7),
+  eased the same way. Additive hits carry only the turn (the game adds rotation and position), faded in and out over 2 ticks.
+  A clip whose deepest point is under 1.75 px is left alone, so a second run changes nothing (checked: byte-identical).
+- **Result:** walk 2.34, fallback 2.12, knockback 2.05, pulled 2.2 -> no row. Changed clips (bytes, against 2b35533a):
+  walk_upper, stance_fallback_upper, hit_knockback, hit_pulled; lengths and loop flags unchanged. Scorecard 34 clips, 0 fail.
+- **Open, run_upper and charge_run_upper 2.53 (right_foot_gear into skirt):** the run folds the shin to 149-159 deg (focus_check
+  already warns "folded shut"), so the boot comes up behind the thigh at the height of the hips hinge, inside the skirt's
+  footprint. No turn (+-60) and no bunch the brief allows (0.7, tried down to 0.5: still 1.5-1.8) clears it. The fix is a
+  smaller heel kick in the run (a gait change), proposed for the lead rather than done here.
+- **Reload harpoon:** left as scale growth. The harpoon is 48 px long (butt -14 to tip +34 at the grip) and the quiver 13.5
+  px; a full-length harpoon kept inside or behind the quiver would stand 35 px out of it, so there is nowhere to hide it.
+- Renders: `work/hp/r2/walk_b/sheet.png` (side, three-quarter).
