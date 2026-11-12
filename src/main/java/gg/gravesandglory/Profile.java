@@ -159,7 +159,7 @@ public final class Profile {
         banners.removeIf(Objects::isNull);
         if (banners.isEmpty()) banners = starterBanners();
         while (banners.size() > RosterMath.maxBanners()) banners.remove(banners.size() - 1);
-        Set<String> fieldable = RosterMath.fieldableHouses();
+        Set<String> houses = new LinkedHashSet<>(houseOrder()); // every House: a House switched off keeps its troops saved and is left out at field time (RosterMath.fieldable), as in schema 6
         int trimmed = 0;
         for (int i = 0; i < banners.size(); i++) {
             Banner b = banners.get(i);
@@ -167,19 +167,25 @@ public final class Profile {
             SortedMap<Integer, String> table = WarGrid.parse(b.cells);
             int before = table.size();
             table.entrySet().removeIf(e -> !WarGrid.inRange(e.getKey()) || !c.known(e.getValue()) || !owned.containsKey(e.getValue()));
-            SortedMap<Integer, String> kept = WarGrid.trim(table, t -> RosterMath.validTable(t, c, owned.keySet(), fieldable) == null);
+            dropOverLimit(table, c);
+            SortedMap<Integer, String> kept = WarGrid.trim(table, t -> RosterMath.validTable(t, c, owned.keySet(), houses) == null);
             trimmed += before - kept.size();
             b.cells = WarGrid.format(kept);
         }
         if (trimmed > 0 && notice == null) notice = "Your banner no longer fits the war table; " + trimmedText(trimmed) + " taken off the back rows.";
         activeBanner = clamp(activeBanner, 0, banners.size() - 1);
     }
+    /** Removes, front to back, each troop past its rarity's rarities.bannerMax (a second Legendary), so trim never has to clear the rows behind it. */
+    static void dropOverLimit(SortedMap<Integer, String> table, RosterMath.Catalog c) {
+        Map<String, Integer> seen = new HashMap<>();
+        table.entrySet().removeIf(e -> { String r = c.rarityOf(e.getValue()); return seen.merge(r, 1, Integer::sum) > RosterMath.bannerMax(r); });
+    }
     /** "1 troop was" or "N troops were": the troop count of a banner trim notice. */
     static String trimmedText(int n) { return n == 1 ? "1 troop was" : n + " troops were"; }
     /** A banner name without control characters, trimmed and cut to MAX_BANNER_NAME; "Banner N" when nothing is left. */
     static String bannerName(String name, int number) {
         String n = name == null ? "" : name.replaceAll("\\p{Cntrl}", "").trim();
-        if (n.length() > MAX_BANNER_NAME) n = n.substring(0, MAX_BANNER_NAME).trim();
+        if (n.codePointCount(0, n.length()) > MAX_BANNER_NAME) n = n.substring(0, n.offsetByCodePoints(0, MAX_BANNER_NAME)).trim(); // whole code points, so an emoji is never split
         return n.isEmpty() ? "Banner " + number : n;
     }
     /** The banners of a new profile: "Banner I" holding the starter table. */

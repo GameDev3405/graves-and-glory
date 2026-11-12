@@ -189,7 +189,7 @@ public final class ProfileMigration {
             p.activeBanner = 0;
             if (moved.trimmed() > 0 && p.banner != null) p.notice = "Your banner cost more than the war table allows; " + Profile.trimmedText(moved.trimmed()) + " taken off the back rows.";
         }
-        int gold = Math.max(0, p.gold == null ? 0 : p.gold);
+        int gold = Profile.clamp(p.gold == null ? 0 : p.gold, 0, 1_000_000); // schema 6 clamped saved gold here
         p.pacts += p.writs == null ? 0 : p.writs;
         p.troopWrits += gold / 100;
         p.gearShards += gold % 100;

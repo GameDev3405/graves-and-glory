@@ -172,6 +172,7 @@ Page: 9 x 6 grid (row 0 at the top, labelled "Front"), gold bar `spent / 640` an
 
 - [ ] **Step 1: Tests first**: `BannerDropCheck` rewritten (`paintPlaces`, `samebrushRemoves`, `refusesOverCost`, `refusesSecondLegendary`, `refusesOutOfRange`); `LobbyRulesCheck.cellCommandRefusals`; `SnapshotSizeCheck` (worst profile: 5 banners x 40 cells of the longest troop id, 16-char names, a full gear inventory as the sheet allows -> `Campaign`-style JSON <= 16000 pretty or compact form, import JSON <= 32000).
 - [ ] **Step 2-4:** run, implement, run green; `LobbyChecks` via checkq.
+- [ ] **Step 4b: The one-time notice** (`Profile.notice`): the server shows it once when the player opens the War Table (or joins), then sets it null and saves; `LobbyRulesCheck` or an in-game check proves it is shown once and gone after a save and reload.
 - [ ] **Step 5:** in-game screenshots of the page at normal and small window sizes, hover and refused states, to `work/army/screens/`.
 - [ ] **Step 6: Commit** `feat(army): war table page paints the 9 x 6 banner`.
 

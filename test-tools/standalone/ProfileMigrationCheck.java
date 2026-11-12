@@ -222,6 +222,26 @@ public final class ProfileMigrationCheck {
         check(old.notice.equals("earlier") && old.table().size() == 1, "sanitizeTrimsNotWipes: an unread notice is not overwritten");
     }
 
+    /** Review 1 fix-ups: a second Legendary goes alone (the troops behind it stay), names cut on whole code points, saved gold clamps before the split. */
+    static void reviewFixups() {
+        var p = new Profile();
+        p.owned.put("gl_marshal", new Profile.Owned());
+        p.owned.put("gb_hollowking", new Profile.Owned());
+        var cells = new TreeMap<Integer, String>();
+        cells.put(0, "gl_marshal"); cells.put(1, "gb_hollowking"); cells.put(2, "knight"); cells.put(30, "archer");
+        p.banners = new ArrayList<>(List.of(new Profile.Banner("Two", WarGrid.format(cells))));
+        p.sanitize();
+        var kept = p.table();
+        check(kept.size() == 3 && "gl_marshal".equals(kept.get(0)) && !kept.containsKey(1) && "archer".equals(kept.get(30)), "reviewFixups: only the second Legendary goes: " + kept);
+        String emoji = new String(Character.toChars(0x1F600));
+        String cut = Profile.bannerName("abcdefghijklmno" + emoji + "z", 1);
+        check(cut.equals("abcdefghijklmno" + emoji), "reviewFixups: a 17-code-point name keeps the whole emoji as its 16th: " + cut);
+        var rich = new Profile();
+        rich.schema = 6; rich.gold = 900_000_000; rich.banner = null;
+        ProfileMigration.v6toV7(rich, RosterMath.Catalog.fromSpec());
+        check(rich.troopWrits == 10_000 && rich.gearShards == 0, "reviewFixups: gold clamps at 1,000,000 before the split: " + rich.troopWrits + "/" + rich.gearShards);
+    }
+
     /** Names clean and cut to 16, a blank one is Banner N; banners past the limit go and activeBanner clamps. */
     static void bannerNamesClamp() {
         var p = new Profile();
@@ -442,7 +462,7 @@ public final class ProfileMigrationCheck {
         } finally {
             try (Stream<Path> paths = Files.walk(dir)) { paths.sorted(Comparator.reverseOrder()).forEach(path -> path.toFile().delete()); }
         }
-        v6StarterMoves(); v6WideDropsMarkers(); v6OverTrims(); v6GoldSplit(); v1ChainsToV7(); sanitizeTrimsNotWipes(); bannerNamesClamp(); legacyFieldsNotWritten();
+        v6StarterMoves(); v6WideDropsMarkers(); v6OverTrims(); v6GoldSplit(); v1ChainsToV7(); sanitizeTrimsNotWipes(); bannerNamesClamp(); reviewFixups(); legacyFieldsNotWritten();
         System.out.println("ProfileMigrationCheck: " + checks + " checks passed");
     }
 }
