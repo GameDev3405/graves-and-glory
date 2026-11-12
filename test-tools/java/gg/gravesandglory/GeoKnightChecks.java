@@ -934,7 +934,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     else {
                         syncReport(d);
                         Phase1Checks.report("p1-geo-" + TROOP + "-attack-plays", impactSamples > 10 && minImpactW > .9 && gapSamples > 4 && maxGapW == 0,
-                            String.format("weight at impact (+-1 tick) min %.4f (%s) over %d samples; between swings max %.5f over %d", minImpactW, minImpactWhy, impactSamples, maxGapW, gapSamples));
+                            String.format("weight at impact (+-1 tick) min %.4f (%s) over %d samples; between swings max %.5f over %d; draws dropped (attack_v1 cancel) %d", minImpactW, minImpactWhy, impactSamples, maxGapW, gapSamples, Projectiles.drawsDropped));
                         Phase1Checks.report("p1-geo-" + TROOP + "-attack-footwork", impactSamples > 10 && footSamples >= 4 && minImpactLegsW > .9,
                             String.format("standing: attack legs weight at impact min %.4f (%s) over %d of %d samples", minImpactLegsW, minImpactLegsWhy, footSamples, impactSamples));
                         duel = null; i = 0; next(tick, 6);
