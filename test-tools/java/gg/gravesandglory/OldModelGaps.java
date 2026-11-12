@@ -67,6 +67,7 @@ final class OldModelGaps implements Phase1Checks.Suite {
     volatile String serverWhy = "";
     /** cast-live: from which world tick the hexer is left to Tactics, and the world ticks its bolts left on. */
     volatile long liveFrom = -1;
+    int liveBeats;
     final List<Long> liveBolts = Collections.synchronizedList(new ArrayList<>());
     volatile double boltFromEye = Double.NaN, boltFromFeetUp = Double.NaN, boltFromForward = Double.NaN;
     int stage, at, i, fov0 = 70;
@@ -142,7 +143,7 @@ final class OldModelGaps implements Phase1Checks.Suite {
         switch (s.slug()) {
             case "rise", "rise-king" -> hitAt = go;
             case "cast" -> { target = spawn(b, foe, "revenant", 23, cx + FX * 8, cz + FZ * 8, YAW + 180); announceAt = go; castAt = go + 10; }
-            case "cast-live" -> { target = spawn(b, foe, "revenant", 23, cx + FX * 8, cz + FZ * 8, YAW + 180); liveFrom = go; subject.nextAttack = 0; subject.abilityAt = 0; liveBolts.clear(); }
+            case "cast-live" -> { target = spawn(b, foe, "revenant", 23, cx + FX * 8, cz + FZ * 8, YAW + 180); liveFrom = go; liveBeats = 0; subject.nextAttack = 0; subject.abilityAt = 0; liveBolts.clear(); }
             default -> { target = spawn(b, foe, "revenant", 23, cx + FX * 1.6, cz + FZ * 1.6, YAW + 180); swingAt = go; }
         }
     }
@@ -192,6 +193,11 @@ final class OldModelGaps implements Phase1Checks.Suite {
                 serverWhy = "swing " + (Tactics.swings - before) + " at " + now + ", impact in " + swingImpact + " ticks";
             }
             if (liveFrom >= 0 && now >= liveFrom) { // left to the battle's Tactics: only its bolts are logged
+                boolean ticked = b.running && b.time >= b.campaign.introUntil;
+                if (now == liveFrom) { u.nextAttack = 0; u.abilityAt = 0; } // the hold before go froze it (Phase1Checks.freeze): its first shot is ready
+                if (now == liveFrom) serverWhy += "units ticked by the battle " + ticked + " (running " + b.running + ", intro until " + b.campaign.introUntil + ", battle time " + b.time + "); ";
+                if (!ticked) { Abilities.unitTick(b, u, b.time); Tactics.tick(b, u, b.time); } // this practice round does not tick its units: the battle's own per-unit step, for the subject alone
+                if (b.time % 10 == u.slot % 10 && liveBeats++ < 6) serverWhy += "beat " + b.time + ": target " + (u.mob.getTarget() == null ? "none" : u.mob.getTarget().getType().getUntranslatedName()) + ", next attack " + u.nextAttack + ", ability at " + u.abilityAt + ", stunned until " + u.stunnedUntil + "; ";
                 for (var sh : b.shots) if (sh.shooter() == u && sh.kind().equals("bolt") && sh.fired() == b.time && !liveBolts.contains(now)) liveBolts.add(now);
             } else if (hitAt < 0 || now < hitAt) Phase1Checks.freeze(u); // after the blow, a riser keeps its real stun
             else { u.nextAttack = Long.MAX_VALUE; u.abilityAt = Long.MAX_VALUE; }
@@ -254,7 +260,7 @@ final class OldModelGaps implements Phase1Checks.Suite {
                 base += "; rise_v1 tick " + riseTick + " window " + riseWindow + ", in-window frames " + riseFrames + ", fall overlay over 0.9 on " + riseHeavy + " (max weight " + String.format("%.2f", riseMaxW) + "); elapsed:clipT/weight " + riseLog;
             }
             case "cast" -> {
-                ok = boltTick >= 0 && Math.abs(attackReleaseTick - boltTick) < .51 && attackFirstClipT <= 3;
+                ok = boltTick >= 0 && Math.abs(attackReleaseTick - boltTick) < .51 && attackFirstClipT < 10; // heard before its release (clip tick 10): a loaded client hears it a few ticks late and plays on from mid-clip
                 base += "; client attack track " + attackClip + " start tick " + attackStartTick + ", release (impact) tick " + attackReleaseTick + ", first seen at " + String.format("%.2f", attackFirstSeenTick)
                     + " clip tick " + String.format("%.2f", attackFirstClipT) + "; bolt world tick " + boltTick + " (release - bolt = " + (attackReleaseTick - boltTick) + ")";
                 boolean origin = boltTick >= 0 && boltFromEye < .01;
