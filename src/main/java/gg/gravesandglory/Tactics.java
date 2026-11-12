@@ -420,7 +420,7 @@ final class Tactics {
                     int late=Projectiles.looseTicks(u);
                     if(late>0){u.looseAt=time+late;u.looseTarget=enemy;} // Kort Q70: a bow troop's shot leaves late ticks on (looseLate)
                     else shoot(battle,u,enemy,time,ranged);
-                }else if(announcesAhead(u)&&time+10>=u.nextAttack&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before a bow's or crossbow's shot: its clip is announced now, the shot still leaves on the next beat (cosmetic, R110 Plan B)
+                }else if(announcesAhead(u)&&time+drawLead(u)>=u.nextAttack&&time+drawLead(u)>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,shotAhead(u,time)); // the beat before a crossbow's shot, or the beats from far enough ahead for a bow's whole draw (drawLead): its clip is announced now, at the start tick of the shot on its beat (cosmetic, R110 Plan B)
                 else if(Abilities.castsAhead(u)&&time+10>=u.nextAttack&&time+10>=u.abilityAt&&time+10>=u.stunnedUntil&&!pending(battle,u)&&!Abilities.tooClose(u,nearest))Projectiles.drawAhead(battle,u,enemy,10); // the beat before the hexer's blight or the mist caller's mist leaves (its spell cooldown ready too): its cast clip is announced now, at the start tick Abilities.attack's release stamps (cosmetic, Kort 2026-11-06)
             }else if(post&&ranged){toSlot(battle,u,a,time,speed); // a ranged troop on a post shoots what it can reach from there and never walks off after the rest
             }else if(volley){toSlot(battle,u,a,time,speed); // a ranged troop on a Charge never closes on its target: it runs on down the path and stops once it can shoot
@@ -947,7 +947,13 @@ final class Tactics {
     static int looseLost;
     /** Whether a troop's shot is announced a beat early (Projectiles.drawAhead), so its clip's wind-up plays before the loose instead of fading in late: a bow's, a crossbow's, a thrower's or a bolt-shooting caster's (the Seer's; Kort 2026-11-06). The mage's mend is announced in Abilities.mend on its own cooldown; the blight and mist spells make no attack event (cosmetic). */
     static boolean announcesAhead(GravesAndGlory.Unit u){if(u.spec.magic())return u.spec.ranged()&&"caster".equals(u.spec.family())&&Abilities.shoots(u);return u.spec.ranged()&&("bow".equals(u.spec.family())||"crossbow".equals(u.spec.family())||"thrower".equals(u.spec.family()));}
-    /** Whether a troop's shot draws ahead with Kort Q70's loose and hold seeds (Projectiles.looseTicks, hold): a bow's, whose clip draws for its 10 impact ticks before the loose (R110 Plan B). */
+    /** How many ticks before its shot's beat a troop's shot is announced (drawAhead): a bow's whole draw, its longest impactTicks rounded up to the 10-tick
+     *  beat (22 ticks: 3 beats, Kort 2026-11-11), since its clip starts impactTicks + hold - loose (at most impactTicks) before that beat; any other troop's one beat. */
+    static int drawLead(GravesAndGlory.Unit u){if(!drawsAhead(u))return 10;int impact=0;for(var r:variants(u.spec.family()))impact=Math.max(impact,r.impactTicks());return Math.max(10,(impact+9)/10*10);}
+    /** The ticks from now to the beat a troop's next shot can leave on: its first beat at or past its cooldown and any stun (one beat at least), so a shot
+     *  announced on several beats (drawLead over 10) is stamped with the same start tick each time and the client keeps the one clip. */
+    static int shotAhead(GravesAndGlory.Unit u,long time){long wait=Math.max(u.nextAttack,u.stunnedUntil)-time;return (int)Math.max(10,(wait+9)/10*10);}
+    /** Whether a troop's shot draws ahead with Kort Q70's loose and hold seeds (Projectiles.looseTicks, hold): a bow's, whose clip draws for its impactTicks before the loose (R110 Plan B; announced drawLead ahead). */
     static boolean drawsAhead(GravesAndGlory.Unit u){return u.spec.ranged()&&!u.spec.magic()&&"bow".equals(u.spec.family());}
     /** Whether this troop has a blow pending (Battle.strikes): one at most, so its next swing waits for it. */
     static boolean pending(GravesAndGlory.Battle b,GravesAndGlory.Unit u){if(u.looseAt>=0)return true;for(var s:b.strikes)if(s.attacker()==u)return true;return false;}
