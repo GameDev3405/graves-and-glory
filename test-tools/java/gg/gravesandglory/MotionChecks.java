@@ -158,6 +158,13 @@ public final class MotionChecks {
         final List<Shot> shots = new ArrayList<>();
         final List<String> bad = new ArrayList<>();
         int si, held, steady, lastCount, settle; String on = ""; double[] cam;
+        /**
+         * GeckoLib troops (GeoTroopRenderer: the knight first) draw outside TroopRenderer's record, the forced clip and the bends
+         * (MotionRigPoseMixin hooks the legacy setAngles): their shots read GeoDraws (drawn, the gold sheet, the armour tier; the Geo
+         * draw has no veteran flag and its idle runs on entity age, so neither the rank's veteran part nor the pose is asserted), their
+         * bend shots are not made and their shots are left out of the baseline compare. These count what that removes.
+         */
+        final java.util.Set<String> geoTroops = new java.util.TreeSet<>(); int geoBendsSkipped, geoPoseUnchecked;
         CloudRenderMode cloudsBefore;
         final String suite;
         String name() { return suite; }
@@ -167,9 +174,11 @@ public final class MotionChecks {
             this.suite = suite;
             loaderFaceUv();
             Phase2Checks.Turn.hook();
+            GeoDraws.install();
             for (String t : TroopModels.ids()) {
                 var m = TroopModels.model(t);
                 if (m == null || !"biped".equals(m.rig)) continue;
+                if (GeoDraws.geo(t)) geoTroops.add(t);
                 int top = FacesChecks.Faces.hasStage3(t) ? 3 : 1;
                 for (int s = 1; s <= top; s++) cast.add(new Who(t, s, false));
                 if (m.veteran != null) cast.add(new Who(t, top, true));
@@ -183,7 +192,8 @@ public final class MotionChecks {
                     shots.add(new Shot("mo-rig-" + w.key() + "-hand-front", w, "hand", 0, "front"));
                     shots.add(new Shot("mo-rig-" + w.key() + "-hand-" + hand, w, "hand", 0, hand));
                 }
-                if (!w.vet() && TroopModels.model(w.troop()).bone("right_forearm") != null) {
+                if (!w.vet() && TroopModels.model(w.troop()).bone("right_forearm") != null && geoTroops.contains(w.troop())) geoBendsSkipped += 12; // no bend hook on the Geo path
+                else if (!w.vet() && TroopModels.model(w.troop()).bone("right_forearm") != null) {
                     for (int a : new int[]{0, 45, 90, 270}) shots.add(new Shot("mo-rig-" + w.key() + "-elbow-" + a, w, "elbow", a, null));
                     for (int a : new int[]{0, 90, 180, 270}) shots.add(new Shot("mo-rig-" + w.key() + "-knee-" + a, w, "knee", a, null));
                     // R98: the seams at a half bend too (the guard, wall and brace hold elbows and knees near 30-60 degrees)
@@ -191,6 +201,12 @@ public final class MotionChecks {
                     for (int a : new int[]{0, 90}) shots.add(new Shot("mo-rig-" + w.key() + "-knee45-" + a, w, "knee45", a, null));
                 }
             }
+            for (Shot x : shots) if (x.who() != null && geoTroops.contains(x.who().troop())) geoPoseUnchecked++;
+        }
+        /** What the GeckoLib troops' shots leave out, for the reports. */
+        String geoNote() {
+            return geoTroops.isEmpty() ? "" : "; GeckoLib " + geoTroops + ": " + geoBendsSkipped + " bend shots not made (no bend hook on the Geo path), " + geoPoseUnchecked
+                + " shots read from GeoDraws with no pose or veteran check (the Geo idle runs on entity age) and left out of the baseline compare";
         }
 
         void cast(GravesAndGlory.Battle b) {
@@ -266,7 +282,7 @@ public final class MotionChecks {
         void shoot(MinecraftClient c) {
             if (si >= shots.size()) {
                 TroopMotion.clearForced(); BENDS.clear();
-                report("mo-rig-shots", bad.isEmpty(), shots.size() + " shots of " + cast.size() + " troops and stages" + (bad.isEmpty() ? ", each taken lit, in gold, with the camera where it was set and the pose drawn as asked (1 degree)" : ", not as asked: " + bad));
+                report("mo-rig-shots", bad.isEmpty(), shots.size() + " shots of " + cast.size() + " troops and stages" + (bad.isEmpty() ? ", each taken lit, in gold, with the camera where it was set and the pose drawn as asked (1 degree)" : ", not as asked: " + bad) + geoNote());
                 cs = 2; wait = 0; return;
             }
             if (awayFor > 0) { litStart(c); return; }
@@ -291,32 +307,41 @@ public final class MotionChecks {
             var u = units.get(s.who().key()); var e = client(c, u.mob); var m = TroopModels.model(s.who().troop());
             if (e == null || m == null) { if (++held > 400) { bad.add(s.name() + ": no client entity or model"); si++; held = 0; wait = 0; } return; }
             TroopModels.forceFace(e, 0);
+            boolean geo = GeoDraws.geo(e);
             if (wait == 1) {
                 boolean change = !s.who().key().equals(on);
                 if (change) { on = s.who().key(); final String k = on; server(c, b -> placeAll(b, k)); }
                 TroopMotion.clearForced(); BENDS.clear();
-                TroopMotion.force(e.getId(), "idle", 0);
-                var bends = bends(m, s); if (!bends.isEmpty()) BENDS.put(e.getId(), bends);
+                if (!geo) { TroopMotion.force(e.getId(), "idle", 0); var bends = bends(m, s); if (!bends.isEmpty()) BENDS.put(e.getId(), bends); }
                 cam = view(s, m); final double[] v = cam; server(c, b -> camera(b, v[0], v[1], v[2], (float) v[3], (float) v[4]));
                 settle = change ? 15 : 0; steady = 0; held = 0; return;
             }
             if (wait < 6 + settle) return;
-            if (steady == 0) { // a stage rename replaces the client entity: re-assert the forced pose and the bends on its id
+            if (steady == 0 && !geo) { // a stage rename replaces the client entity: re-assert the forced pose and the bends on its id
                 TroopMotion.force(e.getId(), "idle", 0);
                 var bends = bends(m, s); if (!bends.isEmpty()) BENDS.put(e.getId(), bends);
             }
-            var d = TroopRenderer.drawn(e); boolean drawn = d != null && d.pose != null && d.last != null && d.count > lastCount; lastCount = d == null ? 0 : d.count;
-            boolean gilt = drawn && "gold".equals(d.last.cloth());
-            boolean ranked = drawn && d.last.look().armourTier() == s.who().stage() && d.last.look().veteran() == s.who().vet();
-            float[] want = want(m, s, !u.mob.getOffHandStack().isEmpty());
-            boolean posed = drawn && Phase2Checks.Anim.maxRot(d.pose, want) <= 1 && Phase2Checks.Anim.maxPos(d.pose, want) <= 0.1;
+            var d = geo ? null : TroopRenderer.drawn(e); var g = geo ? GeoDraws.drawn(e) : null;
+            boolean drawn, gilt, ranked, posed; float[] want = null;
+            if (geo) {
+                drawn = g != null && g.pose != null && g.count > lastCount; lastCount = g == null ? 0 : g.count;
+                gilt = drawn && g.texture.endsWith("_gold.png");
+                ranked = drawn && g.armour == s.who().stage();
+                posed = drawn;
+            } else {
+                drawn = d != null && d.pose != null && d.last != null && d.count > lastCount; lastCount = d == null ? 0 : d.count;
+                gilt = drawn && "gold".equals(d.last.cloth());
+                ranked = drawn && d.last.look().armourTier() == s.who().stage() && d.last.look().veteran() == s.who().vet();
+                want = want(m, s, !u.mob.getOffHandStack().isEmpty());
+                posed = drawn && Phase2Checks.Anim.maxRot(d.pose, want) <= 1 && Phase2Checks.Anim.maxPos(d.pose, want) <= 0.1;
+            }
             boolean there = there(c);
             if (!there && (wait == 60 || wait == 120 || wait == 180 || wait == 240)) { final double[] v = cam; server(c, b -> camera(b, v[0], v[1], v[2], (float) v[3], (float) v[4])); }
             boolean faced = e instanceof net.minecraft.entity.LivingEntity le && Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(le.getBodyYaw() - YAW)) < 2 && Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(le.prevBodyYaw - YAW)) < 2;
             steady = gilt && ranked && posed && there && faced ? steady + 1 : 0; held++;
             if (steady >= 3 || held > 300) {
                 if (!shotReady(c, s.name())) return;
-                if (steady < 3) bad.add(s.name() + ": taken anyway after 300 ticks (drawn " + drawn + ", in gold " + gilt + ", rank " + ranked + ", pose " + posed + (drawn ? " (off by " + Phase2Checks.Anim.maxRot(d.pose, want) + " degrees)" : "") + ", camera " + there + ", facing " + faced + ")");
+                if (steady < 3) bad.add(s.name() + ": taken anyway after 300 ticks (drawn " + drawn + ", in gold " + gilt + ", rank " + ranked + ", pose " + posed + (drawn && !geo ? " (off by " + Phase2Checks.Anim.maxRot(d.pose, want) + " degrees)" : "") + (geo ? " [GeckoLib: " + (g == null ? "never drawn" : g.texture + ", tier " + g.armour) + "]" : "") + ", camera " + there + ", facing " + faced + ")");
                 save(c, s.name()); si++; wait = 0; steady = 0; held = 0;
             }
         }
@@ -367,7 +392,7 @@ public final class MotionChecks {
             File dir = new File(c.runDirectory, "screenshots");
             for (Shot s : shots) if (!new File(dir, s.name() + ".png").isFile()) { if (wait < 399) return false; }
             if (BASELINE.isBlank()) {
-                report("mo-rig", true, "no baseline asked (GRAVES_MOTION_BASELINE unset): captured " + shots.size() + " shots in " + dir + " for a later run to compare with");
+                report("mo-rig", true, "no baseline asked (GRAVES_MOTION_BASELINE unset): captured " + shots.size() + " shots in " + dir + " for a later run to compare with" + geoNote());
                 return true;
             }
             File base = new File(BASELINE);
@@ -375,6 +400,7 @@ public final class MotionChecks {
             int compared = 0;
             for (Shot s : shots) {
                 if (!s.kind().equals("rest") && !s.kind().equals("hand")) continue;
+                if (geoTroops.contains(s.who().troop())) continue; // a Geo idle runs on entity age: no fixed pose to compare
                 File now = new File(dir, s.name() + ".png"), was = new File(base, s.name() + ".png");
                 if (!now.isFile() || !was.isFile()) { missing.add(s.name()); continue; }
                 try {
@@ -396,7 +422,7 @@ public final class MotionChecks {
             }
             StringBuilder sb = new StringBuilder();
             for (var x : worst.entrySet()) sb.append(x.getKey()).append(String.format(Locale.ROOT, " worst %.3f%% of the frame, %.2f%% of troop px; ", x.getValue()[0], x.getValue()[1]));
-            report("mo-rig", missing.isEmpty() && over.isEmpty() && compared > 0, compared + " rest and hand shots against " + base + ": " + sb + (over.isEmpty() ? "none over 0.5% of the frame" : "over 0.5%: " + over) + (missing.isEmpty() ? "" : "; missing: " + missing));
+            report("mo-rig", missing.isEmpty() && over.isEmpty() && compared > 0, compared + " rest and hand shots against " + base + ": " + sb + (over.isEmpty() ? "none over 0.5% of the frame" : "over 0.5%: " + over) + (missing.isEmpty() ? "" : "; missing: " + missing) + geoNote());
             return true;
         }
 
