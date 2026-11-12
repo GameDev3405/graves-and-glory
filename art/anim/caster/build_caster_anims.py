@@ -14,9 +14,9 @@ run along local -z (a = -z, b = +y). The hexer's grave lantern hangs below a sho
 
 The cast (attack_cast, caster_cast impactTicks 10): from the guard the caster gathers, the focus raised over the head and the
 load held; then the body drives forward and the focus is thrust at the foe, the spell leaving on the server's impact tick; an
-overshoot, a recovery and the settle back into guard. The hexer's cast is the lantern thrust instead: hauled in to the chest,
-driven out at the foe and held while the light gathers, then shoved, the blight leaving the lantern on the impact tick
-(cast_tip/hexer.json is the lantern glass).
+overshoot, a recovery and the settle back into guard. The hexer's cast is the lantern thrust instead: cocked high beside the
+shoulder and held while the light gathers, then driven straight out at the foe, the blight leaving the lantern on the impact
+tick (cast_tip/hexer.json is the lantern glass).
 """
 import json, math, os, sys
 from pathlib import Path
@@ -460,39 +460,41 @@ def mage_set():
 def hexer_set():
     """The Gravecaller, caster style v2 (docs/anim-rebuild/CASTER-V2-DESIGN.md: the lantern thrust, the point and shoot made
     heavy and held). The guard: upright, the grave lantern held out before the belly on its short pole, hanging, the free hand
-    relaxed at the hip. The thrust: the hips load back first, then the lantern is hauled in to the chest, the shoulders
-    turning the right side away; the arm drives it out at the foe at chest height, slower than a wand, and holds it there at
-    arm's length while the light gathers, a heavy tremor in the arm; the hips drive forward over the lead foot, the lantern
-    heaves up a touch and is shoved at the foe, the blight leaving the lantern on the release tick; the lantern kicks up on
-    its pole, the body comes back and settles into guard. The off hand never joins the cast: it hangs and swings back as the
+    relaxed at the hip. The thrust (fix round 1, 2026-11-12): the hips load back first, then the lantern is hauled up and
+    cocked high out beside the right shoulder, the shoulders turning the right side away, and held there while the light
+    gathers, a heavy tremor in the arm; the hips drive forward over the lead foot and the arm drives the lantern down and out
+    at the foe, straight along the bolt's line at chest height on the release tick, the blight leaving the glass; the arm
+    follows through past the line, the body comes back and settles into guard. The off hand never joins the cast: it hangs and swings back as the
     right side drives."""
     lp_rest = (-35, 0, -18, -60)          # the off hand clawed, held out low before the belly
     # hunched over the lantern, the head pushed forward under the hood, the lantern held out clear of the robe
     g = KEY((9, 10, 0), GAZE, (-1.8, -3.6, 6.6), aim(10, -6), u=UP, rp=(-55, 0, 20, -25), lp=lp_rest)
     # the load: the weight goes back onto the rear foot before the arm moves (the hips lead, see legs)
-    load = nudge(g, torso=(-2, 4, 0), head=(-1, 0, 0), R=(-0.2, 0.3, 0.1), d=aim(16, -8))
-    # the haul: the lantern drawn in to the chest, the pole tipped up, the right side turned away
-    haul = KEY((-4, 10, 0), (2, 0, 0), (-2.2, -1.4, 6.2), aim(48, 8), u=UP, rp=(-80, 0, 35, -100), lp=(-18, 0, -12, -44))
-    coil = nudge(haul, torso=(-1, 3, 0), R=(-0.1, 0.2, 0.1), d=aim(52, 10))
-    # the push: the arm drives the lantern out at the foe, heavy, the shoulder coming round
-    push = KEY((6, -10, 0), (3, 0, 0), (0.2, 0.2, 7.5), aim(14, 2), u=UP, rp=(-88, 0, 5, -15), lp=(-4, 0, -12, -38))
-    # held at arm's length while the light gathers: the arm locked, a heavy tremor, the lantern swaying on its pole
-    # (batch review 2026-11-11: 1.2 px out to the right, the hood sat on the cuff at full reach)
-    held = KEY((7, -12, 0), (3, 0, 0), (-1.2, 0.4, 7.8), aim(9, 0), u=UP, rp=(-90, 0, 0, -5), lp=(-2, 0, -12, -36))
-    held2 = nudge(held, torso=(0.5, -0.5, 0), R=(0.05, -0.12, -0.05), d=aim(7.5, 0.8))
-    held3 = nudge(held, torso=(0.8, -1, 0), R=(-0.05, 0.1, -0.08), d=aim(10.5, -0.6))
-    # the heave: the hips have gone forward; the shoulder holds back a beat and the lantern lifts a touch on its pole
-    heave = nudge(held, torso=(-1, 2, 0), R=(0.0, 0.35, -0.5), d=aim(20, 0))
-    # the release: the shoulder follows the hips through, the lantern is shoved at the foe and the blight leaves it
-    release = KEY((14, -26, 0), (5, 0, 0), (0.0, 0.9, 7.9), aim(2, 0), u=UP, rp=(-90, 0, 0, -3), lp=(8, 0, -14, -30))
-    # the kick: the lantern bounces up on its pole and the arm gives back through the shoulder
-    kick = KEY((10, -20, 0), (4, 0, 0), (0.0, 2.2, 6.9), aim(36, 2), u=UP, rp=(-95, 0, 0, -20), lp=(5, 0, -12, -32))
-    back = KEY((5, -8, 0), (4, 0, 0), (0.6, -1.6, 6.8), aim(10, -2), u=UP, rp=(-75, 0, 5, -20), lp=(-4, 0, -12, -38))
+    load = nudge(g, torso=(-2, 4, 0), head=(-1, 0, 0), R=(-0.7, 0.3, 0.1), d=aim(16, -8))
+    # Fix round 1 (2026-11-12, review: nothing pointed at the foe on the release; the lantern was already out at arm's length
+    # from the push on, so the release read as a crouched turn): the lantern is hauled back and cocked high beside the
+    # shoulder, the right side turned away, and held there trembling while the light gathers; on the release the arm drives
+    # it straight out at the foe, shoulder, fist, pole and glass on the bolt's line, and follows through past it.
+    # the haul: the lantern drawn back and up beside the shoulder, the pole tipped up, the right side turned away
+    haul = KEY((-4, 14, 0), (-1, 0, 0), (-4.4, 3.0, 5.0), aim(45, -10), u=UP, rp=(-130, 0, 10, -40), lp=(-18, 0, -12, -44))
+    coil = nudge(haul, torso=(-1, 2, 0), R=(-0.2, 2.0, -2.5), d=aim(52, -12))
+    # cocked and held while the light gathers: a heavy tremor in the arm, the lantern swaying on its pole
+    held = KEY((-6, 18, 0), (0, 0, 0), (-4.6, 6.0, 1.5), aim(55, -15), u=UP, rp=(-150, 0, 20, -30), lp=(-4, 0, -12, -38))
+    held2 = nudge(held, torso=(0.5, -0.5, 0), R=(0.05, -0.12, -0.05), d=aim(53.5, -14.2))
+    held3 = nudge(held, torso=(0.8, -1, 0), R=(-0.05, 0.1, -0.08), d=aim(56.5, -15.6))
+    # the drive: the hips have gone forward; the shoulder comes round and the arm is halfway out, the pole coming level
+    heave = KEY((4, 2, 0), (4, 0, 0), (-3.0, 3.0, 6.0), aim(25, -5), u=UP, rp=(-110, 0, 10, -15), lp=(2, 0, -13, -34))
+    # the release: the arm straight at the foe, the pole level along it, the blight leaving the glass
+    release = KEY((14, -26, 0), (5, 0, 0), (-1.0, 0.2, 8.2), aim(0, 0), u=UP, rp=(-90, 0, 0, -2), lp=(8, 0, -14, -30))
+    # the follow-through: the body carries on over the lead foot, the arm still on the line and dipping past it, the lantern
+    # swinging out ahead on its pole
+    kick = KEY((17, -28, 0), (6, 0, 0), (-0.6, -0.8, 8.0), aim(-10, 0), u=UP, rp=(-85, 0, 0, -3), lp=(6, 0, -13, -30))
+    back = KEY((6, -10, 0), (4, 0, 0), (0.2, -2.0, 6.9), aim(6, -2), u=UP, rp=(-75, 0, 5, -20), lp=(-4, 0, -12, -38))
     recover = KEY((7, 6, 0), GAZE, (-1.4, -3.6, 6.6), aim(14, -5), u=UP, rp=(-55, 0, 10, -24), lp=lp_rest)
     near = nudge(g, torso=(1, -2, 0), R=(0.0, 0.2, 0.0), d=aim(13, -6))
     settle = nudge(g, R=(0.0, 0.05, 0.0))
-    attack = [(0, g), (1.5, load), (3.0, haul), (4.6, coil), (6.4, push), (7.2, held), (8.0, held2), (8.8, held3),
-              (9.4, heave), (IMPACT, release), (11.6, kick), (14.0, back), (17.0, recover), (22.0, near), (29.0, settle),
+    attack = [(0, g), (1.5, load), (3.0, haul), (4.6, coil), (6.4, held), (7.4, held2), (8.4, held3), (8.9, held),
+              (9.5, heave), (IMPACT, release), (11.6, kick), (14.0, back), (17.0, recover), (22.0, near), (29.0, settle),
               (ATTACK_TICKS, g)]
     R0, R1 = READY_HIPS
     # the Knight's weight shift: the hips load back and turn the right side away before the arm moves, and drive forward,
@@ -835,27 +837,29 @@ def blight_gravecaller():
     foe; the body hunches and draws in, trembling, as the blight gathers; a last lift and arch, then both arms slam down, the
     lantern and the claw pointing at the foe's ground, the hips dropping; the body rebounds and settles into the guard."""
     g = GUARD
-    load = nudge(g, torso=(-2, 4, 0), head=(-1, 0, 0), R=(0.0, 0.4, -0.4), d=aim(20, -8))
+    load = nudge(g, torso=(-2, 4, 0), head=(-1, 0, 0), R=(-0.9, 0.4, -0.2), d=aim(20, -8))
     claw = (-80, 0, 4, -40)        # the left arm out at the foe, the elbow bent: a claw
     # (batch review 2026-11-11: the fist rises outside the hood, the cuff went through the head on its way up)
-    lift = KEY((0, 10, 0), (0, 0, 0), (-1.8, 3.0, 5.4), aim(60, 10), u=UP, rp=(-130, 0, 10, -40), lp=(-55, 0, -6, -45))
-    over = KEY((4, 6, 0), (2, 0, 0), (-2.6, 7.4, 1.0), aim(50, -25), u=UP, rp=(-170, 0, 10, -30), lp=claw)
+    lift = KEY((0, 10, 0), (0, 0, 0), (-4.4, 3.0, 5.4), aim(60, 10), u=UP, rp=(-130, 0, 10, -40), lp=(-55, 0, -6, -45))
+    over = KEY((4, 6, 0), (2, 0, 0), (-4.6, 7.4, 1.0), aim(50, -25), u=UP, rp=(-170, 0, 10, -30), lp=claw)
     # drawing in: the hunch deepens, the claw pulls in a little, a tremor in both arms
-    hunch = KEY((10, 4, 0), (4, 0, 0), (-2.6, 7.3, 1.2), aim(48, -22), u=UP, rp=(-170, 0, 10, -30), lp=(-75, 0, 6, -55))
+    hunch = KEY((10, 4, 0), (4, 0, 0), (-4.0, 7.3, 1.2), aim(48, -22), u=UP, rp=(-170, 0, 10, -30), lp=(-75, 0, 6, -55))
     hunch2 = nudge(hunch, torso=(1, -1, 0), R=(0.1, -0.15, 0.05), d=aim(46, -20), lp=(2, 0, 1, -3))
     hunch3 = nudge(hunch, torso=(2, 1, 0), R=(-0.1, 0.1, -0.05), d=aim(50, -24), lp=(-2, 0, -1, 2))
     hunch4 = nudge(hunch, torso=(3, 0, 0), R=(0.05, -0.1, 0.1), d=aim(47, -21), lp=(1, 0, 1, -5))
     # the last lift: the lantern up and back, the chest arching, the claw drawn back to strike
     # (batch review 2026-11-11: the claw drawn back 12 deg further off the hood, its cuff was 2.9 px in it)
-    coil = KEY((-3, 4, 0), (-2, 0, 0), (-2.4, 7.6, 0.4), aim(62, -15), u=UP, rp=(-175, 0, 10, -30), lp=(-110, 0, 8, -60))
+    coil = KEY((-3, 4, 0), (-2, 0, 0), (-3.8, 7.6, 0.4), aim(62, -15), u=UP, rp=(-175, 0, 10, -30), lp=(-95, 0, 8, -60))
     # the slam: both arms down at the foe's ground, the torso driven forward
     slam = KEY((18, 0, 0), (12, 0, 0), (0.4, -2.6, 7.3), aim(-42, 0), u=UP, rp=(-75, 0, 0, -8), lp=(-55, 0, 0, -8))
+    # (fix round 1: on its way down from overhead the lantern swings out past the right shoulder, not through the mantle)
+    swing = KEY((10, 2, 0), (6, 0, 0), (-4.0, 5.2, 5.2), aim(30, -5), u=UP, rp=(-130, 0, 10, -15), lp=(-70, 0, 4, -30))
     sink = nudge(slam, torso=(2, 0, 0), head=(1, 0, 0), R=(0.0, -0.3, -0.1), d=aim(-46, 0), lp=(3, 0, 0, 0))
-    rebound = KEY((9, 2, 0), (6, 0, 0), (0.8, -2.0, 6.8), aim(-12, -2), u=UP, rp=(-70, 0, 5, -15), lp=(-35, 0, -8, -30))
-    recover = KEY((4, 6, 0), GAZE, (1.1, -4.4, 6.1), aim(10, -5), u=UP, rp=(-50, 0, 10, -24), lp=(-15, 0, -12, -40))
+    rebound = KEY((9, 2, 0), (6, 0, 0), (-1.0, -2.0, 6.8), aim(-12, -2), u=UP, rp=(-70, 0, 5, -15), lp=(-35, 0, -8, -30))
+    recover = KEY((4, 6, 0), GAZE, (-1.4, -4.4, 6.1), aim(10, -5), u=UP, rp=(-50, 0, 10, -24), lp=(-15, 0, -12, -40))
     near = nudge(g, torso=(1, -1, 0), R=(0.0, 0.15, 0.0), d=aim(13, -6))
     keys = [(0, g), (2.0, load), (5.0, lift), (8.0, over), (10.5, hunch), (12.5, hunch2), (14.5, hunch3), (16.5, hunch4),
-            (18.6, coil), (20, slam), (21.6, sink), (24.0, rebound), (27.0, recover), (28.8, near), (30, g)]
+            (18.6, coil), (19.3, swing), (20, slam), (21.6, sink), (24.0, rebound), (27.0, recover), (28.8, near), (30, g)]
     R0, R1 = READY_HIPS
     legs = {"hips": [(0, R0, R1), (2.0, (-2.0, 20.0, 0.0), (0.0, -1.0, -0.4)), (8.0, (2.0, 18.0, 0.0), (0.0, -1.1, -0.3)),
                      (16.5, (5.0, 16.0, 0.0), (0.0, -1.35, -0.2)), (18.6, (-2.0, 18.0, 0.0), (0.0, -0.95, -0.4)),
@@ -972,6 +976,7 @@ def splice(clips, paths):
             new.update(clips)
         doc["animations"] = new
         hang_swing.key_doc(TROOP, doc, log=False)   # a hanging focus (the hexer's lantern): its swing re-keyed over every clip
+        hang_post(doc["animations"])
         path.write_bytes(json.dumps(doc, indent=1).encode("utf-8"))
         print("spliced", ", ".join(clips), "into", path)
 
@@ -1167,6 +1172,21 @@ def _swing(d):
 LIFE_RATE = {"wm_seer": 2.5}.get(TROOP)
 
 
+# Fix round 1 (2026-11-12), per troop, (piece, clip): [(axis, deg)]: the piece's turn about that axis toward deg's side (its
+# keys plus the life swing) held under |deg| in that clip, a soft cap (cap * tanh(turn / cap)); the other side swings free.
+# Hexer: the hood tail overshot into the mantle as it pitched back in at the body in the stun (2.04 px at t20) and the pull
+# (2.43 at t8.5), and as it rolled in the left blow (1.95 at t2; then 1.94 into the right pauldron rolling back at t6).
+LIFE_CAP = {"hexer": {("hood_tail", "stun_upper"): [(0, -6.0)], ("hood_tail", "hit_pulled"): [(0, -6.0)],
+                      ("hood_tail", "hit_medium_left"): [(2, -6.0), (2, 14.0)]}}.get(TROOP, {})
+
+
+def _side_cap(r, ax, cap):
+    r = list(r)
+    if r[ax] * cap > 0:
+        r[ax] = math.copysign(abs(cap) * math.tanh(abs(r[ax]) / abs(cap)), cap)
+    return tuple(r)
+
+
 def _rate(d, cap):
     def run(seq):
         out = [seq[0]]
@@ -1254,6 +1274,8 @@ def life_pass(upper_clip, legs_clip, loop_from=None, report=True, name="", upper
             poss = [S[i].get(b, (Z3, None))[1] for i in range(k_end + 1)]
         if not in_legs and b not in PANELS and parts.get(b, {}).get("kind") in ("cloth", "plume"):
             rots, poss = _unsink(b, U0, L0, rots, poss)
+        for ax, cap in LIFE_CAP.get((b, name), ()):   # the keyed turn and its swing together
+            rots = [_side_cap(r, ax, cap) for r in rots]
         write_bone(clip, b, rots, poss)
         if report:
             print("  life %-22s %-20s +%4.1f deg%s" % (name, b, _swing(dr), " (legs clip)" if in_legs else ""))
@@ -1372,6 +1394,48 @@ def alive_clips(anims):
     return anims
 
 
+# Fix round 1 (2026-11-12), hexer: hang_swing.key_doc (the shared module, not edited here) keys the lantern's hang bones from
+# each clip's motion; three of its swings break the focus gates. Run after every key_doc call (it re-keys the hang bones from
+# scratch, so this is safe to run twice). "rate": in these falls the lantern snapped on its pole as the arm hit the ground
+# (death_left 24 deg in a sample at t15.25, death_back two pulses of 14-16 at t16.75): its swing may turn at most this many
+# degrees a sample, run forward and back and averaged (_rate) so it keeps its first and last value. "ease_in": the knockback's
+# swing began 2.25 deg off the hang on its first key (an added clip must start at zero): it eases in over these ticks.
+HANG_POST = {"hexer": {"rate": {"death_back": 5.0, "death_left": 5.0}, "ease_in": {"hit_knockback": 2.0}}}.get(TROOP)
+
+
+def hang_post(anims):
+    if not HANG_POST:
+        return anims
+    for clip, cap in HANG_POST["rate"].items():
+        a = anims.get(clip)
+        if a is None:
+            continue
+        n = int(round(float(a["animation_length"]) / DT))
+        for b, ch in a["bones"].items():
+            if not b.endswith("_hang") or not isinstance(ch.get("rotation"), dict):
+                continue
+            seq = _rate([tuple(_chan_at(ch["rotation"], i * DT)) for i in range(n + 1)], cap)
+            ch["rotation"] = {hang_swing._fmt_t(i * DT): [round(v, 3) for v in e] for i, e in enumerate(seq)}
+    for clip, ticks in HANG_POST["ease_in"].items():
+        a = anims.get(clip)
+        if a is None:
+            continue
+        for b, ch in a["bones"].items():
+            if not b.endswith("_hang") or not isinstance(ch.get("rotation"), dict):
+                continue
+            rot = ch["rotation"]
+            for i in range(1, int(ticks * SUB) + 1):   # the ramp keyed on the bake grid, not one long lerp
+                k = hang_swing._fmt_t(i * DT)
+                if k not in rot:
+                    rot[k] = [round(v, 3) for v in _chan_at(rot, i * DT)]
+            for k, v in rot.items():
+                x = min(1.0, float(k) * TPS / ticks)
+                w = x * x * (3 - 2 * x)
+                v[:] = [round(e * w, 3) for e in v]
+            ch["rotation"] = dict(sorted(rot.items(), key=lambda kv: float(kv[0])))
+    return anims
+
+
 def replace_clips(clips, paths):
     """Replaces these clips in place in each animation file (a new one goes at the end); every other clip stays as it was."""
     for path in paths:
@@ -1380,6 +1444,7 @@ def replace_clips(clips, paths):
         for k, v in clips.items():
             A[k] = v
         hang_swing.key_doc(TROOP, doc, log=False)   # a hanging focus (the hexer's lantern): its swing re-keyed over every clip
+        hang_post(doc["animations"])
         path.write_bytes(json.dumps(doc, indent=1).encode("utf-8"))
         print("replaced", ", ".join(clips), "in", path)
 
@@ -1401,6 +1466,9 @@ CLIP_NUDGE = {
     # wm_seer cast: with the shoulder tusks sunk into the pad, the head turning to the foe met the right pad (1.96 at t4):
     # the head 5 deg up over ticks 2-6
     "wm_seer": {"attack_cast": [("head", (-5, 0, 0), 2, 6, 2)]},
+    # hexer brace: both raised arms' cuffs sat in the burial hood (3.69 px, 2.99 after the hood's 2 px nudge) and the right
+    # cuff in the head (2.28): the lantern arm 20 lower and its elbow 20 out, the off arm's elbow 20 out
+    "hexer": {"stance_brace_upper": [("right_arm", (20, 0, 20)) + ALL, ("left_arm", (0, 0, 20)) + ALL]},
 }
 
 
@@ -1495,6 +1563,7 @@ def review_layers(path):
         if up in A:
             floor_lift(doc, up, lg, on_guard=FLOOR_ON_GUARD and up.startswith("hit_"))
     hang_swing.key_doc(TROOP, doc, log=False)
+    hang_post(A)
     path.write_bytes(json.dumps(doc, indent=1).encode("utf-8"))
     print("review layers written to", path)
 
@@ -1658,6 +1727,13 @@ WIDE_GUARD_FLING = {"tc_mist": 0.4, "wm_seer": 0.4}.get(TROOP)
 # guard); the right arm swings 6 deg less forward with it.
 if TROOP == "mage":
     HIT_PEAK["left"] = dict(HIT_PEAK["left"], right_arm=(-4, 0, 14))
+# Fix round 1 (2026-11-12), hexer: the free arm's cuff (a 5 px bell at the elbow) met the mantle and the left pauldron in
+# the hits: the front blow no longer curls the forearm (light and medium front, block: 1.93-2.17 px), and the back and left
+# blows swing the arm 10 and 22 deg less toward the body (1.94 and 2.0 px into the pauldron).
+if TROOP == "hexer":
+    HIT_PEAK["front"] = dict(HIT_PEAK["front"], left_forearm=Z3)
+    HIT_PEAK["back"] = dict(HIT_PEAK["back"], left_arm=(14, 0, -14))
+    HIT_PEAK["left"] = dict(HIT_PEAK["left"], left_arm=(12, 0, -8))
 
 
 def _fling(peak):
@@ -2445,6 +2521,7 @@ def main():
     clip_nudge(anims)
     alive_clips(anims)
     hang_swing.key_doc(TROOP, {"animations": anims})   # a hanging focus (the hexer's lantern): the swing baked over every clip
+    hang_post(anims)
     K.OUT.parent.mkdir(parents=True, exist_ok=True)
     K.OUT.write_text(json.dumps({"format_version": "1.8.0", "animations": anims}, indent=1), encoding="utf-8")
     print("wrote", K.OUT, "clips:", ", ".join(anims))

@@ -368,7 +368,9 @@ def bones():
     B.append(Bone("head", "body", (0, -12, 0), [Box((-4, -8, -3), (8, 8, 8), skull)], rot=(-LEAN // 2 - 1, 0, 0)))
     B.append(Bone("death_mask", "head", boxes=[Box((-3, -7, -5.2), (6, 6, 1), mask)]))
     B.append(Bone("burial_hood", "head", tag="helm", boxes=[
-        Box((-5, -9, -5), (10, 10, 10), hood),
+        # fix round 1 (2026-11-12, an allowed model nudge for Kort's review): the cowl's bottom 2 px up (8 high, was 10): level
+        # with the shoulder pivot, it met every forearm-forward cuff (brace, wall, blight, pulled)
+        Box((-5, -9, -5), (10, 8, 10), hood),
         Box((-5, -9.5, -6.2), (10, 2, 2), brim, dil=0.1)]))
     B.append(Bone("hood_tail", "head", (0, -6, 4.8), rot=(-5, 0, 0), tag="helm", boxes=[Box((-3.5, 0, 0), (7, 13, 1), tail)]))
     # the arms: bare bone 2x12x2 under a bell sleeve; the right holds the lantern out

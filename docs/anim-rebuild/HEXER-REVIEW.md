@@ -146,3 +146,35 @@ The family-wide part of the fix (life pass, reaction layers, front blow, stun lo
   (reactions.py, stances.py, charge.py), as before this review.
 - Rule 6: hold (stances.py, gear `staff`/`focus`) holds the caster's focus forward; brace, wall, ward and shield_up are this
   builder's caster poses. The cast's `impact` stays tick 10, the release key (the bolt leaves).
+
+### Fix round 1 (2026-11-12, from work/reviewer/CASTER-sonnet-review.md)
+
+- **The cast's aim:** the "gold crescent staff behind the head" the reviewer saw is the tier III `halo` on the head, and the
+  "thin black staff" is the `hood_tail` seen edge-on; the hexer's focus is the lantern on its short pole. The cast is
+  re-posed (`hexer_set`): the lantern is hauled up and cocked high out beside the right shoulder (t3-9, a tremor while the
+  light gathers), the drive starts at t9.5 and on the release (t10) the arm is straight at the foe at chest height, the pole
+  level along it and the glass on the bolt's line; the arm follows through past the line (t11.6) and comes home. Impact tick
+  10, length 36 and markers unchanged. The cast tip (the lantern glass on the release sample) moved from
+  (-0.216, 1.044, 1.119) to (-0.276, 0.989, 1.091) blocks; `out/hexer.tip.json` and `data/gravesandglory/cast_tip/hexer.json`
+  regenerated (CAST_TIP; the generator now also lists the hang bones under `tiers`, `offset` is what Projectiles reads).
+- **Model nudge (for Kort):** the `burial_hood` box's bottom 2 px up (10 high to 8, `art/hand/hexer/build_hexer.py`; 1 texel
+  per model pixel, the hood painter unchanged, so the atlas packs 2 rows shorter and the generated textures shift). Rebuilt:
+  the old-format `models/troop/hexer.json` and skins (tools/build_skins.py; no other troop's output changed), out/ geo,
+  preview geos and textures (`troop_rig.py`; the rig unchanged), copied to the asset geo and `textures/entity/troop/hexer_geo`.
+- Brace: the lantern arm 20 lower with its elbow 20 out, the off arm's elbow 20 out (`CLIP_NUDGE`; hood into the right cuff
+  3.69 -> 1.87 WARN). Wall cleared by the hood nudge alone.
+- Blight: its fist path kept outside the hood and mantle (the lift and overhead keys 1.4-2 px further out, the claw 15 lower
+  at the coil, a new swing key at t19.3 that brings the lantern down past the right shoulder, the rebound and recover fists
+  1.4-2.5 px less across the body): the armour series was 2.0-2.9 through ticks 3-27, now at most 1.87.
+- Hits: the front blow no longer curls the free forearm; the back and left blows swing the free arm 10 and 22 deg less toward
+  the body (`HIT_PEAK`, hexer only; the light back/left change with them).
+- Hood tail: `LIFE_CAP` (new, per piece and clip, one-sided soft cap): its pitch back in at the body under 6 deg in the stun
+  and the pull, its roll under -6 / +14 in the left blow.
+- Lantern: `HANG_POST` (new, hexer only, run after every `hang_swing.key_doc` call, which re-keys the hang bones from scratch,
+  so it is safe to run twice): death_back and death_left's swing rate-limited to 5 deg a sample (pops 14.4 / 24.2 gone), the
+  knockback's swing eased in over 2 ticks (settle 2.25 gone).
+- Focus 16 FAIL rows -> 1: death_right shoulder 164.5 at t16.75 (agreed exemption, for the lead to add). Scorecard 35 clips,
+  0 failing. A full rebuild of hits, attack, ability and stances plus the layer pass gives the same bytes. Changed clips:
+  attack_cast, blight_gravecaller, stance_brace_upper, the nine hits and block, stun_upper, hit_pulled, hit_knockback,
+  death_back, death_left, the three aim layers (cut from attack_cast); walk and run untouched.
+  Renders `work/review/frames/r1h/` (cast.jpg: t6, 9, 10, 11.5 in three views; other.jpg, hits.jpg, brace_cmp.jpg).
