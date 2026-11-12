@@ -451,9 +451,10 @@ public final class UiMath {
         return Math.max(1, Math.min(tiers - shown + 1, first + pages * shown));
     }
 
-    /** The track's first tier shown: where the arrows paged it (`pagedFirst`) while `paged`, else trackFirst. */
+    /** The track's first tier shown: where the arrows paged it (`pagedFirst`) while `paged`, kept within the last `shown` tiers
+     *  (a resize can show more than the arrows paged for), else trackFirst. */
     public static int trackShown(boolean paged, int pagedFirst, int lowestUnclaimed, int tiers, int shown) {
-        return paged ? pagedFirst : trackFirst(lowestUnclaimed, tiers, shown);
+        return paged ? Math.min(pagedFirst, tiers - shown + 1) : trackFirst(lowestUnclaimed, tiers, shown);
     }
 
     /** The hero's tier: the first tier on a multiple of `every` (a title in Phase 1) past the track's right end, so the hero never
