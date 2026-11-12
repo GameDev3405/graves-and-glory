@@ -70,6 +70,8 @@ public final class TroopMotion {
         float[] lying;TroopModel<?> lyingModel;double[] lyingReach;
         /** The scene pose's clip, when it began (render seconds) and its blend (0 to 1). */
         String sceneClip;double sceneStart,sceneW,sceneLast=Double.NaN;
+        /** A rise's fall pose this frame (rise): fall.json's time (s) and its weight, 0 when none. */
+        double riseT,riseW;
         Body(UUID uuid){this.uuid=uuid;seed=MotionMath.seed(uuid.getMostSignificantBits(),uuid.getLeastSignificantBits());}
         /** The tracks' shares of the fold this frame (MotionStack.shares) in the body's scratch, one per track. */
         double[] shares(){
@@ -159,12 +161,14 @@ public final class TroopMotion {
         MotionInput in=input(e,fam,b,limbAngle,limbDistance,age,headYaw,headPitch);
         MotionEngine.pose(in,b.state,fam.family(),b.pose);
         scene(b,fam,e.getId(),in.time());
-        if(b.sceneClip!=null)MotionFeet.ground(b.pose,b.state.vec); // fix r3: a scene clip's legs keep the soles out of the ground too
+        rise(b,fam,e.getId(),in.time(),in.dead());
+        if(b.sceneClip!=null||b.riseW>0)MotionFeet.ground(b.pose,b.state.vec); // fix r3: a scene clip's legs keep the soles out of the ground too
         apply(m,b.pose);
         limits(m);
         boolean shield=!e.getOffHandStack().isEmpty();
         // the action tracks' shares once a frame, read by the bow's draw, the carries and the fold
-        double[] shares=b.shares();Clip sc=b.sceneClip==null?null:fam.all().get(b.sceneClip);double sw=sc==null?0:b.sceneW;
+        double[] shares=b.shares();boolean rising=b.sceneClip==null&&b.riseW>0; // the rise holds the bones its fall keys, as a scene clip does
+        Clip sc=rising?fam.all().get(RISE_CLIP):b.sceneClip==null?null:fam.all().get(b.sceneClip);double sw=sc==null?0:rising?b.riseW:b.sceneW;
         carries(m,bow(row),shield,draw(b.state,in.time(),bow(row),shares),bone->Math.min(1,stanceHeld(b.state,bone)+actionHeld(b.state,bone,shares))+sw*keys(sc,bone));
         rootScale(m);
         b.armHeld=false;for(String arm:ARMS)if(actionHeld(b.state,arm,shares)>0||sw>0&&keys(sc,arm)>0)b.armHeld=true;
@@ -265,7 +269,30 @@ public final class TroopMotion {
         if(b.sceneW<=0&&!on){b.sceneClip=null;return;}
         Clip c=fam.all().get(b.sceneClip);if(c==null){b.sceneClip=null;return;}
         double w=MotionMath.ease(b.sceneW);
-        b.scene.clear();c.add(now-b.sceneStart,b.scene,1,b.state.tmp);
+        over(b,c,now-b.sceneStart,w);
+    }
+    /** The clip a rise plays on the old model, forward to fall and backwards to stand (MotionEngine.riseFall). */
+    static final String RISE_CLIP="fall";
+    /**
+     * Rise Again and the Hollow King's Undying King (rise_v1, MotionEvents.Client.rise) on the old model, which has no fake_death or rise clip: a
+     * living troop falls on common/fall.json, lies on its last frame and stands up on it played backwards, timed by MotionEngine.riseFall (DeathController's
+     * riseAt) so it is up as the server's window ends, whole-body over the engine as a scene clip is. Without it the stunned stance fell back to idle.
+     * A scene pose wins; a troop killed during it plays its death as the engine gives it.
+     */
+    static void rise(Body b,Fam fam,int id,double now,boolean dead){
+        b.riseW=0;
+        MotionEvents.Rise r=dead||b.sceneClip!=null?null:MotionEvents.Client.rise(id);
+        Clip c=r==null?null:fam.all().get(RISE_CLIP);
+        double[] at=c==null?null:MotionEngine.riseFall(now*Clip.TICKS-r.tick(),r.window(),c.length()*Clip.TICKS);
+        if(at==null||at[1]<=0)return;
+        b.riseT=at[0];b.riseW=at[1];
+        over(b,c,at[0],at[1]);
+    }
+    /** Harness hook: the rise's {fall.json time (s), weight} on the old model for this entity id now, or null (OldModelGaps). */
+    static double[] riseShown(int id){Body b=BODIES.get(id);return b==null||b.riseW<=0?null:new double[]{b.riseT,b.riseW};}
+    /** Blends clip c at time t (s) over the engine's pose whole-body by weight w (a scene clip, a rise). */
+    static void over(Body b,Clip c,double t,double w){
+        b.scene.clear();c.add(t,b.scene,1,b.state.tmp);
         Pose out=b.pose;
         for(int i=0,n=out.size();i<n;i++){double[] r=out.row(i);for(int k=0;k<6;k++)r[k]*=1-w;}
         out.add(b.scene,w);

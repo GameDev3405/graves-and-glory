@@ -21,7 +21,7 @@ import static gg.gravesandglory.MotionEngineCheck.*;
 /**
  * The MotionEngine's stance rulings (animation rework design section 6.2) through its frame API: no pops through stance
  * flicker, the planted-feet hand-off into an attack, the stance keys for Hold and Run, the server's attack variant and the aim
- * fallback. Fixtures come from MotionEngineCheck. Never shipped.
+ * fallback, and the old model's rise timing (riseAt, riseFall). Fixtures come from MotionEngineCheck. Never shipped.
  */
 public final class MotionStanceCheck {
     public static void main(String[] args) {
@@ -33,12 +33,61 @@ public final class MotionStanceCheck {
         run("run and charge", () -> runCharge());
         run("variant", () -> variant(fam));
         run("aim fallback", () -> aimFallback(seeds));
+        run("rise timing", MotionStanceCheck::rise);
         if (failed > 0) {
             System.out.println("MotionStanceCheck: " + failed + " checks FAILED");
             System.exit(1);
         }
         System.out.println("MotionStanceCheck: " + checks + " checks passed");
     }
+
+    /**
+     * Gap 1 (docs/anim-rebuild/OLD-MODEL-GAPS.md): the old model's rise timing. MotionEngine.riseAt is DeathController's (moved unchanged): a long
+     * window falls, holds and rises so the rise ends on the window's last tick; a short one quickens both; a window of 0 plays them at their length.
+     * riseFall plays fall.json forward, holds its last frame, then plays it backwards to stand, at full weight between the fades.
+     */
+    static String rise() {
+        double fall = 24; // common/fall.json: 1.2 s
+        // the Hollow King: 70 ticks, longer than both clips (48): fall 0-24, hold to 46, rise 46-70
+        double[] a = MotionEngine.riseAt(10, 70, fall, fall);
+        check(a != null && a[0] == 0 && near(a[1], 10, 1e-9) && a[2] == 70, "king, 10 ticks in: falling at 10 of 70: " + Arrays.toString(a));
+        a = MotionEngine.riseAt(30, 70, fall, fall);
+        check(a != null && a[0] == 0 && near(a[1], 24, 1e-9), "king, 30 ticks in: the fall's last frame held: " + Arrays.toString(a));
+        a = MotionEngine.riseAt(50, 70, fall, fall);
+        check(a != null && a[0] == 1 && near(a[1], 4, 1e-9), "king, 50 ticks in: 4 ticks into the rise: " + Arrays.toString(a));
+        check(MotionEngine.riseAt(70, 70, fall, fall) == null && MotionEngine.riseAt(-.01, 70, fall, fall) == null, "nothing before the rise or from its window's end");
+        // Rise Again: a 20-tick stun, shorter than both clips: both quickened by 20/48, the fall to tick 10, the rise to 20
+        a = MotionEngine.riseAt(5, 20, fall, fall);
+        check(a != null && a[0] == 0 && near(a[1], 12, 1e-9), "rise again, 5 ticks in: half the fall: " + Arrays.toString(a));
+        a = MotionEngine.riseAt(15, 20, fall, fall);
+        check(a != null && a[0] == 1 && near(a[1], 12, 1e-9), "rise again, 15 ticks in: half the rise: " + Arrays.toString(a));
+        a = MotionEngine.riseAt(47.9, 0, fall, fall);
+        check(a != null && a[0] == 1 && a[2] == 48, "a window of 0 plays both clips at their own length: " + Arrays.toString(a));
+        // the old model's fall clip: forward, held, backwards; at full weight between the fades; continuous at the turn
+        StringBuilder out = new StringBuilder();
+        for (int window : new int[]{20, 70}) {
+            double prevT = Double.NaN, maxStep = 0, lowest = 1, lastT = Double.NaN, lastW = 1;
+            for (double e = 0; e < window; e += .25) {
+                double[] r = MotionEngine.riseFall(e, window, fall);
+                check(r != null, "window " + window + ": a pose at " + e);
+                double t = r[0] * Clip.TICKS;
+                check(t >= -1e-9 && t <= fall + 1e-9, "window " + window + ": fall time " + t + " inside the clip at " + e);
+                if (!Double.isNaN(prevT)) maxStep = Math.max(maxStep, Math.abs(t - prevT));
+                if (e >= MotionEngine.RISE_IN && e <= window - MotionEngine.RISE_OUT) lowest = Math.min(lowest, r[1]);
+                prevT = t; lastT = t; lastW = r[1];
+            }
+            double quick = window >= 2 * fall ? 1 : 2 * fall / window;
+            check(maxStep <= .25 * quick + 1e-6, "window " + window + ": the fall time never jumps (largest step " + maxStep + " in a quarter tick)");
+            check(near(lowest, 1, 1e-9), "window " + window + ": full weight between the fades (" + lowest + ")");
+            check(lastT <= .25 * quick + 1e-6 && lastW < .05, "window " + window + ": it ends standing (fall time " + lastT + ", one quarter-tick step from 0) and faded out (" + lastW + ")");
+            double[] lying = MotionEngine.riseFall(window >= 2 * fall ? fall + 5 : window / 2.0, window, fall);
+            check(lying != null && near(lying[0] * Clip.TICKS, fall, 1e-6), "window " + window + ": down on the fall's last frame at the turn: " + Arrays.toString(lying));
+            out.append(window).append(" ticks: largest step ").append(String.format("%.2f", maxStep)).append("; ");
+        }
+        check(MotionEngine.riseFall(20, 20, fall) == null && MotionEngine.riseFall(-1, 20, fall) == null, "no pose outside the window");
+        return out.toString();
+    }
+
 
     /** A guard unit whose enemyNear flips at 20, 10 and 5 Hz for 5 s stays under the pop bar and settles to the guard. */
     static String flicker(MotionMath.Seed[] seeds) {

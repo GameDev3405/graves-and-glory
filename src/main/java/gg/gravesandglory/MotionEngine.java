@@ -495,6 +495,42 @@ public final class MotionEngine {
         }
     }
 
+    /** A rise's fades (ticks): its pose eases in over RISE_IN from the rise and back out over the window's last RISE_OUT (DeathController's FADE_IN and RISE_OUT). */
+    static final double RISE_IN = 2, RISE_OUT = 4;
+
+    /**
+     * Where a rise (rise_v1: Rise Again, the Hollow King's Undying King) is {@code elapsed} ticks after it fired: {0 (the fall) or 1 (the rise), clip time,
+     * span}, or null before it or once it is over. The span is the server's window (the ticks it keeps the troop out of the fight); a window of 0 (the
+     * troop fights on at once) plays the clips at their own length instead, cosmetic. A span as long as both clips or longer plays the fall, holds its
+     * last frame and starts the rise so it ends on the span's last tick; a shorter one plays both clips quickened to fit it. DeathController times the
+     * GeckoLib fake_death and rise on it; riseFall the old model's.
+     */
+    static double[] riseAt(double elapsed, int window, double fake, double rise) {
+        double span = window > 0 ? window : fake + rise;
+        if (elapsed < 0 || elapsed >= span || fake <= 0 || rise <= 0) return null;
+        if (span >= fake + rise) {
+            double start = span - rise;
+            return elapsed < start ? new double[]{0, Math.min(elapsed, fake), span} : new double[]{1, elapsed - start, span};
+        }
+        double s = span / (fake + rise);
+        return elapsed < fake * s ? new double[]{0, elapsed / s, span} : new double[]{1, Math.min(rise, (elapsed - fake * s) / s), span};
+    }
+
+    /**
+     * The old model's rise (TroopMotion.rise), which has no fake_death or rise clip: common/fall.json ({@code fall} ticks long) plays forward, holds its
+     * last frame and plays backwards to stand, on riseAt's timing with both clips that long. {fall.json time in seconds, weight}, or null outside the
+     * rise; the weight eases in over RISE_IN ticks and out over the last RISE_OUT, as DeathController's does.
+     */
+    static double[] riseFall(double elapsed, int window, double fall) {
+        double[] at = riseAt(elapsed, window, fall, fall);
+        if (at == null) return null;
+        double t = at[0] == 0 ? at[1] : fall - at[1];
+        return new double[]{t / Clip.TICKS, smoothstep(elapsed / RISE_IN) * smoothstep((at[2] - elapsed) / RISE_OUT)};
+    }
+
+    /** 3x^2 - 2x^3 on [0, 1], clamped (AttackController.smooth). */
+    static double smoothstep(double x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+
     /**
      * Starts attacks, hit reactions and deaths from this frame's input. A new event is one not equal to the last seen. An attack
      * started in the wall or brace hold (stanceKey, this frame's) plays the family's wall strike, thrown over the board from

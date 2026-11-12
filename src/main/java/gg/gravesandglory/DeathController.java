@@ -93,16 +93,7 @@ final class DeathController extends AnimationController<GeoTroop> {
      * at their own length instead, cosmetic. A span as long as both clips or longer plays the fall, holds its last frame and starts the rise so it ends on
      * the span's last tick; a shorter one plays both clips quickened to fit it.
      */
-    static double[] riseAt(double elapsed, int window, double fake, double rise) {
-        double span = window > 0 ? window : fake + rise;
-        if (elapsed < 0 || elapsed >= span || fake <= 0 || rise <= 0) return null;
-        if (span >= fake + rise) {
-            double start = span - rise;
-            return elapsed < start ? new double[]{0, Math.min(elapsed, fake), span} : new double[]{1, elapsed - start, span};
-        }
-        double s = span / (fake + rise);
-        return elapsed < fake * s ? new double[]{0, elapsed / s, span} : new double[]{1, Math.min(rise, (elapsed - fake * s) / s), span};
-    }
+    static double[] riseAt(double elapsed, int window, double fake, double rise) { return MotionEngine.riseAt(elapsed, window, fake, rise); } // moved unchanged: the old model shares it (TroopMotion.rise)
 
     /** The rise the troop is in at world time {@code now} ({@link #riseAt}), or null: none heard, none in its span, or its model lacks either clip. */
     static double[] rising(CoreGeoModel<GeoTroop> model, GeoTroop troop, Entity e, double now) {
