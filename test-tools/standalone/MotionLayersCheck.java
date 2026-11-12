@@ -27,6 +27,7 @@ public final class MotionLayersCheck {
         MotionEngineCheck.run("novelty kinds spare the sword arm", MotionLayersCheck::novelties);
         MotionEngineCheck.run("effective shares", () -> shares(fam, seeds));
         MotionEngineCheck.run("track overflow", () -> trackOverflow(fam, seeds));
+        MotionEngineCheck.run("second interrupt keeps the FROM coast", () -> secondInterrupt(fam, seeds));
         if (MotionEngineCheck.failed > 0) {
             System.out.println("MotionLayersCheck: " + MotionEngineCheck.failed + " checks FAILED");
             System.exit(1);
@@ -281,5 +282,41 @@ public final class MotionLayersCheck {
         check(peak <= MotionEngine.MAX_TRACKS && MotionEngine.MAX_TRACKS <= 8, "tracks should stay bounded: " + peak + " of " + MotionEngine.MAX_TRACKS);
         check(worst <= 1, "an overflowing track stack should never pop: worst ratio " + worst);
         return String.format("peak %d tracks, worst ratio %.3f", peak, worst);
+    }
+
+    /**
+     * C16-F1: a second interrupt while the first FROM track still sits under a fading track starts from the pose as drawn, the
+     * old FROM's coast included (begin must read State.fromVel before it overwrites it).
+     */
+    static String secondInterrupt(MotionEngine.Family fam, MotionMath.Seed[] seeds) {
+        MotionEngineCheck.Drive d = new MotionEngineCheck.Drive(seeds[5]);
+        var st = new MotionEngine.State();
+        Pose out = new Pose();
+        for (int f = 0; f < 28; f++) {
+            if (f == 5) d.attack = new MotionInput.Attack(0, d.tick());
+            if (f == 25) d.attack = new MotionInput.Attack(1, d.tick());
+            MotionEngine.pose(d.in(), st, fam, out);
+            if (f < 27) d.step(1 / 60.0);
+        }
+        check(st.tracks.size() == 2 && st.tracks.get(0).inertial && st.tracks.get(1).x < 1,
+            "two frames after the second attack there should be a FROM track under a fading attack: " + st.tracks.size() + " tracks");
+        MotionEngine.Frame f = st.frame;
+        f.dt = 0; // the same instant: begin's own advance moves nothing, so the two folds compare like for like
+        double now = f.now;
+        Pose a = new Pose(), b = new Pose();
+        MotionStack.fold(st, st.tracks.size(), now, a);
+        var tr = new MotionStack.Track(st.ids++, MotionEngine.ATTACK, fam.attacks().get(0), null, 0, 1, now, 1);
+        MotionStack.begin(st, fam, tr, f);
+        check(st.tracks.get(st.tracks.size() - 1) == tr && tr.x == 0, "the new attack should start on top at weight 0");
+        MotionStack.fold(st, st.tracks.size(), now, b);
+        double worst = 0;
+        String where = "";
+        for (String bone : a.bones()) for (int c = 0; c < 6; c++) {
+            double g = b.get(bone, c) - a.get(bone, c);
+            if (c < 3) g = Math.IEEEremainder(g, 360); // begin wraps angles to the new clip's start
+            if (Math.abs(g) > worst) { worst = Math.abs(g); where = bone + " ch " + c; }
+        }
+        check(worst < 1e-6, "the second interrupt should start from the drawn pose: jumps " + worst + " at " + where);
+        return String.format("worst jump %.1e", worst);
     }
 }

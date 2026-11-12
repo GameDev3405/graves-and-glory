@@ -343,7 +343,8 @@ final class MotionStack {
             advance(st, f);
             Pose mine = st.stanceNew;
             if (!st.tracks.isEmpty()) {
-                Pose p0 = st.mergeTmp, v = st.fromVel;
+                // C16-F1: the slope goes into scratch (stanceOld, free until below), as an inertial FROM track in the fold reads fromVel
+                Pose p0 = st.mergeTmp, v = st.stanceOld;
                 p0.clear(); v.clear();
                 int n = st.tracks.size();
                 double legs = fold(st, n, f.now, p0);
@@ -353,6 +354,8 @@ final class MotionStack {
                     double[] r = v.row(i);
                     for (int c = 0; c < 6; c++) r[c] = (p0.get(v.name(i), c) - r[c]) / MotionEngine.FROM_H;
                 }
+                st.fromVel.clear();
+                st.fromVel.add(v, 1);
                 mine.clear();
                 add(st, tr, f.now, 1, mine);
                 for (int i = 0, m = p0.size(); i < m; i++) {
