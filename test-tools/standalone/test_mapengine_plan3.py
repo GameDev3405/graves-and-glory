@@ -205,6 +205,16 @@ class MergeTest(unittest.TestCase):
         self.assertTrue(any(m.startswith('point-9:') for m in rep['refused']), rep)
         self.assertEqual(design.validate(merged), [])
 
+    def test_missing_by_state_default_to_ai_proposed(self):
+        draft = base()
+        h = ai_hill(7)
+        del h['by'], h['state']
+        draft['objects'].append(h)
+        merged, rep = handoff.merge(base(), draft)
+        self.assertEqual(rep['added'], ['hill-7'])
+        self.assertEqual((merged['objects'][-1]['by'], merged['objects'][-1]['state']), ('ai', 'proposed'))
+        self.assertNotIn('by', draft['objects'][-1], 'the draft itself is not changed')
+
     def test_top_level_kept(self):
         draft = base()
         draft['brief'] = 'Sunny meadow.'

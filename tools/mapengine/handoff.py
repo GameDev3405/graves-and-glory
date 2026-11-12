@@ -280,6 +280,9 @@ def merge(current, draft):
     report: {added, updated, withdrawn, refused}. Raises DraftError when the draft is not a valid design."""
     if not isinstance(draft, dict):
         raise DraftError(['draft: not a design object'])
+    if isinstance(draft.get('objects'), list):  # DRAFT_RULES: by/state may be omitted, the import sets them
+        draft = dict(draft, objects=[dict({'by': 'ai', 'state': 'proposed'}, **o) if isinstance(o, dict) else o
+                                     for o in draft['objects']])
     problems = design.validate(draft)
     if problems:
         raise DraftError(['the draft fails the schema, nothing was imported'] + problems)
