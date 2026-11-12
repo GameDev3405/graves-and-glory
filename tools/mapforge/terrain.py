@@ -377,7 +377,7 @@ def run_breakup(op, get, put):
                     seeds.add((x, z))  # water over a bed counts as water
     for x, z in cols:
         top = tops.get((x, z)) if (x, z) in tops else f.top(x, z)
-        if top is None or not f.allowed(x, z):
+        if not f.usable(x, z, top):
             continue
         weight = 1.0
         if near:

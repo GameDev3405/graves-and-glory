@@ -341,6 +341,13 @@ class TerrainHelperTest(unittest.TestCase):
         self.assertLess(tops(w, sm)[(12, 12)], 74)
         self.assertEqual(compile_plan(plan([dict(op, only=['dirt'])]), w), {})
 
+    def test_breakup_honours_only(self):
+        # T04-F3: only is a common key; breakup on a grass world limited to sand changes nothing
+        op = {'op': 'breakup', 'min': [0, 0], 'max': [15, 15], 'replace': ['grass_block'], 'mix': 'gravel',
+              'density': 1.0, 'scale': 1}
+        self.assertTrue(compile_plan(plan([op]), flat()))
+        self.assertEqual(compile_plan(plan([dict(op, only=['sand'])]), flat()), {})
+
     def test_breakup_mixes_surfaces_near_a_boundary_and_on_faces(self):
         w = ground()
         for z in range(24):
