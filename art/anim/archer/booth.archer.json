@@ -16,14 +16,14 @@
    "base": [
     "attack_volley_legs"
    ],
-   "impact_tick": 16
+   "impact_tick": 22
   },
   {
    "name": "attack_direct",
    "base": [
     "attack_direct_legs"
    ],
-   "impact_tick": 16
+   "impact_tick": 22
   },
   {
    "name": "death_back"

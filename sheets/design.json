@@ -2967,7 +2967,7 @@
       "family": "bow",
       "zone": "body",
       "kind": "arrow",
-      "impactTicks": 16,
+      "impactTicks": 22,
       "weight": "light"
     },
     {
@@ -2975,7 +2975,7 @@
       "family": "bow",
       "zone": "body",
       "kind": "arrow",
-      "impactTicks": 16,
+      "impactTicks": 22,
       "weight": "light"
     },
     {

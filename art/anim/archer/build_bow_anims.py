@@ -9,7 +9,7 @@ The draw channel: the bow is four sibling bones (bow_t<n>_rest / pull_0 / pull_1
 position x picks which one shows (0 rest, 1 pull_0 arrow nocked, 2 pull_1, 3 pull_2 full draw). GeoTroopRenderer reads it after the
 controllers and hides the rest. Unkeyed it is 0: the bow at rest, no arrow.
 
-The shot (attack_volley / attack_direct, impactTicks 16): reach back to the quiver, turn side-on bringing the arrow to the cheek,
+The shot (attack_volley / attack_direct, impactTicks 22; 16 until Kort, 2026-11-11): reach back to the quiver, turn side-on bringing the arrow to the cheek,
 take the string there and push-pull draw (the bow arm drives the bow out as the hand draws the last few px) to the anchor (the
 "full" marker), hold, loose on the server's impact tick, the string hand flying back past the ear, then settle to the ready guard.
 AttackController holds the clip at "full" for the troop's seeded hold ticks, so a line of archers never looses in lockstep.
@@ -237,22 +237,33 @@ def mix(a, b, k):
     return {n: tuple(x + (y - x) * k for x, y in zip(a[n], b[n])) for n in a}
 
 
-ATTACK_TICKS = 26
-IMPACT = 16      # bow_volley / bow_direct impactTicks: the arrow leaves
-FULL_AT = 12     # the anchor is reached; AttackController holds here for the seeded hold
+# Kort 2026-11-11: the loose moved from tick 16 to 22 (same damage per arrow). The shot was keyed on 16; at() re-times those
+# keys: everything up to the loose (reach, nock, draw, full-draw hold) stretched by 22/16, everything after it (the loose's
+# snap, the follow-through, the gather to the guard) shifted whole by 6 ticks so the release keeps its speed.
+IMPACT0 = 16     # the loose the shot's key times below are written for
+IMPACT = 22      # bow_volley / bow_direct impactTicks: the arrow leaves
+
+
+def at(t):
+    """A key time written for the 16-tick loose, on the 22-tick one."""
+    return t * IMPACT / IMPACT0 if t <= IMPACT0 else t + (IMPACT - IMPACT0)
+
+
+ATTACK_TICKS = int(at(26))   # 32
+FULL_AT = at(12)             # 16.5: the anchor is reached; AttackController holds here for the seeded hold
 
 
 def shot_keys(volley, up=None, nock=None):
     up = up or (raised if volley else (lambda p: p))
     tense = dict(up(FULL)); tense["torso"] = (tense["torso"][0] + 0.6, tense["torso"][1] + 1.0, 0.0)
-    return [(0, READY), (2.2, mix(READY, REACH, 0.7)), (3.6, REACH), (4.6, REACH),       # reach fast, a beat in the quiver
-            (6.6, nock or NOCK), (9, up(SET)), (FULL_AT, up(FULL)), (15.4, tense),       # nock, raise, a steady draw, held
-            (IMPACT, up(LOOSE)), (17.6, up(FOLLOW)), (19.5, up(mix(FOLLOW, LOOSE, 0.6))),   # loose fast, carry through
-            (22.5, mix(up(SET), READY, 0.75)), (ATTACK_TICKS, READY)]                     # gather down to the guard
+    return [(0, READY), (at(2.2), mix(READY, REACH, 0.7)), (at(3.6), REACH), (at(4.6), REACH),   # reach, a beat in the quiver
+            (at(6.6), nock or NOCK), (at(9), up(SET)), (FULL_AT, up(FULL)), (at(15.4), tense),   # nock, raise, a steady draw, held
+            (IMPACT, up(LOOSE)), (at(17.6), up(FOLLOW)), (at(19.5), up(mix(FOLLOW, LOOSE, 0.6))),   # loose fast, carry through
+            (at(22.5), mix(up(SET), READY, 0.75)), (ATTACK_TICKS, READY)]                     # gather down to the guard
 
 
 # The draw channel, a step per frame: rest while reaching, nocked from the string, two pull frames through the draw, rest at the loose.
-DRAW_STEPS = [(0, "rest"), (5.8, "pull_0"), (10.0, "pull_1"), (11.4, "pull_2"), (IMPACT, "rest")]
+DRAW_STEPS = [(0, "rest"), (at(5.8), "pull_0"), (at(10.0), "pull_1"), (at(11.4), "pull_2"), (IMPACT, "rest")]
 
 
 def draw_at(t):
@@ -275,18 +286,18 @@ def sample(keys, t):
 # The set step (lift, plant) per troop. The stalker's deep sink (1.6) drove its stepping knee faster than any knight leg
 # (left_shin 51.7 deg/100ms, limit 48.9): its step lifts half a tick sooner and plants a third of a tick later, so the same
 # sink is spread over a longer step. Nock, draw, full and impact ticks are unchanged.
-SET_STEP = {"stalker": (3.9, 7.7)}.get(TROOP, (4.4, 7.4))
+SET_STEP = tuple(at(t) for t in {"stalker": (3.9, 7.7)}.get(TROOP, (4.4, 7.4)))
 
 
 def shot_legs(volley):
     lean = -3.0 if volley else 1.0
     k = CHAR["sink"]
-    return {"hips": [(0, *K.READY_HIPS), (3.6, (0.0, 4.0, 0.0), (0.0, -0.9, 0.05)), (7, (0.0, 8.0, 0.0), (0.0, -1.4 * k, 0.15)),
+    return {"hips": [(0, *K.READY_HIPS), (at(3.6), (0.0, 4.0, 0.0), (0.0, -0.9, 0.05)), (at(7), (0.0, 8.0, 0.0), (0.0, -1.4 * k, 0.15)),
                      (FULL_AT, (lean, 10.0, 0.0), (0.0, -1.7 * k, 0.2)), (IMPACT, (lean, 10.0, 0.0), (0.0, -1.75 * k, 0.2)),
-                     (17.4, (lean - CHAR["rock"], 12.0, 0.0), (0.0, -1.6 * k - max(0.0, k - 1), 0.05)),
-                     (21, (0.0, 8.0, 0.0), (0.0, -1.3 * k, 0.1)),
+                     (at(17.4), (lean - CHAR["rock"], 12.0, 0.0), (0.0, -1.6 * k - max(0.0, k - 1), 0.05)),
+                     (at(21), (0.0, 8.0, 0.0), (0.0, -1.3 * k, 0.1)),
                      (ATTACK_TICKS, *K.READY_HIPS)],
-            "steps": [("left", *SET_STEP, (3.6, 2.0, -0.4), 14.0), ("left", 19.5, 23.5, (3.2, 2.0, -2.0), 7.0)]}
+            "steps": [("left", *SET_STEP, (3.6, 2.0, -0.4), 14.0), ("left", at(19.5), at(23.5), (3.2, 2.0, -2.0), 7.0)]}
 
 
 # ------------------------------------------------------------------------------------------------
@@ -483,7 +494,7 @@ def ramp(t, a, b):
 
 # The draw amount: 0 the bow at rest; 1 the arrow nocked on a resting string; 3 at the anchor. The string hand brings the arrow
 # to the string, sets, then draws in one long pull that slows into the anchor; the loose snaps it back to rest.
-DRAW_KEYS = [(8.6, 1.0), (9.5, 1.25), (10.8, 2.4), (FULL_AT, 3.0), (IMPACT, 3.0)]
+DRAW_KEYS = [(at(8.6), 1.0), (at(9.5), 1.25), (at(10.8), 2.4), (FULL_AT, 3.0), (IMPACT, 3.0)]
 
 
 def draw_amount(t):
@@ -492,9 +503,9 @@ def draw_amount(t):
     return K.curve([(a, (v,)) for a, v in DRAW_KEYS], t)[0]
 
 
-AIM_IN = (4.6, 8.4)        # the bow turns onto the line as it comes up from the nock to the set
-AIM_OUT = (19.0, 23.0)     # and lets go of it as the guard returns
-STRING_IN = (5.6, 8.6)     # the string hand travels to the string, meeting it as the bow comes onto the line
+AIM_IN = (at(4.6), at(8.4))        # the bow turns onto the line as it comes up from the nock to the set
+AIM_OUT = (at(19.0), at(23.0))     # and lets go of it as the guard returns
+STRING_IN = (at(5.6), at(8.6))     # the string hand travels to the string, meeting it as the bow comes onto the line
 
 # The push draw. The string hand takes the string just ahead of the cheek, PUSH px along the arrow from the anchor, and the bow
 # arm comes up bent to bring the nock there; through the draw the bow arm pushes the bow out at the foe while the string hand
@@ -503,8 +514,8 @@ STRING_IN = (5.6, 8.6)     # the string hand travels to the string, meeting it a
 # the cheek line. BOW_IN: the bow arm comes under the solve (the nock on that path) as it rises from the quiver reach; it is
 # back on its keys from the full draw on (where the solve and the keys agree: the drawn nock on the anchor).
 PUSH = 3.5
-BOW_IN = (4.6, 8.0)
-LOFT_IN = (8.6, FULL_AT)
+BOW_IN = (at(4.6), at(8.0))
+LOFT_IN = (at(8.6), FULL_AT)
 
 
 def push_target(pose, amt, d):
@@ -544,7 +555,7 @@ def shot_upper(volley):
     legs = K.attack_legs(shot_legs(volley), ticks=ATTACK_TICKS)
     up = raised if volley else (lambda p: p)
     keyed_full = up(FULL)
-    solved, yaw, err = solve_drawn(keyed_full, legs[FULL_AT * SUB], elev)
+    solved, yaw, err = solve_drawn(keyed_full, legs[int(round(FULL_AT * SUB))], elev)
     if err > 0.3:
         raise ValueError("%s: anchor unreachable by %.2f px" % (name, err))
     delta = {b: tuple(a - c for a, c in zip(solved[b], keyed_full[b])) for b in ("torso", "head", "left_arm", "left_forearm")}
