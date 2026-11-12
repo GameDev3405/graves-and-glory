@@ -47,6 +47,7 @@ final class MarchModesChecks implements Phase4Checks.Suite, Phase4Checks.ServerW
                 var pr = c.profile(player);
                 for (var r : Spec.CAMPAIGNBATTLES) if (r.order() < row.order()) pr.battlesWon.add(r.id());
                 pr.battlesWon.remove(id); pr.bonusClaimed.remove(row.bonus()); pr.sanitize();
+                if (c.social.room(player) != null) b.command(p, "social:exit"); // a suite run before (siege-play) can leave the player in a room, and the March is solo
                 c.closeParty(); c.battleMode = Modes.DOMINATION;
                 b.command(p, "campaign:" + id);
                 stage = 1; at = b.time; killed = false;
