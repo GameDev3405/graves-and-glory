@@ -190,11 +190,12 @@ def body_boxes(pose):
     return out
 
 
-def shaft_hits(pose, margin=0.3):
+def shaft_hits(pose, margin=0.3, sc=1.0):
+    """sc: the harpoon's length scale about the grip (fix round 1: it grows out of the quiver on the draw, see grow_at)."""
     boxes = body_boxes(pose)
     hits = []
     for s in np.arange(BUTT, TIP + 0.01, 1.0):
-        p = wpoint(pose, S(s))
+        p = wpoint(pose, S(s * sc))
         for name, o, axes in boxes:
             if all(margin < (p - o) @ a < L - margin for a, L in axes):
                 hits.append((round(float(s), 1), name))
@@ -302,6 +303,9 @@ GAZE = (4.0, 0.0, 0.0)
 GUARD = KEY((4, 10, 0), GAZE, (-1.0, 3.0, -2.5), aim(8, -4))
 
 ATTACK_TICKS = 36
+DRAW_Q = (0.5, 2.0, 3.0)   # fix round 1: how far to the quiver the fist is at reach_q; where up the quiver it closes on the
+                           # shaft (at the mouth's rim); how far up it then draws it (quiver y, px)
+DRAW_TILT = 0.15                # the drawn shaft leans this much back off the quiver's axis, clear of the helm
 IMPACT = 8          # thrower_throw impactTicks: the harpoon leaves
 
 
@@ -320,9 +324,19 @@ def attack_keys():
     # the fist goes back over the right shoulder behind the ear and closes on the next harpoon; drawn up out of the quiver it
     # stands angled up and back past the head, the foot clear outside the right hip, then the fist carries it over
     BACK = unit((0.3, 0.85, -0.4))
-    reach_q = KEY((2, 6, 0), (6, 10, 2), (-0.5, 4.0, -4.6), BACK, lp=(-40, 0, -15, -40))
-    grab = KEY((0, 8, 0), (6, 14, 3), (-0.6, 3.6, -4.9), BACK, lp=(-42, 0, -15, -42))
-    draw_out = KEY((0, 8, 0), (6, 12, 2), (-0.6, 6.0, -4.2), unit((0.25, 0.9, -0.35)), lp=(-44, 0, -15, -41))
+    # Fix round 1 (2026-11-12, review F3: the next harpoon popped in overhead): the fist is AT the quiver mouth (q 1) when
+    # the draw channel shows the harpoon again, the shaft along the quiver, and it rises out with the fist along the quiver's
+    # own axis (Lq walks up the quiver) before it swings over into the guard. The quiver's mouth sits behind the LEFT side of
+    # the neck; a right fist reaching it there folds the arm up behind the back (focus_check shoulder 160 deg, the bracer
+    # through the helm), so the free hand's shrug swings the quiver round on its strap (quiver_swing) and brings the mouth
+    # behind the right shoulder blade, where the round-0 reach already went.
+    QA = tuple(unit(np.asarray(swung_axis()) + (0.0, 0.0, -DRAW_TILT)))
+    reach_q = KEY((2, 6, 0), (18, -34, 0), (-2.0, 4.5, -6.0), BACK, lp=(-40, 0, -15, -40), q=DRAW_Q[0])
+    grab = KEY((0, 8, 0), (6, 14, 3), (-0.6, 3.6, -4.9), QA, lp=(-42, 0, -15, -42), q=1.0,
+               Lq=(QGRIP[0], QGRIP[1] + DRAW_Q[1], QGRIP[2]))
+    grab_h = nudge(grab, lp=(-1, 0, 0, 0))
+    draw_out = KEY((0, 8, 0), (6, 12, 2), (-0.6, 6.0, -4.2), QA, lp=(-44, 0, -15, -41), q=1.0,
+                   Lq=(QGRIP[0], QGRIP[1] + DRAW_Q[1] + DRAW_Q[2], QGRIP[2]))
     lift = KEY((0, 8, 0), (5, 6, 1), (-0.3, 6.6, -2.6), unit((0.1, 1.0, -0.15)), lp=(-46, 0, -14, -40))
     swing = KEY((2, 10, 0), (4, 2, 0), (-1.8, 4.5, -1.5), aim(50, -4), lp=(-52, 0, -12, -36))
     over_g = nudge(GUARD, R=(-0.6, -0.4, 0.3), d=aim(3, -4), torso=(1, -1, 0))   # batch review: the fist a little wider of the helm
@@ -333,12 +347,43 @@ def attack_keys():
     return [(0, GUARD), (3.0, coil_a), (5.0, coil), (6.6, held),            # coil back over the rear foot; the load held
             (7.0, rise), (7.4, drive), (IMPACT, release),                                  # unwind and whip: the harpoon leaves
             (10.0, over), (13.0, recover),                                    # the follow-through low across the body
-            (14.8, wide), (16.5, reach_q), (18.5, grab), (20.0, draw_out), (22.0, lift),                      # over the shoulder, the next harpoon drawn up
+            (14.8, wide), (16.5, reach_q), (18.0, grab), (18.5, grab_h), (20.0, draw_out), (22.0, lift),                      # over the shoulder, the next harpoon drawn up
             (25.0, swing), (29.0, over_g), (33.0, settle), (ATTACK_TICKS, GUARD)]
 
 
 # The draw frame: the harpoon in the fist until the release; thrown (the fist empty) until it closes on the next one.
 DRAW_STEPS = [(0, "rest"), (IMPACT, "pull_0"), (18.5, "rest")]
+
+
+# Fix round 1 (2026-11-12): the next harpoon shows again (18.5) only as the end the fist closes on at the quiver mouth, and
+# grows to its full length about the grip as the fist draws it up the quiver's axis: the shaft below the fist stays in the
+# quiver, the part above it is what has come out. Keyed as the scale y of bow_t<n>_rest (pivot = the grip).
+DRAW_GROW = (19.0, 22.0, 0.3)   # from tick, to tick, the length at the start
+
+
+def grow_at(t):
+    a, b, s0 = DRAW_GROW
+    if t <= IMPACT or t >= b:
+        return 1.0
+    return s0 if t <= a else s0 + (1.0 - s0) * K.smooth((t - a) / (b - a))
+
+
+# Fix round 1: the quiver swings round on its strap (z, deg on its rest 18) from SWING[0] to SWING[1], holds through the
+# draw, and swings back from SWING[2] to SWING[3]; its mouth comes from behind the left side of the neck to behind the right
+# shoulder blade.
+QUIVER_SWING = (15.5, 17.5, 21.0, 24.0, -50.0)
+
+
+def quiver_swing(t):
+    a, b, c, e, z = QUIVER_SWING
+    if t <= a or t >= e:
+        return 0.0
+    return z * (K.smooth((t - a) / (b - a)) if t < b else 1.0 if t <= c else K.smooth((e - t) / (e - c)))
+
+
+def swung_axis():
+    p = {"quiver": ((0.0, 0.0, QUIVER_SWING[4]), Z3)}
+    return unit(quiver_point(p, (QGRIP[0], QGRIP[1] + 4.0, QGRIP[2])) - quiver_point(p, QGRIP))
 
 
 def draw_at(t):
@@ -457,7 +502,8 @@ def _solve_run(keys, legs, idx, w_fn):
     sol, out, u_prev = Solver(), {}, None
     for i in idx:
         t = i / SUB
-        s = sample(keys, legs[i], sol, t, w=w_fn(t), twist_w=THROW_TWIST_W, u_prev=u_prev, u_keep=0.0)
+        s = sample(keys, legs[i], sol, t, extra={"quiver": ((0.0, 0.0, quiver_swing(t)), Z3)}, w=w_fn(t),
+                   twist_w=THROW_TWIST_W, u_prev=u_prev, u_keep=0.0)
         u_prev = s.pop("_u")
         out[i] = s
     return out, sol.worst
@@ -487,7 +533,7 @@ def attack_clip():
                 s[b] = (tuple(slerp_rot(fw[i][b][0], bw[i][b][0], a)), None)
         s["draw"] = (Z3, (draw_at(t), 0.0, 0.0))
         if draw_at(t) == 0.0:
-            h = shaft_hits(fk_pose(s, legs[i]))
+            h = shaft_hits(fk_pose(s, legs[i]), sc=grow_at(t))
             if h:
                 hits.append((t, h[0]))
         out.append(s)
@@ -531,7 +577,7 @@ def attack_clips():
     for i, s in enumerate(upper):
         t = i / SUB
         j = 4.0 * math.exp(-max(0.0, t - IMPACT) / 1.5) * (t >= IMPACT) + 5.0 * math.sin(math.pi * np.clip((t - 18.5) / 3.5, 0, 1))
-        s["quiver"] = ((j, 0.0, 0.4 * j), None)
+        s["quiver"] = ((j, 0.0, 0.4 * j + quiver_swing(t)), None)
     upper = gear(upper, legs)
     # batch review 2026-11-11 (secondary_life: kelp, pauldron, sash, scarf, skirt and the tooth necklace stood still): every
     # piece that hangs swings on the kit's spring behind its parent (Kort: "the whole unit to be animated")
@@ -540,6 +586,11 @@ def attack_clips():
     clip = K.bake(upper, ATTACK_TICKS, loop=False)
     rewind(clip)
     clip["timeline"] = {K.fmt_t(IMPACT / TPS): "impact"}
+    grow = {K.fmt_t(IMPACT / TPS): [1.0, 1.0, 1.0], K.fmt_t(IMPACT / TPS + REWIND_EPS): [1.0, DRAW_GROW[2], 1.0]}
+    for i in range(int(DRAW_GROW[0] * SUB), int(DRAW_GROW[1] * SUB) + 1):
+        grow[K.fmt_t(i / SUB / TPS)] = [1.0, round(grow_at(i / SUB), 4), 1.0]
+    for b in [b["name"] for b in _GEO if b["name"].startswith("bow_t") and b["name"].endswith("_rest")]:
+        clip["bones"].setdefault(b, {})["scale"] = dict(grow)
     return {"attack_throw": clip, "attack_throw_legs": K.bake(legs, ATTACK_TICKS, loop=False)}
 
 
@@ -661,8 +712,18 @@ STANCE_KEYS = {
     # behind the left forearm raised across the brow, the harpoon kept cocked low by the hip, point at the foe. Batch review
     # 2026-11-11: the arm lower and rolled out with the forearm folded tighter, so the cover sits before the brow instead of
     # in it (was lp (-140, 0, -25, -95): left forearm 3.1 px into the head, wrap 3.6)
-    "shield_up": KEY((10, 10, 0), (10, 0, 0), (-2.5, -6.0, -1.0), aim(10, -4), rp=(-25, 0, 15, -40), lp=(-115, 0, 25, -120)),
+    # Fix round 1 (2026-11-12, review: hold, shield_up and ready read as one silhouette at 16 blocks): turned side-on (chest
+    # 32 deg round on the hips) and ducked (18 deg forward, the gaze down behind the cover), the forearm over the brow as
+    # before, the harpoon dropped low and trailed back past the hip, point behind him, out of the missiles' way
+    "shield_up": KEY((22, 32, 0), (18, 10, 0), (-1.0, -8.0, -3.5), aim(-18, 175), rp=(-25, 0, 15, -40), lp=(-115, 0, 25, -120)),
 }
+# Fix round 1 (2026-11-12): the hold order (stances.py writes it as the ready guard with the off hand raised, one silhouette with
+# ready and shield_up at 16 blocks). The harpooner's own hold: squared up and tall on the feet, the harpoon planted butt down
+# and upright beside the right foot, the off hand on the hip. Replaces stances.py's clips in the --post step (48 ticks, as there).
+HOLD_LP = (10.0, 0.0, -15.0, -25.0)   # the off arm hangs out a little, the fist resting at the hip
+HOLD_KEY = KEY((0, -4, 0), (2, 0, 0), (-3.0, -7.5, 1.5), (0.0, 1.0, 0.05), lp=HOLD_LP)
+HOLD_LEGS = {"hips": ((0.0, 6.0, 0.0), (0.0, -0.6, 0.0)), "left": (3.0, 2.0, 0.8), "right": (-3.0, 2.0, -0.6), "yaw": (-4.0, 8.0)}
+HOLD_TICKS, HOLD_LIFE = 48, 1.4
 LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
 IDLE_LIFE = 2.2
 READY_LIKE = ("ready", "shield_up")     # these loops run at V2_READY_SWAY_SCALE (0.25); the other stances (and the idle) at V2_SWAY_SCALE
@@ -1438,6 +1499,8 @@ def skirt_clear_additive(up, lg, base):
 
 PULL_ARM = 0.4      # share of reactions.py's right-arm offsets kept on hit_knockback / hit_pulled (the guard's arm is up)
 PULL_ROLL = -15.0   # deg the right arm rolls out at the reaction's peak, clear of the head
+STUN_OUT_YAW = 28.0  # deg the right arm swings OUT (yaw) over the shake-off: blending from the stun pose into the guard
+                     # swept the harpoon through the off forearm (weapon_in_body 1.82 under the handover check, fix round 1)
 QUIVER_FOLLOW = 0.5  # share of the torso's backward bend the quiver on the back takes (it went into the torso, 2.0 px)
 
 
@@ -1493,6 +1556,11 @@ def post_shared(path):
         A[name] = rekey(A[name], samples, ticks, bones)
         done.append(name)
 
+    # the harpooner's own hold (HOLD_KEY), over stances.py's
+    A["stance_hold_upper"] = stance_upper(HOLD_KEY, HOLD_LIFE, HOLD_LEGS, ticks=HOLD_TICKS, prewarm=True)
+    A["stance_hold_legs"] = stance_legs(HOLD_LEGS, 1.0, ticks=HOLD_TICKS)
+    done += ["stance_hold_upper", "stance_hold_legs"]
+
     # absolute clips: the harpoon off the ground (stun, fall back, rest); the hanging pieces alive on the stun;
     # the skirt clear of the boots and greaves on the fall back
     for up_n, lg_n, alive, cloth in (("stun_upper", "stun_legs", True, False), ("stance_fallback_upper", "stance_fallback_legs", False, True),
@@ -1538,7 +1606,11 @@ def post_shared(path):
             st, _ = clip_samples(A["stun_upper"])
             stl, _ = clip_samples(A["stun_legs"])
             base = [{"u": st[(16 + i) % (len(st) - 1)], "l": stl[(16 + i) % (len(stl) - 1)]} for i in range(len(up))]
-            up, _ = ground_samples(up, [{} for _ in up], base=base)
+            for i, f in enumerate(up):
+                r, p = f.get("right_arm", (Z3, None))
+                f["right_arm"] = ((r[0], r[1] + STUN_OUT_YAW * math.sin(math.pi * i / max(1, len(up) - 1)), r[2]), p)
+            # no ground_samples here (fix round 1): over the bare stun loop it re-aimed the hand in one tick (roll_spin
+            # 154); under the stun-to-stance handover the game plays (and focus_check checks) the harpoon stays clear
         up, lg = soft(up, lg, report=False)
         up, lg = ease_soft(up, lg)
         up, lg = plate_and_sash(up, lg)

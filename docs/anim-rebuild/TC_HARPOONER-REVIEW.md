@@ -99,3 +99,42 @@ it reads close to hold. Wall: crouched and cocked to throw. Ward: an underhand f
   still slow on re-run). Log `work/review/tc_harpooner.verify.log`.
 - geo-knight reel through checkq at b2d5b8b1: `tc_harpooner-review1` had march rate and hit frame-capture misses (3/8 frames
   in one view; gaits unchanged), read as load; re-run `tc_harpooner-review1b`: **22 `[p1] p1-geo-tc_harpooner` lines, 0 `=false`**.
+
+## Fix round 1 (2026-11-12, after the Sonnet review)
+
+### Build command (the whole pipeline; `work/hp/full.sh` runs it)
+```
+export GG_THROW_TROOP=tc_harpooner
+python art/anim/thrower/build_thrower_anims.py            # builder -> art/anim/tc_harpooner/out/
+#   death_* in out/ replaced by the committed asset's death_* (the builder no longer reproduces them, see Drift)
+python art/anim/common/export.py tc_harpooner
+python art/anim/common/stances.py tc_harpooner
+python art/anim/common/reactions.py tc_harpooner
+python art/anim/common/charge.py tc_harpooner
+python art/anim/thrower/build_thrower_anims.py --post     # the shared-layer clips, on the exported asset
+cp src/main/resources/assets/gravesandglory/animations/troop/tc_harpooner.animation.json art/anim/tc_harpooner/out/
+```
+out/ equals the exported asset at the commit. About 25 to 30 min.
+
+### Changes (builder only)
+- **attack_throw reload:** the quiver swings back on its strap (-50 deg, t15.5 to 24) so its mouth comes over the right
+  shoulder; the hand reaches it at t18 (grab), the next harpoon is drawn along the quiver's axis out of the mouth (t18 to 20,
+  grown from 0.3 to full length over t19 to 22, scale keys on the bow_t* bones about the grip) and swung over into the guard
+  (t22 to 24). Release tick 8, length 36 and the impact marker unchanged. The aim stances follow (derived from attack_throw).
+- **stance_hold (post step):** its own pose: harpoon planted butt-down and upright at the right side, off hand at the hip
+  (lp (10,0,-15,-25)), its own legs (stance_hold_legs). Solved with prewarm (the cold first solve put a 34 deg seam in the loop).
+- **stance_shield_up:** side-on and ducked, harpoon low and trailing back, forearm over the brow (round-0 fix kept).
+- **stun_out_upper (post step):** the right arm swings out (yaw +28 on a sine over the clip) so the harpoon passes clear of
+  the off forearm while the stun pose hands over to the stance (weapon_in_body 1.82 -> 1.34 WARN). The old roll and the
+  ground_samples pass over the bare stun loop are gone (that pass re-aimed the hand in one tick, roll_spin 154).
+- With the handover tool (anim/skill-fable d3363d40) the review's stun_out limb_in_body 2.36 and knee_aim 75.72 rows are gone.
+
+### Result
+Focus check: before (review tool) 8 FAIL rows in 7 clips; after 6 FAIL rows in 6 clips, all the ankle-length skirt
+(walk 2.34, run 2.53, charge_run 2.53, fallback 2.12, knockback 2.05, pulled 2.2). Skirt: one bounded try on walk and run
+(walk 2.23/2.26, run 2.54) did not clear it; reverted, not in the builder. Scorecard 34 clips, 0 failures.
+Changed clips (bytes): attack_throw, stance_aim_upper, stance_aim_up_upper, stance_aim_down_upper, stance_hold_upper,
+stance_hold_legs, stance_shield_up_upper, stun_out_upper. Every other clip, deaths included, byte-identical to the round-0 commit.
+Game16 front/side: hold, shield_up and ready are three distinct silhouettes (`work/hp/r1f/g16_three.png`); reload strip
+`work/hp/r1f/reload/sheet.png`.
+Unit tests (one after another): test_scorecard 22, test_focus_check 24, test_render_geo 20, test_booth_* 74, all OK (`work/review/tc_harpooner.r1.unittest.log`).
