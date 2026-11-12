@@ -101,10 +101,15 @@ import static gg.gravesandglory.Phase2Checks.server;
  * less; an own Squire set 0.15 from the body (AI on, out of the battle's orders) moves under 0.02 over 20 ticks, and the body under 0.02 too. Rise
  * Again still works: a Revenant of a Graveborn Dusk army (six fielded, Houses.recompute), the roll forced, rises (alive, rose, death ticks 0, no
  * AFTER_DEATH); struck down again it lies as a body. Last, after hl-corpse-load, a Squire's body 30 ticks dead goes the moment the round ends
- * (Campaign.returnLobby, Battle.clearCorpses) and no dead troop is left in the world.</li>
+ * (Campaign.returnLobby, Battle.clearCorpses) and no dead troop is left in the world.
+ * GeckoLib: the cache shot (R39) and the fade samples (R42) measure BodyCache (a settled body drawn from its recorded buffers against the normal
+ * draw, BodyCache.off and BodyCache.opaque), which only the legacy renderer has; a troop GeoTroopRenderer draws (the knight first) never draws
+ * from it. Those two strike down CP_LEGACY's first troop still drawn the legacy way (the Squire while it is) and say which; the rest of
+ * hl-corpse stays on the Squires.</li>
  * <li>hl-corpse-load (Task 7): on dry ground only (the patch has no water and no fire, so every body settles; bodies in water or burning keep
  * ticking and are not measured). 100 Order Squires of the commander's army and 100 of Dusk's (AI on, 4000 health) spawn in two 10 by 10 blocks 20
- * apart on the patch, both armies on Attack toward the middle; as they meet, one falls each tick, the armies in turn, so all 200 die within 10 s.
+ * apart on the patch (GeckoLib: the first of CP_LEGACY still drawn the legacy way in place of the Squire, since the fading bodies' budget is
+ * BodyCache's; GRAVES_CORPSE_TROOP=&lt;troop id&gt; runs it with another troop, e.g. knight for what GeckoLib bodies cost), both armies on Attack toward the middle; as they meet, one falls each tick, the armies in turn, so all 200 die within 10 s.
  * Over the 340 ticks from the first death the mean server tick (MinecraftServer.lastTickLengths, the tick before each sample) and the client's
  * mean frame time (wall clock over the frames drawn; the frame rate is the run's options.txt: vsync off and maxFps 260 for the Task 8
  * measurement, logged in the report) are measured with the corpse rows at 0 and 0 (A: vanilla's
@@ -313,6 +318,18 @@ final class HoldLineChecks {
         static final boolean CP_LOAD = !"0".equals(System.getenv("GRAVES_CORPSE_LOAD"));
         /** GRAVES_FADE_NOGROUPS=1 runs hl-corpse-load with the fade pass's overlap groups off (BodyCache.noGroups, carry D14's red side): what the groups cost, measured. */
         static final boolean CP_NOGROUPS = "1".equals(System.getenv("GRAVES_FADE_NOGROUPS"));
+        /** The troops BodyCache's checks may use, in order: the first still drawn the legacy way (GeoDraws.legacy) stands in for the Squire. */
+        static final String[] CP_LEGACY = {"knight", "sentinel", "gl_marshal", "ic_hearthguard"};
+        /** hl-corpse-load's troop: GRAVES_CORPSE_TROOP when it names a troop, else the first of CP_LEGACY drawn the legacy way (null: none). */
+        static String cpLoadTroop() {
+            String t = System.getenv("GRAVES_CORPSE_TROOP");
+            if (t != null && !t.isBlank() && ArmyCards.spec(t.trim()) != null) return t.trim();
+            return GeoDraws.legacy(CP_LEGACY);
+        }
+        /** The cache and fade body's troop, and hl-corpse-load's (set when each starts). */
+        String cpCacheTroop, cpLoadTroop;
+        /** What a BodyCache report says of its troop. */
+        static String cpNote(String troop) { return troop == null ? "" : " [" + troop + (GeoDraws.geo(troop) ? ", drawn by GeckoLib: no BodyCache buffers" : ", drawn the legacy way") + (GeoDraws.geo("knight") ? "; the Squire is GeckoLib, whose bodies never draw from BodyCache" : "") + "]"; }
         /** The peak window (Task 7 fix 1): the 40 ticks of stage 131 after this tick, when the most bodies lie. Reported, not gated. */
         static final int CP_PEAK_FROM = 150, CP_PEAK_TICKS = 40;
         final Map<Integer, List<MotionInput.Attack>> evSeenAttacks = new java.util.concurrent.ConcurrentHashMap<>();
@@ -2101,16 +2118,21 @@ final class HoldLineChecks {
                 }
                 case 128 -> { // Task 8 fix 1 (R39): a settled body the client draws from the buffers it recorded looks as the normal draw does
                     long n = since(b);
-                    if (n == 1) {cpShotDone = false; cpFadeDone = false; cpFadeK = 0; cpFadeId = -1; cpCacheBody = cpOwn(b, 65, cpHome); var at = ground(b, cpHome.x, cpHome.z - 3); b.relocate(sp(b), at.x, at.y, at.z, 0f, 28f); return;}
+                    if (n == 1 && (cpCacheTroop = GeoDraws.legacy(CP_LEGACY)) == null) { // every candidate is GeckoLib: nothing draws from BodyCache's buffers
+                        cpCacheBody = null; cpShotDone = true; cpFadeDone = true; cpShotPass = false; cpFadePass = false;
+                        cpShotWhy = cpFadeWhy = "not run: " + String.join(", ", CP_LEGACY) + " are all drawn by GeckoLib, which never draws from BodyCache (legacy-only)"; return;
+                    }
+                    if (cpCacheBody == null && n > 1) {if (n < CP_STAND + 2) return;} // not run: straight to the report
+                    else if (n == 1) {cpShotDone = false; cpFadeDone = false; cpFadeK = 0; cpFadeId = -1; cpCacheBody = cpOwn(b, 65, cpHome, cpCacheTroop); var at = ground(b, cpHome.x, cpHome.z - 3); b.relocate(sp(b), at.x, at.y, at.z, 0f, 28f); return;}
                     // R43 / Task 13 carry 20: it falls once the client has it. The old animator settled a troop struck down within ~3 s of spawning
                     // only near its 60th tick of age (r2-lie20b), so this stood 60 ticks; TroopMotion.settled has no age in it (mo-settle: 1 and 197 ticks old both settle at death tick 22)
-                    if (n == CP_STAND) {fall(b, cpCacheBody); return;}
-                    if (n == CP_STAND + Math.min(45, cpLieEnd() - 4)) cpShotId = cpCacheBody.mob.getId(); // lying since death tick 21, before its fade; the camera 3 blocks north of it, looking down at it
-                    if (cpShotDone && cpShotId >= 0) {cpShotId = -1; cpFadeId = cpCacheBody.mob.getId();} // R42: then the client samples it as it fades
+                    if (n == CP_STAND && cpCacheBody != null) {fall(b, cpCacheBody); return;}
+                    if (n == CP_STAND + Math.min(45, cpLieEnd() - 4) && cpCacheBody != null) cpShotId = cpCacheBody.mob.getId(); // lying since death tick 21, before its fade; the camera 3 blocks north of it, looking down at it
+                    if (cpShotDone && cpShotId >= 0 && cpCacheBody != null) {cpShotId = -1; cpFadeId = cpCacheBody.mob.getId();} // R42: then the client samples it as it fades
                     if (!(cpShotDone && cpFadeDone) && n < CP_STAND + 220) return; // removed on its gone tick (120 at most here) (the client pauses the game while it shoots, so the body waits)
                     cpShotId = -1; cpFadeId = -1;
-                    cpCheck(cpShotDone && cpShotPass, cpShotDone ? cpShotWhy : "the client never shot the cached body (by +" + (CP_STAND + 220) + "; BodyCache: " + BodyCache.diag() + ")");
-                    cpCheck(cpFadeDone && cpFadePass, cpFadeDone ? cpFadeWhy : "the client never sampled the body's fade (by +" + (CP_STAND + 220) + "; BodyCache: " + BodyCache.diag() + ")");
+                    cpCheck(cpShotDone && cpShotPass, (cpShotDone ? cpShotWhy : "the client never shot the cached body (by +" + (CP_STAND + 220) + "; BodyCache: " + BodyCache.diag() + ")") + cpNote(cpCacheTroop));
+                    cpCheck(cpFadeDone && cpFadePass, (cpFadeDone ? cpFadeWhy : "the client never sampled the body's fade (by +" + (CP_STAND + 220) + "; BodyCache: " + BodyCache.diag() + ")") + cpNote(cpCacheTroop));
                     var p = sp(b); b.relocate(p, patch[0] + 12, Phase1Checks.top(b, patch[0] + 12, patch[2] - 24) + 6, patch[2] - 24, 0f, 15f); // the camera back where hl-corpse-load measures from
                     clearFixture(b, "hl-corpse"); b.clearCorpses();
                     next(b, CP_LOAD ? 129 : 140);
@@ -2119,15 +2141,20 @@ final class HoldLineChecks {
                 case 130 -> { // hl-corpse-load: the corpse rows of this run, then 200 troops, 20 a tick, both armies on Attack toward the middle; the wave begins as they meet
                     long n = since(b); // the first tick of a stage is since 1
                     if (n == 1) {
+                        cpLoadTroop = cpLoadTroop();
                         var mid = new Vec3d(patch[0] + 16, patch[1], patch[2]);
                         own.order = "attack"; own.target = mid; dusk.order = "attack"; dusk.target = mid;
                         for (var s : new GravesAndGlory.Squad[]{own, dusk}) {s.assignments.clear(); s.arrived.clear(); s.shotAt.clear(); s.chargedAt.clear();}
+                    }
+                    if (cpLoadTroop == null) { // every candidate is GeckoLib (and GRAVES_CORPSE_TROOP unset)
+                        report("hl-corpse-load", false, "not run: " + String.join(", ", CP_LEGACY) + " are all drawn by GeckoLib, which never draws from BodyCache (legacy-only); GRAVES_CORPSE_TROOP=<troop> runs it with one");
+                        b.clearCorpses(); clearFixture(b, "hl-corpse-load"); cpLoad.clear(); BodyCache.noGroups = false; Spec.COMBATDISCIPLINE[0] = cpRow; own.order = "hold"; dusk.order = "hold"; next(b, 140); return;
                     }
                     if (n >= 1 && n <= 10) {
                         for (int j = (int) (n - 1) * 20; j < n * 20; j++) {
                             int k = j / 2; boolean mine = j % 2 == 0;
                             double x = patch[0] + (mine ? 1 : 21) + (k / 10) * 1.2, z = patch[2] + (k % 10 - 4.5) * 1.2;
-                            var u = tough(b.spawn(mine ? own : dusk, Campaign.troop("knight"), k, ground(b, x, z))); // AI on; 4000 health, so the scripted falls set the pace, not the blows
+                            var u = tough(b.spawn(mine ? own : dusk, Campaign.troop(cpLoadTroop), k, ground(b, x, z))); // AI on; 4000 health, so the scripted falls set the pace, not the blows
                             fixture.add(u); cpLoad.add(u);
                         }
                         return;
@@ -2189,8 +2216,8 @@ final class HoldLineChecks {
                     double lyingB = valid.stream().filter(r -> r[11] == 2).mapToDouble(r -> r[17]).average().orElse(-1), fadingB = valid.stream().filter(r -> r[11] == 2).mapToDouble(r -> r[15]).average().orElse(-1);
                     BodyCache.noGroups = false;
                     report("hl-corpse-load", dead && lay && measured && diff <= 0.75 && rs <= 1.10, String.format(Locale.ROOT,
-                        "dry ground only (the patch: no water, no fire, so every body settles; a body in water or burning keeps ticking and is not measured here); the client's vsync %b, maxFps %d (the run's options.txt); "
-                        + "200 Squires (100 a side, AI on, both on Attack into each other, 4000 health) on the patch, one falling a tick, all dead within 10 s=%b; the bodies lay (B, lie %d fade %d: %d or more at once)=%b; "
+                        cpNote(cpLoadTroop).trim().replace("%", "%%") + " dry ground only (the patch: no water, no fire, so every body settles; a body in water or burning keeps ticking and is not measured here); the client's vsync %b, maxFps %d (the run's options.txt); "
+                        + "200 " + cpLoadTroop + " (100 a side, AI on, both on Attack into each other, 4000 health) on the patch, one falling a tick, all dead within 10 s=%b; the bodies lay (B, lie %d fade %d: %d or more at once)=%b; "
                         + "%d valid A B B A blocks (want 8 or more, R58) after a warm-up, System.gc() before every run; stalls (a run's mean frame over %.1f times its kind's median; its block re-run, at most %d): %s; "
                         + "median server tick B/A %.3f, spread %.3f (want median 1.10 or less); client frame B-A per block (its B runs' mean less its A runs' mean) median %.3f ms, spread %.3f (want median 0.75 ms or less, R55/R58); "
                         + "in the B runs bodies lying mean %.1f (10-tick samples), peak %d; fading bodies drawn per frame mean %.1f, most in one fade pass %d; "
@@ -2254,8 +2281,10 @@ final class HoldLineChecks {
             return blocks.isEmpty() ? 0 : blocks.stream().mapToDouble(k -> k[c]).max().getAsDouble() - blocks.stream().mapToDouble(k -> k[c]).min().getAsDouble();
         }
         /** A frozen Squire of the commander's army at 4000 health pinned at this point, facing east. */
-        GravesAndGlory.Unit cpOwn(GravesAndGlory.Battle b, int slot, Vec3d at) {
-            var u = tough(b.spawn(own, Campaign.troop("knight"), slot, at)); Phase1Checks.freeze(u);
+        GravesAndGlory.Unit cpOwn(GravesAndGlory.Battle b, int slot, Vec3d at) {return cpOwn(b, slot, at, "knight");}
+        /** The same of another troop (hl-corpse's cache body: a troop drawn the legacy way). */
+        GravesAndGlory.Unit cpOwn(GravesAndGlory.Battle b, int slot, Vec3d at, String troop) {
+            var u = tough(b.spawn(own, Campaign.troop(troop), slot, at)); Phase1Checks.freeze(u);
             fixture.add(u); pins.add(new Pin(u, at, -90f)); u.deployed = at; Phase2Checks.Engine.apply(u, at, -90f); return u;
         }
         /**
