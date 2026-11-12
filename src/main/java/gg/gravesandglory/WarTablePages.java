@@ -1615,7 +1615,7 @@ final class WarTablePages {
 
     /** The first tier on the track: where the arrows left it, else the tier before the lowest unclaimed (UiMath.trackFirst), so
      *  the last claim stays in view at the left. */
-    int first() { return paged ? pagedFirst : UiMath.trackFirst(lowestUnclaimed(), TIERS, shown()); }
+    int first() { return UiMath.trackShown(paged, pagedFirst, lowestUnclaimed(), TIERS, shown()); }
 
     void initChapter() {
         int[] b0 = col(C_BLOCK);
