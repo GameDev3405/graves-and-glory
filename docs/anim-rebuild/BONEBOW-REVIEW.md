@@ -54,3 +54,24 @@ Bow-family batch review on `anim/review-bow`. Timing unchanged: `ATTACK_TICKS` 3
 - **Other remaining rows.** Aim stances `loop_life` 0.26-0.30 (pre-existing: the held aim barely breathes). Common modules: `hit_pulled`, `stun_upper`, `stun_out_upper`, `hit_knockback`, `charge_run_upper`.
 - **Proposed exemption or model fix.** bonebow, every clip with the string arm raised, `armour_clip`, 2.0-2.4, `right_pauldron` into jerkin/rag_hood: shrink or lift the right pauldron in the hand model (preferred), else exempt that pair. bonebow, stances and hits, `armour_clip`, up to 2.5, `bow_plate` into head.
 - **Tests.** Scorecard exit 0 (35 clips, 0 fail) after the nock-grip fix (it failed `pen_limb` on both attacks before it). Unit tests OK (see ARCHER-REVIEW batch section). Booth config valid.
+
+## Batch review fix round 1 (2026-11-12)
+
+Review `work/reviewer/BOW-sonnet-review.md` (FIX, 5.5/10). Clip fixes in the bow family's late layer `art/anim/archer/bow_fix_layer.py`
+(fingerprinted in `out/bonebow.fixlayer.json`). Shared modules untouched; timing unchanged. No model change shipped (see B1/B2).
+
+- **Focus check** FAIL rows 32 -> 21 (clips with a FAIL 22 -> 21). Scorecard exit 0. All 21 rows left are `armour_clip` on the plates.
+- **B4 aims** `loop_life` 0.26-0.30 -> pass: one slow breath over the loop (torso 1.0, arms 0.9 deg).
+- **B5 floor** pulled 1.64, stun 1.65, knockback 1.12 -> pass / pass / 0.71 WARN: hips lift 1.9, 1.3 + 0.6 and 1.7 px.
+- **B6 still gear** -> pass on pulled, stun, knockback (stun_out 3.42 WARN): `soft_motion`, plus a 5-6 deg jolt by hand on bone_quiver,
+  quiver_bands and both pauldrons (the kit does not know their names).
+- **B3** skull_pauldron into rag_hood: the bow arm stands 14 deg out through the pulled jolt (bow_plate 2.0 -> WARN) and the stun loop
+  (2.64 -> 2.14). Knockback 2.77 -> 2.48, hit_medium_right 2.63, stun_out 1.95 (inherited from the loop) stay.
+- **B1/B2 model fit tried, not shipped.** `armour_clip` counts depth over each pair's rest fit. The right pauldron and the bow plate
+  already sit in the hood at rest (inner edge 1.5-1.9 px inside), so trimming them lowers the rest fit and raises the score:
+  right_pauldron 4 px wide (inner edge -4) gave volley 2.39 -> 3.37, 3.2 px 4.16, moved out 1.5 px 3.87, lifted 1 px 2.56; a thinner or
+  shorter cube 2.03-2.48. At the full draw the pauldron passes clean through the jerkin (2.3 = half its 4.6 px inflated depth), so small
+  slides of the plate (1-3 px down or out) do not move the number either. Head rolls trade the right plate for the left (bow_plate,
+  skull_pauldron, fan_arrow0). Fix needs a redesign of both shoulders (plates outboard of the hood at rest) together with the draw pose.
+- Changed clips: the three aims, `hit_pulled`(+legs), `hit_knockback`(+legs), `stun_upper`, `stun_legs`, `stun_out_upper`; every other clip
+  byte-identical to ae138367.

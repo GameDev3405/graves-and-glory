@@ -111,6 +111,19 @@ FIXES = {
        ("rot", "hit_medium_right", "left_arm", (-8.0, 0.0, 0.0), (0.0, 1.0, 4.0, 9.0))]
     + _common(2.0, (1.3, 0.6), 1.7, kb_bow_arm=(-12.0, 0.0, -4.0), out_tune=_SKIRT_OUT, stun_tune=_SKIRT_OUT,
               jolt=[f"{s}_skirt_t{n}" for s in ("left", "right") for n in (1, 2, 3)] + ["pouch"]),
+    # B4: the aims were statues (8 keys); one slow breath over the loop. B6: the kit does not know the bonebow's gear (bone
+    # quiver and its bands, the two pauldrons): they take the reactions' jolt by hand.
+    "bonebow": [("breath", c, {"torso": (1.0, 0.0, 0.0), "right_arm": (0.9, 0.0, 0.0), "left_arm": (0.9, 0.0, 0.0)}, 1)
+                for c in ("stance_aim_upper", "stance_aim_up_upper", "stance_aim_down_upper")]
+    + [("rot", c, b, d, w) for c, w in (("hit_pulled", (0.5, 2.0, 5.0, 9.0)), ("hit_knockback", (0.5, 2.5, 8.0, 13.0)),
+                                         ("stun_upper", (0.25, 1.25, 2.5, 4.0)), ("stun_out_upper", (0.25, 1.5, 2.5, 5.0)))
+       for b, d in (("bone_quiver", (6.0, 0.0, 0.0)), ("quiver_bands", (6.0, 0.0, 0.0)),
+                    ("right_pauldron", (5.0, 0.0, 0.0)), ("skull_pauldron", (5.0, 0.0, 0.0)))]
+    # B3: the left shoulder carries the skull pauldron and (III) the bow plate beside the hood; the bow arm stands 14 deg out
+    # through the pulled jolt and the dazed loop (the plates crowd the hood less; the rest is the model, see BONEBOW-REVIEW).
+    + [("rot", "hit_pulled", "left_arm", (0.0, 0.0, 14.0), (0.0, 1.0, 5.0, 9.0)),
+       ("rot", "stun_upper", "left_arm", (0.0, 0.0, 14.0), (0.0, 0.0, 24.0, 24.0))]
+    + _common(1.9, (1.3, 0.6), 1.7, head_kb=(0.0, 0.0, 0.0)),
 }
 
 
