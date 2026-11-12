@@ -145,9 +145,10 @@ FAMILIES = {
                                                           "the rear elbow folded behind it"},
         "ang_speed_legs": {"attack": 65.0, "reason": "the high thrust is a lunge: the lead leg drives the point "
                                                      "forward, which the knight's planted cuts never do"},
-        "pen_limb": {"attack": 2.05, "reason": "Kort-approved wm_tusk attack_thrust r3 measures 2.0: a two-hand "
-                                               "spear's front forearm crosses the chest to the shaft in the load and "
-                                               "the rip (ticks 2-3, 12.5-13)"},
+        "pen_limb": {"attack": 2.05, "stance": 2.0,
+                     "reason": "Kort-approved wm_tusk attack_thrust r3 measures 2.0: a two-hand "
+                               "spear's front forearm crosses the chest to the shaft in the load and "
+                               "the rip (ticks 2-3, 12.5-13); stance: Kort-approved wm_tusk r3 guard measures 1.93-1.98"},
     },
     "thrower": {
         "elbow_bend": {"all": [HYPER, 130.0],

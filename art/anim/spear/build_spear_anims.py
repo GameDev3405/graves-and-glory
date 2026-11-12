@@ -21,6 +21,7 @@ os.environ["GG_ANIM_TROOP"] = TROOP
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "knight"))
 import build_anims as K  # noqa: E402
+import focus_pass as FP  # noqa: E402  (fix round 2: art/anim/spear/focus_pass.py)
 
 SUB, TPS, Z3 = K.SUB, K.TPS, K.Z3
 np = K.np
@@ -411,6 +412,59 @@ if WIDE and TROOP in GUARD_GRIP:
 # the chest), so the stances keep this wide guard at 8.0 until the lead decides (a stance allowance or a re-pose); the thrust
 # demo starts from R3_GUARD itself.
 R3_GUARD = KEY((14, 15, 0), GAZE, (-4.5, 13.5, 2.0), aim(12, 18), Ls=8.0)
+# Fix round 2 (lead's decision, 2026-11-12): Kort approved r3, and its tick 0 is the guard, so the tusk's stance is that pose.
+# Every guard-based tusk clip (idle, stance ready / shield_up, the attacks' ends, the hits and reactions added onto it) rides
+# R3_GUARD; the scorecard's spear family allows the stance pen_limb it measures (1.93-1.98 px, allowance 2.0).
+if TROOP == "wm_tusk":
+    GUARD = R3_GUARD
+# Fix round 2: pose trims, part of the guard and stance definitions (focus_check armour_clip, measured with its own metric:
+# art/anim/spear/focus_pass.py). "all" rides every solved clip (idle, the stances, the attacks; the hits are added onto the
+# stance, so they carry it too); a stance's name adds its own. {bone: (rotation deg, position px)} added after the passes.
+#   wm_tusk  the r3 guard holds the rear fist at the right hip, where the hip skull hangs (hip_skull into right_wrap 1.81 in
+#            the stance, 2.0-2.2 in the hits and attacks): the skull hangs 14 deg further out. The ward raises the right
+#            arm so the pauldron's spike stood in the snout's side (2.33): the pauldron and its spikes sit 1 px lower.
+_TG_LEFT, _TG_RIGHT = ("left_pauldron", "left_plate", "left_wrap"), ("right_pauldron", "right_plate", "right_wrap")
+_AD_LEFT, _AD_RIGHT = ("left_pauldron", "left_fringe", "left_epaulette"), ("right_pauldron", "right_fringe", "right_epaulette")
+TRIM = {
+    "wm_tusk": {"all": {"hip_skull": ((14.0, 0.0, 0.0), None)},
+                "ward": {"pauldron": (None, (0.0, -1.0, 0.0)), "pauldron_spikes": (None, (0.0, -1.0, 0.0)),
+                         "pauldron_spike_ii": (None, (0.0, -1.0, 0.0))}},
+    #   tc_tideguard  the tabard hangs 1 px lower, off the greaves and the thighs; the left pauldron, plate and wrap sit 1 px
+    #            out from the chest (the breastplate into the pauldron at every attack's start, the helm into the plate in
+    #            the ward); the ward's and the wall's raised right arm carries its pauldron group 1 and 2 px off the helm.
+    "tc_tideguard": {"all": {"tabard": (None, (0.0, 1.0, 0.0)), **{b: (None, (0.0, 0.0, 1.0)) for b in _TG_LEFT}},
+                     "ward": {b: (None, (-1.0, 0.0, 0.0)) for b in _TG_RIGHT},
+                     "wall": {b: (None, (-2.0, 0.0, 0.0)) for b in _TG_RIGHT}},
+    #   tc_admiral  the sash's end swings 10 deg back off the lead thigh (16 in the brace's deeper knee, and in the wall out
+    #            to the side, 8 deg); the left pauldron, fringe and epaulette sit 1 px out from the helm (2 in the ward), the
+    #            wall's right group 1 px.
+    "tc_admiral": {"all": {"sash_end": ((-10.0, 0.0, 0.0), None), **{b: (None, (0.0, 0.0, 1.0)) for b in _AD_LEFT}},
+                   "ward": {b: (None, (0.0, 0.0, 2.0)) for b in _AD_LEFT},
+                   "brace": {"sash_end": ((-16.0, 0.0, 0.0), None)},
+                   "wall": {"sash_end": ((-10.0, 0.0, 8.0), None), **{b: (None, (-1.0, 0.0, 0.0)) for b in _AD_RIGHT}}},
+}.get(TROOP, {})
+
+
+def trim(frames, stance=None):
+    """Adds the troop's pose trims (TRIM) to every sample of a solved clip."""
+    add = dict(TRIM.get("all", {}))
+    add.update(TRIM.get(stance, {}) if stance else {})
+    if not add:
+        return frames
+    out = []
+    for f in frames:
+        f = dict(f)
+        for b, (dr, dp) in add.items():
+            if b not in GEO_BONES:
+                continue
+            r, p = f.get(b, (Z3, None))
+            r = tuple(float(a + c) for a, c in zip(r, dr)) if dr is not None else r
+            p = tuple(float(a + c) for a, c in zip(p if p is not None else Z3, dp)) if dp is not None else p
+            f[b] = (r, p)
+        out.append(f)
+    return out
+
+
 ATTACK_TICKS = K.ATTACK_TICKS     # 22
 IMPACT = {"thrust": 7, "high_thrust": 7, "low_sweep": 8}
 
@@ -1365,6 +1419,7 @@ def attack_clips():
         if REVIEW:
             upper, legs = soft(upper, legs, "attack_" + name)
             upper, legs = armour_pass(upper, legs, "attack_" + name)
+        upper = trim(upper)
         clip = K.bake(upper, ATTACK_TICKS, loop=False)
         clip["timeline"] = {K.fmt_t(IMPACT[name] / TPS): "impact"}
         out["attack_" + name] = clip
@@ -1471,7 +1526,7 @@ IDLE_LIFE = 2.2
 READY_LIKE = ("ready", "shield_up")   # shield_up is the ready pose: both ride V2_READY_SWAY_SCALE
 
 
-def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False):
+def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False, name=None):
     n = ticks * SUB
     a_br, a_wt, _ = K.feel.stance_amps(life, ready)
     hips = (legs_spec or STANCE_LEGS["ready"])["hips"]
@@ -1512,11 +1567,12 @@ def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False):
         gl = guard_pose()[1]
         out = plate_clear(out, [gl] * len(out), "stance", loop=True)
         out[-1] = out[0]
+    out = trim(out, name)
     return K.bake(out, ticks)
 
 
 def stance_clips():
-    out = {"stance_%s_upper" % k: stance_upper(v, LIFE[k], STANCE_LEGS.get(k), ready=k in READY_LIKE) for k, v in STANCE_KEYS.items()}
+    out = {"stance_%s_upper" % k: stance_upper(v, LIFE[k], STANCE_LEGS.get(k), ready=k in READY_LIKE, name=k) for k, v in STANCE_KEYS.items()}
     # V2: the brace and the line rock their weight with the upper body (it already does), not on stiff legs
     life = (lambda k: K.STANCE_LIFE.get(k, LIFE[k])) if V2C else (lambda k: K.STANCE_LIFE.get(k, 1.0))
     out.update({"stance_%s_legs" % k: stance_legs(v, life(k), ready=k in READY_LIKE) for k, v in STANCE_LEGS.items()})
@@ -1955,6 +2011,15 @@ def post_common(path=ASSET_ANIM):
             k = K.smooth(min(1.0, i / (2.0 * SUB)))
             r, p = ups[i]["left_forearm"]
             ups[i]["left_forearm"] = ((r[0], r[1], r[2] + turn * k), p)
+    # Fix round 2: from the r3 guard (the rear fist at the hip) the daze dropped the right forearm into the kilt (focus
+    # limb_in_body 2.49, the spear's butt into the hips 1.78): the right arm comes up and out from the shoulder over the
+    # first 2 ticks and stays there through the loop.
+    lift = STUN_ARM_LIFT.get(TROOP)
+    if lift and "right_arm" in ups[0]:
+        for i in range(0, n_st + 1):   # the stun's first key is its own (not the stance's): half lifted there already
+            k = 0.5 + 0.5 * K.smooth(min(1.0, i / (2.0 * SUB)))
+            r, p = ups[i]["right_arm"]
+            ups[i]["right_arm"] = (tuple(float(a + c * k) for a, c in zip(r, lift)), p)
     ups, lgs = floor_guard(ups, lgs, "stun_upper")
     # (no plate_clear here: on the stun it barely helped, 2.56 to 2.5, and the slide broke the loop seam: scorecard loop_pos)
     A["stun_upper"], A["stun_legs"] = STN.bake(ups, n_st // SUB, su.get("loop", False)), STN.bake(lgs, n_st // SUB, A["stun_legs"].get("loop", False))
@@ -1979,6 +2044,9 @@ def post_common(path=ASSET_ANIM):
     for name, lname in (("stance_fallback_upper", "stance_fallback_legs"),):
         if name in A:
             armour_on_clip(A, name, lname, loop=bool(A[name].get("loop", False)))
+    if FIXES or SWINGS or SMOOTHS:
+        print("post: focus pass")
+        focus_extras(doc, SHARED)
     with open(path, "w", newline="\n") as fh:
         fh.write(json.dumps(doc, indent=1))
     print("post: re-keyed stun_upper, stun_legs, " + ", ".join(POST_ADDITIVE) + " (and their _legs) in", path)
@@ -1986,6 +2054,39 @@ def post_common(path=ASSET_ANIM):
 
 STUN_LOOP_START = 4
 STUN_FOREARM_OPEN = {"wm_tusk": -12.0}   # deg about the forearm's z: the left forearm out of the chest in the stun
+STUN_ARM_LIFT = {"wm_tusk": (-16.0, 0.0, 8.0)}   # deg: the right arm up and out of the kilt in the stun (fix round 2)
+# Fix round 2: what the builder's own passes missed, cleared with focus_check's own metric (focus_pass.py: one bone, one
+# channel axis, the least offset per sample, eased; "const" a held pose change). SHARED clips are the shared modules'
+# (stances.py, charge.py, reactions.py), fixed in post_common; the rest in main(), before out/ is written.
+SHARED = {"stun_upper", "stun_legs", "stun_out_upper", "hit_knockback", "hit_knockback_legs", "hit_pulled", "hit_pulled_legs",
+          "stance_rally_upper", "stance_fallback_upper", "stance_fallback_legs", "charge_run_upper"}
+FIXES = {
+    "wm_tusk": [
+        # the kilt swings off the lead shin guard in the run's stride (1.95) and the charge's (1.94)
+        dict(clips=["run_upper", "charge_run_upper"], bone="kilt", chan="rotation", axis=0),
+        # the rally's lift brings the left wrap past the snout (2.21): the head turns off it
+        dict(clips=["stance_rally_upper"], bone="head", chan="rotation", axis=1),
+        # ... and what the head's turn leaves (2.0 at the top), the left arm takes forward a little, eased
+        dict(clips=["stance_rally_upper"], bone="left_arm", chan="rotation", axis=0, signs=(1,), reach=12.0),
+        # the stun's spear drop swings the hip skull into the right wrap
+        dict(clips=["stun_upper"], bone="hip_skull", chan="rotation", axis=0),
+    ],
+}.get(TROOP, [])
+# (clip, bone, deg) a still hanging piece swings in an additive clip (focus_check secondary_life)
+SWINGS = {"wm_tusk": [("stun_out_upper", "kilt", 6.0), ("stun_out_upper", "trophy", 6.0)]}.get(TROOP, [])
+# (clip, bone) a spring piece that overshoots in one sample (focus_check pop), smoothed
+SMOOTHS = {}.get(TROOP, [])
+
+
+def focus_extras(doc, only):
+    """The fix-round-2 focus pass (FIXES, then SWINGS and SMOOTHS) over the clips in `only`."""
+    FP.run(doc, TROOP, FIXES, only=only)
+    for clip, bone, amp in SWINGS:
+        if clip in only:
+            FP.swing(doc, clip, bone, amp=amp)
+    for clip, bone in SMOOTHS:
+        if clip in only:
+            FP.smooth(doc, clip, bone)
 
 
 def deploy(only=None):
@@ -2036,6 +2137,9 @@ def main():
         import build_thrust_demo   # noqa: E402
         anims.update(build_thrust_demo.clips())
     only_rig(anims)
+    if FIXES or SWINGS or SMOOTHS:
+        print("focus pass")
+        focus_extras({"animations": anims}, set(anims) - SHARED)
     K.OUT.parent.mkdir(parents=True, exist_ok=True)
     K.OUT.write_text(json.dumps({"format_version": "1.8.0", "animations": anims}, indent=1), encoding="utf-8")
     print("wrote", K.OUT, "clips:", ", ".join(anims))
