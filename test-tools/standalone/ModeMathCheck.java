@@ -25,9 +25,9 @@ public final class ModeMathCheck {
         check(ModeMath.riseLines(List.of("the chapel")).equals(List.of("Dead rise: the chapel")) && ModeMath.riseLines(List.of("the chapel","the ford")).equals(List.of("Dead rise: the chapel","Dead rise: the ford")) && ModeMath.riseLines(List.of("a","b","c")).size()==3 && ModeMath.riseLines(List.of()).equals(List.of("The dead rise")), "survival rise lines, one per site");
         check(ModeMath.restLine(1,60).equals("Wave 1 at rest, +60 gold") && ModeMath.restLine(7,0).equals("Wave 7 laid to rest"), "survival rest lines");
         check(ModeMath.survivalResult(3,7,true,false,0,20)==-1 && ModeMath.survivalResult(7,7,true,false,0,20)==0 && ModeMath.survivalResult(7,7,false,true,19,20)==0 && ModeMath.survivalResult(2,7,false,false,20,20)==1 && ModeMath.survivalResult(7,7,true,true,20,20)==1, "survival result: shrine loss first, then the last wave");
-        check(ModeMath.dominationWinner(299,298,300)==-1 && ModeMath.dominationWinner(300,0,300)==0 && ModeMath.dominationWinner(299,300,300)==1, "domination: the side at the target wins, none below it");
+        check(ModeMath.dominationWinner(299,298,300)==-2 && ModeMath.dominationWinner(0,0,300)==-2 && ModeMath.dominationWinner(300,0,300)==0 && ModeMath.dominationWinner(299,300,300)==1, "domination: the side at the target wins, none below it");
         check(ModeMath.dominationWinner(300,301,300)==1 && ModeMath.dominationWinner(302,300,300)==0, "domination: both sides past the target on one score tick, the higher score wins (C05-F2)");
-        check(ModeMath.dominationWinner(300,300,300)==0, "domination: both sides on the same score past the target stay team 0 as before (an open question for Kort)");
+        check(ModeMath.dominationWinner(300,300,300)==-1 && ModeMath.dominationWinner(301,301,300)==-1, "domination: both sides on the same score past the target on one tick is a draw, -1 as at a timeout (C05-F2, Kort 2026-11-12)");
         check(ModeMath.shrineLost(5,3,0)==6 && ModeMath.shrineLost(5,3,1)==0 && ModeMath.shrineLost(5,0,0)==0, "survival shrine seconds");
         System.out.println("ModeMathCheck: " + checks + " checks passed" + (failed == 0 ? "" : ", " + failed + " failed"));
         if (failed > 0) System.exit(1);
