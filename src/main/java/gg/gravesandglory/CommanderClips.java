@@ -85,7 +85,8 @@ public final class CommanderClips {
             if (strike != null && m.handSwingProgress > 0 && e.preferredHand == Hand.MAIN_HAND) { clip = strike; t = m.handSwingProgress; }
             else if (use != null && used >= 0) { clip = use; t = used; }
             else if (sneak != null && e.isInSneakingPose()) {
-                float from = sneakFrom.computeIfAbsent(e.getId(), id -> age);
+                Float from = sneakFrom.get(e.getId());
+                if (from == null || from > age) { from = age; sneakFrom.put(e.getId(), from); } // C17-F3: a re-created entity's age restarts
                 clip = sneak; t = Math.min(1, (age - from) / 20f / sneak.length);
             }
         }
