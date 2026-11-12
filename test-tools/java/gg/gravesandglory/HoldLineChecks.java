@@ -1959,7 +1959,7 @@ final class HoldLineChecks {
                     MotionEvents.sendAttack(evTarget, 0, now, to); // the discarded dummy: an id the client world no longer has
                     MotionEvents.sendHit(evTarget.mob, "slash", "body", 0f, 1, false, false, to);
                     MotionEvents.sendAttack(evKnight, Tactics.variants(evKnight.spec.family()).size(), now, to); // past the family's rows
-                    MotionEvents.sendAttack(evKnight, -1, now, to);
+                    MotionEvents.sendAttack(evKnight, -2, now, to); // -1 is attack_v1's cancel (MotionInput.CANCEL); -2 is still an invalid variant
                     evRawHit(p, m.getId(), 7, now); evRawHit(p, m.getId(), -3, now); // weights out of 0..2
                     evHits.get(m.getId()).add(new MotionInput.Hit("blunt", "body", 0f, 2, false, false, now));
                     evHits.get(m.getId()).add(new MotionInput.Hit("blunt", "body", 0f, 0, false, false, now));

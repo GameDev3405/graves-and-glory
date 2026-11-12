@@ -245,15 +245,16 @@ public final class MotionEvents {
         public static Deque<MotionInput.Cancel> cancels(int id) { Deque<MotionInput.Cancel> q = CANCELS.get(id); return q != null ? q : (Deque<MotionInput.Cancel>) NONE; }
         /** The cancel for this attack of the troop, or null. */
         public static MotionInput.Cancel cancelled(int id, MotionInput.Attack a) { Deque<MotionInput.Cancel> q = CANCELS.get(id); return q == null ? null : MotionInput.cancelled(q, a.startTick()); }
+        /** Cancels the client kept (cancel), for the checks. */
+        static volatile int cancelsAccepted;
         /**
-         * A cancel (coordinator 2026-11-11): the server dropped the announced attack of this start tick. rows: the troop's family's attackVariants (null when the client
-         * cannot name the troop: ignored); hold: its draw hold (Projectiles.hold's seed for a bow, else 0), so its loose is startTick + impactTicks + hold, as the server
-         * stamped it. Kept only when that attack is kept, not cancelled yet and its loose is still ahead of now (MotionInput.cancels); any troop's cancel is obeyed.
+         * A cancel (coordinator 2026-11-11): the server dropped the announced attack of this start tick, heard at world tick now. Kept when MotionInput.cancel says
+         * (a kept attack of that start, not cancelled yet, its clip within ATTACK_CLIP_MAX_TICKS of its start); any troop's cancel is obeyed. Returns whether it took.
          */
-        static void cancel(int id, long startTick, long now, List<Spec.AttackVariantsRow> rows, int hold) {
-            Deque<MotionInput.Attack> q = ATTACKS.get(id); MotionInput.Attack a = q == null || rows == null ? null : MotionInput.kept(q, startTick);
-            if (a == null || !BattleMath.validVariant(a.variant(), rows.size())) return;
-            if (MotionInput.cancels(q, cancels(id), startTick, now, startTick + rows.get(a.variant()).impactTicks() + hold)) push(CANCELS, id, new MotionInput.Cancel(startTick, now));
+        static boolean cancel(int id, long startTick, long now) {
+            Deque<MotionInput.Attack> q = ATTACKS.get(id); MotionInput.Cancel c = q == null ? null : MotionInput.cancel(q, cancels(id), startTick, now, BattleMath.ATTACK_CLIP_MAX_TICKS);
+            if (c == null) return false;
+            push(CANCELS, id, c); cancelsAccepted++; return true;
         }
         /** A blow: known when the client world has an entity of this id (else dropped); the weight clamped to 0..2. */
         static void hit(boolean known, int id, int kind, int zone, float bearing, int weight, int flags, long tick) {

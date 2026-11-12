@@ -199,7 +199,7 @@ public final class Projectiles {
      * its clip reaches its impact impactTicks plus hold ticks after it starts. drawAhead sends it and loose stamps the same tick (the test harness's
      * volley line uses it as the server would).
      */
-    public static long shotStart(java.util.UUID id,long beat,int impactTicks){var s=seed(id);return beat+s.loose()-impactTicks-s.hold();}
+    public static long shotStart(java.util.UUID id,long beat,int impactTicks){var s=seed(id);return BattleMath.shotStart(beat,impactTicks,s.hold(),s.loose());}
     /** The row of a shot's family loose sends for an arc of this peak: <family>_volley for a lofted one, <family>_direct for a flat one, else the first. */
     static int shotVariant(GravesAndGlory.Unit u,List<Spec.AttackVariantsRow> rows,double peak){
         int variant=0;String want=u.spec.family()+(peak>0?"_volley":"_direct");
@@ -230,11 +230,11 @@ public final class Projectiles {
      * the troop's watchers, so the client lowers the draw instead of loosing with no arrow. Clears the announce (a later shot's start differs, so pinned picks fresh
      * as before). Returns how many players it was sent to (0 with no announce).
      */
-    static int dropDraw(GravesAndGlory.Unit u){long start=u.drawStart;u.drawVariant=-1;u.drawStart=-1;if(start<0)return 0;drawsDropped++;return MotionEvents.sendAttack(u,MotionInput.CANCEL,start);}
-    /** Announced shots dropped (dropDraw) since the server started. */
-    static int drawsDropped;
+    static int dropDraw(GravesAndGlory.Unit u){long start=u.drawStart;u.drawVariant=-1;u.drawStart=-1;if(start<0)return 0;drawsDropped++;int n=MotionEvents.sendAttack(u,MotionInput.CANCEL,start);cancelsSent+=n;return n;}
+    /** Announced shots dropped (dropDraw) since the server started, and the cancel packets sent for them. */
+    static int drawsDropped,cancelsSent;
     /** The world tick a bow troop's announced shot's beat falls on (shotStart backwards: start + impactTicks + hold - loose), Long.MAX_VALUE with none. */
-    static long drawBeat(GravesAndGlory.Unit u){var rows=Tactics.variants(u.spec.family());int v=u.drawVariant;if(u.drawStart<0||v<0||v>=rows.size())return Long.MAX_VALUE;var s=seed(u.mob.getUuid());return u.drawStart+rows.get(v).impactTicks()+s.hold()-s.loose();}
+    static long drawBeat(GravesAndGlory.Unit u){var rows=Tactics.variants(u.spec.family());int v=u.drawVariant;if(u.drawStart<0||v<0||v>=rows.size())return Long.MAX_VALUE;var s=seed(u.mob.getUuid());return BattleMath.drawBeat(u.drawStart,rows.get(v).impactTicks(),s.hold(),s.loose());}
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
         Vec3d from=u.mob.getEyePos(),to=aim(target);double range=from.distanceTo(to);
         Tactics.stamp(b,u,target); // archer fire: the target's group is under fire (Squad.shotAt)

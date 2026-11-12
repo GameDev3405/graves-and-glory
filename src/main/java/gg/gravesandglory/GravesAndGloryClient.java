@@ -121,7 +121,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // A swing or a blow for an id this world does not have is dropped (no queue for an unloaded troop); a swing is checked against its family's rows.
         ClientPlayNetworking.registerGlobalReceiver(MotionEvents.ATTACK,(client,handler,buf,responder)->{int id=buf.readVarInt(),variant=buf.readVarInt();long start=buf.readVarLong();client.execute(()->{
             net.minecraft.entity.Entity e=client.world==null?null:client.world.getEntityById(id);Spec.TroopsRow t=e==null?null:TroopModels.troopOf(e);
-            if(variant==MotionInput.CANCEL){if(t!=null)MotionEvents.Client.cancel(id,start,client.world.getTime(),Tactics.variants(t.family()),t.ranged()&&!t.magic()&&"bow".equals(t.family())?Projectiles.seed(e.getUuid()).hold():0);return;} // a dropped shot (coordinator 2026-11-11): any troop's cancel is obeyed; hold as Projectiles.hold
+            if(variant==MotionInput.CANCEL){if(e!=null)MotionEvents.Client.cancel(id,start,client.world.getTime());return;} // a dropped shot (coordinator 2026-11-11): any troop's cancel is obeyed
             MotionEvents.Client.attack(id,variant,start,e==null?MotionEvents.Client.NO_ENTITY:t==null?MotionEvents.Client.UNKNOWN_TROOP:Tactics.variants(t.family()).size());});});
         ClientPlayNetworking.registerGlobalReceiver(MotionEvents.HIT,(client,handler,buf,responder)->{int id=buf.readVarInt(),kind=buf.readByte(),zone=buf.readByte();float bearing=buf.readFloat();int weight=buf.readByte(),flags=buf.readByte();long tick=buf.readVarLong();
             client.execute(()->MotionEvents.Client.hit(client.world!=null&&client.world.getEntityById(id)!=null,id,kind,zone,bearing,weight,flags,tick));});

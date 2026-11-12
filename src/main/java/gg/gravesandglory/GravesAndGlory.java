@@ -1320,7 +1320,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(long key:unitChunks)if(!wanted.contains(key)){var p=new net.minecraft.util.math.ChunkPos(key);world.setChunkForced(p.x,p.z,false);}
             unitChunks.clear();unitChunks.addAll(wanted);
         }
-        void unitTick(Unit u){ Abilities.unitTick(this,u,time);Tactics.tick(this,u,time);FormationRules.tick(this,u); }
+        void unitTick(Unit u){ Abilities.unitTick(this,u,time);Tactics.tick(this,u,time);Tactics.dropUntaken(u,time);FormationRules.tick(this,u); }
         /** Once a second: every seated army with a troop or its commander on the mode's objective (BattleMode.onObjective) gains one objective second, however many of them are there. */
         void objectiveTick(){
             Set<Squad> on=new LinkedHashSet<>();

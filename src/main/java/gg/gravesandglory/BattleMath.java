@@ -186,6 +186,16 @@ public final class BattleMath {
      * attackVariants clip longer than this, so no swing that still shows is withheld.
      */
     public static final int ATTACK_CLIP_MAX_TICKS = 40;
+    /** The world tick a bow shot on the beat at beat starts its clip (Projectiles.shotStart, Kort Q70): it leaves loose ticks after the beat and its clip reaches its impact impactTicks plus hold ticks after it starts. */
+    public static long shotStart(long beat, int impactTicks, int hold, int loose) { return beat + loose - impactTicks - hold; }
+    /** The beat an announced bow shot of this start falls on: shotStart inverted (Projectiles.drawBeat). */
+    public static long drawBeat(long start, int impactTicks, int hold, int loose) { return start + impactTicks + hold - loose; }
+    /**
+     * Whether a bow troop's announced shot was not taken on its beat (Tactics.dropUntaken, after the troop's tick, so on the beat tick itself): an announce is
+     * pending (drawStart), no late shot waits (looseAt, battle clock), its cooldown is still unspent (time, nextAttack: the beat that takes a shot moves it past
+     * now) and its beat (world clock) has come. A shot taken on the beat holds looseAt or has left (loose clears drawStart), so a shot that leaves is never dropped.
+     */
+    public static boolean drawUntaken(long drawStart, long looseAt, long time, long nextAttack, long world, long beat) { return drawStart >= 0 && looseAt < 0 && time >= nextAttack && world >= beat; }
     /** Whether a swing begun on world tick swingTick (-1: none) may still show at world tick now: from that tick through ATTACK_CLIP_MAX_TICKS. */
     public static boolean swingCurrent(long now, long swingTick) { return swingTick >= 0 && now >= swingTick && now - swingTick <= ATTACK_CLIP_MAX_TICKS; }
     /** The death tick vanilla removes a mob on, and the length of the fall a troop's corpse plays before it lies (LivingEntity.updatePostDeath). */
