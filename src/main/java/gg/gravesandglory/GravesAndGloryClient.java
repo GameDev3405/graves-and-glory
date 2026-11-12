@@ -444,6 +444,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static final class FailureScreen extends ArmyScreen {
         final String why;FailureScreen(String why){super("Graves and Glory");this.why=why;}
         @Override protected void init(){button("Return to Minecraft",width/2-100,height/2+40,200,b->client.setScreen(new TitleScreen()));}
+        // Seen once: leaving by button, Esc or any other screen change clears the startup error so the next title goes to the front menu.
+        @Override public void removed(){error="";}
         @Override public void render(DrawContext g,int x,int y,float d){renderBackground(g);g.drawCenteredTextWithShadow(textRenderer,why,width/2,height/2,DarkUi.ALARM_TEXT);super.render(g,x,y,d);}
     }
 }
