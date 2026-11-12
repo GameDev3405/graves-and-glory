@@ -46,6 +46,15 @@ has a history below and a mechanical check in `references/four-focus-points.md`.
 - **Knight v2** (2026-11-06/07) is the template for every troop: guard as a ready pose, idle breathing inside it,
   strikes driven from the pelvis with a step, graded hits, v4 deaths.
 - **The combat reel** in `docs/anim-rebuild/STYLE.md` is his 10/10 reference for style.
+- **Three approved clips are the 10/10 references for the full-body kit** (2026-11-11, his words: "i approve the
+  [knight] animation, i aprove of archer animation, i approve of tusk animation"). When you author or review a clip
+  of the same kind, put it beside its reference, tick for tick:
+  - a one-handed cut with a shield: knight `attack_overhead` round 4 (`art/anim/knight/build_overhead_demo.py`);
+  - a bow shot: archer `attack_direct` round 3, 22 ticks to the loose (`art/anim/archer/build_direct_demo.py`);
+  - a weapon in two hands: Warmaw tusk `attack_thrust` round 3 (`art/anim/wm_tusk/build_thrust_demo.py`).
+  What they have in common is the bar for every other troop: legs that flow into the attack; the body, not the arm,
+  driving the blow; the weapon never turning in the hand; nothing inside anything else; everything that hangs alive
+  and a fixed crest still; short steps with the reach carried by the arms; knees over the toes.
 - **Every clip must suit that unit and its weapon** (2026-11-10). No filling a slot with another family's clip.
 - **`hit_pulled` is reviewed in every batch** (2026-11-11).
 
@@ -60,6 +69,20 @@ has a history below and a mechanical check in `references/four-focus-points.md`.
 ## Grading rounds
 
 Add one block per round, newest first: date, clip, his overall score, then one line per tick he marked, in his words.
+
+### 2026-11-11, third pass: knight round 4, archer round 3, tusk round 3: all three approved
+His words, whole (relayed by the coordinator): "i approve the [knight] animation, i aprove of archer animation, i
+approve of tusk animation". No tick grades and no notes: the three clips stand as they are.
+
+| Clip | Round | What the round fixed | Numbers it was approved with |
+|---|---|---|---|
+| knight `attack_overhead` | 4 | the helm crest no longer wobbles | focus check 0 FAIL, 2 WARN |
+| archer `attack_direct` | 3 | 22 ticks to the loose; the ankle crease (knee over the toes) | focus check 0 FAIL, 2 WARN; clip 32, `full` 17, `impact` 22 |
+| Warmaw tusk `attack_thrust` | 3 | strides 3.0 and 2.0 px, point 2.2 px further from the arms | focus check 0 FAIL, 4 WARN; lands at 86% of its peak |
+
+**Keep doing**: everything in the three clips. They took 4, 3 and 3 rounds, and every round was one small list in
+his words; none of them was re-authored between rounds. Not approved by this: any other clip of these three troops,
+and the archer's clip as re-timed to another builder's `full` tick (a port is checked beside the approved one).
 
 ### 2026-11-11, second pass the same day: knight round 3, archer round 2, tusk round 2 (in chat, no tick grades)
 His words, whole: "knight v3 looks good, but remove the wobble of the red strip on his head, i thought i wanted it
