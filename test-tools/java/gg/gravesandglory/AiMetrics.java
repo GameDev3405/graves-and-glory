@@ -31,8 +31,21 @@ final class AiMetrics {
         final Map<String,Integer> groupRun=new HashMap<>();
         String lastTarget="";boolean retreating;
     }
-    /** Per-troop memory for the per-tick reads. */
-    static final class UnitMem {LivingEntity target;long abilityAt,secondAt;Vec3d spell;boolean spellHit;}
+    /** Per-troop memory for the per-tick reads. ap*: the approach being timed (troop metrics); trail: its place every TRAIL_SECONDS, newest last. */
+    static final class UnitMem {LivingEntity target;long abilityAt,secondAt;Vec3d spell;boolean spellHit;
+        LivingEntity apSeen,apTarget;long apStart;double apD0;int apTicks,apCrawl;final Vec3d[] trail=new Vec3d[3];final boolean[] trailIdle=new boolean[3];}
+    // ---- troop metrics (fixes of 2026-11-11: Attack creep, archer homing, pacing at spawn), botsim/troop-metrics.csv, one row per team per match ----
+    //  - arrows: archer shots (Projectiles.ARROWS_*) fired, struck their target, lost (target gone before landing), by range bin at the loose; hit rate = hit / (fired - lost).
+    //  - approach: a melee troop of a bot army on Attack or Charge picks an enemy more than its reach + 2 away; timed until it stands within reach + 0.5 of it
+    //    (contact). Dropped if the target or the order changes first. approachSpeed = closed distance / time; approachCrawl = share of its ticks under the crawl.
+    //  - spawnReversals: a troop within SPAWN_RADIUS of its side's field base, with no target, whose 2 s legs (each >= 1.5 blocks) turn back on themselves (cos < -0.5).
+    //  - baseYawFlips: a bot decision that turns an army's facing by more than 90 degrees while its centre stands within SPAWN_RADIUS of its field base.
+    static final String[] TROOP_COLUMNS={"match","map","mode","team","fired0","hit0","lost0","fired8","hit8","lost8","fired16","hit16","lost16","fired24","hit24","lost24",
+        "approaches","approachMeanS","approachMedianS","approachSpeed","approachCrawl","spawnReversals","spawnReversalsOpening","baseYawFlips"};
+    static final double SPAWN_RADIUS=40;static final int TRAIL_SECONDS=2;static final long OPENING_TICKS=400; // spawnReversalsOpening: those in the round's first 20 s
+    static final class TeamAcc {final long[][] arrows0=new long[3][];final List<Double> apSeconds=new ArrayList<>();double apDist;long apTicks,apCrawl;int reversals,reversalsOpening,yawFlips;}
+    TeamAcc[] teams={new TeamAcc(),new TeamAcc()};final StringBuilder pacingRows=new StringBuilder();Path pacingCsv;final Map<GravesAndGlory.Squad,Float> lastYaw=new IdentityHashMap<>();Path troopCsv;
+    static long[] row(long[][] counter,int team){return counter[team].clone();}
 
     final AiState state=new AiState();
     Path metricsCsv,decisionsCsv;
@@ -47,11 +60,43 @@ final class AiMetrics {
         metricsCsv=dir.resolve("ai-metrics.csv");decisionsCsv=dir.resolve("decisions.csv");
         BotSimulation.append(metricsCsv,String.join(",",COLUMNS)+"\n");
         BotSimulation.append(decisionsCsv,String.join(",",DECISION_COLUMNS)+"\n");
+        troopCsv=dir.resolve("troop-metrics.csv");BotSimulation.append(troopCsv,String.join(",",TROOP_COLUMNS)+"\n");
+        pacingCsv=dir.resolve("pacing.csv");BotSimulation.append(pacingCsv,"match,second,team,army,group,slot,x0,z0,x1,z1,x2,z2,order,formation,targetX,targetZ,yaw,muster,retreating,entity\n"); // one row per spawnReversals event
     }
     void reset(List<GravesAndGlory.Squad> armies,int match,String mode){
         this.armies=List.copyOf(armies);this.match=match;this.mode=mode;index.clear();acc=new Acc[armies.size()];
         for(int i=0;i<armies.size();i++){index.put(armies.get(i),i);acc[i]=new Acc();}
-        mem.clear();state.reset();decisionRows.setLength(0);
+        mem.clear();state.reset();decisionRows.setLength(0);lastYaw.clear();
+        for(int t=0;t<2;t++){teams[t]=new TeamAcc();teams[t].arrows0[0]=row(Projectiles.ARROWS_FIRED,t);teams[t].arrows0[1]=row(Projectiles.ARROWS_HIT,t);teams[t].arrows0[2]=row(Projectiles.ARROWS_LOST,t);}
+    }
+    /** The approach of a melee troop on Attack or Charge (TROOP_COLUMNS), every tick. */
+    void approach(GravesAndGlory.Battle b,GravesAndGlory.Unit u,UnitMem m){
+        if(u.spec.ranged()||u.squad.team<0||u.squad.team>1)return;
+        String o=b.assignment(u).order;boolean attack=o.equals("attack")||o.equals("charge");
+        var t=u.lockedTarget;double reach=Abilities.range(b,u);
+        if(t!=m.apSeen){
+            m.apSeen=t;m.apTarget=null;
+            if(attack&&t!=null&&t.isAlive()){double d=Math.sqrt(u.mob.squaredDistanceTo(t));if(d>reach+2){m.apTarget=t;m.apStart=b.time;m.apD0=d;m.apTicks=0;m.apCrawl=0;}}
+            return;
+        }
+        if(m.apTarget==null)return;
+        if(!attack||!t.isAlive()){m.apTarget=null;return;}
+        m.apTicks++;if(OrderIntakeProbeBehaviour.crawling(u))m.apCrawl++;
+        double d=Math.sqrt(u.mob.squaredDistanceTo(t));
+        if(d<=reach+.5){var ta=teams[u.squad.team];double s=(b.time-m.apStart)/20.0;ta.apSeconds.add(s);ta.apDist+=m.apD0-d;ta.apTicks+=m.apTicks;ta.apCrawl+=m.apCrawl;m.apTarget=null;}
+    }
+    /** Pacing at spawn (TROOP_COLUMNS), every TRAIL_SECONDS. */
+    void pacing(GravesAndGlory.Battle b,GravesAndGlory.Unit u,UnitMem m){
+        if(u.squad.team<0||u.squad.team>1)return;
+        System.arraycopy(m.trail,1,m.trail,0,2);System.arraycopy(m.trailIdle,1,m.trailIdle,0,2);
+        m.trail[2]=u.mob.getPos();m.trailIdle[2]=u.lockedTarget==null;
+        if(m.trail[0]==null||!m.trailIdle[0]||!m.trailIdle[1]||!m.trailIdle[2])return;
+        Vec3d base=b.fieldBase(u.squad.team);if(Math.hypot(m.trail[1].x-base.x,m.trail[1].z-base.z)>SPAWN_RADIUS)return;
+        double ax=m.trail[1].x-m.trail[0].x,az=m.trail[1].z-m.trail[0].z,bx=m.trail[2].x-m.trail[1].x,bz=m.trail[2].z-m.trail[1].z,la=Math.hypot(ax,az),lb=Math.hypot(bx,bz);
+        if(la>=1.5&&lb>=1.5&&(ax*bx+az*bz)/(la*lb)<-.5){teams[u.squad.team].reversals++;if(b.time-b.roundStarted<OPENING_TICKS)teams[u.squad.team].reversalsOpening++;
+            var a=b.assignment(u);Integer army=index.get(u.squad);
+            pacingRows.append(String.format(Locale.ROOT,"%d,%d,%s,%d,%s,%d,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%s,%s,%.1f,%.1f,%.0f,%b,%b,%d%n",match+1,(b.time-b.roundStarted)/20,SEATS[u.squad.team],army==null?-1:army,u.spec.group(),u.slot,
+                m.trail[0].x,m.trail[0].z,m.trail[1].x,m.trail[1].z,m.trail[2].x,m.trail[2].z,a.order,a.formation,a.target==null?0:a.target.x,a.target==null?0:a.target.z,a.yaw,u.musterSince>=0,b.campaign.botRetreating.contains(u.squad.owner),u.mob.getId()));}
     }
 
     // ---- every tick -----------------------------------------------------------------------------------------------------------------------
@@ -66,6 +111,7 @@ final class AiMetrics {
                 m.target=t;
             }
             casts(b,u,m,a);
+            approach(b,u,m);
         }
         for(int i=0;i<armies.size();i++){var s=armies.get(i);var a=acc[i];a.gold=s.gold;
             boolean r=b.campaign.botRetreating.contains(s.owner);if(r&&!a.retreating)a.retreats++;a.retreating=r;}
@@ -105,6 +151,7 @@ final class AiMetrics {
         var alive=new ArrayList<GravesAndGlory.Unit>();Map<String,int[]> groups=new HashMap<>();
         for(var u:b.units){
             if(!u.mob.isAlive()||u.temporary)continue;Integer i=index.get(u.squad);if(i==null)continue;alive.add(u);var a=acc[i];
+            if((b.time-b.roundStarted)/20%TRAIL_SECONDS==0)pacing(b,u,mem.computeIfAbsent(u,k->new UnitMem()));
             var r=state.read(b,u,b.time);var m=state.memory(u);
             if(r.fighting&&m.refill&&!m.fought){m.fought=true;a.trickleTotal++;if(!AiState.friendNear(b,u))a.trickleAlone++;}
             if(!r.valid)continue;
@@ -135,6 +182,8 @@ final class AiMetrics {
         var b=c.b;var a=acc[i];
         String targetName=s.target==null?"":AiState.spotName(b,s.target);
         a.decisions++;
+        Float was=lastYaw.put(s,s.yaw);Vec3d base=b.fieldBase(s.team);
+        if(was!=null&&s.team>=0&&s.team<2&&BattleMath.yawGap(was,s.yaw)>90&&Math.hypot(center.x-base.x,center.z-base.z)<=SPAWN_RADIUS)teams[s.team].yawFlips++;
         if(!a.lastTarget.isEmpty()&&!a.lastTarget.equals(targetName))a.cmdSwitches++;
         a.lastTarget=targetName;
         StringBuilder scores=new StringBuilder(),lane=new StringBuilder();int count=b.points.size();
@@ -170,6 +219,17 @@ final class AiMetrics {
         for(int t=0;t<2;t++){List<Acc> mine=new ArrayList<>();for(int i=0;i<acc.length;i++)if(armies.get(i).team==t)mine.add(acc[i]);
             if(!mine.isEmpty())out.append(row(map,"team",SEATS[t],t,banners[t],mine,tickMean,tickP99)).append('\n');}
         BotSimulation.append(metricsCsv,out.toString());
+        StringBuilder troops=new StringBuilder();
+        for(int t=0;t<2;t++){var ta=teams[t];troops.append(String.join(",",String.valueOf(match+1),map,mode,SEATS[t]));
+            long[] f=row(Projectiles.ARROWS_FIRED,t),h=row(Projectiles.ARROWS_HIT,t),l=row(Projectiles.ARROWS_LOST,t);
+            for(int bin=0;bin<Projectiles.RANGE_BINS;bin++)troops.append(',').append(f[bin]-ta.arrows0[0][bin]).append(',').append(h[bin]-ta.arrows0[1][bin]).append(',').append(l[bin]-ta.arrows0[2][bin]);
+            var sorted=new ArrayList<>(ta.apSeconds);Collections.sort(sorted);double sum=0;for(double v:sorted)sum+=v;
+            troops.append(',').append(sorted.size()).append(',').append(sorted.isEmpty()?"":String.format(Locale.ROOT,"%.2f",sum/sorted.size()))
+                .append(',').append(sorted.isEmpty()?"":String.format(Locale.ROOT,"%.2f",sorted.get(sorted.size()/2)))
+                .append(',').append(sum<=0?"":String.format(Locale.ROOT,"%.2f",ta.apDist/sum)).append(',').append(ta.apTicks==0?"":String.format(Locale.ROOT,"%.3f",ta.apCrawl/(double)ta.apTicks))
+                .append(',').append(ta.reversals).append(',').append(ta.reversalsOpening).append(',').append(ta.yawFlips).append('\n');}
+        BotSimulation.append(troopCsv,troops.toString());
+        if(pacingRows.length()>0){BotSimulation.append(pacingCsv,pacingRows.toString());pacingRows.setLength(0);}
     }
     String row(String map,String scope,String id,int team,String banner,List<Acc> list,String tickMean,String tickP99){
         long troop=0,idle=0,hold=0,fight=0,obj=0;int blind=0,picks=0,alone=0,total=0,wasted=0,casts=0,stuck=0,retreats=0,cmd=0,decisions=0,switches=0,gold=0,idleMax=0;

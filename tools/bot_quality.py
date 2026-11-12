@@ -185,6 +185,39 @@ def main(argv):
         dk = sum(1 for r in rr if r["winner"] == "dusk")
         n = len(rr)
         add("win spread (needs seat-swapped pair)", "40-60% per pair", f"dawn {dw}, dusk {dk} of {n}", "", "", "INFO")
+    # troop metrics (2026-11-11 fixes): archer hit rate by range, Attack approach to melee contact, pacing at spawn
+    tm = d / "troop-metrics.csv"
+    if tm.is_file():
+        with open(tm, newline="", encoding="utf-8") as f:
+            tr = list(csv.DictReader(f))
+
+        def tby(seat):
+            return [r for r in tr if r.get("team") == seat]
+
+        def hits(rs, b):
+            fired = sum(num(r[f"fired{b}"]) for r in rs); hit = sum(num(r[f"hit{b}"]) for r in rs); lost = sum(num(r[f"lost{b}"]) for r in rs)
+            judged = fired - lost
+            return f"{pct(hit / judged) if judged > 0 else 'n/a'} of {judged:.0f}"
+        for b, name in ((0, "under 8"), (8, "8-16"), (16, "16-24"), (24, "24+")):
+            add(f"archer hit rate, {name} blocks", "60-80% short, falling", hits(tr, b), hits(tby("dawn"), b).split(" of")[0], hits(tby("dusk"), b).split(" of")[0], "INFO")
+
+        def appr(rs, col):
+            n = sum(num(r["approaches"]) for r in rs)
+            if n == 0:
+                return "n/a"
+            if col == "n":
+                return f"{n:.0f}"
+            return f"{sum(num(r[col]) * num(r['approaches']) for r in rs if has(r[col])) / n:.2f}"
+        add("Attack: pick to melee contact, mean s", "(info)", appr(tr, "approachMeanS") + f" over {appr(tr, 'n')}", appr(tby("dawn"), "approachMeanS"), appr(tby("dusk"), "approachMeanS"), "INFO")
+        add("Attack: closing speed, blocks/s", "(info)", appr(tr, "approachSpeed"), appr(tby("dawn"), "approachSpeed"), appr(tby("dusk"), "approachSpeed"), "INFO")
+        add("Attack: share of approach crawling", "0", appr(tr, "approachCrawl"), appr(tby("dawn"), "approachCrawl"), appr(tby("dusk"), "approachCrawl"), "INFO")
+
+        def total(rs, col):
+            return f"{sum(num(r[col]) for r in rs):.0f}"
+        add("pacing at spawn: troop reversals", "0", total(tr, "spawnReversals"), total(tby("dawn"), "spawnReversals"), total(tby("dusk"), "spawnReversals"), "INFO")
+        if tr and "spawnReversalsOpening" in tr[0]:
+            add("  of which in the round's first 20 s", "(info)", total(tr, "spawnReversalsOpening"), total(tby("dawn"), "spawnReversalsOpening"), total(tby("dusk"), "spawnReversalsOpening"), "INFO")
+        add("pacing at spawn: army facing flips", "0", total(tr, "baseYawFlips"), total(tby("dawn"), "baseYawFlips"), total(tby("dusk"), "baseYawFlips"), "INFO")
 
     w = max(len(o[0]) for o in out)
     tw = max(len(o[1]) for o in out)

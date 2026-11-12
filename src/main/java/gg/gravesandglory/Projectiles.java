@@ -32,12 +32,19 @@ public final class Projectiles {
      *  peak is how far the shot's arc rises over its straight line mid-flight (0: a straight shot), and ticks its whole flight (lands - fired).
      *  aimed holds, in its one slot, the target's aim point when the visual was last steered (at first, when it was fired), so the steering can lead
      *  a moving target by its last tick's motion (N6). */
-    public record Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at,double peak,int ticks,Vec3d[] aimed){
+    public record Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at,double peak,int ticks,Vec3d[] aimed,double range){
         /** A straight shot (no arc) whose flight is lands - fired. */
         public Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at){
-            this(shooter,squad,target,kind,amount,from,fired,lands,visual,at,0,(int)(lands-fired),new Vec3d[1]);
+            this(shooter,squad,target,kind,amount,from,fired,lands,visual,at,0,(int)(lands-fired),new Vec3d[1],0);
         }
     }
+    /** Archer shots (Tactics.archer: bow, crossbow, thrower) since the server started, by the shooter's team and the range at the loose (rangeBin:
+     *  under 8 blocks, 8 to 16, 16 to 24, 24 and over): fired, struck their target, and lost (the target fell or left before the shot came down, so
+     *  it was never judged). Counters only; the bot simulation reads them (AiMetrics). */
+    public static final int RANGE_BINS=4;
+    public static final long[][] ARROWS_FIRED=new long[2][RANGE_BINS],ARROWS_HIT=new long[2][RANGE_BINS],ARROWS_LOST=new long[2][RANGE_BINS];
+    static int rangeBin(double range){return Math.max(0,Math.min(RANGE_BINS-1,(int)(range/8)));}
+    static void count(long[][] counter,Shot s){if(s.shooter!=null&&Tactics.archer(s.shooter)&&s.squad.team>=0&&s.squad.team<2)counter[s.squad.team][rangeBin(s.range)]++;}
     /** A landed shot's arrow, held still where it landed until battle time until, then discarded (N7), so the client draws it arriving. */
     public record Landed(Entity visual,long until){}
     /**
@@ -187,7 +194,8 @@ public final class Projectiles {
             a.setVelocity(nose.normalize().multiply(SPAWN_NUDGE));
             visual=a;
         }
-        b.shots.add(new Shot(u,u.squad,target,kind,amount,arrow?from:castFrom(u),b.time,lands,visual,null,peak,travel,new Vec3d[]{to}));
+        Shot shot=new Shot(u,u.squad,target,kind,amount,arrow?from:castFrom(u),b.time,lands,visual,null,peak,travel,new Vec3d[]{to},from.distanceTo(to));
+        b.shots.add(shot);count(ARROWS_FIRED,shot);
         // Queued first, then spawned: the load handler also runs for a new spawn, and discards a tagged arrow that no queued shot owns.
         if(visual!=null){
             // Spawned barely moving, then given the first tick's step along the curve (R26) in a velocity update. The spawn goes out at once with the
@@ -234,7 +242,7 @@ public final class Projectiles {
         for(Shot s:new ArrayList<>(b.shots)){
             // A fallen commander becomes a spectator at base: the shot is lost, it does not chase them home.
             boolean live=s.target==null||s.target.isAlive()&&!s.target.isRemoved()&&s.target.getWorld()==b.world&&!(s.target instanceof PlayerEntity p&&p.isSpectator());
-            if(!live){drop(b,s);continue;}
+            if(!live){count(ARROWS_LOST,s);drop(b,s);continue;}
             Vec3d to=s.target==null?s.at:aim(s.target);
             if(b.time>=s.lands){settle(b,s);land(b,s,to);continue;}
             if(s.visual!=null){
@@ -272,6 +280,7 @@ public final class Projectiles {
             case "arrow","trident"->{
                 // Combat.resolve credits the shooter's army (lastHitBy), applies the counters and hurts the target with the troop damage type.
                 Combat.resolve(b,s.shooter,s.target,s.amount,"arrow",false,at.y); // the height it struck at gives hit_v1's zone
+                count(ARROWS_HIT,s);
                 BattleEffects.flash(b,at,s.squad.team);
             }
             case "bolt"->{
