@@ -505,7 +505,12 @@ class Rig:
                          "size": [r(sc.hi[i] - sc.lo[i]) for i in range(3)], "uv": faces}
                     if sc.turn:
                         pv = sc.pivot if sc.pivot is not None else [(sc.lo[i] + sc.hi[i]) / 2 for i in range(3)]
-                        c["pivot"], c["rotation"] = [r(hx + pv[0]), r(hy + pv[1]), r(hz + pv[2])], [0, 0, sc.turn]
+                        # A weapon cube's turn is counter-clockwise seen from the front in the weapon's own frame (x right, y up),
+                        # the frame the limb chain's pivots are worked out in. The geo file's z turn runs the other way
+                        # (GeckoLib mirrors x: BakedModelFactory.constructCube), as it does for a bone's roll above. Written
+                        # unmirrored until 2026-11-12, every bow drew in game with its limb tips off the limb and the string
+                        # behind the head (run archer-geo1b, side volley frame 19).
+                        c["pivot"], c["rotation"] = [r(hx + pv[0]), r(hy + pv[1]), r(hz + pv[2])], [0, 0, -sc.turn]
                     cs.append(c)
             if cs: j["cubes"] = cs
             out.append(j)
