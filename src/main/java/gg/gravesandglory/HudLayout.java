@@ -184,11 +184,17 @@ public final class HudLayout {
     }
 
     /** Edit mode, after the HUD is drawn: each part's dashed outline and its name (dim for a part not on screen now), the one under the cursor or dragged lit. */
-    public static void drawEdit(DrawContext g, TextRenderer font, int sw, int sh, double[] mouse) {
+    /** The name tags drawn last frame in edit mode, part to (x, y, w, h) in GUI px (for the checks). */
+    public static final Map<String, int[]> lastTags = new LinkedHashMap<>();
+
+    public static void drawEdit(DrawContext g, TextRenderer font, int sw, int sh, double[] mouse, int[]... keepClear) {
         if (!CommandPanel.editing()) return;
         relicShift(sw, sh); // the relics' box on this GUI, drawn or not
         String hot = dragging != null ? dragging : at(mouse);
         List<int[]> tags = new ArrayList<>();
+        lastTags.clear();
+        List<int[]> clear = new ArrayList<>(); // the panel's caption and toolbar (x, y, w, h): no name tag may cover them
+        for (int[] k : keepClear) if (k != null) clear.add(k);
         for (String part : PARTS) {
             int[] b = guiBox(part);
             if (b == null) continue;
@@ -202,10 +208,19 @@ public final class HudLayout {
             // the name on a dark tag in the box's top-left corner
             String name = label(part);
             int tw = font.getWidth(name) + 4, tx = Math.max(0, Math.min(sw - tw, x0 + 1)), ty = Math.max(0, Math.min(sh - 10, y0 + 1));
-            // another part's tag already there: the box's foot, then its top right, so every name stays readable
-            int[][] tries = {{tx, ty}, {tx, Math.max(0, Math.min(sh - 10, y1 - 11))}, {Math.max(0, Math.min(sw - tw, x1 - 1 - tw)), ty}, {Math.max(0, Math.min(sw - tw, x1 - 1 - tw)), Math.max(0, Math.min(sh - 10, y1 - 11))}};
-            for (int[] t : tries) { boolean free = true; for (int[] o : tags) if (t[0] < o[0] + o[2] && o[0] < t[0] + tw && t[1] < o[1] + 10 && o[1] < t[1] + 10) free = false; if (free) { tx = t[0]; ty = t[1]; break; } }
+            // the corners inside the box first, then just outside it (under, over), then down its left and right sides: the first spot clear of every tag and of the panel's caption and toolbar
+            int left = tx, right = Math.max(0, Math.min(sw - tw, x1 - 1 - tw));
+            List<int[]> tries = new ArrayList<>(List.of(new int[]{left, ty}, new int[]{left, y1 - 11}, new int[]{right, ty}, new int[]{right, y1 - 11}, new int[]{left, y1 + 1}, new int[]{left, y0 - 11}, new int[]{right, y1 + 1}, new int[]{right, y0 - 11}));
+            for (int y = y0 - 21; y <= y1 + 11; y += 5) { tries.add(new int[]{left, y}); tries.add(new int[]{right, y}); }
+            for (int[] t : tries) {
+                t[1] = Math.max(0, Math.min(sh - 10, t[1]));
+                boolean free = true;
+                for (int[] o : tags) if (t[0] < o[0] + o[2] && o[0] < t[0] + tw && t[1] < o[1] + 10 && o[1] < t[1] + 10) free = false;
+                for (int[] o : clear) if (t[0] < o[0] + o[2] && o[0] < t[0] + tw && t[1] < o[1] + o[3] && o[1] < t[1] + 10) free = false;
+                if (free) { tx = t[0]; ty = t[1]; break; }
+            }
             tags.add(new int[]{tx, ty, tw});
+            lastTags.put(part, new int[]{tx, ty, tw, 10});
             g.fill(tx, ty, tx + tw, ty + 10, lit ? 0xe0000000 : 0xb0000000);
             g.drawText(font, name, tx + 2, ty + 1, ink, false);
         }

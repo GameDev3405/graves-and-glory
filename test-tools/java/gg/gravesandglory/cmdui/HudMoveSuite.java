@@ -94,6 +94,7 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
             for (String p : HudLayout.PARTS) if (HudLayout.guiBox(p) == null) missing.add(p);
             boolean ok = CommandPanel.editing() && missing.isEmpty() && onScreen(c, "edit-1920");
             CommandUiChecks.report("cu-hud-edit", ok, "editing=" + CommandPanel.editing() + ", parts outlined " + (HudLayout.PARTS.size() - missing.size()) + " of " + HudLayout.PARTS.size() + (missing.isEmpty() ? "" : ", missing " + missing) + "; boxes " + boxes());
+            tagsClear("1920");
             shot(c, "hud-edit-1920.png");
         }
         // four drags: the gold line past the bottom-left corner (clamped), the score toward the foot, the feed past the top-left, the objectives to the left middle
@@ -129,7 +130,7 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
             shot(c, "hud-moved-854.png");
             press(c, "key.gravesandglory.panel_edit");
         }
-        if (tick == 150) { shot(c, "hud-edit-854.png"); press(c, "key.gravesandglory.panel_edit"); }
+        if (tick == 150) { tagsClear("854"); shot(c, "hud-edit-854.png"); press(c, "key.gravesandglory.panel_edit"); }
         // a GUI Scale change at 1920: still on screen, still the same places; then the file read again
         if (tick == 156) GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 1920, 1080);
         if (tick == 172) { c.options.getGuiScale().setValue(1); c.onResolutionChanged(); }
@@ -154,7 +155,8 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
         // 2560x1440: edit with the handles, the moved HUD
         if (tick == 204) GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 2560, 1440);
         if (tick == 222) { onScreen(c, "2560"); shot(c, "hud-moved-2560.png"); press(c, "key.gravesandglory.panel_edit"); }
-        if (tick == 228) { shot(c, "hud-edit-2560.png"); press(c, "key.gravesandglory.panel_edit"); }
+        if (tick == 228) { tagsClear("2560"); CommandUiChecks.report("cu-hud-tags", tagBad.length() == 0 && tagsSeen == 3, "edit-mode name tags at 1920, 854 and 2560 (" + tagsSeen + " looked at): "
+                + (tagBad.length() == 0 ? "none covers another or the panel's caption or toolbar" : tagBad)); shot(c, "hud-edit-2560.png"); press(c, "key.gravesandglory.panel_edit"); }
         if (tick == 232) GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 1920, 1080);
         // Reset: every part and the panel back where the layout puts them, saved
         if (tick == 250) press(c, "key.gravesandglory.panel_edit");
@@ -171,6 +173,23 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
     }
 
     static String boxes() { StringBuilder b = new StringBuilder(); for (var e : HudLayout.boxes().entrySet()) b.append(e.getKey()).append(box(e.getValue())).append(' '); return b.toString().trim(); }
+
+    final StringBuilder tagBad = new StringBuilder();
+    int tagsSeen;
+
+    /** Edit mode's name tags (HudLayout.lastTags) cover neither one another nor the panel's caption or toolbar. */
+    void tagsClear(String size) {
+        if (!CommandPanel.editing() || HudLayout.lastTags.isEmpty()) { tagBad.append(size + ": no tags drawn; "); return; }
+        tagsSeen++;
+        var tags = new ArrayList<>(HudLayout.lastTags.entrySet());
+        for (int i = 0; i < tags.size(); i++) {
+            int[] a = tags.get(i).getValue();
+            for (int j = i + 1; j < tags.size(); j++) if (meets(a, tags.get(j).getValue())) tagBad.append(size + ": " + tags.get(i).getKey() + " tag covers " + tags.get(j).getKey() + "'s; ");
+            for (int[] d : CommandPanel.lastDrawn) if ((d[0] == CommandPanel.CAPTION || d[0] == CommandPanel.TOOLBAR) && meets(a, new int[]{d[1], d[2], d[3], d[4]}))
+                tagBad.append(size + ": " + tags.get(i).getKey() + " tag covers the panel's " + (d[0] == CommandPanel.CAPTION ? "caption" : "toolbar") + "; ");
+        }
+    }
+    static boolean meets(int[] a, int[] b) { return a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3]; }
 
     void shot(MinecraftClient c, String name) {
         try (NativeImage img = ScreenshotRecorder.takeScreenshot(c.getFramebuffer())) {

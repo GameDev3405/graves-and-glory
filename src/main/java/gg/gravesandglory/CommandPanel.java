@@ -172,7 +172,7 @@ public final class CommandPanel {
         try { draw(g, font, sw, sh, eased, mouse); }
         finally { RenderSystem.setShaderColor(1, 1, 1, 1); }
         if (editing) {
-            try { HudLayout.drawEdit(g, font, sw, sh, mouse); editChrome(g, font, sw, sh, mouse); } // every HUD part's outline, then the panel's chrome over them
+            try { editChrome(g, font, sw, sh, mouse); HudLayout.drawEdit(g, font, sw, sh, mouse, hits.get(CAPTION), hits.get(TOOLBAR)); } // the panel's chrome, then every HUD part's outline with its name tag kept off the caption and toolbar
             finally { RenderSystem.setShaderColor(1, 1, 1, 1); }
         }
     }
