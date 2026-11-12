@@ -127,3 +127,10 @@ their unfinished versions.**
   the crossbow builder's docstring.
 - **focus_check** (hits over stance_ready): 4 clips / 5 FAIL rows -> 0 / 0. **Scorecard** 0 fail. **Unit tests** after the last
   builder change: test_scorecard 22, test_focus_check 22, test_render_geo 20 OK, plus the booth tests.
+- **In-game reel** `ic_arbalist-review3` at ec7bf989 (checkq exit 0): 23 `[p1]` lines, attack-walk, hit and hit-pulled now true;
+  one false, `march-run-side` (units still in the WALK clip at 0.12-0.18 speed; server "Can't keep up" up to 9.9 s). Walk and
+  run clips are byte-identical this round, so lag; not rerun. Booth batch `work/booth/ic_arbalist-20261112-ec7bf98` (not
+  uploaded); video `status/booth-videos/ic_arbalist_review.mp4`.
+- **Open.** Ready and aim are not pulled further apart (above). attack_loose has no aim hold before the release (impact tick 4 is
+  the design's; Kort's call). WARN rows: 88 (89 before), worst armour 2.01 on stun_out_upper (inherited from the stance; the
+  tool's pose-base change is pending) and its "still skirts", attack floor 0.64 at t21.
