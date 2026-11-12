@@ -152,6 +152,9 @@ public final class GearMigrationCheck {
             Profile fut = load(newer);
             check(fut.readOnly && fut.schema == 7, "a schema-7 profile loads read-only and keeps schema 7, got " + fut.schema);
             check(!JSON.toJson(fut).contains("readOnly"), "the read-only flag is never saved");
+            // C01-F2: a JSON snapshot restored the way Campaign rolls back (claim, roll, payout) stays read-only, so a later save cannot overwrite the newer file
+            Profile copy = Profile.restored(JSON.fromJson(JSON.toJson(fut), Profile.class));
+            check(copy.readOnly && copy.schema == 7, "a restored schema-7 snapshot stays read-only and keeps schema 7, got readOnly=" + copy.readOnly + " schema=" + copy.schema);
             fut.gold = 999;
             ProfileMigration.saveProfile(fut, newer, JSON.toJson(fut));
             check(Arrays.equals(Files.readAllBytes(newer), futureBytes), "the save attempt leaves the schema-7 file byte for byte");

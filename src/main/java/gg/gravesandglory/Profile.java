@@ -193,6 +193,8 @@ public final class Profile {
         for (var f : Spec.FACTIONS) sides.add(f.id());
         sanitize(RosterMath.Catalog.fromSpec(), classes, sides, houseOrder());
     }
+    /** A profile rebuilt from a JSON snapshot (Campaign's rollbacks). Gson leaves the transient readOnly false, so sanitize re-derives it from the kept schema; idempotent on a sanitized snapshot. */
+    static Profile restored(Profile copy) { copy.sanitize(); return copy; }
     /** House ids in sheet order. */
     static List<String> houseOrder() {
         List<String> out = new ArrayList<>();

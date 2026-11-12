@@ -443,7 +443,7 @@ public final class Campaign {
         pr.gold-=cost;pr.pity.put(house,drawn.pityAfter());
         var got=troop(drawn.troop());var card=rollCard(pr,got);
         String result=receive(pr,got);
-        if(!save(p.getUuid())){profiles.put(p.getUuid(),JSON.fromJson(before,Profile.class));return;}
+        if(!save(p.getUuid())){profiles.put(p.getUuid(),Profile.restored(JSON.fromJson(before,Profile.class)));return;}
         lastRolls.put(p.getUuid(),rolled(card,pr,got));notice(p.getUuid(),result);reveal(p);
     }
     /** One copy of a troop joins the collection (spec 4.2): a new troop, a copy toward its next star, or past the last star its House's shards (RosterMath.addCopy). Returns what happened, for the notice. Rolls, chosen buys and the Founders Rare use it. */
@@ -484,7 +484,7 @@ public final class Campaign {
         notice(id,outcome.notice());
         syncGear(p);
     }
-    void unsaved(UUID id,String before,String what){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,what+" was not saved, so nothing changed. Check disk space and try again.");}
+    void unsaved(UUID id,String before,String what){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));notice(id,what+" was not saved, so nothing changed. Check disk space and try again.");}
     /**
      * A chosen recruit (buy:<troop>, spec 4.2): a Common or Rare of any House for recruitment.chosenCost gold, as a new troop or a copy toward its
      * next star. An Epic or Legendary, a troop already at full stars (a buy would only dismantle it) and a purse short of the price are refused.
@@ -560,7 +560,7 @@ public final class Campaign {
         for(var e:played.entrySet()){
             int gold=MatchRules.partialGold(base,e.getValue(),roundSeconds);if(gold<=0)continue;
             UUID id=e.getKey();Profile p=profile(id);String before=JSON.toJson(p);p.gold+=gold;
-            if(!save(id)){profiles.put(id,JSON.fromJson(before,Profile.class));continue;}
+            if(!save(id)){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));continue;}
             standing(id,"Battle called off / +"+gold+" collection gold for the time you played");
         }
     }
@@ -612,7 +612,7 @@ public final class Campaign {
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
             List<String> titles=eligible?ledger(p,s):List.of();List<Integer> pactChapters=pacts(p);int pacts=pactChapters.size();
             boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("forgeMarks",saved?marks:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pactChapters));results.put(id,report);
-            if(!saved){profiles.put(id,JSON.fromJson(before,Profile.class));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
+            if(!saved){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
             String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gold":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
             standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(!eligible?" (reward requires 3 minutes of play)":percent<100?" (pro-rated: you were seated for "+percent+"% of the match)":"")+(marks>0?" / +"+marks+" Forge marks":"")+extra);
         }
@@ -1131,12 +1131,12 @@ public final class Campaign {
         else if(action.startsWith("title:")){String title=action.substring(6);if(p.progression.titles.contains(title)){p.progression.title=title;result="Title equipped: "+title;}else result="That title is locked.";}
         else {var reward=Progression.claim(p.progression,action);
             // A claim that grants a troop (the Founders Rare) waits for the match to end, as roll and buy do: a copy taken mid-battle would raise the stars of a fielded troop.
-            var seat=b.squads.get(id);if(reward.troop()!=null&&b.running&&seat!=null&&seat.seated){profiles.put(id,JSON.fromJson(before,Profile.class));notice(id,"Claim tier "+Progression.RARE_TIER+"'s Rare after the battle: active battle choices are locked until the match ends.");return true;}
+            var seat=b.squads.get(id);if(reward.troop()!=null&&b.running&&seat!=null&&seat.seated){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));notice(id,"Claim tier "+Progression.RARE_TIER+"'s Rare after the battle: active battle choices are locked until the match ends.");return true;}
             p.gold=Math.min(1_000_000,p.gold+reward.gold());result=reward.message();
             if(reward.shards()>0&&reward.house()!=null)p.shards.merge(reward.house(),reward.shards(),Integer::sum); // a contract's or a Founders tier's shards, to the House the claim named
             var troop=reward.troop()==null?null:troop(reward.troop());if(troop!=null)result+=". "+receive(p,troop); // the Founders Rare: a new troop, a copy, or past full stars its shards
             if(reward.cosmetic()!=null)p.cosmetics.add(reward.cosmetic());}
-        if(!save(id)){profiles.put(id,JSON.fromJson(before,Profile.class));result="Reward was not applied because saving failed. Try again after checking disk space.";}
+        if(!save(id)){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));result="Reward was not applied because saving failed. Try again after checking disk space.";}
         notice(id,result);return true;
     }
     JsonObject progressSnapshot(UUID id){Profile p=profile(id);Progression.reset(p.progression,Progression.today());JsonObject j=forClient(p.progression);j.addProperty("tier",Progression.tier(p.progression));var roster=RosterMath.launchRoster();j.addProperty("chapter",Progression.chapter(p.progression,(int)roster.stream().filter(p.owned::containsKey).count(),roster.size()));return j;}
