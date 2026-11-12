@@ -80,7 +80,7 @@
   {
    "name": "stance_ward_upper",
    "base": [
-    "stance_ready_legs"
+    "idle_legs"
    ]
   },
   {

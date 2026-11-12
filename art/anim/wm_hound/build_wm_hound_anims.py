@@ -452,6 +452,110 @@ def hang(samples, ticks):
 PENDANT_RATE = 22.0   # deg per tick the floor may swing the throat skull back
 
 
+# Review 2026-11-12 (F4): the rest of what rides the hound lags the body in EVERY clip, not only the actions: the tooth
+# collar and the bone toggles hang from the neck, the sinew collar sits loose on it, the saddle cloth lies over the shoulders
+# and the rump. Each is a damped spring of its centroid behind its parent bone (as hang(): plumb keeps it hanging down as the
+# parent turns, sway a slow swing of its own); loops run the spring to its steady state and start at their stance's rest.
+#   parent, period ticks, zeta damping, plumb, most (x, z) degrees, sway deg, phase
+LAG = {"tooth_collar": dict(parent="head", period=3.4, zeta=0.40, plumb=0.35, most=(12.0, 7.0), sway=1.6, phase=0.37),
+       "toggles": dict(parent="head", period=2.8, zeta=0.30, plumb=0.50, most=(16.0, 10.0), sway=3.0, phase=0.15),
+       "collar": dict(parent="head", period=3.0, zeta=0.45, plumb=0.20, most=(2.5, 2.0), sway=0.6, phase=0.6),   # a ring on the neck: short lever, small
+       "saddle": dict(parent="chest", period=3.6, zeta=0.40, plumb=0.15, most=(5.0, 4.0), sway=1.4, phase=0.2),
+       "saddle_rump": dict(parent="body", period=3.6, zeta=0.40, plumb=0.15, most=(5.0, 4.0), sway=1.4, phase=0.7)}
+GEAR_UP = ["tooth_collar", "toggles", "collar", "saddle"]   # the upper layer (children of the chest and head)
+GEAR_LEGS = ["saddle_rump"]                                  # the legs layer (a child of the body)
+
+
+def lag_gear(samples, ticks, loop, names, fade_out=True, centre=False):
+    """Lags each named LAG piece behind its parent, in place. Every sample gets the piece's rotation (zero where it has none)."""
+    n = len(samples) - 1
+    dt = 1.0 / SUB
+    m = n if loop else n + 1          # a loop's last sample is its first
+    from scipy.optimize import least_squares as _ls
+    for name in names:
+        for smp in samples:
+            smp.setdefault(name, {}).setdefault("rotation", [0, 0, 0])
+        if name not in H.m.bones:
+            continue
+        c = LAG[name]
+        cl = _piece_centroid_local(name)
+        pv = np.append(H.m.bones[name].pivot / 16.0, 1.0)
+        key0 = [list(smp[name]["rotation"]) for smp in samples]
+        Ms = [H.fk(smp, [c["parent"]])[c["parent"]] for smp in samples]
+        rigid, P = [], []
+        for M, k in zip(Ms, key0):
+            Mp = M @ H.local(name, {"rotation": k})
+            rigid.append((Mp @ cl)[:3] * 16.0)
+            P.append((Mp @ pv)[:3] * 16.0)
+        L = float(np.linalg.norm(rigid[0] - P[0]))
+        if L < 0.5:
+            continue
+        d0 = (rigid[0] - P[0]) / L
+        w = 2 * math.pi / c["period"]
+        k_s, k_d = w * w, 2 * c["zeta"] * w
+        sp = 1.5 * c["period"]
+        if loop:                           # a whole number of swings per loop
+            sp = ticks / max(1, round(ticks / sp))
+        X, V = rigid[0].copy(), np.zeros(3)
+        for rep in range(3 if loop else 1):
+            out = []
+            for i in range(m):
+                t = i * dt
+                dr = (rigid[i] - P[i]) / L
+                g = dr * (1 - c["plumb"]) + d0 * c["plumb"]
+                sw = c["sway"] * math.radians(1) * L * math.sin(2 * math.pi * (t / sp + c["phase"]))
+                side = np.cross(dr, [0.0, 0.0, 1.0])
+                side = side / (np.linalg.norm(side) + 1e-9)
+                G = P[i] + L * g / np.linalg.norm(g) + sw * side
+                if i > 0 or rep > 0:
+                    for _ in range(4):
+                        h = dt / 4
+                        A = k_s * (G - X) - k_d * V
+                        V = V + A * h
+                        X = X + V * h
+                u = X - P[i]
+                X = P[i] + L * u / (np.linalg.norm(u) + 1e-9)
+                out.append(X.copy())
+        vs = []
+        for i in range(m):
+            base, Mh, tgt = key0[i], Ms[i], out[i]
+
+            def res(v, base=base, Mh=Mh, tgt=tgt):
+                Mp = Mh @ H.local(name, {"rotation": [base[0] + v[0], base[1], base[2] + v[1]]})
+                return (Mp @ cl)[:3] * 16.0 - tgt
+            v = _ls(res, [0.0, 0.0], xtol=1e-6, ftol=1e-6).x
+            vs.append([c["most"][0] * math.tanh(float(v[0]) / c["most"][0]), c["most"][1] * math.tanh(float(v[1]) / c["most"][1])])  # soft: no flat tops
+        if loop:                           # a stance starts at its rest, where an attack or a hit picks it up; a gait swings about its mean
+            if centre:                     # a gait's stride is short: keep only the lag's swing at the stride's own rate, smooth across the wrap
+                hz = [[sum(v[j] * f(2 * math.pi * i / m) for i, v in enumerate(vs)) * 2 / m for f in (math.cos, math.sin)] for j in (0, 1)]
+                vs = [[hz[j][0] * math.cos(2 * math.pi * i / m) + hz[j][1] * math.sin(2 * math.pi * i / m) for j in (0, 1)] for i in range(m)]
+            else:
+                v0 = list(vs[0])
+                vs = [[a - v0[0], b - v0[1]] for a, b in vs]
+        need, sw_ = [], []
+        for i in range(m):
+            t = i * dt
+            fade = 1.0 if loop else ss(min(1.0, t / HANG_FADE_IN, (ticks - t) / HANG_FADE_OUT if fade_out else 1.0))
+            base = key0[i]
+            smp = samples[i]
+            vx, vz = vs[i][0] * fade, vs[i][1] * fade
+            sw_.append((vx, vz))
+            smp[name] = {"rotation": [base[0] + vx, base[1], base[2] + vz]}
+            rest = min(HEAD_CLEAR, lowest({**smp, name: {"rotation": base}}, name))
+            s_ = 1.0
+            while lowest(smp, name) < rest - 1e-3 and s_ > 0:      # never lower than it hangs unswung
+                s_ = max(0.0, s_ - 0.05)
+                smp[name] = {"rotation": [base[0] + vx * s_, base[1], base[2] + vz * s_]}
+            need.append(s_)
+        r = 2 * SUB                        # that guard as a smooth envelope: erode then average, never above any sample's need
+        at = (lambda j: need[j % m]) if loop else (lambda j: need[min(max(j, 0), m - 1)])
+        ero = [min(at(j) for j in range(i - r, i + r + 1)) for i in range(-r, m + r)]
+        for i in range(m):
+            e = sum(ero[i:i + 2 * r + 1]) / (2 * r + 1)
+            base = key0[i]
+            samples[i][name] = {"rotation": [base[0] + sw_[i][0] * e, base[1], base[2] + sw_[i][1] * e]}
+
+
 # ------------------------------------------------------------------------------------------------ shared poses
 STAND_Y = -0.5
 
@@ -516,13 +620,14 @@ def sample_clip(name, ticks, fn, loop=True, tag=None, layers=("legs", "upper"), 
         hang(samples, ticks)
         for smp in samples:
             smp.setdefault("tooth_collar", {}).setdefault("rotation", [0, 0, 0])
+    lag_gear(samples, ticks, loop, [g for g in GEAR_UP + GEAR_LEGS if not (hang_gear and g in HANG)], centre=name in ("walk", "run"))
     return samples, worst
 
 
 def emit(name, ticks, samples, loop, split=True, timeline=None, legs_name=None, upper_name=None):
     if split:
-        CLIPS[upper_name or name + "_upper"] = bake(samples, ticks, loop, UPPER, timeline)
-        CLIPS[legs_name or name + "_legs"] = bake(samples, ticks, loop, LOWER)
+        CLIPS[upper_name or name + "_upper"] = bake(samples, ticks, loop, UPPER + GEAR_UP, timeline)
+        CLIPS[legs_name or name + "_legs"] = bake(samples, ticks, loop, LOWER + GEAR_LEGS)
     else:
         CLIPS[name] = bake(samples, ticks, loop, ALL, timeline)
 
@@ -710,6 +815,31 @@ def bite(t):
     return blend_ready(t, up, body, feet, w)
 
 
+# Review 2026-11-12 (F8): it read as a crouch and a short hop. px: body lift in the air, reach (body and front paws forward),
+# front paw lift, hind hop lift
+LEAP = (2.0, 5.4, 4.0, 2.2)   # the extra lift comes only once the hind paws have left the ground (t7.2)
+
+
+def smooth_legs(samples, legs, t0, t1, r=3):
+    """Eases the named legs' bones over t0..t1 with a triangular average of +-r samples (lunge t5.25: the front shin opened 14
+    degrees in a quarter tick as the paw left the ground, an IK branch bump), faded in and out over half a tick."""
+    bones = [l + p for l in legs for p in ("_leg", "_shin", "_foot")]
+    orig = {b: [list(smp[b]["rotation"]) for smp in samples] for b in bones}
+    wts = [r + 1 - abs(j) for j in range(-r, r + 1)]
+    for i, smp in enumerate(samples):
+        t = i / SUB
+        w = ss(min((t - t0) / 0.5, (t1 - t) / 0.5))
+        if w <= 0:
+            continue
+        for b in bones:
+            acc, tot = [0.0, 0.0, 0.0], 0.0
+            for j, wt in zip(range(i - r, i + r + 1), wts):
+                if 0 <= j < len(samples):
+                    acc = [a + wt * v for a, v in zip(acc, orig[b][j])]
+                    tot += wt
+            smp[b] = {"rotation": [o + (a / tot - o) * w for o, a in zip(orig[b][i], acc)]}
+
+
 def lunge(t):
     ru, rb, rf = ready_pose(0)
     gather = K([(0, 0), (2, 0.5), (4.8, 1), (5.6, 0.7), (6.6, 0), (16, 0)])(t)
@@ -717,21 +847,22 @@ def lunge(t):
     air = K([(0, 0), (5.2, 0), (6.4, 0.8), (7.6, 1), (8.6, 0.6), (9.6, 0), (16, 0)])(t)
     gape = K([(0, 0.0), (4, 0.4), (6.5, 1), (7.4, 1), (8, 0), (9.5, 0.1), (12, 0.25), (16, 0.15)])(t)
     land = damp(t, 9.6, 3.0, 1.6)
+    hop = K([(0, 0), (7.1, 0), (7.9, 1), (8.6, 0.75), (9.5, 0), (16, 0)])(t)
     up = {"chest": {"rotation": [5 + 4 * gather - 9 * air + 4 * land, 0, 0]},
           "head": {"rotation": [-9 + 8 * gather + 6 * air - 6 * reach * (1 - air) - 4 * land, 0, 0],
                    "position": [0, LUNGE_NECK[0] * gather, LUNGE_NECK[1] * gather]},
           "jaw": {"rotation": [5 + 40 * gape, 0, 0]},
           "ear_right": {"rotation": [-6 + 26 * reach, 0, 4]}, "ear_left": {"rotation": [-6 + 26 * reach, 0, -4]},
           "tail": {"rotation": [24 - 10 * gather + 14 * reach, ru["tail"]["rotation"][1], 0]}}
-    body = {"position": [0, -1.5 - 1.6 * gather + 1.6 * air - 0.5 * max(land, 0), -0.6 - 5.0 * reach + 0.8 * gather],
+    body = {"position": [0, -1.5 - 1.6 * gather + 1.6 * air + LEAP[0] * hop - 0.5 * max(land, 0), -0.6 - LEAP[1] * reach + 0.8 * gather],
             "rotation": [3 + 2.5 * gather - 9 * air, 0, 0]}
     feet = dict(rf)
     for l in ("front_right", "front_left"):
         base = REST_SOLE[l] + [(-0.3 if "right" in l else 0.3), 0, 0.8]
-        fwd = base + [0, 0, 5.0]
+        fwd = base + [0, 0, LEAP[1]]
         d = 0.0 if "right" in l else 0.4
         if t < 10:
-            feet[l] = step(base, fwd, (t - 5.3 - d) / (4.3 - d), 3.2, 35, True, 12)
+            feet[l] = step(base, fwd, (t - 5.3 - d) / (4.3 - d), LEAP[2], 35, True, 12)
         else:
             dl = 0 if "left" in l else 1.6
             feet[l] = step(fwd, base, (t - 11.2 - dl) / 2.8, 1.3, 30, True)
@@ -743,10 +874,10 @@ def lunge(t):
             p, pitch = planted(base, push)
             feet[l] = (p, pitch)
             if t > 7.2:   # the toe roll of the push carries into the hop and fades out (it snapped flat at t7.2: a pop)
-                q, qp = step(base, mid, (t - 7.2) / 2.6, 1.4, 25, False)
+                q, qp = step(base, mid, (t - 7.2) / 2.6, LEAP[3], 25, False)
                 feet[l] = lifted(q + (p - np.array(base, float)), qp + push)
         elif t < 12.6:
-            feet[l] = step(base, mid, (t - 7.2) / 2.6, 1.4, 25, False) if t < 9.8 else planted(mid)
+            feet[l] = step(base, mid, (t - 7.2) / 2.6, LEAP[3], 25, False) if t < 9.8 else planted(mid)
         else:
             dl = 0 if "left" in l else 0.8
             feet[l] = step(mid, base, (t - 12.6 - dl) / 2.4, 1.0, 20, False)
@@ -755,6 +886,11 @@ def lunge(t):
 
 
 # hits (additive over the ready stance) -----------------------------------------------------------------
+# Review 2026-11-12 (F2): played over the stance as the game does, the medium hits and the pull drove the chest into the
+# skullcap 2.1 to 2.6 px: head pitch, chest pitch (front), head roll (sides); the pull's trailing head and its chest dip
+HIT_HEAD = (-20, -5, 6)
+PULL_HEAD = (-11, 7)
+HIT_NECK = (0.5, -1.1)   # px (up, forward -z) the neck carries the head out of the chest plates while the blow lands
 HIT_DIRS = {"front": (0, 1), "back": (0, -1), "right": (1, 0), "left": (-1, 0)}  # push (x: +left, z: +back) in anim px
 
 
@@ -773,8 +909,8 @@ def hit(kind, d):
         body = {ch: list(v) for ch, v in rb.items()}
         feet = dict(rf)
         if d == "front":
-            up["head"]["rotation"][0] += -26 * k * a
-            up["chest"]["rotation"][0] += -8 * k * a
+            up["head"]["rotation"][0] += HIT_HEAD[0] * k * a      # thrown back; less and the skullcap stays off the chest plates
+            up["chest"]["rotation"][0] += HIT_HEAD[1] * k * a
             body["position"][2] += 2.8 * k * a
             body["rotation"][0] += -3 * k * a
         elif d == "back":
@@ -789,9 +925,10 @@ def hit(kind, d):
             body["rotation"][2] += 7 * k * a * sgn
             up["chest"]["rotation"][2] += 5 * k * a * sgn
             up["head"]["rotation"][1] += -18 * k * a * sgn + 10 * k * rec * sgn
-            up["head"]["rotation"][2] += 10 * k * a * sgn
+            up["head"]["rotation"][2] += HIT_HEAD[2] * k * a * sgn
             up["tail"]["rotation"][1] += 14 * k * a * sgn
         up["head"]["rotation"][0] += 4 * k * rec
+        up["head"]["position"] = [0, HIT_NECK[0] * k * a, HIT_NECK[1] * k * a]
         body["position"][1] += -0.9 * k * a
         up["jaw"]["rotation"][0] += (18 if med else 10) * K([(0, 0), (1, 1), (3, 0.6), (L * 0.6, 0), (L, 0)])(t)
         for e, sg in (("ear_right", 1), ("ear_left", -1)):
@@ -833,8 +970,9 @@ def hit_pull():
         body["position"][2] += -2.6 * a                # anim z+ is back: the body lurches forward
         body["position"][1] += -0.7 * a
         body["rotation"][0] += 5 * a                     # the forequarters dip
-        up["chest"]["rotation"][0] += 9 * a
-        up["head"]["rotation"][0] += 12 * a - 16 * K([(0, 0), (0.8, 1), (2.5, 0), (L, 0)])(t) + 5 * rec   # the head trails, then stretches out
+        up["chest"]["rotation"][0] += PULL_HEAD[1] * a
+        up["head"]["position"] = [0, HIT_NECK[0] * a, HIT_NECK[1] * a]
+        up["head"]["rotation"][0] += 12 * a + PULL_HEAD[0] * K([(0, 0), (0.8, 1), (2.5, 0), (L, 0)])(t) + 5 * rec   # the head trails, then stretches out
         up["jaw"]["rotation"][0] += 14 * K([(0, 0), (1, 1), (3, 0.6), (L * 0.6, 0), (L, 0)])(t)
         for e, sg in (("ear_right", 1), ("ear_left", -1)):
             up[e]["rotation"][0] += 26 * a
@@ -946,25 +1084,42 @@ def death_clip(direction):
         need += 0.7 * max(0.0, damp(t, 10.2, 2.4, 0.9))    # the bounce as it lands
         pose["root"]["position"] = [0, need, 0]
         samples.append(pose)
-    CLIPS[tag] = bake(samples, 20, "hold_on_last_frame", ALL)
+    lag_gear(samples, 20, False, GEAR_UP + GEAR_LEGS, fade_out=False)   # it settles as the body comes to rest
+    CLIPS[tag] = bake(samples, 20, "hold_on_last_frame", ALL + GEAR_UP + GEAR_LEGS)
     return samples
 
 
 # ------------------------------------------------------------------------------------------------ main
 def main():
+    """GG_HOUND_ONLY=name,name: rebuild only those clips (idle, walk, run, stance_ready, stance_ward, attack_bite, hit_medium_front,
+    hit_pulled, death_back ...) and keep every other clip of the existing out file byte for byte (a splice, no rebuild drift)."""
     report = {}
-    s, w = sample_clip("idle", IDLE_P, idle); emit("idle", IDLE_P, s, True); report["idle"] = w
-    s, w = sample_clip("walk", WALK_P, walk); emit("walk", WALK_P, s, True); report["walk"] = w
-    s, w = sample_clip("run", RUN_P, run); emit("run", RUN_P, s, True); report["run"] = w
+    path = os.environ.get("GG_HOUND_OUT") or os.path.join(HERE, "out", "wm_hound.animation.json")
+    only = {x for x in os.environ.get("GG_HOUND_ONLY", "").split(",") if x}
+    if only:
+        CLIPS.update(json.load(open(os.path.join(HERE, "out", "wm_hound.animation.json")))["animations"])
+
+    def want(nm):
+        return not only or nm in only
+    for nm, P_, fn in (("idle", IDLE_P, idle), ("walk", WALK_P, walk), ("run", RUN_P, run)):
+        if want(nm):
+            s, w = sample_clip(nm, P_, fn); emit(nm, P_, s, True); report[nm] = w
     for nm, fn in (("ready", ready), ("brace", brace), ("wall", wall)):
-        s, w = sample_clip("stance_" + nm, READY_P, fn); emit("stance_" + nm, READY_P, s, True); report[nm] = w
-    s, _ = sample_clip("stance_ward", READY_P, ward, solve=False)
-    CLIPS["stance_ward_upper"] = bake(s, READY_P, True, UPPER)
+        if want("stance_" + nm):
+            s, w = sample_clip("stance_" + nm, READY_P, fn); emit("stance_" + nm, READY_P, s, True); report[nm] = w
+    if want("stance_ward"):
+        s, _ = sample_clip("stance_ward", READY_P, ward, solve=False)
+        CLIPS["stance_ward_upper"] = bake(s, READY_P, True, UPPER + GEAR_UP)
     tl = {fmt_t(IMPACT / TPS): "impact"}
     for nm, L, fn in (("attack_bite", BITE_T, bite), ("attack_lunge", LUNGE_T, lunge)):
+        if not want(nm):
+            continue
         s, w = sample_clip(nm, L, fn, loop=False, hang_gear=True)
-        CLIPS[nm] = bake(s, L, False, UPPER + HANG_BONES, tl)
-        CLIPS[nm + "_legs"] = bake(s, L, False, LOWER); report[nm] = w
+        if nm == "attack_lunge":
+            smooth_legs(s, ["front_right", "front_left"], 4.6, 14.2)   # lift-off, the long reach, and its way back near full stretch
+            smooth_legs(s, ["back_right", "back_left"], 6.8, 10.4)     # the hop off the push
+        CLIPS[nm] = bake(s, L, False, UPPER + GEAR_UP, tl)
+        CLIPS[nm + "_legs"] = bake(s, L, False, LOWER + GEAR_LEGS); report[nm] = w
     ready0 = full({**{k: dict(v) for k, v in ready_pose(0)[0].items()}, "body": dict(ready_pose(0)[1])})
     head_clear(ready0)
     SOLVER.legs(ready0, ready_pose(0)[2], "ready0")
@@ -973,37 +1128,40 @@ def main():
         for d in ("front", "back", "right", "left"):
             L, fn = hit(kind, d)
             nm = f"hit_{kind}_{d}"
+            if not want(nm):
+                continue
             med = kind == "medium"     # the medium (and heavy, x1.55) hits swing the hanging gear; a light flinch does not
-            ups = UPPER + (HANG_BONES if med else [])
+            ups = UPPER + GEAR_UP
             s, w = sample_clip(nm, L, fn, loop=False, hang_gear=med); report[nm] = w
             delta = []
             for smp in s:
                 dd = {}
-                for b in ups + LOWER:
+                for b in ups + LOWER + GEAR_LEGS:
                     r = [a - c for a, c in zip(smp[b]["rotation"], ready0.get(b, {}).get("rotation", [0, 0, 0]))]
                     dd[b] = {"rotation": r}
-                    if b in ("body", "throat_skull"):
+                    if b in ("body", "head", "throat_skull"):
                         dd[b]["position"] = [a - c for a, c in zip(smp[b].get("position", [0, 0, 0]),
                                                                     ready0[b].get("position", [0, 0, 0]))]
                 delta.append(dd)
             CLIPS[nm] = bake(delta, L, False, ups)
-            CLIPS[nm + "_legs"] = bake(delta, L, False, LOWER)
-    L, fn = hit_pull()
-    s, w = sample_clip("hit_pulled", L, fn, loop=False, hang_gear=True); report["hit_pulled"] = w
-    delta = []
-    for smp in s:
-        dd = {}
-        for b in UPPER + HANG_BONES + LOWER:
-            dd[b] = {"rotation": [a - c for a, c in zip(smp[b]["rotation"], ready0.get(b, {}).get("rotation", [0, 0, 0]))]}
-            if b in ("body", "throat_skull"):
-                dd[b]["position"] = [a - c for a, c in zip(smp[b].get("position", [0, 0, 0]), ready0[b].get("position", [0, 0, 0]))]
-        delta.append(dd)
-    CLIPS["hit_pulled"] = bake(delta, L, False, UPPER + HANG_BONES)
-    CLIPS["hit_pulled_legs"] = bake(delta, L, False, LOWER)
+            CLIPS[nm + "_legs"] = bake(delta, L, False, LOWER + GEAR_LEGS)
+    if want("hit_pulled"):
+        L, fn = hit_pull()
+        s, w = sample_clip("hit_pulled", L, fn, loop=False, hang_gear=True); report["hit_pulled"] = w
+        delta = []
+        for smp in s:
+            dd = {}
+            for b in UPPER + GEAR_UP + LOWER + GEAR_LEGS:
+                dd[b] = {"rotation": [a - c for a, c in zip(smp[b]["rotation"], ready0.get(b, {}).get("rotation", [0, 0, 0]))]}
+                if b in ("body", "head", "throat_skull"):
+                    dd[b]["position"] = [a - c for a, c in zip(smp[b].get("position", [0, 0, 0]), ready0[b].get("position", [0, 0, 0]))]
+            delta.append(dd)
+        CLIPS["hit_pulled"] = bake(delta, L, False, UPPER + GEAR_UP)
+        CLIPS["hit_pulled_legs"] = bake(delta, L, False, LOWER + GEAR_LEGS)
     for d in ("back", "forward", "left", "right"):
-        death_clip(d)
+        if want("death_" + d):
+            death_clip(d)
     out = {"format_version": "1.8.0", "animations": CLIPS}
-    path = os.environ.get("GG_HOUND_OUT") or os.path.join(HERE, "out", "wm_hound.animation.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print("wrote", path, len(CLIPS), "clips; worst IK miss px:",
           ", ".join(f"{k} {v:.2f}" for k, v in report.items() if v > 0.05) or "none > 0.05")
