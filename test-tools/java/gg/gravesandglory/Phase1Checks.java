@@ -156,7 +156,7 @@ public final class Phase1Checks implements ClientModInitializer {
         volatile int stage;volatile String wantShot;volatile boolean shotTaken;volatile boolean finished;
         volatile UUID player;long stageAt;int shotDelay,hudTick=-1,hudSeen=-1;
         final Map<LivingEntity,Float> lastHealth=new HashMap<>();
-        Projectiles.Shot first;float firstHealth;boolean firstDelayOk;
+        Projectiles.Shot first,cur;float firstHealth;boolean firstDelayOk;int tries;long hitsAt; // cur: the arrow p1-arrow-delay judges (arrows can miss since c53a1bf9, so it retries)
         GravesAndGlory.Unit chosen;Projectiles.Shot duskShot;int flashesBefore;boolean duskOk;String duskWhy="";
         GravesAndGlory.Unit orphanShooter,orphanSecond;Exception orphanError;
         NbtCompound savedArrow;boolean arrowAlive,arrowSaved;
@@ -219,23 +219,35 @@ public final class Phase1Checks implements ClientModInitializer {
                     System.out.println("[p1] combat fixture: "+b.units.size()+" troops, map "+b.campaign.map);next(b,2);
                 }
                 case 2->{ // the first arrow: no damage on the firing tick, damage after it lands, visible in between
+                    // Archer arrows fly a fixed arc and can miss (c53a1bf9), so p1-arrow-delay follows arrows until one hits (ARROWS_HIT rose and its
+                    // target lost health), up to 20; a miss is retried with the next arrow fired, damage on a firing tick fails at once.
                     if(first==null){
                         for(var s:b.shots)if(s.kind().equals("arrow")){first=s;break;}
                         if(first==null){if(late(b,1200)){report("p1-arrow-delay",false,"no arrow fired in 60 s");report("p1-arrow-visible",false,"no arrow fired");next(b,3);}break;}
-                        firstHealth=lastHealth.getOrDefault(first.target(),first.target().getHealth());
-                        firstDelayOk=first.fired()==b.time&&first.target().getHealth()==firstHealth;
-                        System.out.println("[p1] first arrow fired="+first.fired()+" lands="+first.lands()+" health="+firstHealth+" now="+first.target().getHealth());
+                        cur=first;tries=0;
+                    }
+                    if(cur==null){
+                        for(var s:b.shots)if(s.kind().equals("arrow")&&s.fired()==b.time){cur=s;break;}
+                        if(cur==null){if(late(b,2400)){report("p1-arrow-delay",false,"none of "+tries+" arrows hurt its target (stopped waiting for another arrow)");next(b,3);}break;}
+                    }
+                    if(tries==0||cur!=first&&b.time==cur.fired()){
+                        tries++;firstHealth=lastHealth.getOrDefault(cur.target(),cur.target().getHealth());
+                        firstDelayOk=cur.fired()==b.time&&cur.target().getHealth()==firstHealth;
+                        hitsAt=java.util.Arrays.stream(Projectiles.ARROWS_HIT[cur.squad().team]).sum();
+                        System.out.println("[p1] arrow "+tries+" fired="+cur.fired()+" lands="+cur.lands()+" health="+firstHealth+" now="+cur.target().getHealth());
                     }
                     if(b.time==(first.fired()+first.lands())/2){
-                        // arrows fly the arced curve (Projectiles.curve, 2026-10-30), so measure against the first shot's point on it, not the straight line
-                        Vec3d from=first.from(),to=Projectiles.aim(first.target()),on=Projectiles.curve(from,to,first.peak(),first.ticks(),b.time-first.fired());double best=1e9;
+                        // arrows fly the arced curve (Projectiles.curve, 2026-10-30) to their fixed aim point, so measure against the first shot's point on it, not the straight line
+                        Vec3d from=first.from(),to=first.aimPoint()!=null?first.aimPoint():Projectiles.aim(first.target()),on=Projectiles.curve(from,to,first.peak(),first.ticks(),b.time-first.fired());double best=1e9;
                         for(var e:b.world.iterateEntities())if(e instanceof ArrowEntity&&e.getCommandTags().contains(Projectiles.TAG))best=Math.min(best,e.getPos().distanceTo(on));
                         report("p1-arrow-visible",best<=3,"nearest tagged arrow "+String.format("%.2f",best)+" blocks from the arced shot path at tick "+(b.time-first.fired())+" of "+(first.lands()-first.fired()));
                     }
-                    if(b.time==first.lands()+1){
-                        var t=first.target();boolean hurt=!t.isAlive()||t.getHealth()<firstHealth;
-                        report("p1-arrow-delay",firstDelayOk&&hurt,"health at fire "+firstHealth+", unchanged on firing tick="+firstDelayOk+", after landing "+t.getHealth()+" alive="+t.isAlive());
-                        next(b,3);
+                    if(b.time==cur.lands()+1){
+                        var t=cur.target();boolean hurt=!t.isAlive()||t.getHealth()<firstHealth;long hits=java.util.Arrays.stream(Projectiles.ARROWS_HIT[cur.squad().team]).sum();boolean hit=hits>hitsAt;
+                        String why="arrow "+tries+": health at fire "+firstHealth+", unchanged on firing tick="+firstDelayOk+", after landing "+t.getHealth()+" alive="+t.isAlive()+", team hits +"+(hits-hitsAt);
+                        if(!firstDelayOk||hurt&&hit){report("p1-arrow-delay",firstDelayOk,why);next(b,3);}
+                        else if(tries>=20){report("p1-arrow-delay",false,"none of 20 arrows hurt its target; last "+why);next(b,3);}
+                        else{System.out.println("[p1] arrow-delay: a miss, trying the next arrow ("+why+")");cur=null;}
                     }
                 }
                 case 3->{ // screenshot while several arrows are mid-air, then every troop holds its fire
