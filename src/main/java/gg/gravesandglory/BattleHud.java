@@ -141,17 +141,18 @@ public final class BattleHud {
                 var win=c.getWindow();long now=Util.getMeasuringTimeMs();int size=HudSize.get();var s=state(font,now);
                 var at=UiMath.hudLayout(win.getFramebufferWidth(),win.getFramebufferHeight(),(int)win.getScaleFactor(),UiCanvas.hudK(),size,s);
                 HudLayout.place(at,win.getFramebufferWidth(),win.getFramebufferHeight(),(int)win.getScaleFactor(),UiCanvas.hudK(),size,s); // the player's own places (edit mode)
-                ledger(g,font,at,rectsDrawn,textsDrawn);
-                seals(g,font,at,rectsDrawn,sealsDrawn,textsDrawn);
-                column(g,font,s,at,rectsDrawn,cardsDrawn,textsDrawn);
+                // each part at the player's size (HudLayout.drawPart: a matrix scale, its rects then where they show)
+                HudLayout.drawPart(g,"score",()->ledger(g,font,at,rectsDrawn,textsDrawn),rectsDrawn);
+                HudLayout.drawPart(g,"objectives",()->seals(g,font,at,rectsDrawn,sealsDrawn,textsDrawn),rectsDrawn);
+                HudLayout.drawPart(g,"column",()->column(g,font,s,at,rectsDrawn,cardsDrawn,textsDrawn),rectsDrawn,formBoxes);
                 aimStrip(g,font);
-                gold(g,font,at,now,rectsDrawn,textsDrawn);
-                houses(g,font,at,now,rectsDrawn,textsDrawn);
-                lesson(g,font,at,rectsDrawn,textsDrawn);
-                respawn(g,font,at,rectsDrawn,textsDrawn);
-                feed(g,font,size,now,at,rectsDrawn,textsDrawn);
+                HudLayout.drawPart(g,"gold",()->gold(g,font,at,now,rectsDrawn,textsDrawn),rectsDrawn);
+                HudLayout.drawPart(g,"houses",()->houses(g,font,at,now,rectsDrawn,textsDrawn),rectsDrawn);
+                HudLayout.drawPart(g,"lesson",()->lesson(g,font,at,rectsDrawn,textsDrawn),rectsDrawn);
+                HudLayout.drawPart(g,"respawn",()->respawn(g,font,at,rectsDrawn,textsDrawn),rectsDrawn);
+                HudLayout.drawPart(g,"feed",()->feed(g,font,size,now,at,rectsDrawn,textsDrawn),rectsDrawn);
             }finally{UiCanvas.end(g);}
-            ability(g,c,font,rectsDrawn,textsDrawn);
+            HudLayout.drawPart(g,"relics",()->ability(g,c,font,rectsDrawn,textsDrawn),rectsDrawn);
             CommandPanel.render(g,delta); // the pennant panel replaced the order key rows (command UI Task 7)
         }catch(IllegalArgumentException e){ // UiTex.entry names a texture the atlas lacks: a resource pack's atlas, or none read at all
             stopped=true;clear();
@@ -287,7 +288,7 @@ public final class BattleHud {
         if(!CommandPanel.capturing()||CommandPanel.editing())return null;
         double[] m=CommandPanel.cursor(c);if(m==null)return null;
         double f=c.getWindow().getScaleFactor()/UiCanvas.hudK();
-        return new double[]{m[0]*f,m[1]*f};
+        return HudLayout.unscale(new double[]{m[0]*f,m[1]*f}); // inside a part drawn at another size: where the cursor falls on it
     }
     /** What a click at (gx, gy) GUI px meets on the column the last frame drew: {"form"|"card", group}, or null. The formation box is tested first. */
     public static String[] columnAt(double gx,double gy){

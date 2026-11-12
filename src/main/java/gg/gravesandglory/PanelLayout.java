@@ -15,7 +15,7 @@ import java.nio.file.Path;
 /**
  * Where the command panel sits, how opaque it is and whether it hides at rest: the player's own arrangement, client only. Kept per player
  * profile on this machine in config/gravesandglory/command-panel.json, keyed by player UUID ("default" when no entry matches):
- * {"version":1,"profiles":{"&lt;uuid&gt;":{"anchor":"top-right","x":12.0,"y":30.0,"opacity":0.75,"hidden":false}}}. anchor is the
+ * {"version":1,"profiles":{"&lt;uuid&gt;":{"anchor":"top-right","x":12.0,"y":30.0,"opacity":0.75,"hidden":false,"scale":1.2}}} (no scale: 1). anchor is the
  * screen corner the panel is nearest ("default" for the left-edge layout) and x, y the gap from that corner to the panel's bounds in HUD
  * canvas pixels (UiCanvas.hudK), so a resize keeps it in the same corner; CommandPanel clamps it on screen every frame. A missing or
  * corrupt file means the defaults. Written only when edit mode is left (CommandPanel.leaveEdit).
@@ -34,6 +34,10 @@ public final class PanelLayout {
     public static double offX, offY;
     public static float opacity = 1f;
     public static boolean hidden;
+    /** The panel's size (1 = as laid out), set by its corner handle in edit mode; the HUD parts keep theirs in HudLayout. */
+    public static double scale = 1;
+    /** The sizes a corner handle allows (text still reads at half size), in 5% steps. */
+    public static final double MIN_SCALE = 0.5, MAX_SCALE = 2, SCALE_STEP = 0.05;
 
     /** The profile key the settings in memory came from (null: read the file again before use); probes for the checks. */
     static String loadedFor;
@@ -44,7 +48,14 @@ public final class PanelLayout {
     public static boolean moved() { return !DEFAULT.equals(anchor); }
 
     /** The defaults: the left edge, fully opaque, shown. */
-    public static void reset() { anchor = DEFAULT; offX = offY = 0; opacity = 1f; hidden = false; }
+    public static void reset() { anchor = DEFAULT; offX = offY = 0; opacity = 1f; hidden = false; scale = 1; }
+
+    /** A size snapped to 5% steps within 50% to 200%. */
+    public static double snapScale(double v) {
+        if (!Double.isFinite(v)) return 1;
+        double s = Math.round(v / SCALE_STEP) * SCALE_STEP;
+        return Math.max(MIN_SCALE, Math.min(MAX_SCALE, Math.round(s * 100) / 100.0));
+    }
 
     static String profileKey(MinecraftClient c) { return c.player == null ? DEFAULT : c.player.getUuid().toString(); }
 
@@ -73,8 +84,9 @@ public final class PanelLayout {
             double x = o.has("x") ? o.get("x").getAsDouble() : 0, y = o.has("y") ? o.get("y").getAsDouble() : 0;
             double op = o.has("opacity") ? o.get("opacity").getAsDouble() : 1;
             boolean hide = o.has("hidden") && o.get("hidden").getAsBoolean();
+            double sc = o.has("scale") ? o.get("scale").getAsDouble() : 1; // a file from before sizes: its own size
             if (!validAnchor(a) || !Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(op)) return;
-            anchor = a; offX = Math.max(0, x); offY = Math.max(0, y); opacity = snapOpacity(op); hidden = hide;
+            anchor = a; offX = Math.max(0, x); offY = Math.max(0, y); opacity = snapOpacity(op); hidden = hide; scale = snapScale(sc);
         } catch (Exception ex) {
             reset(); // a corrupt file means the defaults
             System.err.println("[Graves and Glory] The command panel layout could not be read, using the defaults: " + ex.getMessage());
@@ -97,6 +109,7 @@ public final class PanelLayout {
             o.addProperty("y", Math.round(offY * 100) / 100.0);
             o.addProperty("opacity", Math.round(opacity * 100) / 100.0);
             o.addProperty("hidden", hidden);
+            o.addProperty("scale", scale);
             profiles.add(key, o);
             root.add("profiles", profiles);
             Files.createDirectories(f.getParent());

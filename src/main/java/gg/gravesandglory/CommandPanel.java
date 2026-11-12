@@ -55,7 +55,11 @@ public final class CommandPanel {
     public static int frames;
     public static double lastSlide;
     // edit mode (the Arrange command panel key): the panel is moved, hidden or faded; orders wait until it is left
-    static boolean editing, dragging, sliding;
+    static boolean editing, dragging, sliding, resizing;
+    /** A panel resize: the corner that stays put (GUI px) and the handle's side (+1 right or down, -1 left or up). */
+    static double fixX, fixY; static int handX, handY;
+    /** The panel's corner handle in the last edit frame (GUI px), or null. */
+    public static int[] handle;
     static double grabX, grabY;
     static int sliderX, sliderW = 1;
 
@@ -152,7 +156,7 @@ public final class CommandPanel {
 
     public static void render(DrawContext g, float delta) {
         var c = MinecraftClient.getInstance();
-        lastDrawn.clear(); lastAlpha.clear(); hits.clear(); bounds = null; hovered = -1;
+        lastDrawn.clear(); lastAlpha.clear(); hits.clear(); bounds = null; hovered = -1; handle = null;
         // a key's press shows on its pennant as a click does
         for (int i = 0; i < ORDERS.length; i++) {
             KeyBinding k = binding(i);
@@ -190,8 +194,27 @@ public final class CommandPanel {
     static float op = 1f, ink = 1f;
     public static float op() { return op; }
     public static float ink() { return ink; }
-    private static void record(int id, int x, int y, int w, int h) { lastDrawn.add(new int[]{id, x + ox, y + oy, w, h}); hits.put(id, new int[]{x + ox, y + oy, w, h}); }
-    private static boolean over(double[] m, int x, int y, int w, int h) { return m != null && m[0] >= x + ox && m[0] < x + ox + w && m[1] >= y + oy && m[1] < y + oy + h; }
+    /** The panel's size this frame (PanelLayout.scale, smaller where the screen has no room), the default layout's bounds' top left it is
+     *  scaled around (body coordinates), its unscaled bounds' size and its resting offset (no slide), GUI px. */
+    static double ps = 1;
+    /** The size the panel was drawn at last frame (its scale, smaller where the screen has no room). */
+    public static double panelScale() { return ps; }
+    static int pax, pay, baseW = 1, baseH = 1, rsx, rsy;
+    /** A body x or y where it shows this frame (placement, slide and size), GUI px. */
+    static double sX(double x) { return pax + ox + ps * (x - pax); }
+    static double sY(double y) { return pay + oy + ps * (y - pay); }
+    /** A body x or y where it shows at rest (no slide), and a resting screen x or y back in body coordinates: the tray's room. */
+    static double restX(double x) { return pax + rsx + ps * (x - pax); }
+    static double restY(double y) { return pay + rsy + ps * (y - pay); }
+    static double bodyX(double gx) { return pax + (gx - pax - rsx) / ps; }
+    static double bodyY(double gy) { return pay + (gy - pay - rsy) / ps; }
+    /** A body rect where it shows {x, y, w, h}, rounded outward. */
+    static int[] shown(int x, int y, int w, int h) {
+        int x0 = (int) Math.floor(sX(x) + 1e-9), y0 = (int) Math.floor(sY(y) + 1e-9), x1 = (int) Math.ceil(sX(x + w) - 1e-9), y1 = (int) Math.ceil(sY(y + h) - 1e-9);
+        return new int[]{x0, y0, x1 - x0, y1 - y0};
+    }
+    private static void record(int id, int x, int y, int w, int h) { int[] r = shown(x, y, w, h); lastDrawn.add(new int[]{id, r[0], r[1], r[2], r[3]}); hits.put(id, r); }
+    private static boolean over(double[] m, int x, int y, int w, int h) { return m != null && m[0] >= sX(x) && m[0] < sX(x + w) && m[1] >= sY(y) && m[1] < sY(y + h); }
     /** A fill's ARGB with the panel's opacity applied; text's with its 60% floor. */
     static int fa(int argb) { return ((int) Math.round((argb >>> 24) * op) << 24) | (argb & 0xffffff); }
     static int ta(int argb) { return ((int) Math.round((argb >>> 24) * ink) << 24) | (argb & 0xffffff); }
@@ -245,16 +268,20 @@ public final class CommandPanel {
         // the panel's bounds in its default layout: the finial mark and the pole's top down to the pole's foot, the pills and the longest pennant across
         int bx0 = 0, by0 = Math.min(Math.max(0, top - 12), top - 4), bx1 = flagX + W + ext, by1 = poleBottom;
         for (int[] b : pillBox) bx1 = Math.max(bx1, b[0] + b[2]);
-        int bw = bx1 - bx0, bh = by1 - by0;
+        int ubw = bx1 - bx0, ubh = by1 - by0;
         var win = MinecraftClient.getInstance().getWindow();
         double k = UiCanvas.hudK() / win.getScaleFactor(); // GUI px per HUD canvas px
+        // the player's size (its corner handle in edit mode), never larger than the screen; scaled around the bounds' top left
+        ps = Math.min(PanelLayout.scale, HudLayout.fit(ubw, ubh, sw, sh, PanelLayout.MARGIN)); pax = bx0; pay = by0; baseW = ubw; baseH = ubh;
+        int bw = (int) Math.round(ubw * ps), bh = (int) Math.round(ubh * ps);
         double[] at = PanelLayout.place(bw, bh, sw, sh, k, vanillaHud(sw, sh));
         int sx = at == null ? 0 : (int) Math.round(at[0]) - bx0, sy = at == null ? 0 : (int) Math.round(at[1]) - by0;
+        rsx = sx; rsy = sy;
         boolean rightSide = at != null && bx0 + sx + bw / 2.0 > sw / 2.0;
         // a first pill row that reaches the HUD's gold plaque (a narrow screen squeezes the stack up to it): the pills close up, one row still
         int[] gold = BattleHud.goldGui(win.getScaleFactor());
-        if (gold != null && top + sy < gold[1] + gold[3] && top + sy + PILL_H > gold[1]) {
-            for (int pad = pillPad - 1, gap = Math.max(1, pillGap - 1); pad >= 4 && reaches(pillBox, sx, gold[0] - 3); pad--) {
+        if (gold != null && restY(top) < gold[1] + gold[3] && restY(top + PILL_H) > gold[1]) {
+            for (int pad = pillPad - 1, gap = Math.max(1, pillGap - 1); pad >= 4 && reaches(pillBox, 0, (int) Math.floor(bodyX(gold[0] - 3))); pad--) {
                 List<int[]> box = new ArrayList<>(); List<String> text = new ArrayList<>();
                 if (layPills(font, pills, sw, limit, flagX, pad, gap, box, text) != rows) break;
                 pillBox = box; pillText = text;
@@ -270,7 +297,9 @@ public final class CommandPanel {
         ink = Math.max(op, 0.6f);
         if (editing) mouse = null; // no hover in edit mode: the panel is only moved there
         g.getMatrices().push();
-        g.getMatrices().translate(ox, oy, 0);
+        g.getMatrices().translate(pax + ox, pay + oy, 0);
+        g.getMatrices().scale((float) ps, (float) ps, 1);
+        g.getMatrices().translate(-pax, -pay, 0);
         try { drawBody(g, font, sw, sh, mouse, alpha, trayLimit, poleX, flagX, W, ext, pitch, pills, pillBox, pillText, top, flagTop, poleBottom, bx0, sx, sy, at != null, rightSide); }
         finally { g.getMatrices().pop(); }
     }
@@ -360,7 +389,7 @@ public final class CommandPanel {
                 int bodyL = x + 4, bodyR = x + w - 16, span = bodyR - bodyL, veil = (int) Math.round(span * Math.min(1, chargeLeft / (double) chargeTotal));
                 int edgeX = bodyR - veil;
                 if (veil > 0) {
-                    g.enableScissor(edgeX + ox, yy + oy, x + w + ox, yy + PENNANT_H + oy); // scissor rects are screen GUI px: the matrices' offset added
+                    g.enableScissor((int) Math.floor(sX(edgeX)), (int) Math.floor(sY(yy)), (int) Math.ceil(sX(x + w)), (int) Math.ceil(sY(yy + PENNANT_H))); // scissor rects are screen GUI px: the matrices' offset and size applied
                     RenderSystem.setShaderColor(0, 0, 0, 0.65f * op);
                     pennant(g, "command/pennant", x, yy, w);
                     RenderSystem.setShaderColor(1, 1, 1, 1);
@@ -393,7 +422,7 @@ public final class CommandPanel {
                 int secsX = keyRight - font.getWidth(secs);
                 g.drawText(font, secs, secsX, yy + 8, ta(0xffffffff), true);
                 record(SWEEP, x + 1, yy, Math.max(24, secsX + font.getWidth(secs) - x - 1), 24);
-                lastDrawn.add(new int[]{SECS, secsX + ox, yy + 8 + oy, font.getWidth(secs), 9}); // the seconds alone, for the tray check
+                { int[] r = shown(secsX, yy + 8, font.getWidth(secs), 9); lastDrawn.add(new int[]{SECS, r[0], r[1], r[2], r[3]}); } // the seconds alone, for the tray check
                 secsRight = secsX + font.getWidth(secs); secsBottom = yy + PENNANT_H;
             }
             if (fl > 0) {
@@ -412,8 +441,8 @@ public final class CommandPanel {
             int ax = flagX + formationW - 14; // the tray meets the pennant at its swallowtail notch
             int tw, th, tx, ty, cols, cw, gap;
             // the right limit in panel coordinates: 45% of the screen in the default layout, the screen's edge once the player has moved the panel
-            int lim = moved ? sw - 2 - sx : trayLimit;
-            int need4 = pad * 2 + cells * CELL_W + (cells - 1) * 5, leftEdge = bx0 - 2, leftRoom = leftEdge - (2 - sx);
+            int lim = moved ? (int) Math.floor(bodyX(sw - 2)) : trayLimit;
+            int need4 = pad * 2 + cells * CELL_W + (cells - 1) * 5, leftEdge = bx0 - 2, leftRoom = leftEdge - (int) Math.ceil(bodyX(2));
             // a moved panel opens the tray to its left when the panel sits in the right half or the strip would leave the screen on the right
             boolean toLeft = moved && (rightSide || ax + need4 > lim) && leftRoom >= need4;
             // a 1x4 strip beside the pennant when it fits (cells as wide as the room allows, 5 px apart, so the names never crowd), else 2x2 above it
@@ -423,16 +452,16 @@ public final class CommandPanel {
             int rowsT = (cells + cols - 1) / cols;
             tw = pad * 2 + cols * cw + (cols - 1) * gap; th = pad * 2 + rowsT * CELL_H + (rowsT - 1) * gap;
             if (cols == 4) { tx = toLeft ? leftEdge - tw : ax; ty = formationY + PENNANT_H / 2 - th / 2; }
-            else { tx = Math.max(moved ? 2 - sx : flagX, Math.min(ax, lim - tw)); ty = formationY + PENNANT_H - th; } // above the anchor, never down over the group cards
+            else { tx = Math.max(moved ? (int) Math.ceil(bodyX(2)) : flagX, Math.min(ax, lim - tw)); ty = formationY + PENNANT_H - th; } // above the anchor, never down over the group cards
             if (secsRight >= 0 && cols == 2 && tx < secsRight + 2 && ty < secsBottom) {
                 // the tray would cover the cooldown seconds: slide right of them if the limit allows, else drop below the Charge row
                 if (secsRight + 2 + tw <= lim) tx = secsRight + 2; else ty = secsBottom + 1;
             }
             // never over the vanilla hotbar, health and armour rows (bottom centre): lift the tray above them when it reaches into their columns
             int[] vh = vanillaHud(sw, sh);
-            if (tx + sx < vh[0] + vh[2] && vh[0] < tx + sx + tw && ty + sy + th > vh[1]) ty = vh[1] - 1 - th - sy;
-            if (ty + sy < 2) ty = 2 - sy;
-            if (ty + sy + th > sh - 2) ty = sh - 2 - th - sy;
+            if (restX(tx) < vh[0] + vh[2] && vh[0] < restX(tx + tw) && restY(ty + th) > vh[1]) ty = (int) Math.floor(bodyY(vh[1] - 1)) - th;
+            if (restY(ty) < 2) ty = (int) Math.ceil(bodyY(2));
+            if (restY(ty + th) > sh - 2) ty = (int) Math.floor(bodyY(sh - 2)) - th;
             RenderSystem.setShaderColor(1, 1, 1, 1);
             g.fill(tx + 2, ty + 2, tx + tw - 2, ty + th - 2, fa(0xb31b120c));
             RenderSystem.setShaderColor(1, 1, 1, op);
@@ -465,6 +494,7 @@ public final class CommandPanel {
 
     public static boolean editing() { return editing; }
     public static boolean dragging() { return dragging; }
+    public static boolean resizing() { return resizing; }
 
     /** The Arrange command panel key: enters edit mode where the battle HUD shows, leaves it (saving) when in it. */
     public static void toggleEdit(MinecraftClient c) { if (editing) leaveEdit(c); else enterEdit(c); }
@@ -512,6 +542,12 @@ public final class CommandPanel {
         if (inside(RESET, x, y)) { PanelLayout.reset(); HudLayout.reset(); return; } // Reset restores the panel and every HUD part
         if (inside(DONE, x, y)) { leaveEdit(c); return; }
         if (inside(TOOLBAR, x, y)) return;
+        if (handle != null && rest != null && x >= handle[0] && x < handle[0] + handle[2] && y >= handle[1] && y < handle[1] + handle[3]) { // the panel's corner handle: a resize, the opposite corner held
+            handX = handle[0] > rest[0] + rest[2] / 2.0 ? 1 : -1; handY = handle[1] > rest[1] + rest[3] / 2.0 ? 1 : -1;
+            fixX = handX > 0 ? rest[0] : rest[0] + rest[2]; fixY = handY > 0 ? rest[1] : rest[1] + rest[3];
+            resizing = true; return;
+        }
+        if (HudLayout.pressHandle(x, y)) return; // a HUD part's corner handle
         if (rest == null) { HudLayout.press(x, y); return; }
         if ((x >= rest[0] && x < rest[0] + rest[2] && y >= rest[1] && y < rest[1] + rest[3]) || inside(CAPTION, x, y) || inside(EDGE, x, y)) { dragging = true; grabX = x - rest[0]; grabY = y - rest[1]; return; } // the panel (its tabs, outline and caption) before any HUD part under it
         HudLayout.press(x, y); // else a battle HUD part under the cursor (HudLayout)
@@ -521,11 +557,17 @@ public final class CommandPanel {
     public static void editDrag(double x, double y) {
         if (!editing) return;
         if (sliding) slideTo(x);
+        else if (resizing && rest != null) {
+            double sc = HudLayout.resizeScale(x, y, fixX, fixY, handX, handY, baseW, baseH, rest[4], rest[5], PanelLayout.MARGIN);
+            int w = (int) Math.round(baseW * sc), h = (int) Math.round(baseH * sc);
+            PanelLayout.scale = sc;
+            PanelLayout.moveTo(handX > 0 ? fixX : fixX - w, handY > 0 ? fixY : fixY - h, w, h, rest[4], rest[5], restK);
+        }
         else if (dragging && rest != null) PanelLayout.moveTo(x - grabX, y - grabY, rest[2], rest[3], rest[4], rest[5], restK);
         else HudLayout.drag(x, y);
     }
 
-    public static void editRelease() { dragging = false; sliding = false; HudLayout.release(); }
+    public static void editRelease() { dragging = false; sliding = false; resizing = false; HudLayout.release(); }
 
     private static void slideTo(double x) { PanelLayout.opacity = PanelLayout.snapOpacity(PanelLayout.MIN_OPACITY + (x - sliderX) / Math.max(1, sliderW) * (1 - PanelLayout.MIN_OPACITY)); }
 
@@ -551,6 +593,11 @@ public final class CommandPanel {
         for (int x = x0; x < x1; x += 5) { g.fill(x, y0, Math.min(x + 3, x1), y0 + 1, dash); g.fill(x, y1 - 1, Math.min(x + 3, x1), y1, dash); }
         for (int y = y0; y < y1; y += 5) { g.fill(x0, y, x0 + 1, Math.min(y + 3, y1), dash); g.fill(x1 - 1, y, x1, Math.min(y + 3, y1), dash); }
         lastDrawn.add(new int[]{EDGE, x0, y0, x1 - x0, y1 - y0});
+        // the corner handle (the corner facing the screen's centre): a drag there resizes the panel
+        handle = HudLayout.corner(b, sw, sh, HudLayout.HANDLE);
+        boolean onHandle = resizing || mouse != null && mouse[0] >= handle[0] && mouse[0] < handle[0] + handle[2] && mouse[1] >= handle[1] && mouse[1] < handle[1] + handle[3];
+        HudLayout.drawHandle(g, handle, onHandle);
+        if (resizing) HudLayout.sizeLabel(g, font, handle, ps, sw, sh);
 
         String cap = I18n.translate(PanelLayout.hidden ? "gui.gravesandglory.panel_edit.caption_hidden" : "gui.gravesandglory.panel_edit.caption");
         int capW = font.getWidth(cap) + 8, capH = 12;

@@ -1,5 +1,6 @@
 package gg.gravesandglory.cmdui;
 
+import gg.gravesandglory.BattleHud;
 import gg.gravesandglory.CommandPanel;
 import gg.gravesandglory.CommandSelection;
 import gg.gravesandglory.CommandUiChecks;
@@ -194,7 +195,188 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
             press(c, "key.gravesandglory.panel_edit");
             GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 1920, 1080);
         }
-        if (tick == 306) CommandUiChecks.finish(c);
+        if (tick >= 320) resizeTick(c, tick);
+    }
+
+    // ---- sizes (Kort, 2026-11-12: every piece resized by dragging its corner) ----
+
+    final StringBuilder sizeBad = new StringBuilder();
+    final List<String> sizeLog = new ArrayList<>(), labels = new ArrayList<>();
+    double[] hfrom, hto;
+    Map<String, HudLayout.Place> sized = new LinkedHashMap<>();
+    double panelSized;
+
+    static boolean near(double a, double b) { return Math.abs(a - b) < 0.051; }
+
+    /** A corner handle dragged to make its piece want times its own size (the panel when part is null): press on the handle at start,
+     *  six steps to where the handle's corner would be at that size, release at start + 7; the size label read on the way. */
+    void handleDrag(MinecraftClient c, int tick, int start, String part, double want) {
+        String name = part == null ? "panel" : part;
+        if (tick == start) {
+            int[] h = part == null ? CommandPanel.handle : HudLayout.lastHandles.get(part), b = part == null ? CommandPanel.bounds : HudLayout.guiBox(part);
+            if (h == null || b == null) { sizeBad.append("no handle drawn for the " + name + "; "); hfrom = null; return; }
+            boolean right = h[0] > b[0] + b[2] / 2.0, down = h[1] > b[1] + b[3] / 2.0;
+            double fx = right ? b[0] : b[0] + b[2], fy = down ? b[1] : b[1] + b[3], cx = right ? b[0] + b[2] : b[0], cy = down ? b[1] + b[3] : b[1];
+            double s0 = part == null ? CommandPanel.panelScale() : HudLayout.drawnScale(part);
+            hfrom = new double[]{h[0] + h[2] / 2.0, h[1] + h[3] / 2.0};
+            hto = new double[]{fx + (cx - fx) * want / s0, fy + (cy - fy) * want / s0};
+            PanelSuite.cursorGui(c, hfrom[0], hfrom[1]);
+            mouse(c, GLFW.GLFW_PRESS);
+            boolean took = part == null ? CommandPanel.resizing() : part.equals(HudLayout.resizing());
+            if (!took) sizeBad.append("a press on the " + name + "'s handle " + box(h) + " did not start a resize (part " + HudLayout.resizing() + ", panel " + CommandPanel.resizing() + ", moving " + HudLayout.dragging() + "); ");
+        } else if (tick > start && tick <= start + 6 && hfrom != null) {
+            double f = (tick - start) / 6.0;
+            PanelSuite.cursorGui(c, hfrom[0] + (hto[0] - hfrom[0]) * f, hfrom[1] + (hto[1] - hfrom[1]) * f);
+            if (tick == start + 6) labels.add(name + " " + HudLayout.lastSizeLabel);
+        } else if (tick == start + 7) mouse(c, GLFW.GLFW_RELEASE);
+    }
+
+    /** Every part and the panel lie wholly on screen at their sizes. */
+    boolean allOnScreen(MinecraftClient c, String at) {
+        boolean ok = onScreen(c, at);
+        int[] b = CommandPanel.bounds;
+        if (b != null && (b[0] < 0 || b[1] < 0 || b[0] + b[2] > sw(c) || b[1] + b[3] > sh(c))) { fails.add(at + ": the panel " + box(b) + " off the " + sw(c) + "x" + sh(c) + " GUI"); ok = false; }
+        return ok;
+    }
+
+    String sizes() {
+        StringBuilder b = new StringBuilder();
+        for (String p : HudLayout.PARTS) if (HudLayout.scale(p) != 1) b.append(p).append(' ').append(Math.round(HudLayout.scale(p) * 100)).append("% ");
+        return b.append("panel ").append(Math.round(PanelLayout.scale * 100)).append('%').toString();
+    }
+
+    /** The panel's click targets at its size: a hovered pennant, a pill, the Formation pennant opening the tray, a tray cell, and a
+     *  group card's formation box on a resized column. */
+    final Map<String, String> clicks = new LinkedHashMap<>();
+    boolean clickOk = true, hoverSeen;
+    void clickTick(MinecraftClient c, int t, String size) {
+        if (t == 0) { CommandSelection.select("all", false); CommandSelection.setPanelOpen(true); CommandSelection.setTrayOpen(false); }
+        if (t == 1) hoverSeen = false;
+        if (t >= 1 && t <= 4) { hoverSeen |= CommandPanel.hovered == CommandPanel.PENNANT + 2; PanelSuite.cursorTo(c, CommandPanel.PENNANT + 2); } // each tick until the panel reports it
+        if (t == 4) {
+            boolean hov = hoverSeen || CommandPanel.hovered == CommandPanel.PENNANT + 2;
+            clicks.put(size + " hover", hov + " (" + PanelSuite.hoverDiag(c) + ")"); clickOk &= hov;
+            PanelSuite.click(c, CommandPanel.PILL + 1, 0);
+        }
+        if (t == 6) {
+            boolean ok = CommandSelection.selected().equals(List.of("ranged"));
+            clicks.put(size + " pill", ok + " " + CommandSelection.selected()); clickOk &= ok;
+            CommandSelection.select("infantry", false);
+            PanelSuite.click(c, CommandPanel.PENNANT + 4, 0);
+        }
+        if (t == 10) {
+            boolean ok = CommandSelection.trayOpen();
+            clicks.put(size + " formation pennant", "tray open " + ok); clickOk &= ok;
+            if (size.equals("180%")) shot(c, "hud-resized-panel-1920.png");
+            PanelSuite.click(c, CommandPanel.CELL + 1, 0);
+        }
+        if (t == 14) {
+            boolean ok = "hold".equals(CommandSelection.aiming()) && "block".equals(PanelSuite.formation());
+            clicks.put(size + " tray cell", ok + " (aiming '" + CommandSelection.aiming() + "', formation " + PanelSuite.formation() + ")"); clickOk &= ok;
+            CommandUiChecks.press(c, PanelSuite.find(c, "key.gravesandglory.cancel"));
+        }
+        if (t == 18) { CommandSelection.select("infantry", false); CommandSelection.setPanelOpen(true); CommandSelection.setTrayOpen(false); }
+        if (t == 21) {
+            int[] b = BattleHud.toGui(BattleHud.formBox("infantry"));
+            if (b == null) { clicks.put(size + " card", "no formation box drawn"); clickOk = false; return; }
+            PanelSuite.clickGui(c, b[0] + b[2] / 2.0, b[1] + b[3] / 2.0, 0);
+        }
+        if (t == 24) {
+            boolean ok = CommandSelection.trayOpen() && CommandSelection.selected().equals(List.of("infantry"));
+            clicks.put(size + " card formation (column " + Math.round(HudLayout.drawnScale("column") * 100) + "%)", "tray open " + ok); clickOk &= ok;
+            CommandSelection.setTrayOpen(false); CommandSelection.setPanelOpen(false);
+        }
+    }
+
+    void resizeTick(MinecraftClient c, int tick) {
+        // at 1920: edit mode, the handles drawn on every part and the panel
+        if (tick == 320) { HudLayout.reset(); PanelLayout.reset(); press(c, "key.gravesandglory.panel_edit"); }
+        if (tick == 326) {
+            List<String> missing = new ArrayList<>();
+            for (String p : HudLayout.PARTS) if (HudLayout.guiBox(p) != null && !HudLayout.lastHandles.containsKey(p)) missing.add(p);
+            if (CommandPanel.handle == null) missing.add("panel");
+            CommandUiChecks.report("cu-hud-handles", CommandPanel.editing() && missing.isEmpty(), "edit mode: a corner handle on every part and the panel" + (missing.isEmpty() ? " " + HudLayout.lastHandles.keySet() + " + panel " + box(CommandPanel.handle) : "; MISSING " + missing));
+            shot(c, "hud-handles-1920.png");
+        }
+        // grow, shrink, the clamps, and a resize at the screen's edge
+        if (tick >= 330 && tick <= 337) handleDrag(c, tick, 330, "gold", 1.5);
+        if (tick >= 340 && tick <= 347) handleDrag(c, tick, 340, "objectives", 0.7);
+        if (tick >= 350 && tick <= 357) handleDrag(c, tick, 350, "column", 1.25);
+        if (tick >= 360 && tick <= 367) handleDrag(c, tick, 360, "houses", 4);
+        if (tick >= 370 && tick <= 377) handleDrag(c, tick, 370, "score", 0.1);
+        if (tick >= 380 && tick <= 387) drag(c, tick, 380, "feed", sw(c) + 80, sh(c) / 2.0);
+        if (tick >= 390 && tick <= 397) handleDrag(c, tick, 390, "feed", 5);
+        if (tick >= 400 && tick <= 407) handleDrag(c, tick, 400, null, 1.8);
+        if (tick == 410) {
+            double gold = HudLayout.scale("gold"), obj = HudLayout.scale("objectives"), col = HudLayout.scale("column");
+            boolean grow = near(gold, 1.5) && near(col, 1.25), shrink = near(obj, 0.7), label = labels.contains("gold 140%") || labels.stream().anyMatch(l -> l.startsWith("gold ") && l.endsWith("%")); label &= labels.stream().anyMatch(l -> l.startsWith("panel ") && l.endsWith("%"));
+            boolean on = allOnScreen(c, "resized-1920");
+            CommandUiChecks.report("cu-hud-size", grow && shrink && label && on && sizeBad.length() == 0 && HudLayout.resizing() == null,
+                "handles dragged: gold " + gold + " (want 1.5), column " + col + " (want 1.25), objectives " + obj + " (want 0.7); the size shown while dragging " + labels + "; boxes " + boxes() + (fails.isEmpty() ? "; all on screen" : "; " + fails) + (sizeBad.length() == 0 ? "" : "; " + sizeBad));
+            fails.clear();
+            double houses = HudLayout.scale("houses"), score = HudLayout.scale("score");
+            CommandUiChecks.report("cu-hud-size-clamp", houses <= PanelLayout.MAX_SCALE && near(houses, PanelLayout.MAX_SCALE) && near(score, PanelLayout.MIN_SCALE),
+                "the house traits dragged to 4x: " + houses + " (max " + PanelLayout.MAX_SCALE + "); the score dragged to 0.1x: " + score + " (min " + PanelLayout.MIN_SCALE + ")");
+            int[] feed = HudLayout.boxes().get("feed"); int W = UiCanvas.hudWidth(), H = UiCanvas.hudHeight();
+            boolean edge = feed != null && feed[0] >= HudLayout.MARGIN && feed[0] + feed[2] <= W - HudLayout.MARGIN && feed[1] >= HudLayout.MARGIN && feed[1] + feed[3] <= H - HudLayout.MARGIN && HudLayout.scale("feed") > 1;
+            CommandUiChecks.report("cu-hud-size-edge", edge, "the feed at the right edge, its handle dragged to 5x: size " + HudLayout.scale("feed") + " drawn at " + HudLayout.drawnScale("feed") + ", box " + box(feed) + " on the " + W + "x" + H + " canvas");
+            int[] pb = CommandPanel.bounds;
+            boolean panel = near(PanelLayout.scale, 1.8) && pb != null && pb[0] >= 0 && pb[1] >= 0 && pb[0] + pb[2] <= sw(c) && pb[1] + pb[3] <= sh(c) && PanelLayout.moved();
+            CommandUiChecks.report("cu-hud-size-panel", panel, "the panel's handle dragged to 1.8x: scale " + PanelLayout.scale + " drawn at " + CommandPanel.panelScale() + ", bounds " + box(pb) + " on the " + sw(c) + "x" + sh(c) + " GUI");
+            tagsClear("resized-1920");
+            shot(c, "hud-resize-edit-1920.png");
+            savesBefore = HudLayout.saves;
+            clickId(c, CommandPanel.DONE);
+        }
+        if (tick == 414) {
+            String f = file(), pf; try { pf = Files.readString(PanelLayout.file(), StandardCharsets.UTF_8).replaceAll("\\s+", " "); } catch (Exception e) { pf = "(no file)"; }
+            sized = places(); panelSized = PanelLayout.scale;
+            boolean ok = !CommandPanel.editing() && HudLayout.saves == savesBefore + 1 && f.contains("\"s\": 1.5") && f.contains("\"s\": 0.7") && pf.contains("\"scale\": 1.8");
+            CommandUiChecks.report("cu-hud-size-save", ok, "Done: sizes " + sizes() + "; hud-layout.json " + f + "; command-panel.json " + pf);
+        }
+        if (tick == 418) shot(c, "hud-resized-1920.png");
+        // the panel's targets at 180%
+        if (tick >= 420 && tick <= 444) clickTick(c, tick - 420, "180%");
+        // a GUI Scale change keeps every size and place, on screen; the files read again give them back
+        if (tick == 448) { c.options.getGuiScale().setValue(2); c.onResolutionChanged(); }
+        if (tick == 460) {
+            boolean ok = allOnScreen(c, "gui2") && places().equals(sized) && PanelLayout.scale == panelSized;
+            shot(c, "hud-resized-1920-gui2.png");
+            c.options.getGuiScale().setValue(guiBefore); c.onResolutionChanged();
+            loadsBefore = HudLayout.loads;
+            HudLayout.forget(); HudLayout.reset(); PanelLayout.forget(); PanelLayout.reset(); HudLayout.ensureLoaded(c); PanelLayout.ensureLoaded(c);
+            boolean read = places().equals(sized) && PanelLayout.scale == panelSized;
+            CommandUiChecks.report("cu-hud-size-persist", ok && read, "GUI Scale 2 (GUI " + sw(c) + "x" + sh(c) + "): sizes and places kept=" + ok + (fails.isEmpty() ? "" : " " + fails) + "; read from the files again: " + read + " (" + sizes() + ")");
+            fails.clear();
+        }
+        // the panel's targets at 60%
+        if (tick == 470) PanelLayout.scale = 0.6;
+        if (tick >= 474 && tick <= 498) clickTick(c, tick - 474, "60%");
+        if (tick == 500) {
+            CommandUiChecks.report("cu-hud-size-clicks", clickOk, "the panel at 180% and 60% (a resized column): " + clicks);
+            PanelLayout.scale = panelSized;
+        }
+        // the resized layout at 854 and 2560: in play and in edit mode
+        int[][] sizes = {{504, 854, 480}, {540, 2560, 1440}};
+        for (int[] z : sizes) {
+            if (tick == z[0]) GLFW.glfwSetWindowSize(c.getWindow().getHandle(), z[1], z[2]);
+            if (tick == z[0] + 18) { allOnScreen(c, "resized-" + z[1]); shot(c, "hud-resized-" + z[1] + ".png"); press(c, "key.gravesandglory.panel_edit"); }
+            if (tick == z[0] + 32) { tagsClear("resized-" + z[1]); shot(c, "hud-resize-edit-" + z[1] + ".png"); press(c, "key.gravesandglory.panel_edit"); }
+        }
+        // Reset puts every size back too
+        if (tick == 580) { GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 1920, 1080); }
+        if (tick == 596) press(c, "key.gravesandglory.panel_edit");
+        if (tick == 602) clickId(c, CommandPanel.RESET);
+        if (tick == 604) clickId(c, CommandPanel.DONE);
+        if (tick == 608) {
+            boolean none = true; for (String p : HudLayout.PARTS) if (HudLayout.scale(p) != 1 || HudLayout.drawnScale(p) != 1) none = false;
+            String f = file();
+            boolean ok = none && PanelLayout.scale == 1 && CommandPanel.panelScale() == 1 && places().isEmpty() && !f.contains("\"s\"");
+            CommandUiChecks.report("cu-hud-size-reset", ok, "after Reset and Done: " + sizes() + ", drawn panel " + CommandPanel.panelScale() + ", file " + f);
+            CommandUiChecks.report("cu-hud-size-tags", tagBad.length() == 0, "the name chips on the resized layout at 1920, 854 and 2560: " + (tagBad.length() == 0 ? "clear of each other, every part, the panel and the vanilla HUD" : tagBad));
+            CommandUiChecks.report("cu-hud-size-screens", fails.isEmpty(), "the resized layout at 854 and 2560: " + (fails.isEmpty() ? "every part and the panel on screen" : fails));
+        }
+        if (tick == 612) CommandUiChecks.finish(c);
     }
 
     static String boxes() { StringBuilder b = new StringBuilder(); for (var e : HudLayout.boxes().entrySet()) b.append(e.getKey()).append(box(e.getValue())).append(' '); return b.toString().trim(); }
@@ -225,6 +407,7 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
         }
         for (int[] d : CommandPanel.lastDrawn) if (d[0] == CommandPanel.TOOLBAR || d[0] == CommandPanel.CAPTION) for (String p : HudLayout.PARTS) { // the caption sits on the panel's corner; only a part drawn now counts there (a ghost under it gives the panel the press, cu-hud-panel-grab)
             int[] b = HudLayout.guiBox(p);
+            if (b != null && CommandPanel.bounds != null && meets(b, CommandPanel.bounds)) continue; // a part the player put under the panel itself: the toolbar beside it covers nothing more
             if (b != null && (d[0] == CommandPanel.TOOLBAR || HudLayout.drawn(p)) && meets(new int[]{d[1], d[2], d[3], d[4]}, b)) tagBad.append(size + ": the " + (d[0] == CommandPanel.CAPTION ? "caption" : "toolbar") + " covers the " + p + " part; ");
         }
     }
