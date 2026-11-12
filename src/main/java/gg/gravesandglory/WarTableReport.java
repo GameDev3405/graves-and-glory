@@ -26,14 +26,14 @@ final class WarTableReport {
     /** The compact page (WarTable.compact): both papers rise 32 and close up 53, as the lobby's do. */
     static final int[] COMPACT = {-53, -32};
     /** On the sheet (sheet-relative): the text's left edge and width, the tags' row, the first section's head, the last row the content may use. */
-    static final int PAD = 22, TEXT_W = 360, TAB_Y = 14, TAB_W = 88, TAB_H = 24, TAB_GAP = 8, HEAD_Y = 48, CONTENT_END = 340, STEP = 12;
+    static final int PAD = 22, TEXT_W = 360, TAB_Y = 14, TAB_W = 84, TAB_H = 24, TAB_GAP = 8, HEAD_Y = 48, CONTENT_END = 340, STEP = 12;
     /** On the note (note-relative): the text's left edge and width, then the tops of the outcome, the map line, the mode head and its rule line, the section's rows, the rewards and the tags. */
     static final int NPAD = 18, NOTE_TEXT_W = 196, OUTCOME_Y = 22, MAP_Y = 44, MODE_Y = 70, RULE_Y = 88, ROWS_Y = 116, ROW_STEP = 13, REWARDS_Y = 234,
         TAGS_Y = 304, TAG_W = 96, TAG_GAP = 4, GO_Y = 336, GO_H = 24;
     /** The commanders table: the rows' step, the gap where the team changes, and the most armies a battle seats. */
     static final int TABLE_STEP = 13, TEAM_GAP = 4;
-    static final String[] FACES = {"battle", "troops", "chapter"};
-    static final String[] FACE_LABELS = {"Battle", "Troops", "Chapter"};
+    static final String[] FACES = {"battle", "you", "troops", "chapter"};
+    static final String[] FACE_LABELS = {"Battle", "You", "Troops", "Chapter"};
     static final String NONE = "No battle to report yet.";
 
     /** A commander's row the last frame drew: the name as shown, the team and whether it is the viewer's and the MVP's. */
@@ -318,7 +318,10 @@ final class WarTableReport {
         boolean saved = r.get("saved").getAsBoolean();
         head(g, "rewards", "Rewards", null, lx, y + REWARDS_Y, NOTE_TEXT_W);
         int wy = y + REWARDS_Y + 18;
-        if (saved) {
+        if (saved && EndingPanels.hasRewards(r)) { // the ending's rows (EndingPanels), in their static form
+            EndingPanels.rewards(g, r, lx, wy, NOTE_TEXT_W, TAGS_Y - REWARDS_Y - 18);
+            textsDrawn.put("rewards", EndingPanels.total);
+        } else if (saved) {
             line(g, "rewards", "+" + r.get("gold").getAsInt() + " gold   +" + r.get("xp").getAsInt() + " chapter XP", lx, wy, DarkUi.INK_TEXT);
             if (r.has("march")) march(g, r, lx, wy + STEP + 2, r.get("eligible").getAsBoolean());
             else block(g, "rewards-note", r.get("eligible").getAsBoolean() ? "Rewards saved. Contract and tier rewards are claimed separately." : "No match rewards: play at least 3 minutes to qualify.", lx, wy + STEP + 2, NOTE_TEXT_W, 3, DarkUi.SEPIA);
@@ -365,57 +368,20 @@ final class WarTableReport {
         switch (face) {
             case "troops" -> troops(g, x + PAD, y);
             case "chapter" -> chapter(g, x + PAD, y);
+            case "you" -> you(g, x + PAD, y);
             default -> battle(g, x + PAD, y);
         }
     }
 
     // The Battle face -------------------------------------------------------------------------------------------------
     void battle(DrawContext g, int x, int y) {
-        var font = font();
         var r = report();
-        boolean points = ReportSections.points(r);
         JsonArray squads = r.has("squads") ? r.getAsJsonArray("squads") : new JsonArray();
         int ry = y + HEAD_Y;
         head(g, "commanders", "Commanders", squads.size() + (squads.size() == 1 ? " army" : " armies"), x, ry, TEXT_W);
         ry += 18;
-        String[] heads = points ? new String[]{"Kills", "Lost", "Gold", "Points"} : new String[]{"Kills", "Lost", "Gold"};
-        String[] keys = points ? new String[]{"kills", "lost", "gold", "objective"} : new String[]{"kills", "lost", "gold"};
-        int[] right = points ? new int[]{x + 216, x + 260, x + 312, x + TEXT_W} : new int[]{x + 264, x + 312, x + TEXT_W};
-        int nameRight = right[0] - font.getWidth(DarkUi.body("Kills")) - 14;
-        line(g, "header", "Commander", x + 22, ry, DarkUi.SEPIA);
-        for (int c = 0; c < heads.length; c++) lineRight(g, "header-" + keys[c], heads[c], right[c], ry, DarkUi.SEPIA);
-        g.fill(x, ry + 12, x + TEXT_W, ry + 13, DarkUi.SEPIA_LINE);
-        ry += 17;
-        List<MatchStats.SquadStats> tally = new ArrayList<>();
-        for (var e : squads) {
-            var s = new MatchStats.SquadStats();
-            s.kills = e.getAsJsonObject().get("kills").getAsInt();
-            s.objectiveSeconds = e.getAsJsonObject().get("objective").getAsInt();
-            tally.add(s);
-        }
-        int mvp = MatchStats.mvp(tally);
-        for (int i = 0; i < squads.size(); i++) {
-            var row = squads.get(i).getAsJsonObject();
-            int team = row.get("team").getAsInt();
-            boolean you = row.get("you").getAsBoolean();
-            if (i > 0 && team != squads.get(i - 1).getAsJsonObject().get("team").getAsInt()) {
-                g.fill(x + 14, ry, x + TEXT_W, ry + 1, DarkUi.SEPIA_LINE);
-                ry += TEAM_GAP;
-            }
-            int ink = you ? DarkUi.INK_TEXT : DarkUi.SEPIA;
-            if (you) g.fill(x, ry - 1, x + 2, ry + 10, DarkUi.INK_TEXT); // a bar before the viewer's own row: a shape, not only an ink
-            DarkUi.teamMark(g, team, x + 8, ry + 1);
-            String tag = i == mvp ? "  MVP" : "";
-            String name = row.get("name").getAsString();
-            String shown = UiMath.trim(name + tag, nameRight - (x + 22), s -> font.getWidth(s));
-            g.drawText(font, shown, x + 22, ry, ink, false); // a commander's name is a player's: Minecraft's face, as the party's seats are
-            rectsDrawn.put("commander-" + i, new int[]{x + 22, ry, font.getWidth(shown), 11});
-            textsDrawn.put("commander-" + i, shown);
-            colorsDrawn.put("commander-" + i, ink);
-            commandersDrawn.add(new RowDraw(shown, team, you, i == mvp));
-            for (int c = 0; c < keys.length; c++) lineRight(g, "commander-" + i + "-" + keys[c], row.get(keys[c]).getAsInt() + (c == 3 ? "s" : ""), right[c], ry, ink);
-            ry += TABLE_STEP;
-        }
+        ry = EndingPanels.scoreboard(g, r, x, ry, TEXT_W) + 2; // the ending's commanders table (EndingPanels), shared with its stats screen
+        for (var e : EndingPanels.texts.entrySet()) if (e.getKey().startsWith("score-")) { textsDrawn.put("commander-" + e.getKey(), e.getValue()); rectsDrawn.put("commander-" + e.getKey(), EndingPanels.rects.get(e.getKey())); }
         ry = story(g, r, x, ry);
         // the Houses of the banner
         JsonArray houses = r.has("houses") ? r.getAsJsonArray("houses") : new JsonArray();
@@ -462,6 +428,21 @@ final class WarTableReport {
         rectsDrawn.put("house-" + i + "-name", new int[]{x + 22, y + 2, font.getWidth(heading(row.name())), 11});
         textsDrawn.put("house-" + i + "-name", row.name());
         return y + 16;
+    }
+
+    // The You face ---------------------------------------------------------------------------------------------------
+    /** The viewer's own battle (the ending's four groups, EndingPanels), two by two, then his army by troop type in the room left. */
+    void you(DrawContext g, int x, int y) {
+        var r = report();
+        int ry = y + HEAD_Y;
+        var rows = r.has("squads") ? r.getAsJsonArray("squads") : new JsonArray();
+        String right = null;
+        for (var e : rows) { var o = e.getAsJsonObject(); if (o.has("you") && o.get("you").getAsBoolean() && o.has("score")) right = "Score " + o.get("score").getAsInt() + (o.has("rank") && o.get("rank").getAsInt() > 0 ? ", rank " + o.get("rank").getAsInt() + " of " + rows.size() : ""); }
+        head(g, "you", "Your battle", right, x, ry, TEXT_W);
+        ry = EndingPanels.groups(g, r, x, ry + 18, TEXT_W, 172) + 12;
+        if (!r.has("you") || ry + 30 > y + CONTENT_END) return;
+        head(g, "your-troops", "Your army", null, x, ry, TEXT_W);
+        EndingPanels.troops(g, r, x, ry + 18, TEXT_W, y + CONTENT_END - ry - 18);
     }
 
     // The Troops face -------------------------------------------------------------------------------------------------

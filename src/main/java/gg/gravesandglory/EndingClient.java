@@ -35,7 +35,7 @@ import java.util.UUID;
  * further on after a skip this client sent), the RESULT banner, the freeze (troops stop ticking and their animation clocks stand still),
  * and the PODIUM shot: a fixed camera at PodiumLayout.viewSpot with an 8 s push-in, letterboxed, a night sky, the top three commanders
  * drawn as client-side figures on the plinths with up to three of their troops, and name plates projected under each plinth.
- * STATS and REWARDS are Task 6's screens (openStats).
+ * STATS and REWARDS are EndingScreen (opened here at STATS, closed at DONE). The first-person hand is never drawn while the ending runs.
  */
 public final class EndingClient {
     private EndingClient() {}
@@ -73,6 +73,8 @@ public final class EndingClient {
     static final List<int[]> plateRects = new ArrayList<>();
     static volatile String bannerDrawn = "";
     static volatile long bannerFrames;
+    /** Harness only: the frames the first-person hand was not drawn because the ending runs (EndingViewMixin). */
+    public static volatile long handsHidden;
 
     // ---- state -------------------------------------------------------------------------------------------------------------------
 
@@ -129,15 +131,23 @@ public final class EndingClient {
             shown = s; stepAt = ticks;
             if (s == MatchEnding.Step.PODIUM) { buildFigures(c); begin(c); }
             else if (s == MatchEnding.Step.STATS || s == MatchEnding.Step.REWARDS) { endCamera(c); if (figures.isEmpty()) buildFigures(c); openStats(c); }
-            else if (s == MatchEnding.Step.DONE) stop(c);
+            else if (s == MatchEnding.Step.DONE) leave(c);
         }
     }
+
+    /** This player is done ahead of the server's word (a skip out of REWARDS): the camera, figures and screen go at once, while serverStep
+     *  stays until the snapshot without "ending" arrives, so accept still reports DONE and the room or the War Table opens. */
+    static void leave(MinecraftClient c) { endCamera(c); clearFigures(); closeScreen(c); bannerDrawn = ""; }
+    static void closeScreen(MinecraftClient c) { if (c.currentScreen instanceof EndingScreen) c.setScreen(null); }
 
     /** Escape (EndingKeyMixin): the same skip as the menu key. */
     public static void escape(MinecraftClient c) { skip(c); }
 
-    /** Task 6 opens the stats and rewards screen here; for now it keeps the podium camera off. */
-    static void openStats(MinecraftClient c) { endCamera(c); }
+    /** STATS and REWARDS: the podium camera off, the ending's screen over the dimmed stage (it follows the step to REWARDS itself). */
+    static void openStats(MinecraftClient c) {
+        endCamera(c);
+        if (!(c.currentScreen instanceof EndingScreen)) c.setScreen(new EndingScreen());
+    }
 
     static void tick(MinecraftClient c) {
         ticks++;
@@ -145,11 +155,13 @@ public final class EndingClient {
         if (c.player == null || c.world == null) { stop(c); return; }
         sync(c);
         if (camera != null) c.getToastManager().clear();
+        MatchEnding.Step s = step();
+        if ((s == MatchEnding.Step.STATS || s == MatchEnding.Step.REWARDS) && c.currentScreen == null) openStats(c); // a screen something else closed comes back
     }
 
     /** Ends everything this client shows for the ending (DONE, a disconnect, or the ending leaving the snapshot). */
     static void stop(MinecraftClient c) {
-        endCamera(c); clearFigures();
+        endCamera(c); clearFigures(); closeScreen(c);
         serverStep = null; skippedTo = null; shown = null; freezeTime = -1; bannerDrawn = "";
     }
     static void forget(MinecraftClient c) { stop(c); resultId = ""; doneEarly = false; }
@@ -330,7 +342,7 @@ public final class EndingClient {
     /** The ending's HUD, in place of InGameHud while frozen: the banner during RESULT, the letterbox and plates during PODIUM, the hint always. */
     public static void hud(DrawContext g, int w, int h) {
         var c = MinecraftClient.getInstance(); var font = c.textRenderer;
-        MatchEnding.Step s = step(); if (s == null) return;
+        MatchEnding.Step s = step(); if (s == null || c.currentScreen instanceof EndingScreen) return; // the screen draws its own hint
         float partial = c.getTickDelta();
         String hint = HintText.expand("{key:menu} or Escape to skip", GravesAndGloryClient::hint);
         if (s == MatchEnding.Step.PODIUM) {

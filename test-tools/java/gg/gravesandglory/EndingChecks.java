@@ -13,12 +13,16 @@ import java.util.*;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.entity.Entity;
+import net.minecraft.client.gui.screen.GameMenuScreen;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * The match ending on a real integrated server (GRAVES_PHASE4_CHECKS=ending, run with GRAVES_INSTANT_ENDING=false). Five rounds, each started
  * as practice (the last a 4v4) on the elapsed-time fixture the other suites use (roundStarted 181 s back): the full sequence (steps, freeze, paid
  * once, no second finish, report, podium spot), the skip, a defeat with a rejoin, a draw with a commander waiting to respawn then a server stop,
  * and the 4v4 snapshot size. The report and snapshot of the first round are written to evidence/ending-report.json and ending-snapshot.json.
+ * Task 6 on the client: the stats and rewards screens (first round), where DONE lands (first round: no room, the War Table home; the skip round:
+ * a room, the war council), the War Table report's You face (between the first two rounds, while the server holds), and Escape (the skip round).
  */
 final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
     volatile UUID player; volatile boolean done; volatile String shot; volatile int skips;
@@ -55,6 +59,18 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     String clientShot; int shotAt = -1, resultAt = -1, podiumAt = -1, pressAt = -1, resizeAt = -1, restoreAt = -1;
     MatchEnding.Step lastStep; String lastOutcome = "";
     boolean frozenDone, podiumDone, skipDone, threeDone;
+    // Task 6: the server waits (hold) while the client reads the War Table report; the endings this client has seen (1 the full round, 2 the skip round)
+    volatile boolean hold, roomChecked; volatile long holdAt = -1;
+    int endings, statsAt = -1, rewardsAt = -1, endedAt = -1, escStage, escAt, youStage, youAt;
+    boolean statsDone, rewardsDone, menuSeen, rewardsMid;
+    String statsNormal = "", rewardsSmall = "", roomHome = "", escWhy = "", youNormal = "", youVia = "";
+    long hands0;
+    final TreeMap<Integer, List<Runnable>> later = new TreeMap<>();
+    void later(int tick, Runnable r) { later.computeIfAbsent(tick, k -> new ArrayList<>()).add(r); }
+    static void escape(MinecraftClient c) { long w = c.getWindow().getHandle(); c.keyboard.onKey(w, GLFW.GLFW_KEY_ESCAPE, 1, GLFW.GLFW_PRESS, 0); c.keyboard.onKey(w, GLFW.GLFW_KEY_ESCAPE, 1, GLFW.GLFW_RELEASE, 0); }
+    static int squads() { return CampaignClient.result.has("squads") ? CampaignClient.result.getAsJsonArray("squads").size() : -1; }
+    static int rewardsSize() { return CampaignClient.result.has("rewards") ? CampaignClient.result.getAsJsonArray("rewards").size() : -1; }
+    static String where(MinecraftClient c) { return c.currentScreen instanceof CampScreen s ? "CampScreen " + s.page : c.currentScreen == null ? "no screen" : c.currentScreen.getClass().getSimpleName(); }
     Entity watched; double clock0; int age0; Vec3d pos0;
 
     /** The client checks, each tick: the step EndingClient shows and what it drew. Screens at 1280x720 gui 3; the defeat banner and one podium shot at 854x480 gui 2. */
@@ -65,8 +81,12 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         if (resizeAt >= 0 && tick >= resizeAt) { resizeAt = -1; Phase1Checks.window(c, 854, 480, 2); }
         if (restoreAt >= 0 && tick >= restoreAt) { restoreAt = -1; Phase1Checks.window(c, 1280, 720, 3); }
         if (st != lastStep || !EndingClient.outcome.equals(lastOutcome)) {
-            if (st == MatchEnding.Step.RESULT) resultAt = tick;
+            if (st == MatchEnding.Step.RESULT) { resultAt = tick; if (lastStep == null) { endings++; hands0 = EndingClient.handsHidden; } }
             if (st == MatchEnding.Step.PODIUM) podiumAt = tick;
+            if (st == MatchEnding.Step.STATS) statsAt = tick;
+            if (st == MatchEnding.Step.REWARDS) rewardsAt = tick;
+            if (st == null && lastStep != null) endedAt = tick;
+            if (lastStep == MatchEnding.Step.REWARDS && endings == 1 && !rewardsDone) rewardsCheck(c, "the step ended");
             if (st == MatchEnding.Step.RESULT && EndingClient.outcome.equals("DEFEAT") && !banners.containsKey("DEFEAT")) { Phase1Checks.window(c, 854, 480, 2); restoreAt = tick + 30; }
             lastStep = st; lastOutcome = EndingClient.outcome;
         }
@@ -105,10 +125,13 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             }
             if (tick == podiumAt + 70) { clientShot = "ending-podium-small"; shotAt = tick; restoreAt = tick + 3; podiumDone = true; }
         }
-        // ending-client-skip: the menu key in RESULT moves this client to PODIUM at once; three more skips (sent) take him to camp
+        var due = later.headMap(tick, true);
+        if (!due.isEmpty()) { var run = new ArrayList<Runnable>(); for (var l : due.values()) run.addAll(l); due.clear(); for (var r : run) r.run(); }
+        task6(c, tick, st);
+        // ending-client-skip: the menu key in RESULT moves this client to PODIUM at once; then Escape three times takes him to camp (ending-client-escape)
         if (pressMenu && st == MatchEnding.Step.RESULT && pressAt < 0) { pressAt = tick; KeyBinding.onKeyPressed(KeyBindingHelper.getBoundKeyOf(GravesAndGloryClient.menu)); }
         if (pressAt >= 0 && !skipDone && (st == MatchEnding.Step.PODIUM || tick - pressAt > 10)) {
-            skipDone = true; pressMenu = false; skips = 3;
+            skipDone = true; pressMenu = false; escStage = 1;
             report("ending-client-skip", st == MatchEnding.Step.PODIUM, "menu key in RESULT: step " + st + " after " + (tick - pressAt) + " ticks");
         }
         // ending-client-plates: the 4v4 podium's three plates never overlap
@@ -120,6 +143,111 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             report("ending-client-plates", r.size() == 3 && !overlap, r.size() + " plates, overlap=" + overlap + " " + why + " at " + c.getWindow().getScaledWidth() + "x" + c.getWindow().getScaledHeight());
             clientShot = "ending-podium-three"; shotAt = tick;
         }
+    }
+
+    /** The Task 6 client checks, each tick: the hand and the stats and rewards screens (the first ending), Escape (the second), where DONE lands, and the report's You face. */
+    void task6(MinecraftClient c, int tick, MatchEnding.Step st) {
+        // ending-client-hand: no first-person hand drawn during the first RESULT
+        if (endings == 1 && st == MatchEnding.Step.RESULT && resultAt >= 0 && tick == resultAt + 20)
+            report("ending-client-hand", EndingClient.handsHidden > hands0 + 5, (EndingClient.handsHidden - hands0) + " frames drew no hand in 20 ticks of RESULT");
+        // ending-client-stats: the screen in STATS, every commander row and the four groups, fitted at 1280x720 gui 3 and at 854x480 gui 2 (427x240)
+        if (endings == 1 && st == MatchEnding.Step.STATS && statsAt >= 0 && !statsDone) {
+            if (tick == statsAt + 20) { statsNormal = statsState(c); Phase4Checks.shot(c, "ending-stats"); later(tick + 3, () -> Phase1Checks.window(c, 854, 480, 2)); }
+            if (tick == statsAt + 50) {
+                statsDone = true; String small = statsState(c);
+                report("ending-client-stats", statsNormal.startsWith("ok") && small.startsWith("ok"), "1280x720 gui 3: " + statsNormal + " | 854x480 gui 2: " + small);
+                Phase4Checks.shot(c, "ending-stats-small"); later(tick + 3, () -> Phase1Checks.window(c, 1280, 720, 3));
+            }
+        }
+        // ending-client-rewards: the rows count up one at a time; by the step's end every row and the total are drawn (shots counting, small, final)
+        if (endings == 1 && st == MatchEnding.Step.REWARDS && rewardsAt >= 0 && !rewardsDone) {
+            if (tick == rewardsAt + 25) { rewardsMid = EndingPanels.rewardRows < EndingPanels.rewardsTotal || EndingPanels.rewardsTotal <= 1; Phase4Checks.shot(c, "ending-rewards-counting"); later(tick + 3, () -> Phase1Checks.window(c, 854, 480, 2)); }
+            if (tick == rewardsAt + 78) { rewardsSmall = rewardsState(c); Phase4Checks.shot(c, "ending-rewards-small"); later(tick + 3, () -> Phase1Checks.window(c, 1280, 720, 3)); }
+            if (tick == rewardsAt + 100) { Phase4Checks.shot(c, "ending-rewards"); rewardsCheck(c, "100 ticks in"); }
+        }
+        // ending-client-escape: Escape with no screen (PODIUM) and with the ending's screen (STATS, REWARDS) moves the step on, and no game menu opens
+        if (escStage > 0 && escStage < 9 && c.currentScreen instanceof GameMenuScreen) menuSeen = true;
+        if (escStage == 1 && st == MatchEnding.Step.PODIUM && c.currentScreen == null) { escape(c); escAt = tick; escStage = 2; }
+        else if (escStage == 2 && (st == MatchEnding.Step.STATS || tick - escAt > 10) && tick - escAt >= 2) {
+            escWhy = "PODIUM -> " + st + " (" + where(c) + ")";
+            if (st == MatchEnding.Step.STATS && c.currentScreen instanceof EndingScreen) { escape(c); escAt = tick; escStage = 3; } else escStage = 8;
+        } else if (escStage == 3 && (st == MatchEnding.Step.REWARDS || tick - escAt > 10) && tick - escAt >= 2) {
+            escWhy += ", STATS -> " + st + " (" + where(c) + ")";
+            if (st == MatchEnding.Step.REWARDS && c.currentScreen instanceof EndingScreen) { escape(c); escAt = tick; escStage = 4; } else escStage = 8;
+        } else if (escStage == 4 && (st == null || st == MatchEnding.Step.DONE || tick - escAt > 10) && tick - escAt >= 2) {
+            escWhy += ", REWARDS -> " + (st == null ? "ended" : st) + " (" + where(c) + ")";
+            report("ending-client-escape", (st == null || st == MatchEnding.Step.DONE) && !menuSeen && !(c.currentScreen instanceof GameMenuScreen), escWhy + "; game menu seen=" + menuSeen);
+            escStage = 9;
+        }
+        if (escStage == 8) { report("ending-client-escape", false, escWhy + "; game menu seen=" + menuSeen); escStage = 9; }
+        // ending-client-room: where DONE lands, 10 ticks after the ending left: the War Table home with no room (first), the war council in a room (second)
+        if (endedAt >= 0 && tick == endedAt + 10) {
+            String at = where(c);
+            if (endings == 1) { roomHome = at; youStage = 1; youAt = tick; }
+            else if (endings == 2) {
+                boolean lobby = c.currentScreen instanceof CampScreen s && s.page.equals("lobby");
+                report("ending-client-room", roomHome.equals("CampScreen home") && lobby, "no room: " + roomHome + "; in a room (" + CampaignClient.social.get("room") + "): " + at);
+                roomChecked = true;
+            }
+        }
+        // ending-report-you: Last battle on the War Table home, then the You face: the four groups fitted, at both sizes; then the Battle face's table
+        if (youStage > 0) reportYou(c, tick);
+    }
+
+    String statsState(MinecraftClient c) {
+        boolean open = c.currentScreen instanceof EndingScreen && "stats".equals(EndingScreen.drawn);
+        String score = EndingPanels.layout("score"), group = EndingPanels.layout("group");
+        boolean ok = open && EndingPanels.scoreRows.size() == squads() && EndingPanels.groups.size() == 4 && score.isEmpty() && group.isEmpty();
+        return (ok ? "ok" : "FAIL") + " screen=" + where(c) + " face=" + EndingScreen.drawn + " scale " + EndingScreen.scaleDrawn + ", rows " + EndingPanels.scoreRows + " of " + squads()
+            + ", groups " + EndingPanels.groups + (score.isEmpty() ? "" : ", table: " + score) + (group.isEmpty() ? "" : ", groups: " + group);
+    }
+    String rewardsState(MinecraftClient c) {
+        String lay = EndingPanels.layout("reward");
+        boolean ok = c.currentScreen instanceof EndingScreen && "rewards".equals(EndingScreen.drawn) && EndingPanels.rewardRows == rewardsSize() && rewardsSize() > 0 && !EndingPanels.total.isEmpty() && lay.isEmpty();
+        return (ok ? "ok" : "FAIL") + " screen=" + where(c) + " rows " + EndingPanels.rewardRows + " of " + rewardsSize() + ", total '" + EndingPanels.total + "', claim '" + EndingPanels.claim + "'" + (lay.isEmpty() ? "" : ", layout: " + lay);
+    }
+    void rewardsCheck(MinecraftClient c, String when) {
+        if (rewardsDone) return;
+        rewardsDone = true;
+        String fin = rewardsState(c);
+        report("ending-client-rewards", rewardsMid && rewardsSmall.startsWith("ok") && fin.startsWith("ok"), "rows not all shown 25 ticks in=" + rewardsMid + "; 854x480 gui 2: " + rewardsSmall + " | 1280x720 gui 3 (" + when + "): " + fin);
+    }
+
+    void reportYou(MinecraftClient c, int tick) {
+        int k = tick - youAt;
+        if (youStage == 1) { // Last battle on the home page
+            var last = c.currentScreen instanceof CampScreen s && s.page.equals("home") && s.home != null ? s.home.button("last") : null;
+            if (last != null) WarTableRecruit.press(last); else c.setScreen(new CampScreen("results"));
+            youVia = last != null ? "via Last battle" : "opened directly (no Last battle tag: " + where(c) + ")";
+            youStage = 2; youAt = tick; return;
+        }
+        if (youStage == 2 && k >= 10) {
+            var tab = c.currentScreen instanceof CampScreen s && s.report != null ? s.report.button("tab-you") : null;
+            if (tab == null) { report("ending-report-you", false, "the report did not open (" + where(c) + ", " + youVia + ")"); hold = false; youStage = 0; return; }
+            WarTableRecruit.press(tab); youStage = 3; youAt = tick; return;
+        }
+        if (youStage == 3 && k >= 10) { youNormal = youState(); Phase4Checks.shot(c, "ending-report-you"); later(tick + 3, () -> Phase1Checks.window(c, 854, 480, 2)); youStage = 4; youAt = tick; return; }
+        if (youStage == 4 && k >= 30) {
+            String small = youState();
+            report("ending-report-you", youNormal.startsWith("ok") && small.startsWith("ok"), youVia + "; 1280x720 gui 3: " + youNormal + " | 854x480 gui 2: " + small);
+            Phase4Checks.shot(c, "ending-report-you-small");
+            var tab = c.currentScreen instanceof CampScreen s && s.report != null ? s.report.button("tab-battle") : null;
+            if (tab != null) WarTableRecruit.press(tab);
+            youStage = 5; youAt = tick; return;
+        }
+        if (youStage == 5 && k >= 10) {
+            String lay = EndingPanels.layout("score");
+            report("ending-report-battle", lay.isEmpty() && EndingPanels.scoreRows.size() == squads() && "battle".equals(WarTableReport.texts().get("face")), "Battle face at 854x480 gui 2: rows " + EndingPanels.scoreRows + (lay.isEmpty() ? ", layout clean" : ", layout: " + lay));
+            Phase4Checks.shot(c, "ending-report-battle-small");
+            later(tick + 3, () -> Phase1Checks.window(c, 1280, 720, 3));
+            youStage = 6; youAt = tick; return;
+        }
+        if (youStage == 6 && k >= 25) { Phase4Checks.shot(c, "ending-report-battle"); c.setScreen(null); youStage = 0; hold = false; }
+    }
+    String youState() {
+        String lay = EndingPanels.layout("group"), troops = EndingPanels.layout("troops");
+        boolean ok = "you".equals(WarTableReport.texts().get("face")) && EndingPanels.groups.equals(List.of("Commander", "Army", "Objectives", "Economy & orders")) && lay.isEmpty() && (troops.isEmpty() || troops.endsWith("not drawn"));
+        return (ok ? "ok" : "FAIL") + " face " + WarTableReport.texts().get("face") + ", groups " + EndingPanels.groups + " (k " + UiCanvas.k() + ")" + (lay.isEmpty() ? "" : ", groups: " + lay) + (troops.isEmpty() ? "" : ", troops: " + troops);
     }
 
     static void report(String id, boolean pass, String why) { Phase4Checks.report(id, pass, why); }
@@ -157,6 +285,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
 
     public void serverTick(GravesAndGlory.Battle b) {
         if (player == null || done) return;
+        if (hold) { if (holdAt < 0) holdAt = b.time; if (b.time - holdAt > 2400) { hold = false; report("ending-report-you", false, "the client never finished the report checks"); } return; }
         ServerPlayerEntity p = b.server.getPlayerManager().getPlayer(player);
         if (p == null) return;
         var c = b.campaign;
@@ -229,16 +358,23 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         report("ending-steps", podium && stats && rewards && !b.running && b.units.isEmpty() && CampWorld.inCamp(p.getX(), p.getY(), p.getZ()) && took >= total(c) - 2 && took <= total(c) + 5,
             "RESULT, PODIUM (within 3 blocks of the view spot), STATS, REWARDS seen=" + (podium && stats && rewards) + "; back in camp after " + took + " ticks (sequence " + total(c) + "), units " + b.units.size());
         report("ending-paid-once", pr.gold == gold1 && pr.progression.xp == xp1, "gold " + gold1 + "->" + pr.gold + " xp " + xp1 + "->" + pr.progression.xp);
+        holdAt = -1; hold = true; // the client opens the War Table report (ending-report-you) before the next round starts
         next();
     }
 
     /** ending-skip: four skips from the client take the lone commander to camp before the clock's DONE. */
     void skip(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p) {
         if (stage < 2) { started(b, p, false); return; }
-        if (stage == 2) { c.finish(b.squads.get(player).team); pressMenu = true; stage = 3; at = b.time; return; } // the client presses the menu key, then sends three skips
+        if (stage == 2) { // a room is open (ending-client-room: DONE lands on its war council); the client presses the menu key, then Escape three times
+            c.handle(p, "social:lobby"); c.finish(b.squads.get(player).team); pressMenu = true; stage = 3; at = b.time; return; }
         long took = b.time - at;
-        if (b.running) { if (took > total(c) + 40) { report("ending-skip", false, "still running after " + took + " ticks"); c.returnLobby(); next(); } return; }
-        report("ending-skip", took < total(c) - 100 && CampWorld.inCamp(p.getX(), p.getY(), p.getZ()) && !c.ending(), "camp after " + took + " ticks of " + total(c) + " (skips sent from the client)");
+        if (stage == 3) {
+            if (b.running) { if (took > total(c) + 40) { report("ending-skip", false, "still running after " + took + " ticks"); c.returnLobby(); stage = 4; at = b.time; } return; }
+            report("ending-skip", took < total(c) - 100 && CampWorld.inCamp(p.getX(), p.getY(), p.getZ()) && !c.ending(), "camp after " + took + " ticks of " + total(c) + " (skips sent from the client)");
+            stage = 4; at = b.time; return;
+        }
+        if (!roomChecked && b.time - at < 300) return; // the room stays until the client has seen where DONE put him
+        c.handle(p, "social:exit");
         next();
     }
 
