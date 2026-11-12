@@ -281,6 +281,7 @@ public final class BattleMathCheck {
         check(!BattleMath.raiseShield("charge", true, 50, 4, true) && !BattleMath.raiseShield("retreat", true, 50, 4, true), "never on charge or retreat");
         check(BattleMath.raiseShield("hold", false, 50, 4, true) && !BattleMath.raiseShield("hold", false, 3, 4, true), "hold: up, down to strike in reach");
         check(BattleMath.raiseShield("move", true, 400, 4, true) && !BattleMath.raiseShield("move", false, 400, 4, true), "moving: up only under fire");
+        check(BattleMath.raiseShield("attack", true, 400, 4, false) && !BattleMath.raiseShield("attack", true, 400, 4, true), "attack: up under fire only until it has an enemy to close on, then down to run in (Kort 2026-11-11)");
         check(BattleMath.raiseShield("hold", true, 0, 4, false), "hold: an archer it cannot see raises it");
         check(BattleMath.shieldOrder("move", true).equals("hold") && BattleMath.shieldOrder("move", false).equals("move") && BattleMath.shieldOrder("retreat", true).equals("retreat")
             && !BattleMath.raiseShield(BattleMath.shieldOrder("retreat", true), true, 1e9, 4, false) && BattleMath.raiseShield(BattleMath.shieldOrder("move", true), false, 100, 4, true),

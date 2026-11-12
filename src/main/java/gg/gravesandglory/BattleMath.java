@@ -691,9 +691,12 @@ public final class BattleMath {
     /** Whether a shield troop holds its shield up. Never on a charge or a retreat, and never with an enemy in reach
      *  (nearestSq at or inside reachSq, both squared blocks): the troop lowers it to swing, as a player must. On Hold any
      *  enemy raises it (hasEnemy: one picked or in sight), and so does archer fire from one it cannot see (underFire);
-     *  on any other order only archer fire does. */
+     *  on any other order only archer fire does. On Attack (Kort 2026-11-11: an attack is a run into contact, not a wall
+     *  walking forward) only archer fire with no enemy picked yet raises it: once the troop has an enemy to close on it
+     *  runs at it with the shield down, as on a charge. */
     public static boolean raiseShield(String order, boolean underFire, double nearestSq, double reachSq, boolean hasEnemy) {
         if (order.equals("charge") || order.equals("retreat")) return false;
+        if (order.equals("attack") && hasEnemy) return false;
         if (hasEnemy && nearestSq <= reachSq) return false;
         if (order.equals("hold")) return hasEnemy || underFire;
         return underFire;

@@ -151,11 +151,14 @@ final class Tactics {
     /** Raises or lowers a shield troop's shield (the off hand: Combat counts it raised while the item is in use). */
     static void shield(MobEntity mob,boolean up){if(up&&!mob.isUsingItem())mob.setCurrentHand(Hand.OFF_HAND);else if(!up&&mob.isUsingItem())mob.stopUsingItem();}
     /** The crawl (section 5): a shield troop with its shield up under archer fire on any order but Hold moves at crawlShare of its pace. Kept every tick
-     *  (brace), so it comes off on the tick the shield drops, the fire memory runs out or the order turns to Hold; never stacked (Abilities.keepSpeed). */
+     *  (brace), so it comes off on the tick the shield drops, the fire memory runs out or the order turns to Hold; never stacked (Abilities.keepSpeed).
+     *  Never on Attack or Charge (crawls: Kort 2026-11-11, an attack closes at its pace; the crawl is a march or a Formation pushing forward). */
     static void crawl(GravesAndGlory.Battle b,GravesAndGlory.Unit u,String order){
-        boolean on=u.tags.contains("shield")&&u.mob.isUsingItem()&&!order.equals("hold")&&!b.assignment(u).thenFollow&&underFire(b,u); // a player's Retreat runs at its pace with shields up (fix round 1 ruling)
+        boolean on=u.tags.contains("shield")&&u.mob.isUsingItem()&&crawls(order)&&!b.assignment(u).thenFollow&&underFire(b,u); // a player's Retreat runs at its pace with shields up (fix round 1 ruling)
         Abilities.keepSpeed(u.mob,CRAWL_ID,"Graves and Glory crawl",on?BattleMath.speedModifier(C.crawlShare(),u.mob.isTouchingWater()):0);
     }
+    /** Whether an order (shieldOrder's) slows a shield troop under fire: not Hold (it stands), and not Attack or Charge (they close at their pace). */
+    static boolean crawls(String order){return !order.equals("hold")&&!order.equals("attack")&&!order.equals("charge");}
     /** Between beats a shield troop re-reads the distance to the enemy it chose on its beat, so it lowers its shield on the tick that enemy steps
      *  into sword reach (BattleMath.raiseShield), and drops it on the tick its order turns to Charge or Retreat. With no enemy chosen it re-reads
      *  the fire: off Hold the shield follows it tick by tick (it drops with the crawl when the fire memory runs out); on Hold fire raises it at once,
