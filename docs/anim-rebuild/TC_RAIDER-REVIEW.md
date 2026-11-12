@@ -151,3 +151,4 @@ Tools at 861c69c2: hits and the stun shake-off are judged over stance_ready, as 
   - attack_low_cut still shares the overhead's wind-up.
   - limb_in_body WARN in the stun (bracer 1.99 px), from reactions.py.
   - attack_overhead armour_clip WARN 1.86 (head into right shell, t14.5).
+- **In-game (root `tc_raider-review2`, geo-knight, commit 0c8f2fa0):** PASS. 23 p1 lines, 0 `=false`, `p1-geo-knight-suite=true`; 3 "Can't keep up" lines.
