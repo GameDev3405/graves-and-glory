@@ -110,7 +110,15 @@ New WARNs that were a pass: stun_upper cape_t3 into left_leg 1.80 t21.5 (the cap
   art/anim/common/reactions.py (every biped); not changed here.
 - `art/anim/gl_marshal/out/` is not regenerated: the full build of this troop takes over an hour on this machine and ran
   out of memory before; the changed clips were rebuilt with the builder (`work/review/part.py`) and exported over the
-  committed asset. Re-running export.py from the stale out/ would drop them: rebuild out/ before any re-export.
+  committed asset. Re-running export.py from the stale out/ would drop them: rebuild out/ before any re-export. Fixed
+  2026-11-12: see "Build recipe" below.
+
+## Build recipe (2026-11-12)
+
+`GG_ANIM_TROOP=gl_marshal python art/anim/knight/rebuild_out.py` then `python art/anim/common/export.py gl_marshal` (4-15 min).
+It writes out/ whole: the builder's 40 clips, the 12 deaths spliced unchanged from 8cb35120 (the builder no longer reproduces
+them), then stances, reactions, charge, reactions (hit_pulled) and soft_layers.py. Checked 2026-11-12: out/ equals the shipped
+asset byte for byte and the export leaves it unchanged. Never run stances/reactions/soft_layers on the asset by hand again.
 
 ## Test results
 
