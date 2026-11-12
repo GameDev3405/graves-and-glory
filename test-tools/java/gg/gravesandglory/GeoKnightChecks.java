@@ -553,7 +553,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     }
 
     /**
-     * A bow duelist's shot, as Tactics' beat makes it: the beat before, its draw is announced (Projectiles.drawAhead, 10 ahead); on its
+     * A bow duelist's shot, as Tactics' beat makes it: ahead of its beat, its draw is announced (Projectiles.drawAhead, Tactics.drawLead ahead: 30 for a bow, else 10); on its
      * beat its cooldown is taken, and the arrow leaves its loose ticks later (Tactics.looseLate). The battle's own beat is kept off
      * (nextAttack far ahead) so only these shots play. A mage's release is the mend shot Abilities.mend fires (a heal of 0 at the
      * foe duelist), announced the same way (Abilities.mend calls Projectiles.drawAhead with the same arguments). A hexer's is its blight and a mist caller's its mist
@@ -569,11 +569,12 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             return;
         }
         if (!u.mob.isAlive() || !enemy.isAlive() || now - d.last[j] <= nudgeR(d.mode) || b.time < u.stunnedUntil || Tactics.pending(b, u)) return;
-        if (Projectiles.drawAhead(b, u, enemy, 10) <= 0) return;
-        d.beatAt[j] = now + 10 + Projectiles.looseTicks(u);
+        int lead = Tactics.drawLead(u); // as Tactics.tick: a bow's whole draw ahead (30), any other troop one beat (10)
+        if (Projectiles.drawAhead(b, u, enemy, lead) <= 0) return;
+        d.beatAt[j] = now + lead + Projectiles.looseTicks(u);
         d.forced++; d.last[j] = now;
         if (j == 1 && d.mode.equals("death") && k > 20 && d.killSwing < 0)
-            { int imp = Tactics.variants(u.spec.family()).get(0).impactTicks(); d.killSwing = Tactics.drawsAhead(u) ? Projectiles.shotStart(u.mob.getUuid(), now + 10, imp) : now + 10 - imp; }
+            { int imp = Tactics.variants(u.spec.family()).get(0).impactTicks(); d.killSwing = Tactics.drawsAhead(u) ? Projectiles.shotStart(u.mob.getUuid(), now + lead, imp) : now + lead - imp; }
     }
 
     /** Puts the camera (the player's eye) at (x, z) looking along yaw. */
