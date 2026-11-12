@@ -47,11 +47,11 @@ def disk(st, name):
             f = os.path.join(st["profileDir"], p["id"] + ".json")
             if not os.path.exists(f): return None
             j = json.load(open(f, encoding="utf8"))
-            return {"gold": j["gold"], "matches": j["matches"], "wins": j["wins"], "xp": j.get("progression", {}).get("xp", 0)}
+            return {"gold": j["gearShards"], "matches": j["matches"], "wins": j["wins"], "xp": j.get("progression", {}).get("xp", 0)}
     return None
 def mem(st, name):
     for p in st["profiles"]:
-        if p["name"] == name: return {"gold": p["gold"], "matches": p["matches"], "wins": p["wins"], "xp": p["xp"]}
+        if p["name"] == name: return {"gold": p["gearShards"], "matches": p["matches"], "wins": p["wins"], "xp": p["xp"]}
     return None
 def both(st, name): return mem(st, name), disk(st, name)
 def prorate(amount, seated, total):

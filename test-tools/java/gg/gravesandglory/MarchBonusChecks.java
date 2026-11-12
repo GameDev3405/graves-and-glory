@@ -39,7 +39,7 @@ final class MarchBonusChecks implements Phase4Checks.Suite, Phase4Checks.ServerW
             if (sq.team != 1 || !sq.bot || ids.isEmpty()) continue;
             String want = MarchMath.enemyId(row, sq.lane);
             List<String> slots = null;
-            for (var r : Spec.BOTBANNERS) if (r.id().equals(want)) slots = Arrays.asList(r.slots().split(","));
+            for (var r : Spec.BOTBANNERS) if (r.id().equals(want)) slots = Campaign.table(Arrays.asList(r.slots().split(","))); // the dense war table a bot squad fields
             if (slots == null || !slots.equals(sq.banner) || !sq.tier.equals(row.difficulty())) why.append("lane " + sq.lane + " wants " + want + " at " + row.difficulty() + ", fields tier " + sq.tier + " " + sq.banner + "; ");
         }
         long foes = b.squads.values().stream().filter(sq -> sq.team == 1 && sq.bot).count();
@@ -104,7 +104,7 @@ final class MarchBonusChecks implements Phase4Checks.Suite, Phase4Checks.ServerW
                 boolean won = c.lastWinner == 0 && pr.battlesWon.contains(id);
                 boolean paid = pr.bonusClaimed.contains(row.bonus());
                 Phase4Checks.report("p4-march-bonus-won-" + id, won, "lastWinner=" + c.lastWinner);
-                Phase4Checks.report("p4-march-bonus-paid-" + id, paid, "bonus " + row.bonus() + " claimed=" + pr.bonusClaimed + " gold=" + pr.gold);
+                Phase4Checks.report("p4-march-bonus-paid-" + id, paid, "bonus " + row.bonus() + " claimed=" + pr.bonusClaimed + " gear shards=" + pr.gearShards);
                 shot = "march-result-" + id;
                 stage = 5; at = b.time;
             }

@@ -690,7 +690,8 @@ final class HoldLineChecks {
         void deploy(GravesAndGlory.Battle b) {
             String mix = "HHBHH" + "HHHHH" + "BH.BH";
             List<String> banner = new ArrayList<>(), was = dusk.banner; boolean forward = b.forwardReinforcement;
-            for (char k : mix.toCharArray()) banner.add(k == 'H' ? "ic_hearthguard" : k == 'B' ? "ic_colossus" : "");
+            for (int i = 0; i < WarGrid.cells(); i++) banner.add(RosterMath.EMPTY);
+            for (int i = 0; i < mix.length(); i++) {char k = mix.charAt(i); banner.set(i / 5 * WarGrid.cols() + 2 + i % 5, k == 'H' ? "ic_hearthguard" : k == 'B' ? "ic_colossus" : RosterMath.EMPTY);} // three rows of five on columns 2 to 6 (Campaign.table's block)
             dusk.banner = banner; b.forwardReinforcement = false;
             try {
                 List<Vec3d> at = new ArrayList<>(); List<Double> width = new ArrayList<>(); int troops = 0, shields = 0;
@@ -705,7 +706,7 @@ final class HoldLineChecks {
                     if (at.get(i) == null || at.get(j) == null) continue;
                     double d = distance(at.get(i), at.get(j)), slack = d - (width.get(i) / 2 + width.get(j) / 2 + 0.1);
                     if (slack < worst) {worst = slack; pair = banner.get(i) + " " + i + " and " + banner.get(j) + " " + j + " " + fmt(d) + " apart";}
-                    if (j == i + 1 && i / 5 == j / 5 && banner.get(i).equals("ic_hearthguard") && banner.get(j).equals("ic_hearthguard")) wallGap = Math.min(wallGap, d);
+                    if (j == i + 1 && WarGrid.row(i) == WarGrid.row(j) && banner.get(i).equals("ic_hearthguard") && banner.get(j).equals("ic_hearthguard")) wallGap = Math.min(wallGap, d);
                 }
                 boolean pass = troops == mix.replace(".", "").length() && shields == mix.replace("B", "").replace(".", "").length() && worst >= -1e-6 && Math.abs(wallGap - WALL) < 1e-6;
                 report("hl-deploy", pass, troops + " troops (" + shields + " Hearthguard, the rest Brassjaw " + fmt(ArmyMobs.width(Campaign.troop("ic_colossus"))) + " wide) of a mixed banner " + mix + " deploy at the barracks; the least slack of two deploy points over their half widths and 0.1 is " + fmt(worst) + " (" + pair + "; want at least 0), two Hearthguard side by side in a row stand " + fmt(wallGap) + " apart (want the wall cell " + fmt(WALL) + ")=" + pass);
@@ -720,7 +721,8 @@ final class HoldLineChecks {
         void reinforce(GravesAndGlory.Battle b) {
             String mix = "HHHHH" + "HHHHH" + "BH.BH";
             List<String> banner = new ArrayList<>(), was = dusk.banner;
-            for (char k : mix.toCharArray()) banner.add(k == 'H' ? "ic_hearthguard" : k == 'B' ? "ic_colossus" : "");
+            for (int i = 0; i < WarGrid.cells(); i++) banner.add(RosterMath.EMPTY);
+            for (int i = 0; i < mix.length(); i++) {char k = mix.charAt(i); banner.set(i / 5 * WarGrid.cols() + 2 + i % 5, k == 'H' ? "ic_hearthguard" : k == 'B' ? "ic_colossus" : RosterMath.EMPTY);}
             dusk.banner = banner;
             List<GravesAndGlory.Unit> rows = new ArrayList<>();
             try {
@@ -732,9 +734,9 @@ final class HoldLineChecks {
                     var p = rows.get(i); var q = rows.get(j);
                     double d = distance(p.mob.getPos(), q.mob.getPos()), slack = d - (p.mob.getWidth() / 2 + q.mob.getWidth() / 2 + 0.1);
                     if (slack < worst) {worst = slack; pair = name(p) + " and " + name(q) + " " + fmt(d) + " apart";}
-                    if (Math.abs(p.slot - q.slot) == 1 && p.slot / 5 == q.slot / 5 && p.spec.id().equals("ic_hearthguard") && q.spec.id().equals("ic_hearthguard")) wallGap = Math.min(wallGap, d);
+                    if (Math.abs(p.slot - q.slot) == 1 && WarGrid.row(p.slot) == WarGrid.row(q.slot) && p.spec.id().equals("ic_hearthguard") && q.spec.id().equals("ic_hearthguard")) wallGap = Math.min(wallGap, d);
                 }
-                var a = bySlot.get(0); var c = bySlot.get(5); var e = bySlot.get(11);
+                var a = bySlot.get(2); var c = bySlot.get(11); var e = bySlot.get(20); // the first troop of rows 0, 1 and 2
                 double walls = a == null || c == null ? -1 : Math.abs(a.mob.getX() - c.mob.getX()), back = c == null || e == null ? -1 : Math.abs(c.mob.getX() - e.mob.getX());
                 boolean pass = rows.size() == mix.replace(".", "").length() && worst >= -1e-6 && Math.abs(wallGap - WALL) < 1e-6 && Math.abs(walls - WALL) < 1e-6 && Math.abs(back - 3) < 1e-6;
                 report("hl-reinforce", pass, rows.size() + " troops of the banner " + mix + " take their round-start rows: the two Hearthguard rows stand " + fmt(walls) + " apart (want the wall cell " + fmt(WALL) + "), the mixed row " + fmt(back) + " behind them (want 3), Hearthguard side by side " + fmt(wallGap) + " apart (want " + fmt(WALL) + "), the least slack of two troops over their half widths and 0.1 " + fmt(worst) + " (" + pair + "; want at least 0)=" + pass);

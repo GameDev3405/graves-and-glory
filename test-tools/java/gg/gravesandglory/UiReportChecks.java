@@ -88,7 +88,7 @@ final class UiReportChecks implements Suite {
         m.addProperty("id",row.id());m.addProperty("name",row.name());m.addProperty("order",row.order());m.addProperty("won",k!=2);
         m.addProperty("bonus",bo.text());m.addProperty("bonusState",switch(k){case 0->"paid";case 1->"missed";case 2->"lost";default->"claimed";});
         m.addProperty("bonusShards",bo.shards());m.addProperty("bonusGold",bo.gold());m.addProperty("house",row.house());
-        m.addProperty("pacts",k==0?1:0);m.addProperty("writs",k==0?1:0);
+        m.addProperty("pacts",k==0?1:0);m.addProperty("pactsHeld",k==0?1:0);
         // brief N2: a win carries the longest after line of the chapter (the layout's worst case), the Pact win the chapter's end line too
         String after="";for(var r:Spec.CAMPAIGNBATTLES)if(r.after().length()>after.length())after=r.after();
         m.addProperty("after",k!=2?after:"");m.addProperty("chapterEnd",k==0?MarchMath.chapterEndLine(List.of(1),Spec.CAMPAIGNCHAPTERS):"");

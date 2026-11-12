@@ -62,7 +62,7 @@ public final class SliceProbe implements ModInitializer {
             JsonObject profs = new JsonObject();
             for (var e : b.campaign.profiles.entrySet()) {
                 JsonObject p = new JsonObject();
-                p.addProperty("gold", e.getValue().gold); p.addProperty("matches", e.getValue().matches); p.addProperty("wins", e.getValue().wins);
+                p.addProperty("gearShards", e.getValue().gearShards); p.addProperty("troopWrits", e.getValue().troopWrits); p.addProperty("matches", e.getValue().matches); p.addProperty("wins", e.getValue().wins);
                 p.addProperty("xp", e.getValue().progression.xp);
                 p.addProperty("shards", String.valueOf(e.getValue().shards)); p.addProperty("renown", String.valueOf(e.getValue().renown));
                 profs.add(e.getKey().toString(), p);

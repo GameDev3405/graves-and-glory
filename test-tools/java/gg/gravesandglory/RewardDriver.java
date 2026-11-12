@@ -45,7 +45,7 @@ public final class RewardDriver implements ModInitializer {
                 out.add("participants",parts2);
                 JsonArray profiles=new JsonArray();
                 for(var e:c.profiles.entrySet()){var pr=e.getValue();JsonObject p=new JsonObject();p.addProperty("id",e.getKey().toString());p.addProperty("name",c.name(e.getKey()));
-                    p.addProperty("gold",pr.gold);p.addProperty("xp",pr.progression.xp);p.addProperty("matches",pr.matches);p.addProperty("wins",pr.wins);p.addProperty("shards",pr.shards.values().stream().mapToInt(Integer::intValue).sum());profiles.add(p);}
+                    p.addProperty("gearShards",pr.gearShards);p.addProperty("troopWrits",pr.troopWrits);p.addProperty("xp",pr.progression.xp);p.addProperty("matches",pr.matches);p.addProperty("wins",pr.wins);p.addProperty("shards",pr.shards.values().stream().mapToInt(Integer::intValue).sum());profiles.add(p);}
                 out.add("profiles",profiles);
                 out.add("results",new JsonArray());
                 for(var r:c.results.entrySet()){JsonObject p=r.getValue();JsonObject q=new JsonObject();q.addProperty("id",r.getKey().toString());q.addProperty("outcome",p.get("outcome").getAsString());q.addProperty("gold",p.get("gold").getAsInt());q.addProperty("eligible",p.get("eligible").getAsBoolean());q.addProperty("saved",p.get("saved").getAsBoolean());q.addProperty("seconds",p.get("seconds").getAsLong());out.getAsJsonArray("results").add(q);}

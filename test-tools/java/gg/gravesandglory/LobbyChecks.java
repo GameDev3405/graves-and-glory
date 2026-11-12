@@ -105,8 +105,8 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 if(tick<20)return;var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();player=c.player.getUuid();
                 c.setScreen(null);window(c,1920,1080,0,true);stage=-1;
                 server(c,b->{if(b.running)b.campaign.returnLobby();var s=b.campaign.social;if(s.room(player)!=null)s.leaveRoom(player);
-                    var pr=b.campaign.profile(player);savedBanner=new ArrayList<>(pr.banner);pr.owned.computeIfAbsent("revenant",x->new Profile.Owned());
-                    var bn=new ArrayList<>(RosterMath.starterBanner());bn.set(bn.size()-1,"revenant");pr.banner=bn;s.revision++;stage=1;});
+                    var pr=b.campaign.profile(player);savedBanner=new ArrayList<>(pr.line());pr.owned.computeIfAbsent("revenant",x->new Profile.Owned());
+                    var bn=new java.util.TreeMap<>(pr.table());bn.put(bn.lastKey(),"revenant");pr.setTable(pr.activeBanner,bn);s.revision++;stage=1;});
             }
             case 1->{if(GravesAndGloryClient.running||!str("room").isEmpty()){if(k>300)fail(c,"p1-lobby-camp","still in a round or a room 300 ticks after the return to camp");return;}CampScreen.open("lobby");next();}
             case 2->{ // the page asks for a room; the server opens one three a side with bots on
@@ -182,7 +182,7 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 server(c,b->{var so=b.campaign.social;var r=so.room(player);boolean fillBefore=r.fill;
                     so.configure(player,r.size,r.map,!r.fill,Spec.MAPS.length);boolean keptFill=r.ready.contains(player)&&r.fill!=fillBefore;
                     so.configure(player,r.size,r.map,!r.fill,Spec.MAPS.length);
-                    so.house(player,RosterMath.rollHouse(b.campaign.profile(player).banner),RosterMath.fieldableHouses());boolean housePickOwn=!r.ready.contains(player); // a pick takes back the picker's own Ready only
+                    so.house(player,RosterMath.rollHouse(b.campaign.profile(player).line()),RosterMath.fieldableHouses());boolean housePickOwn=!r.ready.contains(player); // a pick takes back the picker's own Ready only
                     r.ready.add(player);so.house(guestOrNull(),"gilded",RosterMath.fieldableHouses());boolean otherKept=r.ready.contains(player);
                     so.difficulty(player,"normal",Set.of("easy","normal","hard"));boolean tierKept=r.ready.contains(player)&&"normal".equals(r.difficulty);
                     so.configure(player,r.size,(r.map+1)%Spec.MAPS.length,r.fill,Spec.MAPS.length);boolean mapClears=!r.ready.contains(player);r.map=(r.map+Spec.MAPS.length-1)%Spec.MAPS.length;
@@ -382,7 +382,7 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
     }
     void end(MinecraftClient c){
         if(finished)return;finished=true;
-        server(c,b->{dropGuest(b);if(b.running)b.campaign.returnLobby();if(savedBanner!=null&&player!=null)b.campaign.profile(player).banner=savedBanner;var s=b.campaign.social;if(player!=null&&s.room(player)!=null){var r=s.room(player);r.playing=false;s.leaveRoom(player);}s.revision++;});
+        server(c,b->{dropGuest(b);if(b.running)b.campaign.returnLobby();if(savedBanner!=null&&player!=null){var sp=b.campaign.profile(player);sp.setTable(sp.activeBanner,WarGrid.sparse(savedBanner));}var s=b.campaign.social;if(player!=null&&s.room(player)!=null){var r=s.room(player);r.playing=false;s.leaveRoom(player);}s.revision++;});
         c.setScreen(null);if(oldW>0)window(c,oldW,oldH,oldGui);
         finish(c,"ui-lobby");
     }

@@ -69,7 +69,7 @@ final class MapRouteChecks {
         if(phase==1){
             if(!b.ready||b.campaign.map!=map||CampaignMaps.selected!=map)return; // the arena is still being built
             var profile=b.campaign.profile(p.getUuid());
-            profile.banner=new ArrayList<>(Collections.nCopies(20,"knight")); // a banner of twenty knights (prepareRound fields it)
+            profile.setTable(profile.activeBanner,WarGrid.sparse(Campaign.table(Collections.nCopies(20,"knight")))); // a banner of twenty knights (prepareRound fields it)
             squad=b.squads.get(p.getUuid());if(squad==null)return;
             squad.team=0;squad.seated=true;
             b.startRound();
@@ -117,7 +117,7 @@ final class MapRouteChecks {
         var span=bridges().get(bridge);double start=span.x()-span.width()/2.0-14,westEdge=span.x()-span.width()/2.0-3;
         squad.assignments.clear();squad.arrived.clear();squad.order="move";squad.formation="line";squad.target=new Vec3d(span.x()+span.width()/2.0+18,65,span.z());squad.yaw=-90;
         for(var u:b.units)if(u.squad==squad){
-            Vec3d cell=standingCell(b,start-(u.slot/5)*2,span.z()+(u.slot%5-2)*1.8,westEdge);
+            Vec3d cell=standingCell(b,start-WarGrid.row(u.slot)*2,span.z()+(WarGrid.col(u.slot)-4)*1.8,westEdge);
             u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(cell.x,cell.y,cell.z,-90,0);u.nextPath=0;u.stuckTicks=0;u.lastPosition=u.mob.getPos();
         }
         p.changeGameMode(GameMode.SPECTATOR);p.teleport(b.world,start-14,78,span.z()+24,-60,22);at=b.time;
@@ -149,11 +149,11 @@ final class MapRouteChecks {
         Vec3d farCell=far?standingCell(b,g.sx()+ux*NOOK_FAR_BLOCKS,g.sz()+uz*NOOK_FAR_BLOCKS,Double.MAX_VALUE):null;
         if(far)squad.target=farCell;
         for(var u:b.units)if(u.squad==squad){
-            double rank=u.slot/5,file=u.slot%5-2;
+            double rank=WarGrid.row(u.slot),file=WarGrid.col(u.slot)-4;
             Vec3d cell=standingCell(b,g.sx()-ux*rank*2.0-uz*file*1.8,g.sz()-uz*rank*2.0+ux*file*1.8,Double.MAX_VALUE);
             if(nook!=null){ // the yard for all but the two slots of the pocket, which stand in it, one at each of its two cells
                 int at=-1;for(int i=0;i<nook.length;i++)if(nook[i]==u.slot)at=i;
-                cell=at>=0?new Vec3d(NOOK[at][0],NOOK_Y,NOOK[at][1]):far?standingCell(b,farCell.x+(u.slot%5-2)*1.5,farCell.z+(u.slot/5-1.5)*1.5,Double.MAX_VALUE):standingCell(b,tx+(u.slot%5-2)*1.5,tz+(u.slot/5-1.5)*1.5,Double.MAX_VALUE);
+                cell=at>=0?new Vec3d(NOOK[at][0],NOOK_Y,NOOK[at][1]):far?standingCell(b,farCell.x+(WarGrid.col(u.slot)-4)*1.5,farCell.z+(WarGrid.row(u.slot)-1.5)*1.5,Double.MAX_VALUE):standingCell(b,tx+(WarGrid.col(u.slot)-4)*1.5,tz+(WarGrid.row(u.slot)-1.5)*1.5,Double.MAX_VALUE);
             }
             u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(cell.x,cell.y,cell.z,yaw,0);u.nextPath=0;u.stuckTicks=0;u.lastPosition=u.mob.getPos();
         }

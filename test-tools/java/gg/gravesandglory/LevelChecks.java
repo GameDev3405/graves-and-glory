@@ -401,7 +401,7 @@ final class LevelChecks {
                     clearFixture(b, "commander-blow"); next(b, 90);
                 }
                 case 90 -> { // p2-rebuy-level-1: a level-3 soldier dies and his slot is trained again
-                    var rebuy = new GravesAndGlory.Squad(UUID.randomUUID(), 0, GravesAndGlory.Battle.base(0)); rebuy.order = "hold"; rebuy.bot = true; rebuy.banner = new ArrayList<>(List.of("knight"));
+                    var rebuy = new GravesAndGlory.Squad(UUID.randomUUID(), 0, GravesAndGlory.Battle.base(0)); rebuy.order = "hold"; rebuy.bot = true; rebuy.banner = Campaign.table(List.of("knight"));
                     b.reinforce(rebuy);
                     var first = b.units.stream().filter(u -> u.squad == rebuy).findFirst().orElse(null);
                     if (first == null) { Phase2Checks.report("p2-rebuy-level-1", false, "reinforce fielded no Squire"); next(b, 91); return; }
@@ -577,7 +577,7 @@ final class LevelChecks {
         static String opts(List<LevelMath.Option> os) { StringBuilder sb = new StringBuilder(); for (var o : os) { if (sb.length() > 0) sb.append(", "); sb.append(o.troop()).append(':').append(o.track()).append(':').append(o.tier()).append('=').append(o.price()); } return "[" + sb + "]"; }
         static LevelMath.Option opt(String troop, String track, int tier, int price) { return new LevelMath.Option(troop, track, tier, price); }
         GravesAndGlory.Squad bot(GravesAndGlory.Battle b, String tier, int gold, String... banner) {
-            var s = new GravesAndGlory.Squad(UUID.randomUUID(), 1, GravesAndGlory.Battle.base(1)); s.bot = true; s.order = "hold"; s.tier = tier; s.gold = gold; s.banner = new ArrayList<>(List.of(banner)); return s;
+            var s = new GravesAndGlory.Squad(UUID.randomUUID(), 1, GravesAndGlory.Battle.base(1)); s.bot = true; s.order = "hold"; s.tier = tier; s.gold = gold; s.banner = Campaign.table(List.of(banner)); return s;
         }
 
         @Override public void cleanup(MinecraftClient c) {
@@ -698,7 +698,7 @@ final class LevelChecks {
                     if (since(b) < 10) return;
                     stageFixture(b); b.campaign.introUntil = b.time; Veterans.override = null; Houses.forceRise = Boolean.FALSE;
                     knight = Campaign.troop("knight"); archer = Campaign.troop("archer"); mage = Campaign.troop("mage");
-                    bannerBefore = own.banner; own.banner = new ArrayList<>(List.of("knight", "knight", "knight", "knight", "archer", "archer", "mage", "^"));
+                    bannerBefore = own.banner; own.banner = Campaign.table(List.of("knight", "knight", "knight", "knight", "archer", "archer", "mage"));
                     home(b);
                     // two points far from the barracks and the platform: one Dawn will hold for a buy, one nobody holds
                     var f = Spec.FACTIONS[0]; double reach = Spec.ECONOMY[0].accessRadius();
@@ -817,7 +817,7 @@ final class LevelChecks {
                     clearFixture(b, "rebuy"); next(b, 70);
                 }
                 case 70 -> { // p2-gear-allies-separate: a second Dawn army keeps its own Armoury
-                    dawn.banner = new ArrayList<>(List.of("knight", "archer"));
+                    dawn.banner = Campaign.table(List.of("knight", "archer"));
                     var dk = at(b, dawn, "knight", 0, -4); Veterans.credit(b, dk, L2);
                     var ok2 = at(b, own, "knight", 2, -4); Veterans.credit(b, ok2, L2);
                     var dr = Veterans.row(b, dawn, knight); var or = Veterans.row(b, own, knight); String ownKit = Veterans.peek(b, own, "knight").toString();
@@ -864,17 +864,17 @@ final class LevelChecks {
                     next(b, 100);
                 }
                 case 100 -> { // p2-bot-gear-easy, -normal, -hard: fixed gold and levels; each bot buys LevelMath.botPicks' list in order and keeps its reserve
-                    var easy = bot(b, "easy", 400, "knight", "archer", "mage", "^");
+                    var easy = bot(b, "easy", 400, "knight", "archer", "mage");
                     Veterans.kit(b, easy, "knight").highest = 3; Veterans.kit(b, easy, "archer").highest = 3; Veterans.kit(b, easy, "mage").highest = 2;
                     var e = Veterans.botBuy(b, easy);
-                    var rich = bot(b, "easy", 5000, "knight", "archer", "mage", "^");
+                    var rich = bot(b, "easy", 5000, "knight", "archer", "mage");
                     Veterans.kit(b, rich, "knight").highest = 3; Veterans.kit(b, rich, "archer").highest = 3; Veterans.kit(b, rich, "mage").highest = 3;
                     var er = Veterans.botBuy(b, rich);
                     var wantE = List.of(opt("knight", "weapon", 2, 40), opt("knight", "armour", 2, 40), opt("archer", "weapon", 2, 40), opt("archer", "armour", 2, 40));
                     int reserveE = 8 * 22;
                     boolean okE = e.equals(wantE) && easy.gold == 240 && easy.gold >= reserveE && er.size() == 6 && er.stream().allMatch(o -> o.tier() == 2) && Veterans.peek(b, easy, "knight").weapon == 2 && Veterans.peek(b, easy, "archer").armour == 2;
                     Phase2Checks.report("p2-bot-gear-easy", okE, "an Easy bot with 400 gold, the Squires and archers seen at level 3 and the Sunweaver at 2 bought " + opts(e) + " (want " + opts(wantE) + ": banner order, weapon then armour, tier II at most), gold left " + easy.gold + " (want 240, at least the reserve " + reserveE + "); an Easy bot with 5000 gold and every type at level 3 bought " + opts(er) + " (want the six tier II buys, never tier III)");
-                    var normal = bot(b, "normal", 500, "knight", "archer", "mage", "^");
+                    var normal = bot(b, "normal", 500, "knight", "archer", "mage");
                     Veterans.kit(b, normal, "knight").highest = 3; Veterans.kit(b, normal, "archer").highest = 3; Veterans.kit(b, normal, "mage").highest = 2;
                     var n = Veterans.botBuy(b, normal);
                     var wantN = List.of(opt("knight", "armour", 2, 40), opt("knight", "armour", 3, 80), opt("knight", "weapon", 2, 40), opt("knight", "weapon", 3, 80), opt("archer", "weapon", 2, 40), opt("archer", "weapon", 3, 80));
@@ -962,7 +962,7 @@ final class LevelChecks {
                 }
                 case 116 -> { // the report of a banner with five troop types (the page's two columns) with its picture
                     var p = sp(b); if (p == null || !Phase1Checks.skirmish(b, p, 0, 1, "normal")) return;
-                    secondReport = reportOf(b, List.of("knight", "archer", "sentinel", "longbow", "mage", "^", "^", "^"), new int[][] {{3, 2, 3, 3}, {3, 1, 2, 3}, {2, 0, 2, 1}, {3, 1, 1, 2}, {3, 12, 3, 1}}, "gear-report-5");
+                    secondReport = reportOf(b, List.of("knight", "archer", "sentinel", "longbow", "mage"), new int[][] {{3, 2, 3, 3}, {3, 1, 2, 3}, {2, 0, 2, 1}, {3, 1, 1, 2}, {3, 12, 3, 1}}, "gear-report-5");
                     next(b, 117);
                 }
                 case 117 -> {
@@ -983,7 +983,7 @@ final class LevelChecks {
                 }
                 case 120 -> { // p2-gear-refusals, p2-gear-forward, p2-gear-tier-cap: a fresh round, the Armoury seeded here so each stands alone
                     var p = sp(b); if (p == null || !Phase1Checks.skirmish(b, p, 0, 1, "normal")) return;
-                    own.banner = new ArrayList<>(List.of("knight", "knight", "knight", "knight", "archer", "archer", "mage", "^"));
+                    own.banner = Campaign.table(List.of("knight", "knight", "knight", "knight", "archer", "archer", "mage"));
                     Veterans.kit(b, own, "knight").highest = 2; Veterans.kit(b, own, "archer").highest = 3; Veterans.kit(b, own, "mage").highest = 3;
                     refusals(b); forward(b, p); tierCap(b);
                     next(b, DONE);
@@ -1006,7 +1006,7 @@ final class LevelChecks {
         boolean pagesOk = true; String pagesWhy = "";
         /** In the round just started: the army's banner and the Armoury's Kits ({highest level, level 3 soldiers, weapon tier, armour tier} per distinct banner type in order), then the round ends with a report. Returns the report's id, its picture queued under name. */
         String reportOf(GravesAndGlory.Battle b, List<String> banner, int[][] kits, String name) {
-            own.banner = new ArrayList<>(banner);
+            own.banner = Campaign.table(banner);
             var types = Veterans.types(own);
             for (int i = 0; i < types.size(); i++) { var k = Veterans.kit(b, own, types.get(i).id()); k.highest = kits[i][0]; k.level3s = kits[i][1]; k.weapon = kits[i][2]; k.armour = kits[i][3]; }
             var want = Veterans.levelRows(b, own);
@@ -1078,7 +1078,7 @@ final class LevelChecks {
      * the sheet, never from the page's copy; the few words the plan names ("Bought", "Buy", "Not here") are the one thing the page owns.
      */
     static final class Armoury extends Gear {
-        static final List<String> BANNER5 = List.of("knight", "archer", "sentinel", "longbow", "mage", "^", "^", "^");
+        static final List<String> BANNER5 = List.of("knight", "archer", "sentinel", "longbow", "mage");
         static final List<String> BANNER8 = List.of("knight", "archer", "sentinel", "longbow", "mage", "tc_admiral", "wm_oldhorn", "ic_colossus");
         /** The gold the fixture holds: enough for a common tier II, short of a common tier III and of an epic tier II (from the sheet's prices; the fixture reports itself bad when that fails). */
         static final int POT = LevelMath.price("common", 3) - 10;
@@ -1111,7 +1111,7 @@ final class LevelChecks {
                     if (since(b) < 10) return;
                     stageFixture(b); b.campaign.introUntil = b.time; Veterans.override = null; Houses.forceRise = Boolean.FALSE;
                     knight = Campaign.troop("knight"); archer = Campaign.troop("archer"); mage = Campaign.troop("mage");
-                    bannerBefore = own.banner; own.banner = new ArrayList<>(BANNER5);
+                    bannerBefore = own.banner; own.banner = Campaign.table(BANNER5);
                     kits(b); place = "home"; placed = ""; home(b);
                     var f = Spec.FACTIONS[0]; double reach = Spec.ECONOMY[0].accessRadius();
                     double fromBarracks = distance(sp(b).getPos(), new Vec3d(f.barracksX(), 0, f.barracksZ()));
@@ -1318,7 +1318,7 @@ final class LevelChecks {
                     if (pt == 1) Veterans.override = Boolean.FALSE;
                     if (pt == 40) { park(c); evalOff(s); }
                     if (pt == 44) Phase2Checks.shot(c, "armoury-off-854");
-                    if (pt == 46) { Veterans.override = null; place = "barracks"; Phase2Checks.server(c, b -> { own.banner = new ArrayList<>(BANNER8); kits(b); }); }
+                    if (pt == 46) { Veterans.override = null; place = "barracks"; Phase2Checks.server(c, b -> { own.banner = Campaign.table(BANNER8); kits(b); }); }
                     if (pt > 60 && CampaignClient.armoury.rows().size() == 8 && s != null && s.page.total == 8) go(10); else if (pt > 600) bail(c, "p2-armoury-scroll", "the eight-type banner never reached the client: " + seen());
                 }
                 case 10 -> { // eight troop types at 854x480: the rows that fit, and the rest by the arrows, the wheel and Page Up and Down
@@ -1335,7 +1335,7 @@ final class LevelChecks {
                     if (pt == 46) { if (++sizeAt < SIZES.length) go(11); else { fitReport(); go(12); } }
                 }
                 case 12 -> { // the two pages as tabs of one screen, and the key as a toggle
-                    if (pt == 1) { Phase1Checks.window(c, 960, 540, 1); place = "barracks"; Phase2Checks.server(c, b -> { own.banner = new ArrayList<>(BANNER5); kits(b); }); }
+                    if (pt == 1) { Phase1Checks.window(c, 960, 540, 1); place = "barracks"; Phase2Checks.server(c, b -> { own.banner = Campaign.table(BANNER5); kits(b); }); }
                     if (pt == 40) { if (s == null || s.tab != 1) { bail(c, "p2-armoury-tabs", "no Armoury tab open: " + c.currentScreen); return; } tabsFirst = backAt(s); click(s, s.barracksTab); }
                     if (pt == 46) { if (s != null) evalTabs(s); }
                     if (pt == 52) { if (s != null) s.keyPressed(KeyBindingHelper.getBoundKeyOf(GravesAndGloryClient.armoury).getCode(), 0, 0); }

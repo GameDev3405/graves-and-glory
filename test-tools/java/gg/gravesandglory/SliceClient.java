@@ -79,7 +79,7 @@ public final class SliceClient implements ClientModInitializer {
         j.add("battleInfo", CampaignClient.battle);
         var p = CampaignClient.profile;
         JsonObject pr = new JsonObject();
-        pr.addProperty("gold", p.gold); pr.addProperty("matches", p.matches); pr.addProperty("wins", p.wins);
+        pr.addProperty("gearShards", p.gearShards); pr.addProperty("troopWrits", p.troopWrits); pr.addProperty("matches", p.matches); pr.addProperty("wins", p.wins);
         pr.addProperty("xp", p.progression.xp); pr.addProperty("shards", String.valueOf(p.shards)); pr.addProperty("renown", String.valueOf(p.renown));
         j.add("profile", pr);
         if (inWorld) { j.addProperty("x", c.player.getX()); j.addProperty("y", c.player.getY()); j.addProperty("z", c.player.getZ()); j.addProperty("entities", c.world.getRegularEntityCount()); }

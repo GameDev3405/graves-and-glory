@@ -96,7 +96,7 @@ public final class CustomGroupsProbe {
         p.owned.putIfAbsent("sentinel", new Profile.Owned());
         var banner = new ArrayList<>(RosterMath.starterBanner());
         for (int i = 0; i < 4; i++) banner.set(i, "sentinel");
-        p.banner = banner;
+        p.setTable(p.activeBanner, WarGrid.sparse(banner));
         b.campaign.save(id);
     }
     /** The centre of the commander's living troops of one type. */

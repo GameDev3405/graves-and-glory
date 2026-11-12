@@ -42,7 +42,7 @@ final class CampaignDevControl {
                 if(action.equals("view")){p.changeGameMode(GameMode.SPECTATOR);p.teleport(b.world,j.get("x").getAsDouble(),j.get("y").getAsDouble(),j.get("z").getAsDouble(),j.get("yaw").getAsFloat(),j.get("pitch").getAsFloat());}
                 if(action.equals("battle")){
                     if(!b.running)b.startRound();b.campaign.introUntil=b.time;int n=0;
-                    for(var s:b.squads.values()){int sign=s.team==0?-1:1;int lane=n++/2;double sx=sign*20,z=(lane-1)*28;for(var u:b.units)if(u.squad==s){double x=sx+sign*(u.slot/5)*2,dz=z+(u.slot%5-2)*2;u.mob.refreshPositionAndAngles(x,Arena.ground((int)x,(int)dz)+1,dz,0,0);}s.assignments.clear();s.order="attack";s.target=new Vec3d(0,65,z);}
+                    for(var s:b.squads.values()){int sign=s.team==0?-1:1;int lane=n++/2;double sx=sign*20,z=(lane-1)*28;for(var u:b.units)if(u.squad==s){double x=sx+sign*WarGrid.row(u.slot)*2,dz=z+(WarGrid.col(u.slot)-4)*2;u.mob.refreshPositionAndAngles(x,Arena.ground((int)x,(int)dz)+1,dz,0,0);}s.assignments.clear();s.order="attack";s.target=new Vec3d(0,65,z);}
                     p.changeGameMode(GameMode.SPECTATOR);p.teleport(b.world,-26,78,22,-132,24);
                 }
             });
