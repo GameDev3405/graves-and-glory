@@ -101,4 +101,13 @@ unedited stances.py: pre-existing). A full revenant build differs from the basel
 ## Tests
 
 `python -m unittest discover -s tools/anim` OK. `verify.py fast`: python-tests timed out and two Java checks could not
-start (the paging file was full: the machine ran out of memory); every other step PASS. In-game reel: see the report.
+start (the paging file was full: the machine ran out of memory); every other step PASS. A second run: every step PASS
+except python-tests, which timed out again (8 jobs on a machine running about 100 Python processes).
+In-game reel (geo-knight, `GRAVES_GEO_CHECK_TROOP=revenant`): neither run is clean, and each failed different checks.
+- revenant-review1: 23 p1 lines and 3 `=false`, run on the clips before the last hit tweak. The failures were
+  attack-sync-stand (52/54 swings matched; 2 had a null clip), hit (medium-left/side 5/8 frames shot) and suite.
+- revenant-review2: 23 p1 lines and 3 `=false`, run on 302c4050. The failures were stance (ready lag 8), death (left weight
+  0.046 at death 3), attack-death and suite.
+- Every check passed in one of the two runs. Clip lengths, markers and `impact` are unchanged, and the failures are timing
+  and frame-count rows on a loaded machine. Needs one clean run on a quiet machine.
+Booth video: refused by the scorecard gate (attack_overhead edge_lead); contact sheets in `work/review/sheets/`.
