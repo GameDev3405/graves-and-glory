@@ -732,7 +732,9 @@ public final class Campaign {
         for(var s:b.squads.values())if(s.bot){
             // A dropped commander's army keeps its last orders for disconnectGraceSeconds; then its bot takes command (MatchRules).
             if(MatchRules.waiting(b.time,s.takeoverAt))continue;if(s.takeoverAt>0){s.takeoverAt=0;s.order="attack";}
-            var tier=tier(s);boolean decide=b.time%Math.max(1,tier.decisionTicks())==0;
+            // It also decides on the intro's last tick: the round starts it on Attack toward its own base, and until its first beat (up to decisionTicks later) its
+            // troops formed up round the base by a stale facing, then turned about for the real spot (Kort 2026-11-11, "walk 5 blocks ... then turn around").
+            var tier=tier(s);boolean decide=b.time%Math.max(1,tier.decisionTicks())==0||b.time==introUntil;
             if(!economy&&!decide)continue;
             if(economy){
                 long living=b.fielded(s).count();
@@ -890,12 +892,15 @@ public final class Campaign {
         return BattleMath.guardGroup(n.getOrDefault("infantry",0),n.getOrDefault("ranged",0),n.getOrDefault("cavalry",0),n.getOrDefault("support",0),n.getOrDefault("siege",0));
     }
     /** The army's facing (audit 4.1 "Facing"; Assignment.yaw lays its formation out round its spot and turns troops at their slots): along its line of march to the spot; at the spot,
-     *  toward the nearest enemy its team has seen near it, else as it came; on a retreat, back the way it came. It turns only by more than FACE_TURN degrees. */
+     *  toward the nearest enemy its team has seen near it, else as it came; on a retreat, back the way it came. It turns only by more than FACE_TURN degrees.
+     *  A retreat reads "the way it came" only while it is still more than FACE_ARRIVE from its base, as a march reads its line: the formation stands behind
+     *  its spot as it faces, so at the base the centre-to-base line pointed the other way at every decision and the army turned about and walked across
+     *  its spawn and back (Kort 2026-11-11, "walk 5 blocks to the right then turn around"). Arrived, it faces as an army at its spot does. */
     float facing(GravesAndGlory.Squad s,Vec3d center,Collection<GravesAndGlory.Battle.Sight> seen,boolean retreating){
         Vec3d t=s.target;if(t==null)return s.yaw;
         double dx=t.x-center.x,dz=t.z-center.z,far=Math.hypot(dx,dz);Float want=null;
-        if(retreating){if(far>2)want=BattleMath.yawToward(-dx,-dz);}
-        else if(far>FACE_ARRIVE)want=BattleMath.yawToward(dx,dz);
+        if(retreating&&far>FACE_ARRIVE)want=BattleMath.yawToward(-dx,-dz);
+        else if(!retreating&&far>FACE_ARRIVE)want=BattleMath.yawToward(dx,dz);
         else{double best=FACE_ENEMY;for(var sight:seen){double d=Math.hypot(sight.x()-t.x,sight.z()-t.z);if(d<best&&d>1){best=d;want=BattleMath.yawToward(sight.x()-t.x,sight.z()-t.z);}}}
         return want!=null&&BattleMath.yawGap(want,s.yaw)>FACE_TURN?want:s.yaw;
     }
