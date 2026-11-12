@@ -332,49 +332,116 @@ KEEP_ONLY = {"death_back"}
 KEEP = 0.04          # per deg of change from the previous sample (a claw miss costs 4 per px)
 AVOID_BONES = {1: ("head", "mask"), 2: ("head", "mask"), 3: ("abdomen", "sacs", "sacs_ii"), 4: ("abdomen", "sacs", "sacs_ii")}
 AVOID_SLACK = 1.4    # px a leg may sink into those cubes beyond its rest fit (focus_check warns at 1.7, fails at 1.9)
+# Fix round 1 (2026-11-12): the game adds a hit onto stance_ready at the same tick, and the ready stance breathes, so a hit
+# shows a little deeper than the solve saw (hit_medium_front abdomen into left_leg_4_low 2.38 at t11.5, hit_knockback
+# right_leg_3_guard into sacs_ii 1.94 at t15). The thrown hits keep a wider margin.
+# hit_medium_front: as the abdomen swings back (t8-15) it needs 0.5 px; across the whole clip so tight a margin made the
+# legs jump (pop 14.5 at t0.25), so it ramps in and out there (SLACK_WINDOW, quantized to 0.1 px).
+SLACK_WINDOW = {"hit_medium_front": (0.5, 8.0, 10.0, 13.0, 15.0)}
+HIT_SLACK = {"hit_medium_front": 0.9, "hit_medium_back": 0.9, "hit_medium_right": 0.9, "hit_knockback": 0.9}
+# Thrown in the medium hits a fore leg's guard sank into the next leg's spur (left_leg_1_guard into left_leg_2_spur:
+# hit_medium_back 1.96 at t1.5, hit_medium_right 1.99 at t3.5). In these clips each leg also keeps out of the leg before it
+# on its side, which is already solved.
+NEIGHBOUR = {"hit_medium_front", "hit_medium_back", "hit_medium_right"}   # (medium_left: 1.85 WARN without; with, a pop)
+# run keeps its committed solve (the steady solve drifted over the stride and broke the loop seam) except right_leg_4 from
+# t2 to t4, where it flicked 13.7 deg and its claw went 2.01 px into the abdomen (t3): keep and avoid there only, so the
+# wrap (t0 = t5) is untouched.
+# The stride is mirrored half a period later: left_leg_4 does the same at t0.5, so it gets a window too, starting after
+# the t0 sample (the wrap's own frame stays the committed solve).
+PART_STEADY = {"run": ({"right_leg_4": (2.0, 4.0), "left_leg_4": (0.25, 1.5)})}
+# Additive hits steer every leg home to the ready stance's own answer over their last ticks (the guess and `keep` pull
+# toward it), so the delta comes back to zero on the same answer and the end fade (fade_legs_end) has nothing to blend:
+# blending two answers for one claw took hit_medium_front's hind claw 2.3 px into the abdomen at t14.5. {tag: length}
+HOME = {}
+HOME_TICKS = {"hit_medium_front": 9.0}   # its hind leg ends 17 deg off the ready answer: a long, gentle way home
+READY_SOL = {}
 _ALLOW = {}
 
 
-def avoid_for(leg, M):
+def avoid_for(leg, M, slack=AVOID_SLACK):
     """The avoid terms for one leg in a pose whose bone matrices are M: the body cubes near it, and how deep each (leg
-    bone, body bone) pair may sit: its rest fit (what focus_check subtracts) plus AVOID_SLACK."""
+    bone, body bone) pair may sit: its rest fit (what focus_check subtracts) plus `slack`."""
     i = idx(leg)
     if i not in _ALLOW:
         _ALLOW[i] = S.cubes_of(set(AVOID_BONES[i]))
-    if leg not in _ALLOW:
+    key = leg if slack == AVOID_SLACK else (leg, slack)
+    if key not in _ALLOW:
         M0 = S.fk({})
-        allow = {"_": AVOID_SLACK}
+        allow = {"_": slack}
         for lb, lc, lh, lp in S.leg_cubes(leg):
             ml = M0[lb if lb == leg + "_low" else leg]
             for bb, bc, bh, bp in _ALLOW[i]:
                 k = (lb, bb)
-                allow[k] = max(allow.get(k, AVOID_SLACK), max(0.0, S.pair_depth(ml, lc, lh, lp, M0[bb], bc, bh, bp)) + AVOID_SLACK)
-        _ALLOW[leg] = allow
+                allow[k] = max(allow.get(k, slack), max(0.0, S.pair_depth(ml, lc, lh, lp, M0[bb], bc, bh, bp)) + slack)
+        _ALLOW[key] = allow
     body = [(bb, M[bb], bc, bh, bp, (M[bb] @ np.append(bc, 1.0))[:3], float(np.linalg.norm(bh))) for bb, bc, bh, bp in _ALLOW[i]]
-    return body, _ALLOW[leg]
+    return body, _ALLOW[key]
+
+
+def neighbour_avoid(leg, M, body, allow, slack=AVOID_SLACK):
+    """Adds the leg before `leg` on its side (its posed matrices in M) to an avoid set."""
+    i = idx(leg)
+    if i == 1:
+        return body, allow
+    nb = leg[:-1] + str(i - 1)
+    key = ("nb", leg, slack)
+    if key not in _ALLOW:
+        M0 = S.fk({})
+        al = {}
+        for lb, lc, lh, lp in S.leg_cubes(leg):
+            ml = M0[lb if lb == leg + "_low" else leg]
+            for bb, bc, bh, bp in S.leg_cubes(nb):
+                mb = M0[bb if bb == nb + "_low" else nb]
+                al[(lb, bb)] = max(0.0, S.pair_depth(ml, lc, lh, lp, mb, bc, bh, bp)) + slack
+        _ALLOW[key] = al
+    extra = []
+    for bb, bc, bh, bp in S.leg_cubes(nb):
+        mb = M[bb if bb == nb + "_low" else nb]
+        extra.append((bb, mb, bc, bh, bp, (mb @ np.append(bc, 1.0))[:3], float(np.linalg.norm(bh))))
+    return body + extra, {**allow, **_ALLOW[key]}
 
 
 class Solver:
     def __init__(s):
         s.guess = {}
+        s.t = None       # the sample's time, set by pose_of (PART_STEADY windows)
 
     def legs(s, pose, feet, tag):
         """Leg rotations putting each claw tip in `feet` {leg: world px}; legs not in feet keep what the pose gives them."""
         steady = tag in STEADY
-        held = steady or tag in KEEP_ONLY
-        M = S.fk(pose) if steady else None
-        base = M["body"] if steady else S.fk(pose, ["body"])["body"]
+        part = PART_STEADY.get(tag, {})
+        part_on = {l for l, (lo, hi) in part.items() if s.t is not None and lo <= s.t <= hi}
+        M = S.fk(pose) if (steady or part_on) else None
+        base = M["body"] if M is not None else S.fk(pose, ["body"])["body"]
+        slack = HIT_SLACK.get(tag, AVOID_SLACK)
+        if tag in SLACK_WINDOW and s.t is not None:
+            lo_s, a0, a1, b0, b1 = SLACK_WINDOW[tag]
+            e = min(ss((s.t - a0) / (a1 - a0)), 1 - ss((s.t - b0) / (b1 - b0)))
+            slack = round((slack - (slack - lo_s) * e) * 10) / 10
         worst = 0.0
         for leg, tgt in feet.items():
             key = (tag, leg)
-            kw = dict(keep=KEEP, avoid=avoid_for(leg, M)) if steady else (dict(keep=KEEP) if held else {})
+            lsteady = steady or leg in part_on
+            held = lsteady or tag in KEEP_ONLY
+            kw = dict(keep=KEEP, avoid=avoid_for(leg, M, slack)) if lsteady else (dict(keep=KEEP) if held else {})
+            if tag in NEIGHBOUR:
+                kw["avoid"] = neighbour_avoid(leg, M, *kw["avoid"], slack=slack)
             if held and key not in s.guess:
                 kw["keep"] = 0.0
-            sol, err, _ = S.solve_leg(leg, np.asarray(tgt, float), base, s.guess.get(key), **kw)
+            g = s.guess.get(key)
+            if tag in HOME and g is not None and leg in READY_SOL and s.t is not None:
+                hw = HOME_TICKS.get(tag, 4.0)
+                w = ss((s.t - (HOME[tag] - hw)) / (hw - 1.0))
+                if w > 0:
+                    g = list((1 - w) * np.asarray(g) + w * np.asarray(READY_SOL[leg]))
+                    kw["keep"] = KEEP * (1 + 9 * w)
+            sol, err, ML = S.solve_leg(leg, np.asarray(tgt, float), base, g, **kw)
             if err > 0.08 and not (held and key in s.guess):   # try from the standing solution
-                sol2, err2, _ = S.solve_leg(leg, np.asarray(tgt, float), base, STAND_GUESS.get(leg), **dict(kw, keep=0.0))
+                sol2, err2, ML2 = S.solve_leg(leg, np.asarray(tgt, float), base, STAND_GUESS.get(leg), **dict(kw, keep=0.0))
                 if err2 < err:
-                    sol, err = sol2, err2
+                    sol, err, ML = sol2, err2, ML2
+            if M is not None:
+                M.update(ML)      # the next leg along sees this one where it now is (NEIGHBOUR)
             s.guess[key] = sol
             worst = max(worst, err)
             fx, fy, fz, tz = sol
@@ -466,6 +533,7 @@ def pose_of(fn, t, tag, solve=True):
     floor_clear(pose)
     if tag in PEDICEL:
         pedicel_clear(pose)
+    SOLVER.t = t
     err = SOLVER.legs(pose, feet, tag) if solve else 0.0
     return full(pose), err
 
@@ -927,9 +995,11 @@ def pulled(t):
     body["rotation"][2] += 2.2 * damp(t, 3.0, 2.4, 2.5) * fade   # a scrabbling rock
     add_rot(up, "thorax", [5 * a, 0, 0])
     add_rot(up, "head", [14 * lag - 6 * a * (1 - ss(t / 3.0)) - 10 * a * ss((t - 3.0) / 2.0), 0, 0])
-    # the abdomen trails: as the front is hauled down and forward it stays back and low (its world pitch near level, not
-    # flung up behind: whipped up 22 deg it read as the spider rearing, the lane's last note), then bobs up as it settles
-    add_rot(up, "abdomen", [-8 * lag + 6 * a, 0, 0])
+    # the abdomen trails, dragged: the front is hauled down 14 deg (body 9 + thorax 5) at once, the abdomen's mass follows
+    # late (a_lag), so at first it hangs back near level and low behind (-12 deg off its parent at t1), then catches up,
+    # overshoots into a small bob (+4 around t4-5) and settles. Fix round 1: it had followed the body within 3 deg.
+    a_lag = K([(0, 0), (1.0, 0.15), (2.5, 0.75), (4.0, 1.05), (5.5, 0.75), (9.0, 0.2), (L, 0)])(t)
+    add_rot(up, "abdomen", [14 * (a_lag - a), 0, 0])
     add_rot(up, "sacs", [-12 * lag, 0, 0])
     add_rot(up, "palps", [22 * a, 0, 0])
     for f in FANGS:
@@ -1241,8 +1311,24 @@ def delta_of(samples, ref):
     return out
 
 
+LEG_BONES = set(IK.LEGS) | {l + "_low" for l in IK.LEGS}
+
+
+def fade_legs_end(dl, L, ticks=2.0):
+    """Fix round 1: with `keep` the steady solve can finish a hit on another of the leg's equal answers for the same claw
+    (hit_medium_front left_leg_4 17 deg off the ready solve at t16), so the delta was not zero at the end and the legs
+    would snap back when the clip stops. The leg deltas fade to zero over the last `ticks`, the claw staying planted."""
+    for i, dd in enumerate(dl):
+        w = ss((i / SUB - (L - ticks)) / ticks)
+        if w <= 0:
+            continue
+        for b in LEG_BONES & set(dd):
+            dd[b]["rotation"] = [v * (1 - w) for v in dd[b]["rotation"]]
+    return dl
+
+
 def pulled_clip(ready0):
-    dl = delta_of(swing_trophy(sample_clip("hit_pulled", PULL_T, pulled, loop=False)), ready0)
+    dl = fade_legs_end(delta_of(swing_trophy(sample_clip("hit_pulled", PULL_T, pulled, loop=False)), ready0), PULL_T)
     CLIPS["hit_pulled"] = bake(dl, PULL_T, False, UPPER_T)
     CLIPS["hit_pulled_legs"] = bake(dl, PULL_T, False, LOWER)
 
@@ -1269,6 +1355,10 @@ def build_all(only=None):
             emit(nm, ATK_T, swing_trophy(sample_clip(nm, ATK_T, fn, loop=False)), False, upper_name=nm,
                  legs_name=nm + "_legs", timeline=tl)
     ready0, _ = pose_of(ready_pose, 0, "ready0")
+    READY_SOL.update({l: list(ready0[l]["rotation"]) + [ready0[l + "_low"]["rotation"][2]] for l in IK.LEGS})
+    HOME.update({f"hit_{k}_{d}": hit(k, d)[0] for k in ("light", "medium") for d in ("front", "right", "left", "back")
+                 if f"hit_{k}_{d}" in STEADY})
+    HOME.update(hit_knockback=20, hit_pulled=PULL_T)
     for kind in ("light", "medium"):
         for d in ("front", "back", "right", "left"):
             nm = f"hit_{kind}_{d}"
@@ -1279,10 +1369,12 @@ def build_all(only=None):
             if nm in STEADY:
                 s = swing_trophy(s)
             dl = delta_of(s, ready0)
+            if nm in STEADY:
+                dl = fade_legs_end(dl, L)
             CLIPS[nm] = bake(dl, L, False, UPPER_T if nm in STEADY else UPPER)
             CLIPS[nm + "_legs"] = bake(dl, L, False, LOWER)
     if want("hit_knockback"):
-        dl = delta_of(swing_trophy(sample_clip("hit_knockback", 20, knockback, loop=False)), ready0)
+        dl = fade_legs_end(delta_of(swing_trophy(sample_clip("hit_knockback", 20, knockback, loop=False)), ready0), 20)
         CLIPS["hit_knockback"] = bake(dl, 20, False, UPPER_T)
         CLIPS["hit_knockback_legs"] = bake(dl, 20, False, LOWER)
     if want("hit_pulled"):

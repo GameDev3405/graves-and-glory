@@ -228,3 +228,51 @@ What applies to the spider: floor, armour_clip, dead_hold, loop_life, secondary_
   - knight-suite
   - attack-frames 34/34/16, sync 14/14 and 4/4, hit-pulled and death all true.
   - Not a pass. Rerun on a quieter machine.
+
+### Fix round 1 (2026-11-12, from the Sonnet review)
+
+With the tool lane merged (anim/skill-fable), the focus check plays the hits and stun_out added onto stance_ready, as the
+game does. The `floor` rows on additive clips are gone, and so is the proposed `floor` exemption above, which is
+withdrawn. No exemptions were added.
+
+**Before this round (current tool):** 6 clips, 7 FAIL rows:
+- hit_medium_front: armour 2.38 at t11.5
+- hit_medium_back: 1.96 at t1.5
+- hit_medium_right: 1.99 at t3.5
+- hit_knockback: 1.94 at t15
+- run_upper: armour 2.01 and jitter 13.74 at t3
+- stun_out_upper: floor 4.26
+
+**After:** 1 clip, 1 FAIL row. stun_out_upper `floor` 4.26 is the tool's pairing with stun_legs (a full pose stacked on
+ready), not a clip fault, and is left alone. Scorecard: 27 clips, 0 failing.
+
+**Changes:**
+- **Hit end deltas:**
+  - **The fault:** the previous round's `keep` solve could finish a hit on another of a leg's answers for the same
+    claw. hit_medium_front left_leg_4 ended 17 deg off ready, and knockback about 9 deg, so the legs would snap back
+    when the clip stopped.
+  - **The fix:** every steady hit, knockback and pulled now steers each leg's guess and `keep` home to the ready
+    stance's own answer over its last 4 ticks (`HOME`). The leg deltas then fade to zero over the last 2 ticks
+    (`fade_legs_end`).
+  - **Result:** the worst end leg delta is now 0.
+- **Thrown hits (medium front/back/right, knockback):** their margin over the rest fit is 0.9 px (`HIT_SLACK`). The
+  game adds the hit onto a breathing stance, so the claw shows deeper than the solve saw.
+  - hit_medium_front tightens to 0.5 px from t8 to t15, ramped in and out, quantized (`SLACK_WINDOW`), with a 9-tick
+    way home. 0.4 px over the whole clip made the legs pop.
+  - In the medium front/back/right hits each leg also keeps out of the leg before it on its side (`neighbour_avoid`;
+    the round-0 crash was a dict merge on tuple keys).
+  - hit_medium_left is left out of both (1.85 WARN without them; with them, a pop of 15.6).
+- **run:** only right_leg_4 (t2 to t4) and its mirror left_leg_4 (t0.25 to t1.5) solve with keep and avoid
+  (`PART_STEADY`). The wrap frame keeps the committed solve.
+  - run_upper is now WARN only (1.85 right_leg_2 into right_leg_3_guard at t1.5, jitter 4.13).
+  - loop_vel passes.
+  - run_upper's keys are byte-identical; only run_legs changed.
+- **hit_pulled:** the abdomen trails, dragged. The front is hauled down 14 deg at once and the abdomen's mass follows
+  late: -11.9 deg off its parent at t1, -5.8 at t2, overshoot +4.2 at t4, 0 by t10. It used to follow within 3 deg.
+- **Changed entries:** run_legs, hit_light_front/right/left_legs, hit_medium_front/back/right/left_legs,
+  hit_knockback_legs, hit_pulled and hit_pulled_legs. Every other entry is byte-identical to 3ca1e069. Lengths, loops
+  and timelines are unchanged.
+- **Not done (nice to have):**
+  - ensnare left_leg_2 pop 13.7 at t8.0 (WARN)
+  - the walk claw lift (2 to 2.5 px)
+  - the ready stance's right_leg_3_guard into sacs_ii 1.71 (WARN; it carries into several hits)
