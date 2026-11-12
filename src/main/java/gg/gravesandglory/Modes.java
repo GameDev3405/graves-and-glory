@@ -43,8 +43,10 @@ public final class Modes {
         if(factory==null)throw new IllegalArgumentException("No battle mode "+id);
         return factory.apply(row(id));
     }
-    /** A mode's rule line as the lobby shows it before any round: its sheet template with the mode's own {n}. */
-    public static String ruleLine(String id){Spec.ModesRow row=row(id);return ModeMath.ruleLine(row.ruleLine(),row.winTarget());}
+    /** Rule lines by mode id: the War Table asks every frame, and Convoy's {n} reads its road from the sheet. */
+    private static final Map<String,String> RULE_LINES=new java.util.concurrent.ConcurrentHashMap<>();
+    /** A mode's rule line as the lobby shows it before any round: the mode's own rule(), so it matches the round (C05-F3). */
+    public static String ruleLine(String id){return RULE_LINES.computeIfAbsent(id,k->create(k).rule());}
     /** Whether a mode may be played on a map: its maps cell lists the map indexes it hosts. */
     public static boolean hosts(String id,int map){
         if(EngineMaps.on(map)&&!id.equals(DOMINATION))return false; // an engine map slot plays Domination only
