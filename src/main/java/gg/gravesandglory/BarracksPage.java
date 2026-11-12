@@ -106,12 +106,22 @@ final class BarracksPage {
     void roll(DrawContext g, int x, int y, int top) {
         var font = font();
         UiTex.draw(g, "recruit/muster-roll", x, y);
+        // the roll's head on the table above it, as the ladder's lines sit on the wood: what the roll is and how many types it lists
+        g.drawText(font, heading("Troops"), x + 8, y - 18, DarkUi.IVORY, true);
+        String types = listed.size() + (listed.size() == 1 ? " type in your banner" : " types in your banner");
+        g.drawText(font, body(types), x + WarTableRecruit.ROLL_W - 8 - bodyW(types), y - 17, DarkUi.IVORY, true);
         int sel = listed.indexOf(screen.selected) - first;
         if (sel >= 0 && sel < shown) UiTex.draw(g, "recruit/row-mark", x, top + ROW_H * sel);
         for (int i = 1; i < shown + (scrolling ? 1 : 0); i++) if (i != sel) UiTex.draw(g, "recruit/rule-208", x + 16, top + ROW_H * i);
         for (int i = 0; i < shown; i++) row(g, listed.get(first + i), x, top + ROW_H * i, i != sel && WarTableRecruit.hot(rows.get(i)));
         if (listed.isEmpty()) {
             WarTableHome.centred(g, body("Your banner has no troops."), x + WarTableRecruit.ROLL_W / 2, top + 20, DarkUi.SEPIA);
+        } else if (!scrolling) { // the roll's spare room says where the list comes from and what a pick does
+            int fy = top + ROW_H * shown + 14, cx = x + WarTableRecruit.ROLL_W / 2;
+            g.fill(x + 40, fy - 6, x + WarTableRecruit.ROLL_W - 40, fy - 5, DarkUi.SEPIA_LINE);
+            WarTableHome.centred(g, body("Pick a troop to train or disband."), cx, fy + 2, DarkUi.SEPIA);
+            WarTableHome.centred(g, body("Your banner sets this list:"), cx, fy + 2 + LINE + 4, DarkUi.SEPIA);
+            WarTableHome.centred(g, body("change it in the war council."), cx, fy + 2 + 2 * LINE + 4, DarkUi.SEPIA);
         }
         if (scrolling) {
             String span = "Troops " + (first + 1) + "-" + (first + shown) + " of " + listed.size();
@@ -213,11 +223,11 @@ final class BarracksPage {
             g.drawText(font, body(s), tx, ly, k == lines.size() - 1 ? DarkUi.SEPIA : DarkUi.INK_TEXT, false); q.add(s);
         }
         queueDrawn = q;
-        String purse = String.valueOf(gold);
-        int pw = 34 + font.getWidth(purse), px = axis - (pw + 1) / 2, py = oy + PURSE_Y;
-        int[] pouch = UiTex.draw(g, "recruit/pouch", px, py);
-        g.drawText(font, purse, px + 34, py + 10, DarkUi.IVORY, true);
-        purseBox = new int[]{px, py, pw, pouch[3]};
+        String purse = gold + " gold"; // as the Armoury writes it
+        int pw = 10 + font.getWidth(heading(purse)), px = axis - (pw + 1) / 2, py = oy + PURSE_Y + 8;
+        UiTex.draw(g, "recruit/coin-m", px, py + 2);
+        g.drawText(font, heading(purse), px + 10, py, DarkUi.IVORY, true);
+        purseBox = new int[]{px, py, pw, 12};
         String army = "Army " + RecruitmentScreen.weight(false) + " of " + GravesAndGlory.R.squadSize() + " slots" + (queued > 0 ? ", " + (RecruitmentScreen.weight(true) - RecruitmentScreen.weight(false)) + " queued" : "");
         int aw = bodyW(army);
         g.drawText(font, body(army), axis - aw / 2, oy + ARMY_Y, DarkUi.IVORY, true);
@@ -225,32 +235,52 @@ final class BarracksPage {
 
     /** A plate in its state: brass (the main action open), iron (a secondary action open) or dull (shut); the word, an underline when hot, a right-hand note. */
     void plate(DrawContext g, net.minecraft.client.gui.widget.ButtonWidget b, String art, String label, String key, String right, int rightInk, int x, int y) {
+        plate(g, b, art, label, key, right, rightInk, x, y, -1, 16);
+    }
+    /** As above, with the word's ink given (labelInk, or -1 for the plate's own) and where the room for it starts (left, from the plate's edge).
+     *  The word is centred in the room between the key chip or icon and the right-hand note, so the two never meet on a narrow page. */
+    void plate(DrawContext g, net.minecraft.client.gui.widget.ButtonWidget b, String art, String label, String key, String right, int rightInk, int x, int y, int labelInk, int left) {
         var font = font(); boolean live = b.active;
         UiTex.draw(g, live ? art : "table/btn-dull-240x40", x, y);
-        int ink = !live ? DarkUi.MUTED : art.contains("brass") ? DarkUi.PLATE_INK : DarkUi.IVORY;
+        int ink = !live ? DarkUi.MUTED : labelInk != -1 ? labelInk : art.contains("brass") ? DarkUi.PLATE_INK : DarkUi.IVORY;
         if (key != null && live) {
             UiTex.draw(g, "table/key-brass-37", x + 14, y + 13);
             g.drawText(font, key, x + 18, y + 16, DarkUi.KEY_INK, false);
         }
-        int lx = WarTableHome.centred(g, heading(label), x + 120, y + 14, ink);
+        int from = key != null && live ? 56 : left, to = right != null && !right.isEmpty() ? 224 - font.getWidth(right) - 8 : 224;
+        int lx = WarTableHome.centred(g, heading(label), x + (from + to) / 2, y + 14, ink);
         if (b instanceof UiButton u && WarTableRecruit.hot(u)) g.fill(lx, y + 26, lx + font.getWidth(heading(label)), y + 27, ink);
-        if (right != null && !right.isEmpty()) g.drawText(font, right, x + 224 - font.getWidth(right), y + 16, live ? rightInk : DarkUi.MUTED, false);
+        if (right != null && !right.isEmpty()) g.drawText(font, right, x + 224 - font.getWidth(right), y + 16, rightInk, false);
+    }
+
+    /** Why Recruit is shut, in the plate's few words (the letter gives the whole reason). */
+    String shortReason(Spec.TroopsRow t) {
+        int i = screen.selected, listed = RecruitmentScreen.listed(t);
+        if (!nearBarracks) return "Not here";
+        if (listed == 0) return "Not in banner";
+        if (roster[i] + pending[i] >= listed) return "All fielded";
+        if (RecruitmentScreen.weight(true) + t.slotWeight() > GravesAndGlory.R.squadSize()) return "Army full";
+        if (gold < RecruitmentScreen.price(t)) return "Need " + RecruitmentScreen.price(t);
+        return null;
     }
 
     void paintRecruit(DrawContext g, int x, int y, int w, int h, boolean hotIgnored) {
         var t = screen.selected < 0 ? null : Spec.TROOPS[screen.selected];
-        boolean short_ = t != null && nearBarracks && gold < RecruitmentScreen.price(t);
         String price = t == null ? "" : String.valueOf(RecruitmentScreen.price(t));
-        plate(g, screen.recruit, "table/btn-brass-240x40", "Recruit", "Enter", short_ ? null : price, DarkUi.PLATE_INK, x, y);
-        if (t != null && screen.recruit.active) UiTex.draw(g, "recruit/coin-m", x + 224 - font().getWidth(price) - 10, y + 16); // 3 px before the price, as Enlist has it
-        if (short_) { String s = "Need " + price; g.drawText(font(), s, x + 224 - font().getWidth(s), y + 16, DarkUi.ALARM_TEXT, false); }
+        boolean live = screen.recruit.active;
+        String why = t == null || live ? null : shortReason(t);
+        plate(g, screen.recruit, "table/btn-brass-240x40", "Recruit", "Enter", live ? price : why, live ? DarkUi.PLATE_INK : DarkUi.ALARM_TEXT, x, y);
+        if (live) UiTex.draw(g, "recruit/coin-m", x + 224 - font().getWidth(price) - 10, y + 16); // 3 px before the price, as Enlist has it
     }
 
     void paintDisband(DrawContext g, int x, int y, int w, int h, boolean hotIgnored) {
-        plate(g, screen.disband, "table/btn-iron-240x40", "Disband one", null, "No refund", DarkUi.MUTED, x, y);
+        boolean live = screen.disband.active;
+        // the destructive plate: its word in red and the broken seal at its left, so it never reads as Cancel training below it
+        plate(g, screen.disband, "table/btn-iron-240x40", "Disband one", null, live ? "No refund" : null, DarkUi.MUTED, x, y, DarkUi.ALARM_TEXT, live ? 40 : 16);
+        if (live) { var c = g.getMatrices(); c.push(); c.translate(x + 12, y + 7, 0); c.scale(0.75f, 0.75f, 1); UiTex.draw(g, "recruit/wax-broken", 0, 0); c.pop(); }
     }
 
     void paintCancel(DrawContext g, int x, int y, int w, int h, boolean hotIgnored) {
-        plate(g, screen.cancel, "table/btn-iron-240x40", "Cancel training", null, "Refund", DarkUi.MUTED, x, y);
+        plate(g, screen.cancel, "table/btn-iron-240x40", "Cancel training", null, screen.cancel.active ? "Full refund" : null, DarkUi.MUTED, x, y);
     }
 }
