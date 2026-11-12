@@ -103,6 +103,14 @@ FIXES = {
                   ("rot", "death_forward", "left_arm", (-25.0, 0.0, 0.0), (14.0, 17.0, 20.0, 20.0))]
     + _common(2.9, (1.2, 0.6), 2.0, head_kb=(0.0, 0.0, 0.0),
                          out_jolt=[("cloak", (5.0, 0.0, 0.0)), ("pauldron", (5.0, 0.0, 4.0)), ("tusk_necklace", (5.0, 0.0, 0.0))]),
+    # L2/L3: the knight's hit legs dip the hips and the tall stave (4.3 px longer each way than the archer's) puts its lower
+    # tip under the ground: the bow arm lifts through the dip. Run: the padded jack rides the thigh with its skirt.
+    "longbow": _run_skirt("left", 9.0) + _run_skirt("right", 9.0, (4.0, 5.0, 6.0, 7.0))
+    + [("rot", "run_legs", "left_jack", (9.0, 0.0, 0.0), (0.5, 1.5, 2.5, 3.5)),
+       ("rot", "run_legs", "right_jack", (9.0, 0.0, 0.0), (4.0, 5.0, 6.0, 7.0)),
+       ("rot", "hit_medium_right", "left_arm", (-8.0, 0.0, 0.0), (0.0, 1.0, 4.0, 9.0))]
+    + _common(2.0, (1.3, 0.6), 1.7, kb_bow_arm=(-12.0, 0.0, -4.0), out_tune=_SKIRT_OUT, stun_tune=_SKIRT_OUT,
+              jolt=[f"{s}_skirt_t{n}" for s in ("left", "right") for n in (1, 2, 3)] + ["pouch"]),
 }
 
 

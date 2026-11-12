@@ -60,7 +60,13 @@ ARROW_Z = 0.3
 # r11: the nocking point sits NOCK_Y px up the string from the grip's middle, so the drawn arrow rides on the bow fist, not
 # through it, and shows above the bow arm at the 3/4 draw (the string meets the arrow there)
 NOCK_Y = 2.6   # not 2.5: the shaft's faces would lie flat on the risers' at y 2 and 3
-NO_ARROW = {"longbow_t3"}   # its draw frames hold 126 quads already (bands, clasp, feather, caps); the arrow's 8 would pass the 128 cap
+NO_ARROW = set()   # was {"longbow_t3"}: its draw frames held 126 quads (bands, clasp, feather, caps) and the arrow's 8 passed the 128 cap
+# Fix round 1 (2026-11-12): longbow III draws its arrow too. To fit the cap it drops six faces nobody sees: where the risers
+# meet the open-ended grip (the column grip+risers is closed without them), the clasp's face flat on the grip, the two
+# strings' tip ends buried in the nocks, and the shallower lower string's end inside the upper one at the nocking point.
+# 126 - 6 + 8 = 128 quads in each draw frame; the rest frame drops the three solid faces (117).
+HIDDEN = {"longbow_t3": {"riser_hi": ("down",), "riser_lo": ("up",), "clasp": ("west",),
+                         "string_hi": ("up",), "string_lo": ("up", "down")}}
 ZSTEP = 0.25   # every other limb segment sits a quarter px across z so the flats of neighbours are never coplanar
 FRAMES = ("rest", "pull_0", "pull_1", "pull_2")
 
@@ -236,6 +242,7 @@ class Spec:
                 cubes.append(Thread("string_lo", d, (pl[0], -pu[1]), STRING_W, STRING_D / 2 - 0.05))   # a shade shallower than string_hi where they cross
                 nocks.append([r4(d[0]), -NOCK_Y])
                 if self.wid not in NO_ARROW: cubes += arrow(d[0], d[1])
+            for c in cubes: c.skip = set(c.skip) | set(HIDDEN.get(self.wid, {}).get(c.name, ()))
             out[name] = [self._named(c, name) for c in cubes]
         return out, nocks
 
@@ -250,7 +257,7 @@ class Spec:
 
 def arrow(x, y=0.0):
     """The nocked arrow from the string's centre x forward along +x (r10): a light wood shaft and pale fletching, each
-    with its two end caps skipped (8 quads, inside every bow's 128-quad frame cap but longbow III's; see NO_ARROW). It
+    with its two end caps skipped (8 quads, inside every bow's 128-quad frame cap; longbow III makes room by HIDDEN). It
     sits ARROW_Z off the stave's mid-plane, as an arrow rides beside the grip, so no face lies flat on a grip, clasp or
     riser face and z-fights."""
     z = ARROW_Z
@@ -361,7 +368,7 @@ def project(spec, frames):
             if isinstance(c, Thread):
                 dims = {"north": (c.w, c.n), "south": (c.w, c.n), "east": (2 * c.hz, c.n), "west": (2 * c.hz, c.n),
                         "up": (c.w, 2 * c.hz), "down": (c.w, 2 * c.hz)}
-                e["faces"] = {f: {"uv": [ux, uy, r4(ux + dims[f][0]), r4(uy + dims[f][1])], "texture": 0} for f in FACES}
+                e["faces"] = {f: {"uv": [ux, uy, r4(ux + dims[f][0]), r4(uy + dims[f][1])], "texture": 0} for f in FACES if f not in c.skip}
             else:
                 e["faces"] = {}
                 for f in FACES:

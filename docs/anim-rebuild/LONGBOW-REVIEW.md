@@ -76,3 +76,27 @@ Bow-family batch review on `anim/review-bow`. Timing unchanged: `ATTACK_TICKS` 3
 - **Remaining FAIL rows.** Common modules: `hit_pulled`, `stun_upper`, `stun_out_upper`, `hit_knockback` (floor, still gear, face into quiver), `charge_run_upper`. Gait: `run_upper` skirt into jack 1.98 at t2. Builder: `hit_medium_right` bow under the ground 1.62 at t3.75 (pre-existing, second fix round not spent on it).
 - **Proposed exemptions.** longbow, `run_upper`/`charge_run_upper`, `armour_clip`, 1.98, skirt into jack (cloth layers). longbow, `hit_knockback`, `armour_clip`, 1.95, face into tall_quiver at t3 (the knockback tumble throws the head back into the quiver top; fix belongs in `reactions.py`).
 - **Tests.** Scorecard exit 0 (35 clips, 0 fail). Unit tests OK (see ARCHER-REVIEW batch section). Booth config valid.
+
+## Batch review fix round 1 (2026-11-12)
+
+Review `work/reviewer/BOW-sonnet-review.md` (FIX, 6.5/10). Clip fixes in the bow family's late layer `art/anim/archer/bow_fix_layer.py`
+(after `reactions.py` / `charge.py`, before `export.py`; fingerprinted in `out/longbow.fixlayer.json`). Shared modules untouched; timing unchanged.
+
+- **Focus check** FAIL rows 11 -> 0 (clips with a FAIL 7 -> 0). Scorecard exit 0.
+- **L1 no arrow at tier 3 (model).** `art/hand/weapons/build_bows.py` left longbow III out of the nocked arrow because its draw frames
+  held 126 quads and the arrow's 8 passed the 128-quad frame cap (`TroopModelLoader.MAX_WEAPON_QUADS`). It now draws the arrow (shaft and
+  fletching, as tiers I and II) and drops six faces nobody sees to fit: the riser/grip contact faces inside the closed grip column, the
+  clasp's face flat on the grip, both strings' tip ends inside the nocks, and the shallower lower string's end inside the upper one.
+  128 quads per draw frame. Rebuilt with `build_bows.py install` (only `longbow_t3` weapon files change) and `troop_rig.py longbow`
+  (only the t3 weapon area of the sheets, x 64-96 of the bottom rows, changes; skin and cloth pixel-identical). Rendered: the arrow rides
+  from the string hand at the jaw over the bow arm at nock, full draw and the hold, and is gone after the loose.
+- **L2 `hit_medium_right`** bow under the ground 1.62 -> 0.94 WARN: bow arm lifts 8 deg (ticks 1-4, out by 9).
+- **L3/L4 `hit_knockback`** bow under the ground 2.93 -> 0.91 WARN and face into tall_quiver 1.95 -> pass: bow arm lifts 12 deg and opens 4
+  (ticks 1-7, out by 10), head pitches 8 deg less forward at the jolt, hips lift 1.7 px (new row left_arm into torso 1.74 WARN).
+- **L5 floor**: hips lift 2.0 px on `hit_pulled_legs` (1.82 -> pass), 1.3 + 0.6 px on `stun_legs` (1.71 -> 0.78 WARN).
+- **L6 still gear**: `soft_motion` on pulled, knockback, stun (loop closed) and shake-off, plus a jolt on skirts and pouch at the stun snap
+  (still tall_quiver on stun_out 3.85 WARN).
+- **Run** skirt into jack 1.98 -> 1.72 WARN (`run_upper`, `charge_run_upper`): the skirts and padded jack trail the thigh 9 deg at the stride.
+- Changed clips: `run_legs`, `hit_pulled`(+legs), `hit_knockback`(+legs), `hit_medium_right`, `stun_upper`, `stun_legs`,
+  `stun_out_upper`; every other clip byte-identical to ae138367.
+- Open minors: wall equals hold (not changed); aim_up leans back far.
