@@ -12,6 +12,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * flicker. Each shot reports the caster's client glow at capture. Capture only; the profile is put back afterwards.
  */
 final class EbbShotChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
+    /** GRAVES_EBB_DAY=1 captures at noon (Kort judges the daylight read), with a -day suffix on every shot. */
+    static final boolean DAY = System.getenv("GRAVES_EBB_DAY") != null; static final String SUFFIX = DAY ? "-day" : "";
     static final String[] IDS = {"oath-4", "oath-5", "oath-6"};
     record Pending(String name, int entity, boolean wantDim) {}
     final ConcurrentLinkedQueue<Pending> queue = new ConcurrentLinkedQueue<>();
@@ -36,8 +38,8 @@ final class EbbShotChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatc
             var e = c.world.getEntityById(s.entity);
             float glow = e == null ? -1 : CampaignClient.ebbGlow(e);
             boolean ok = e != null && (s.wantDim ? glow < 1f : glow == 1f);
-            Phase4Checks.report("p4-ebb-" + s.name, ok, "caster " + s.entity + " client glow " + glow + (s.wantDim ? " (want dimmed)" : " (want full)"));
-            Phase4Checks.shot(c, "ebb-" + s.name);
+            Phase4Checks.report("p4-ebb-" + s.name + SUFFIX, ok, "caster " + s.entity + " client glow " + glow + (s.wantDim ? " (want dimmed)" : " (want full)"));
+            Phase4Checks.shot(c, "ebb-" + s.name + SUFFIX);
             delay = 2;
         }
         if (done && queue.isEmpty()) { c.options.hudHidden = false; Phase4Checks.finish(c, "ebb-shots"); }
@@ -83,7 +85,7 @@ final class EbbShotChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatc
                 if (b.time - at > 15000) { next(b, id + " did not start"); return; }
                 if (!b.running || !b.ready || b.time < c.introUntil) return;
                 p.getAbilities().invulnerable = true; p.sendAbilitiesUpdate();
-                b.world.setTimeOfDay(18000); // night, so the glow reads (the ebb keys on world time, not time of day)
+                b.world.setTimeOfDay(DAY ? 6000 : 18000); // noon or midnight (the ebb keys on world time, not time of day)
                 for (var u : b.units) if (u.spec.magic() && u.mob.isAlive()) { caster = u; break; }
                 if (caster == null) { if (b.time - at > 15400) next(b, "no magic caster on the field"); return; }
                 window = -1;
