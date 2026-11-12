@@ -38,6 +38,10 @@ import static gg.gravesandglory.Phase2Checks.server;
  * carries the faces; a density 1 troop never does), p2-faces-cards (a card draws the card face, one face bone) and p2-faces-mixed (natural faces equal
  * TroopFaces.variant of the UUID, at least two different ones in a row of eight). "[p2-faces-fact]" lines give each shot's drawn variants, face bones and skin.
  * GRAVES_PHASE2_FACES=knight,mage limits the troops (default: every troop with faces).
+ * <p>A troop GeoTroopRenderer draws (GeckoLib, the knight first) never reaches TroopRenderer's draw record, so its draws are read from GeoDraws:
+ * the face GeoTroopRenderer chose, the face_v bones its baked model showed, the armour tier and the tier sheet it bound
+ * (&lt;troop&gt;_geo/t&lt;tier&gt;_&lt;side&gt;.png). The Geo path has no _far twin (a legacy density mechanism): p2-faces-skin's twin rule reads the
+ * legacy troops only, and a Geo shot's sheet is checked for its tier in p2-faces-shots and p2-faces-cards instead.
  */
 final class FacesChecks {
     private FacesChecks() {}
@@ -58,6 +62,26 @@ final class FacesChecks {
         record Shot(String name, String group, int stage, int dist, int card) {}
         /** What one world shot drew: the variants each troop of the row wore, the face bones each showed, the skin the first bound and whether every troop bound the same. */
         record Fact(String shot, String troop, int stage, int dist, List<Integer> variants, List<String> bones, String skin, boolean far) {}
+        /**
+         * What a troop's draws showed, from whichever renderer drew it: the draws so far, the last one's face, armour tier, face bones and skin
+         * (the file name; a Geo troop's &lt;troop&gt;_geo/t&lt;tier&gt;_&lt;side&gt;.png), and whether GeoTroopRenderer drew it. Null for a troop never drawn.
+         */
+        record Seen(int count, int variant, int stage, List<String> faces, String skin, boolean geo) {}
+        static Seen seen(Entity e, TroopModel<?> m) {
+            if (GeoDraws.geo(e)) {
+                var g = GeoDraws.drawn(e);
+                return g == null || g.count == 0 ? null : new Seen(g.count, g.variant, g.armour, g.faces, g.texture, true);
+            }
+            var d = TroopRenderer.drawn(e);
+            if (d == null || d.last == null) return null;
+            List<String> faces = new ArrayList<>(m.shownBones(d.last.bones()));
+            faces.removeIf(n -> !n.startsWith("face_v"));
+            String sk = d.last.skin() == null ? "-" : d.last.skin().getPath().substring(d.last.skin().getPath().lastIndexOf('/') + 1);
+            return new Seen(d.count, d.variant, d.last.look().armourTier(), faces, sk, false);
+        }
+        static int count(Entity e, TroopModel<?> m) { var s = seen(e, m); return s == null ? 0 : s.count(); }
+        /** A Geo draw's sheet is its armour tier's: &lt;troop&gt;_geo/t&lt;stage&gt;_&lt;side&gt;.png. */
+        static boolean geoSheet(String troop, int stage, String skin) { return skin.startsWith(troop + "_geo/t" + stage + "_") && skin.endsWith(".png"); }
 
         final List<String> troops = new ArrayList<>();
         final String mixedTroop;
@@ -66,6 +90,8 @@ final class FacesChecks {
         final List<Shot> shots = new ArrayList<>();
         final List<Fact> facts = new ArrayList<>();
         final List<String> bad = new ArrayList<>(), cardBad = new ArrayList<>(), mixedFacts = new ArrayList<>();
+        /** The shots whose troops GeoTroopRenderer drew (read from GeoDraws). */
+        final java.util.Set<String> geoShots = new java.util.LinkedHashSet<>();
         int si, held, steady, settle, cardChecks, mixedKinds;
         String on = "";
         int[] marks = new int[0];
@@ -77,6 +103,7 @@ final class FacesChecks {
 
         Faces() {
             Phase2Checks.Turn.hook();
+            GeoDraws.install();
             String only = System.getProperty("gravesandglory.faceTroops", "");
             for (String id : new TreeSet<>(TroopModels.ids())) {
                 var m = TroopModels.model(id);
@@ -384,7 +411,7 @@ final class FacesChecks {
                     camera(b, 0, EYE, -dist, 0, 0);
                 });
                 marks = new int[es.size()];
-                for (int k = 0; k < es.size(); k++) { var d = TroopRenderer.drawn(es.get(k)); marks[k] = d == null ? 0 : d.count; }
+                for (int k = 0; k < es.size(); k++) marks[k] = count(es.get(k), m);
                 settle = 12; steady = 0; held = 0;
                 return;
             }
@@ -393,21 +420,21 @@ final class FacesChecks {
             List<Integer> variants = new ArrayList<>();
             List<String> bones = new ArrayList<>();
             String skin = "-";
-            boolean far = false, sameSkin = true;
+            boolean far = false, sameSkin = true, geoShot = false;
             for (int k = 0; k < es.size(); k++) {
                 var e = es.get(k);
-                var d = TroopRenderer.drawn(e);
-                if (d == null || d.last == null || d.count <= marks[k]) { why.add("troop " + k + " not drawn since the setup"); continue; }
+                var d = seen(e, m);
+                if (d == null || d.count() <= marks[k]) { why.add("troop " + k + " not drawn since the setup"); continue; }
                 int want = mixed ? TroopFaces.pick(e.getUuid(), m.faceCount, m.faceFixed, m.faceCard, false, -1) : k;
-                variants.add(d.variant);
-                if (d.variant != want) why.add("troop " + k + " wears " + d.variant + ", want " + want);
-                if (d.last.look().armourTier() != s.stage()) why.add("troop " + k + " at stage " + d.last.look().armourTier());
-                List<String> faces = new ArrayList<>(m.shownBones(d.last.bones()));
-                faces.removeIf(n -> !n.startsWith("face_v"));
+                variants.add(d.variant());
+                if (d.variant() != want) why.add("troop " + k + " wears " + d.variant() + ", want " + want);
+                if (d.stage() != s.stage()) why.add("troop " + k + " at stage " + d.stage());
+                List<String> faces = d.faces();
                 bones.add(String.join("+", faces));
                 if (faces.size() != 1 || !faces.get(0).equals("face_v" + Math.floorMod(want, m.faceCount))) why.add("troop " + k + " shows face bones " + faces);
-                String sk = d.last.skin() == null ? "-" : d.last.skin().getPath().substring(d.last.skin().getPath().lastIndexOf('/') + 1);
-                if (k == 0) { skin = sk; far = sk.endsWith("_far.png"); } else if (!sk.equals(skin)) sameSkin = false;
+                String sk = d.skin();
+                if (d.geo() && !geoSheet(troop, s.stage(), sk)) why.add("troop " + k + " (GeckoLib) bound " + sk + ", want its stage " + s.stage() + " sheet");
+                if (k == 0) { skin = sk; far = sk.endsWith("_far.png"); geoShot = d.geo(); } else if (!sk.equals(skin)) sameSkin = false;
             }
             var p = c.player;
             boolean there = Math.abs(p.getX() - (site.getX() + .5)) < .05 && Math.abs(p.getEyeY() - (site.getY() + EYE)) < .05 && Math.abs(p.getZ() - (site.getZ() + .5 - s.dist())) < .05
@@ -426,13 +453,14 @@ final class FacesChecks {
                 double dist = Phase2Checks.Turn.distance(c, es.get(0));
                 Fact f = new Fact(s.name(), troop, s.stage(), s.dist(), variants, bones, skin, far);
                 facts.add(f);
+                if (geoShot) geoShots.add(s.name());
                 if (mixed) {
                     java.util.Set<Integer> kinds = new java.util.TreeSet<>(variants);
                     mixedKinds = kinds.size();
                     mixedFacts.add(variants.toString());
                     mixedOk = steady >= 3 && kinds.size() >= 2;
                 }
-                System.out.println(String.format(Locale.ROOT, "[p2-faces-fact] %s: %s stage %d, %d blocks (first troop %.2f from the camera), variants drawn %s, face bones %s, skin %s", s.name(), troop, s.stage(), s.dist(), dist, variants, bones, skin));
+                System.out.println(String.format(Locale.ROOT, "[p2-faces-fact] %s: %s stage %d, %d blocks (first troop %.2f from the camera), variants drawn %s, face bones %s, skin %s%s", s.name(), troop, s.stage(), s.dist(), dist, variants, bones, skin, geoShot ? " (GeckoLib)" : ""));
                 next();
             }
         }
@@ -447,25 +475,25 @@ final class FacesChecks {
                 cardMob = row == null ? null : ArmyCards.portrait(row, 1, 1);
                 if (cardMob == null || m == null) { cardBad.add(s.name() + ": no card portrait"); next(); return; }
                 cardMob.age = c.player == null ? 0 : c.player.age;
-                var d = TroopRenderer.drawn(cardMob);
-                cardMark = d == null ? 0 : d.count;
+                cardMark = count(cardMob, m);
                 c.setScreen(new Phase2Checks.Turn.T3Card(cardMob, ArmyCards.size(cardMob, s.card())));
                 return;
             }
             if (wait == 30) {
-                var d = TroopRenderer.drawn(cardMob);
-                if (d == null || d.last == null || d.count - cardMark < 5) cardBad.add(s.name() + ": the portrait drew " + (d == null ? 0 : d.count - cardMark) + " times");
+                var d = seen(cardMob, m);
+                if (d == null || d.count() - cardMark < 5) cardBad.add(s.name() + ": the portrait drew " + (d == null ? 0 : d.count() - cardMark) + " times" + (GeoDraws.geo(cardMob) ? " (GeckoLib)" : ""));
                 else {
-                    List<String> faces = new ArrayList<>(m.shownBones(d.last.bones()));
-                    faces.removeIf(n -> !n.startsWith("face_v"));
-                    String skin = d.last.skin() == null ? "-" : d.last.skin().getPath().substring(d.last.skin().getPath().lastIndexOf('/') + 1);
+                    List<String> faces = d.faces();
+                    String skin = d.skin();
                     int px = ArmyCards.size(cardMob, s.card());
-                    boolean wantFar = m.density > 1 && px < Phase2Checks.Turn.T3_CARD_PER_DENSITY * m.density;
-                    if (d.variant != m.faceCard) cardBad.add(s.name() + ": the card wears face " + d.variant + ", not the card face " + m.faceCard);
+                    // the _far twin is the legacy renderer's (density above 1); a Geo card binds its tier's sheet whatever its size
+                    boolean wantFar = !d.geo() && m.density > 1 && px < Phase2Checks.Turn.T3_CARD_PER_DENSITY * m.density;
+                    if (d.variant() != m.faceCard) cardBad.add(s.name() + ": the card wears face " + d.variant() + ", not the card face " + m.faceCard);
                     if (!faces.equals(List.of("face_v" + m.faceCard))) cardBad.add(s.name() + ": the card shows face bones " + faces);
                     if (skin.endsWith("_far.png") != wantFar) cardBad.add(s.name() + ": the card (" + px + " px a block) bound " + skin + ", want " + (wantFar ? "the _far twin" : "the full skin"));
+                    if (d.geo() && !geoSheet(s.group(), 1, skin)) cardBad.add(s.name() + ": the card (GeckoLib) bound " + skin + ", want its stage 1 sheet");
                     cardChecks++;
-                    System.out.println(String.format(Locale.ROOT, "[p2-faces-fact] %s: card %d px a block, variant drawn %d, face bones %s, skin %s", s.name(), px, d.variant, faces, skin));
+                    System.out.println(String.format(Locale.ROOT, "[p2-faces-fact] %s: card %d px a block, variant drawn %d, face bones %s, skin %s%s", s.name(), px, d.variant(), faces, skin, d.geo() ? " (GeckoLib)" : ""));
                 }
                 Phase2Checks.shot(c, s.name());
                 c.setScreen(null);
@@ -475,19 +503,22 @@ final class FacesChecks {
 
         void finals(MinecraftClient c) {
             int worlds = facts.size() - (mixedTroop.isEmpty() ? 0 : 1);
-            report("p2-faces-shots", bad.isEmpty() && worlds > 0, worlds + " world shots (" + troops + " at 3, 6, 24 and 36 blocks at stage 1, and at 3 and 6 blocks at stage 3 for the troops that have a level 3), each with its four troops forced to variants 0 to 3 drawn wearing them, one face bone shown each, the camera where it was set (0.05 blocks, 1 degree) and the troops facing it"
+            report("p2-faces-shots", bad.isEmpty() && worlds > 0, worlds + " world shots (" + troops + " at 3, 6, 24 and 36 blocks at stage 1, and at 3 and 6 blocks at stage 3 for the troops that have a level 3), each with its four troops forced to variants 0 to 3 drawn wearing them, one face bone shown each, the camera where it was set (0.05 blocks, 1 degree) and the troops facing it; "
+                + geoShots.size() + " of them drawn by GeckoLib (GeoDraws: the face GeoTroopRenderer chose, the face_v bones shown, its stage's sheet)"
                 + (bad.isEmpty() ? "" : ", not as asked: " + bad));
             List<String> wrong = new ArrayList<>();
             int far = 0, full = 0;
             boolean anyDense = false;
-            for (String t : troops) anyDense |= TroopModels.model(t).density > 1;
+            for (String t : troops) anyDense |= TroopModels.model(t).density > 1 && !GeoDraws.geo(t);
             for (Fact f : facts) {
                 var m = TroopModels.model(f.troop());
+                if (geoShots.contains(f.shot())) { if (f.far()) wrong.add(f.shot() + " (GeckoLib) bound " + f.skin()); continue; } // no _far twin on the Geo path: its sheet is checked per shot
                 boolean want = m.density > 1 && f.dist() >= (int) Phase2Checks.Turn.T3_NEAR;
                 if (f.far() != want) wrong.add(f.shot() + " bound " + f.skin() + ", want " + (want ? "the _far twin" : "the full skin"));
                 if (f.far()) far++; else full++;
             }
             report("p2-faces-skin", wrong.isEmpty() && (!anyDense || far > 0), far + " shots bound a _far twin and " + full + " the full skin: a density above 1 troop binds the twin from " + (int) Phase2Checks.Turn.T3_NEAR + " blocks out (its faces are in the twin: the build composites the patches before it shrinks the skin) and a density 1 troop never does"
+                + "; " + geoShots.size() + " shots drawn by GeckoLib (no _far twin on that path; each bound its tier's sheet, checked in p2-faces-shots)"
                 + (wrong.isEmpty() ? "" : "; wrong: " + wrong) + (anyDense && far == 0 ? " (no far shot: BAD)" : ""));
             report("p2-faces-cards", cardBad.isEmpty() && cardChecks > 0, cardChecks + " card portraits (160 px and 36 px) each drew the card face and exactly its face bone, the _far twin under " + Phase2Checks.Turn.T3_CARD_PER_DENSITY + " x density px a block" + (cardBad.isEmpty() ? "" : ", wrong: " + cardBad));
             if (!mixedTroop.isEmpty())
