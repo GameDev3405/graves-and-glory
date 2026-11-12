@@ -847,7 +847,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** A synthetic bot army (not in b.squads, so only the fixture decides for it): the team's Normal bot banner (Phase 2: gilded_normal for team 0, graveborn_normal for team 1), frozen, each unit at its banner position, in rows behind (cx,cz). */
         GravesAndGlory.Squad army(GravesAndGlory.Battle b,int team,String tier,double cx,double cz){
             var s=new GravesAndGlory.Squad(UUID.randomUUID(),team,new Vec3d(cx,top(b,cx,cz),cz));
-            s.bot=true;s.tier=tier;s.lane=1;s.order="hold";s.yaw=team==0?-90:90;s.banner=Campaign.bannerRow(team==0?"gilded_normal":"graveborn_normal");
+            s.bot=true;s.tier=tier;s.lane=1;s.order="hold";s.yaw=team==0?-90:90;s.banner=Campaign.table(Campaign.bannerRow(team==0?"gilded_normal":"graveborn_normal")); // the bot row moved onto the war table cells
             for(int slot=0;slot<s.banner.size();slot++){var spec=Campaign.troop(s.banner.get(slot));if(spec!=null)freeze(b.spawn(s,spec,slot,new Vec3d(cx,top(b,cx,cz),cz)));}
             place(b,s,cx,cz);return s;
         }
@@ -856,7 +856,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** Stands the army's rows behind the front rank at (cx,cz), facing the enemy. */
         void place(GravesAndGlory.Battle b,GravesAndGlory.Squad s,double cx,double cz){
             int back=s.team==0?-1:1;
-            for(var u:b.units)if(u.squad==s){double x=cx+back*(u.slot/5)*1.8,z=cz+(u.slot%5-2)*1.8;
+            for(var u:b.units)if(u.squad==s){double x=cx+back*WarGrid.row(u.slot)*1.8,z=cz+(WarGrid.col(u.slot)-4)*1.8;
                 u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(x,top(b,x,z),z,s.team==0?-90:90,0);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;}
         }
         static Vec3d centre(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return Morale.centre(b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).toList());}
@@ -1039,7 +1039,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  on a replay; a victory marks the battle cleared and turns its primary camp button into a normal one; a pad match never teaches.
      *  Commands run on the server tick; the client records the lessons it shows, reads the camp buttons and takes the screenshots. */
     static final class TutorialChecks implements Suite,ServerWatch {
-        static final int ROLL=Spec.RECRUITMENT[0].rollCost(),START_TICKS=900; // the barracks lesson pays one recruitment roll
+        static final int ROLL=Profile.ROLL_WRITS,START_TICKS=900; // the barracks lesson pays one recruitment roll
         /** One run of the four lessons: the server lesson after each command and the profile gold around the barracks lesson (server thread), the lessons the client showed (client thread). */
         static final class Run {
             final List<Integer> steps=Collections.synchronizedList(new ArrayList<>());volatile int goldBefore=-1,goldAfter=-1;volatile String commands="";volatile boolean over;
@@ -1057,7 +1057,7 @@ public final class Phase1Checks implements ClientModInitializer {
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
-        int gold(GravesAndGlory.Battle b){return b.campaign.profile(player).gold;}
+        int gold(GravesAndGlory.Battle b){return b.campaign.profile(player).troopWrits;}
         void fresh(GravesAndGlory.Battle b){b.campaign.profiles.put(player,new Profile());b.campaign.save(player);}
         /** The command of lesson n, as the keys send it: R then Move (a tactical move), B (a tactical formation), G (a tactical attack on open ground ahead), the barracks lectern. Dawn faces +x. */
         void lesson(GravesAndGlory.Battle b,Run r,int n){
@@ -1086,7 +1086,7 @@ public final class Phase1Checks implements ClientModInitializer {
             int now=CampaignClient.tutorial;
             if((now>=0||!r.seen.isEmpty())&&(r.seen.isEmpty()||r.seen.get(r.seen.size()-1)!=now))r.seen.add(now);
             if(!photograph)return;
-            if(now==3&&clientGoldBefore<0)clientGoldBefore=CampaignClient.profile.gold;
+            if(now==3&&clientGoldBefore<0)clientGoldBefore=CampaignClient.profile.troopWrits;
             boolean shown=now>=0&&now<=3&&!lessonShot[now]&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&c.currentScreen==null;
             steadyTicks=shown?(now==steady?steadyTicks+1:1):0;steady=now;
             if(steadyTicks>=3){shot(c,"tutorial-lesson-"+(now+1));lessonShot[now]=true;
@@ -1114,7 +1114,7 @@ public final class Phase1Checks implements ClientModInitializer {
             }
             if(stage==6&&c.currentScreen!=null)c.setScreen(null); // the barracks lesson opens the barracks screen
             if(stage==6&&first.over&&++first.wait==40){ // 40 ticks for the lesson end and the new gold to reach the client
-                reportStart();clientGoldAfter=CampaignClient.profile.gold;int shots=0,whole=0;for(int i=0;i<4;i++){if(lessonShot[i])shots++;if(lessonWhole[i])whole++;}
+                reportStart();clientGoldAfter=CampaignClient.profile.troopWrits;int shots=0,whole=0;for(int i=0;i<4;i++){if(lessonShot[i])shots++;if(lessonWhole[i])whole++;}
                 // lesson 4 names the use key as bound (drawn whole above): the first three mouse buttons by the key bound, not its name,
                 // as LMB, RMB or MMB (RMB by default, UI polish M6 and Task 8a), any other key as the game names it
                 var useKey=net.minecraft.client.util.InputUtil.fromTranslationKey(c.options.useKey.getBoundKeyTranslationKey());
@@ -1454,7 +1454,7 @@ public final class Phase1Checks implements ClientModInitializer {
         static final List<BattleHud.CardDraw> CARDS=List.of(new BattleHud.CardDraw("infantry","FLASH",false,24,416,176,18),new BattleHud.CardDraw("ranged","SELECTED",true,24,438,176,62),new BattleHud.CardDraw("support","LASTSTAND",false,24,504,176,18));
         /** The banner the fixture fields, whatever the starter army is: a banner id or "troop*count" parts, as Phase2Checks.banner reads them
          *  (^ is the second seat of the Sunweaver before it): 2 + 2 seats of Sunweaver, ten Order Squires and six Order Archers fill the
-         *  20 seats of rules.squadSize. Infantry 10, ranged 6, support 2 before the fixture's deaths. */
+         *  20 positions of the old line (Campaign.table moves them onto the war table cells). Infantry 10, ranged 6, support 2 before the fixture's deaths. */
         static final String HUD_BANNER="mage,^,mage,^,knight*10,archer*6";
         static final int INFANTRY=10,RANGED=6,SUPPORT=2,KILLED_INFANTRY=3,KILLED_SUPPORT=1;
         static final List<BattleHud.SealDraw> SEALS=List.of(new BattleHud.SealDraw("hud/seal-dawn",439,41),new BattleHud.SealDraw("hud/seal-contested",467,40),new BattleHud.SealDraw("hud/seal-dusk",495,41));
@@ -2771,7 +2771,7 @@ public final class Phase1Checks implements ClientModInitializer {
      *  sends them (the navigation turns to the mouse's), and the pointer the page reads when it draws is set where a check needs it
      *  (parked off every widget otherwise). */
     static final class UiRecruitChecks implements Suite {
-        static final int GOLD=1000;
+        static final int GOLD=10;
         static final String H0=Spec.HOUSES[0].id(),H1=Spec.HOUSES[1].id();
         /** The action tag's box on the 960 page: the letter's corner (328, 124) plus the tag's place in it. */
         static final int[] CHOOSE={420,436,120,24};
@@ -2878,11 +2878,11 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 0->{ // a fresh commander with GOLD gold at camp, the roll's draw fixed on the first House's first Rare, the window at 960x540 GUI 1
                     if(tick<20)return;var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();player=c.player.getUuid();
                     c.setScreen(null);window(c,960,540,1);stage=-1;
-                    server(c,b->{if(b.running)b.campaign.returnLobby();var p=new Profile();p.gold=GOLD;b.campaign.profiles.put(player,p);if(rngSaved==null)rngSaved=b.campaign.rollRng;b.campaign.rollRng=fixed(rareDraw(H0));b.campaign.save(player);stage=1;});
+                    server(c,b->{if(b.running)b.campaign.returnLobby();var p=new Profile();p.troopWrits=GOLD;b.campaign.profiles.put(player,p);if(rngSaved==null)rngSaved=b.campaign.rollRng;b.campaign.rollRng=fixed(rareDraw(H0));b.campaign.save(player);stage=1;});
                 }
                 case 1->{ // the snapshot brings the fresh profile, then the table opens on the recruit page
-                    var p=CampaignClient.profile;boolean fresh=p.gold==GOLD&&p.owned.keySet().equals(start());
-                    if(GravesAndGloryClient.running||!fresh){if(since(tick)>300){report("p1-ui-recruit-layout",false,"no fresh profile with "+GOLD+" gold 300 ticks on: gold "+p.gold+", unlocked "+p.owned.keySet()+", running "+GravesAndGloryClient.running);end(c);}return;}
+                    var p=CampaignClient.profile;boolean fresh=p.troopWrits==GOLD&&p.owned.keySet().equals(start());
+                    if(GravesAndGloryClient.running||!fresh){if(since(tick)>300){report("p1-ui-recruit-layout",false,"no fresh profile with "+GOLD+" writs 300 ticks on: writs "+p.troopWrits+", unlocked "+p.owned.keySet()+", running "+GravesAndGloryClient.running);end(c);}return;}
                     CampScreen.open("recruit");stage=2;
                 }
                 case 2->{ // p1-ui-recruit-layout, then the Odds note and a click elsewhere
@@ -2909,7 +2909,7 @@ public final class Phase1Checks implements ClientModInitializer {
                         why="1920x1080 GUI 2: k "+UiCanvas.k()+", canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", enlist "+str(box(c,"enlist"))+", underlined "+WarTableRecruit.underlined()+", letter "+(letterFits().isEmpty()?"inside its paper":letterFits())+(same?"":" WRONG");System.out.println("[p1] ui-recruit "+why);
                         if(!same)report("p1-ui-recruit-layout-1080",false,why);shot(c,"ui-recruit-1080");window(c,960,540,1);return;}
                     if(k==30){park(c);return;}
-                    if(k==32){table=screen(c);goldBefore=CampaignClient.profile.gold;before=owned();sentBefore=WarTableRecruit.sent().size();revealBefore=CampaignClient.revealUntil;press(c,GLFW.GLFW_KEY_ENTER);stage=4;}
+                    if(k==32){table=screen(c);goldBefore=CampaignClient.profile.troopWrits;before=owned();sentBefore=WarTableRecruit.sent().size();revealBefore=CampaignClient.revealUntil;press(c,GLFW.GLFW_KEY_ENTER);stage=4;}
                 }
                 case 4->{ // p1-ui-recruit-enlist: Enter held down (the press, two repeats 400 ms apart, past the 300 ms throttle, then the release) sends one roll:<house>;
                           // within 70 ticks the troop the fixed draw lands on is, for the price of a letter, on the letter under the broken seal
@@ -2918,12 +2918,12 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==20){release(c,GLFW.GLFW_KEY_ENTER);return;}
                     if(k<46)return; // room for a second roll, had a repeat sent one, to come back
                     String want=drawn(H0,rareDraw(H0),0);var now=owned();now.removeAll(before);
-                    boolean arrived=now.equals(Set.of(want))&&CampaignClient.profile.gold==goldBefore-RecruitView.cost()&&CampaignClient.revealUntil!=revealBefore;
+                    boolean arrived=now.equals(Set.of(want))&&CampaignClient.profile.troopWrits==goldBefore-RecruitView.cost()&&CampaignClient.revealUntil!=revealBefore;
                     if(!arrived&&k<=70)return;
                     String id=now.isEmpty()?"none":now.iterator().next();
                     boolean ok=arrived&&id.equals(text("letter-troop"))&&Arrays.equals(rect("broken"),new int[]{463,108,35,36})&&UiMath.pityLine(RecruitView.pityLeft(H0)).equals(text("rung"))&&kind(id).equals(text("letter-line1"))
                         &&!WarTableRecruit.texts().containsKey("letter-outcome")&&WarTableRecruit.sent().size()==sentBefore+1&&("roll:"+H0).equals(lastSent())&&!oldCommands(sentBefore)&&screen(c)==table&&table.held.isEmpty()&&!WarTableRecruit.texts().containsKey("notice");
-                    report("p1-ui-recruit-enlist",ok,"Enter held (a press, two repeats, the release) sent "+(WarTableRecruit.sent().size()-sentBefore)+" command(s), the last "+lastSent()+"; the fixed draw lands on "+want+", new "+now+", gold "+goldBefore+" -> "+CampaignClient.profile.gold+", reveal "+CampaignClient.revealUnit+"; the letter shows "+text("letter-troop")+" (\""+text("letter-line1")+"\"), broken seal "+str(rect("broken"))+", rung \""+text("rung")+"\", held keys after the release "+(table==null?"none":table.held)+", notice line "+(text("notice")==null?"none (the recruit's own notice came with the reveal)":"\""+text("notice")+"\"")+(arrived?"":", nothing arrived within 70 ticks"));
+                    report("p1-ui-recruit-enlist",ok,"Enter held (a press, two repeats, the release) sent "+(WarTableRecruit.sent().size()-sentBefore)+" command(s), the last "+lastSent()+"; the fixed draw lands on "+want+", new "+now+", gold "+goldBefore+" -> "+CampaignClient.profile.troopWrits+", reveal "+CampaignClient.revealUnit+"; the letter shows "+text("letter-troop")+" (\""+text("letter-line1")+"\"), broken seal "+str(rect("broken"))+", rung \""+text("rung")+"\", held keys after the release "+(table==null?"none":table.held)+", notice line "+(text("notice")==null?"none (the recruit's own notice came with the reveal)":"\""+text("notice")+"\"")+(arrived?"":", nothing arrived within 70 ticks"));
                     shot(c,"ui-recruit-enlist");stage=5;
                 }
                 case 5->{ // p1-ui-recruit-choose: a click on a troop of the first House a Buy can take and not owned, then the tag pressed twice in a row (one buy), then an Epic not found and a Legendary
@@ -2934,14 +2934,14 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==3){var a=RecruitView.action(picked);
                         boolean shown=a!=null&&picked.equals(text("letter-troop"))&&!WarTableRecruit.rects().containsKey("broken")&&Arrays.equals(rect("choose"),CHOOSE)&&Arrays.equals(box(c,"choose"),CHOOSE)&&a.command().equals("buy:"+picked)&&a.active()
                             &&a.label().equals(text("choose"))&&("buy:"+picked).equals(text("choose-command"))&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("choose"))&&a.tip().equals(text("reason"))&&Integer.valueOf(DarkUi.SEPIA).equals(color("reason"))&&letterFits().isEmpty();
-                        why+="; the letter shows "+text("letter-troop")+(shown?" with the tag \""+text("choose")+"\" ("+text("choose-command")+") and under it \""+text("reason")+"\"":" WRONG: tag \""+text("choose")+"\" "+text("choose-command")+" "+str(rect("choose"))+" ink "+hex(color("choose"))+" with "+CampaignClient.profile.gold+" gold, reason \""+text("reason")+"\", broken "+str(rect("broken"))+", "+letterFits());
+                        why+="; the letter shows "+text("letter-troop")+(shown?" with the tag \""+text("choose")+"\" ("+text("choose-command")+") and under it \""+text("reason")+"\"":" WRONG: tag \""+text("choose")+"\" "+text("choose-command")+" "+str(rect("choose"))+" ink "+hex(color("choose"))+" with "+CampaignClient.profile.troopWrits+" gold, reason \""+text("reason")+"\", broken "+str(rect("broken"))+", "+letterFits());
                         if(!shown){report("p1-ui-recruit-choose",false,why);stage=6;return;}
-                        goldBefore=CampaignClient.profile.gold;sentBefore=WarTableRecruit.sent().size();click(c,box(c,"choose"));return;}
+                        goldBefore=CampaignClient.profile.troopWrits;sentBefore=WarTableRecruit.sent().size();click(c,box(c,"choose"));return;}
                     if(k==4){click(c,box(c,"choose"));return;} // the second press 50 ms on: the throttle and the page's wait for the camp's answer must turn it away
                     if(k>4&&k<48)return; // the reveal reaches the page, and a second press that slipped through would have reached the purse
-                    if(k==48){boolean done=CampaignClient.profile.owned.containsKey(picked)&&CampaignClient.profile.gold==goldBefore-RecruitView.chooseCost();
+                    if(k==48){boolean done=CampaignClient.profile.owned.containsKey(picked)&&CampaignClient.profile.troopWrits==goldBefore-RecruitView.chooseCost();
                         buyOk=done&&("buy:"+picked).equals(lastSent())&&WarTableRecruit.sent().size()==sentBefore+1&&!oldCommands(sentBefore)&&picked.equals(text("letter-troop"))&&WarTableRecruit.rects().containsKey("broken")&&!WarTableRecruit.texts().containsKey("notice");
-                        why+="; the tag pressed twice 50 ms apart sent "+WarTableRecruit.sent().subList(sentBefore,WarTableRecruit.sent().size())+", "+picked+(CampaignClient.profile.owned.containsKey(picked)?" recruited":" not recruited")+", gold "+goldBefore+" -> "+CampaignClient.profile.gold+" (one buy costs "+RecruitView.chooseCost()+"), the letter "+text("letter-troop")+" under the seal "+str(rect("broken"))+", notice line "+text("notice")+(buyOk?"":" WRONG");
+                        why+="; the tag pressed twice 50 ms apart sent "+WarTableRecruit.sent().subList(sentBefore,WarTableRecruit.sent().size())+", "+picked+(CampaignClient.profile.owned.containsKey(picked)?" recruited":" not recruited")+", gold "+goldBefore+" -> "+CampaignClient.profile.troopWrits+" (one buy costs "+RecruitView.chooseCost()+"), the letter "+text("letter-troop")+" under the seal "+str(rect("broken"))+", notice line "+text("notice")+(buyOk?"":" WRONG");
                         for(var t:Spec.TROOPS)if(t.house().equals(H0)){if(t.rarity().equals("epic"))epicId=t.id();if(t.rarity().equals("legendary"))legId=t.id();}
                         int ei=-1;for(var r:WarTableRecruit.rows())if(r.troop().equals(epicId))ei=r.index();if(ei>=0)click(c,box(c,"row-"+ei));return;}
                     if(k==52){ // the Epic not found: its words in place of a tag
@@ -2968,34 +2968,34 @@ public final class Phase1Checks implements ClientModInitializer {
                         why="the second banner: rows "+rowWhy+"banners "+H0+" "+tx.get("banner-"+H0)+" "+H1+" "+tx.get("banner-"+H1)+" "+str(rect("banner-"+H1))+" label "+hex(color("banner-"+H1))+", letter "+text("letter-troop")+" portrait "+ld+", rung \""+text("rung")+"\", underlined "+WarTableRecruit.underlined()+(listed?"":" WRONG");
                         shot(c,"ui-recruit-dusk");
                         if(!listed){report("p1-ui-recruit-dusk",false,why);stage=7;return;}
-                        goldBefore=CampaignClient.profile.gold;before=owned();sentBefore=WarTableRecruit.sent().size();click(c,box(c,"enlist"));return;}
-                    if(k>4){String want=drawn(H1,rareDraw(H0),0);var now=owned();now.removeAll(before);boolean arrived=now.equals(Set.of(want))&&CampaignClient.profile.gold==goldBefore-RecruitView.cost();
+                        goldBefore=CampaignClient.profile.troopWrits;before=owned();sentBefore=WarTableRecruit.sent().size();click(c,box(c,"enlist"));return;}
+                    if(k>4){String want=drawn(H1,rareDraw(H0),0);var now=owned();now.removeAll(before);boolean arrived=now.equals(Set.of(want))&&CampaignClient.profile.troopWrits==goldBefore-RecruitView.cost();
                         if(!arrived&&k<=45)return;
                         if(arrived&&k<48)return;
                         String id=now.isEmpty()?"none":now.iterator().next();
                         boolean ok=arrived&&("roll:"+H1).equals(lastSent())&&WarTableRecruit.sent().size()==sentBefore+1&&id.equals(text("letter-troop"))&&WarTableRecruit.rects().containsKey("broken")&&UiMath.pityLine(RecruitView.pityLeft(H1)).equals(text("rung"));
-                        report("p1-ui-recruit-dusk",ok,why+"; a click on Enlist sent "+lastSent()+", the fixed draw lands on "+want+", new "+now+", gold "+goldBefore+" -> "+CampaignClient.profile.gold+", the letter "+text("letter-troop")+" under the seal "+str(rect("broken"))+", rung \""+text("rung")+"\"");
+                        report("p1-ui-recruit-dusk",ok,why+"; a click on Enlist sent "+lastSent()+", the fixed draw lands on "+want+", new "+now+", gold "+goldBefore+" -> "+CampaignClient.profile.troopWrits+", the letter "+text("letter-troop")+" under the seal "+str(rect("broken"))+", rung \""+text("rung")+"\"");
                         shot(c,"ui-recruit-dusk-enlist");stage=7;}
                 }
-                case 7->{ // p1-ui-recruit-broke: the server leaves 50 gold
-                    stage=-1;server(c,b->{b.campaign.profile(player).gold=50;b.campaign.save(player);stage=71;});
+                case 7->{ // p1-ui-recruit-broke: the server leaves 0 writs
+                    stage=-1;server(c,b->{b.campaign.profile(player).troopWrits=0;b.campaign.save(player);stage=71;});
                 }
-                case 71->{ // the snapshot brings the 50 gold, then the first banner
-                    if(CampaignClient.profile.gold!=50){if(since(tick)>300){report("p1-ui-recruit-broke",false,"gold never reached 50: "+CampaignClient.profile.gold);stage=8;}return;}
+                case 71->{ // the snapshot brings the 0 writs, then the first banner
+                    if(CampaignClient.profile.troopWrits!=0){if(since(tick)>300){report("p1-ui-recruit-broke",false,"writs never reached 0: "+CampaignClient.profile.troopWrits);stage=8;}return;}
                     click(c,box(c,"house-"+H0));stage=72;
                 }
                 case 72->{ // the iron plate: "Need <cost>"; the tag on an owned Common goes sepia, says why in words and takes no press; Enter sends nothing; then a purse the client still shows full
                     int k=since(tick);
                     if(k==4){var tx=WarTableRecruit.textures();
                         boolean iron="table/btn-iron-240x40".equals(tx.get("enlist"))&&"Enlist".equals(text("enlist"))&&Integer.valueOf(DarkUi.IVORY).equals(color("enlist"))&&("Need "+RecruitView.cost()).equals(text("enlist-cost"))&&Integer.valueOf(DarkUi.ALARM_TEXT).equals(color("enlist-cost"))
-                            &&UiMath.pityLine(RecruitView.pityLeft(H0)).equals(text("rung"))&&"50".equals(text("purse"))&&Arrays.equals(rect("banner-"+H0),new int[]{bx(0),13,104,60});
+                            &&UiMath.pityLine(RecruitView.pityLeft(H0)).equals(text("rung"))&&"0".equals(text("purse"))&&Arrays.equals(rect("banner-"+H0),new int[]{bx(0),13,104,60});
                         why="50 gold on the first House: plate "+tx.get("enlist")+" \""+text("enlist")+"\" "+hex(color("enlist"))+", \""+text("enlist-cost")+"\" "+hex(color("enlist-cost"))+", purse "+text("purse")+", rung \""+text("rung")+"\""+(iron?"":" WRONG");
-                        picked=troopsOf(H0).get(0); // an owned Common: a Buy would add a copy, and 50 gold is short of its price
+                        picked=troopsOf(H0).get(0); // an owned Common: a Buy would add a copy, and 0 writs is short of its price
                         if(!iron||!CampaignClient.profile.owned.containsKey(picked)){report("p1-ui-recruit-broke",false,why+(CampaignClient.profile.owned.containsKey(picked)?"":"; "+picked+" is not owned"));stage=8;return;}
                         click(c,box(c,"row-0"));return;}
                     if(k==8){var p=page(c);int[] ch=box(c,"choose");var a=RecruitView.action(picked);
                         boolean sepia=a!=null&&!a.active()&&picked.equals(text("letter-troop"))&&p!=null&&p.choose!=null&&p.choose.visible&&!p.choose.active&&Integer.valueOf(DarkUi.SEPIA).equals(color("choose"))&&Arrays.equals(ch,CHOOSE)
-                            &&a.tip().equals(text("reason"))&&a.tip().contains(String.valueOf(RecruitView.chooseCost()))&&a.tip().contains("50")&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("reason"))&&letterFits().isEmpty();
+                            &&a.tip().equals(text("reason"))&&a.tip().contains(String.valueOf(RecruitView.chooseCost()))&&a.tip().contains("You have 0")&&Integer.valueOf(DarkUi.INK_TEXT).equals(color("reason"))&&letterFits().isEmpty();
                         why+="; "+picked+" selected: the tag "+str(ch)+(p!=null&&p.choose!=null&&p.choose.active?" active":" inactive")+" \""+text("choose")+"\", ink "+hex(color("choose"))+", under it \""+text("reason")+"\" in "+hex(color("reason"))+(sepia?"":" WRONG");
                         if(!sepia){report("p1-ui-recruit-broke",false,why);stage=8;return;}
                         pointer(c,ch[0]+ch[2]/2.0,ch[1]+ch[3]/2.0);sentBefore=WarTableRecruit.sent().size();click(c,ch);return;}
@@ -3003,19 +3003,19 @@ public final class Phase1Checks implements ClientModInitializer {
                         why+="; the pointer over it and a click: "+(dead?"no underline, nothing sent":"WRONG: underlined "+WarTableRecruit.underlined()+", sent "+(WarTableRecruit.sent().size()-sentBefore));
                         if(!dead){report("p1-ui-recruit-broke",false,why);stage=8;return;}
                         park(c);before=owned();sentBefore=WarTableRecruit.sent().size();revealBefore=CampaignClient.revealUntil;tap(c,GLFW.GLFW_KEY_ENTER);return;}
-                    if(k==38){boolean still=CampaignClient.profile.gold==50&&owned().equals(before)&&CampaignClient.revealUntil==revealBefore&&WarTableRecruit.sent().size()==sentBefore;
-                        why+="; Enter: "+(still?"nothing sent, gold 50, no reveal":"WRONG: sent "+(WarTableRecruit.sent().size()-sentBefore)+", gold "+CampaignClient.profile.gold+", reveal "+(CampaignClient.revealUntil!=revealBefore));
+                    if(k==38){boolean still=CampaignClient.profile.troopWrits==0&&owned().equals(before)&&CampaignClient.revealUntil==revealBefore&&WarTableRecruit.sent().size()==sentBefore;
+                        why+="; Enter: "+(still?"nothing sent, 0 writs, no reveal":"WRONG: sent "+(WarTableRecruit.sent().size()-sentBefore)+", gold "+CampaignClient.profile.troopWrits+", reveal "+(CampaignClient.revealUntil!=revealBefore));
                         if(!still){report("p1-ui-recruit-broke",false,why);stage=8;return;}
-                        // the server holds 50 but the client still shows 300 (a purse spent elsewhere since the last snapshot): Enter sends roll:<house> and the server refuses it
-                        serialBefore=CampaignClient.noticeSerial;seen=-1;CampaignClient.profile.gold=300;page(c).refresh();sentBefore=WarTableRecruit.sent().size();tap(c,GLFW.GLFW_KEY_ENTER);return;}
+                        // the server holds 0 but the client still shows 3 (a purse spent elsewhere since the last snapshot): Enter sends roll:<house> and the server refuses it
+                        serialBefore=CampaignClient.noticeSerial;seen=-1;CampaignClient.profile.troopWrits=3;page(c).refresh();sentBefore=WarTableRecruit.sent().size();tap(c,GLFW.GLFW_KEY_ENTER);return;}
                     if(k>38){
                         if(CampaignClient.noticeSerial==serialBefore){if(k<=90)return;}
                         else if(seen<0){seen=k;return;}
                         else if(k<seen+3)return; // the page takes the notice and a frame draws it
                         int[] n=rect("notice");String told=CampaignClient.notice;
                         boolean refused=("roll:"+H0).equals(lastSent())&&WarTableRecruit.sent().size()==sentBefore+1&&!told.isEmpty()&&told.contains(String.valueOf(RecruitView.cost()))&&told.equals(text("notice"))&&noticePlaced(n)
-                            &&Integer.valueOf(DarkUi.IVORY).equals(color("notice"))&&CampaignClient.profile.gold==50&&owned().equals(before);
-                        why+="; the client shown 300 while the server holds 50: Enter sent "+lastSent()+", the server says \""+told+"\", the notice line reads \""+text("notice")+"\" at "+str(n)+" "+hex(color("notice"))+", gold "+CampaignClient.profile.gold+(refused?"":" WRONG");
+                            &&Integer.valueOf(DarkUi.IVORY).equals(color("notice"))&&CampaignClient.profile.troopWrits==0&&owned().equals(before);
+                        why+="; the client shown 3 writs while the server holds 0: Enter sent "+lastSent()+", the server says \""+told+"\", the notice line reads \""+text("notice")+"\" at "+str(n)+" "+hex(color("notice"))+", gold "+CampaignClient.profile.troopWrits+(refused?"":" WRONG");
                         if(!refused){report("p1-ui-recruit-broke",false,why);stage=8;return;}
                         seen=-1;stage=-1;
                         server(c,b->{var p=b.campaign.profile(player);for(var t:Spec.TROOPS)if(t.house().equals(H0))p.owned.putIfAbsent(t.id(),new Profile.Owned());var full=p.owned.get(troopsOf(H0).get(0));full.stars=Spec.RECRUITMENT[0].maxStars();b.campaign.save(player);stage=73;});}
@@ -3048,17 +3048,17 @@ public final class Phase1Checks implements ClientModInitializer {
                         else if(seen<0){seen=k;return;}
                         else if(k<seen+3)return;
                         String told=CampaignClient.notice;
-                        boolean refused=!told.isEmpty()&&told.contains(String.valueOf(RecruitView.cost()))&&told.equals(text("notice"))&&noticePlaced(rect("notice"))&&CampaignClient.profile.gold==50&&owned().equals(before);
-                        why+="; roll:"+H0+" sent anyway: notice \""+told+"\" (serial "+serialBefore+" to "+CampaignClient.noticeSerial+"), the line reads \""+text("notice")+"\" at "+str(rect("notice"))+", gold "+CampaignClient.profile.gold+(refused?"":" WRONG");
+                        boolean refused=!told.isEmpty()&&told.contains(String.valueOf(RecruitView.cost()))&&told.equals(text("notice"))&&noticePlaced(rect("notice"))&&CampaignClient.profile.troopWrits==0&&owned().equals(before);
+                        why+="; roll:"+H0+" sent anyway: notice \""+told+"\" (serial "+serialBefore+" to "+CampaignClient.noticeSerial+"), the line reads \""+text("notice")+"\" at "+str(rect("notice"))+", gold "+CampaignClient.profile.troopWrits+(refused?"":" WRONG");
                         report("p1-ui-recruit-broke",refused,why);seen=-1;stage=8;}
                 }
                 case 8->{stage=9;}
                 case 9->{ // p1-ui-recruit-keys: the page open with GOLD gold again, so the tag can buy
                     if(page(c)==null)CampScreen.open("recruit");
-                    stage=-1;server(c,b->{b.campaign.profile(player).gold=GOLD;b.campaign.save(player);stage=91;});
+                    stage=-1;server(c,b->{b.campaign.profile(player).troopWrits=GOLD;b.campaign.save(player);stage=91;});
                 }
                 case 91->{ // the snapshot brings GOLD; the second banner
-                    if(CampaignClient.profile.gold!=GOLD||page(c)==null){if(since(tick)>300){report("p1-ui-recruit-keys",false,"no recruit page with "+GOLD+" gold: gold "+CampaignClient.profile.gold+", page "+(page(c)!=null));stage=10;}return;}
+                    if(CampaignClient.profile.troopWrits!=GOLD||page(c)==null){if(since(tick)>300){report("p1-ui-recruit-keys",false,"no recruit page with "+GOLD+" writs: writs "+CampaignClient.profile.troopWrits+", page "+(page(c)!=null));stage=10;}return;}
                     page(c).odds=false; // a note left open by an earlier check would take the click
                     park(c);click(c,box(c,"house-"+H1));stage=92;
                 }
@@ -3071,12 +3071,12 @@ public final class Phase1Checks implements ClientModInitializer {
                         keysWhy=picked+" selected by a click; "+n+" Tab presses put the focus on "+(p.choose!=null&&p.choose.isFocused()?"the tag":"something else");return;}
                     if(k==9){var p=page(c);boolean focus=p!=null&&p.choose!=null&&p.choose.isFocused()&&p.choose.active&&c.getNavigationType().isKeyboard()&&WarTableRecruit.underlined().equals(Set.of("choose"));
                         keysOk&=focus;keysWhy+=", underlined "+WarTableRecruit.underlined()+(focus?"":" WRONG");
-                        goldBefore=CampaignClient.profile.gold;sentBefore=WarTableRecruit.sent().size();tap(c,GLFW.GLFW_KEY_ENTER);return;}
-                    if(k>9){boolean done=CampaignClient.profile.owned.containsKey(picked)&&CampaignClient.profile.gold==goldBefore-RecruitView.chooseCost();
+                        goldBefore=CampaignClient.profile.troopWrits;sentBefore=WarTableRecruit.sent().size();tap(c,GLFW.GLFW_KEY_ENTER);return;}
+                    if(k>9){boolean done=CampaignClient.profile.owned.containsKey(picked)&&CampaignClient.profile.troopWrits==goldBefore-RecruitView.chooseCost();
                         if(!done&&k<=50)return;
                         if(done&&k<53)return;
                         boolean ok=done&&WarTableRecruit.sent().size()==sentBefore+1&&("buy:"+picked).equals(lastSent())&&!oldCommands(sentBefore)&&picked.equals(text("letter-troop"));
-                        keysOk&=ok;keysWhy+="; Enter sent "+WarTableRecruit.sent().subList(sentBefore,WarTableRecruit.sent().size())+", "+picked+(CampaignClient.profile.owned.containsKey(picked)?" recruited":" not recruited")+", gold "+goldBefore+" -> "+CampaignClient.profile.gold+(ok?"":" WRONG");
+                        keysOk&=ok;keysWhy+="; Enter sent "+WarTableRecruit.sent().subList(sentBefore,WarTableRecruit.sent().size())+", "+picked+(CampaignClient.profile.owned.containsKey(picked)?" recruited":" not recruited")+", gold "+goldBefore+" -> "+CampaignClient.profile.troopWrits+(ok?"":" WRONG");
                         stage=93;}
                 }
                 case 93->{ // the underline: not for a click's focus; under the pointer on Odds and on the House not chosen, not on the chosen one
@@ -3123,11 +3123,11 @@ public final class Phase1Checks implements ClientModInitializer {
                         report("p1-ui-recruit-keys",keysOk,keysWhy);CampScreen.open("recruit");stage=10;}
                 }
                 case 10->{ // p1-ui-recruit-scales: the page as the layout step saw it (a fresh commander with GOLD gold)
-                    stage=-1;server(c,b->{var p=new Profile();p.gold=GOLD;b.campaign.profiles.put(player,p);b.campaign.save(player);stage=101;});
+                    stage=-1;server(c,b->{var p=new Profile();p.troopWrits=GOLD;b.campaign.profiles.put(player,p);b.campaign.save(player);stage=101;});
                 }
                 case 101->{ // the snapshot brings the fresh profile; the page opens anew, at 854x480 GUI 2 (the compact page, UI Task 8b-2)
-                    var p=CampaignClient.profile;boolean fresh=p.gold==GOLD&&p.owned.keySet().equals(start());
-                    if(!fresh){if(since(tick)>300){report("p1-ui-recruit-scales",false,"no fresh profile with "+GOLD+" gold 300 ticks on: gold "+p.gold+", unlocked "+p.owned.keySet());end(c);}return;}
+                    var p=CampaignClient.profile;boolean fresh=p.troopWrits==GOLD&&p.owned.keySet().equals(start());
+                    if(!fresh){if(since(tick)>300){report("p1-ui-recruit-scales",false,"no fresh profile with "+GOLD+" writs 300 ticks on: writs "+p.troopWrits+", unlocked "+p.owned.keySet());end(c);}return;}
                     CampScreen.open("recruit");window(c,854,480,2);stage=102;
                 }
                 case 102->{ // then 1920x974 GUI 1 (the big-canvas oak to the edges, UI Task 8b-2)
@@ -3137,7 +3137,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 }
                 case 1021->{ // the letter's reveal at 854x480: Enlist lands the House's first Rare, a new recruit under the broken seal
                     int k=since(tick);
-                    if(k==2){compactWant=drawn(H0,rareDraw(H0),0);sentBefore=WarTableRecruit.sent().size();goldBefore=CampaignClient.profile.gold;click(c,box(c,"enlist"));return;}
+                    if(k==2){compactWant=drawn(H0,rareDraw(H0),0);sentBefore=WarTableRecruit.sent().size();goldBefore=CampaignClient.profile.troopWrits;click(c,box(c,"enlist"));return;}
                     var r=CampaignClient.lastRoll;
                     if(k>2&&r!=null&&r.troop().equals(compactWant)&&CampaignClient.rollShowing()){CampaignClient.revealHeldAt=600;stage=1022;return;}
                     if(k>300){scalesOk=false;scalesWhy+="; WRONG: the roll's letter never showed at 854x480: lastRoll "+r;CampaignClient.revealHeldAt=-1;stage=1026;}
@@ -3145,7 +3145,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 1022->{
                     int k=since(tick);
                     if(k==4){var bad=UiHomeChecks.fits(WarTableRecruit.rects(),boxes(c));String lf=letterFits();
-                        boolean ok=WarTable.compact()&&compactWant.equals(text("letter-troop"))&&WarTableRecruit.rects().containsKey("broken")&&text("letter-outcome")==null&&bad.isEmpty()&&lf.isEmpty()&&("roll:"+H0).equals(lastSent())&&CampaignClient.profile.gold==goldBefore-RecruitView.cost();
+                        boolean ok=WarTable.compact()&&compactWant.equals(text("letter-troop"))&&WarTableRecruit.rects().containsKey("broken")&&text("letter-outcome")==null&&bad.isEmpty()&&lf.isEmpty()&&("roll:"+H0).equals(lastSent())&&CampaignClient.profile.troopWrits==goldBefore-RecruitView.cost();
                         scalesOk&=ok;scalesWhy+="; at 854x480 a new recruit's letter: "+text("letter-troop")+" under the seal "+str(rect("broken"))+", not fitting "+bad+", letter lines "+(lf.isEmpty()?"inside the paper":lf)+", tag \""+text("choose")+"\" under it \""+text("reason")+"\""+(ok?"":" WRONG");
                         shot(c,"ui-recruit-854-roll");CampaignClient.revealHeldAt=-1;stage=1023;}
                 }
@@ -3153,7 +3153,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     int k=since(tick);
                     if(CampaignClient.rollShowing()){if(k>200){scalesOk=false;scalesWhy+="; WRONG: the first reveal never ended";stage=1026;}return;}
                     if(k<4)return;
-                    goldBefore=CampaignClient.profile.gold;click(c,box(c,"enlist"));stage=1024;
+                    goldBefore=CampaignClient.profile.troopWrits;click(c,box(c,"enlist"));stage=1024;
                 }
                 case 1024->{
                     int k=since(tick);var r=CampaignClient.lastRoll;
@@ -3163,7 +3163,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 1025->{
                     int k=since(tick);
                     if(k==4){var r=CampaignClient.lastRoll;var bad=UiHomeChecks.fits(WarTableRecruit.rects(),boxes(c));String lf=letterFits();String want=r==null?"":RecruitPages.outcome(r,CampaignClient.profile);
-                        boolean ok=compactWant.equals(text("letter-troop"))&&!WarTableRecruit.rects().containsKey("broken")&&!want.isEmpty()&&want.equals(text("letter-outcome"))&&bad.isEmpty()&&lf.isEmpty()&&CampaignClient.profile.gold==goldBefore-RecruitView.cost();
+                        boolean ok=compactWant.equals(text("letter-troop"))&&!WarTableRecruit.rects().containsKey("broken")&&!want.isEmpty()&&want.equals(text("letter-outcome"))&&bad.isEmpty()&&lf.isEmpty()&&CampaignClient.profile.troopWrits==goldBefore-RecruitView.cost();
                         scalesOk&=ok;scalesWhy+="; the copy's letter: \""+text("letter-outcome")+"\" with stars "+text("letter-stars")+", no seal "+(WarTableRecruit.rects().containsKey("broken")?"WRONG":"drawn")+", not fitting "+bad+", letter lines "+(lf.isEmpty()?"inside the paper":lf)+(ok?"":" WRONG");
                         shot(c,"ui-recruit-854-duplicate");CampaignClient.revealHeldAt=-1;stage=1026;}
                 }
@@ -3316,7 +3316,7 @@ public final class Phase1Checks implements ClientModInitializer {
         // the server thread writes these, the client thread reads them
         volatile int stage;volatile UUID player;volatile boolean serverRoom;volatile String serverDifficulty="";
         // client thread only
-        int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1,origMap=-1,cardAsked=-1,fieldRow,goldBefore,xpBefore,pick;boolean finished,ok=true,slid,scalesOk=true,cardsOk=true;
+        int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1,origMap=-1,cardAsked=-1,fieldRow,goldBefore,writsBefore,writGoldBefore,xpBefore,pick;boolean finished,ok=true,slid,scalesOk=true,cardsOk=true;
         String why="",before="",focusName="",scalesWhy="",cardsWhy="";List<String> roll=List.of();String at0="",at19="";CampScreen table;
         /** Claims with a House (War Table port Task 1): the House the banner leans on, the shards it held before a claim, and what the claims about to be pressed pay (worked out by the game's own rule, grant). */
         String house="";int shardsBefore;Progression.Grant gA,gW,gT;
@@ -3479,11 +3479,11 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(tick<20)return;var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();player=c.player.getUuid();
                     c.setScreen(null);CampaignClient.homeMode="skirmish";window(c,960,540,1);stage=-1;
                     server(c,b->{if(b.running)b.campaign.returnLobby();var id=player;b.campaign.social.leaveRoom(id);b.campaign.social.leaveParty(id);b.campaign.closeParty();b.campaign.difficulty="normal";
-                        var p=new Profile();p.gold=300;b.campaign.profiles.put(id,p);b.campaign.save(id);stage=1;});
+                        var p=new Profile();p.troopWrits=3;b.campaign.profiles.put(id,p);b.campaign.save(id);stage=1;});
                 }
                 case 1->{ // the snapshot brings the fresh profile, no party and no room
-                    var p=CampaignClient.profile;boolean fresh=p.gold==300&&p.owned.keySet().equals(new Profile().owned.keySet())&&p.progression.xp==0&&!WarTablePages.flag("party")&&WarTablePages.value("room").isEmpty()&&"normal".equals(CampaignClient.difficulty);
-                    if(GravesAndGloryClient.running||!fresh){if(since(tick)>300){report("p1-ui-pages-setup",false,"no fresh profile with 300 gold, out of party and room, bots on Normal 300 ticks on: gold "+p.gold+", unlocked "+p.owned.keySet()+", party "+WarTablePages.flag("party")+", room \""+WarTablePages.value("room")+"\", bots "+CampaignClient.difficulty);end(c);}return;}
+                    var p=CampaignClient.profile;boolean fresh=p.troopWrits==3&&p.owned.keySet().equals(new Profile().owned.keySet())&&p.progression.xp==0&&!WarTablePages.flag("party")&&WarTablePages.value("room").isEmpty()&&"normal".equals(CampaignClient.difficulty);
+                    if(GravesAndGloryClient.running||!fresh){if(since(tick)>300){report("p1-ui-pages-setup",false,"no fresh profile with 300 gold, out of party and room, bots on Normal 300 ticks on: gold "+p.troopWrits+", unlocked "+p.owned.keySet()+", party "+WarTablePages.flag("party")+", room \""+WarTablePages.value("room")+"\", bots "+CampaignClient.difficulty);end(c);}return;}
                     index=0;stage=2;
                 }
                 case 2->{ // the page from home's plaque (Change for the field), its layout and ui-page-<name>
@@ -3551,9 +3551,9 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==0){CampScreen.open("banner");return;}
                     if(k==5){UiRecruitChecks.park(c);for(int i=0;i<24&&!focused(c).equals("remove-0");i++)UiRecruitChecks.tap(c,GLFW.GLFW_KEY_TAB);focusName=focused(c);
                         why="Tab to "+focusName;if(s!=null)s.rebuild();String again=focused(c);ok=focusName.equals("remove-0")&&again.equals(focusName);why+=", a rebuild: "+again+(ok?"":" WRONG");return;}
-                    if(k==7){boolean hot=WarTablePages.underlined().contains(focusName);ok&=hot;why+=", drawn underlined "+WarTablePages.underlined()+(hot?"":" WRONG");gold=CampaignClient.profile.gold;
-                        server(c,b->{b.campaign.profile(player).gold+=1;b.campaign.save(player);});return;}
-                    if(k>7&&gold>=0&&CampaignClient.profile.gold!=gold){gold=-1;landedAt=tick;return;}
+                    if(k==7){boolean hot=WarTablePages.underlined().contains(focusName);ok&=hot;why+=", drawn underlined "+WarTablePages.underlined()+(hot?"":" WRONG");gold=CampaignClient.profile.troopWrits;
+                        server(c,b->{b.campaign.profile(player).troopWrits+=1;b.campaign.save(player);});return;}
+                    if(k>7&&gold>=0&&CampaignClient.profile.troopWrits!=gold){gold=-1;landedAt=tick;return;}
                     if(landedAt>0&&tick==landedAt+3){String again=focused(c);var b=s==null||s.pages==null?null:s.pages.button(focusName);boolean kept=again.equals(focusName)&&b!=null&&b.isFocused();ok&=kept;
                         why+="; the gold changed on the server (the camp state: a rebuild): the focus on "+again+(kept?"":" WRONG");landedAt=-1;
                         report("p1-ui-page-focus",ok,why);stage=11;return;}
@@ -3600,7 +3600,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** Banner: a click on row 1 arms its troop and a click on seat 0 sends slot:0:<it>, which the snapshot brings back and the seat
          *  draws; the other button on seat 19 sends slot:19:empty; then both seats are put back as they were. */
         void banner(MinecraftClient c,int tick){
-            int k=at(tick),t=WarTablePages.team();int[] o=WarTable.origin();var line=CampaignClient.profile.banner;var p=pages(c);
+            int k=at(tick),t=WarTablePages.team();int[] o=WarTable.origin();var line=CampaignClient.profile.line();var p=pages(c);
             switch(sub){
                 case 0->{roll=new ArrayList<>();for(var r:WarTablePages.owned())roll.add(r.troopId());at0=line.get(0);at19=line.get(19);
                     var add=button(c,"add-0");var remove=button(c,"remove-0");
@@ -3681,7 +3681,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     for(int i=0;i<3;i++)placed&=Arrays.equals(rect("note-"+i),new int[]{o[0]+140+240*i,o[1]+140,204,101});
                     boolean fresh=reroll!=null&&reroll.active&&"Swap the third contract, once a day".equals(text("reroll-hint"));
                     // the House row: five chips in the Houses' order under the reset line, 24 tall or more, centred on the page, the banner's House chosen (its word, the pressed art), the reward words from the game's own rule
-                    house=RosterMath.rollHouse(CampaignClient.profile.banner);String houseName=RosterMath.houseName(house);
+                    house=RosterMath.rollHouse(CampaignClient.profile.line());String houseName=RosterMath.houseName(house);
                     boolean chips=true;int prevRight=-1;StringBuilder row=new StringBuilder();
                     for(var h:Spec.HOUSES){int[] b=box(c,"house-"+h.id());
                         boolean here=b!=null&&b[2]>=24&&b[3]>=24&&b[1]==o[1]+436&&b[0]>prevRight&&h.name().equals(text("house-"+h.id()))&&(h.id().equals(house)?"table/chip-house-on":"table/chip-house").equals(tex("house-"+h.id()));
@@ -3703,7 +3703,7 @@ public final class Phase1Checks implements ClientModInitializer {
                         boolean pass="progress:reroll".equals(lastSent())&&(changed?"Issue ten tactical orders".equals(text("contract-2"))&&REROLLED.equals(n)&&reroll!=null&&!reroll.active&&"Rerolled today".equals(text("reroll-hint")):refused(n));
                         ok&=pass;why+="; Reroll sent "+lastSent()+": the third contract reads \""+text("contract-2")+"\", the notice line \""+n+"\", Reroll "+(reroll!=null&&reroll.active?"still taking a press":"dull")+" (\""+text("reroll-hint")+"\")"+(pass?"":" WRONG");landedAt=-1;next(tick);}
                     else if(!landed&&k>100){ok=false;why+="; Reroll sent "+lastSent()+": no change and no refusal 100 ticks on (the third contract \""+text("contract-2")+"\", the notice \""+CampaignClient.notice+"\") WRONG";landedAt=-1;next(tick);}}
-                case 2->{window(c,1920,1080,2,true);goldBefore=CampaignClient.profile.gold;xpBefore=pr.xp;shardsBefore=CampaignClient.profile.shards.getOrDefault(house,0);landedAt=-1; // one battle today, six this week
+                case 2->{window(c,1920,1080,2,true);goldBefore=CampaignClient.profile.gearShards;writsBefore=CampaignClient.profile.troopWrits;writGoldBefore=CampaignClient.profile.writGold;xpBefore=pr.xp;shardsBefore=CampaignClient.profile.shards.getOrDefault(house,0);landedAt=-1; // one battle today, six this week
                     gA=grant(pr,"daily:0","daily:0");gW=grant(pr,"weekly","weekly:"+house);
                     server(c,b->{var s=b.campaign.profile(player).progression;Progression.reset(s,Progression.today());s.dailyBattles=1;s.weeklyBattles=Progression.WEEKLY_BATTLES;b.campaign.save(player);});next(tick);}
                 case 3->{if(k==18)UiRecruitChecks.park(c);boolean landed=pr.dailyBattles==1&&pr.weeklyBattles==Progression.WEEKLY_BATTLES;if(landed&&landedAt<0)landedAt=tick;
@@ -3724,25 +3724,25 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 4->{boolean landed=pr.claims.contains("daily:0");if(landed&&landedAt<0)landedAt=tick;String want=gA.message();
                     boolean drawn="table/stamp-hollow".equals(tex("stamp-0"))&&"Claimed".equals(text("progress-0"))&&want.equals(text("notice"));
                     if(landed&&k>=8&&(drawn||tick>=landedAt+20)){
-                        boolean pass="progress:daily:0".equals(lastSent())&&drawn&&box(c,"claim-0")==null&&in(rect("stamp-0"),rect("note-0"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gold==goldBefore+gA.gold()&&pr.xp==xpBefore+gA.xp();
+                        boolean pass="progress:daily:0".equals(lastSent())&&drawn&&box(c,"claim-0")==null&&in(rect("stamp-0"),rect("note-0"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gearShards==goldBefore+gA.gold()&&pr.xp==xpBefore+gA.xp();
                         ok&=pass;why+="; Claim on note 0 sent "+lastSent()+": claims "+pr.claims+", the note reads \""+text("progress-0")+"\", stamped "+tex("stamp-0")+" at "+str(rect("stamp-0"))+", Claim "+(box(c,"claim-0")==null?"gone":"still shown")
-                            +", the notice line \""+text("notice")+"\", gold "+goldBefore+" to "+CampaignClient.profile.gold+", XP "+xpBefore+" to "+pr.xp+(pass?"":" WRONG");
+                            +", the notice line \""+text("notice")+"\", gold "+goldBefore+" to "+CampaignClient.profile.gearShards+", XP "+xpBefore+" to "+pr.xp+(pass?"":" WRONG");
                         landedAt=-1;click(c,box(c,"claim-weekly"));next(tick);}
                     else if(!landed&&k>100){ok=false;why+="; Claim on note 0 sent "+lastSent()+": the claim never landed (claims "+pr.claims+", the notice \""+CampaignClient.notice+"\") WRONG";sub=6;subAt=tick;}}
                 case 5->{boolean landed=pr.claims.contains("weekly");if(landed&&landedAt<0)landedAt=tick;String want=gW.message();
                     boolean drawn="table/stamp-hollow".equals(tex("stamp-weekly"))&&"Claimed".equals(text("progress-weekly"))&&want.equals(text("notice"));
                     if(landed&&k>=3&&(drawn||tick>=landedAt+20)){
-                        boolean pass=("progress:weekly:"+house).equals(lastSent())&&drawn&&box(c,"claim-weekly")==null&&in(rect("stamp-weekly"),rect("weekly"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gold==goldBefore+gA.gold()+gW.gold()&&pr.xp==xpBefore+gA.xp()+gW.xp()
+                        boolean pass=("progress:weekly:"+house).equals(lastSent())&&drawn&&box(c,"claim-weekly")==null&&in(rect("stamp-weekly"),rect("weekly"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gearShards==goldBefore+gA.gold()+gW.gold()&&pr.xp==xpBefore+gA.xp()+gW.xp()
                             &&CampaignClient.profile.shards.getOrDefault(house,0)==shardsBefore+gW.shards()&&box(c,"house-"+house)!=null;
                         ok&=pass;why+="; Claim on the weekly sent "+lastSent()+": the note reads \""+text("progress-weekly")+"\", stamped "+tex("stamp-weekly")+" at "+str(rect("stamp-weekly"))+", Claim "+(box(c,"claim-weekly")==null?"gone":"still shown")
-                            +", the notice line \""+text("notice")+"\", gold "+CampaignClient.profile.gold+", XP "+pr.xp+", "+houseName0()+" shards "+shardsBefore+" to "+CampaignClient.profile.shards.getOrDefault(house,0)+" (want +"+gW.shards()+")"+(pass?"":" WRONG");
+                            +", the notice line \""+text("notice")+"\", gold "+CampaignClient.profile.gearShards+", XP "+pr.xp+", "+houseName0()+" shards "+shardsBefore+" to "+CampaignClient.profile.shards.getOrDefault(house,0)+" (want +"+gW.shards()+")"+(pass?"":" WRONG");
                         shot(c,"ui-page-contracts-claimed");landedAt=-1;next(tick);}
                     else if(!landed&&k>100){ok=false;why+="; Claim on the weekly sent "+lastSent()+": the claim never landed (claims "+pr.claims+", the notice \""+CampaignClient.notice+"\") WRONG";next(tick);}}
-                case 6->{int g0=goldBefore,x0=xpBefore,s0=shardsBefore;String h0=house; // put back: no claims, no battles, the XP, the gold and the shards as they were
-                    server(c,b->{var pp=b.campaign.profile(player);var s=pp.progression;s.claims.remove("daily:0");s.claims.remove("weekly");s.dailyBattles=0;s.weeklyBattles=0;s.xp=x0;pp.gold=g0;if(s0<=0)pp.shards.remove(h0);else pp.shards.put(h0,s0);b.campaign.save(player);});next(tick);}
-                case 7->{boolean back=!pr.claims.contains("daily:0")&&!pr.claims.contains("weekly")&&pr.dailyBattles==0&&pr.weeklyBattles==0&&pr.xp==xpBefore&&CampaignClient.profile.gold==goldBefore&&CampaignClient.profile.shards.getOrDefault(house,0)==shardsBefore;
-                    if(back&&(text("notice")==null||k>=200)){why+="; put back: no claims, XP "+pr.xp+", gold "+CampaignClient.profile.gold;stage=4;} // the claims' notice faded, for the grading shot
-                    else if(!back&&k>100){ok=false;why+="; not put back: claims "+pr.claims+", XP "+pr.xp+", gold "+CampaignClient.profile.gold+" WRONG";stage=4;}}
+                case 6->{int g0=goldBefore,w0=writsBefore,wg0=writGoldBefore,x0=xpBefore,s0=shardsBefore;String h0=house; // put back: no claims, no battles, the XP, the reward gold (gear shards and the writ purse) and the shards as they were
+                    server(c,b->{var pp=b.campaign.profile(player);var s=pp.progression;s.claims.remove("daily:0");s.claims.remove("weekly");s.dailyBattles=0;s.weeklyBattles=0;s.xp=x0;pp.gearShards=g0;pp.troopWrits=w0;pp.writGold=wg0;if(s0<=0)pp.shards.remove(h0);else pp.shards.put(h0,s0);b.campaign.save(player);});next(tick);}
+                case 7->{boolean back=!pr.claims.contains("daily:0")&&!pr.claims.contains("weekly")&&pr.dailyBattles==0&&pr.weeklyBattles==0&&pr.xp==xpBefore&&CampaignClient.profile.gearShards==goldBefore&&CampaignClient.profile.shards.getOrDefault(house,0)==shardsBefore;
+                    if(back&&(text("notice")==null||k>=200)){why+="; put back: no claims, XP "+pr.xp+", gold "+CampaignClient.profile.gearShards;stage=4;} // the claims' notice faded, for the grading shot
+                    else if(!back&&k>100){ok=false;why+="; not put back: claims "+pr.claims+", XP "+pr.xp+", gold "+CampaignClient.profile.gearShards+" WRONG";stage=4;}}
                 default->stage=4;
             }
         }
@@ -3965,11 +3965,11 @@ public final class Phase1Checks implements ClientModInitializer {
                     report("p1-ui-icons-atlas",bad.isEmpty()&&same,CLASS_ART.length+" role icons, each with its 14x14 icon and its active's 22x20 picture in the atlas"+(bad.isEmpty()?"":"; wrong: "+bad)+(same?"":"; the sheet's actives are not the six this suite knows"));
                     c.setScreen(null);CampaignClient.homeMode="skirmish";window(c,960,540,1);stage=-1;
                     server(c,b->{if(b.running)b.campaign.returnLobby();var id=player;b.campaign.social.leaveRoom(id);b.campaign.social.leaveParty(id);b.campaign.closeParty();b.campaign.difficulty="normal";
-                        var p=new Profile();p.gold=300;p.commander="marshal";b.campaign.profiles.put(id,p);b.campaign.save(id);stage=1;});
+                        var p=new Profile();p.troopWrits=3;p.commander="marshal";b.campaign.profiles.put(id,p);b.campaign.save(id);stage=1;});
                 }
                 case 1->{ // the snapshot brings the fresh profile
-                    var p=CampaignClient.profile;boolean fresh=p.gold==300&&"marshal".equals(p.commander)&&!GravesAndGloryClient.running;
-                    if(!fresh){if(since(tick)>300)fail(c,"p1-ui-icons-setup","no fresh profile with 300 gold and the Marshal 300 ticks on: gold "+p.gold+", class "+p.commander);return;}
+                    var p=CampaignClient.profile;boolean fresh=p.troopWrits==3&&"marshal".equals(p.commander)&&!GravesAndGloryClient.running;
+                    if(!fresh){if(since(tick)>300)fail(c,"p1-ui-icons-setup","no fresh profile with 300 gold and the Marshal 300 ticks on: gold "+p.troopWrits+", class "+p.commander);return;}
                     stage=2;
                 }
                 case 2->{ // the Banner page from home's plaque at 960x540 GUI 1

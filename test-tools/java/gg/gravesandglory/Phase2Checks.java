@@ -72,13 +72,17 @@ public final class Phase2Checks implements ClientModInitializer {
         for(var u:b.units)if(u.squad==s)u.mob.discard();b.units.removeIf(u->u.squad==s);
         s.training.clear();s.fullHealth.clear();s.fullCount.clear();s.banner=new ArrayList<>(banner);b.reinforce(s);
     }
-    /** A banner from a botBanners id, or from "knight*12,archer*8": each part a troop id, ^ or empty, optionally times a count. */
+    /** A banner on the war table, dense (WarGrid.cells() entries) as a squad fields it: a botBanners id, or "knight*12,archer*8" (each part a troop id, ^ or empty, optionally times a count). Up to 20 entries sit as the old 5 by 4 block on columns 2 to 6 (Campaign.table), more are placed by role (WarGrid.place). */
     static List<String> banner(String spec){
-        for(var row:Spec.BOTBANNERS)if(row.id().equals(spec))return new ArrayList<>(Arrays.asList(row.slots().split(",")));
+        for(var row:Spec.BOTBANNERS)if(row.id().equals(spec))return Campaign.table(Arrays.asList(row.slots().split(",")));
         List<String> out=new ArrayList<>();
         for(String part:spec.split(",")){String[] p=part.trim().split("[*]");int n=p.length>1?Integer.parseInt(p[1].trim()):1;for(int i=0;i<n;i++)out.add(p[0].trim());}
-        return out;
+        if(out.size()>20)return WarGrid.dense(WarGrid.place(out,id->0));
+        return Campaign.table(out);
     }
+    /** The gold a schema 6 profile held, as the migration split it: troop writs of 100 and the rest as gear shards (nothing else has paid into either yet). */
+    static int migGold(Profile pr){return pr.troopWrits*100+pr.gearShards;}
+    static int savedGold(com.google.gson.JsonObject j){return j.get("troopWrits").getAsInt()*100+j.get("gearShards").getAsInt();}
     /** The schema number a profile file states, -1 when it has none. */
     static int schemaOf(String json){try{return JsonParser.parseString(json).getAsJsonObject().get("schema").getAsInt();}catch(RuntimeException e){return -1;}}
     static byte[] fixture(String name)throws IOException{try(var in=Phase2Checks.class.getResourceAsStream("/fixtures/"+name)){if(in==null)throw new IOException("fixture "+name+" is not on the class path");return in.readAllBytes();}}
@@ -222,7 +226,7 @@ public final class Phase2Checks implements ClientModInitializer {
                         Set<String> want=new LinkedHashSet<>(commons);want.add("sentinel");
                         int refund=Spec.ECONOMY[0].refundGold(),gold=420+3*refund; // the v1 starters mage and hexer, and the unlocked wraith
                         boolean owned=commons.size()==10&&pr.owned.keySet().equals(want);
-                        boolean refunded=Collections.disjoint(pr.owned.keySet(),Set.of("mage","hexer","oracle","wraith"))&&pr.gold==gold;
+                        boolean refunded=Collections.disjoint(pr.owned.keySet(),Set.of("mage","hexer","oracle","wraith"))&&migGold(pr)==gold&&pr.gold==null&&pr.banner==null&&pr.writs==null;
                         boolean warden=pr.commander.equals("warden");
                         boolean kept=Files.exists(backup)&&Arrays.equals(Files.readAllBytes(backup),fixture);
                         // The file upgrade stops at schema 4 (ProfileMigration.upgradeFile); schema 5 and 6 (custom groups, the campaign reset) are in-memory steps of Profile.sanitize that reach the disk with the next save.
@@ -231,32 +235,33 @@ public final class Phase2Checks implements ClientModInitializer {
                         camp.save(player);int savedSchema=schemaOf(Files.readString(file));
                         boolean v2=upgraded&&savedSchema==Profile.SCHEMA;
                         var cat=RosterMath.Catalog.fromSpec();
-                        boolean line=RosterMath.validBanner(pr.banner,cat,pr.owned.keySet())==null&&pr.banner.equals(banner("knight*12,archer*6,empty*2"));
-                        report("p2-migrate-live",owned&&refunded&&warden&&kept&&v2&&line,"owned "+pr.owned.keySet()+" is the 10 Commons and sentinel="+owned+"; mage, hexer, oracle and wraith not owned and gold "+pr.gold+" = 420 + 3 x "+refund+"="+refunded
-                            +"; commander "+pr.commander+"; "+backup.getFileName()+" equals the fixture="+kept+"; "+file.getFileName()+" rewritten off v1 as schema "+diskSchema+" at the first read and as the current schema "+Profile.SCHEMA+" by the next save (read back "+savedSchema+")="+v2+"; banner "+String.join(",",pr.banner)+" is valid and the Dawn line without its refunded mages="+line);
+                        boolean line=RosterMath.validTable(pr.table(),cat,pr.owned.keySet(),RosterMath.fieldableHouses())==null&&pr.line().equals(banner("knight*12,archer*6,empty*2"));
+                        report("p2-migrate-live",owned&&refunded&&warden&&kept&&v2&&line,"owned "+pr.owned.keySet()+" is the 10 Commons and sentinel="+owned+"; mage, hexer, oracle and wraith not owned and gold (troop writs x 100 + gear shards) "+migGold(pr)+" = 420 + 3 x "+refund+"="+refunded
+                            +"; commander "+pr.commander+"; "+backup.getFileName()+" equals the fixture="+kept+"; "+file.getFileName()+" rewritten off v1 as schema "+diskSchema+" at the first read and as the current schema "+Profile.SCHEMA+" by the next save (read back "+savedSchema+")="+v2+"; banner "+String.join(",",pr.line())+" is valid and the Dawn line without its refunded mages="+line);
                     }catch(IOException e){report("p2-migrate-live",false,e.toString());}
                     next(b,2);
                 }
                 case 2->{ // p2-banner-edit: the Sunweaver is granted (the migration refunded it), then placed in the last slot
                     var pr=profile(b);pr.owned.putIfAbsent("mage",new Profile.Owned());b.campaign.save(player);
-                    before=new ArrayList<>(pr.banner);command(b,"slot:19:mage",3);
+                    before=new ArrayList<>(pr.line());command(b,"slot:53:mage",3);
                 }
                 case 3->{if(since(b)>=20){
                     var pr=profile(b);var cat=RosterMath.Catalog.fromSpec();
-                    List<String> edit=new ArrayList<>(before);edit.set(19,"mage");
-                    boolean valid=RosterMath.validBanner(pr.banner,cat,pr.owned.keySet())==null,repacked=pr.banner.equals(RosterMath.repack(edit,cat,pr.owned.keySet()))&&pr.banner.contains("mage");
-                    editOk=valid&&repacked;editWhy="slot:19:mage -> "+String.join(",",pr.banner)+" (valid="+valid+", the repacked edit="+repacked+")";
-                    before=new ArrayList<>(pr.banner);command(b,"slot:0:gl_marshal",4);
+                    List<String> edit=new ArrayList<>(before);edit.set(53,"mage");
+                    boolean fits=RosterMath.validTable(WarGrid.sparse(edit),cat,pr.owned.keySet(),RosterMath.fieldableHouses())==null;
+                    boolean valid=RosterMath.validTable(pr.table(),cat,pr.owned.keySet(),RosterMath.fieldableHouses())==null,repacked=fits&&pr.line().equals(edit)&&pr.line().get(53).equals("mage");
+                    editOk=valid&&repacked;editWhy="slot:53:mage (the last war table cell) -> "+String.join(",",pr.line())+" (valid="+valid+", the edit fits the allowance="+fits+", exactly the edit="+repacked+")";
+                    before=new ArrayList<>(pr.line());command(b,"slot:0:gl_marshal",4);
                 }}
                 case 4->{if(since(b)>=20){
-                    var pr=profile(b);boolean same=pr.banner.equals(before)&&!pr.owned.containsKey("gl_marshal");
+                    var pr=profile(b);boolean same=pr.line().equals(before)&&!pr.owned.containsKey("gl_marshal");
                     editOk&=same;editWhy+="; slot:0:gl_marshal (not owned) left the banner unchanged="+same+", notice: "+notice(b);
                     report("p2-banner-edit",editOk,editWhy);
                     command(b,"slot:2:wm_hound",5);
                 }}
                 case 5->{if(since(b)>=20){ // ruling 2 (an owned troop of an unfieldable House stays out of the banner) has nothing left to bite on: every House is fieldable since Task 10, so the owned Wildmoot troop goes in
-                    var pr=profile(b);boolean placed=pr.banner.size()>2&&"wm_hound".equals(pr.banner.get(2)),owned=pr.owned.containsKey("wm_hound"),quiet=!notice(b).contains("cannot be fielded");
-                    report("p2-banner-wildmoot",placed&&owned&&quiet,"slot:2:wm_hound (owned; House wildmoot fieldable since Task 10) put it in slot 2="+placed+" (banner "+pr.banner+", before "+before+"), owned="+owned+", no 'cannot be fielded' notice="+quiet+" (notice: "+notice(b)+")");
+                    var pr=profile(b);boolean placed=pr.line().size()>2&&"wm_hound".equals(pr.line().get(2)),owned=pr.owned.containsKey("wm_hound"),quiet=!notice(b).contains("cannot be fielded");
+                    report("p2-banner-wildmoot",placed&&owned&&quiet,"slot:2:wm_hound (owned; House wildmoot fieldable since Task 10) put it in cell 2="+placed+" (banner "+pr.line()+", before "+before+"), owned="+owned+", no 'cannot be fielded' notice="+quiet+" (notice: "+notice(b)+")");
                     wantScreen="editor";requestShot("banner-editor");next(b,6);
                 }}
                 case 6->{if(shotTaken){wantShot=null;wantScreen="none";command(b,"colour:crimson",7);}}
@@ -289,7 +294,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     List<Spec.BotBannersRow> rows=new ArrayList<>(Campaign.fieldableBotBanners("normal"));
                     boolean ok=!rows.isEmpty();int bots=0;StringBuilder why=new StringBuilder();
                     for(var s:b.squads.values())if(s.bot&&s.seated){bots++;
-                        var row=rows.stream().filter(r->Arrays.asList(r.slots().split(",")).equals(s.banner)).findFirst().orElse(null);
+                        var row=rows.stream().filter(r->Campaign.table(Arrays.asList(r.slots().split(","))).equals(s.banner)).findFirst().orElse(null);
                         boolean lane=row!=null&&row==rows.get(s.lane%rows.size());
                         boolean units=true;int listed=0;
                         for(int i=0;i<s.banner.size();i++){final int slot=i;String id=s.banner.get(i);
@@ -338,15 +343,13 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(s==null){if(since(b)>100){report("p2-takeover",false,"the commander never rejoined");b.campaign.returnLobby();next(b,23);}return;}
                     own=s;var row=botRows.get(s);var pr=profile(b);
                     List<String> shown=new ArrayList<>();for(var e:b.campaign.bannerJson(player))shown.add(e.getAsString());
-                    boolean seat=row!=null&&!s.bot&&s.seated,mine=s.banner.equals(b.campaign.banner(s)),snapshot=shown.equals(pr.banner),commander=Commander.relicIn(s,0).equals(GearStats.of(GearCombat.wearing(pr)).relics().get(0));
+                    boolean seat=row!=null&&!s.bot&&s.seated,mine=s.banner.equals(b.campaign.banner(s)),snapshot=shown.equals(pr.line()),commander=Commander.relicIn(s,0).equals(GearStats.of(GearCombat.wearing(pr)).relics().get(0));
                     foreign=row==null?null:row.stream().filter(id->Campaign.troop(id)!=null&&!s.banner.contains(id)).findFirst().orElse(null);
                     takeOk=seat&&mine&&snapshot&&commander;
                     takeWhy="took a bot seat="+seat+" (team "+s.team+", lane "+s.lane+", the bot's banner "+(row==null?"none":String.join(",",row))+"); his banner is campaign.banner(s)="+mine
                         +"; the snapshot banner is his profile banner="+snapshot+"; relic slot 0 "+Commander.relicIn(s,0)+" from his gear="+commander;
                     if(foreign==null){report("p2-takeover",false,takeWhy+"; every troop of the bot's banner is also in his");b.campaign.returnLobby();next(b,23);return;}
-                    // Room for one more unit: the inherited army loses troops that are not knights, as casualties would.
-                    int weight=b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()).mapToInt(u->u.spec.slotWeight()).sum()+s.training.stream().mapToInt(t->t.spec().slotWeight()).sum();
-                    for(var u:new ArrayList<>(b.units))if(weight>GravesAndGlory.R.squadSize()-2&&u.squad==s&&u.mob.isAlive()&&!u.spec.id().equals("knight")){u.mob.discard();b.units.remove(u);weight-=u.spec.slotWeight();}
+                                        // (the army cap is now 40 troops, not slot weights: the inherited army leaves room, nothing to prune)
                     var f=Spec.FACTIONS[s.team];b.relocate(sp(b),f.barracksX()+.5,Arena.ground(f.barracksX(),f.barracksZ())+1,f.barracksZ()+.5,0,0);
                     s.gold=1000;mark();queuedBefore=s.training.size();
                     takeWhy+="; at the barracks "+b.atBarracks(sp(b),s);
@@ -472,10 +475,10 @@ public final class Phase2Checks implements ClientModInitializer {
         void recruit(MinecraftClient c){
             var p=CampaignClient.profile;var houses=Arrays.stream(Spec.HOUSES).map(Spec.HousesRow::id).toList();
             if(rt==0){
-                if(p.gold==expectGold&&p.owned.containsKey("sentinel")&&!p.owned.containsKey("mage")){
+                if(p.troopWrits==expectGold&&p.owned.containsKey("sentinel")&&!p.owned.containsKey("mage")){
                     CampaignClient.revealUntil=0;CampaignClient.notice=""; // what Skip reveal does, and the last roll's notice goes: the screenshots show the page itself
                     c.setScreen(new CampScreen("recruit"));rt=1;rtWait=0;}
-                else if(++rtWait>300){rtOk=false;rtWhy.append("the migrated profile never reached the client (gold ").append(p.gold).append(", want ").append(expectGold).append("); ");rt=9;}
+                else if(++rtWait>300){rtOk=false;rtWhy.append("the migrated profile never reached the client (troop writs ").append(p.troopWrits).append(", want ").append(expectGold).append("); ");rt=9;}
                 return;
             }
             if(rt==1&&c.currentScreen instanceof CampScreen s&&s.recruit!=null){
@@ -500,8 +503,8 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 if(wantShot!=null&&shotTaken){wantShot=null;ri++;rtWait=0;if(ri>=houses.size())rt=9;}
             }
-            if(rt==9&&!rtDone){rtDone=true;c.setScreen(null);boolean ok=rtOk&&expectGold==420+3*Spec.ECONOMY[0].refundGold();String why=rtWhy.toString();
-                server(c,b->{report("p2-recruit-tabs",ok,"five House banners on the War Table recruit page after the v1 fixture migrated (gold "+expectGold+" = 420 + 3 x refund; the brief expected 420 with the mage and the hexer still owned, but the migration refunds the mage, the hexer and the wraith): "+why);next(b,60);});}
+            if(rt==9&&!rtDone){rtDone=true;c.setScreen(null);boolean ok=rtOk&&expectGold==(420+3*Spec.ECONOMY[0].refundGold())/100;String why=rtWhy.toString();
+                server(c,b->{report("p2-recruit-tabs",ok,"five House banners on the War Table recruit page after the v1 fixture migrated (troop writs "+expectGold+" = (420 + 3 x refund) / 100; the brief expected 420 with the mage and the hexer still owned, but the migration refunds the mage, the hexer and the wraith): "+why);next(b,60);});}
         }
 
         public void serverTick(GravesAndGlory.Battle b){
@@ -640,22 +643,22 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 40->{ // p2-roll-house: gold 100, the draw fixed on the first Rare, and the file on disk agrees
                     var camp=b.campaign;if(b.running){camp.returnLobby();return;}
-                    var pr=profile(b);pr.gold=Spec.RECRUITMENT[0].rollCost();pr.owned.remove("wm_stalker");pr.pity.put("wildmoot",0);camp.save(player);
+                    var pr=profile(b);pr.troopWrits=Profile.ROLL_WRITS;pr.owned.remove("wm_stalker");pr.pity.put("wildmoot",0);camp.save(player);
                     rngSaved=camp.rollRng;camp.rollRng=fixed(86);command(b,"roll:wildmoot",41);
                 }
                 case 41->{if(since(b)>=20){
                     var camp=b.campaign;var pr=profile(b);camp.rollRng=rngSaved;boolean disk=false;String file="";
                     try{var j=com.google.gson.JsonParser.parseString(Files.readString(camp.directory.resolve(player+".json"))).getAsJsonObject();
-                        disk=j.get("gold").getAsInt()==0&&j.getAsJsonObject("owned").has("wm_stalker")&&j.getAsJsonObject("pity").get("wildmoot").getAsInt()==1;file="gold "+j.get("gold")+", pity "+j.getAsJsonObject("pity").get("wildmoot");}catch(Exception e){file=e.toString();}
+                        disk=j.get("troopWrits").getAsInt()==0&&j.getAsJsonObject("owned").has("wm_stalker")&&j.getAsJsonObject("pity").get("wildmoot").getAsInt()==1;file="troopWrits "+j.get("troopWrits")+", pity "+j.getAsJsonObject("pity").get("wildmoot");}catch(Exception e){file=e.toString();}
                     var wildmoot=pr.owned.keySet().stream().filter(id->Campaign.troop(id).house().equals("wildmoot")).toList();
-                    boolean ok=pr.gold==0&&pr.owned.containsKey("wm_stalker")&&wildmoot.size()==3&&pr.pity.getOrDefault("wildmoot",-1)==1&&disk;
-                    report("p2-roll-house",ok,"roll:wildmoot with 100 gold and the draw fixed on the first Rare: gold "+pr.gold+", Wildmoot owned "+wildmoot+" (want the two Commons and the Web Stalker), pity.wildmoot "+pr.pity.get("wildmoot")+" (want 1); the saved file: "+file+"="+disk+"; notice \""+b.campaign.notices.getOrDefault(player,"")+"\"");
+                    boolean ok=pr.troopWrits==0&&pr.owned.containsKey("wm_stalker")&&wildmoot.size()==3&&pr.pity.getOrDefault("wildmoot",-1)==1&&disk;
+                    report("p2-roll-house",ok,"roll:wildmoot with one troop writ and the draw fixed on the first Rare: troop writs "+pr.troopWrits+", Wildmoot owned "+wildmoot+" (want the two Commons and the Web Stalker), pity.wildmoot "+pr.pity.get("wildmoot")+" (want 1); the saved file: "+file+"="+disk+"; notice \""+b.campaign.notices.getOrDefault(player,"")+"\"");
                     next(b,50);}}
                 case 50->{ // p2-recruit-tabs: the same v1 file as p2-migrate-live, then the camp page recruit on the client
                     var camp=b.campaign;if(b.running){camp.returnLobby();return;}
                     try{byte[] fx=fixture("profile-v1-partial.json");Files.createDirectories(camp.directory);
                         Path file=camp.directory.resolve(player+".json"),backup=camp.directory.resolve(player+".v1.json");Files.deleteIfExists(backup);Files.write(file,fx);camp.profiles.remove(player);camp.notices.remove(player); // the last roll's notice would otherwise stay under the page
-                        expectGold=camp.profile(player).gold;
+                        expectGold=camp.profile(player).troopWrits;
                     }catch(IOException e){report("p2-recruit-tabs",false,e.toString());next(b,60);return;}
                     next(b,51);
                 }
@@ -1939,7 +1942,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     var made=b.units.stream().filter(u->u.temporary&&u.squad==own).toList();bloom.clear();bloom.addAll(made);
                     boolean row=c.id().equals("warlock")&&c.active().equals("grave_bloom")&&c.cooldownTicks()==2400&&c.durationTicks()==600&&near(c.radius(),8)&&near(c.range(),30)&&near(c.value1(),0.6)&&near(c.value2(),6)&&near(c.value3(),400);
                     boolean timing=own.relicState.until[0]==t0+c.durationTicks()&&own.relicState.readyAt[0]==t0+c.cooldownTicks()&&Commander.readyIn(b,own)==2400&&Commander.running(b,own,"grave_bloom");
-                    boolean six=made.size()==6&&made.stream().map(u->u.slot).distinct().count()==6&&made.stream().allMatch(u->u.slot>=GravesAndGlory.R.squadSize());
+                    boolean six=made.size()==6&&made.stream().map(u->u.slot).distinct().count()==6&&made.stream().allMatch(u->!u.hasCell());
                     boolean shape=made.stream().allMatch(u->u.spec.id().equals("revenant")&&u.mob instanceof GravesAndGlory.ArmyZombie&&u.expiresAt==t0+600&&Math.abs(u.mob.getHealth()-0.6*u.mob.getMaxHealth())<0.01&&u.mob.isAlive());
                     var names=sideMembers(b);boolean teams=made.stream().allMatch(u->names.stream().anyMatch(m->m.startsWith(b.side(own.team).id()+":")&&m.endsWith(u.mob.getEntityName())));
                     boolean where=true;StringBuilder spots=new StringBuilder();for(var u:made){double best=1e9;for(var k:corpses)if(distance(u.mob.getPos(),k.mob.getPos())<best)best=distance(u.mob.getPos(),k.mob.getPos());where&=best<1.0;spots.append(fmt(distance(u.mob.getPos(),aim))).append(' ');}
@@ -2442,7 +2445,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     b.units.remove(u1);
                     double without=b.formation(us[0]).distanceTo(b.formation(us[1]));
                     b.units.add(u1);
-                    // the bridge lane offset (slot%5-2) x the body's room, for the slots of a Hearthguard and a golem
+                    // the bridge lane offset (WarGrid.col(slot)-4) x the body's room, for the slots of a Hearthguard and a golem
                     Vec3d goal=new Vec3d(60,65,0);var rg=Tactics.route(u1,goal);var rh=Tactics.route(us[0],goal);
                     var bridges=Arrays.stream(Spec.STRUCTURES).filter(s->s.kind().equals("bridge")).toList();
                     double lane1=(4%5-2)*sg,lane0=(0%5-2)*sh;
@@ -2618,7 +2621,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     double x0=br.x()-br.width()/2.0-14;
                     force(b,new BlockPos((int)x0-4,0,br.z()-10),new BlockPos(br.x()+br.width()/2+24,0,br.z()+10));
                     own.order="move";own.formation="block";own.target=new Vec3d(br.x()+br.width()/2.0+16,65,br.z());own.yaw=-90;
-                    for(var u:b.units)if(u.squad==own){double px=x0+(u.slot%5)*1.5,pz=br.z()+(u.slot/5-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Arena.ground((int)px,(int)pz)+1,pz,-90f,0f);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;fixture.add(u);if(u.spec.id().equals("ic_colossus"))u1=u;}
+                    for(var u:b.units)if(u.squad==own){double px=x0+(WarGrid.col(u.slot)-2)*1.5,pz=br.z()+(WarGrid.row(u.slot)-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Arena.ground((int)px,(int)pz)+1,pz,-90f,0f);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;fixture.add(u);if(u.spec.id().equals("ic_colossus"))u1=u;}
                     crossedAt=-1;deckMin=1e9;deckTicks=0;wet=false;t0=b.time;next(b,64);
                 }
                 case 64->{
@@ -3228,7 +3231,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(Double.isNaN(fordZ)){report("p2-riptide-ford",false,"no clear line across the river 24 blocks from every bridge");next(b,44);return;}
                     int rx=(int)Math.round(Arena.riverX(fordZ));fordX0=rx-6-14;
                     field(b,own,banner("tidecallers_hard"));
-                    for(var u:b.units)if(u.squad==own){double px=fordX0+(u.slot%5)*1.5,pz=fordZ+(u.slot/5-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Phase1Checks.top(b,px,pz),pz,-90f,0f);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;fixture.add(u);}
+                    for(var u:b.units)if(u.squad==own){double px=fordX0+(WarGrid.col(u.slot)-2)*1.5,pz=fordZ+(WarGrid.row(u.slot)-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Phase1Checks.top(b,px,pz),pz,-90f,0f);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;fixture.add(u);}
                     for(int i=0;i<3;i++){double px=fordX0+8+(i%2)*1.5,pz=fordZ-3+i*3;var k=b.spawn(dawn,Campaign.troop("knight"),40+i,ground(b,px,pz));k.mob.refreshPositionAndAngles(px,Phase1Checks.top(b,px,pz),pz,-90f,0f);k.deployed=k.mob.getPos();k.lastPosition=k.mob.getPos();fixture.add(k);}
                     Vec3d goal=new Vec3d(rx+22,65,fordZ);
                     for(var s:List.of(own,dawn)){s.order="move";s.formation="block";s.target=goal;s.yaw=-90;}
@@ -3269,7 +3272,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     double x0=br.x()-br.width()/2.0-14;
                     force(b,new BlockPos((int)x0-4,0,br.z()-10),new BlockPos(br.x()+br.width()/2+24,0,br.z()+10));
                     own.order="move";own.formation="block";own.target=new Vec3d(br.x()+br.width()/2.0+16,65,br.z());own.yaw=-90;
-                    for(var u:b.units)if(u.squad==own){double px=x0+(u.slot%5)*1.5,pz=br.z()+(u.slot/5-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Arena.ground((int)px,(int)pz)+1,pz,-90f,0f);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;fixture.add(u);if(u.spec.id().equals("tc_brute"))u1=u;}
+                    for(var u:b.units)if(u.squad==own){double px=x0+(WarGrid.col(u.slot)-2)*1.5,pz=br.z()+(WarGrid.row(u.slot)-1.5)*1.4;u.mob.getNavigation().stop();u.mob.refreshPositionAndAngles(px,Arena.ground((int)px,(int)pz)+1,pz,-90f,0f);u.deployed=u.mob.getPos();u.lastPosition=u.mob.getPos();u.nextPath=0;u.stuckTicks=0;fixture.add(u);if(u.spec.id().equals("tc_brute"))u1=u;}
                     crossedAt=-1;deckMin=1e9;deckTicks=0;wet=false;t0=b.time;next(b,45);
                 }
                 case 45->{
@@ -3887,7 +3890,7 @@ public final class Phase2Checks implements ClientModInitializer {
         GravesAndGlory.Squad own;Map<String,Integer> shards0=new HashMap<>(),renown0=new HashMap<>();int gold0,knightStars0;
         /** p2-kill-credit: the enemy the dead archer's arrow is on its way to, and the counts before it lands. */
         GravesAndGlory.Unit shotTarget;int archerKills0,kills0Shot;
-        static final int COST=Spec.RECRUITMENT[0].chosenCost();
+        static final int COST=Profile.CHOSEN_WRITS;
         static String fmt(double v){return String.format(Locale.ROOT,"%.2f",v);}
         void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
         long since(GravesAndGlory.Battle b){return b.time-stageAt;}
@@ -3938,19 +3941,19 @@ public final class Phase2Checks implements ClientModInitializer {
             switch(stage){
                 case 1->{ // p2-buy-chosen: a Common or Rare for chosenCost, new or as a duplicate copy; refused short of gold and for an Epic
                     if(b.running){camp.returnLobby();return;}
-                    var pr=profile(b);pr.owned.remove("sentinel");pr.gold=COST-1;save(b);command(b,"buy:sentinel",2);}
+                    var pr=profile(b);pr.owned.remove("sentinel");pr.troopWrits=COST-1;save(b);command(b,"buy:sentinel",2);}
                 case 2->{if(!answered(b))return;var pr=profile(b);
-                    part(owned(b,"sentinel")==null&&pr.gold==COST-1,"with "+(COST-1)+" gold buy:sentinel is refused: "+held(b,"sentinel")+", gold "+pr.gold+", notice \""+notice(b)+"\"");
-                    pr.gold=COST;save(b);command(b,"buy:sentinel",3);}
+                    part(owned(b,"sentinel")==null&&pr.troopWrits==COST-1,"with "+(COST-1)+" troop writs buy:sentinel is refused: "+held(b,"sentinel")+", troop writs "+pr.troopWrits+", notice \""+notice(b)+"\"");
+                    pr.troopWrits=COST;save(b);command(b,"buy:sentinel",3);}
                 case 3->{if(!answered(b))return;var pr=profile(b);var o=owned(b,"sentinel");var j=disk(b);
-                    boolean onDisk=j.has("owned")&&j.getAsJsonObject("owned").has("sentinel")&&j.get("gold").getAsInt()==0;
-                    part(o!=null&&o.copies==1&&o.stars==1&&pr.gold==0&&onDisk,COST+" gold buys the Templar: "+held(b,"sentinel")+", gold "+pr.gold+", in the saved file "+onDisk+", notice \""+notice(b)+"\"");
-                    pr.gold=COST;save(b);command(b,"buy:sentinel",4);}
+                    boolean onDisk=j.has("owned")&&j.getAsJsonObject("owned").has("sentinel")&&j.get("troopWrits").getAsInt()==0;
+                    part(o!=null&&o.copies==1&&o.stars==1&&pr.troopWrits==0&&onDisk,COST+" troop writs buy the Templar: "+held(b,"sentinel")+", troop writs "+pr.troopWrits+", in the saved file "+onDisk+", notice \""+notice(b)+"\"");
+                    pr.troopWrits=COST;save(b);command(b,"buy:sentinel",4);}
                 case 4->{if(!answered(b))return;var pr=profile(b);var o=owned(b,"sentinel");
-                    part(o!=null&&o.copies==2&&o.stars==2&&pr.gold==0,"a second buy adds a copy and star 2: "+held(b,"sentinel")+", gold "+pr.gold+", notice \""+notice(b)+"\"");
-                    pr.owned.remove("mage");pr.gold=COST;save(b);command(b,"buy:mage",5);}
+                    part(o!=null&&o.copies==2&&o.stars==2&&pr.troopWrits==0,"a second buy adds a copy and star 2: "+held(b,"sentinel")+", troop writs "+pr.troopWrits+", notice \""+notice(b)+"\"");
+                    pr.owned.remove("mage");pr.troopWrits=COST;save(b);command(b,"buy:mage",5);}
                 case 5->{if(!answered(b))return;var pr=profile(b);
-                    part(owned(b,"mage")==null&&pr.gold==COST,"buy:mage (an Epic) is refused: "+held(b,"mage")+", gold "+pr.gold+", notice \""+notice(b)+"\"");
+                    part(owned(b,"mage")==null&&pr.troopWrits==COST,"buy:mage (an Epic) is refused: "+held(b,"mage")+", troop writs "+pr.troopWrits+", notice \""+notice(b)+"\"");
                     done("p2-buy-chosen");next(b,10);}
                 case 10->{ // p2-star-shards: an Epic's stars for its House's shards (30 for star 2, 60 for star 3); a Common's stars come from copies only
                     var pr=profile(b);pr.owned.put("mage",new Profile.Owned());pr.shards.put("gilded",29);save(b);command(b,"star:mage",11);}
@@ -3967,17 +3970,17 @@ public final class Phase2Checks implements ClientModInitializer {
                     part(owned(b,"knight").stars==knightStars0&&shards(b,"gilded")==100,"star:knight (a Common) is refused: "+held(b,"knight")+", shards "+shards(b,"gilded")+", notice \""+notice(b)+"\"");
                     done("p2-star-shards");next(b,20);}
                 case 20->{ // p2-legendary-pact: clearing every battle of chapter 1 grants one Pact, once; a Pact buys a House's Legendary
-                    var pr=profile(b);pr.writs=0;pr.writChapters.clear();pr.battlesWon.clear();for(var r:Spec.CAMPAIGNBATTLES)if(r.order()<Spec.CAMPAIGNBATTLES[Spec.CAMPAIGNBATTLES.length-1].order())pr.battlesWon.add(r.id());pr.bonusClaimed.clear();pr.campaignCleared=MarchMath.cleared(pr.battlesWon,Spec.CAMPAIGNBATTLES);pr.owned.remove("gl_marshal");pr.owned.remove("gb_hollowking");save(b);next(b,21);}
+                    var pr=profile(b);pr.pacts=0;pr.writChapters.clear();pr.battlesWon.clear();for(var r:Spec.CAMPAIGNBATTLES)if(r.order()<Spec.CAMPAIGNBATTLES[Spec.CAMPAIGNBATTLES.length-1].order())pr.battlesWon.add(r.id());pr.bonusClaimed.clear();pr.campaignCleared=MarchMath.cleared(pr.battlesWon,Spec.CAMPAIGNBATTLES);pr.owned.remove("gl_marshal");pr.owned.remove("gb_hollowking");save(b);next(b,21);}
                 case 21,23->{if(!Phase1Checks.skirmish(b,p,0,1,"easy"))return;camp.activeBattle=Spec.CAMPAIGNBATTLES[Spec.CAMPAIGNBATTLES.length-1];own=b.squads.get(player);next(b,stage+1);}
                 case 22,24->{if(since(b)<5)return;
                     b.roundStarted=b.time-181*20;camp.joinedAt.put(player,b.roundStarted);camp.finish(own.team);var pr=profile(b);var row=Spec.CAMPAIGNBATTLES[Spec.CAMPAIGNBATTLES.length-1];
-                    if(stage==22){part(pr.writs==1&&pr.writChapters.contains(row.chapter())&&pr.campaignCleared>=row.order(),"winning "+row.name()+" (chapter "+row.chapter()+", every battle of it) grants a Pact: writs "+pr.writs+", chapters "+pr.writChapters+", cleared "+pr.campaignCleared);next(b,23);}
-                    else{part(pr.writs==1&&pr.writChapters.equals(Set.of(row.chapter())),"winning it again grants no second Pact: writs "+pr.writs+", chapters "+pr.writChapters);command(b,"legendary:gilded:pact",25);}}
+                    if(stage==22){part(pr.pacts==1&&pr.writChapters.contains(row.chapter())&&pr.campaignCleared>=row.order(),"winning "+row.name()+" (chapter "+row.chapter()+", every battle of it) grants a Pact: pacts "+pr.pacts+", chapters "+pr.writChapters+", cleared "+pr.campaignCleared);next(b,23);}
+                    else{part(pr.pacts==1&&pr.writChapters.equals(Set.of(row.chapter())),"winning it again grants no second Pact: pacts "+pr.pacts+", chapters "+pr.writChapters);command(b,"legendary:gilded:pact",25);}}
                 case 25->{if(!answered(b))return;var pr=profile(b);
-                    part(owned(b,"gl_marshal")!=null&&pr.writs==0,"legendary:gilded:pact spends it on the Lord Marshal: "+held(b,"gl_marshal")+", writs "+pr.writs+", notice \""+notice(b)+"\"");
+                    part(owned(b,"gl_marshal")!=null&&pr.pacts==0,"legendary:gilded:pact spends it on the Lord Marshal: "+held(b,"gl_marshal")+", pacts "+pr.pacts+", notice \""+notice(b)+"\"");
                     command(b,"legendary:graveborn:pact",26);}
                 case 26->{if(!answered(b))return;var pr=profile(b);
-                    part(owned(b,"gb_hollowking")==null&&pr.writs==0,"with no Pact left legendary:graveborn:pact is refused: "+held(b,"gb_hollowking")+", notice \""+notice(b)+"\"");
+                    part(owned(b,"gb_hollowking")==null&&pr.pacts==0,"with no Pact left legendary:graveborn:pact is refused: "+held(b,"gb_hollowking")+", notice \""+notice(b)+"\"");
                     done("p2-legendary-pact");next(b,30);}
                 case 30->{ // p2-legendary-renown: Renown V (30) in the House and 50 of its shards buy its Legendary
                     var pr=profile(b);pr.owned.remove("gb_hollowking");pr.renown.put("graveborn",Spec.RECRUITMENT[0].renownForLegendary()-1);pr.shards.put("graveborn",Spec.RECRUITMENT[0].legendaryShards());save(b);command(b,"legendary:graveborn:shards",31);}
@@ -3995,7 +3998,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     done("p2-legendary-renown");next(b,40);}
                 case 40->{ // p2-cap: a star 3 Order Squire fights at the full +12% from stars alone (levels and gear come from the soldier, not the profile)
                     if(b.running){camp.returnLobby();return;}
-                    var pr=profile(b);var o=pr.owned.get("knight");o.copies=4;o.stars=3;pr.banner=RosterMath.starterBanner();save(b);next(b,41);}
+                    var pr=profile(b);var o=pr.owned.get("knight");o.copies=4;o.stars=3;pr.setTable(pr.activeBanner,Profile.starterTable());save(b);next(b,41);}
                 case 41->{if(!Phase1Checks.skirmish(b,p,0,1,"easy"))return;own=b.squads.get(player);next(b,42);}
                 case 42->{if(since(b)<2)return;
                     var knight=b.units.stream().filter(u->u.squad==own&&u.spec.id().equals("knight")).findFirst().orElse(null);
@@ -4029,7 +4032,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     part(!shotTarget.mob.isAlive()&&own.stats.kills==kills0Shot+1&&archerKills==archerKills0+1,"an arrow lands 4 ticks after its archer died: target dead "+!shotTarget.mob.isAlive()+", army kills +"+(own.stats.kills-kills0Shot)+", archer kills "+archerKills0+" -> "+archerKills+" (want +1), troop kills "+own.stats.troopKills);
                     done("p2-kill-credit");camp.returnLobby();next(b,50);}
                 case 50->{ // p2-match-rewards: a won match with the banner Gilded 14 / Graveborn 6
-                    var pr=profile(b);pr.banner=banner("knight*14,revenant*6");
+                    var pr=profile(b);pr.setTable(pr.activeBanner,WarGrid.sparse(banner("knight*14,revenant*6")));
                     var k=pr.owned.get("knight");k.kills=39;k.survived=7;k.mastery=0;
                     for(String id:List.of("archer","sentinel","longbow","mage","gl_marshal"))pr.owned.computeIfAbsent(id,x->new Profile.Owned()).mastery=1;
                     var r=pr.owned.get("revenant");r.kills=0;r.survived=0;r.mastery=0;
@@ -4044,7 +4047,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     int armyKills=own.stats.kills;
                     Combat.resolve(b,knight,foes.get(0).mob,1000f,"melee",false); // a knight's blow kills
                     Combat.resolve(b,revenant,foes.get(1).mob,0.5f,"melee",false);foes.get(1).mob.kill(); // a revenant's blow, then a death with no attacker inside the credit window: lastHitBy and the troop that struck
-                    var temp=b.spawn(own,Campaign.troop("revenant"),GravesAndGlory.R.squadSize()+1,revenant.mob.getPos());temp.temporary=true;temp.expiresAt=b.time+6000; // a Grave Bloom Risen
+                    var temp=b.spawn(own,Campaign.troop("revenant"),WarGrid.cells()+1,revenant.mob.getPos());temp.temporary=true;temp.expiresAt=b.time+6000; // a Grave Bloom Risen
                     Combat.resolve(b,temp,foes.get(2).mob,1000f,"melee",false); // its kill is the army's, not a troop type's
                     boolean dead=!foes.get(0).mob.isAlive()&&!foes.get(1).mob.isAlive()&&!foes.get(2).mob.isAlive();int killed=own.stats.kills-armyKills;
                     for(var u:new ArrayList<>(b.units))if(u.squad==own&&u.spec.id().equals("revenant")&&!u.temporary){u.mob.discard();b.units.remove(u);} // no real revenant lives to the end; the temporary one does
@@ -4064,21 +4067,21 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(b.running){camp.returnLobby();return;}
                     var pr=profile(b);var st=pr.progression;Progression.reset(st,Progression.today());st.xp=Progression.TIERS*Progression.XP_PER_TIER;
                     st.claims.removeIf(k->k.startsWith(Progression.SEASON+":")||k.equals("weekly"));st.weeklyBattles=6;pr.owned.remove("longbow");pr.cosmetics.clear();
-                    save(b);gold0=pr.gold;shards0=new HashMap<>(pr.shards);command(b,"progress:founders:1",71);}
+                    save(b);gold0=pr.gearShards;shards0=new HashMap<>(pr.shards);command(b,"progress:founders:1",71);}
                 case 71->{if(!answered(b))return;var pr=profile(b);
-                    part(pr.gold==gold0+30&&pr.progression.claims.contains("founders:1"),"progress:founders:1: gold "+gold0+" -> "+pr.gold+" (want +30), notice \""+notice(b)+"\"");
-                    gold0=pr.gold;command(b,"progress:founders:2:graveborn",72);}
+                    part(pr.gearShards==gold0+30&&pr.progression.claims.contains("founders:1"),"progress:founders:1: gold "+gold0+" -> "+pr.gearShards+" (want +30), notice \""+notice(b)+"\"");
+                    gold0=pr.gearShards;command(b,"progress:founders:2:graveborn",72);}
                 case 72->{if(!answered(b))return;var pr=profile(b);
-                    part(shards(b,"graveborn")==shards0.getOrDefault("graveborn",0)+10&&pr.progression.claims.contains("founders:2")&&pr.gold==gold0,"progress:founders:2:graveborn: Graveborn shards "+shards0.getOrDefault("graveborn",0)+" -> "+shards(b,"graveborn")+" (want +10), notice \""+notice(b)+"\"");
+                    part(shards(b,"graveborn")==shards0.getOrDefault("graveborn",0)+10&&pr.progression.claims.contains("founders:2")&&pr.gearShards==gold0,"progress:founders:2:graveborn: Graveborn shards "+shards0.getOrDefault("graveborn",0)+" -> "+shards(b,"graveborn")+" (want +10), notice \""+notice(b)+"\"");
                     command(b,"progress:founders:20:longbow",73);}
                 case 73->{if(!answered(b))return;var pr=profile(b);
                     part(owned(b,"longbow")!=null&&pr.progression.claims.contains("founders:20"),"progress:founders:20:longbow: "+held(b,"longbow")+", notice \""+notice(b)+"\"");
                     command(b,"progress:founders:21",74);}
                 case 74->{if(!answered(b))return;var pr=profile(b);
                     part(pr.cosmetics.contains("pennant_pattern")&&pr.progression.claims.contains("founders:21"),"progress:founders:21: cosmetics "+pr.cosmetics+", notice \""+notice(b)+"\"");
-                    gold0=pr.gold;command(b,"progress:weekly:ironclad",75);}
+                    gold0=pr.gearShards;command(b,"progress:weekly:ironclad",75);}
                 case 75->{if(!answered(b))return;var pr=profile(b);var st=pr.progression;var j=disk(b);
-                    part(pr.gold==gold0+150&&shards(b,"ironclad")==shards0.getOrDefault("ironclad",0)+10&&st.claims.contains("weekly"),"progress:weekly:ironclad: gold +"+(pr.gold-gold0)+" (want 150), Ironclad shards "+shards0.getOrDefault("ironclad",0)+" -> "+shards(b,"ironclad")+" (want +10), notice \""+notice(b)+"\"");
+                    part(pr.gearShards==gold0+150&&shards(b,"ironclad")==shards0.getOrDefault("ironclad",0)+10&&st.claims.contains("weekly"),"progress:weekly:ironclad: gold +"+(pr.gearShards-gold0)+" (want 150), Ironclad shards "+shards0.getOrDefault("ironclad",0)+" -> "+shards(b,"ironclad")+" (want +10), notice \""+notice(b)+"\"");
                     var claims=j.has("progression")?j.getAsJsonObject("progression").getAsJsonArray("claims").toString():"none";
                     boolean bare=st.claims.stream().noneMatch(k->k.split(":").length>2||k.startsWith("weekly:"));
                     part(bare&&claims.contains("founders:20")&&claims.contains("weekly")&&!claims.contains("longbow")&&!claims.contains("graveborn"),"every claim is stored bare, in memory "+st.claims+" and in the saved file "+claims);
@@ -5512,7 +5515,7 @@ public final class Phase2Checks implements ClientModInitializer {
         /** Server: reads a troop and its House's holdings into the s* fields; got is true once they are there. */
         /** The next of the three action checks, or on to the notices after the last. */
         void nextAct(){act++;wait=0;actWait=0;if(act>2)cs=3;}
-        void snap(MinecraftClient c,String troop,String house){got=false;server(c,b->{var pr=b.campaign.profile(player);var o=pr.owned.get(troop);sGold=pr.gold;sShards=pr.shards.getOrDefault(house,0);sWrits=pr.writs;sOwned=o!=null;sStars=o==null?0:o.stars;sCopies=o==null?0:o.copies;got=true;});}
+        void snap(MinecraftClient c,String troop,String house){got=false;server(c,b->{var pr=b.campaign.profile(player);var o=pr.owned.get(troop);sGold=pr.troopWrits;sShards=pr.shards.getOrDefault(house,0);sWrits=pr.pacts;sOwned=o!=null;sStars=o==null?0:o.stars;sCopies=o==null?0:o.copies;got=true;});}
         /** Server: the six Gilded troops in a row at 6 blocks, the player's own at Mastery II (veteran) or the bot's (plain). */
         void lineup(GravesAndGlory.Battle b,boolean veteran){lineup(b,veteran,false);}
         /** The same with the player's own army on the violet side (team 1), for the trim against a cloth that is not brass-like. */
@@ -5537,16 +5540,16 @@ public final class Phase2Checks implements ClientModInitializer {
             switch(stage){
                 case 100->{if(b.running){camp.returnLobby();return;}
                     var pr=camp.profile(player);if(before==null)before=Campaign.JSON.toJson(pr);var k=pr.owned.computeIfAbsent("knight",x->new Profile.Owned());knightMastery0=k.mastery;
-                    k.copies=1;k.stars=1;k.mastery=0;pr.gold=1000;
+                    k.copies=1;k.stars=1;k.mastery=0;pr.troopWrits=10;
                     var t=pr.owned.computeIfAbsent("sentinel",x->new Profile.Owned());t.copies=2;t.stars=2;t.kills=60;t.survived=10;t.mastery=1;
                     pr.owned.remove(newId()); // the first roll's troop is new to the player
                     rngSaved=camp.rollRng;camp.rollRng=Engine.fixed(newDraw());camp.save(player);stage=101;campReady=true;}
-                case 110->{var pr=camp.profile(player);goldAfter1=pr.gold;newOwned=pr.owned.containsKey(newId());camp.rollRng=Engine.fixed(0);stage=111;} // after the first roll (a new troop): the second lands on the knight, an owned Common
-                case 112->{var pr=camp.profile(player);var o=pr.owned.get("knight");goldAfter2=pr.gold;dupStars=o==null?-1:o.stars;dupCopies=o==null?-1:o.copies;camp.rollRng=Engine.fixed(0);stage=113;} // after the second (the knight's star 2): the third lands on the knight again
-                case 102->{var pr=camp.profile(player);var o=pr.owned.get("knight");goldAfter3=pr.gold;rollStars=o==null?-1:o.stars;rollCopies=o==null?-1:o.copies;camp.rollRng=rngSaved;rngSaved=null;stage=103;}
+                case 110->{var pr=camp.profile(player);goldAfter1=pr.troopWrits;newOwned=pr.owned.containsKey(newId());camp.rollRng=Engine.fixed(0);stage=111;} // after the first roll (a new troop): the second lands on the knight, an owned Common
+                case 112->{var pr=camp.profile(player);var o=pr.owned.get("knight");goldAfter2=pr.troopWrits;dupStars=o==null?-1:o.stars;dupCopies=o==null?-1:o.copies;camp.rollRng=Engine.fixed(0);stage=113;} // after the second (the knight's star 2): the third lands on the knight again
+                case 102->{var pr=camp.profile(player);var o=pr.owned.get("knight");goldAfter3=pr.troopWrits;rollStars=o==null?-1:o.stars;rollCopies=o==null?-1:o.copies;camp.rollRng=rngSaved;rngSaved=null;stage=103;}
                 case 120->{var pr=camp.profile(player);var rich=RosterMath.rarityRow("epic"); // the action checks' fixture: a Rare of the second House not owned, the first House's Epic at star 1 with shards for two stars, its Legendary not owned and a Pact in hand
-                    pr.gold=1000;pr.owned.remove(troopOf(1,"rare"));var e=pr.owned.computeIfAbsent(troopOf(0,"epic"),x->new Profile.Owned());e.stars=1;e.copies=1;
-                    pr.owned.remove(troopOf(0,"legendary"));pr.writs=1;pr.shards.put(Spec.HOUSES[0].id(),rich.shardStar2()+rich.shardStar3());camp.save(player);stage=121;fixture2Ready=true;}
+                    pr.troopWrits=10;pr.owned.remove(troopOf(1,"rare"));var e=pr.owned.computeIfAbsent(troopOf(0,"epic"),x->new Profile.Owned());e.stars=1;e.copies=1;
+                    pr.owned.remove(troopOf(0,"legendary"));pr.pacts=1;pr.shards.put(Spec.HOUSES[0].id(),rich.shardStar2()+rich.shardStar3());camp.save(player);stage=121;fixture2Ready=true;}
                 case 104->{stage=105;claimReady=true;} // the claims (ClaimChecks) arm their own fixtures: the dailies, a shard tier, tier 20
                 case 108->{var o=camp.profile(player).owned.get("knight");o.mastery=2;camp.save(player);
                     var a=ArmyMobs.named("Order Squire (Proven)");var c3=ArmyMobs.named("Knight-Captain (Proven)");
@@ -5570,12 +5573,12 @@ public final class Phase2Checks implements ClientModInitializer {
             var p=CampaignClient.profile;
             switch(cs){
                 case 0->{var k=p.owned.get("knight");var t=p.owned.get("sentinel");
-                    if(campReady&&k!=null&&k.stars==1&&k.copies==1&&p.gold==1000&&t!=null&&t.mastery==1&&!p.owned.containsKey(newId())){CampaignClient.revealUntil=0;CampaignClient.notice="";c.setScreen(new CampScreen("recruit"));cs=1;wait=0;}
+                    if(campReady&&k!=null&&k.stars==1&&k.copies==1&&p.troopWrits==10&&t!=null&&t.mastery==1&&!p.owned.containsKey(newId())){CampaignClient.revealUntil=0;CampaignClient.notice="";c.setScreen(new CampScreen("recruit"));cs=1;wait=0;}
                     else if(++wait>600){report("p2-roll-card",false,"the fixture profile never reached the client");server(c,b->{if(stage==101)stage=102;});cs=3;wait=0;}}
                 case 1->{if(!(c.currentScreen instanceof CampScreen s))return; // p2-roll-card: Enlist on the War Table recruit page; the draw lands on a Rare the player does not own
                     if(++wait==10){var page=wpage(c);var enlist=wbox(c,"enlist");
                         if(page==null||enlist==null||!page.enlist.active){report("p2-roll-card",false,"no active Enlist on the War Table recruit page (page "+(page!=null)+", Enlist "+(enlist==null?"not drawn":"drawn")+")");server(c,b->{if(stage==101)stage=102;});cs=3;wait=0;return;}
-                        goldWas=p.gold;rollN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();pressedAt=System.currentTimeMillis();seenIn=-1;wclick(c,enlist);}
+                        goldWas=p.troopWrits;rollN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();pressedAt=System.currentTimeMillis();seenIn=-1;wclick(c,enlist);}
                     var r=CampaignClient.lastRoll;
                     if(wait>10&&r!=null&&r.n()!=rollN&&r.troop().equals(newId())&&CampaignClient.rollShowing()){seenIn=System.currentTimeMillis()-pressedAt;CampaignClient.revealHeldAt=600;cs=2;wait=0;}
                     else if(wait>400){report("p2-roll-card",false,"the roll's letter never showed: lastRoll "+r+", showing "+CampaignClient.rollShowing());server(c,b->{if(stage==101)stage=102;});cs=3;wait=0;}}
@@ -5583,15 +5586,15 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(wait>8&&shotDone(c)&&stage>=111){var r=CampaignClient.lastRoll;String id=newId();var t=ArmyCards.spec(id);var sent=WarTableRecruit.sent();
                         boolean snap=r!=null&&!r.duplicate()&&r.troop().equals(id)&&r.starsBefore()==0&&r.starsAfter()==1&&r.shards()==0;
                         boolean letter=id.equals(wtext("letter-troop"))&&t.name().equals(CampaignClient.revealUnit)&&t.name().equals(wtext("letter-name"))&&WarTableRecruit.rects().containsKey("broken")&&wtext("letter-outcome")==null&&wtext("notice")==null;
-                        boolean purse=p.gold==goldWas-RecruitView.cost()&&String.valueOf(p.gold).equals(wtext("purse"));
-                        boolean server=newOwned&&goldAfter1==p.gold;
+                        boolean purse=p.troopWrits==goldWas-RecruitView.cost()&&String.valueOf(p.troopWrits).equals(wtext("purse"));
+                        boolean server=newOwned&&goldAfter1==p.troopWrits;
                         boolean timing=seenIn>=0&&seenIn<=CampaignClient.REVEAL_MS;
                         boolean sends=!sent.isEmpty()&&("roll:"+Spec.HOUSES[0].id()).equals(sent.get(sent.size()-1))&&!Phase1Checks.UiRecruitChecks.oldCommands(0);
-                        report("p2-roll-card",snap&&letter&&purse&&server&&timing&&sends,"Enlist pressed with the draw on the first House's second Rare, "+id+" (not owned): the snapshot's lastRoll "+r+" (want a new troop, 0 to 1 stars, no shards)="+snap+"; the letter shows "+wtext("letter-troop")+" \""+wtext("letter-name")+"\" (reveal \""+CampaignClient.revealUnit+"\") under the broken seal "+Arrays.toString(WarTableRecruit.rects().get("broken"))+" with no outcome line and no notice line="+letter+"; the purse "+goldWas+" to "+p.gold+" (want -"+RecruitView.cost()+"), reads \""+wtext("purse")+"\"="+purse+"; the server holds the troop "+newOwned+" and "+goldAfter1+" gold="+server+"; the letter came "+seenIn+" ms after the press (the reveal lasts "+CampaignClient.REVEAL_MS+")="+timing+"; sent "+(sent.isEmpty()?"nothing":sent.get(sent.size()-1))+", no unlock: or army:="+sends+"; picture p2-wt-recruit-roll.png");
+                        report("p2-roll-card",snap&&letter&&purse&&server&&timing&&sends,"Enlist pressed with the draw on the first House's second Rare, "+id+" (not owned): the snapshot's lastRoll "+r+" (want a new troop, 0 to 1 stars, no shards)="+snap+"; the letter shows "+wtext("letter-troop")+" \""+wtext("letter-name")+"\" (reveal \""+CampaignClient.revealUnit+"\") under the broken seal "+Arrays.toString(WarTableRecruit.rects().get("broken"))+" with no outcome line and no notice line="+letter+"; the purse "+goldWas+" to "+p.troopWrits+" (want -"+RecruitView.cost()+"), reads \""+wtext("purse")+"\"="+purse+"; the server holds the troop "+newOwned+" and "+goldAfter1+" gold="+server+"; the letter came "+seenIn+" ms after the press (the reveal lasts "+CampaignClient.REVEAL_MS+")="+timing+"; sent "+(sent.isEmpty()?"nothing":sent.get(sent.size()-1))+", no unlock: or army:="+sends+"; picture p2-wt-recruit-roll.png");
                         CampaignClient.revealHeldAt=-1;cs=20;wait=0;}}
                 case 20->{if(!(c.currentScreen instanceof CampScreen s))return; // p2-recruit-duplicate, the star: the knight (an owned Common) comes again, its second copy raises it to star 2
                     if(++wait==10){var enlist=wbox(c,"enlist");if(enlist==null){report("p2-recruit-duplicate",false,"no Enlist on the page");server(c,b->{if(stage==111)stage=102;});cs=3;wait=0;return;}
-                        goldWas=p.gold;rollN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();pressedAt=System.currentTimeMillis();wclick(c,enlist);}
+                        goldWas=p.troopWrits;rollN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();pressedAt=System.currentTimeMillis();wclick(c,enlist);}
                     var r=CampaignClient.lastRoll;
                     if(wait>10&&r!=null&&r.n()!=rollN&&r.troop().equals("knight")&&CampaignClient.rollShowing()){seenIn=System.currentTimeMillis()-pressedAt;CampaignClient.revealHeldAt=600;cs=21;wait=0;}
                     else if(wait>400){report("p2-recruit-duplicate",false,"the duplicate's letter never showed: lastRoll "+r+", showing "+CampaignClient.rollShowing());server(c,b->{if(stage==111)stage=102;});cs=3;wait=0;}}
@@ -5599,11 +5602,11 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(wait>8&&shotDone(c)&&stage>=113){var r=CampaignClient.lastRoll;var fill=r==null?null:RecruitPages.fill(r.starsBefore(),Math.max(r.starsBefore(),r.starsAfter()),CampaignClient.ROLL_FILL_MS/2);
                         boolean snap=r!=null&&r.duplicate()&&r.starsBefore()==1&&r.starsAfter()==2&&r.shards()==0;String want=r==null?"":RecruitPages.outcome(r,p);int pct=-1;try{pct=Integer.parseInt(wtext("letter-fill"));}catch(RuntimeException e){}
                         boolean lit=snap&&want.equals(wtext("letter-outcome"))&&want.equals("Star 1 to star 2")&&"knight".equals(wtext("letter-troop"))&&!WarTableRecruit.rects().containsKey("broken")&&fill.filled()==1&&fill.growing()==1&&"1+".equals(wtext("letter-stars"))&&pct>30&&pct<70&&wtext("notice")==null;
-                        boolean purse=p.gold==goldWas-RecruitView.cost()&&String.valueOf(p.gold).equals(wtext("purse"));boolean server=dupStars==2&&dupCopies==2&&goldAfter2==p.gold;
-                        dupA=lit&&purse&&server;dupWhy="a second copy of the knight: the snapshot's lastRoll "+r+" (want a duplicate from star 1 to 2, no shards)="+snap+"; at 600 ms of "+CampaignClient.ROLL_FILL_MS+" the letter of "+wtext("letter-troop")+" shows stars \""+wtext("letter-stars")+"\" with the second "+wtext("letter-fill")+"% grown and the line \""+wtext("letter-outcome")+"\" (RecruitPages.outcome says \""+want+"\"), no broken seal "+Arrays.toString(WarTableRecruit.rects().get("broken"))+", no notice line="+lit+"; the purse "+goldWas+" to "+p.gold+"="+purse+"; the server holds the knight at star "+dupStars+", copies "+dupCopies+", gold "+goldAfter2+"="+server+"; picture p2-wt-recruit-duplicate.png";
+                        boolean purse=p.troopWrits==goldWas-RecruitView.cost()&&String.valueOf(p.troopWrits).equals(wtext("purse"));boolean server=dupStars==2&&dupCopies==2&&goldAfter2==p.troopWrits;
+                        dupA=lit&&purse&&server;dupWhy="a second copy of the knight: the snapshot's lastRoll "+r+" (want a duplicate from star 1 to 2, no shards)="+snap+"; at 600 ms of "+CampaignClient.ROLL_FILL_MS+" the letter of "+wtext("letter-troop")+" shows stars \""+wtext("letter-stars")+"\" with the second "+wtext("letter-fill")+"% grown and the line \""+wtext("letter-outcome")+"\" (RecruitPages.outcome says \""+want+"\"), no broken seal "+Arrays.toString(WarTableRecruit.rects().get("broken"))+", no notice line="+lit+"; the purse "+goldWas+" to "+p.troopWrits+"="+purse+"; the server holds the knight at star "+dupStars+", copies "+dupCopies+", gold "+goldAfter2+"="+server+"; picture p2-wt-recruit-duplicate.png";
                         CampaignClient.revealHeldAt=-1;cs=22;wait=0;}}
                 case 22->{if(!(c.currentScreen instanceof CampScreen s))return; // p2-recruit-duplicate, the copy: the third copy counts toward star 3 and raises nothing
-                    if(++wait==10){var enlist=wbox(c,"enlist");goldWas=p.gold;rollN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();pressedAt=System.currentTimeMillis();if(enlist!=null)wclick(c,enlist);}
+                    if(++wait==10){var enlist=wbox(c,"enlist");goldWas=p.troopWrits;rollN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();pressedAt=System.currentTimeMillis();if(enlist!=null)wclick(c,enlist);}
                     var r=CampaignClient.lastRoll;
                     if(wait>10&&r!=null&&r.n()!=rollN&&r.troop().equals("knight")&&CampaignClient.rollShowing()){CampaignClient.revealHeldAt=600;cs=23;wait=0;}
                     else if(wait>400){report("p2-recruit-duplicate",false,dupWhy+"; the third copy's letter never showed: lastRoll "+r+", showing "+CampaignClient.rollShowing());server(c,b->{if(stage==113)stage=102;});cs=24;wait=0;}}
@@ -5611,8 +5614,8 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(wait>8&&stage>=103){var r=CampaignClient.lastRoll;var o=p.owned.get("knight");String want=r==null?"":RecruitPages.outcome(r,p);
                         boolean snap=r!=null&&r.duplicate()&&r.starsBefore()==2&&r.starsAfter()==2&&r.shards()==0;
                         boolean lit=snap&&want.equals(wtext("letter-outcome"))&&want.startsWith("Copy "+rollCopies+" of ")&&want.contains("toward star 3")&&"2".equals(wtext("letter-stars"))&&wtext("letter-fill")==null&&!WarTableRecruit.rects().containsKey("broken")&&"knight".equals(wtext("letter-troop"));
-                        boolean server=rollStars==2&&rollCopies==3&&o!=null&&o.copies==3&&goldAfter3==p.gold&&p.gold==goldWas-RecruitView.cost();
-                        report("p2-recruit-duplicate",dupA&&lit&&server,dupWhy+"; a third copy: lastRoll "+r+" (want a duplicate that stays at star 2)="+snap+"; the letter shows stars \""+wtext("letter-stars")+"\" and \""+wtext("letter-outcome")+"\" (RecruitPages.outcome says \""+want+"\"; want Copy 3 of n toward star 3), no broken seal="+lit+"; the server holds the knight at star "+rollStars+", copies "+rollCopies+" and "+goldAfter3+" gold (the client "+p.gold+")="+server);
+                        boolean server=rollStars==2&&rollCopies==3&&o!=null&&o.copies==3&&goldAfter3==p.troopWrits&&p.troopWrits==goldWas-RecruitView.cost();
+                        report("p2-recruit-duplicate",dupA&&lit&&server,dupWhy+"; a third copy: lastRoll "+r+" (want a duplicate that stays at star 2)="+snap+"; the letter shows stars \""+wtext("letter-stars")+"\" and \""+wtext("letter-outcome")+"\" (RecruitPages.outcome says \""+want+"\"; want Copy 3 of n toward star 3), no broken seal="+lit+"; the server holds the knight at star "+rollStars+", copies "+rollCopies+" and "+goldAfter3+" gold (the client "+p.troopWrits+")="+server);
                         CampaignClient.revealHeldAt=-1;cs=24;wait=0;}}
                 case 24->{if(!(c.currentScreen instanceof CampScreen s)||wpage(c)==null)return; // p2-recruit-odds: the note states the real odds, the pity count and the copy rule, and not "No duplicates"
                     if(++wait==3)wclick(c,wbox(c,"odds"));
@@ -5630,7 +5633,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     int houseIx=act==0?1:0;String house=Spec.HOUSES[houseIx].id(),troop=act==0?troopOf(1,"rare"):act==1?troopOf(0,"epic"):troopOf(0,"legendary");
                     String wantCmd=act==0?"buy:"+troop:act==1?"star:"+troop:"legendary:"+house+":pact";String wantLabel=act==0?"Buy "+RecruitView.chooseCost():act==1?"Star 2":"Pact";
                     if(wait==0){
-                        if(act==0&&!(p.writs>=1&&p.gold==1000&&p.owned.containsKey(troopOf(0,"epic"))&&!p.owned.containsKey(troop)&&!p.owned.containsKey(troopOf(0,"legendary")))){if(++actWait>400){for(String t:tag)report(t,false,"the action fixture never reached the client (writs "+p.writs+", gold "+p.gold+")");cs=3;wait=0;}return;}
+                        if(act==0&&!(p.pacts>=1&&p.troopWrits==10&&p.owned.containsKey(troopOf(0,"epic"))&&!p.owned.containsKey(troop)&&!p.owned.containsKey(troopOf(0,"legendary")))){if(++actWait>400){for(String t:tag)report(t,false,"the action fixture never reached the client (pacts "+p.pacts+", troop writs "+p.troopWrits+")");cs=3;wait=0;}return;}
                         wclick(c,wbox(c,"house-"+house));wait=1;actWait=0;return;}
                     if(wait==1){int at=Phase1Checks.UiRecruitChecks.troopsOf(house).indexOf(troop);if(!page.house.equals(house)||at<0){if(++actWait>60){report(tag[act],false,"the banner of "+house+" or the row of "+troop+" is not there ("+page.house+", row "+at+")");nextAct();}return;}
                         wclick(c,wbox(c,"row-"+at));wait=2;actWait=0;return;}
@@ -5639,22 +5642,22 @@ public final class Phase2Checks implements ClientModInitializer {
                         boolean tagOk=a!=null&&a.active()&&a.label().equals(wtext("choose"))&&a.command().equals(wtext("choose-command"))&&a.command().equals(wantCmd)&&a.label().equals(wantLabel)&&Arrays.equals(wbox(c,"choose"),WarTableRecruit.rects().get("choose"));
                         actWhy=(a==null?"no tag":"the tag \""+a.label()+"\" ("+a.command()+") under it \""+a.tip()+"\"")+" on "+troop+(tagOk?"":" WRONG (want \""+wantLabel+"\" sending "+wantCmd+")");
                         if(!tagOk){report(tag[act],false,actWhy);nextAct();return;}
-                        goldB=p.gold;shardsB=p.shards.getOrDefault(Spec.HOUSES[0].id(),0);writsB=p.writs;starsB=p.owned.containsKey(troop)?p.owned.get(troop).stars:0;
+                        goldB=p.troopWrits;shardsB=p.shards.getOrDefault(Spec.HOUSES[0].id(),0);writsB=p.pacts;starsB=p.owned.containsKey(troop)?p.owned.get(troop).stars:0;
                         pressedAt=WarTableRecruit.sent().size();wclick(c,wbox(c,"choose"));wait=4;actWait=0;return;}
-                    if(wait==4){var o=p.owned.get(troop);boolean moved=act==0?o!=null:act==1?o!=null&&o.stars>starsB:o!=null&&p.writs<writsB;
+                    if(wait==4){var o=p.owned.get(troop);boolean moved=act==0?o!=null:act==1?o!=null&&o.stars>starsB:o!=null&&p.pacts<writsB;
                         if(!moved){if(++actWait>200){report(tag[act],false,actWhy+"; the press changed nothing on the client in 200 ticks: sent "+WarTableRecruit.sent().subList((int)pressedAt,WarTableRecruit.sent().size()));nextAct();}return;}
                         snap(c,troop,Spec.HOUSES[0].id());wait=5;actWait=0;return;}
                     if(wait==5){if(!got){if(++actWait>100){report(tag[act],false,actWhy+"; the server's state never came");nextAct();}return;}
                         var sent=WarTableRecruit.sent();List<String> mine=sent.subList((int)pressedAt,sent.size());var epic=RosterMath.rarityRow("epic");var o=p.owned.get(troop);
                         boolean one=mine.equals(List.of(wantCmd))&&!Phase1Checks.UiRecruitChecks.oldCommands((int)pressedAt);
                         boolean server=switch(act){
-                            case 0->sOwned&&sGold==goldB-RecruitView.chooseCost()&&p.gold==sGold&&troop.equals(wtext("letter-troop"))&&WarTableRecruit.rects().containsKey("broken");
+                            case 0->sOwned&&sGold==goldB-RecruitView.chooseCost()&&p.troopWrits==sGold&&troop.equals(wtext("letter-troop"))&&WarTableRecruit.rects().containsKey("broken");
                             case 1->sOwned&&sStars==starsB+1&&sShards==shardsB-epic.shardStar2()&&p.shards.getOrDefault(Spec.HOUSES[0].id(),0)==sShards&&o!=null&&o.stars==sStars;
-                            default->sOwned&&sWrits==writsB-1&&p.writs==sWrits&&sStars==1&&troop.equals(wtext("letter-troop"))&&WarTableRecruit.rects().containsKey("broken");};
+                            default->sOwned&&sWrits==writsB-1&&p.pacts==sWrits&&sStars==1&&troop.equals(wtext("letter-troop"))&&WarTableRecruit.rects().containsKey("broken");};
                         String what=switch(act){
-                            case 0->"gold "+goldB+" to "+sGold+" on the server (want -"+RecruitView.chooseCost()+"), the troop owned="+sOwned+", the client reads "+p.gold+", the letter "+wtext("letter-troop")+" under the broken seal "+Arrays.toString(WarTableRecruit.rects().get("broken"));
+                            case 0->"gold "+goldB+" to "+sGold+" on the server (want -"+RecruitView.chooseCost()+"), the troop owned="+sOwned+", the client reads "+p.troopWrits+", the letter "+wtext("letter-troop")+" under the broken seal "+Arrays.toString(WarTableRecruit.rects().get("broken"));
                             case 1->"the Epic from star "+starsB+" to "+sStars+" on the server, the House's shards "+shardsB+" to "+sShards+" (want -"+epic.shardStar2()+"), the client reads "+(o==null?-1:o.stars)+" stars and "+p.shards.getOrDefault(Spec.HOUSES[0].id(),0)+" shards";
-                            default->"the Pact "+writsB+" to "+sWrits+" on the server (want one spent), the Legendary owned="+sOwned+" at "+sStars+" star, the client reads "+p.writs+" Pacts, the letter "+wtext("letter-troop")+" under the broken seal "+Arrays.toString(WarTableRecruit.rects().get("broken"));};
+                            default->"the Pact "+writsB+" to "+sWrits+" on the server (want one spent), the Legendary owned="+sOwned+" at "+sStars+" star, the client reads "+p.pacts+" Pacts, the letter "+wtext("letter-troop")+" under the broken seal "+Arrays.toString(WarTableRecruit.rects().get("broken"));};
                         report(tag[act],one&&server,actWhy+"; the press sent "+mine+" (want exactly "+wantCmd+", never unlock: or army:)="+one+"; "+what+"="+server);
                         nextAct();}}
                 case 3->{if(!(c.currentScreen instanceof CampScreen s)){c.setScreen(new CampScreen("recruit"));return;}
@@ -5860,7 +5863,7 @@ public final class Phase2Checks implements ClientModInitializer {
 
         // ===================================================================================================== server side
 
-        static Snap snap(Profile pr) { return new Snap(pr.gold, new HashMap<>(pr.shards), new HashSet<>(pr.progression.claims), new HashSet<>(pr.owned.keySet())); }
+        static Snap snap(Profile pr) { return new Snap(pr.gearShards, new HashMap<>(pr.shards), new HashSet<>(pr.progression.claims), new HashSet<>(pr.owned.keySet())); }
 
         /** The state as the game's own claim rule would leave it after keys, on a copy: {gold, shards} paid in all. */
         static int[] pay(Progression.State s, String... keys) {
@@ -5880,7 +5883,7 @@ public final class Phase2Checks implements ClientModInitializer {
             while (banner.size() < size) banner.add(ids[banner.size() < 12 ? 0 : 1]);
             pr.owned.putIfAbsent(ids[0], new Profile.Owned());
             pr.owned.putIfAbsent(ids[1], new Profile.Owned());
-            pr.banner = banner;
+            pr.setTable(pr.activeBanner, WarGrid.sparse(banner));
         }
 
         void arm(Campaign camp, String what) {
@@ -6010,15 +6013,15 @@ public final class Phase2Checks implements ClientModInitializer {
                         sent0 = WarTablePages.sent().size();
                         arm(c, "dailies");
                     }
-                    if (wait > 10 && armed && pr.dailyBattles >= 3 && pr.weeklyBattles >= Progression.WEEKLY_BATTLES && pr.claims.stream().noneMatch(k -> k.startsWith("daily:")) && !pr.claims.contains("weekly") && p.banner.size() > 0 && p.banner.get(0).equals(lean0())) {
+                    if (wait > 10 && armed && pr.dailyBattles >= 3 && pr.weeklyBattles >= Progression.WEEKLY_BATTLES && pr.claims.stream().noneMatch(k -> k.startsWith("daily:")) && !pr.claims.contains("weekly") && !p.table().isEmpty() && p.table().values().iterator().next().equals(lean0())) {
                         c.setScreen(new CampScreen("contracts")); go(1);
                     } else if (wait > 400) abort(c, "the dailies fixture never reached the client (daily battles " + pr.dailyBattles + ", weekly " + pr.weeklyBattles + ")");
                 }
                 case 1 -> { // the chip pressed in before any press is the banner's House
                     if (wait < 14) return;
-                    String want = RosterMath.rollHouse(p.banner), chosen = text("house-chosen");
+                    String want = RosterMath.rollHouse(p.line()), chosen = text("house-chosen");
                     boolean pass = want.equals(BANNER_HOUSE) && want.equals(chosen) && "table/chip-house-on".equals(tex("house-" + want)) && "table/chip-house".equals(tex("house-" + DAILY_HOUSE)) && box(c, "house-" + want) != null;
-                    say("p2-claim-default", pass, "the banner of " + p.banner.size() + " seats leans on " + BANNER_HOUSE + " (RosterMath.rollHouse: " + want + "); before any press the page has \"" + chosen + "\" pressed in (" + tex("house-" + want) + "), the others " + tex("house-" + DAILY_HOUSE) + "=" + pass);
+                    say("p2-claim-default", pass, "the banner of " + p.table().size() + " troops leans on " + BANNER_HOUSE + " (RosterMath.rollHouse: " + want + "); before any press the page has \"" + chosen + "\" pressed in (" + tex("house-" + want) + "), the others " + tex("house-" + DAILY_HOUSE) + "=" + pass);
                     pressSend(c, "claim-0", "progress:daily:0"); go(2);
                 }
                 case 2 -> { // Claim on the first daily carries no House
@@ -6288,9 +6291,9 @@ public final class Phase2Checks implements ClientModInitializer {
             if(!pr.owned.keySet().equals(owned))bad.append("owned ").append(new TreeSet<>(pr.owned.keySet())).append(" (want ").append(new TreeSet<>(owned)).append("); ");
             if(!pr.owned.values().stream().allMatch(o->o.copies==1&&o.stars==1))bad.append("a troop is not at one copy and star 1; ");
             if(!Collections.disjoint(pr.owned.keySet(),Set.of("mage","hexer","oracle","wraith")))bad.append("mage, hexer, oracle or wraith owned; ");
-            if(pr.gold!=w.gold())bad.append("gold ").append(pr.gold).append(" (want ").append(w.gold()).append("); ");
+            if(migGold(pr)!=w.gold())bad.append("gold (troop writs x 100 + gear shards) ").append(migGold(pr)).append(" (want ").append(w.gold()).append("); ");
             if(!pr.commander.equals(w.commander()))bad.append("class ").append(pr.commander).append(" (want ").append(w.commander()).append("); ");
-            if(!pr.banner.equals(banner(w.banner())))bad.append("banner ").append(String.join(",",pr.banner)).append(" (want ").append(w.banner()).append("); ");
+            if(!pr.line().equals(banner(w.banner())))bad.append("banner ").append(String.join(",",pr.line())).append(" (want ").append(w.banner()).append("); ");
             if(pr.matches!=w.matches()||pr.wins!=w.wins()||pr.campaignCleared!=w.cleared()||pr.tutorialDone!=w.tutorial())bad.append("matches/wins/cleared/tutorial ").append(pr.matches).append("/").append(pr.wins).append("/").append(pr.campaignCleared).append("/").append(pr.tutorialDone).append("; ");
             if(pr.schema!=Profile.SCHEMA)bad.append("schema ").append(pr.schema).append("; ");
             for(var h:Spec.HOUSES)if(pr.shards.getOrDefault(h.id(),-1)!=0||pr.renown.getOrDefault(h.id(),-1)!=0||pr.pity.getOrDefault(h.id(),-1)!=0)bad.append("shards, renown or pity of ").append(h.id()).append(" not 0; ");
@@ -6344,7 +6347,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean equal=tree(pr).equals(JsonParser.parseString(m[4]));
                     if(!same||!equal)restart.append(c).append(": files byte-unchanged and the v1 copy equal to the fixture=").append(same).append(", profile equal to the first launch's=").append(equal).append("; ");
                     String bad=wrong(c,pr);if(!bad.isEmpty())loaded.append(c).append(": ").append(bad);
-                    notes.append(c).append(" gold ").append(pr.gold).append(", ").append(pr.owned.size()).append(" owned, class ").append(pr.commander).append("; ");
+                    notes.append(c).append(" gold ").append(migGold(pr)).append(", ").append(pr.owned.size()).append(" owned, class ").append(pr.commander).append("; ");
                 }else{
                     Files.deleteIfExists(v1);Files.deleteIfExists(camp.directory.resolve(id+".json.bak"));Files.write(file,fx);camp.profiles.remove(id);
                     var pr=camp.profile(id);
@@ -6357,7 +6360,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean same=Arrays.equals(main,Files.readAllBytes(file))&&mtime==Files.getLastModifiedTime(file).toMillis()&&Arrays.equals(Files.readAllBytes(v1),fx),equal=tree(again).equals(tree(pr));
                     if(!same||!equal)restart.append(c).append(": files byte-unchanged=").append(same).append(", profile equal=").append(equal).append("; ");
                     out.add(c+"\t"+sha(main)+"\t"+sha(Files.readAllBytes(v1))+"\t"+mtime+"\t"+tree(pr));
-                    notes.append(c).append(" gold ").append(pr.gold).append(", ").append(pr.owned.size()).append(" owned, class ").append(pr.commander).append("; ");
+                    notes.append(c).append(" gold ").append(migGold(pr)).append(", ").append(pr.owned.size()).append(" owned, class ").append(pr.commander).append("; ");
                 }
             }
             if(!second)Files.write(manifest,out);
@@ -6373,9 +6376,9 @@ public final class Phase2Checks implements ClientModInitializer {
             camp.importProfile(p,cache);
             var got=camp.profile(player);Set<String> owned=new HashSet<>(COMMONS);owned.add("sentinel");
             if(!got.owned.keySet().equals(owned))bad.append("owned ").append(new TreeSet<>(got.owned.keySet())).append(" (want the 10 Commons and sentinel); ");
-            if(got.gold!=900+3*REFUND)bad.append("gold ").append(got.gold).append(" (want ").append(900+3*REFUND).append(": 900 + mage, hexer and oracle refunded); ");
-            if(!got.commander.equals("warden")||!got.banner.equals(banner("knight*12,archer*6,sentinel*2"))||got.schema!=Profile.SCHEMA||got.matches!=12||got.wins!=7||got.campaignCleared!=1||!got.tutorialDone||got.progression.xp!=777)bad.append("class/banner/schema/matches/wins/cleared/tutorial/xp: ").append(got.commander).append(" ").append(String.join(",",got.banner)).append(" ").append(got.schema).append(" ").append(got.matches).append(" ").append(got.wins).append(" ").append(got.campaignCleared).append("; ");
-            boolean saved=Files.exists(file)&&Files.readString(file).contains("\"schema\": "+Profile.SCHEMA)&&JsonParser.parseString(Files.readString(file)).getAsJsonObject().get("gold").getAsInt()==900+3*REFUND;
+            if(migGold(got)!=900+3*REFUND)bad.append("gold (troop writs x 100 + gear shards) ").append(migGold(got)).append(" (want ").append(900+3*REFUND).append(": 900 + mage, hexer and oracle refunded); ");
+            if(!got.commander.equals("warden")||!got.line().equals(banner("knight*12,archer*6,sentinel*2"))||got.schema!=Profile.SCHEMA||got.matches!=12||got.wins!=7||got.campaignCleared!=1||!got.tutorialDone||got.progression.xp!=777)bad.append("class/banner/schema/matches/wins/cleared/tutorial/xp: ").append(got.commander).append(" ").append(String.join(",",got.line())).append(" ").append(got.schema).append(" ").append(got.matches).append(" ").append(got.wins).append(" ").append(got.campaignCleared).append("; ");
+            boolean saved=Files.exists(file)&&Files.readString(file).contains("\"schema\": "+Profile.SCHEMA)&&savedGold(JsonParser.parseString(Files.readString(file)).getAsJsonObject())==900+3*REFUND;
             if(!saved)bad.append("the import was not saved as a current-schema file; ");
             if(camp.importAllowed.contains(player)||!camp.collectionsReady.contains(player))bad.append("the permission was not used up or the collection is not ready; ");
             camp.grantImport(player);if(camp.importAllowed.contains(player))bad.append("a join with a server file on disk granted the import (the server copy must win); ");
@@ -6383,8 +6386,8 @@ public final class Phase2Checks implements ClientModInitializer {
             var rich=JsonParser.parseString(cache).getAsJsonObject();rich.addProperty("gold",99999);rich.addProperty("commander","arcanist");rich.getAsJsonArray("unlocked").add("stalker");
             camp.importProfile(p,rich.toString());
             var again=camp.profile(player);
-            if(again.gold!=900+3*REFUND||again.owned.containsKey("stalker")||!again.commander.equals("warden")||!Arrays.equals(first,Files.readAllBytes(file)))bad.append("the second import with 99999 gold changed the profile or the file (gold ").append(again.gold).append(", stalker owned ").append(again.owned.containsKey("stalker")).append("); ");
-            report("p2-migrate-import",bad.length()==0,bad.length()==0?"first visit: profile-v1-cache.json imported and migrated (gold "+got.gold+", "+got.owned.size()+" owned, class "+got.commander+", saved as the current schema); a second import with 99999 gold and a stalker was ignored, the file byte-unchanged":bad.toString());
+            if(migGold(again)!=900+3*REFUND||again.owned.containsKey("stalker")||!again.commander.equals("warden")||!Arrays.equals(first,Files.readAllBytes(file)))bad.append("the second import with 99999 gold changed the profile or the file (gold ").append(migGold(again)).append(", stalker owned ").append(again.owned.containsKey("stalker")).append("); ");
+            report("p2-migrate-import",bad.length()==0,bad.length()==0?"first visit: profile-v1-cache.json imported and migrated (gold "+migGold(got)+", "+got.owned.size()+" owned, class "+got.commander+", saved as the current schema); a second import with 99999 gold and a stalker was ignored, the file byte-unchanged":bad.toString());
         }
         public void step(MinecraftClient c,int tick){
             if(finished)return;

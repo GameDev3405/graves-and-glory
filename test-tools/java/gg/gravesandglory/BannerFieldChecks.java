@@ -26,10 +26,10 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
 
     /** A commander owning `owned` (plus every Common), with `stars` for the ids named, and the banner these units make. */
     static Profile profile(List<String> owned,Map<String,Integer> stars,List<String> units){
-        var p=new Profile();p.gold=300;
+        var p=new Profile();p.troopWrits=3;
         for(String id:owned)p.owned.computeIfAbsent(id,x->new Profile.Owned());
         for(var e:stars.entrySet()){var o=p.owned.get(e.getKey());if(o!=null)o.stars=e.getValue();}
-        p.sanitize();p.banner=RosterMath.repack(units,RosterMath.Catalog.fromSpec(),p.owned.keySet());p.sanitize();
+        p.sanitize();p.setTable(p.activeBanner,WarGrid.sparse(Campaign.table(RosterMath.repack(units,RosterMath.Catalog.fromSpec(),p.owned.keySet()))));p.sanitize();
         return p;
     }
     static List<String> times(int n,String id){List<String> l=new ArrayList<>();for(int i=0;i<n;i++)l.add(id);return l;}
@@ -43,7 +43,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                 join(List.of("mage"),times(3,"sentinel"),times(4,"longbow"),times(4,"knight"),times(3,"archer")));
             case "banner-error" -> profile(List.of("mage","tc_brute","wm_seer","wm_tusk"),Map.of(),join(List.of("mage","tc_brute"),times(8,"knight"),times(4,"archer")));
             case "banner-battle" -> banner("banner-normal");
-            default -> { var p=profile(List.of(),Map.of(),List.of());p.owned.keySet().removeIf(id->!id.equals("knight"));p.banner=RosterMath.repack(List.of(),RosterMath.Catalog.fromSpec(),p.owned.keySet());yield p; }
+            default -> { var p=profile(List.of(),Map.of(),List.of());p.owned.keySet().removeIf(id->!id.equals("knight"));p.setTable(p.activeBanner,WarGrid.sparse(Campaign.table(RosterMath.repack(List.of(),RosterMath.Catalog.fromSpec(),p.owned.keySet()))));yield p; }
         };
     }
 
@@ -51,10 +51,10 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
     void setup(MinecraftClient c,String name){
         var id=player;serial=CampaignClient.noticeSerial;
         if(isBanner(name)){
-            var p=banner(name);want=p.banner;
+            var p=banner(name);want=p.line();
             server(c,b->{if(b.running)b.campaign.returnLobby();var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,p);b.campaign.save(id);});
         } else if(name.equals("banner-battle")){
-            want=banner(name).banner;
+            want=banner(name).line();
         } else if(name.equals("field-normal")){
             server(c,b->{if(b.running)b.campaign.returnLobby();var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,banner("banner-normal"));});
         } else if(name.equals("field-empty")){
@@ -67,10 +67,10 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
     /** Whether the scene's state has reached the client. */
     boolean ready(MinecraftClient c,String name,int tick){
         switch(name){
-            case "field-normal": return CampaignClient.profile.banner.equals(banner("banner-normal").banner)&&!GravesAndGloryClient.running;
+            case "field-normal": return CampaignClient.profile.line().equals(banner("banner-normal").line())&&!GravesAndGloryClient.running;
             case "field-empty": return !GravesAndGloryClient.running;
             case "field-error": case "banner-battle": return GravesAndGloryClient.running&&CampaignClient.waiting&&serverRunning; // seated players cannot open the War Table in a round: the commander is stood down
-            default: return CampaignClient.profile.banner.equals(want)&&!GravesAndGloryClient.running;
+            default: return CampaignClient.profile.line().equals(want)&&!GravesAndGloryClient.running;
         }
     }
 
@@ -134,7 +134,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                     else if(serverRunning&&!standDown){standDown=true;server(c,b->{var sq=b.squads.get(player);if(sq!=null)sq.seated=false;});}
                 }
                 if(ready(c,name,tick)&&k>=(name.equals("field-error")||name.equals("banner-battle")?150:30)&&CampaignClient.camera==null){go(1,tick);return;}
-                if(k>(name.equals("field-error")?2400:400)){report("p1-bf-"+name,false,"the state never reached the client: banner "+CampaignClient.profile.banner+" wanted "+want+" (valid: "+RosterMath.validBanner(want,RosterMath.Catalog.fromSpec(),banner(name).owned.keySet())+"), running "+GravesAndGloryClient.running+", server running "+serverRunning);scene++;go(0,tick);}
+                if(k>(name.equals("field-error")?2400:400)){report("p1-bf-"+name,false,"the state never reached the client: banner "+CampaignClient.profile.line()+" wanted "+want+" (valid: "+RosterMath.validTable(WarGrid.sparse(want),RosterMath.Catalog.fromSpec(),banner(name).owned.keySet(),RosterMath.fieldableHouses())+"), running "+GravesAndGloryClient.running+", server running "+serverRunning);scene++;go(0,tick);}
             }
             case 1->{ // the page from the table's door
                 if(k<60&&k%6==0&&UiPagesChecks.pages(c)==null){CampScreen.open(page(name));return;} // a round's opening may close it again
@@ -204,7 +204,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
 
     /** Works the scene's source, target and expected plan out from the banner and the page as drawn now (canvas px). */
     boolean resolve(MinecraftClient c,String name){
-        var sp=spec(name);base=new ArrayList<>(CampaignClient.profile.banner);plan=null;src=null;dst=null;
+        var sp=spec(name);base=new ArrayList<>(CampaignClient.profile.line());plan=null;src=null;dst=null;
         var r=WarTablePages.dropRules();String troop=sp[1];int head=base.indexOf(troop),seat=-1;
         if(sp[0].equals("roll")){var roll=WarTablePages.owned();for(int i=0;i<roll.size();i++)if(roll.get(i).troopId().equals(troop))src=mid(UiPagesChecks.box(c,"row-"+i));}
         else if(head>=0)src=mid(UiPagesChecks.box(c,"seat-"+head));
@@ -232,7 +232,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         if(k==0){
             sent0=WarTablePages.sent().size();doneAt=-1;flight="";dragSeen="";relK=click?8:6;
             if(click){
-                base=new ArrayList<>(CampaignClient.profile.banner);plan=BannerDrop.fromRoll(base,"knight",18,WarTablePages.dropRules());
+                base=new ArrayList<>(CampaignClient.profile.line());plan=BannerDrop.fromRoll(base,"knight",18,WarTablePages.dropRules());
                 var roll=WarTablePages.owned();for(int i=0;i<roll.size();i++)if(roll.get(i).troopId().equals("knight"))UiPagesChecks.click(c,UiPagesChecks.box(c,"row-"+i));
                 return;
             }
@@ -251,7 +251,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         if(k<=relK)return;
         boolean change=plan!=null&&plan.ok()&&!esc;
         if(change){
-            if(doneAt<0&&CampaignClient.profile.banner.equals(plan.result())&&(p==null||p.pend==null))doneAt=k;
+            if(doneAt<0&&CampaignClient.profile.line().equals(plan.result())&&(p==null||p.pend==null))doneAt=k;
             if(doneAt>=0&&k>=doneAt+6||k>relK+130)dropJudge(c,name,tick,change,esc);
         }else if(k>=relK+24)dropJudge(c,name,tick,change,esc);
     }
@@ -272,11 +272,11 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
     }
 
     void dropJudge(MinecraftClient c,String name,int tick,boolean change,boolean esc){
-        var p=UiPagesChecks.pages(c);var live=new ArrayList<>(CampaignClient.profile.banner);var all=WarTablePages.sent();
+        var p=UiPagesChecks.pages(c);var live=new ArrayList<>(CampaignClient.profile.line());var all=WarTablePages.sent();
         var cmds=new ArrayList<>(all.subList(Math.min(sent0,all.size()),all.size()));
         boolean click=name.equals("drop-click");
         boolean ok=change?live.equals(plan.result())&&cmds.equals(plan.commands()):live.equals(base)&&cmds.isEmpty();
-        var valid=RosterMath.validBanner(live,RosterMath.Catalog.fromSpec(),CampaignClient.profile.owned.keySet());
+        var valid=RosterMath.validTable(WarGrid.sparse(live),RosterMath.Catalog.fromSpec(),CampaignClient.profile.owned.keySet(),RosterMath.fieldableHouses());
         ok&=valid==null&&literal(name,live,base)&&p!=null&&p.page.equals("banner");
         String wantFlight=click?"":change?(spec(name)[2].equals("paper")?"none":"land"):"back"; // a card taken off the banner has no seat to land on
         if(!click)ok&=dragSeen.equals("true")&&flight.equals(wantFlight);
