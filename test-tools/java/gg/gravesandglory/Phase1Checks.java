@@ -2094,6 +2094,7 @@ public final class Phase1Checks implements ClientModInitializer {
         int oldW,oldH,oldGui,round,after,waitFrom,seen,seen2,mark=-1,routAt,respawnAt,sentBefore,floodMost;boolean finished,campOk,battleOk,rowsOk,inFirst,respawnSeen,banner,floodOk,prepOk,slipFirst,slipLast,slipLate;
         String campWhy="",battleWhy="",rowsWhy="",prepWhy="",floodWhy="",floodCut;List<Boolean> tallFirst=List.of(),tallLate=List.of();
         boolean kindsOk=true;String kindsWhy=""; // p1-ui-feed-kinds
+        boolean longOk;String longWhy=""; // p1-ui-hints-long, the slip half (stage 24) until the pennant half (stage 26)
 
         ServerPlayerEntity sp(GravesAndGlory.Battle b){return player==null?null:b.server.getPlayerManager().getPlayer(player);}
         static List<EventFeed.Line> lines(){return EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs());}
@@ -2278,13 +2279,18 @@ public final class Phase1Checks implements ClientModInitializer {
                         boolean on=shape&&ends.get(0)<=slip[0]+slip[2]-12&&ends.get(1)<=slip[0]+slip[2]-12; // the 164 px slip's paper ends at x 160: 8 px kept clear, as on the left
                         String shift=GravesAndGloryClient.menu.getBoundKeyLocalizedText().getString(),up=GravesAndGloryClient.rotateLeft.getBoundKeyLocalizedText().getString(),down=GravesAndGloryClient.rotateRight.getBoundKeyLocalizedText().getString();
                         boolean named=shape&&shift.equals("Right Shift")&&up.equals("Page Up")&&down.equals("Page Down")&&rows.equals(List.of(List.of("None","Map","RShift","Commands"),List.of("PgUp","PgDn","Turn","LAlt","Hints")));
-                        String caps=GravesAndGloryClient.attack.getBoundKeyLocalizedText().getString();var keyRows=List.copyOf(BattleHud.keyRows());List<String> cardsWrong=new ArrayList<>();
-                        for(var kr:keyRows){int[] card=BattleHud.rects().get(kr.group().equals("all")?"keys":"card-"+kr.group());var p=kr.parts();
-                            boolean ok=card!=null&&p.equals(List.of("Caps","Attack","V","Follow","B","Form"))&&kr.from().get(0)>=card[0]+10&&kr.to().get(5)<=card[0]+166;
-                            for(int i=0;ok&&i<5;i++)ok=kr.to().get(i)<kr.from().get(i+1);if(!ok)cardsWrong.add(kr.group());}
-                        boolean cardsOk=caps.equals("Caps Lock")&&keyRows.size()==1&&keyRows.get(0).group().equals("all")&&cardsWrong.isEmpty(); // the army selected: one row, the key strip's
-                        shot(c,"ui-hud-hints-long");defaults();
-                        report("p1-ui-hints-long",on&&named&&cardsOk,"with Map unbound, Commands on "+shift+" and Turn on "+up+" and "+down+", the slip at "+UiHudChecks.box(slip)+" drew the rows "+rows+", ending at canvas x "+ends+" (the paper's text edge at "+(slip==null?"?":String.valueOf(slip[0]+slip[2]-12))+"); with Attack on "+caps+" and the army selected the column drew the key rows "+keyRows.stream().map(kr->kr.group()+" "+kr.parts()+" from x "+kr.from()+" to "+kr.to()+" (the plate at "+UiHudChecks.box(BattleHud.rects().get(kr.group().equals("all")?"keys":"card-"+kr.group()))+")").toList()+" (wanted one, the key strip's)"+(cardsWrong.isEmpty()?"":", WRONG on "+cardsWrong)+"; then the keys went back to "+GravesAndGloryClient.hint("menu")+", "+GravesAndGloryClient.hint("map")+", "+GravesAndGloryClient.hint("rotate_left")+", "+GravesAndGloryClient.hint("rotate_right")+" and "+GravesAndGloryClient.hint("attack"));
+                        // the key strip's rows went with command UI Task 7 (86f7244a): the pennant panel now shows the order keys, and it
+                        // hides this slip while open, so the slip is measured first and the panel opened for stage 26
+                        shot(c,"ui-hud-hints-long");longOk=on&&named;
+                        longWhy="with Map unbound, Commands on "+shift+" and Turn on "+up+" and "+down+", the slip at "+UiHudChecks.box(slip)+" drew the rows "+rows+", ending at canvas x "+ends+" (the paper's text edge at "+(slip==null?"?":String.valueOf(slip[0]+slip[2]-12))+")";
+                        CommandSelection.setPanelOpen(true);seen=tick;stage=26;}
+                }
+                case 26->{ // p1-ui-hints-long, the pennant half: with Attack on Caps Lock the Attack pennant's key reads Caps (UI polish round 2)
+                    if(tick>=seen+2){String caps=GravesAndGloryClient.attack.getBoundKeyLocalizedText().getString(),label=CommandPanel.key("attack");
+                        boolean drawn=CommandPanel.lastDrawn.stream().anyMatch(d->d[0]==CommandPanel.PENNANT); // CommandPanel.ORDERS[0] is attack
+                        boolean open=CommandSelection.panelOpen(),keyOk=caps.equals("Caps Lock")&&open&&drawn&&label.equals("Caps");
+                        shot(c,"ui-hud-hints-long-panel");CommandSelection.setPanelOpen(false);defaults();
+                        report("p1-ui-hints-long",longOk&&keyOk,longWhy+"; with Attack on "+caps+" the panel (open "+open+", Attack pennant drawn "+drawn+") labelled Attack's key "+label+" (wanted Caps); then the keys went back to "+GravesAndGloryClient.hint("menu")+", "+GravesAndGloryClient.hint("map")+", "+GravesAndGloryClient.hint("rotate_left")+", "+GravesAndGloryClient.hint("rotate_right")+" and "+GravesAndGloryClient.hint("attack"));
                         seen=tick;stage=14;}
                 }
                 // p1-ui-alt-layer (UI Task 8c): at Compact the hint slip hangs in the round's first 15 s (the layer's last 2 s checked
