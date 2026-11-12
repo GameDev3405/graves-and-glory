@@ -100,7 +100,7 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         if(GeoTroopRenderer.handles(l)){
             if(TroopModels.held(e,l))return;
             GeoTroopRenderer<T> g=geo.computeIfAbsent(l.troop().id(),id->new GeoTroopRenderer<>(ctx,id));
-            faded(e,alpha,tickDelta,consumers,v->{g.draw(e,l,yaw,tickDelta,matrices,v,light);TroopChevrons.draw(e,l,null,matrices,v,dispatcher);});return;
+            faded(e,alpha,tickDelta,consumers,v->{g.draw(e,l,yaw,tickDelta,matrices,v,light);TroopChevrons.draw(e,l,m,matrices,v,dispatcher);});return;
         }
         if(m==null){faded(e,alpha,tickDelta,consumers,v->{vanilla.render(e,yaw,tickDelta,matrices,v,light);TroopChevrons.draw(e,l,null,matrices,v,dispatcher);});return;}
         if(TroopModels.held(e,l))return;
