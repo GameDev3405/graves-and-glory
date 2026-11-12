@@ -178,7 +178,7 @@ public final class BattleHud {
     }
 
     /** The tiers of the last frame, null until the first frame of a battle: a change after it is one line on the feed. */
-    private static Map<String,Integer> tiersSeen;
+    static Map<String,Integer> tiersSeen;
 
     /** The House trait chips, one per House at tier I or higher: its glyph and the tier in Roman numerals, in the accent's text ink on a dark plate.
      *  A tier that moves between frames (troops fell, or the army grew) pushes one notice line to the feed. */
