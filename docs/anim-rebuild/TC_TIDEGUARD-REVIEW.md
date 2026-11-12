@@ -46,3 +46,32 @@ The knight's approved v2 style is ported to the spear builder (`art/anim/spear/b
   - Thrust and low-sweep contacts both end near level; the sweep reads apart by its deeper crouch and shoulder swing.
   - Brace is close to ready in profile (crouch depth and spear angle only).
   - The idle shift is subtle next to the knight's.
+
+## Batch review 2026-11-11
+
+Batch review by the spear lane worker (branch `anim/review-spear`, cut from `anim/fix-spear`); two fix rounds, then stopped.
+Builder: `art/anim/spear/build_spear_anims.py` (every change gated on the wide guard: ic_breaker untouched). Passes added,
+each touching only a clip that fails: despike (arm pops), soft motion on attacks, hits, stun and shake-off (plumes damped),
+plate_clear (shoulder plates slide down their own arm off the helm, every bone pair judged), head_clear (head turns off a
+passing forearm), cloth_clear (tabard, kilt, sash swing off a stepping thigh), keep_left_fist (hits), floor_guard, and the
+low-sweep blade-roll curve (grip_roll). Deploy splices only the clips that had a FAIL (`--deploy=<list>`); the shared
+modules' rally and charge run keep their own keys. Focus "after" is judged with the additive hits and the shake-off
+composed over the pose the game adds them to (stance t0, stun t4); "before" was judged over the rest pose, so before and
+after rows of hit_* are not like for like (check fault, reported to the lead).
+
+- **Guard grip:** kept at the deployed 10.1 px (already wider than the 8.0 ask; it does not hold the spear like the tusk).
+- **Deaths:** not deployed (drift only; kept byte-identical).
+- **Focus:** before 17 clips / 35 rows; after 17 / 20 (composed). Fixed: every secondary_life but hit_block, all floor,
+  attack pops (23.4, 17.8), grip_roll, stun_out tabard, hit_medium_back knee. Clips with no FAIL before are byte-identical.
+- **Open:** thrust/high-thrust bracers in each other 2.03/2.04 (spreading the fists to 6 px put the right bracer in the
+  breastplate, 2.46: rejected) and breastplate into left_pauldron 2.15/2.05 at t0.5-1 (new row: the pass's slide);
+  walk/low-sweep/hit tabard into thigh 1.91-2.36 (cloth pass measured below 1.9); stance wall/ward/fallback and stun
+  plates in the helm 2.36-2.65 (the slide down a forward-held arm runs into the breastplate); composed hits head into
+  left_plate 2.0-2.5 (the stance's own fit plus the hit); knockback left forearm into breastplate 2.53.
+- **Scorecard:** exit 0.
+- **In-game:** geo-knight, root tc_tideguard-review1: 22 `[p1] p1-` lines, 0 `=false`, suite passed.
+- **Tests:** `python -m unittest discover -s tools/anim`: 152 OK. `python tools/verify.py fast`: FAIL on one timing test only
+  (test_where extract 53.7 s, limit 30 s, machine under heavy load); every other check PASS.
+- **Looked at:** three-view sheets of high thrust, low sweep, thrust, hit_medium_front, fallback and stun (work/render/),
+  every second tick, not every tick.
+

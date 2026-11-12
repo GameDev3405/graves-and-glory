@@ -47,3 +47,37 @@ The knight's approved v2 style is ported to the spear builder (`art/anim/spear/b
   - The light hit is barely readable from the front (t1–6). It matches the approved knight's light flinch.
   - Medium from the right is subtle, and its recovery step is hard to see.
   - The thrust pop and the low run carry (both listed above) are no worse.
+
+## Batch review 2026-11-11
+
+Batch review by the spear lane worker (branch `anim/review-spear`, cut from `anim/fix-spear`); two fix rounds, then stopped.
+Builder: `art/anim/spear/build_spear_anims.py` (every change gated on the wide guard: ic_breaker untouched). Passes added,
+each touching only a clip that fails: despike (arm pops), soft motion on attacks, hits, stun and shake-off (plumes damped),
+plate_clear (shoulder plates slide down their own arm off the helm, every bone pair judged), head_clear (head turns off a
+passing forearm), cloth_clear (tabard, kilt, sash swing off a stepping thigh), keep_left_fist (hits), floor_guard, and the
+low-sweep blade-roll curve (grip_roll). Deploy splices only the clips that had a FAIL (`--deploy=<list>`); the shared
+modules' rally and charge run keep their own keys. Focus "after" is judged with the additive hits and the shake-off
+composed over the pose the game adds them to (stance t0, stun t4); "before" was judged over the rest pose, so before and
+after rows of hit_* are not like for like (check fault, reported to the lead).
+
+- **Guard grip 8.0 px** (lead's ask, "spaced out a tad bit more"): GUARD nudged to Ls 8.0; stance ready, shield-up, ward,
+  idle, rally, fallback, charge and every hit start from it. Brace and hold-the-line keep their own holds.
+- **Thrust:** the lead's round-3 demo (`art/anim/wm_tusk/build_thrust_demo.py`) is the builder's last step; attack_thrust
+  and _legs are identical to the demo built on its own; impact stays on tick 7. **Waits for Kort's grade.**
+- **Deaths:** not deployed (the rebuilt deaths fail scorecard ang_speed_weapon 86 to 111, limit 83). The builder's
+  death_forward shoulder fix (left arm pitch -10 at t16/t20) is in out/ only; the asset keeps the old death_forward
+  (shoulder 108, open).
+- **Focus:** before 19 clips / 36 rows; after 9 clips / 10 rows (1 is the composed stun_out_legs artifact). Fixed: all
+  secondary_life, all floor, grip_roll, high-thrust pop, low-sweep and ready/rally helm in plates, knee -9.
+- **Open:** run/charge kilt into shin guard 1.95/1.94 (cloth pass measured below 1.9); high_thrust left_wrap into right
+  forearm 2.06 t11; ward head into pauldron_spike_ii 2.33 (was 3.53); stun head into spike 2.18; knockback left forearm
+  into torso 2.0; hit_block secondary_life 1.28; death_forward shoulder 108.
+- **Scorecard: exit 1 (blocker).** pen_limb attack_thrust 2.0, high_thrust 1.73, low_sweep 1.65 (limit 1.39): the 8.0
+  guard's left arm in the chest (1.6 at tick 0, as the demo's own notes say); stun_upper pen_limb 2.79 (2.34) and
+  loop_pos 1.37 (1.09). Before: exit 0. Needs a guard refit (elbow out) and a look at the stun seam: a third round.
+- **In-game:** geo-knight, root wm_tusk-review1: 22 `[p1] p1-` lines, 0 `=false`, suite passed.
+- **Tests:** `python -m unittest discover -s tools/anim`: 152 OK. `python tools/verify.py fast`: FAIL on one timing test only
+  (test_where extract 53.7 s, limit 30 s, machine under heavy load); every other check PASS.
+- **Looked at:** three-view sheets of high thrust, low sweep, thrust, hit_medium_front, fallback and stun (work/render/),
+  every second tick, not every tick.
+

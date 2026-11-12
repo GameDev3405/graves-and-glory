@@ -397,6 +397,14 @@ WIDE = TROOP in ("wm_tusk", "tc_tideguard", "tc_admiral")
 if WIDE:
     GUARD = KEY((14, 15, 0), GAZE, (-7.43, 12.82, -0.87), aim(18.5, 20.3), Ls=10.1, rp=(-45.88, -20.69, 15.09, -2.02),
                 lp=(-117.23, 26.98, -81.1, -22.28))
+# Batch review 2026-11-11 (Kort, tusk thrust round 1, tick 0: "hand placement could be spaced out a tad bit more"): a two-hand
+# spear guard holds the fists 8.0 px apart along the shaft. The tusk's attack_thrust is the graded demo
+# (art/anim/wm_tusk/build_thrust_demo.py), which starts from this guard at 8.0, so its stance takes the same grip and the thrust
+# does not slide the left fist on the way out of the stance. The tideguard and the admiral hold the same wide guard at 10.1
+# (already wider than his ask), and are left as they are.
+GUARD_GRIP = {"wm_tusk": 8.0}
+if WIDE and TROOP in GUARD_GRIP:
+    GUARD = nudge(GUARD, Ls=GUARD_GRIP[TROOP])
 ATTACK_TICKS = K.ATTACK_TICKS     # 22
 IMPACT = {"thrust": 7, "high_thrust": 7, "low_sweep": 8}
 
@@ -537,6 +545,8 @@ if V2C:
             if 0.0 < t < plan[0][0] or plan[-1][0] < t < 22.0:
                 continue                      # off the planned span: the guard ends ease in and out on their own keys
             v = {n: K.curve([(k[0], k[1][n]) for k in rows], t) for n in g}
+            if SWEEP_PHI:                     # the blade's roll on its own track (batch review: never in the wind-up)
+                v["phi"] = K.curve(SWEEP_PHI, t)
             out.append((float(t), _plan_key(legs[int(round(t * SUB))], v)))
         out[0], out[-1] = (0.0, GUARD), (22.0, GUARD)
         return out
@@ -552,6 +562,7 @@ if V2C:
         k["u"] = tuple(unit(u))
         return k
 
+    SWEEP_PHI = None
     # chest frame px: +x the troop's left, +y up, +z forward. r: shaft yaw left of the chest's forward. ev: world elevation.
     SWEEP_PLAN = [
         (3.0, {"torso": (12, 26, 0), "head": (8, 6, 0), "O": (-7.0, 16.0, -1.0), "ev": 2, "r": 32, "phi": 60, "Ls": 8.5}),
@@ -619,6 +630,11 @@ if WIDE:
         (14.0, {"torso": (20, 6, 0), "head": (10, 0, 0), "O": (-4.98, 16.38, 4.44), "ev": 7.05, "r": 52.25, "phi": 40, "Ls": 7.05, "rp": (-51.5, -53.23, 49.26, -55.03), "lp": (-89.58, 35.8, 0, -4.55)}),
         (18.0, {"torso": (15, 13, 0), "head": (5, 0, 0), "O": (-4.18, 18.29, 5.75), "ev": 15.86, "r": 56.98, "phi": 5, "Ls": 7.26, "rp": (-64.83, -39.47, 52.56, -63.13), "lp": (-98.36, 26.7, 0, -12.49)}),
     ]
+    # Batch review 2026-11-11 (grip_roll 24 deg/tick at t2.25 on all three: the plan rolled the blade 60 deg by t3, in the wind-up).
+    # Kort: "weapons spins around in hand". The blade stays as the guard holds it through the wind-up and rolls its edge onto the
+    # sweep only as the strike starts (t5 to t7.5); the rest of the roll is the plan's own.
+    SWEEP_PHI = [(0.0, (0.0,)), (5.0, (0.0,)), (7.5, (90.0,)), (8.0, (90.0,)), (9.25, (90.0,)), (10.5, (85.0,)), (14.0, (40.0,)),
+                 (18.0, (5.0,)), (22.0, (0.0,))]
     ATTACKS["low_sweep"] = _sweep_keys(SWEEP_PLAN, ATTACK_LEGS["low_sweep"])
     if TROOP == "tc_admiral":   # the admiral's rig (its wider cuffs) wants its own refit of the same plan
         SWEEP_PLAN = [
@@ -645,6 +661,588 @@ def gear(samples, legs=None):
     return samples
 
 
+# ------------------------------------------------------------------------------------------------
+# Batch review 2026-11-11 (Kort's four focus points: no clipping, nothing stale, the weapon facing the right way, no limb
+# glitches). For the three spear troops only (REVIEW): ic_breaker and the reaper borrow this builder and stay as they were.
+#   the whole unit  every hanging piece and shoulder plate swings in the attacks and the heavier hits (fullbody.soft_motion; the
+#                   tusk's kilt, trophy, hip skull, tooth necklace and pauldrons stood still; the tideguard's pauldrons and
+#                   tabard; the admiral's hair, kelp, plume, tails and sash)
+#   the ground      the long shaft dipped under the ground in the hits that throw the chest forward (tusk: 11 px in
+#                   hit_medium_back and hit_pulled): where it would, both arms lift it about the chest's own cross axis, which
+#                   keeps the shaft in both fists; a foot that sinks lifts the hips by what it sinks
+# The clips the shared modules add later (stances.py, charge.py, reactions.py) get the same passes from `--post` (main()).
+# ------------------------------------------------------------------------------------------------
+
+REVIEW = WIDE
+FLOOR_CLEAR = 0.6       # px the weapon keeps above the sole (focus_check fails at 1.0 under, warns at 0.5)
+FEET_SINK = 0.3         # px a foot may press under the sole (a toe dug in) before the hips lift it
+_FB = []
+
+
+def _fullbody():
+    if not _FB:
+        sys.path.insert(0, str(HERE.parent / "common"))
+        import fullbody   # noqa: E402  (imports this troop's knight-builder module, already loaded as K)
+        _FB.append(fullbody)
+    return _FB[0]
+
+
+def soft_parts():
+    """The kit's pieces for this rig, every one keyed in the clip it is given (the upper clip: it plays whatever the legs do)."""
+    parts = _fullbody().soft_parts_for()
+    for c in parts.values():
+        c.pop("clip", None)
+        if c.get("kind") == "plume":
+            # the admiral's hair locks and plumes on the kit's lively spring snapped 16 to 23 deg/tick in the blows (focus_check
+            # pop, fail 14): damped harder and swung less, they still trail the head well past secondary_life's 4 deg
+            c.update(zeta=0.45, gain=1.6)
+    return parts
+
+
+def soft(upper, legs, label, parts=None):
+    print(label + ": soft motion")
+    upper, legs = _fullbody().soft_motion(upper, legs, parts=parts if parts is not None else soft_parts(), report=True)
+    # The plates on one arm are one piece of armour (the tusk's pauldron and the spikes riveted to it): where the kit slides
+    # one of them down the arm, off the helm, all of them slide as far, so a spike never leaves its plate.
+    groups = {}
+    for plate, (arm, _) in _fullbody().plates_for().items():
+        groups.setdefault(arm, []).append(plate)
+    for u in upper:
+        for arm, plates in groups.items():
+            ys = [u[p][1][1] for p in plates if p in u and u[p][1] is not None]
+            if ys and len(plates) > 1:
+                y = min(ys)
+                for p in plates:
+                    if p in u:
+                        u[p] = (u[p][0], (0.0, y, 0.0))
+    return upper, legs
+
+
+PLATE_FIT = 1.5     # px a shoulder plate may sit deeper in the helm than the rest model has it (focus_check fails at 1.9)
+PLATE_STEP = 0.375  # px between the slides tried
+PLATE_REACH = 3.0   # px a plate slides down its arm at most
+ARMOUR_FAIL = 1.9   # focus_check's armour_clip FAIL: a pass only touches a clip that reaches it
+INHERIT = 0.15      # focus_check: an action clip within this of its first frame only inherits its stance's fit
+CLOTH_FIT = 1.5     # px the hanging cloth may sit deeper in a leg than the rest model has it
+CLOTH_TURN = 30     # deg the cloth turns at most to let the thigh by
+_ACTX = []
+
+
+def _actx():
+    """The full tier-3 model's cubes by bone, which pieces are alive, for the passes below (they judge bone against bone,
+    each pair against its own rest-model fit, as focus_check judges armour_clip)."""
+    if not _ACTX:
+        fb = _fullbody()
+        import focus_check as fc
+        model = fb._full_model(TROOP)
+        alive = fc.alive_pieces(model)
+        by = {}
+        for ci, c in enumerate(model.cube_list):
+            by.setdefault(model.cube_bone[ci], []).append(c)
+        _ACTX.append((fb, fc, model, alive, by))
+    return _ACTX[0]
+
+
+def _posed(u, l):
+    pose = {}
+    for src in (l, u):
+        for b, (r, p) in src.items():
+            if b in K.MODEL.bones:
+                pose[b] = (r, p if p is not None else Z3)
+    return pose
+
+
+def _wcubes(pose, bones):
+    fb, _, model, _, by = _actx()
+    return {b: [fb._cube_world(fb._bone_world(pose, b, model), c) for c in by[b]] for b in bones if b in by}
+
+
+class _Fit:
+    """How deep the `mine` bones sit in the `others` bones, beyond the rest model's own fit, pair by pair."""
+
+    def __init__(self, mine, others):
+        fb = _actx()[0]
+        R0m, R0o = _wcubes({}, mine), _wcubes({}, others)
+        self.rest = {(a, b): fb._sink(R0m[a], R0o[b]) for a in R0m for b in R0o}
+
+    def deep(self, Wm, Wo, pairs=None):
+        fb = _actx()[0]
+        best, rows = 0.0, []
+        for (a, b), r in self.rest.items():
+            if pairs is not None and (a, b) not in pairs:
+                continue
+            d = fb._sink(Wm[a], Wo[b]) - r
+            rows.append(((a, b), d))
+            best = max(best, d)
+        return best, rows
+
+
+def _fit_target(deep, loop):
+    """The depth a pass works down to, or None where the clip does not fail: a held loop is judged on its own; an action
+    clip fails only past its first frame's fit (what it inherits from the stance) plus focus_check's allowance."""
+    top = max(deep)
+    if loop:
+        return PLATE_FIT if top >= ARMOUR_FAIL else None
+    if top < ARMOUR_FAIL or top <= deep[0] + INHERIT:
+        return None
+    return max(PLATE_FIT, deep[0] + 0.1)
+
+
+def _ease(W, loop, absmax=False):
+    """Widen each sample's need over a tick each side, smooth it, and (an action clip) fade it in over a tick and out over
+    two, so the clip starts and ends exactly where its stance has it."""
+    n = len(W)
+    idx = (lambda j: j % (n - 1)) if loop else (lambda j: min(max(j, 0), n - 1))
+    pick = (lambda xs: max(xs, key=abs)) if absmax else max
+    wide = np.array([pick([W[idx(j)] for j in range(i - SUB, i + SUB + 1)]) for i in range(n)])
+    out = np.array([np.mean([wide[idx(j)] for j in range(i - SUB // 2, i + SUB // 2 + 1)]) for i in range(n)])
+    if not loop:
+        out *= np.array([K.smooth(max(0.0, min(1.0, i / float(SUB), (n - 1 - i) / (2.0 * SUB)))) for i in range(n)])
+    return out
+
+
+def plate_clear(upper, legs, label, loop=False):
+    """Where the helm (or a breastplate) would sink into a shoulder piece deeper than the rest model has it, that arm's
+    pieces (the plate, the spikes riveted to it, an arm band) slide down the arm together until it fits. Judged pair by
+    pair against the rest model (a held stance whose every frame clips is fixed too); an action clip only past what it
+    inherits from its first frame. Only a clip that fails is touched."""
+    upper = [dict(u) for u in upper]     # a loop's last sample may be its first one's dict
+    fb, fc, model, alive, _ = _actx()
+    if "head" not in model.bones:
+        return upper
+    hard = lambda b: b not in alive or alive[b][0] == "plate"
+    arms = set(fb._under(model, "right_arm")) | set(fb._under(model, "left_arm"))
+    chest = [b for b in model.order if model.bones[b].parent == "torso" and b not in arms and b != "head" and b not in alive]
+    helm = [b for b in fb._under(model, "head") if b not in alive] + chest + ["torso"]
+    groups = {}
+    for b in model.order:     # the shoulder pieces worn on each upper arm: plates, epaulettes, arm bands
+        par = model.bones[b].parent
+        if par in ("right_arm", "left_arm") and (hard(b) or "fringe" in b) and b in GEO_BONES and (
+                set(b.split("_")) & {"pauldron", "plate", "epaulette", "fringe"} or "arm_band" in b):
+            groups.setdefault(par, []).append(b)
+    n = len(upper)
+    for arm, plates in groups.items():
+        mine = [x for p in plates for x in fb._under(model, p)]
+        F = _Fit(mine, helm)
+        poses = [_posed(upper[i], legs[i]) for i in range(n)]
+        Ws = [(_wcubes(p, mine), _wcubes(p, helm)) for p in poses]
+        deep = [F.deep(Wm, Wo)[0] for Wm, Wo in Ws]
+        fit = _fit_target(deep, loop)
+        if fit is None:
+            continue           # nothing fails here: the clip stays exactly as it was
+        W = np.zeros(n)
+        for i in range(n):
+            if deep[i] <= fit:
+                continue
+            Wm, Wo = Ws[i]
+            # every pair judged at each step: a slide down an arm held forward can carry the plate off the helm and
+            # into the breastplate. The first step that fits, else the step that leaves the least (if it helps at all).
+            down = fb._unit(K.world(poses[i], arm)[:3, :3] @ np.array([0.0, -1.0, 0.0]))
+            best = (deep[i] - 0.05, 0.0)
+            for s in np.arange(PLATE_STEP, PLATE_REACH + 1e-6, PLATE_STEP):
+                moved = {b: [c + down * s / 16.0 for c in cs] for b, cs in Wm.items()}
+                d = F.deep(moved, Wo)[0]
+                if d <= fit:
+                    best = (d, s)
+                    break
+                if d < best[0]:
+                    best = (d, s)
+            W[i] = best[1]
+        if not W.any():
+            continue
+        sw = _ease(W, loop)
+        for i in range(n):
+            for p in plates:      # every sample keyed, so the slide eases in and out between keys
+                r, pos = upper[i].get(p, (Z3, None))
+                upper[i][p] = (r, (0.0, (pos or Z3)[1] - float(sw[i]), 0.0))   # on top of any slide the kit gave it
+        k = int(np.argmax(sw))
+        print("  %s: %s slide %.1f px down %s, off the helm (most at t%.2f; fit %.2f -> %.2f)"
+              % (label, "+".join(plates), sw[k], arm, k / SUB, max(deep), fit))
+    return upper
+
+
+def cloth_clear(upper, legs, label, loop=False, into_upper=False):
+    """Where a stepping thigh would pass through the cloth hanging over it (a tabard, a kilt, a sash end) deeper than the
+    rest model has it, the cloth swings out of the way: the smallest turn about its own hinge (forward or back) that lets
+    the leg by, eased over a tick each side. Judged like plate_clear; only a clip that fails is touched."""
+    upper = [dict(u) for u in upper]     # a loop's last sample may be its first one's dict
+    fb, fc, model, alive, _ = _actx()
+    legset = [b for side in ("right_leg", "left_leg") if side in model.bones for b in fb._under(model, side) if b not in alive]
+    cloths = [b for b in model.order if b in alive and alive[b][0] == "cloth" and b in K.MODEL.bones
+              and model.bones[b].parent in ("torso", "hips")]
+    n = len(upper)
+    legs = [dict(l) for l in legs]
+    for cl in cloths:
+        mine = fb._under(model, cl)
+        F = _Fit(mine, legset)
+        poses = [_posed(upper[i], legs[i]) for i in range(n)]
+        Wo = [_wcubes(p, legset) for p in poses]
+        deep = [F.deep(_wcubes(p, mine), o)[0] for p, o in zip(poses, Wo)]
+        fit = _fit_target(deep, loop)
+        if fit is None:
+            continue
+        D = np.zeros(n)
+        for i in range(n):
+            if deep[i] <= fit:
+                continue
+            r0 = poses[i].get(cl, (Z3, Z3))
+            for mag in range(2, CLOTH_TURN + 1, 2):
+                ok = []
+                for sgn in (1, -1):
+                    q = dict(poses[i])
+                    q[cl] = ((r0[0][0] + sgn * mag, r0[0][1], r0[0][2]), r0[1])
+                    if F.deep(_wcubes(q, mine), Wo[i])[0] <= fit:
+                        ok.append(sgn * mag)
+                if ok:
+                    D[i] = ok[0]
+                    break
+        if not D.any():
+            continue
+        sd = _ease(D, loop, absmax=True)
+        src = legs if cl in legs[0] and cl not in upper[0] and not into_upper else upper
+        for i in range(n):
+            r, pos = src[i].get(cl, (Z3, None))
+            src[i][cl] = ((r[0] + float(sd[i]), r[1], r[2]), pos)
+        k = int(np.argmax(np.abs(sd)))
+        print("  %s: %s swings %.0f deg out of the thigh's way (most at t%.2f; fit %.2f -> %.2f)"
+              % (label, cl, sd[k], k / SUB, max(deep), fit))
+    return upper, legs
+
+
+POP_AT = 12.0       # deg: a sample's turn this much over both neighbours' (focus_check pop warns at 8, fails at 14)
+POP_BONES = ("right_arm", "right_forearm", "right_hand", "left_arm", "left_forearm", "left_hand")
+
+
+def despike(upper, label):
+    """Where the two-arm solve flips an elbow between one sample and the next (the refit thrusts at t6.25 to t6.5: an arm
+    turned 18 to 23 deg in one quarter tick, as much again as either neighbour), the two samples either side of the flip
+    are laid on the line between the samples around them, so the flip is spread over three steps. Nothing else moves."""
+    n = len(upper)
+    worst = 0.0
+    for _ in range(4):
+        hit = False
+        for b in POP_BONES:
+            if b not in upper[0]:
+                continue
+            R = [_rot_m(u[b][0]) for u in upper]
+            s = [math.degrees(math.acos(max(-1.0, min(1.0, (np.trace(R[k].T @ R[k + 1]) - 1.0) / 2.0)))) for k in range(n - 1)]
+            for k in range(1, n - 2):
+                spike = s[k] - max(s[k - 1], s[k + 1])
+                if spike > POP_AT and s[k] > 2.5 * max(s[k - 1], s[k + 1], 0.5):
+                    worst = max(worst, spike)
+                    a, c = upper[k - 1], upper[k + 2]
+                    for j, f in ((k, 1.0 / 3.0), (k + 1, 2.0 / 3.0)):
+                        for bb in POP_BONES:
+                            if bb in a and bb in c:
+                                ra, rc = np.array(a[bb][0]), np.array(c[bb][0])
+                                rr = ra + np.array([K.wrap(x) for x in (rc - ra)]) * f
+                                upper[j][bb] = (tuple(float(x) for x in rr), upper[j][bb][1])
+                    hit = True
+                    break
+            if hit:
+                break
+        if not hit:
+            break
+    if worst:
+        print("  %s: an arm flip of %.1f deg in one sample spread over three" % (label, worst))
+    return upper
+
+
+def keep_left_fist(offs, legs_offs, label, base=None):
+    """An additive blow turns the two arms by keyed amounts that do not keep the two fists on one shaft: the left fist came
+    off its place on the spear by up to 11 px (tusk hit_medium_front). Over the pose it is added to, the left arm and
+    forearm are solved, sample by sample, to put the left wrist back where the right fist's frame carries it from the guard
+    (the shaft's own place for it); the upper arm turns least where it can. Written back as the clip's offsets."""
+    bu, bl = base or guard_pose()
+    piv = np.r_[K.MODEL.bones["left_hand"].pivot / 16.0, 1.0]
+    g = fk_pose(bu, bl)
+    on_shaft = np.linalg.inv(K.world(g, "right_hand")) @ (K.world(g, "left_hand") @ piv)
+    worst = [0.0, 0.0]
+    orig = [dict(o) for o in offs]
+    for i, o in enumerate(offs):
+        up = _add(bu, o)
+        lg = _add(bl, legs_offs[i]) if legs_offs else bl
+        p = fk_pose(up, lg)
+        want = (K.world(p, "right_hand") @ on_shaft)[:3] * 16.0      # px
+        (ax, ay, az), apos = up["left_arm"]
+        fx = up["left_forearm"][0][0]
+
+        def wrist(v):
+            q = dict(up)
+            q["left_arm"] = ((v[0], v[3], v[1]), apos)
+            q["left_forearm"] = ((v[2],) + tuple(up["left_forearm"][0][1:]), up["left_forearm"][1])
+            return (K.world(fk_pose(q, lg), "left_hand") @ piv)[:3] * 16.0
+
+        x = np.array([ax, az, fx, ay], dtype=float)
+        miss0 = float(np.linalg.norm(want - wrist(x)))
+        if miss0 < 0.3:
+            continue
+        for _ in range(30):
+            a = wrist(x)
+            err = want - a
+            if np.linalg.norm(err) < 0.05:
+                break
+            J = np.zeros((3, 4))
+            for j in range(4):
+                d = np.zeros(4)
+                d[j] = 0.05
+                J[:, j] = (wrist(x + d) - a) / 0.05
+            # the least turn that does it: the twist costs the most, so the elbow and shoulder do the work first
+            Wd = np.diag([1.0, 1.0, 1.0, 4.0]) * 1e-3
+            step = np.linalg.solve(J.T @ J + Wd, J.T @ err)
+            nrm = np.linalg.norm(step)
+            if nrm > 8:
+                step *= 8 / nrm
+            x += step
+            x[2] = min(-2.0, max(-150.0, x[2]))
+        miss = float(np.linalg.norm(want - wrist(x)))
+        worst = [max(worst[0], miss0), max(worst[1], miss)]
+        o["left_arm"] = _sub(((x[0], x[3], x[1]), apos), bu.get("left_arm"))
+        o["left_forearm"] = _sub(((x[2],) + tuple(up["left_forearm"][0][1:]), up["left_forearm"][1]), bu.get("left_forearm"))
+    if worst[1] > 0.5:      # out of the arm's reach somewhere (the blow turns the chest too far): left as keyed
+        print("  %s: the left fist comes off the shaft by %.1f px; out of reach (%.2f), left as keyed" % (label, worst[0], worst[1]))
+        return orig
+    if worst[0]:
+        print("  %s: the left fist kept on the shaft (it came off by %.1f px; now %.2f)" % (label, worst[0], worst[1]))
+    return offs
+
+
+HEAD_TURN = 16      # deg the head turns at most to let a passing forearm by
+
+
+def head_clear(upper, legs, label, loop=False):
+    """Where a forearm's armour (a wrap, a bracer) crosses the helm or snout deeper than the rest model has it (the front
+    arm coming up past the face), the head turns out of its way: the smallest yaw or nod that fits, eased over a tick each
+    side. Judged like plate_clear; only a clip that fails is touched."""
+    upper = [dict(u) for u in upper]     # a loop's last sample may be its first one's dict
+    fb, fc, model, alive, _ = _actx()
+    if "head" not in model.bones or "head" not in K.MODEL.bones:
+        return upper
+    mine = [b for b in fb._under(model, "head") if b not in alive]
+    arms = [b for side in ("right_arm", "left_arm") if side in model.bones for b in fb._under(model, side)
+            if b not in alive and b in GEO_BONES and set(b.split("_")) & {"wrap", "bracer", "cuff", "forearm"}]
+    if not mine or not arms:
+        return upper
+    F = _Fit(mine, arms)
+    n = len(upper)
+    poses = [_posed(upper[i], legs[i]) for i in range(n)]
+    Wo = [_wcubes(p, arms) for p in poses]
+    deep = [F.deep(_wcubes(p, mine), o)[0] for p, o in zip(poses, Wo)]
+    fit = _fit_target(deep, loop)
+    if fit is None:
+        return upper
+    turns = [(ax, s * m) for m in range(2, HEAD_TURN + 1, 2) for ax in (1, 0) for s in (1, -1)]
+    Y, P = np.zeros(n), np.zeros(n)
+    for i in range(n):
+        if deep[i] <= fit:
+            continue
+        r0 = poses[i].get("head", (Z3, Z3))
+        for ax, v in turns:
+            q = dict(poses[i])
+            r = list(r0[0]); r[ax] += v
+            q["head"] = (tuple(r), r0[1])
+            if F.deep(_wcubes(q, mine), Wo[i])[0] <= fit:
+                (Y if ax == 1 else P)[i] = v
+                break
+    if not (Y.any() or P.any()):
+        return upper
+    sy, sp = _ease(Y, loop, absmax=True), _ease(P, loop, absmax=True)
+    for i in range(n):
+        r, pos = upper[i].get("head", (Z3, None))
+        upper[i]["head"] = ((r[0] + float(sp[i]), r[1] + float(sy[i]), r[2]), pos)
+    k = int(np.argmax(np.abs(sy) + np.abs(sp)))
+    print("  %s: head turns yaw %.0f / nod %.0f deg off the forearm (most at t%.2f; fit %.2f -> %.2f)"
+          % (label, sy[k], sp[k], k / SUB, max(deep), fit))
+    return upper
+
+
+def armour_pass(up, lg, label, loop=False):
+    """The shoulder plates off the helm, the head off a passing forearm, the cloth out of the thighs' way (each only
+    where the clip fails)."""
+    up = plate_clear(up, lg, label, loop=loop)
+    up = head_clear(up, lg, label, loop=loop)
+    return cloth_clear(up, lg, label, loop=loop)
+
+
+def armour_additive(offs, legs_offs, label, base=None):
+    """armour_pass for an additive clip, judged over the pose it is added to; what it moves is written back as offsets.
+    Returns (offs, legs_offs); the cloth of a clip with no legs clip of its own is keyed in the upper clip."""
+    bu, bl = base or guard_pose()
+    up = [_add(bu, o) for o in offs]
+    lg = [_add(bl, o) for o in legs_offs] if legs_offs else [dict(bl) for _ in offs]
+    b_up, b_lg = [dict(u) for u in up], [dict(l) for l in lg]
+    up, lg = armour_pass(up, lg, label)
+    # a bone the pass moved anywhere is keyed on every frame (the bake takes a missing key from frame 0)
+    moved_u = {b for u, u0 in zip(up, b_up) for b, v in u.items() if v != u0.get(b)}
+    moved_l = {b for l, l0 in zip(lg, b_lg) for b, v in l.items() if v != l0.get(b)}
+    for o, u in zip(offs, up):
+        for b in moved_u & set(u):
+            o[b] = _sub(u[b], bu.get(b))
+    for i, l in enumerate(lg):
+        for b in moved_l & set(l):
+            tgt = legs_offs[i] if legs_offs else offs[i]
+            tgt[b] = _sub(l[b], bl.get(b))
+    return offs, legs_offs
+
+
+def armour_on_clip(A, name, legs_name=None, loop=False):
+    """armour_pass over a clip of the exported file (the shared modules' stances and charge), re-baked only if it moved."""
+    STN = _stances()
+    clip = A[name]
+    n = int(round(clip["animation_length"] * TPS)) * SUB
+    ups = _frames(STN, clip, n)
+    gl = guard_pose()[1]
+    lgs = [{**gl, **l} for l in _frames(STN, A[legs_name], n)] if legs_name and legs_name in A else [dict(gl) for _ in range(n + 1)]
+    before = [dict(u) for u in ups]
+    ups, lgs2 = armour_pass(ups, lgs, name, loop=loop)
+    for u, l, l0 in zip(ups, lgs2, lgs):     # cloth the legs clip would key goes in this (upper) clip: the legs clip is shared
+        for b, v in l.items():
+            if v != l0.get(b):
+                u[b] = v
+    if ups != before:
+        A[name] = STN.bake(ups, n // SUB, clip.get("loop", False))
+
+
+def guard_pose():
+    """The stance's first frame: the solved guard over the ready legs (what stance_ready_upper / _legs start on)."""
+    if not _GUARD:
+        legs = K.attack_legs({"hips": [(0, *READY_HIPS), (1, *READY_HIPS)], "steps": []}, ticks=1)[0]
+        _GUARD.append((sample([(0, GUARD), (1, GUARD)], legs, Solver(), 0.0), legs))
+    u, l = _GUARD[0]
+    return dict(u), dict(l)
+
+
+_GUARD = []
+
+
+def _add(base, off):
+    out = {b: (tuple(r), p) for b, (r, p) in base.items()}
+    for b, (r, p) in off.items():
+        r0, p0 = out.get(b, (Z3, None))
+        pos = p0 if p is None else tuple(a + c for a, c in zip(p0 or Z3, p))
+        out[b] = (tuple(a + c for a, c in zip(r0, r)), pos)
+    return out
+
+
+def _sub(abs_, base):
+    r0, p0 = base if base is not None else (Z3, None)
+    r, p = abs_
+    return (tuple(K.wrap(a - c) for a, c in zip(r, r0)),
+            None if p is None else tuple(a - c for a, c in zip(p, p0 or Z3)))
+
+
+def soft_additive(offs, legs_offs, label, base=None, gain=1.0):
+    """soft_motion for an additive clip: played over the stance's first frame, the pieces' swing is the clip's own keys.
+    gain scales every piece's swing (a light flinch moves the body too little to swing them past secondary_life's 4 deg)."""
+    bu, bl = base or guard_pose()
+    parts = soft_parts()
+    for c in parts.values():
+        c["gain"] *= gain
+    plates = _fullbody().plates_for()
+    pieces = {b for c in parts.values() for b in c["bones"]} | set(plates)
+    up = [_add({b: v for b, v in bu.items() if b not in pieces}, o) for o in offs]
+    lg = [_add(bl, o) for o in legs_offs] if legs_offs and len(legs_offs) == len(offs) else [dict(bl) for _ in offs]
+    up, lg = soft(up, lg, label, parts)
+    for o, u in zip(offs, up):
+        for b in pieces:
+            if b in u:
+                o[b] = (tuple(u[b][0]), u[b][1])
+    return offs
+
+
+def _rot_m(r):
+    a, b, c = np.radians([-r[0], -r[1], r[2]])
+    return (K.rg._Rz(c) @ K.rg._Ry(b) @ K.rg._Rx(a))[:3, :3]
+
+
+_WCORNERS = []
+
+
+def _weapon_local():
+    """The weapon's corners in the right hand's frame (all tiers), and the sole's height, from the guard."""
+    if not _WCORNERS:
+        s, legs = guard_pose()
+        pose = fk_pose(s, legs)
+        P, owner = _CORNERS(pose)
+        isw = np.array([is_weapon(o) for o in owner])
+        L = np.linalg.inv(K.world(pose, "right_hand")) @ np.c_[P[isw] / 16.0, np.ones(int(isw.sum()))].T
+        _WCORNERS.extend([L, float(P[~isw, 1].min())])
+    return _WCORNERS
+
+
+def weapon_clear(pose):
+    L, sole = _weapon_local()
+    return float((K.world(pose, "right_hand") @ L)[1].min() * 16.0 - sole)
+
+
+def body_clear(pose):
+    P, owner = _CORNERS(pose)
+    keep = np.array([not is_weapon(o) for o in owner])
+    return float(P[keep, 1].min() - _weapon_local()[1])
+
+
+def _lift_arms(pose_upper, d):
+    """Both upper arms turned d degrees about the chest's cross axis (x): the hands move as one, the shaft stays in both."""
+    if abs(d) < 1e-9:
+        return pose_upper
+    q = dict(pose_upper)
+    R = _rot_m((d, 0.0, 0.0))
+    for side in ("right_arm", "left_arm"):
+        r, p = q[side]
+        q[side] = (near_euler(K.decompose_zyx(R @ _rot_m(r)), tuple(r)), p)
+    return q
+
+
+def _ease_series(w):
+    n = len(w)
+    wide = np.array([max(w[max(0, i - SUB):i + SUB + 1], key=abs) if any(w[max(0, i - SUB):i + SUB + 1]) else 0.0 for i in range(n)])
+    h = SUB
+    return [float(np.mean(wide[max(0, i - h):i + h + 1])) if wide[max(0, i - h):i + h + 1].any() else 0.0 for i in range(n)]
+
+
+def floor_guard(ups, legs, label, base=None, additive=False):
+    """Keeps the weapon and the feet above the ground. ups/legs: samples (offsets over the stance's first frame if additive).
+    Where the weapon would sink, both arms lift it (the smallest turn either way that clears, eased over a tick each side);
+    where a foot would sink, the hips rise by as much. Samples that clear are left exactly as they were."""
+    bu, bl = base or guard_pose()
+    n = len(ups)
+    absu = [_add(bu, u) if additive else u for u in ups]
+    absl = [_add(bl, l) if additive else l for l in legs] if legs else [dict(bl)] * n
+    lift = []
+    for i in range(n):
+        pose = fk_pose(absu[i], absl[i])
+        if weapon_clear(pose) >= FLOOR_CLEAR:
+            lift.append(0.0)
+            continue
+        best = 0.0
+        for mag in np.arange(1.0, 46.0, 1.0):
+            hit = [s * mag for s in (-1.0, 1.0) if weapon_clear(fk_pose(_lift_arms(absu[i], s * mag), absl[i])) >= FLOOR_CLEAR + 0.2]
+            if hit:
+                best = hit[0]
+                break
+        lift.append(best)
+    lift = _ease_series(lift)
+    rise = []
+    for i in range(n):
+        rise.append(max(0.0, -FEET_SINK - body_clear(fk_pose(_lift_arms(absu[i], lift[i]), absl[i]))))
+    rise = _ease_series(rise) if legs else [0.0] * n
+    if any(lift):
+        k = int(np.argmax(np.abs(lift)))
+        print("  %s: the arms lift the weapon clear of the ground, up to %.0f deg at t%.2f" % (label, lift[k], k / SUB))
+    if any(rise):
+        k = int(np.argmax(rise))
+        print("  %s: the hips rise %.2f px at t%.2f to keep the feet out of the ground" % (label, rise[k], k / SUB))
+    for i in range(n):
+        if lift[i]:
+            new = _lift_arms(absu[i], lift[i])
+            for side in ("right_arm", "left_arm"):
+                ups[i][side] = _sub(new[side], bu.get(side)) if additive else new[side]
+        if rise[i]:
+            r, p = legs[i]["hips"]
+            legs[i]["hips"] = (r, (p[0], p[1] + rise[i], p[2]) if p is not None else (0.0, rise[i], 0.0))
+    return ups, legs
+
+
 def attack_clip(name):
     keys, legs = ATTACKS[name], K.attack_legs(ATTACK_LEGS[name])
     sol = Solver()
@@ -662,7 +1260,13 @@ def attack_clips():
     out = {}
     for name in ATTACKS:
         upper, legs = attack_clip(name)
-        clip = K.bake(gear(upper, legs), ATTACK_TICKS, loop=False)
+        if REVIEW:
+            upper = despike(upper, "attack_" + name)
+        upper = gear(upper, legs)
+        if REVIEW:
+            upper, legs = soft(upper, legs, "attack_" + name)
+            upper, legs = armour_pass(upper, legs, "attack_" + name)
+        clip = K.bake(upper, ATTACK_TICKS, loop=False)
         clip["timeline"] = {K.fmt_t(IMPACT[name] / TPS): "impact"}
         out["attack_" + name] = clip
         out["attack_%s_legs" % name] = K.bake(legs, ATTACK_TICKS, loop=False)
@@ -728,6 +1332,9 @@ def gait_upper(g, c, run):
     hits = sum(bool(shaft_hits(fk_pose(s, l))) for s, l in zip(samples, lsamp))
     print("%s carry: butt lowest %.1f px above the ground, samples with the shaft in the body %d" % (g.name, low, hits))
     samples.append(samples[0])
+    if REVIEW:
+        samples, _ = cloth_clear(samples, list(lsamp) + [lsamp[0]], "%s_upper" % g.name, loop=True, into_upper=True)
+        samples[-1] = samples[0]
     return K.bake(samples, g.ticks)
 
 
@@ -801,6 +1408,11 @@ def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False):
             out.append(sol.pose(*r))
     out = gear(out)
     out[-1] = out[0]
+    if REVIEW:
+        # the helm and the shoulder plates both ride above the hips: the ready legs stand in for the stance's own
+        gl = guard_pose()[1]
+        out = plate_clear(out, [gl] * len(out), "stance", loop=True)
+        out[-1] = out[0]
     return K.bake(out, ticks)
 
 
@@ -809,6 +1421,10 @@ def stance_clips():
     # V2: the brace and the line rock their weight with the upper body (it already does), not on stiff legs
     life = (lambda k: K.STANCE_LIFE.get(k, LIFE[k])) if V2C else (lambda k: K.STANCE_LIFE.get(k, 1.0))
     out.update({"stance_%s_legs" % k: stance_legs(v, life(k), ready=k in READY_LIKE) for k, v in STANCE_LEGS.items()})
+    if REVIEW:     # the cloth out of the thighs' way over each stance's own legs (the plates are cleared in stance_upper)
+        for k in STANCE_KEYS:
+            lname = "stance_%s_legs" % k if "stance_%s_legs" % k in out else "stance_ready_legs"
+            armour_on_clip(out, "stance_%s_upper" % k, lname, loop=True)
     return out
 
 
@@ -849,14 +1465,37 @@ if V2C:
 
 def hit_clips():
     out = {}
+    if REVIEW:
+        base = guard_pose()
+        legs_of = {"medium": lambda d: K.legs_offset(K.attack_legs(K.HIT_LEGS[d], ticks=K.HIT_TICKS["medium"]))}
     for weight, ticks in K.HIT_TICKS.items():
         for dname, peak in HIT_PEAK.items():
             keys = K.front_onset(hit_keys(peak, weight), dname, weight)
-            out["hit_%s_%s" % (weight, dname)] = K.bake([K.sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)], ticks,
-                                                       loop=False)
+            name = "hit_%s_%s" % (weight, dname)
+            ups = [K.sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)]
+            if REVIEW:
+                # the medium blows (the heavy is the medium x1.55) and the light blow from the front, which is also the
+                # block: every piece swings; the weapon and the feet stay above the ground (the light flinches do not move
+                # enough to need either and stay as they were, unless the shaft dips)
+                lo = legs_of["medium"](dname) if weight == "medium" else None
+                if weight == "medium" or dname == "front":
+                    ups = keep_left_fist(ups, lo, name, base)
+                    ups = soft_additive(ups, lo, name, base, gain=1.0 if weight == "medium" else 2.5)
+                ups, lo = floor_guard(ups, [dict(x) for x in lo] if lo else None, name, base, additive=True)
+                ups, lo = armour_additive(ups, lo, name, base)
+                if lo is not None:
+                    HIT_LEGS_FIXED[name + "_legs"] = lo
+            out[name] = K.bake(ups, ticks, loop=False)
     out["hit_block"] = out["hit_light_front"]
-    out.update(K.hit_legs_clips())
+    legs = K.hit_legs_clips()
+    for name, lo in HIT_LEGS_FIXED.items():
+        if lo != K.legs_offset(K.attack_legs(K.HIT_LEGS[name.split("_")[2]], ticks=K.HIT_TICKS["medium"])):
+            legs[name] = K.bake(lo, K.HIT_TICKS["medium"], loop=False)
+    out.update(legs)
     return out
+
+
+HIT_LEGS_FIXED = {}
 
 
 # ------------------------------------------------------------------------------------------------
@@ -1116,7 +1755,13 @@ def death_clips():
         # -180 at t16, 159 deg/100ms); the spearman's left fist holds nothing by then and stays as it is.
         back = [(t, e, {b: ((-6, 0, 0) if (t, b) == (3, "torso") else r) for b, r in k.items() if b != "left_hand"})
                 for t, e, k in K.DEATH_BACK]
-    falls = {"death_back": back, "death_forward": K.DEATH_FORWARD,
+    fwd = K.DEATH_FORWARD
+    if REVIEW and TROOP == "wm_tusk":
+        # batch review: face down, the tusk's free left arm lay up behind his back (focus_check shoulder 108 deg at t20, fail
+        # 80): it lands out at his side, not thrown back (the knight's +25/+30 pitch is -10 here). The others pass: unchanged.
+        fwd = [(t, e, {b: ((-10.0, r[1], r[2]) if b == "left_arm" and t in (16, 20) else r) for b, r in k.items()})
+               for t, e, k in K.DEATH_FORWARD]
+    falls = {"death_back": back, "death_forward": fwd,
              "death_left": K.roll_keys(K.DEATH_LEFT, start, 13, K.ROLL_LEFT),
              "death_right": K.roll_keys(K.DEATH_RIGHT, start, 13, K.ROLL_RIGHT)}
     return {n: K.death_clip(flat_weapon(k, start, *FLAT_AT[n], look=LOOKAHEAD and n not in NO_LOOKAHEAD, **FALL.get(n, {})), start, n)
@@ -1146,7 +1791,108 @@ def dump(path, name, ticks):
     print("dumped", len(rows), "poses to", path)
 
 
+ASSET_ANIM = HERE.parents[2] / "src/main/resources/assets/gravesandglory/animations/troop" / f"{TROOP}.animation.json"
+POST_ADDITIVE = ("hit_knockback", "hit_pulled", "stun_out_upper")
+
+
+def _stances():
+    sys.path.insert(0, str(HERE.parent / "common"))
+    import stances   # noqa: E402  (read-only use: its clip reader and baker)
+    return stances
+
+
+def _frames(STN, clip, n):
+    return [{b: (tuple(float(x) for x in r), None if p is None else tuple(float(x) for x in p))
+             for b, (r, p) in STN.pose_at(clip, i / SUB / TPS).items()} for i in range(n + 1)]
+
+
+def post_common(path=ASSET_ANIM):
+    """The batch review's passes over the clips the shared modules add (reactions.py: the stun, its shake-off, the knockback
+    and the pulled hit), run after them: every piece swings, the weapon and the feet stay out of the ground. The additive ones
+    are judged over the stance they are added to (the guard; the shake-off over the stun's loop pose)."""
+    STN = _stances()
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    A = doc["animations"]
+    guard = guard_pose()
+    su = A["stun_upper"]
+    n_st = int(round(su["animation_length"] * TPS)) * SUB
+    ups, lgs = _frames(STN, su, n_st), _frames(STN, A["stun_legs"], n_st)
+    loop0 = STUN_LOOP_START * SUB
+    ext_u, ext_l = ups + ups[loop0 + 1:], lgs + lgs[loop0 + 1:]   # run the springs on into a second pass of the loop
+    ext_u, ext_l = soft(ext_u, ext_l, "stun_upper")
+    ups, lgs = ext_u[:n_st + 1], ext_l[:n_st + 1]
+    seam = 2 * SUB          # the last 2 ticks ease the pieces onto where the loop starts again (t4), so the loop closes
+    pieces = {b for c in soft_parts().values() for b in c["bones"]} | set(_fullbody().plates_for())
+    for i in range(n_st - seam, n_st + 1):
+        k = K.smooth((i - (n_st - seam)) / seam)
+        for b in pieces:
+            if b in ups[i] and b in ups[loop0]:
+                (r1, p1), (r0, p0) = ups[i][b], ups[loop0][b]
+                pos = None if p1 is None and p0 is None else tuple(a + (c - a) * k for a, c in zip(p1 or Z3, p0 or Z3))
+                ups[i][b] = (tuple(a + (c - a) * k for a, c in zip(r1, r0)), pos)
+    ups, lgs = floor_guard(ups, lgs, "stun_upper")
+    # (no plate_clear here: on the stun it barely helped, 2.56 to 2.5, and the slide broke the loop seam: scorecard loop_pos)
+    A["stun_upper"], A["stun_legs"] = STN.bake(ups, n_st // SUB, su.get("loop", False)), STN.bake(lgs, n_st // SUB, A["stun_legs"].get("loop", False))
+    stun_base = ({b: v for b, v in ups[loop0].items()}, lgs[loop0])
+    for name in POST_ADDITIVE:
+        clip = A[name]
+        n = int(round(clip["animation_length"] * TPS)) * SUB
+        lname = name + "_legs" if name + "_legs" in A else None
+        base = stun_base if name == "stun_out_upper" else guard
+        u = _frames(STN, clip, n)
+        lo = _frames(STN, A[lname], n) if lname else None
+        if name != "stun_out_upper":    # the shake-off starts from the stun, where the hands have let the shaft go
+            u = keep_left_fist(u, lo, name, base)
+        u = soft_additive(u, lo, name, base)
+        u, lo = floor_guard(u, lo, name, base, additive=True)
+        u, lo = armour_additive(u, lo, name, base)
+        A[name] = STN.bake(u, n // SUB, clip.get("loop", False))
+        if lname:
+            A[lname] = STN.bake(lo, n // SUB, False)
+    # Only the fallback: on the rally and the charge run the pass measured a clip focus_check passes as failing (and its
+    # cloth swing made the charge run's tabard worse), so they keep the shared modules' keys.
+    for name, lname in (("stance_fallback_upper", "stance_fallback_legs"),):
+        if name in A:
+            armour_on_clip(A, name, lname, loop=bool(A[name].get("loop", False)))
+    with open(path, "w", newline="\n") as fh:
+        fh.write(json.dumps(doc, indent=1))
+    print("post: re-keyed stun_upper, stun_legs, " + ", ".join(POST_ADDITIVE) + " (and their _legs) in", path)
+
+
+STUN_LOOP_START = 4
+
+
+def deploy(only=None):
+    """The whole rebuild into the game file, in order: this builder's clips (out/) replace their copies in the exported file
+    (every other clip stays where it is), the shared modules re-make theirs from the new guard, then post_common.
+    (export.py copies the whole out/ file and would drop the shared modules' clips: it is for the rig and textures.)
+    `only` (--deploy=a,b,...) splices just those clips, so a clip the review did not change stays byte-identical."""
+    import subprocess
+    new = json.loads(K.OUT.read_text(encoding="utf-8"))["animations"]
+    if only:
+        new = {n: v for n, v in new.items() if n in only}
+    doc = json.loads(ASSET_ANIM.read_text(encoding="utf-8"))
+    A = doc["animations"]
+    missing = [n for n in new if n not in A]
+    doc["animations"] = {n: new.get(n, v) for n, v in A.items()}
+    doc["animations"].update({n: new[n] for n in missing})
+    with open(ASSET_ANIM, "w", newline="\n") as fh:
+        fh.write(json.dumps(doc, indent=1))
+    print("spliced", len(new), "clips into", ASSET_ANIM)
+    common = HERE.parent / "common"
+    for script in ("stances.py", "charge.py", "reactions.py"):
+        subprocess.run([sys.executable, str(common / script), TROOP], check=True)
+    post_common()
+
+
 def main():
+    if "--post" in sys.argv:
+        post_common()
+        return
+    dep = [a for a in sys.argv if a.startswith("--deploy")]
+    if dep:
+        deploy(set(dep[0].split("=", 1)[1].split(",")) if "=" in dep[0] else None)
+        return
     if os.environ.get("SPEAR_DUMP"):
         dump(os.environ["SPEAR_DUMP"], os.environ.get("SPEAR_ATTACK", "thrust"),
              [float(x) for x in os.environ.get("SPEAR_TICKS", "0,2.5,5,7,9,12,17").split(",")])
@@ -1156,6 +1902,13 @@ def main():
              "run_legs": K.gait_legs(K.RUN), "run_upper": gait_upper(K.RUN, K.RUN_CARRY, True),
              "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **hit_clips(),
              **death_clips()}
+    if REVIEW and TROOP == "wm_tusk":
+        # The tusk's thrust is the troop-animation skill's demo (round 3, waiting for Kort's grade): it replaces the family's
+        # thrust here, as the build's last step, so a rebuild never puts the old clip back. It starts from GUARD (grip 8.0).
+        sys.modules.setdefault("build_spear_anims", sys.modules[__name__])   # the demo imports this module: the same one
+        sys.path.insert(0, str(HERE.parent / "wm_tusk"))
+        import build_thrust_demo   # noqa: E402
+        anims.update(build_thrust_demo.clips())
     only_rig(anims)
     K.OUT.parent.mkdir(parents=True, exist_ok=True)
     K.OUT.write_text(json.dumps({"format_version": "1.8.0", "animations": anims}, indent=1), encoding="utf-8")

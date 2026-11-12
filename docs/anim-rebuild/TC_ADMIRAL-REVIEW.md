@@ -41,3 +41,34 @@ The knight's approved v2 style is ported to the spear builder (`art/anim/spear/b
   - The plain idle's weight shift is subtle next to the knight's.
   - The medium front hit throws the spear tip high and wide, the largest silhouette change of the set.
   - The thrust's fastest joint step is 109 deg/tick on the left forearm at t6.5 (as the tideguard); it reads as the lunge snap.
+
+## Batch review 2026-11-11
+
+Batch review by the spear lane worker (branch `anim/review-spear`, cut from `anim/fix-spear`); two fix rounds, then stopped.
+Builder: `art/anim/spear/build_spear_anims.py` (every change gated on the wide guard: ic_breaker untouched). Passes added,
+each touching only a clip that fails: despike (arm pops), soft motion on attacks, hits, stun and shake-off (plumes damped),
+plate_clear (shoulder plates slide down their own arm off the helm, every bone pair judged), head_clear (head turns off a
+passing forearm), cloth_clear (tabard, kilt, sash swing off a stepping thigh), keep_left_fist (hits), floor_guard, and the
+low-sweep blade-roll curve (grip_roll). Deploy splices only the clips that had a FAIL (`--deploy=<list>`); the shared
+modules' rally and charge run keep their own keys. Focus "after" is judged with the additive hits and the shake-off
+composed over the pose the game adds them to (stance t0, stun t4); "before" was judged over the rest pose, so before and
+after rows of hit_* are not like for like (check fault, reported to the lead).
+
+- **Guard grip:** kept at the deployed 10.1 px (see the tusk; not the same hold).
+- **Deaths:** not deployed (drift only; kept byte-identical).
+- **Focus:** before 22 clips / 36 rows; after 18 / 19 (composed). Fixed: every secondary_life but hit_block, all floor,
+  attack pops, grip_roll, hit_medium_back knee, knockback weapon/vambrace rows, the hair and plume pops.
+- **Open:** sash_end into the left greave/leg in walk, run, idle, stances, high thrust and hits 1.93-2.27 (pre-existing,
+  hidden before behind the head rows; cloth pass measured below 1.9 or swung it the wrong way); head into left_pauldron
+  in ward 2.89, rally 2.58 (rally from stances.py: not edited here, did not fail before), stun 2.7, knockback 2.17,
+  charge 2.04, idle 2.14; wall right_epaulette into torso 1.97; hit_medium_back cape pop 14.3.
+- **Scorecard: exit 1 (blocker).** pen_limb attack_thrust 1.41, high_thrust 1.59 (limit 1.39); stun_upper loop_pos 1.76
+  (limit 1.09; the stun seam pass). Before: exit 0.
+- **In-game: FAIL (one check).** geo-knight, roots tc_admiral-review1 and -review2: 22 `[p1] p1-` lines, both runs
+  `attack-sync-walk=false` (3/3 swings matched, 3 nudged; the tideguard and tusk get 4/4, 2 nudged). Every clip length,
+  loop flag and impact marker is unchanged from HEAD; whether HEAD fails it too was not run.
+- **Tests:** `python -m unittest discover -s tools/anim`: 152 OK. `python tools/verify.py fast`: FAIL on one timing test only
+  (test_where extract 53.7 s, limit 30 s, machine under heavy load); every other check PASS.
+- **Looked at:** three-view sheets of high thrust, low sweep, thrust, hit_medium_front, fallback and stun (work/render/),
+  every second tick, not every tick.
+
