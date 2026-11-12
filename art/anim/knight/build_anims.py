@@ -45,6 +45,12 @@ TROOP = os.environ.get("GG_ANIM_TROOP", "knight")
 # hand is a free fist: a lead/balance hand in the guard, a counter-pull to the hip on every blow, a natural arm swing in the
 # gait, hanging loose at ease. Every shield-hold solve below then aims the fist only, with the wrist straight (FREE_WRIST).
 SHIELD = TROOP in ("knight", "sentinel", "ic_hearthguard", "gl_marshal")
+# Batch review 2026-11-11 (Kort: "i want the whole unit to be animated including pieces of its armor"). On these troops the
+# attacks and the medium and blocked hits pass their samples through fullbody.soft_motion, the leg skirt plates hang off the
+# thigh in the run and the wall (so they stay out of the tabard skirt), and the wall's crouch keeps the knee cops off the ground.
+# The knight's approved clips are not in it and build byte for byte as before.
+ALIVE_TROOPS = ("sentinel",)
+ALIVE = TROOP in ALIVE_TROOPS
 PREVIEW = HERE / "out" / "A" / "preview" if TROOP == "knight" else HERE.parent / TROOP / "out" / "preview"
 GEO = PREVIEW / "t1.geo.json"
 OUT = (HERE if TROOP == "knight" else HERE.parent / TROOP) / "out" / f"{TROOP}.animation.json"
@@ -910,6 +916,14 @@ if V2 and SHIELD and TROOP in ("knight", "sentinel", "gl_marshal"):
     # pommel through the tabard and torso as the blade sweeps in and through the gorget, collar and helm in the overhead
     # follow-through (and the marshal's tip below the floor); the fit nudges a window of keys only where that happened.
     ATTACK_LEGS.update({k: dict(v) for k, v in SLASH_LEGS.items()})
+    if ALIVE:
+        # Batch review 2026-11-11: the Templar's taller shield, thrown up beside the head as the low cut's counterweight, sank
+        # 2.0 px into the helm at t10 (the knight's 1.5). Through the follow-through (t8 to t11.5, full from t8.8 to t10.8) the
+        # shield fist rides 1.6 px lower and 0.5 px further out; the load, the drive and the gather are untouched.
+        def _drop(t):
+            return 0.0 if t <= 8.0 or t >= 11.5 else smooth(min(1.0, (t - 8.0) / 0.8, (11.5 - t) / 0.7))
+        SLASH_ROWS = dict(SLASH_ROWS, low_cut=[r[:6] + ((r[6][0] + 0.5 * _drop(r[0]), r[6][1] - 1.6 * _drop(r[0]), r[6][2]),) + r[7:]
+                                               for r in SLASH_ROWS["low_cut"]])
     for _name, _rows in SLASH_ROWS.items():
         ATTACKS[_name] = [(0, GUARD)] + [swing(_name, *_r[:7], **_r[7]) for _r in _rows] + [(ATTACK_TICKS, GUARD)]
 
@@ -1480,6 +1494,58 @@ def cape_lag(samples, legs=None):
     return samples
 
 
+def soft(upper, legs, additive=False):
+    """ALIVE troops: every hanging piece of the rig (cape, tabard, skirt plates) on a spring behind its parent, and the
+    shoulder plates trailing their arms (art/anim/common/fullbody.py). An additive clip (a hit) keeps every piece in the upper
+    clip: its legs samples are the absolute footwork it is played over, used only to swing the pieces, and stay as they were."""
+    import fullbody
+    parts = fullbody.soft_parts_for()
+    if additive:
+        for c in parts.values():
+            c.pop("clip", None)
+        legs = [dict(s) for s in legs]
+    return fullbody.soft_motion(upper, legs, parts=parts, report=True)
+
+
+def skirt_hang(samples, keep=0.55):
+    """ALIVE troops: a leg's skirt plates (<side>_skirt_t*) hang off the thigh instead of riding it: they give back `keep`
+    of the leg's forward swing about their own hinge, so the front plate's top edge does not climb into the tabard skirt on a
+    high knee (run 1.97 px, the wall's crouch 1.97 px). Added to whatever the samples already key on the plate."""
+    plates = {s: [b for b in MODEL.bones if b.startswith(s + "_skirt_t")] for s in ("right", "left")}
+    samples = [dict(f) for f in samples]     # a looped gait lists its first sample twice: never change one dict twice
+    for f in samples:
+        for side, bones in plates.items():
+            leg = f.get(side + "_leg")
+            if leg is None:
+                continue
+            fwd = max(0.0, -leg[0][0])            # leg x- swings the foot (and the knee) forward
+            for b in bones:
+                (rx, ry, rz), pos = f.get(b, ((0.0, 0.0, 0.0), None))
+                f[b] = ((rx + keep * fwd, ry, rz), pos)
+    return samples
+
+
+def calm(samples, bone, t0, t1):
+    """ALIVE troops: a binomial low-pass over one bone's rotation inside ticks t0..t1 (cosine-weighted at the edges), for a
+    per-sample solve that flips back and forth (the Templar's low cut wrist, 11.3 deg/sample jitter at t9.75 where the
+    knight's runs smooth). Keys outside the window are untouched."""
+    import numpy as np
+    rot = np.array([f[bone][0] if bone in f else (0.0, 0.0, 0.0) for f in samples], dtype=float)
+    k = np.array([1, 4, 6, 4, 1], dtype=float) / 16.0
+    sm = rot.copy()
+    for _ in range(2):
+        pad = np.vstack([sm[:1], sm[:1], sm, sm[-1:], sm[-1:]])
+        sm = np.stack([np.convolve(pad[:, j], k, "valid") for j in range(3)], 1)
+    out = [dict(f) for f in samples]
+    for i, f in enumerate(out):
+        t = i / SUB
+        if bone not in f or t <= t0 or t >= t1:
+            continue
+        w = smooth(min(1.0, (t - t0) / 0.75, (t1 - t) / 0.75))
+        f[bone] = (tuple(float(a + w * (b - a)) for a, b in zip(rot[i], sm[i])), f[bone][1])
+    return out
+
+
 def attack_clips():
     n = ATTACK_TICKS * SUB
     out = {}
@@ -1495,6 +1561,10 @@ def attack_clips():
             upper = cape_lag(rolled(keys, n, edge_roll(name, keys, legs, n, report=True)), legs)
         else:
             upper = cape_lag([sample_keys(keys, i / SUB) for i in range(n + 1)], legs)
+        if ALIVE:
+            if name == "low_cut":
+                upper = calm(upper, "right_hand", 8.75, 11.5)
+            upper, legs = soft(upper, legs)
         clip = bake(upper, ATTACK_TICKS, loop=False)
         clip["timeline"] = {fmt_t(IMPACT[name] / TPS): "impact"}
         out["attack_" + name] = clip
@@ -1644,7 +1714,7 @@ def stance_upper(pose, life=1.0, ready=False):
     return bake(out, STANCE_TICKS)
 
 
-def stance_legs(spec, life=1.0, ready=False):
+def stance_legs(spec, life=1.0, ready=False, hang=False):
     n = STANCE_TICKS * SUB
     out, guesses = [], {}
     a_br, a_wt, _ = feel.stance_amps(life, ready)
@@ -1666,12 +1736,17 @@ def stance_legs(spec, life=1.0, ready=False):
             guesses[side] = (lr[0], lr[2], sr[0])
             f[side + "_leg"], f[side + "_shin"], f[side + "_foot"] = (lr, None), (sr, None), (fr, None)
         out.append(f)
-    return bake(out, STANCE_TICKS)
+    return bake(skirt_hang(out) if hang else out, STANCE_TICKS)
 
 
 def stance_clips():
     out = {"stance_%s_upper" % k: stance_upper(v, STANCE_LIFE.get(k, 1.0), k == "ready") for k, v in STANCE_UPPER.items()}
-    out.update({"stance_%s_legs" % k: stance_legs(v, STANCE_LIFE.get(k, 1.0), k == "ready") for k, v in STANCE_LEGS.items()})
+    legs = dict(STANCE_LEGS)
+    if ALIVE:   # the wall's crouch put the left knee cop 1.1 px under the ground on the forward breath: sit 1.25 px higher (1.3 overreaches the ankle)
+        (r, (px, py, pz)) = legs["wall"]["hips"]
+        legs["wall"] = dict(legs["wall"], hips=(r, (px, py + 1.25, pz)))
+    out.update({"stance_%s_legs" % k: stance_legs(v, STANCE_LIFE.get(k, 1.0), k == "ready", hang=ALIVE and k == "wall")
+                for k, v in legs.items()})
     return out
 
 
@@ -1773,12 +1848,17 @@ def hit_clips():
                 samples = hit_samples(keys, weight, d, ticks)
             else:
                 samples = [sample_keys(keys, i / SUB) for i in range(ticks * SUB + 1)]
+            if ALIVE and weight != "light":
+                samples, _ = soft(samples, attack_legs(HIT_LEGS[d], ticks=ticks), additive=True)
             out["hit_%s_%s" % (weight, d)] = bake(samples, ticks, loop=False)
     keys = [(0, ZERO), (0.8, BLOCK_GUARD), (2.2, BLOCK_ABSORB), (3.8, scaled(BLOCK_ABSORB, 0.85)), (5.6, BLOCK_SHOVE),
             (6.8, scaled(BLOCK_SHOVE, 0.9)), (9, scaled(BLOCK_SHOVE, 0.15)), (BLOCK_TICKS, ZERO)]
     if V2:
         keys = BLOCK_KEYS
-    out["hit_block"] = bake([sample_keys(keys, i / SUB) for i in range(BLOCK_TICKS * SUB + 1)], BLOCK_TICKS, loop=False)
+    samples = [sample_keys(keys, i / SUB) for i in range(BLOCK_TICKS * SUB + 1)]
+    if ALIVE:
+        samples, _ = soft(samples, attack_legs(BLOCK_LEGS, ticks=BLOCK_TICKS), additive=True)
+    out["hit_block"] = bake(samples, BLOCK_TICKS, loop=False)
     out.update(hit_legs_clips())
     return out
 
@@ -1987,6 +2067,8 @@ def gait_legs(g):
         g.pose(i / n, guesses)
     samples = [g.pose(i / n, guesses) for i in range(n)]
     samples.append(samples[0])
+    if ALIVE and g is RUN:
+        samples = skirt_hang(samples)
     return bake(samples, g.ticks)
 
 
