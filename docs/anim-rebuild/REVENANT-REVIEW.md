@@ -111,3 +111,33 @@ In-game reel (geo-knight, `GRAVES_GEO_CHECK_TROOP=revenant`): neither run is cle
 - Every check passed in one of the two runs. Clip lengths, markers and `impact` are unchanged, and the failures are timing
   and frame-count rows on a loaded machine. Needs one clean run on a quiet machine.
 Booth video: refused by the scorecard gate (attack_overhead edge_lead); contact sheets in `work/review/sheets/`.
+
+## Fix round 1 (2026-11-12, Sonnet review FIX 6/10)
+
+Build: `GG_ANIM_TROOP=revenant python art/anim/revenant/review_layer.py` runs last. It reads
+`art/anim/revenant/review_base.animation.json` (the export before the layer) and writes the asset and `out/`, so a second
+run gives the same bytes. After a fresh export or splice, run it with `--rebase` once (the export becomes the base).
+
+- **Chest plates** (Kort's fault): gilt_rim_r / right_plate sank 2.0 px into the chest as the sword arm rose. Rotating the
+  arm or plates did not help (the rim overlaps the torso in x); the right pauldron's plates slide 3 px out along the arm
+  over those ticks instead (CHEST: attack_overhead, attack_low_cut, hit_knockback).
+- **attack_overhead edge_lead** 14.24 -> 10.4: the hand rolls the edge into the cut over t9.25-10.25 (EDGE_Y). The
+  reviewer's suggestion (y down to about 1) made it worse (16.1); the roll goes up to 12 deg instead. The 42 deg roll
+  after contact eases over t10-14 (EASE).
+- **Follow-through** (POST, after the cloth pass): the overhead carries across and down with the wrist cocked up
+  (carry 0.08 -> 0.16, no weapon under the ground); the low cut sweeps on across (carry 0.07 -> 0.18, pen_limb within
+  limit). The tabard_f1 flap swings clear of the right cuisse at the overhead's knee lift.
+- **Stance hand-off**: every attack blends head and off arm from stance_ready_upper's pose over 3 ticks at each end.
+- **stun_out_upper**: tabards, tassets, cape and pauldrons settle with a 3-5 deg overshoot (SETTLE); secondary_life 2.53.
+- **charge_run_upper**: the half cape rides 6 deg clear of the boot in this troop's layer (CHARGE_CAPE); the shared
+  charge.py is untouched.
+- Attacks push tabard_f1 at -0.5 deg per deg of knee lift (thrust reached 1.9 px at -0.35); hits keep -0.35.
+
+Changed clips: attack_thrust, attack_overhead, attack_low_cut (upper only), charge_run_upper, stun_out_upper,
+hit_knockback. Every other clip is byte-identical to c48cccce. No shared file changed, so other troops are untouched.
+
+Focus check: 6 FAIL rows -> 1 (stun_upper coif into right_spike2 2.52: model-side debt, accepted). Scorecard 0 fail.
+Unit tests (scorecard, focus_check, render_geo, booth*) OK.
+Booth batch `work/booth/revenant-20261112-dcca7d6` (built, not uploaded); phone video
+`C:/Users/kortt/Melty/status/booth-videos/revenant_review.mp4` (3:25, 42 clips).
+In-game reel revenant-review3 (geo-knight, `GRAVES_GEO_CHECK_TROOP=revenant`): 23 p1 lines, 0 `=false` (clean).
