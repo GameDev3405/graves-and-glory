@@ -135,6 +135,11 @@ knight, and the new hit_pulled lowers the knight's hit foot slide (0.4928 -> 0.4
 derive to 0.5318 (shipped 0.5428). `tools/anim/scorecard_limits.json` is outside this task; the knight still passes the
 shipped limits. The exemption rows for knight hit_pulled floor and secondary_life can be dropped.
 
+**Build recipe (2026-11-12).** `GG_ANIM_TROOP=knight python art/anim/knight/rebuild_out.py --only hit_pulled,hit_pulled_legs`
+(reactions.py then soft_layers.py over a fresh `out/knight.animation.json`; never twice over one file) puts both clips in out/
+byte-equal to the shipped ones, so `export.py A` keeps them. Pre-existing on `main`, not repaired here: out/ lacks rally,
+fall back (2), charge_run_upper, stun (3) and knockback (2), and attack_overhead(+legs) and attack_low_cut(+legs) differ.
+
 **Sentinel's hit_pulled.** The sentinel's hit_pulled booth batch (`art/anim/knight/booth.sentinel.hit_pulled.json` on this
 branch) is superseded by `anim/review-sentinel`, which reworks the sentinel's hit_pulled with the same layer (and its
 stun, knockback, attacks and hits). Review the sentinel's clip there, not here.
