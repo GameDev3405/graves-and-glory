@@ -35,6 +35,19 @@ public record MotionInput(double time, double limbAngle, double limbSpeed, doubl
     /** The server started attack variant {@code variant} at {@code startTick}. */
     public record Attack(int variant, long startTick) {}
 
+    /** attack_v1's variant for a cancel (coordinator 2026-11-11): the server dropped the announced shot that starts at startTick (Projectiles.dropDraw); an old client drops it as an invalid variant. */
+    public static final int CANCEL = -1;
+    /** A cancelled attack: the start tick it was announced with (the client's dedup key, with the troop's id) and the world tick the client heard the cancel on. */
+    public record Cancel(long startTick, long at) {}
+    /** The kept attack that starts at startTick, or null. */
+    static Attack kept(java.util.Collection<Attack> kept, long startTick) { for (Attack a : kept) if (a.startTick() == startTick) return a; return null; }
+    /** The cancel for startTick, or null. */
+    static Cancel cancelled(java.util.Collection<Cancel> done, long startTick) { for (Cancel c : done) if (c.startTick() == startTick) return c; return null; }
+    /** Whether a cancel for startTick heard at now takes: an attack of that start is kept, none cancelled it yet, and its loose (looseTick) is still ahead (a cancel at or after it does nothing). */
+    static boolean cancels(java.util.Collection<Attack> kept, java.util.Collection<Cancel> done, long startTick, long now, long looseTick) { return kept(kept, startTick) != null && cancelled(done, startTick) == null && now < looseTick; }
+    /** Whether an attack is kept: not a repeat of one kept (a catch-up and the live send) nor of a cancelled one (a late repeat of the announce never restarts the draw). */
+    static boolean admits(java.util.Collection<Attack> kept, java.util.Collection<Cancel> done, Attack a) { return !kept.contains(a) && cancelled(done, a.startTick()) == null; }
+
     /**
      * A blow landed at {@code tick}. bearing: yaw of the blow relative to the victim's facing in degrees, 0 from the front,
      * 180 from behind, negative from the victim's left. weight: 0 light, 1 medium, 2 heavy. knockback: the blow also threw the victim (hit_v1 flag 4);

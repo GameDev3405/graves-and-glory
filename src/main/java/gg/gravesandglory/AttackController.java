@@ -176,6 +176,11 @@ final class AttackController extends AnimationController<GeoTroop> {
             if (clip == null) continue;
             double raw = now - a.startTick() - lead;
             if (raw < 0) continue;
+            // A cancelled shot (attack_v1 CANCEL, coordinator 2026-11-11: the server dropped it) holds its clip where the cancel found it and fades out over FADE_OUT, as a swing's end does.
+            MotionInput.Cancel cancel = MotionEvents.Client.cancelled(e.getId(), a);
+            double gone = cancel == null ? 0 : now - cancel.at();
+            if (gone >= FADE_OUT) continue;
+            if (cancel != null) raw = Math.min(raw, Math.max(0, cancel.at() - a.startTick() - lead));
             // A bow shot holds its full draw Seed.hold ticks (the server started its clip that much earlier, Projectiles.shotStart),
             // so the loose still lands on the impact marker. The held span stretches over the clip's own full-to-impact hold (its
             // trembling aim) rather than freezing a frame (STYLE.md rule 2: alive even when still).
@@ -195,7 +200,7 @@ final class AttackController extends AnimationController<GeoTroop> {
             double until = hold > 0 ? full : impact(clip);
             double rate = 1;
             if (late >= 1 && until - late >= 2 && raw < until) { rate = until / (until - late); t = Math.max(0, (raw - late) * rate); }
-            double w = Math.min(smooth(raw / FADE_IN), smooth((len - raw) / FADE_OUT)) * death;
+            double w = Math.min(smooth(raw / FADE_IN), smooth((len - raw) / FADE_OUT)) * death * (1 - smooth(gone / FADE_OUT));
             if (a == latest || a.startTick() == seenStart) w *= smooth((now - seenAt) / LATE_IN);
             if (w > 0) apply(clip, t, bones, (float) w);
             // Standing, the swing's own footwork (STYLE.md rule 4) plays over the legs: the step in, the hip drop, the step back.

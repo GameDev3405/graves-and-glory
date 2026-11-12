@@ -228,6 +228,7 @@ public final class TroopMotion {
         float partial=age-e.age;
         double yawRate=MathHelper.wrapDegrees(e.bodyYaw-e.prevBodyYaw)*20.0;
         MotionInput.Attack a=MotionEvents.Client.attacks(id).peekLast();
+        if(a!=null&&MotionEvents.Client.cancelled(id,a)!=null)a=null; // a dropped shot (attack_v1 CANCEL, coordinator 2026-11-11): the old model just drops the event
         if(a!=null){int v=a.variant();int i=v>=0&&v<fam.attackIndex().length?fam.attackIndex()[v]:-1;a=i<0?null:new MotionInput.Attack(i,a.startTick());}
         boolean shieldUp=e.isUsingItem()&&e.getActiveHand()==Hand.OFF_HAND;
         // carry B10: aimPitch arrives positive-down (stance_v2) and the engine takes it so, unchanged

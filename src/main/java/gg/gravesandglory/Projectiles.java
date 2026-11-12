@@ -212,7 +212,7 @@ public final class Projectiles {
      * leaves; ahead ticks from now that is now + ahead - impactTicks, the same startTick and the same variant (pinned: Unit.drawVariant), so the
      * client starts the clip now (the draw plays before the loose) and drops loose's copy as the event it already has (MotionEngine.events).
      * Nothing else changes: no projectile, no cooldown, no catchVariant or swingTick (loose still sets those when the shot leaves). If the
-     * shot never leaves (its target died, the troop was stunned), the draw plays with no arrow. Returns how many players it was sent to.
+     * shot never leaves (its target died, the troop was stunned), a bow's draw is cancelled (dropDraw) and the client lowers it. Returns how many players it was sent to.
      */
     static int drawAhead(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,int ahead){
         var rows=Tactics.variants(u.spec.family());if(rows.isEmpty())return 0;
@@ -221,9 +221,20 @@ public final class Projectiles {
         int variant=pinned(u,rows,shotVariant(u,rows,arc(b,u,from,to,kind.equals("arrow")||kind.equals("trident")).peak()),beat,false); // a repeat keeps the first announce's variant
         int impact=rows.get(variant).impactTicks();
         long start=Tactics.drawsAhead(u)?shotStart(u.mob.getUuid(),beat,impact):beat-impact;if(start<0)return 0; // a crossbow has no loose or hold seed: loose stamps beat - impact
+        if(u.drawStart>=0&&u.drawStart!=start&&Tactics.drawsAhead(u))dropDraw(u); // a bow's earlier announce now starts elsewhere (a stun or cooldown moved its beat): that draw is dropped (coordinator 2026-11-11)
         u.drawVariant=variant;u.drawStart=start;
         return MotionEvents.sendAttack(u,variant,start);
     }
+    /**
+     * The announced shot (drawAhead) will not leave (coordinator 2026-11-11, cosmetic only): attack_v1 with variant MotionInput.CANCEL and its start tick, once, to
+     * the troop's watchers, so the client lowers the draw instead of loosing with no arrow. Clears the announce (a later shot's start differs, so pinned picks fresh
+     * as before). Returns how many players it was sent to (0 with no announce).
+     */
+    static int dropDraw(GravesAndGlory.Unit u){long start=u.drawStart;u.drawVariant=-1;u.drawStart=-1;if(start<0)return 0;drawsDropped++;return MotionEvents.sendAttack(u,MotionInput.CANCEL,start);}
+    /** Announced shots dropped (dropDraw) since the server started. */
+    static int drawsDropped;
+    /** The world tick a bow troop's announced shot's beat falls on (shotStart backwards: start + impactTicks + hold - loose), Long.MAX_VALUE with none. */
+    static long drawBeat(GravesAndGlory.Unit u){var rows=Tactics.variants(u.spec.family());int v=u.drawVariant;if(u.drawStart<0||v<0||v>=rows.size())return Long.MAX_VALUE;var s=seed(u.mob.getUuid());return u.drawStart+rows.get(v).impactTicks()+s.hold()-s.loose();}
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
         Vec3d from=u.mob.getEyePos(),to=aim(target);double range=from.distanceTo(to);
         Tactics.stamp(b,u,target); // archer fire: the target's group is under fire (Squad.shotAt)

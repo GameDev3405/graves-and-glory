@@ -319,6 +319,7 @@ final class Tactics {
         if(u.lockedTarget!=null&&!u.lockedTarget.isAlive())u.lockedTarget=null; // a fallen enemy lies a while (Task 7): drop it at once, not on the next beat
         if(u.mob.getTarget()!=null&&!u.mob.getTarget().isAlive())u.mob.setTarget(null);
         if(u.looseAt>=0&&time>=u.looseAt)looseLate(battle,u,time); // Kort Q70: a bow troop's shot leaves its loose ticks after the beat that took it
+        if(u.drawStart>=0&&u.looseAt<0&&time>=u.nextAttack&&drawsAhead(u)&&u.mob.getWorld().getTime()>Projectiles.drawBeat(u))Projectiles.dropDraw(u); // a bow's announced shot whose beat passed untaken (its cooldown still unspent: target lost, stunned, order changed): the client lowers the draw (coordinator 2026-11-11)
         stunStance(u,time);
         if(time<u.downUntil){u.mob.getNavigation().stop();u.mob.setTarget(null);u.mob.setAttacking(false);return;} // the Undying King down and rising (Houses.UNDYING_DOWN): no move, no turn, no act
         if(time%10!=u.slot%10){brace(battle,u);shieldStance(u);stretch(battle,u,battle.assignment(u),time);return;} // the shield and a wall troop's last stretch every tick; everything else on the unit's 10-tick beat
@@ -940,7 +941,7 @@ final class Tactics {
      */
     static void looseLate(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,long time){
         LivingEntity t=u.looseTarget;u.looseAt=-1;u.looseTarget=null;
-        if(t==null||!u.mob.isAlive()||time<u.stunnedUntil||!t.isAlive()||t.isRemoved()||t.getWorld()!=battle.world||t instanceof net.minecraft.entity.player.PlayerEntity p&&p.isSpectator()||!MapBlockRules.canSee(u.mob,t)){looseLost++;u.nextAttack=Math.min(u.nextAttack,time);return;} // the lost shot's cooldown is given back // nor through a wall the target stepped behind since the beat
+        if(t==null||!u.mob.isAlive()||time<u.stunnedUntil||!t.isAlive()||t.isRemoved()||t.getWorld()!=battle.world||t instanceof net.minecraft.entity.player.PlayerEntity p&&p.isSpectator()||!MapBlockRules.canSee(u.mob,t)){looseLost++;Projectiles.dropDraw(u);u.nextAttack=Math.min(u.nextAttack,time);return;} // the lost shot's cooldown is given back // nor through a wall the target stepped behind since the beat
         shoot(battle,u,t,time,true);
     }
     /** Late shots lost (looseLate) since the server started. */

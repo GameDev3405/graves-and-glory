@@ -29,7 +29,11 @@ import java.util.function.BooleanSupplier;
  */
 public final class MotionEvents {
     private MotionEvents() {}
-    /** A troop's swing: a varInt entity id, a varInt index into its family's attackVariants rows (Tactics.variants, Battle's pick) and a varLong world tick it began on. */
+    /**
+     * A troop's swing: a varInt entity id, a varInt index into its family's attackVariants rows (Tactics.variants, Battle's pick) and a varLong world tick it began on.
+     * Variant MotionInput.CANCEL (-1) is a cancel (coordinator 2026-11-11): the announced attack that began on that tick will not land (Projectiles.dropDraw), so the
+     * client fades it out. Same layout, same id: an old client drops it as an invalid variant (as hit_v1's newer flag bits are ignored).
+     */
     public static final Identifier ATTACK = new Identifier("gravesandglory", "attack_v1");
     /** A blow that struck a troop: a varInt entity id, byte kind (KINDS), byte zone (ZONES), float signed bearing (BattleMath.signedBearing), byte weight (0-2), byte flags (1 blocked, 2 lethal, 4 knockback: the blow also threw the troop, Abilities.knock; 8 pulled: the blow also dragged the troop toward its
      * striker, Abilities.pull; an old client ignores the bits it does not know), varLong world tick. */
@@ -231,8 +235,25 @@ public final class MotionEvents {
             if (rows == NO_ENTITY || rows < UNKNOWN_TROOP || !BattleMath.validVariant(variant, rows == UNKNOWN_TROOP ? MAX_VARIANTS : rows)) return;
             MotionInput.Attack a = new MotionInput.Attack(variant, startTick);
             Deque<MotionInput.Attack> q = ATTACKS.get(id);
-            if (q != null && q.contains(a)) return;
+            if (q != null && !MotionInput.admits(q, cancels(id), a)) return;
             push(ATTACKS, id, a);
+        }
+        /** Each troop's cancelled attacks (attack_v1 with variant CANCEL), newest last, the oldest dropped past KEEP. The attack itself stays kept, so AttackController fades it out from where it was. */
+        static final Map<Integer, Deque<MotionInput.Cancel>> CANCELS = new ConcurrentHashMap<>();
+        /** The troop's cancelled attacks (empty for none). Read only. */
+        @SuppressWarnings("unchecked")
+        public static Deque<MotionInput.Cancel> cancels(int id) { Deque<MotionInput.Cancel> q = CANCELS.get(id); return q != null ? q : (Deque<MotionInput.Cancel>) NONE; }
+        /** The cancel for this attack of the troop, or null. */
+        public static MotionInput.Cancel cancelled(int id, MotionInput.Attack a) { Deque<MotionInput.Cancel> q = CANCELS.get(id); return q == null ? null : MotionInput.cancelled(q, a.startTick()); }
+        /**
+         * A cancel (coordinator 2026-11-11): the server dropped the announced attack of this start tick. rows: the troop's family's attackVariants (null when the client
+         * cannot name the troop: ignored); hold: its draw hold (Projectiles.hold's seed for a bow, else 0), so its loose is startTick + impactTicks + hold, as the server
+         * stamped it. Kept only when that attack is kept, not cancelled yet and its loose is still ahead of now (MotionInput.cancels); any troop's cancel is obeyed.
+         */
+        static void cancel(int id, long startTick, long now, List<Spec.AttackVariantsRow> rows, int hold) {
+            Deque<MotionInput.Attack> q = ATTACKS.get(id); MotionInput.Attack a = q == null || rows == null ? null : MotionInput.kept(q, startTick);
+            if (a == null || !BattleMath.validVariant(a.variant(), rows.size())) return;
+            if (MotionInput.cancels(q, cancels(id), startTick, now, startTick + rows.get(a.variant()).impactTicks() + hold)) push(CANCELS, id, new MotionInput.Cancel(startTick, now));
         }
         /** A blow: known when the client world has an entity of this id (else dropped); the weight clamped to 0..2. */
         static void hit(boolean known, int id, int kind, int zone, float bearing, int weight, int flags, long tick) {
@@ -244,7 +265,7 @@ public final class MotionEvents {
             String name = index >= 0 && index < MotionEvents.STANCES.size() ? MotionEvents.STANCES.get(index) : "";
             if (name.isEmpty()) STANCES.remove(id); else STANCES.put(id, new Stance(name, aimPitch));
         }
-        static void forget(int id) { ATTACKS.remove(id); HITS.remove(id); STANCES.remove(id); RISES.remove(id); }
-        static void clear() { ATTACKS.clear(); HITS.clear(); STANCES.clear(); RISES.clear(); }
+        static void forget(int id) { ATTACKS.remove(id); CANCELS.remove(id); HITS.remove(id); STANCES.remove(id); RISES.remove(id); }
+        static void clear() { ATTACKS.clear(); CANCELS.clear(); HITS.clear(); STANCES.clear(); RISES.clear(); }
     }
 }
