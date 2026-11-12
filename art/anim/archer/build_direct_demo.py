@@ -10,10 +10,19 @@ arm are that builder's. What changes, and why (Kort's 2026-11-11 grades of the k
 archer's current shot):
 
   footwork      the current shot shuffles one foot 1.6 px and the pelvis travels 0.9 px (whole_body FAIL). Here the
-                string-side foot drops back 6 px as the hand goes to the quiver, the bow-side foot only turns onto the
-                line (a foot stepping under a 28 px bow walks its shin through the lower limb), and the pelvis turns
-                side-on, sinks and settles between them. "i like that the legs flow into the attack".
-  the bow       it stands upright BEFORE it crosses the body, so the lower limb never sweeps through the legs.
+                string-side foot drops back as the hand goes to the quiver, the bow-side foot turns onto the line, and
+                the pelvis turns side-on between them. "i like that the legs flow into the attack".
+                Kort, round 1: "legs look abnormal". Round 1 sank the pelvis 3 px over feet 4 px apart, so both knees
+                sat near 90 degrees through the hold, and both feet were in the air together on the way home. Now the
+                archer stands TALL (pelvis 1.2 px under the guard's, knees 47-52 degrees, the guard's are 43-46) on a
+                stance 7.2 px long, and one foot is planted before the other lifts, out and back.
+  the bow       Kort, round 1: "the bows string is inside the archers arm to start" (ticks 0, 1 and 21). The lead's
+                guard wrist lays the bow ALONG the forearm, so the resting string (3.8 px behind the grip) runs through
+                a 4 px forearm. A hand holds a bow ACROSS the forearm, and the same way in the guard as at the aim:
+                GUARD_WRIST is the aim's hold on every guard-side key, so the arm alone carries the bow up and down
+                and the string never sweeps the forearm (at most 0.5 px in it on any resting-string tick; round 1's
+                guard was 1.4). On the way up and down the arrow line is kept STRING_CLEAR degrees off the forearm.
+                The stance clips still use the lead's wrist: see the note for the animation lead.
   set and draw  the rig's arms reach 9 px and the bow draws 11.5: the keyed set pose left the nock out of reach and the
                 fist inside the chest. The nock and set poses are solved (fit_bow_arm) so the grip sits low in front
                 of the chest with the arrow on, and the draw goes UP to the ear from there.
@@ -27,6 +36,13 @@ archer's current shot):
                 scales the knight's cape lag onto two of them). "i want the whole unit to be animated".
 
 Gameplay is untouched: 26 ticks, "full" marker on tick 12 (AttackController holds there), "impact" on tick 16.
+Kort, round 1: "shot seems quick". The 16 ticks to the loose are sheets/design.json's (bow_direct impactTicks), and in
+game the hold at "full" adds only 0-3 ticks (MotionMath.LOOSE_MAX), so the page shows the shot about as quick as the
+game plays it. A slower shot is a rate-of-fire decision, not this clip's: asked, not changed.
+
+What the checks say (focus_check, 2026-11-11, after Kort's round 1 grades): 0 FAIL, 2 WARN (weapon_in_body 1.28 t5
+bow into the face plane as it passes in front of the head, limb_in_body 1.65 t7 string forearm into the jerkin);
+scorecard pass.
 
 Known model fault, not this clip's: the exported bow geo carries the weapon builder's cube turns with the wrong sign
 for a Bedrock geo (GeckoLib BakedModelFactory keeps rotation z and mirrors x), so in game every limb cube tilts the
@@ -34,15 +50,14 @@ wrong way and the drawn string opens away from the bow. art/anim/archer/fix_geo_
 
 Phases:
   0-1.5     anticipation  eyes on the foe, the bow dips, the weight settles
-  1.0-4.0   reach         the string-side foot drops back; the string hand goes over the shoulder to the quiver;
-                          the bow stands up
-  3.8-4.8   draw arrow    a beat in the quiver; the hips keep turning side-on
-  4.8-7.8   nock          the bow-side foot turns onto the line; the arrow comes down onto the string, low
-  7.8-12    raise, draw   one long pull up to the ear, the pelvis sinks side-on
+  0.6-4.6   reach         the string-side foot drops back 7.6 px; the string hand goes over the shoulder to the quiver
+  3.0-6.4   bow up        the arm carries the bow up onto the line, held as it was in the guard
+  4.8-7.2   nock          the bow-side foot turns onto the line; the arrow comes down onto the string, low
+  7.8-12    raise, draw   one long pull up to the ear, standing tall and side-on
   12-16     hold          at the anchor; the back keeps squeezing, the bow arm trembles
   16        loose         the fist flies back behind the ear, the bow rocks forward in the hand, the pelvis rocks back
   16-19     follow        held open, everything loose still swinging
-  18.4-26   recover       the bow comes down, both feet walk back to the guard
+  17.8-26   recover       the bow comes down (18.6-23); the bow-side foot steps home, then the string-side foot
 """
 import json
 import math
@@ -82,10 +97,27 @@ VIA_OUT = (-11.0, 24.0, -2.0)        # and coming back out round the shoulder wi
 P, mix = BW.P, BW.mix
 # The keys are the bow builder's poses turned further side-on: the pelvis now carries about 30 degrees of the turn,
 # so the head counters more. torso / head are (pitch, yaw, roll) relative to the pelvis / the torso.
-READY = BW.READY
-ANTIC = P((7, 21, 0), (-5, -25, 0), (-34, -18, -9), -18, -12, (-38, -12, 8), (-34, 40, 0))
-REACH = P((3, -4, 0), (5, -8, 6), (-30, -10, -6), -20, -10, (-165, 0, -15), (-60, 0, 0))
-PLUCK = P((2, -7, 0), (-2, -10, 0), (-32, -11, -6), -21, -10, (-170, 0, -17), (-66, 0, 0))
+# Kort, archer round 1 (ticks 0, 1 and 21): "the bows string is inside the archers arm to start". The bow builder's guard
+# turns the wrist 10 degrees, which lays the bow ALONG the forearm: the string then runs up through the forearm and the
+# upper arm (1.4 px deep). A hand holds a bow ACROSS the forearm, and it holds it the SAME way in the guard as at the
+# aim: GUARD_WRIST is the aim's hold (wrist about (4, 6, -63) on the raised arm) on the guard's lowered arm, so the bow
+# hangs slanted across the body, top limb in front of the chest, lower limb outside the bow-side thigh, and the arm alone
+# carries it up and down. 0 px of string or limb in the arm, 0 in the body. A guard held another way (string turned to
+# the outside, say) has to turn the bow over in the hand on the way, and the string sweeps through the forearm.
+# The stance clips still have the old wrist: see the animation lead's note.
+GUARD_WRIST = (-15.3, -2.8, -73.2)
+
+
+def guard(p):
+    q = dict(p)
+    q["left_hand"] = GUARD_WRIST
+    return q
+
+
+READY = guard(BW.READY)
+ANTIC = guard(P((7, 21, 0), (-5, -25, 0), (-34, -18, -9), -18, -12, (-38, -12, 8), (-34, 40, 0)))
+REACH = guard(P((3, -4, 0), (5, -8, 6), (-30, -10, -6), -20, -10, (-165, 0, -15), (-60, 0, 0)))
+PLUCK = guard(P((2, -7, 0), (-2, -10, 0), (-32, -11, -6), -21, -10, (-170, 0, -17), (-66, 0, 0)))
 NOCK = P((6, 20, 0), (-3, -44, 0), (-58, -26, -4), -12, -6, (-66, -8, 2), (-42, 30, 0))
 SET = P((4, 27, 0), (-4, -60, 0), (-88, -4, 0), -55, 0, (-80, -30, 0), (-30, 20, 0))
 SET_GRIP = (5.0, 21.2, -7.0)        # torso-local (point() frame): where the bow's grip sits at the set, in front of the
@@ -96,34 +128,40 @@ FULL = P((1, 35, 0), (-2, -70, 0), (-90, -40, 0), 0, 0, (-95, -20, 0), (0, 70, 0
 TENSE = P((0.4, 36.5, 0), (-2, -71, 0), (-90.5, -40.5, 0), 0, 0, (-95, -20, 0), (0, 70, 0))
 LOOSE = P((0, 38, 0), (-4, -71, 0), (-88, -44, 0), 0, 0, (-100, -5, -10), (0, 95, 0))
 FOLLOW = P((-2, 39, 0), (-4, -71, 0), (-84, -46, 0), 0, 4, (-104, 0, -16), (0, 100, 0))
-DOWN = P((3, 24, 0), (-4, -44, 0), (-62, -30, -3), -6, -4, (-58, -8, 11), (-16, 50, 0))
+DOWN = guard(P((3, 24, 0), (-4, -44, 0), (-62, -30, -3), -6, -4, (-58, -8, 11), (-16, 50, 0)))
 
 LEGS = {
+    # Kort, archer round 1: "legs look abnormal". Round 1 stood side-on on feet 3.8 px apart with the pelvis sunk 3.1 px:
+    # both knees bent 90 degrees through the draw and the hold (the guard bends them 45), a squat on a tightrope. An
+    # archer stands TALL on a wide base: feet a shoulder width apart along the line of the shot (8.5 px here), the pelvis
+    # no lower than the guard carries it, knees 47 to 52 degrees. The pelvis travels back and turns instead of sinking.
     # (tick, (pitch, yaw, roll), (x, y, z)): the position is in the clip's own frame, +x the troop's left, +z BACK.
     "hips": [(0, *K.READY_HIPS),
-             (1.5, (1.0, 8.0, 0.0), (0.5, -1.4, 0.3)),        # onto the bow-side foot
-             (4.0, (0.0, 18.0, 0.0), (0.2, -1.9, 1.7)),       # back with the right foot as it drops behind
-             (5.6, (0.0, 28.0, 0.0), (-0.4, -1.9, 2.4)),      # over the rear foot while the lead foot turns onto the line
-             (7.4, (1.0, 40.0, 0.0), (0.0, -2.4, 2.0)),       # side-on already
-             (10.0, (1.5, 45.0, 0.0), (0.2, -3.0, 1.6)),
-             (FULL_AT, (2.0, 47.0, 0.0), (0.2, -3.0, 1.5)),   # low between the feet
-             (IMPACT, (2.0, 48.0, 0.0), (0.2, -3.12, 1.4)),
-             (17.3, (-0.5, 50.0, 0.0), (0.1, -2.9, 2.1)),     # the loose rocks it back and up
-             (19.0, (0.0, 47.0, 0.0), (0.1, -2.7, 1.9)),
-             (22.0, (0.5, 24.0, 0.0), (0.0, -1.9, 0.7)),
+             (1.5, (1.0, 8.0, 0.0), (0.6, -1.2, 0.2)),        # onto the bow-side foot
+             (4.0, (0.0, 20.0, 0.0), (0.4, -1.1, 1.6)),       # back with the right foot as it drops behind
+             (5.6, (0.0, 30.0, 0.0), (-0.3, -1.0, 2.6)),      # over the rear foot while the lead foot steps onto the line
+             (7.4, (1.0, 40.0, 0.0), (0.1, -1.0, 2.2)),       # side-on already
+             (10.0, (1.5, 45.0, 0.0), (0.2, -1.2, 2.0)),
+             (FULL_AT, (2.0, 47.0, 0.0), (0.2, -1.25, 1.9)),  # between the feet, tall
+             (IMPACT, (2.0, 48.0, 0.0), (0.2, -1.3, 1.8)),
+             (17.3, (-0.5, 50.0, 0.0), (0.1, -1.0, 2.5)),     # the loose rocks it back and up
+             (19.0, (0.0, 47.0, 0.0), (0.1, -1.0, 2.3)),
+             (22.0, (0.5, 24.0, 0.0), (0.0, -1.1, 0.8)),
              (T, *K.READY_HIPS)],
     # (foot, lift tick, plant tick, (x, y, z) of the ankle, foot yaw, lift height)
-    # The right foot does the travelling (7 px back, then forward again): the bow is as tall as the archer, and a bow-side
-    # foot stepping forward under it puts the shin through the lower limb while the arrow goes on.
-    "steps": [("right", 0.6, 4.6, (-2.2, 2.0, -4.3), -36.0, 1.0),
-              ("left", 4.8, 7.2, (2.8, 2.0, -0.5), -12.0, 0.7),
-              ("left", 18.2, 21.4, (3.2, 2.0, -2.0), 7.0, 0.8),
-              ("right", 20.0, 24.8, (-3.4, 2.0, 2.0), -12.0, 0.9)],
+    # The string-side foot drops back 7.6 px as the hand goes to the quiver; the bow-side foot then steps 3.6 px towards
+    # the foe onto the line of the shot. One foot at a time, on the way back too (round 1 had both in the air at 20-21.4).
+    "steps": [("right", 0.6, 4.6, (-2.2, 2.0, -5.6), -44.0, 1.0),
+              ("left", 4.8, 7.2, (2.6, 2.0, 1.6), -18.0, 0.8),
+              ("left", 17.8, 20.6, (3.2, 2.0, -2.0), 7.0, 0.8),
+              ("right", 20.8, 24.8, (-3.4, 2.0, 2.0), -12.0, 0.9)],
 }
 
 ARROW_ON = 6.9     # fix r1 F2: the arrow is on the string as the fist arrives with it (was 7.8, in a closed fist)
 DRAW_KEYS = [(ARROW_ON, 1.0), (7.8, 1.0), (9.0, 1.15), (10.6, 2.4), (FULL_AT, 3.0), (IMPACT, 3.0)]
-AIM_IN, AIM_OUT = (1.6, 4.4), (18.6, 23.0)
+AIM_IN, AIM_OUT = (3.0, 6.4), (18.6, 23.0)   # the bow comes onto the line as the arm rises to the nock (round 1: by 4.4,
+#                                              with the arm still low, which put the resting string through the forearm)
+STRING_CLEAR = 48.0                          # degrees the arrow line keeps off the forearm's line while the string is at rest
 STRING_OUT = (18.4, 22.6)
 # fix r1 F1/F3: the string arm's way to the quiver and back, as arm keys SOLVED onto targets (torso-local px, or the
 # fletching, or the nock) on the body's own pose at that tick, then eased between as joint angles: the fist travels in
@@ -146,7 +184,6 @@ DRIFT = 1.6        # px the open hand keeps drifting back through 17-19.5 (fix r
 KICK = 24.0        # degrees the bow's top limb rocks forward in the hand after the loose (was 13)
 RING = 3.0         # ticks per swing of the bow's damped ring in the open hand
 TREMBLE = 1.6      # degrees, the held draw's tremble (was 0.9)
-YAW_CAP = 8.0      # degrees the bow may turn off the aim line while it is lowered (fix r1 F9; it swung 19-20)
 BREATH = 1.0       # degrees of torso pitch, one breath across the hold
 
 
@@ -298,8 +335,11 @@ def shot():
     side = np.cross(u, d)
     grab, qup = quiver_local()
 
-    def body_at(i):
-        """The keyed upper body at sample i with the hold's tremble and breath and the bow wrist on the aim."""
+    last_wrist = [None]
+
+    def body_at(i, track=False):
+        """The keyed upper body at sample i with the hold's tremble and breath and the bow wrist on the aim. `track`: the
+        main pass, sample after sample, so each wrist is written nearest the last one (no Euler flip between samples)."""
         t = i / SUB
         s = BW.sample(ks, t)
         if FULL_AT <= t <= IMPACT:          # the held draw trembles and breathes (fix r1 F4: 0.9 degrees and no breath)
@@ -317,27 +357,35 @@ def shot():
                 a = math.radians(KICK) * (1.0 - math.exp(-k / 0.1)) * math.exp(-k / 1.0) * math.cos(2 * math.pi * k / RING)
                 uu = math.cos(a) * u + math.sin(a) * d
                 dd = math.cos(a) * d - math.sin(a) * u
-            if t > AIM_OUT[0] and wa < 1.0:
-                # lowering (fix r1 F9): blend the bow's AXES from the aim to the keyed guard's and hold its turn off the
-                # aim line to YAW_CAP (blending the wrist's angles swung it 20 degrees across the face at tick 21)
+            if wa < 1.0:
+                # raising and lowering: the bow's AXES go between the keyed guard's and the aim's (blending the wrist's
+                # angles swings it through the arm and across the face: the guard's wrist is rolled 89 degrees)
                 Rk = K.world(pose, BW.BOW)[:3, :3]
                 dk, uk = -Rk[:, 0] / np.linalg.norm(Rk[:, 0]), Rk[:, 1] / np.linalg.norm(Rk[:, 1])
                 dt = dd * wa + dk * (1.0 - wa)
                 dt = dt / np.linalg.norm(dt)
+                # The resting string sits 3.8 px behind the grip and the forearm is 4 px thick: when the arrow line comes
+                # within STRING_CLEAR degrees of the forearm's own line the string cuts the forearm. Turn it off the
+                # forearm by what is missing (nothing as the aim arrives; the guard's hold is the aim's, so it is clear).
+                fa = K.world(pose, "left_forearm")[:3, :3] @ np.array([0.0, -1.0, 0.0])
+                fa = fa / np.linalg.norm(fa)
+                need = math.radians(STRING_CLEAR) * min(1.0, 3.0 * (1.0 - wa))
+                if math.acos(max(-1.0, min(1.0, float(dt @ fa)))) < need:
+                    side_ = dt - fa * (dt @ fa)
+                    if np.linalg.norm(side_) < 1e-6:
+                        side_ = dk - fa * (dk @ fa)
+                    dt = math.cos(need) * fa + math.sin(need) * side_ / np.linalg.norm(side_)
                 ut = uu * wa + uk * (1.0 - wa)
                 ut = ut - dt * (ut @ dt)
                 ut = ut / np.linalg.norm(ut)
-                off = math.atan2(dt[0], dt[2]) - math.atan2(d[0], d[2])
-                off = (off + math.pi) % (2 * math.pi) - math.pi
-                cap = math.radians(YAW_CAP + 12.0 * BW.ramp(t, AIM_OUT[1] - 0.75, AIM_OUT[1]))
-                turn = max(-cap, min(cap, off)) - off
-                c, sn = math.cos(turn), math.sin(turn)
-                Ry = np.array([[c, 0.0, sn], [0.0, 1.0, 0.0], [-sn, 0.0, c]])
-                s["left_hand"] = (BW.bow_wrist(pose, Ry @ dt, Ry @ ut), None)
+                want = BW.bow_wrist(pose, dt, ut)
             else:
                 want = BW.bow_wrist(pose, dd, uu)
-                s["left_hand"] = (tuple(a + (b - a) * wa for a, b in zip(s["left_hand"][0], want)), None)
+            want = canon(want, last_wrist[0] if last_wrist[0] is not None else s["left_hand"][0])
+            s["left_hand"] = (tuple(float(v) for v in want), None)
             pose["left_hand"] = (s["left_hand"][0], Z3)
+        if track:
+            last_wrist[0] = np.array(s["left_hand"][0], dtype=float)
         return s, pose
 
     def nock_at(pose, t):
@@ -376,7 +424,7 @@ def shot():
     out, worst, warm, fly = [], 0.0, np.array(arm_keys[-1][1]), None
     for i in range(T * SUB + 1):
         t = i / SUB
-        s, pose = body_at(i)
+        s, pose = body_at(i, track=True)
         amt = draw_amount(t)
         if t <= ARROW_ON:                   # guard, over the shoulder, the quiver, the pluck, round and onto the string
             x = K.curve(arm_keys, t)

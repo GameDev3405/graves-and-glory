@@ -136,6 +136,29 @@ reviewers let through, and what the archer and the Warmaw tusk taught on top:
 - **Do not "fix" a tick Kort graded good.** Round 2's reviewer wanted the blade tipped further down at the contact
   (tick 10). Kort had graded ticks 9 and 10 good in round 1. It was left as it was and noted on the page.
 
+## 7d. From Kort's grades of round 2 and the two harder rigs (2026-11-11: knight 8, archer 8, tusk no score)
+
+- **A fix for a reviewer can be a fault for Kort.** The pauldron was detached from its arm to shave a shallow clip
+  number; he read a dislocated shoulder at once. Armour, straps, wraps and guards stay on the limb they are strapped
+  to. Trail it a few degrees, slide it along the limb, never leave it behind.
+- **His "ok" ticks are a message too.** On the archer every tick he left "ok" without a note was a stepping tick,
+  and his overall note said "legs look abnormal". Lay the unnoted grades over the phases before deciding what a
+  general note means.
+- **Look at how a real person holds the thing.** String in the arm, squatting archer, fists a hand apart on a
+  spear: none was a number, all three were visible in one honest look at the guard frame. Grade tick 0 yourself,
+  hard, before any motion: he does.
+- **One hold for one weapon through the clip.** If the guard holds the weapon one way and the action another, the
+  change between them is where the clipping and the pops live. Make the guard's hold the action's hold.
+- **Find the limiting joint before buying reach.** "Poke out a bit more" got 0.5 px from 1.1 px of body travel
+  until the straight arm was measured (the front one, not the rear one that was being pushed).
+- **"A tad" means a tad.** He asks for small changes in small words. +1.3 px of reach and +2 px of grip, with the
+  parts he graded good left alone, not a new clip.
+- **Timing notes are design questions.** Clip length and the impact tick are the design sheet's. Explain what the
+  game does with them and ask; do not move them to answer a look.
+- **The leg solver's error is tiny when the cause is big.** "ankle unreachable (err 0.07 px)" on a foot that has not
+  moved means the pelvis left it behind: lift that foot earlier or keep the pelvis back, do not hunt the step that
+  was just edited.
+
 ## 8. Legacy clip pipeline (for old-model fixes only)
 
 - 18 of 30 troops once had no attack clip and every check passed: a missing clip must fail the build, never be shot

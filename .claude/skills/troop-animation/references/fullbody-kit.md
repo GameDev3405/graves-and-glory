@@ -148,14 +148,20 @@ the helm's crest as stale. `fullbody.soft_motion(upper, legs)` is the answer for
   before this existed. It needs nothing from you; do not key a sway by hand.
 - Sibling bones that hang from the same place (a skirt, its plate, its gilt; the same cloth at three tiers) swing as
   one piece. Two pieces that only share a default bone pivot are two pieces (`SAME_HINGE`).
-- Shoulder plates are not springs: `plates_for()` makes each pauldron follow only 30% of its upper arm
-  (`PLATE_FOLLOW = 0.7`), so a raised arm does not carry the plate into the helm and the plate visibly moves.
-- A plate also gives way to the helm: where the pose would sink it more than `PLATE_YIELD` (0.25 px) deeper into the
-  head's pieces than the stance has it, it slides down the arm, away from the helm, up to `PLATE_SLIDE` (2.5 px).
-  The report line says how far ("plate right_pauldron slides 1.6 px off the helm"). It is normal output, not a
-  warning: it tells you the plate was moved out of the way for you. On the knight's overhead cut this
-  took helm-into-pauldron from 1.88 px (0.02 under the FAIL line, hidden behind another pair with the same number)
-  to about 1.0. If the report shows the full 2.5 px, the head or the torso is turned too far: fix the pose.
+- **Armour never leaves its limb** (Kort, knight round 2, score 8: "sholder kind of twists out of place in a couple
+  frames", and on tick 10 "why is wrist/arm above shoulder?"). Round 2 let each pauldron follow only 30% of its upper
+  arm so that a raised arm would not carry it into the helm. With the arm overhead the plate then sat where the
+  shoulder was in the guard, and he read it as a dislocated shoulder. Now `plates_for()` lets a plate trail its arm's
+  swing by `PLATE_FOLLOW` (0.7) of the turn but **never by more than `PLATE_LAG` (10 degrees)**: in a small motion it
+  moves against the arm, in a big swing it stays on the arm.
+- A plate still gives way to the helm, but only **along its own arm**: where the pose would sink it more than
+  `PLATE_YIELD` (0.25 px) deeper into the head's pieces than the stance has it, it slides down the arm, up to
+  `PLATE_SLIDE` (2.5 px), and stays wrapped round it. The report line says how far ("plate right_pauldron slides
+  1.6 px down its arm, off the helm"). If it shows the full 2.5 px, the head or the torso is turned too far: fix the
+  pose.
+- **Do not detach a piece to win a clip number.** The 30% rule was added for a reviewer's shallow helm-into-pauldron
+  figure (1.88 px) on ticks Kort had graded good. A plate that rides a raised arm past the helm is what armour does;
+  a plate left behind is a fault he sees at once. When a number and the limb disagree, the piece stays on the limb.
 - Everything is measured from the first sample and faded in over 1 tick and out over 2, so the clip still starts and
   ends on the stance exactly.
 - `fullbody.clips()` already calls it. In any other builder, call it on the samples right before baking:
@@ -250,9 +256,32 @@ in doubt, do the same: turn one bone, render one tick, look. Do not reason the s
 
 "ankle unreachable" from the leg solve means the leg is over-straight: bring the foot closer or lower the hips.
 
-**6. Rules that came out of the bow.**
-- A tall bow stands upright **before** it crosses the body, or its lower limb sweeps through the legs.
-- The bow-side foot does not step under the bow. Step the string-side foot back instead and turn the bow-side foot.
+**6. Rules that came out of the bow.** (Kort scored the archer demo 8: "legs look abnormal. shot seems quick. the
+bows string is inside the archers arm to start. the head shake while the unit is pulling bow is nice touch.")
+- **A bow is held ACROSS the forearm, never along it.** The resting string sits about 3.8 px behind the grip and a
+  forearm is 4 px thick: with the arrow line within about 45 degrees of the forearm line (elbow to hand) the string
+  runs through the arm. The lead's guard does this on every clip's first frame. The checks have no row for it, so
+  measure it: the string's two segments against the bow arm's boxes on every tick the string is at rest. At most
+  0.5 px.
+- **The guard's hold is the aim's hold.** Give every guard-side key the wrist the aim uses (`GUARD_WRIST` in the
+  archer demo), so the arm alone carries the bow up and down. A guard held any other way makes the bow turn over in
+  the hand on the way up, and the string sweeps the forearm whichever way it turns (four attempts at steering it
+  through all failed: pops of 68 degrees, the bow through the jerkin). While the bow travels keep the arrow line
+  `STRING_CLEAR` (48 degrees) off the forearm line, on the side it already is.
+- Bring the bow up late (after the hand has left for the quiver), not across the face while the head still turns.
+- A tall bow's lower limb must not sweep through the legs: check `weapon_in_body` on the stepping ticks.
+- **An archer stands tall on a long stance.** Round 1 sank the pelvis 3 px over feet 4 px apart: both knees near 90
+  degrees through the hold, which he called "abnormal". Pelvis about 1.2 px under the guard's, knees 47 to 52 degrees
+  (the guard's are 43 to 46; print `legs[i]["<side>_shin"][0][0]`), feet 7 px apart fore and aft, the string-side
+  foot back and turned out about 45 degrees.
+- **One foot in the air at a time**, out and back. Plant the first before the second lifts (step tuples must not
+  overlap). Two feet off the ground at once reads as a hop, and he marked every stepping tick "ok", not "good".
+- **Clip length is gameplay.** "shot seems quick": 16 ticks to the loose come from `sheets/design.json`
+  (`impactTicks`), and in game the hold at `full` adds only 0 to 3 ticks (`MotionMath.LOOSE_MAX`). Do not slow a
+  clip to answer a note like this; say where the number lives and ask. (Asked: he wants the shot longer. Until the
+  design sheet changes, the clip stays 16 ticks to the loose.)
+- **Keep**: the head settling onto the arrow during the draw ("nice touch"), the elbow-first reach to the quiver, the
+  arrow going onto the string, shoulder and elbow at full draw, the loose (all graded good).
 - At full draw limit the head (16 degrees off the foe) and the chest (84 degrees side-on) in the solve, or `head_turn`
   fails: an archer looks down the arrow with the head turned about 70 degrees on the chest, no more.
 - The anchor is beside the ear, outside the hood. The fist flies back along the arrow's line at the loose.
@@ -268,11 +297,25 @@ in doubt, do the same: turn one bone, render one tick, look. Do not reason the s
   into the jerkin; later reads as a pop.
 - **A hold at full draw trembles.** 1.6 px of bow-arm tremble and 1 degree of breath in the chest: no two ticks of
   the hold the same picture. Neck 60 degrees on the chest at the hold, not at the 70 limit.
-- **Lowering the bow, cap its yaw** (8 degrees): uncapped it fanned out to 20 degrees and read as a swat.
+- Lowering the bow: with the guard's hold equal to the aim's there is nothing to cap; the arm lowers it. (An
+  earlier yaw cap of 8 degrees papered over a guard held another way.)
 
 **7. Rules that came out of the spear in two hands.**
 - The second hand is a grip, not clipping (the check knows it within 3.5 px of that fist).
 - Keep the two fists 5.6 px or more apart along the shaft (`Ls`): closer, the wrist wraps sit inside each other.
+- **In the guard the fists are a third of the shaft apart, not a hand apart.** Kort on the tusk's tick 0: "hand
+  placement could be spaced out a tad bit more." The spear builder's guard has `Ls` 6.0; the demo uses 8.0
+  (`G = nudge(SP.GUARD, Ls=8.0)`). The stance clips must take the same value or the attack pops out of the stance.
+- **"Poke it out a bit more" is bought with the body, the front shoulder and the rear fist, in that order.** First
+  measure which arm is straight at full reach (shoulder pivot to wrist pivot against the arm's 8.1 px). On the tusk
+  it is the FRONT arm; the rear fist sits bent beside the ribs. So the point goes only as far as the front fist
+  lets it, and a wide grip at full reach costs reach px for px (grip 7.4 there: +0.5 px and the right arm 2.0 px in
+  the torso). What gave +1.3 px with every clip number better than before: lead foot 1.2 px further out (to the
+  leg's limit: the solver says "ankle unreachable" one step past it), pelvis 1.1 px further, the leading shoulder 4
+  degrees further forward, chest 2 degrees lower, and the rear fist driving the shaft through the front hand (8.0
+  apart in the guard to 6.3 at full reach). Squaring the shoulders did nothing: it moves the wrong shoulder.
+- A deeper lunge needs the rear foot to let go earlier (lift at 7.2, not 7.8) and the lead foot to lift earlier on
+  the way home, or the planted ankle goes out of reach by a few hundredths of a px and the build stops.
 - A load must show from the side: sit the pelvis back and down over the rear foot, draw the **front** hand back with
   the shaft (large `Ls`), level the point onto the target. A fist that only slides back along a still shaft reads
   as nothing.
@@ -320,7 +363,9 @@ had six pieces that never moved.
 
 | wm_tusk `attack_high_thrust` (built by Sonnet 5.5 high from this skill alone) | focus 4 FAIL | focus 0 FAIL, 4 WARN; scorecard `pen_limb` 2.0, inherited; its author's score 7 |
 
-Neither demo is approved: they wait for Kort's frame grades. A quadruped (wm_hound) has not been tried.
+Kort's grades, 2026-11-11: archer 8, tusk no score ("stance and body movement look good"), both with notes that the
+rules above now carry (`kort-verdicts.md`). Round 2 of each waits for his grades. A quadruped (wm_hound) has not been
+tried.
 
 ## Merging into the game file
 

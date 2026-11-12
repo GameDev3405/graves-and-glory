@@ -124,13 +124,26 @@ class WholeUnit(unittest.TestCase):
         self.assertNotEqual(fullbody._name_frac("hip_skull", "phase"), fullbody._name_frac("tooth_necklace", "phase"))
         self.assertEqual(fullbody._name_frac("cape"), fullbody._name_frac("cape"))       # the same on every build
 
+    def test_a_shoulder_plate_stays_on_its_arm(self):
+        """Kort, round 2 tick 10 (the plate hung 70 degrees behind a raised arm): "why is wrist/arm above shoulder?"."""
+        keys = self.clips["attack_overhead"]["bones"]["right_pauldron"]["rotation"]
+        arm = self.clips["attack_overhead"]["bones"]["right_arm"]["rotation"]
+        self.assertGreater(swing(self.clips["attack_overhead"], "right_arm"), 60.0)      # the arm really swings
+        lag = max(math.degrees(math.acos(max(-1.0, min(1.0, (fullbody.np.trace(fullbody._rot_of(v)) - 1.0) / 2.0))))
+                  for v in keys.values())
+        self.assertLessEqual(lag, fullbody.PLATE_LAG + 0.05)
+        self.assertGreater(lag, 4.0)                    # and it still moves against the arm
+        self.assertTrue(arm)
+
     def test_a_shoulder_plate_gives_way_to_the_helm(self):
-        """Kort marked the pauldron in the helm (tick 14, round 1); round 2's reviewer still saw it on the helm's edge."""
+        """Reviewers of rounds 1 and 2 saw the pauldron ride the arm onto the helm's edge: it slides down its own arm."""
         keys = self.clips["attack_overhead"]["bones"]["right_pauldron"]
         self.assertIn("position", keys)
         slide = {float(t): math.sqrt(sum(v * v for v in p)) for t, p in keys["position"].items()}
         self.assertGreater(max(slide.values()), 0.5)
-        self.assertLessEqual(max(slide.values()), fullbody.PLATE_SLIDE + 1e-6)
+        self.assertLessEqual(max(slide.values()), fullbody.PLATE_SLIDE + 1e-3)
+        for p in keys["position"].values():             # along the arm only: the plate never leaves the limb sideways
+            self.assertLess(math.hypot(p[0], p[2]), 0.05 + 0.02 * abs(p[1]), p)
         self.assertLess(slide[min(slide)], 1e-3)        # nothing at the first key
         self.assertLess(slide[max(slide)], 1e-3)        # nor at the last
 

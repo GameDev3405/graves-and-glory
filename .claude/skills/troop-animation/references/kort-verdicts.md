@@ -61,6 +61,59 @@ has a history below and a mechanical check in `references/four-focus-points.md`.
 
 Add one block per round, newest first: date, clip, his overall score, then one line per tick he marked, in his words.
 
+### 2026-11-11, Warmaw tusk `attack_thrust` (round `wm_tusk-attack_thrust-r1`): no score
+Page: https://claude.ai/artifact/HgtYPfwf7mAbctsXDucheX. Overall, his words: "stance and body movement look good. the
+hand placement and lunge could do better. have the unit poke out the spear a tad bit more, not a lot just a little
+bit."
+
+| Tick | Grade | His note |
+|---|---|---|
+| 0 | ok | "hand placement could be spaced out a tad bit more." |
+| 1, 2 | ok | |
+| 3-21 | good | |
+
+**Keep doing**: the stance, the sit-back load, the body driving the thrust, the carry past the impact.
+
+| What he saw | Cause | Rule from now on |
+|---|---|---|
+| Hands too close on the shaft in the guard | The spear builder's guard holds the fists 6.0 px apart | Guard grip 8.0 on a two-hand spear (about a third of the shaft). The stance clips must match. |
+| The spear does not poke out far enough | The front arm was already straight; the body stopped 1.1 px short of what the legs allow | Measure which arm is straight, then buy reach with the body, the front shoulder and the rear fist driving through the front hand (`fullbody-kit.md`, rule 7). +1.3 px. "A tad" is 1 to 1.5 px, not 4. |
+
+### 2026-11-11, archer `attack_direct` (round `archer-attack_direct-r1`): score 8
+Page: https://claude.ai/artifact/C5779ZnWs9G8uPQ5dj8caH. Overall, his words: "legs look abnormal. shot seems quick.
+the bows string is inside the archers arm to start. the head shake while the unit is pulling bow is nice touch."
+
+| Tick | Grade | His note |
+|---|---|---|
+| 0, 1 | ok | "string inside archer arm" |
+| 2, 3, 5, 6 | ok | (the stepping ticks) |
+| 4 | good | "arm bend and reach back for arrow good" |
+| 7, 8 | good | "arm placing arrow in string good." |
+| 9-14 | good | |
+| 15 | good | "sholder and elbow on full bow pull look good." |
+| 16-19 | good | "release looks good" |
+| 20 | good | |
+| 21 | ok | "string in arm" |
+| 22-25 | ok | (the stepping ticks) |
+
+**Keep doing**: the head settling during the draw; the reach for the arrow; the nock; the full draw; the release.
+
+| What he saw | Cause | Rule from now on |
+|---|---|---|
+| String inside the bow arm in the guard (ticks 0, 1, 21) | The lead's guard wrist lays the bow along the forearm; the resting string is 3.8 px behind the grip | A bow is held across the forearm, and the guard's hold is the aim's hold. Measured on every resting-string tick. |
+| "legs look abnormal" (every stepping tick only "ok") | Pelvis sunk 3 px over a 4 px stance: knees near 90 degrees; both feet in the air together on the way home | Archers stand tall on a long stance (knees about 50 degrees); one foot in the air at a time. |
+| "shot seems quick" | 16 ticks to the loose is the design sheet's number; the game adds a 0 to 3 tick hold | Gameplay timing: asked, not changed in a clip. Asked the same day (longer shot, reorder the clip inside 16 ticks, or leave it), he chose **"Make the shot longer"**. That is a rate-of-fire change (`sheets/design.json` `bow_direct` `impactTicks`, the bow builder's `ATTACK_TICKS` / `FULL_AT` / `IMPACT`): it waits for the coordinator's approval and a number. |
+
+### 2026-11-11, knight `attack_overhead` (round `knight-attack_overhead-r2`): score 8
+Overall, his words: "sholder kind of twists out of place in a couple frames. ive labled them below". Tick 10 bad:
+"why is wrist/arm above shoulder? ". Ticks 9 and 11 ok, every other tick good.
+
+| What he saw | Cause | Rule from now on | Check |
+|---|---|---|---|
+| The shoulder "twists out of place"; the arm above the shoulder (tick 10) | Round 2 let the pauldron follow only 30% of its arm (to keep it out of the helm for a reviewer's 1.88 px figure), so with the arm overhead the plate stayed down where the shoulder had been | **Armour never leaves its limb.** A plate trails its arm by at most 10 degrees and may slide down its own arm, nothing else. Do not detach a piece to win a clip number on ticks he graded good. | `test_fullbody.py` (the plate stays within `PLATE_LAG`) |
+
+Everything round 1 complained of was graded good in round 2: the grip, the moving cape and crest, the chest plates.
+
 ### 2026-11-11, knight `attack_overhead` (round `knight-attack_overhead-r1`): score 7
 Built as this skill's first demo with the full-body kit. Grading page:
 https://claude.ai/artifact/LVqUBq4SUWYHH5iVrrsmLS (grades saved in
@@ -94,7 +147,7 @@ i want the whole unit to be animated including pieces of its armor that way it f
 | The sword turns in the hand during the wind-up (ticks 5, 6) | The kit rolled the hand to put the edge on the tip's path whenever the tip was fast, the wind-up included | **The grip only turns inside the strike** (3 ticks before the impact to 2 after). In a wind-up the wrist carries the blade; it never spins about its own length. | `grip_roll` |
 | Cape and the red crest stand still | Only the cape had a lag, scaled small; crest, plates and skirts had no keys | **Every piece that hangs or sits on the body moves**: cloth, crest, plume, skirt plates, shoulder plates, hung trophies. `fullbody.soft_motion` does it for any rig. | `secondary_life` |
 | Chest textures "glitching into each other" (ticks 7, 8) | The shield arm's plates sat inside the chest plates by under 2 px: too shallow for `limb_in_body`, but two textures in one place flicker | **Armour on one bone never sits inside armour on another**, even shallowly. | `armour_clip` |
-| Limb wrong and clipping (ticks 11, 14) | The shield arm folded across the chest in the cut and the follow-through; the pauldron rode the arm into the helm | Keep the shield fist outside the chest's width while the body turns; a shoulder plate follows only part of the upper arm (`PLATE_FOLLOW`) | `armour_clip`, `limb_in_body` |
+| Limb wrong and clipping (ticks 11, 14) | The shield arm folded across the chest in the cut and the follow-through; the pauldron rode the arm into the helm | Keep the shield fist outside the chest's width while the body turns. (Round 2 also let the plate follow only part of the arm; he rejected that, see round 2 above: the plate stays on its arm.) | `armour_clip`, `limb_in_body` |
 
 Round 2 of the same clip carries these fixes (focus check: 0 FAIL, 2 WARN). He also asked that the next test be on
 harder units: "work on a unit that isnt so easy, like a archer and a wildenmoot unit". Those are

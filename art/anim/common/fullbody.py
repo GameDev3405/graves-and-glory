@@ -89,11 +89,14 @@ SOFT_TUNED = {
         "left_skirt": dict(lim=((-11.0, 11.0), (0.0, 0.0), (-6.0, 6.0)), max=11.0, gain=0.9, plumb=0.25, period=4.0),
     },
 }
-# A shoulder plate sits on the shoulder: it follows only part of the upper arm's swing (1 - PLATE_FOLLOW), so a raised
-# arm does not drive it into the helm (armour_clip) and it visibly moves against the arm.
+# A shoulder plate is strapped to its upper arm. It trails the arm's swing by PLATE_FOLLOW of the turn, but never by
+# more than PLATE_LAG degrees: in a small motion it visibly moves against the arm, in a big swing it stays ON the arm.
+# Kort, knight overhead round 2, tick 10 (the plate then stayed 70% behind a raised arm): "why is wrist/arm above
+# shoulder?", "sholder kind of twists out of place". Armour never leaves its limb.
 PLATE_FOLLOW = 0.7
-# ... and it gives way to the helm: when the head turns or tips onto a shoulder, the plate slides down the arm, away
-# from the helm, rather than sinking into it (Kort marked the pauldron in the helm, tick 14 of the first overhead cut;
+PLATE_LAG = 10.0
+# ... and it gives way to the helm: when the head turns or tips onto a shoulder, the plate slides down its own arm
+# (along the arm only, so it stays wrapped round it) rather than sinking into the helm (Kort marked the pauldron in the helm, tick 14 of the first overhead cut;
 # the reviewer of round 2 still saw it "on the helm's lower edge"). Measured against the stance's own fit.
 PLATE_YIELD = 0.25   # px a plate may sink deeper into the helm than the first sample has it
 PLATE_SLIDE = 2.5    # px it slides at most
@@ -244,34 +247,35 @@ def _plates_yield(upper, legs, plates, fade, report=False):
         H = [[_cube_world(_bone_world(p, bn, model), c) for bn, c in helm] for p in poses]
         Pl = [[_cube_world(_bone_world(p, bn, model), c) for bn, c in mine] for p in poses]
         d0 = _sink(Pl[0], H[0])
-        W = np.zeros((n, 3))
+        W = np.zeros(n)                      # px each sample slides the plate down its arm
         for i in range(n):
             if _sink(Pl[i], H[i]) - d0 <= PLATE_YIELD:
                 continue
             away = _unit(np.concatenate(Pl[i]).mean(axis=0) - np.concatenate(H[i]).mean(axis=0))
+            down = _unit(B.world(poses[i], arm)[:3, :3] @ np.array([0.0, -1.0, 0.0]))   # shoulder to elbow
+            if float(away @ down) <= 0.1:
+                continue                     # the helm is not above the plate along the arm: sliding would not help
             lo, hi = 0.0, PLATE_SLIDE
             for _ in range(7):
                 mid = (lo + hi) / 2.0
-                if _sink([b + away * mid / 16.0 for b in Pl[i]], H[i]) - d0 > PLATE_YIELD:
+                if _sink([b + down * mid / 16.0 for b in Pl[i]], H[i]) - d0 > PLATE_YIELD:
                     lo = mid
                 else:
                     hi = mid
-            W[i] = away * hi
+            W[i] = hi
         if not W.any():
             continue
-        size = np.linalg.norm(W, axis=1)
-        wide = np.array([W[max(0, i - SUB) + int(np.argmax(size[max(0, i - SUB):i + SUB + 1]))] for i in range(n)])
+        wide = np.array([W[max(0, i - SUB):i + SUB + 1].max() for i in range(n)])
         h = max(1, SUB // 2)
-        soft_w = np.array([wide[max(0, i - h):i + h + 1].mean(axis=0) for i in range(n)]) * np.array(fade)[:, None]
+        soft_w = np.array([wide[max(0, i - h):i + h + 1].mean() for i in range(n)]) * np.array(fade)
         for i in range(n):
-            if np.linalg.norm(soft_w[i]) < 1e-3:
+            if soft_w[i] < 1e-3:
                 continue
-            loc = B.world(poses[i], arm)[:3, :3].T @ soft_w[i]
-            upper[i][plate] = (upper[i][plate][0], (float(-loc[0]), float(loc[1]), float(loc[2])))
-        if report and np.linalg.norm(soft_w, axis=1).max() > 0.05:
-            k = int(np.argmax(np.linalg.norm(soft_w, axis=1)))
-            print("  plate %-21s slides %.1f px off the helm (most at tick %.1f)"
-                  % (plate, float(np.linalg.norm(soft_w[k])), k / float(SUB)))
+            upper[i][plate] = (upper[i][plate][0], (0.0, -float(soft_w[i]), 0.0))     # arm-local: down the arm only
+        if report and soft_w.max() > 0.05:
+            k = int(np.argmax(soft_w))
+            print("  plate %-21s slides %.1f px down its arm, off the helm (most at tick %.1f)"
+                  % (plate, float(soft_w[k]), k / float(SUB)))
 
 
 def _unit(v):
@@ -445,7 +449,8 @@ def soft_motion(upper, legs, parts=None, plates=None, report=False):
         for i in range(n + 1):
             Ra = _rot_of(upper[i][arm][0], rest)
             D = Ra @ R0.T          # the arm's turn since the first sample, in its parent's frame
-            X = Ra.T @ _rot_pow(D, -f) @ Ra
+            turn = math.degrees(math.acos(max(-1.0, min(1.0, (np.trace(D) - 1.0) / 2.0))))
+            X = Ra.T @ _rot_pow(D, -min(f * turn, PLATE_LAG) / max(turn, 1e-6)) @ Ra
             upper[i][plate] = (tuple(float(v) for v in B.decompose_zyx(X)), None)
     _plates_yield(upper, legs, plates, fade, report)
     return upper, legs
