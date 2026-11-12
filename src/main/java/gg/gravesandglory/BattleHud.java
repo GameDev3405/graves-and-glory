@@ -110,7 +110,7 @@ public final class BattleHud {
         return k!=null&&k.isPressed()||Util.getMeasuringTimeMs()-roundShownMs<hintLayerMs()||CommandMode.active();
     }
     /** A frame without the ledger (camp, a battle's entrance, a menu over the HUD): nothing reads as drawn. */
-    static void clear(){cardsDrawn.clear();sealsDrawn.clear();rectsDrawn.clear();textsDrawn.clear();hintRowsDrawn.clear();hintEndsDrawn.clear();keyRowsDrawn.clear();feedRowsDrawn.clear();}
+    static void clear(){formBoxes.clear();hoveredCard="";aimStrip=null;cursor=null;cardsDrawn.clear();sealsDrawn.clear();rectsDrawn.clear();textsDrawn.clear();hintRowsDrawn.clear();hintEndsDrawn.clear();keyRowsDrawn.clear();feedRowsDrawn.clear();}
     /** A disconnect (GravesAndGloryClient.resetHud, on the client thread: the first client tick without a world after it, and the
      *  next join): the last battle's records go with it, since no HUD frame runs without a world to clear them, and ChatPlacement
      *  reads rects() before the next world's first frame. That is what the frame drew, the lesson wrap and the lines drawn from it,
@@ -138,6 +138,7 @@ public final class BattleHud {
                 ledger(g,font,at,rectsDrawn,textsDrawn);
                 seals(g,font,at,rectsDrawn,sealsDrawn,textsDrawn);
                 column(g,font,s,at,rectsDrawn,cardsDrawn,textsDrawn);
+                aimStrip(g,font);
                 gold(g,font,at,now,rectsDrawn,textsDrawn);
                 houses(g,font,at,now,rectsDrawn,textsDrawn);
                 lesson(g,font,at,rectsDrawn,textsDrawn);
@@ -263,12 +264,78 @@ public final class BattleHud {
         }
     }
 
+    // ---- the mouse on the column (Kort 2026-11-11: every formation choice by mouse) and the Formation aim's shape strip ----
+
+    /** The selected card's formation box (glyph and word) per group, canvas px, as the last frame drew it: a click there opens the tray. */
+    static final Map<String,int[]> formBoxes=new HashMap<>();
+    /** What the cursor was over in the last frame: "form-(group)", "card-(group)" (a card or a chip) or "" (a probe for the checks). */
+    public static String hoveredCard="";
+    /** The aim strip's box in the last frame, canvas px, or null when it was not drawn. */
+    public static int[] aimStrip;
+    /** The cursor in HUD canvas px while the panel holds it (null otherwise): the column then shows what a click would pick. */
+    private static double[] cursor;
+    static final int HOVER_WASH=0x40ffd27a,CARD_WASH=0x26ffd27a;
+    static boolean inside(double[] m,int[] b){return m[0]>=b[0]&&m[0]<b[0]+b[2]&&m[1]>=b[1]&&m[1]<b[1]+b[3];}
+    static double[] hudCursor(){
+        var c=MinecraftClient.getInstance();
+        if(!CommandPanel.capturing()||CommandPanel.editing())return null;
+        double[] m=CommandPanel.cursor(c);if(m==null)return null;
+        double f=c.getWindow().getScaleFactor()/UiCanvas.hudK();
+        return new double[]{m[0]*f,m[1]*f};
+    }
+    /** What a click at (gx, gy) GUI px meets on the column the last frame drew: {"form"|"card", group}, or null. The formation box is tested first. */
+    public static String[] columnAt(double gx,double gy){
+        var c=MinecraftClient.getInstance();double f=c.getWindow().getScaleFactor()/UiCanvas.hudK();double[] m={gx*f,gy*f};
+        for(var e:formBoxes.entrySet())if(inside(m,e.getValue()))return new String[]{"form",e.getKey()};
+        for(var e:rectsDrawn.entrySet()){String k=e.getKey();if(k.startsWith("card-")&&e.getValue()!=null&&inside(m,e.getValue()))return new String[]{"card",k.substring(5)};}
+        return null;
+    }
+    /** A canvas box in GUI px {x, y, w, h}, or null (for the checks). */
+    public static int[] toGui(int[] b){
+        if(b==null)return null;double k=UiCanvas.hudK()/MinecraftClient.getInstance().getWindow().getScaleFactor();
+        return new int[]{(int)Math.round(b[0]*k),(int)Math.round(b[1]*k),(int)Math.round(b[2]*k),(int)Math.round(b[3]*k)};
+    }
+    /** The formation box of a group's card in canvas px, or null (for the checks). */
+    public static int[] formBox(String group){return formBoxes.get(group);}
+
+    /** The strip under the seals while the Formation order is aimed: the four shapes (the current one lit, as the tray lights it), the
+     *  current shape's name, and the two mouse keys that work in the aim: the wheel for the shape, the attack button to confirm.
+     *  Centred, its top STRIP_Y, under the aimed point's name and clear of the crosshair. */
+    static void aimStrip(DrawContext g,TextRenderer font){
+        if(!CommandSelection.aiming().equals("hold"))return;
+        int w=UiCanvas.hudWidth();
+        String name=formationLabel(CommandMode.formation),wheel="Wheel",hit=GravesAndGloryClient.hint("hit");
+        int ww=UiMath.chipWidth(font.getWidth(wheel)),hw=UiMath.chipWidth(font.getWidth(hit));
+        int words=Math.max(font.getWidth(DarkUi.heading(name)),ww+2+font.getWidth("Shape")+8+hw+2+font.getWidth("Confirm"));
+        int pad=6,cell=STRIP_CELL,gap=2,cellsW=4*cell+3*gap,sw=pad+cellsW+8+words+pad,sh=pad*2+cell;
+        int x=w/2-sw/2,y=STRIP_Y;
+        g.fill(x+2,y+2,x+sw-2,y+sh-2,0xb31b120c);
+        UiTex.nine(g,"command/tray",x,y,sw,sh);
+        for(int i=0;i<CommandSelection.SHAPES.length;i++){
+            int cx=x+pad+i*(cell+gap),cy=y+pad;boolean on=CommandSelection.SHAPES[i].equals(CommandMode.formation);
+            if(on){g.fill(cx,cy,cx+cell,cy+cell,0x4dffd27a);RenderSystem.setShaderColor(1f,0xd2/255f,0x7a/255f,1f);}
+            UiTex.draw(g,CommandPanel.SHAPE_ICONS[i],cx+(cell-24)/2,cy+(cell-24)/2);
+            RenderSystem.setShaderColor(1,1,1,1);
+        }
+        int tx=x+pad+cellsW+8;
+        g.drawText(font,DarkUi.heading(name),tx,y+pad+1,0xffffd27a,true);
+        int ky=y+pad+cell-12;
+        UiTex.three(g,"hud/key-chip",tx,ky,ww);g.drawText(font,wheel,tx+2,ky+2,DarkUi.CHIP_TEXT,false);tx+=ww+2;
+        g.drawText(font,"Shape",tx,ky+2,0xfffff6dc,false);tx+=font.getWidth("Shape")+8;
+        UiTex.three(g,"hud/key-chip",tx,ky,hw);g.drawText(font,hit,tx+2,ky+2,DarkUi.CHIP_TEXT,false);tx+=hw+2;
+        g.drawText(font,"Confirm",tx,ky+2,0xfffff6dc,false);
+        aimStrip=new int[]{x,y,sw,sh};
+    }
+    /** The aim strip's top (under the aimed point's name at AIM_NAME_Y) and a shape cell's side, canvas px. */
+    static final int STRIP_Y=AIM_NAME_Y+12,STRIP_CELL=26;
+
     /** The group column (UI Task 8c), each plate where the layout hangs it, infantry at the top: the spine; the selected group's
      *  ledger card (card) and a chip for every other group the round fielded (chip), or while the whole army is selected a brass
      *  chip for each group; and in the hint layer the hint slip above the top plate (above the
      *  column's foot when there is none). A group the round never fielded has no plate. */
     static void column(DrawContext g,TextRenderer font,UiMath.HudState s,Map<String,int[]> at,Map<String,int[]> r,List<CardDraw> cd,Map<String,String> tx){
         boolean army="all".equals(s.selected());
+        cursor=hudCursor();
         int[] spine=at.get("spine");if(spine!=null){UiTex.three(g,"hud/spine",spine[0],spine[1],spine[3]);r.put("spine",spine);}
         for(String id:s.groups()){
             var grp=group(id);int[] box=at.get("card-"+id);if(grp==null||box==null)continue;
@@ -409,7 +476,12 @@ public final class BattleHud {
         orderGlyph(g,grp.order(),down,x+10,y+30);
         g.drawText(font,orderLabel(grp.order()),x+22,y+31,DarkUi.INK_TEXT,false);
         formationGlyph(g,grp.formation(),down,x+72,y+30);
-        g.drawText(font,formationLabel(grp.formation()),x+84,y+31,DarkUi.INK_TEXT,false);
+        String formLabel=formationLabel(grp.formation());
+        g.drawText(font,formLabel,x+84,y+31,DarkUi.INK_TEXT,false);
+        // the formation is a click target while the panel holds the cursor (it opens the tray for this group): the glyph and its word
+        int[] form={x+70,y+28,Math.max(96,14+font.getWidth(formLabel)+4),14};formBoxes.put(id,form);
+        if(cursor!=null&&inside(cursor,form)){g.fill(form[0],form[1],form[0]+form[2],form[1]+form[3],HOVER_WASH);g.fill(x+84,y+40,x+84+font.getWidth(formLabel),y+41,DarkUi.BRASS);hoveredCard="form-"+id;}
+        else if(cursor!=null&&inside(cursor,box)){g.fill(x+2,y+2,x+box[2]-2,y+box[3]-2,CARD_WASH);hoveredCard="card-"+id;}
         cd.add(new CardDraw(id,state,true,x,y,box[2],box[3]));r.put("card-"+id,box);
         tx.put("count-"+id,count);tx.put("state-"+id,word);tx.put("plate-"+id,plate);
     }
@@ -442,6 +514,7 @@ public final class BattleHud {
         }
         String count=UiMath.countText(grp.count(),grp.full()); // up to 30/30, the full roster's 30 troops: 30 px, clear of the slot
         g.drawText(font,count,x+156-font.getWidth(count),y+5,down||last?DarkUi.ROUT_TEXT:DarkUi.INK_TEXT,false);
+        if(cursor!=null&&inside(cursor,box)){g.fill(x+2,y+2,x+box[2]-2,y+box[3]-2,CARD_WASH);hoveredCard="card-"+id;} // a chip selects its group by click while the panel holds the cursor
         cd.add(new CardDraw(id,state,false,x,y,box[2],box[3]));r.put("card-"+id,box);
         tx.put("count-"+id,count);tx.put("state-"+id,word);tx.put("plate-"+id,plate);
     }

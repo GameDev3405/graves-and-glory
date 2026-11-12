@@ -129,6 +129,24 @@ public final class CommandSelection {
         for (String s : SHAPES) if (s.equals(shape)) { CommandMode.formation = shape; order("hold", keepOpen); return; }
     }
 
+    /** The mouse wheel while the Formation order is aimed: the shape steps by dir (+1 the next in SHAPES, -1 the one before, wrapping)
+     *  and the aim's preview follows it. Nothing is sent: the shape goes out with the order when it is confirmed. False when no
+     *  Formation order is aimed, so the wheel is left to the hotbar. */
+    public static boolean cycleShape(int dir) {
+        if (!aiming().equals("hold") || dir == 0) return false;
+        int at = 0;
+        for (int i = 0; i < SHAPES.length; i++) if (SHAPES[i].equals(CommandMode.formation)) at = i;
+        CommandMode.formation = SHAPES[Math.floorMod(at + Integer.signum(dir), SHAPES.length)];
+        return true;
+    }
+
+    /** A click on a group card's formation (the battle HUD, the panel open): that group is selected (Shift adds it) and the Formation
+     *  tray opens for it, as the Formation pennant opens it; a tray already open stays open. */
+    public static void openTrayFor(String groupId, boolean add) {
+        select(groupId, add);
+        if (!trayOpen) order("formation", true);
+    }
+
     /** A number key with the panel open: 1 to 4 pick that pill, or that shape while the tray is open. */
     static void pick(int number, boolean add, boolean keepOpen) {
         if (trayOpen) { if (number >= 1 && number <= SHAPES.length) chooseShape(SHAPES[number - 1], keepOpen); return; }

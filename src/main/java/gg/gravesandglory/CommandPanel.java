@@ -49,7 +49,7 @@ public final class CommandPanel {
     /** Its resting bounds in the last frame {x, y, w, h, screen w, screen h} (no slide) and GUI px per HUD canvas px, for a drag. */
     static int[] rest;
     static double restK = 1;
-    /** The pennant under the cursor in the last frame (PENNANT + i), or -1. */
+    /** The pennant or tray cell under the cursor in the last frame (PENNANT + i, CELL + j), or -1. */
     public static int hovered = -1;
     /** Frames rendered, and the slide the last one used (probes for the checks: a shot waits for a fresh, settled frame). */
     public static int frames;
@@ -427,7 +427,8 @@ public final class CommandPanel {
                 boolean hov = over(mouse, cx, cy, cw, CELL_H);
                 double fl = flashLeft(CELL + j);
                 if (picked) g.fill(cx, cy, cx + cw, cy + CELL_H, 0x4d000000 | GOLD);
-                else if (hov) g.fill(cx, cy, cx + cw, cy + CELL_H, 0x26000000 | GOLD);
+                else if (hov) g.fill(cx, cy, cx + cw, cy + CELL_H, 0x33000000 | GOLD);
+                if (hov) { g.drawBorder(cx, cy, cw, CELL_H, 0xff000000 | TRIM); hovered = CELL + j; } // a click picks this shape: the cell's rim turns gold under the cursor
                 if (fl > 0) g.fill(cx, cy, cx + cw, cy + CELL_H, ((int) Math.round(fl * 0.5 * 255) << 24) | GOLD);
                 if (picked) RenderSystem.setShaderColor(((GOLD >> 16) & 255) / 255f, ((GOLD >> 8) & 255) / 255f, (GOLD & 255) / 255f, 1f);
                 // the key number in its own row at the top-left, the shape below it, the name at the foot: nothing overlaps
@@ -436,7 +437,7 @@ public final class CommandPanel {
                 String name = SHAPE_NAMES[j];
                 int ink = 0xff000000 | (picked ? GOLD : CREAM);
                 g.drawText(font, name, cx + (cw - font.getWidth(name) + 1) / 2, cy + CELL_H - 9, ink, true);
-                g.drawText(font, String.valueOf(j + 1), cx + 2, cy + 1, 0xcc000000 | (picked ? GOLD : CREAM), true);
+                g.drawText(font, String.valueOf(j + 1), cx + 2, cy + 1, 0x80000000 | (picked ? GOLD : CREAM), false); // the key number dim: the cell is clicked, the number a shortcut
                 record(CELL + j, cx, cy, cw, CELL_H);
             }
         }
@@ -645,6 +646,13 @@ public final class CommandPanel {
             var pills = CommandSelection.pills();
             int i = id - PILL;
             if (i < pills.size()) CommandSelection.select(pills.get(i).id(), shift);
+            return true;
+        }
+        // the battle HUD's group column: a card's formation opens the tray for its group, any other part of a card or chip selects it
+        String[] col = BattleHud.columnAt(x, y);
+        if (col != null) {
+            if (col[0].equals("form")) CommandSelection.openTrayFor(col[1], shift);
+            else CommandSelection.select(col[1], shift);
             return true;
         }
         String group = troopAt(x, y);

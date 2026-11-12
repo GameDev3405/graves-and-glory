@@ -63,6 +63,14 @@ abstract class PanelInputMixin {
         client.player.changeLookDirection((nx - x) * k, (ny - y) * k * invert);
     }
 
+    /** The wheel while the Formation order is aimed steps its shape (CommandSelection.cycleShape) and never turns the hotbar; down is the next
+     *  shape, up the one before. Any other time the wheel is the game's. */
+    @Inject(method = "onMouseScroll", at = @At("HEAD"), cancellable = true)
+    private void graves$aimWheel(long window, double horizontal, double vertical, CallbackInfo ci) {
+        if (window != client.getWindow().getHandle() || client.currentScreen != null || vertical == 0) return;
+        if (CommandSelection.cycleShape(vertical < 0 ? 1 : -1)) ci.cancel();
+    }
+
     @Inject(method = "lockCursor", at = @At("HEAD"), cancellable = true)
     private void graves$panelKeepsCursor(CallbackInfo ci) {
         if (CommandPanel.capturing()) ci.cancel();
