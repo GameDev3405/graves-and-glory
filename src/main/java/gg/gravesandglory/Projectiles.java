@@ -195,8 +195,8 @@ public final class Projectiles {
         return variant;
     }
     /**
-     * Bow-draw fix Plan B (R110), cosmetic only, also for a crossbow (Tactics.announcesAhead): on the beat before a bow troop's shot (Tactics.tick calls it when the next beat, ahead ticks
-     * from now, reaches nextAttack), the attack_v1 loose will send, sent now. loose stamps its swing impactTicks before the tick the shot
+     * Bow-draw fix Plan B (R110), cosmetic only, also for a crossbow (Tactics.announcesAhead): before a troop's shot (Tactics.tick calls it on each beat from
+     * Tactics.drawLead ticks ahead, 30 for a bow and 10 for the rest, until the shot's beat; ahead is the ticks from now to that beat, Tactics.shotAhead), the attack_v1 loose will send, sent now. loose stamps its swing impactTicks before the tick the shot
      * leaves; ahead ticks from now that is now + ahead - impactTicks, the same startTick and, for the same arc, the same variant, so the
      * client starts the clip now (the draw plays before the loose) and drops loose's copy as the event it already has (MotionEngine.events).
      * Nothing else changes: no projectile, no cooldown, no catchVariant or swingTick (loose still sets those when the shot leaves). If the

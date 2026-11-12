@@ -160,8 +160,8 @@ final class AttackController extends AnimationController<GeoTroop> {
             double t = raw;
             if (hold > 0 && raw > full)
                 t = raw < held + hold ? full + (raw - full) * (held - full) / (held - full + hold) : raw - hold;
-            // A swing first heard of a tick or more after it began (a bow's draw is announced one beat, 10 ticks, ahead of a loose its
-            // clip reaches 16 or more ticks after it starts) plays its whole wind-up, quickened, from when it arrived up to its full
+            // A swing first heard of a tick or more after it began (a crossbow's or thrower's draw is announced one beat, 10 ticks, ahead of a shot
+            // its clip reaches 16 or more ticks after it starts; a bow's is announced Tactics.drawLead, 30, ahead, so it is late only when caught up) plays its whole wind-up, quickened, from when it arrived up to its full
             // draw (a melee swing: its impact), so the loose or the blow still lands on the server's tick.
             double late = a.startTick() == seenStart ? seenAt - seenStart - lead : 0;
             double until = hold > 0 ? full : impact(clip);

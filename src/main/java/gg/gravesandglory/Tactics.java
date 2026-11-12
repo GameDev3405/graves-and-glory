@@ -945,7 +945,7 @@ final class Tactics {
     }
     /** Late shots lost (looseLate) since the server started. */
     static int looseLost;
-    /** Whether a troop's shot is announced a beat early (Projectiles.drawAhead), so its clip's wind-up plays before the loose instead of fading in late: a bow's, a crossbow's, a thrower's or a bolt-shooting caster's (the Seer's; Kort 2026-11-06). The mage's mend is announced in Abilities.mend on its own cooldown; the blight and mist spells make no attack event (cosmetic). */
+    /** Whether a troop's shot is announced early (Projectiles.drawAhead; a bow's drawLead, 30 ticks, ahead, any other's one beat), so its clip's wind-up plays before the loose instead of fading in late: a bow's, a crossbow's, a thrower's or a bolt-shooting caster's (the Seer's; Kort 2026-11-06). The mage's mend is announced in Abilities.mend on its own cooldown; the blight and mist spells make no attack event (cosmetic). */
     static boolean announcesAhead(GravesAndGlory.Unit u){if(u.spec.magic())return u.spec.ranged()&&"caster".equals(u.spec.family())&&Abilities.shoots(u);return u.spec.ranged()&&("bow".equals(u.spec.family())||"crossbow".equals(u.spec.family())||"thrower".equals(u.spec.family()));}
     /** How many ticks before its shot's beat a troop's shot is announced (drawAhead): a bow's whole draw, its longest impactTicks rounded up to the 10-tick
      *  beat (22 ticks: 3 beats, Kort 2026-11-11), since its clip starts impactTicks + hold - loose (at most impactTicks) before that beat; any other troop's one beat. */
