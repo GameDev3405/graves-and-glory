@@ -45,7 +45,7 @@ Timings live in `sheets/design.json` (`ending` sheet: `resultSeconds` 6, `podium
 
 ```
 score = 10 x enemy troops killed by your army
-      + 30 x enemy commanders you downed yourself
+      + 30 x enemy commanders your army downed (your blows, your shots or your troops)
       +  1 x objective seconds
       + survival bonus = round(100 x kept / (kept + lost)), 0 when the army fielded nothing
 ```
@@ -62,7 +62,7 @@ score = 10 x enemy troops killed by your army
 
 | Group | Stat | Source |
 |---|---|---|
-| Commander | Kills (enemy troops and commanders by your own blows and shots) | **New** `commanderKills`, `commanderDowns` split at the kill credit in `GravesAndGlory` 177-178 |
+| Commander | Kills (enemy troops by your own blows and shots) | **New** `commanderKills` at the kill credit in `GravesAndGlory` 177-178; enemy commanders downed by your army: **new** `commanderDowns` in `allowCommanderDeath` |
 | | Deaths (times you fell and respawned) | **New** `deaths`, at `respawns.put` (1330) |
 | | K/D | Derived; deaths 0 shows kills as is ("12 / 0") |
 | | Damage dealt (by you, to enemy troops and commanders) | **New** `damageDealt`, at the commander's hit path (GearCombat / player attack) |
