@@ -269,6 +269,7 @@ public final class BattleMathCheck {
         check(Math.abs(BattleMath.yawToward(1,0) + 90) < 1e-4 && Math.abs(BattleMath.yawToward(-1,0) - 90) < 1e-4 && Math.abs(BattleMath.yawToward(0,1)) < 1e-4, "yaw: +x is -90 (Dawn's facing), -x 90, +z 0");
         check(Math.abs(BattleMath.yawGap(170,-170) - 20) < 1e-9 && Math.abs(BattleMath.yawGap(-90,90) - 180) < 1e-9, "yaw gap wraps round");
         check("ranged".equals(BattleMath.guardGroup(8,4,0,2,0)) && "infantry".equals(BattleMath.guardGroup(3,3,0,0,0)) && BattleMath.guardGroup(10,1,0,0,0) == null, "the guard is the army's smallest fighting group; a one-group army has none to spare");
+        check(BattleMath.guardGroup(10,0,0,3,0) == null && BattleMath.guardGroup(10,1,0,0,2) == null && BattleMath.guardGroup(10,0,0,3,2) == null, "support and siege are not a guard group: one fighting group plus healers or rams stays one group (C02-F2)");
         check(BattleMath.musterGo(3,3,0,200) && !BattleMath.musterGo(2,3,100,200) && BattleMath.musterGo(1,3,200,200), "refills move up once three gathered or the wait is over");
         check(BattleMath.laneTarget(0,0,5) == 0 && BattleMath.laneTarget(1,0,5) == 1 && BattleMath.laneTarget(2,0,5) == 2
             && BattleMath.laneTarget(0,1,5) == 4 && BattleMath.laneTarget(1,1,5) == 3 && BattleMath.laneTarget(2,1,5) == 2

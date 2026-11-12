@@ -724,7 +724,7 @@ public final class BattleMath {
     /** The group a bot army leaves to guard a point it took: the smallest of its infantry, ranged and cavalry groups with at least 2 living troops
      *  (infantry first on a tie, then ranged), so the bulk of the army moves on; null when the army has fewer than two groups of 2 or more (it is one group: all of it stays or goes). */
     public static String guardGroup(int infantry, int ranged, int cavalry, int support, int siege) {
-        int groups = (infantry >= 2 ? 1 : 0) + (ranged >= 2 ? 1 : 0) + (cavalry >= 2 ? 1 : 0) + (support >= 2 ? 1 : 0) + (siege >= 2 ? 1 : 0);
+        int groups = (infantry >= 2 ? 1 : 0) + (ranged >= 2 ? 1 : 0) + (cavalry >= 2 ? 1 : 0); // support and siege go with the army, never a group of their own (C02-F2, Kort 2026-11-12)
         if (groups < 2) return null;
         String best = null; int size = Integer.MAX_VALUE;
         String[] ids = {"infantry", "ranged", "cavalry"}; int[] n = {infantry, ranged, cavalry};
