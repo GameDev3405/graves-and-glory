@@ -159,6 +159,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // wipes the queued tasks (the Task 3 re-review's race). The flag waits for the first client tick without a world, and the
         // next join clears them as well; no HUD frame runs without a world to clear them before the next one.
         ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{CommandPanel.disconnected(client);if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);EndingClient.forget(client);CampaignClient.forget();MusicDirector.reset(client);TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientTickEvents.END_CLIENT_TICK.register(GravesAndGloryClient::ebbCasters);
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(!toolbarFreed&&client.options!=null){toolbarFreed=true;freeToolbarKeys(client,toolbarFlag());KeyMigration.run(client);} // the old G / V command keys move to Z / C once (KeyMigration)
             if(hudResetPending&&client.world==null)resetHud();
@@ -364,10 +365,32 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         var t=Commander.tuning(id);var r=Commander.relic(id);if(t==null||r==null||ready<0)return null;
         boolean on=running>0;int left=on?running:ready;return new int[]{left,Math.max(left,on?t.durationTicks():r.cooldownTicks())};
     }
+    /** The ebb battle's magic troops by network id, gathered once a second on the client tick, so the screen cue does not walk every entity each frame. */
+    static int[] ebbCasterIds=new int[0];
+    static void ebbCasters(MinecraftClient c){
+        var row=battleActive()&&c.world!=null?CampaignClient.marchRow():null;
+        if(row==null||!row.ebb()){ebbCasterIds=new int[0];return;}
+        if(c.world.getTime()%20!=0&&ebbCasterIds.length>0)return;
+        var ids=new java.util.ArrayList<Integer>();for(var e:c.world.getEntities()){var t=TroopModels.troopOf(e);if(t!=null&&t.magic())ids.add(e.getId());}
+        ebbCasterIds=ids.stream().mapToInt(Integer::intValue).toArray();
+    }
+    /** The glimpur ebb's screen cue (Kort, 2026-11-11): while a caster near the player gutters, the view dims cold, darkest at the top and bottom. */
+    static float ebbScreenAlpha;
+    static void ebbScreen(DrawContext g,MinecraftClient c){
+        ebbScreenAlpha=0f;if(ebbCasterIds.length==0||c.world==null)return;
+        var eye=c.gameRenderer.getCamera().getPos();long time=c.world.getTime();
+        for(int id:ebbCasterIds){var e=c.world.getEntityById(id);if(e==null||!e.isAlive())continue;double d=e.getPos().distanceTo(eye);
+            if(d<MarchMath.Ebb.SCREEN_RANGE)ebbScreenAlpha=Math.max(ebbScreenAlpha,MarchMath.Ebb.screen(MarchMath.Ebb.fade(true,id,time),d));}
+        if(ebbScreenAlpha<=0f)return;
+        int w=c.getWindow().getScaledWidth(),h=c.getWindow().getScaledHeight(),a=Math.round(ebbScreenAlpha*255),edge=Math.min(255,Math.round(a*1.8f)),tint=0x1A1626;
+        g.fill(0,0,w,h,a<<24|tint);
+        g.fillGradient(0,0,w,h/4,edge<<24|tint,tint);g.fillGradient(0,h-h/4,w,h,tint,edge<<24|tint);
+    }
     /** The HUD: the camp line in camp, the entrance letterbox during a battle's entrance, else the Iron Ledger (BattleHud), with the
-     *  contact accent over it. */
+     *  contact accent over it; the ebb screen cue under all of it. */
     static void renderHud(DrawContext g,float delta){
         var c=MinecraftClient.getInstance();if(c.player==null||c.currentScreen instanceof ArmyScreen||Diagnostics.active()&&Diagnostics.hideHud()){BattleHud.clear();return;}
+        ebbScreen(g,c);
         boolean ledger=battleActive()&&!CampaignClient.cinematic();
         if(ledger)BattleHud.render(g,delta);else BattleHud.clear();
         if(!battleActive())campSlips(g);else{campRectsDrawn.clear();campRowsDrawn.clear();}

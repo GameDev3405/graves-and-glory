@@ -230,7 +230,8 @@ final class Abilities {
         if (u.spellCenter == null) return;
         if (time < u.stunnedUntil) { u.spellCenter = null; return; } // a stunned caster cannot land a spell it began before the stun
         double radius = row.radius() > 0 ? row.radius() : D.spellRadius();
-        for (int i = 0; i < 12; i++) { double angle = i * Math.PI / 6; b.world.spawnParticles(ParticleTypes.WITCH, u.spellCenter.x + Math.cos(angle) * radius, u.spellCenter.y + .2, u.spellCenter.z + Math.sin(angle) * radius, 1, 0, 0, 0, 0); }
+        boolean gutter = BattleEffects.ebbFade(b, u) > 0f; // the glimpur ebb: a guttering caster's ring sputters and thins to every other mark
+        if (!BattleEffects.ebbSkips(b, u)) for (int i = 0; i < 12; i += gutter ? 2 : 1) { double angle = i * Math.PI / 6; b.world.spawnParticles(ParticleTypes.WITCH, u.spellCenter.x + Math.cos(angle) * radius, u.spellCenter.y + .2, u.spellCenter.z + Math.sin(angle) * radius, 1, 0, 0, 0, 0); }
         if (time < u.windupUntil) return;
         if (u.spec.magic()) Audio.at(b, AudioCues.Cue.MAGIC_IMPACT, u.spellCenter, "m" + u.mob.getId()); // the burst lands as magic even on empty ground; the hits below share its key, so it sounds once
         float base = (float) ((row.amount() > 0 ? row.amount() : u.spec.damage()) * b.campaign.damage(u));

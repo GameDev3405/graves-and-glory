@@ -195,6 +195,24 @@ public final class MarchMathCheck {
         check(dimmed > 24000 * 0.03 && dimmed < 24000 * 0.15, "ebb: dim now and then, not most of the time (" + dimmed + " of 24000 ticks)");
         check(!syncedAll, "ebb: two casters do not flicker in step");
         check(MarchMath.Ebb.LOW > 0f && MarchMath.Ebb.LOW < 0.5f, "ebb: a dimmed glow fades, it never goes fully dark");
+        // readable everywhere (Kort, 2026-11-11, "fix it all to be more aware of the flicker"): fade, sputter, ash and the screen cue
+        for (long t = 0; t < 4000; t++) {
+            float g = MarchMath.Ebb.glow(true, 41, t), f = MarchMath.Ebb.fade(true, 41, t);
+            check(Math.abs(f - (1f - g) / (1f - MarchMath.Ebb.LOW)) < 1e-5f && f >= 0f && f <= 1f, "ebb: fade is 0 at full glow, 1 at LOW, at tick " + t);
+            check(MarchMath.Ebb.fade(false, 41, t) == 0f && !MarchMath.Ebb.sputter(false, 41, t), "ebb: no flag, no fade, no sputter");
+            int in = MarchMath.Ebb.into(true, 41, t);
+            check(MarchMath.Ebb.sputter(true, 41, t) == (in >= 0 && in < 12 && g == MarchMath.Ebb.LOW), "ebb: sputter marks the dark beats of the opening stutter only, at tick " + t);
+        }
+        check(MarchMath.Ebb.ash(0x3366CC, 0f) == 0x3366CC && MarchMath.Ebb.ash(0x3366CC, 1f) == MarchMath.Ebb.ASH && MarchMath.Ebb.ash(0xFFFFFF, .5f) != 0xFFFFFF, "ebb: ash greys a glimpur colour by the fade");
+        check(MarchMath.Ebb.screen(1f, 0) == MarchMath.Ebb.SCREEN_MAX && MarchMath.Ebb.screen(1f, MarchMath.Ebb.SCREEN_RANGE) == 0f && MarchMath.Ebb.screen(0f, 2) == 0f, "ebb: the screen cue is strongest beside a guttering caster, gone at range or without a fade");
+        check(MarchMath.Ebb.screen(1f, 8) > MarchMath.Ebb.screen(1f, 14) && MarchMath.Ebb.screen(.5f, 8) < MarchMath.Ebb.screen(1f, 8), "ebb: the screen cue falls off with distance and fade");
+        check(MarchMath.Ebb.screen(1f, MarchMath.Ebb.SCREEN_FULL) == MarchMath.Ebb.SCREEN_MAX && MarchMath.Ebb.SCREEN_RANGE <= 20f, "ebb: full strength beside the caster; only a nearby caster dims the view");
+        for (long w = 0; w < 4000; w += MarchMath.Ebb.PERIOD) { // each flicker opens with six dark beats, then the steady low
+            int dark = 0, inWindow = 0;
+            for (long t = w; t < w + MarchMath.Ebb.PERIOD; t++) { if (MarchMath.Ebb.sputter(true, 41, t)) dark++; if (MarchMath.Ebb.into(true, 41, t) >= 0) inWindow++; }
+            check(dark == 6 && inWindow == MarchMath.Ebb.LENGTH, "ebb: six dark beats in each flicker (" + dark + ")");
+        }
+        check(MarchMath.Ebb.ash(0xFF0000, 1f) == MarchMath.Ebb.ASH && MarchMath.Ebb.ash(0x00FF00, 0f) == 0x00FF00 && MarchMath.Ebb.ash(0x000000, .5f) == 0x2D2B30, "ebb: ash lands on the spent grey and leaves a full-strength colour untouched");
         // seat size (plan 2C.6): a March battle seats its row's size per team, practice seats one, and nothing leaves the six-seat lobby
         check(MarchMath.seatSize(null) == 1, "seatSize: practice (no row) is one a side");
         for (var r : ROWS) check(MarchMath.seatSize(r) == Math.max(1, Math.min(3, r.size())), "seatSize: " + r.id() + " follows its row's size within 1 to 3");

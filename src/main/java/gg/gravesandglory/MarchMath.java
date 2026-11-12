@@ -232,6 +232,23 @@ public final class MarchMath {
 
         /** Whether the caster's flicker begins on this tick: the server plays the faint sound once then. */
         static boolean starts(boolean ebb, int entity, long time) { return into(ebb, entity, time) == 0; }
+
+        /** How deep the caster is in its flicker: 0 at full glow, 1 at LOW. Every glimpur visual (glow, bolts, casts, impacts) scales by it. */
+        static float fade(boolean ebb, int entity, long time) { return (1f - glow(ebb, entity, time)) / (1f - LOW); }
+
+        /** The dark beats of the opening stutter: glimpur particles skip these ticks, so a bolt in flight sputters with its caster. */
+        static boolean sputter(boolean ebb, int entity, long time) { int in = into(ebb, entity, time); return in >= 0 && in < 12 && glow(ebb, entity, time) == LOW; }
+
+        /** Spent glimpur: a cold grey that a bolt's or impact's colour greys toward as the fade deepens. */
+        static final int ASH = 0x5A5560;
+        static int ash(int rgb, float fade) {
+            int r = Math.round((rgb >> 16 & 255) + ((ASH >> 16 & 255) - (rgb >> 16 & 255)) * fade), g = Math.round((rgb >> 8 & 255) + ((ASH >> 8 & 255) - (rgb >> 8 & 255)) * fade), b = Math.round((rgb & 255) + ((ASH & 255) - (rgb & 255)) * fade);
+            return r << 16 | g << 8 | b;
+        }
+
+        /** The screen cue: a cold dimming of the view while a caster within SCREEN_RANGE blocks gutters, strongest beside it (an alpha, 0 to SCREEN_MAX). */
+        static final float SCREEN_MAX = 0.32f, SCREEN_RANGE = 16f, SCREEN_FULL = 5f;
+        static float screen(float fade, double distance) { return fade <= 0f || distance >= SCREEN_RANGE ? 0f : SCREEN_MAX * fade * (float) (1 - Math.max(0, distance - SCREEN_FULL) / (SCREEN_RANGE - SCREEN_FULL)); }
     }
 
     /**

@@ -16,7 +16,7 @@ final class EbbShotChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatc
     record Pending(String name, int entity, boolean wantDim) {}
     final ConcurrentLinkedQueue<Pending> queue = new ConcurrentLinkedQueue<>();
     volatile UUID player; volatile boolean done; boolean armed;
-    int which, stage, delay; long at, window, cooldown; String savedProfile; GravesAndGlory.Unit caster; boolean boltEbb, boltNormal;
+    int which, stage, delay; long at, window, cooldown, forceAt = -1; net.minecraft.entity.LivingEntity forceTarget; String savedProfile; GravesAndGlory.Unit caster; boolean boltEbb, boltNormal;
 
     public int limit() { return 40000; }
     public void cleanup(MinecraftClient c) {
@@ -27,7 +27,7 @@ final class EbbShotChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatc
     }
     public void step(MinecraftClient c, int tick) {
         if (tick == 20) { c.setScreen(null); player = c.player.getUuid(); }
-        if (tick > 20) c.options.hudHidden = true;
+        if (tick > 20) c.options.hudHidden = false; // the HUD stays: the ebb screen cue draws there
         if (delay > 0) { delay--; return; }
         if (!armed && queue.peek() != null) { armed = true; delay = 2; return; } // let the teleport land and render
         Pending s = queue.poll();
@@ -44,8 +44,9 @@ final class EbbShotChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatc
     }
 
     /** Puts the player 5 blocks out and 2.5 up from the point, looking at it. */
-    static void frame(ServerPlayerEntity p, Vec3d at, double side) {
-        double ox = 5 * Math.cos(side), oz = 5 * Math.sin(side);
+    static void frame(ServerPlayerEntity p, Vec3d at, double side) { frame(p, at, side, 5); }
+    static void frame(ServerPlayerEntity p, Vec3d at, double side, double out) {
+        double ox = out * Math.cos(side), oz = out * Math.sin(side);
         Vec3d eye = at.add(ox, 2.5, oz);
         double dx = at.x - eye.x, dy = at.y + 0.8 - eye.y, dz = at.z - eye.z;
         float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)), pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
@@ -99,6 +100,27 @@ final class EbbShotChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatc
             case 3 -> { // a bolt in flight from a caster mid-flicker, and one from a caster outside a flicker
                 if (!b.running) { next(b, (boltEbb ? "" : "no bolt from a flickering caster; ") + (boltNormal ? "" : "no bolt outside a flicker; ") + "round ended"); return; }
                 if (b.time - at > 6000) { next(b, (boltEbb ? "" : "no bolt from a flickering caster; ") + (boltNormal ? "" : "no bolt outside a flicker") + " within 6000 ticks"); return; }
+                if (!boltEbb && forceAt < 0 && b.time - at > 400) { // no natural bolt mid-flicker yet: force one from a caster at the deepest point of its next flicker
+                    for (var u : b.units) {
+                        if (!u.spec.magic() || !u.mob.isAlive()) continue;
+                        for (var o : b.units) { double d = o.mob.distanceTo(u.mob); if (o.squad.team != u.squad.team && o.mob.isAlive() && d > 8 && d < 22) { forceTarget = o.mob; break; } }
+                        if (forceTarget == null) continue;
+                        caster = u;
+                        for (long t = wt + 20; t < wt + 20 + 2 * MarchMath.Ebb.PERIOD; t++) if (MarchMath.Ebb.starts(true, u.mob.getId(), t)) { forceAt = t + 13; break; }
+                        break;
+                    }
+                }
+                if (forceAt >= 0 && !boltEbb) {
+                    if (!caster.mob.isAlive() || !forceTarget.isAlive()) { forceAt = -1; forceTarget = null; return; }
+                    if (wt == forceAt) {
+                        Projectiles.fire(b, caster, forceTarget, "bolt", 0f); // visual only: amount 0 deals nothing
+                        Vec3d from = caster.mob.getPos(), along = forceTarget.getPos().subtract(from);
+                        frame(p, from.add(along.multiply(0.25)), Math.atan2(along.z, along.x) + Math.PI / 2, 8); // caster and the bolt's first stretch in frame
+                        queue.add(new Pending(id + "-bolt-during", caster.mob.getId(), true));
+                        boltEbb = true; cooldown = b.time + 30; forceAt = -1; forceTarget = null;
+                    }
+                    return;
+                }
                 if (b.time < cooldown) return;
                 for (var s : b.shots) {
                     if (!"bolt".equals(s.kind()) || s.shooter() == null || !s.shooter().spec.magic() || b.time - s.fired() != 1 || s.lands() - s.fired() < 8) continue;
@@ -107,14 +129,13 @@ final class EbbShotChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatc
                     // side-on to the caster-to-target line, a third of the way along it, so the bolt crosses the frame
                     Vec3d from = s.shooter().mob.getPos(), to = s.target() != null ? s.target().getPos() : from.add(s.shooter().mob.getRotationVector().multiply(8));
                     Vec3d along = to.subtract(from);
-                    Vec3d mid = from.add(along.multiply(0.35));
-                    frame(p, mid, Math.atan2(along.z, along.x) + Math.PI / 2);
+                    frame(p, from.add(along.multiply(0.25)), Math.atan2(along.z, along.x) + Math.PI / 2, 8);
                     cooldown = b.time + 30;
                     queue.add(new Pending(id + (dim ? "-bolt-during" : "-bolt-outside"), s.shooter().mob.getId(), dim));
                     if (dim) boltEbb = true; else boltNormal = true;
                     break;
                 }
-                if (boltEbb && boltNormal) next(b, null);
+                if (boltEbb && boltNormal && b.time >= cooldown) next(b, null); // the last shot is taken before the round is closed
             }
             default -> {}
         }

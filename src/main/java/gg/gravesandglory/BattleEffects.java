@@ -13,10 +13,12 @@ public final class BattleEffects {
     /** Harness counter: how many golem and ravager swings have sent entity status 4 (Abilities.animate). */
     public static int attackStatuses;
     /** An impact puff in the hitting team's colour, so a crowded melee shows who is landing blows. */
-    public static void flash(GravesAndGlory.Battle b,Vec3d at,int team){
-        int rgb=b.side(team).color();
-        b.world.spawnParticles(new DustParticleEffect(new Vector3f((rgb>>16&255)/255f,(rgb>>8&255)/255f,(rgb&255)/255f),1.4f),at.x,at.y,at.z,Spec.COMBATDISCIPLINE[0].impactParticles(),.25,.25,.25,0);
-        b.world.spawnParticles(ParticleTypes.CRIT,at.x,at.y,at.z,3,.2,.2,.2,.02);
+    public static void flash(GravesAndGlory.Battle b,Vec3d at,int team){flash(b,at,team,0f);}
+    /** The impact, faded by the shooter's flicker (0: full): a guttering caster's bolt lands as a small grey puff with no sparks. */
+    static void flash(GravesAndGlory.Battle b,Vec3d at,int team,float fade){
+        int rgb=MarchMath.Ebb.ash(b.side(team).color(),fade);int n=Math.max(1,Math.round(Spec.COMBATDISCIPLINE[0].impactParticles()*(1-.7f*fade)));
+        b.world.spawnParticles(new DustParticleEffect(new Vector3f((rgb>>16&255)/255f,(rgb>>8&255)/255f,(rgb&255)/255f),1.4f*(1-.5f*fade)),at.x,at.y,at.z,n,.25,.25,.25,0);
+        if(fade<.45f)b.world.spawnParticles(ParticleTypes.CRIT,at.x,at.y,at.z,3,.2,.2,.2,.02);
         flashes++;lastFlashColor=rgb;
     }
     /** How many flames one rise lights (a presentation number). */
@@ -77,6 +79,10 @@ public final class BattleEffects {
     /** The ebb row of the running campaign battle, if it sets ebb (brief N3). */
     static boolean ebb(GravesAndGlory.Battle b){var row=b.running?b.campaign.activeBattle:null;return row!=null&&row.ebb();}
     static boolean ebbing(GravesAndGlory.Battle b,GravesAndGlory.Unit u){return MarchMath.Ebb.glow(ebb(b),u.mob.getId(),b.world.getTime())<1f;}
+    /** How deep a magic troop is in its flicker now (0 for any other troop, or outside an ebb battle): its bolts, casts and impacts scale by it. */
+    static float ebbFade(GravesAndGlory.Battle b,GravesAndGlory.Unit u){return u!=null&&u.spec.magic()?MarchMath.Ebb.fade(ebb(b),u.mob.getId(),b.world.getTime()):0f;}
+    /** Whether a magic troop's glimpur particles skip this tick (the dark beats of its stutter). */
+    static boolean ebbSkips(GravesAndGlory.Battle b,GravesAndGlory.Unit u){return u!=null&&u.spec.magic()&&MarchMath.Ebb.sputter(ebb(b),u.mob.getId(),b.world.getTime());}
     /** Each tick of an ebb battle: a caster whose flicker starts gives a faint gutter, as a candle snuffed (presentation only). */
     static void flickers(GravesAndGlory.Battle b){
         if(!ebb(b))return;long t=b.world.getTime();
@@ -90,6 +96,8 @@ public final class BattleEffects {
             Audio.swing(b,u); // a blade's swish (AudioCues.SWORD_SWING); the landed blow has its own sound in Combat.resolve
         }else if(u.spec.magic()&&!ebbing(b,u)){ // mid-flicker in an ebb battle the caster's particles fade with its glow
             b.world.spawnParticles(u.squad.team==0?ParticleTypes.ENCHANT:ParticleTypes.SOUL,u.mob.getX(),u.mob.getY()+1.3,u.mob.getZ(),8,.4,.4,.4,.03);
+        }else if(u.spec.magic()&&!ebbSkips(b,u)){ // guttering: the cast coughs out a little spent smoke instead of its glimpur
+            b.world.spawnParticles(ParticleTypes.SMOKE,u.mob.getX(),u.mob.getY()+1.3,u.mob.getZ(),3,.25,.25,.25,.01);
         }
     }
 }

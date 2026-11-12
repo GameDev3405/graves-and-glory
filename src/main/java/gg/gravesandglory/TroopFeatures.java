@@ -74,7 +74,10 @@ final class TroopFeatures {
         @Override public void render(MatrixStack m,VertexConsumerProvider v,int light,T e,float limbAngle,float limbDistance,float tickDelta,float age,float headYaw,float headPitch){
             var l=r.look;if(l==null||e.isInvisible())return;Identifier glow=TroopModels.glow(l,r.far);if(glow==null)return;
             TroopModel<T> model=getContextModel();model.pass=BodyCache.ARMOUR;float g=l.troop().magic()?CampaignClient.ebbGlow(e):1f; // the glimpur ebb dims a caster's glow now and then
-            try{model.render(m,v.getBuffer(RenderLayer.getEyes(glow)),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,g,g,g,1f);}finally{model.pass=BodyCache.BODY;}
+            try{model.render(m,v.getBuffer(RenderLayer.getEyes(glow)),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,g,g,g,1f);
+                float f=g<1f?CampaignClient.ebbFade(e):0f; // guttering: the sigil goes dark, not just less bright, so the dim reads in daylight
+                if(f>0f)model.render(m,v.getBuffer(RenderLayer.getEntityTranslucent(glow)),light,OverlayTexture.DEFAULT_UV,CampaignClient.SPENT_R,CampaignClient.SPENT_G,CampaignClient.SPENT_B,CampaignClient.SPENT_ALPHA*f);
+            }finally{model.pass=BodyCache.BODY;}
         }
     }
 
@@ -95,7 +98,8 @@ final class TroopFeatures {
             m.push();for(ModelPart p:path)p.rotate(m);w.grip(m);
             int quads=mesh.render(m.peek(),v.getBuffer(RenderLayer.getEntityCutout(w.texture())),light,LivingEntityRenderer.getOverlay(e,0f),1f,1f,1f,1f,limit);
             // the glow pass draws the same mesh again through the eyes layer: weaponQuads counts the mesh once, weaponGlowDraws the extra passes
-            if(w.glow()!=null){float g=r.look.troop().magic()?CampaignClient.ebbGlow(e):1f;mesh.render(m.peek(),v.getBuffer(RenderLayer.getEyes(w.glow())),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,g,g,g,1f,limit);weaponGlowDraws++;}
+            if(w.glow()!=null){float g=r.look.troop().magic()?CampaignClient.ebbGlow(e):1f;mesh.render(m.peek(),v.getBuffer(RenderLayer.getEyes(w.glow())),FULL_BRIGHT,OverlayTexture.DEFAULT_UV,g,g,g,1f,limit);weaponGlowDraws++;
+                if(g<1f)mesh.render(m.peek(),v.getBuffer(RenderLayer.getEntityTranslucent(w.glow())),light,OverlayTexture.DEFAULT_UV,CampaignClient.SPENT_R,CampaignClient.SPENT_G,CampaignClient.SPENT_B,CampaignClient.SPENT_ALPHA*CampaignClient.ebbFade(e),limit);} // the staff's glimpur goes dark too
             m.pop();r.weaponDrawn=true;r.weaponId=w.id();r.weaponFrame=frame;r.weaponFar=far;r.weaponQuads=quads;
         }
     }

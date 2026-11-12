@@ -301,9 +301,12 @@ public final class Projectiles {
                 s.visual.setVelocity(v);s.visual.velocityModified=true;
             }else{
                 double t=Math.min(1,(b.time-s.fired)/(double)Math.max(1,s.lands-s.fired));Vec3d p=s.from.lerp(to,t);
-                int rgb=b.side(s.squad.team).color();
-                b.world.spawnParticles(new DustParticleEffect(new Vector3f((rgb>>16&255)/255f,(rgb>>8&255)/255f,(rgb&255)/255f),1.4f),p.x,p.y,p.z,2,.04,.04,.04,0);
-                b.world.spawnParticles(s.squad.team==1?ParticleTypes.WITCH:ParticleTypes.ENCHANT,p.x,p.y,p.z,1,.05,.05,.05,0);
+                // the glimpur ebb: a bolt sputters (skips the dark beats) and greys and shrinks with its caster's flicker
+                if(BattleEffects.ebbSkips(b,s.shooter))continue;
+                float fade=BattleEffects.ebbFade(b,s.shooter);int rgb=MarchMath.Ebb.ash(b.side(s.squad.team).color(),fade);
+                b.world.spawnParticles(new DustParticleEffect(new Vector3f((rgb>>16&255)/255f,(rgb>>8&255)/255f,(rgb&255)/255f),1.4f*(1-.55f*fade)),p.x,p.y,p.z,fade>0?1:2,.04,.04,.04,0);
+                if(fade<.45f)b.world.spawnParticles(s.squad.team==1?ParticleTypes.WITCH:ParticleTypes.ENCHANT,p.x,p.y,p.z,1,.05,.05,.05,0);
+                else b.world.spawnParticles(ParticleTypes.SMOKE,p.x,p.y,p.z,1,.03,.03,.03,0); // a guttering bolt trails spent smoke
             }
         }
     }
@@ -333,7 +336,7 @@ public final class Projectiles {
             case "bolt"->{
                 // A bolt with a target and an amount is a damaging magic shot; the blight cast's bolt has neither and stays a visual that arrives with the burst.
                 if(s.target!=null&&s.amount>0)Combat.resolve(b,s.shooter,s.target,s.amount,"bolt",false,at.y);
-                BattleEffects.flash(b,at,s.squad.team);
+                BattleEffects.flash(b,at,s.squad.team,BattleEffects.ebbFade(b,s.shooter));
             }
             case "mend"->{s.target.heal(s.amount);b.world.spawnParticles(ParticleTypes.HEART,s.target.getX(),s.target.getY()+2,s.target.getZ(),3,.3,.2,.3,0);}
             default->BattleEffects.flash(b,at,s.squad.team);
