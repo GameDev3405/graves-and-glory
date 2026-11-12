@@ -136,8 +136,8 @@ def mix(r, table):
 STREET = [('cobblestone', 50), ('stone', 20), ('andesite', 18), ('gravel', 7), ('mossy_cobblestone', 5)]
 QUAY = [('stone_bricks', 35), ('cobblestone', 30), ('andesite', 15), ('mossy_cobblestone', 12), ('cracked_stone_bricks', 8)]
 PLAZA = [('cobblestone', 45), ('stone', 20), ('andesite', 20), ('stone_bricks', 10), ('mossy_cobblestone', 5)]
-FORD = [('cobblestone', 35), ('gravel', 30), ('coarse_dirt', 20), ('dirt_path', 15)]
-LANE = [('dirt_path', 60), ('gravel', 20), ('coarse_dirt', 20)]
+FORD = [('cobblestone', 40), ('gravel', 30), ('coarse_dirt', 18), ('packed_mud', 12)]
+LANE = [('dirt_path', 90), ('coarse_dirt', 10)]
 YARD = [('coarse_dirt', 40), ('gravel', 25), ('cobblestone', 20), ('packed_mud', 15)]
 MASON = [('stone_bricks', 70), ('cracked_stone_bricks', 14), ('mossy_stone_bricks', 10), ('andesite', 6)]
 FLOWERS = ('oxeye_daisy', 'cornflower', 'poppy', 'dandelion', 'azure_bluet', 'allium')
@@ -148,6 +148,7 @@ def ring(x, z, r1):
     for px, pz in POINTS.values():
         dd = math.hypot(x - px, z - pz)
         if 15.0 <= dd < 17.0: return 'smooth_stone' if dd < 16 else ('polished_andesite' if (x + z) % 5 else 'chiseled_stone_bricks')
+        if 23.0 <= dd < 24.0 and (px, pz) == (0, 0): return 'polished_andesite' if (x + z) % 7 else 'chiseled_stone_bricks'
         if dd < 3.3 or (dd < 6.5 and (x == px or z == pz)): return 'chiseled_stone_bricks' if dd < 1 else ('smooth_stone' if dd >= 3.3 else 'polished_andesite')
     return None
 
@@ -178,7 +179,8 @@ def column(x, z):
     edge = any(wet(ax + i, az + j) for i in (-1, 0, 1) for j in (-1, 0, 1))
     under = 'mason' if (edge and ax <= 113) else ('stone' if k in ('isle', 'plaza', 'quay', 'street') else 'dirt')
     if k in ('isle', 'plaza'):
-        return 64, ring(x, z, r1) or mix(r1, PLAZA), under, top
+        kerb = 'stone_bricks' if x in (-6, 5) and r1 < 0.85 else None          # the bridge street's kerb lines, A to C
+        return 64, ring(x, z, r1) or kerb or mix(r1, PLAZA), under, top
     if k == 'quay': return 64, mix(r1, QUAY), under, top
     if k == 'street': return 64, mix(r1, STREET), under, top
     if k == 'ford': return 64, mix(r1, FORD), under, top
@@ -436,7 +438,7 @@ class Map:
                         j = hash01(SEED, ax, az, 51)
                         if j > 0.12: self.plant('apple', ax + (3 if (az // 7) % 2 else 0) + int(j * 3) - 1, az + int(j * 7) % 3 - 1, sx, sz, (ax + az) % 4)
                 for ax, az in ((42, 120), (80, 118), (30, 121), (14, 120), (70, 54), (80, 50), (76, 60), (64, 58), (92, 60), (96, 44), (90, 36)): self.plant('apple', ax, az, sx, sz, ax % 4)
-                for ax, az, name in ((126, 22, 'oak_medium'), (150, 28, 'oak_medium'), (168, 31, 'oak_small'), (140, 30, 'birch_pair'), (121, 31, 'oak_small'), (260, 20, 'oak_medium'),
+                for ax, az, name in ((126, 22, 'oak_medium'), (150, 30, 'oak_medium'), (140, 30, 'birch_pair'), (121, 31, 'oak_small'), (260, 20, 'oak_medium'),
                                      (100, 110, 'oak_great') if False else (93, 112, 'oak_medium'), (70, 140, 'oak_great'), (20, 142, 'birch_pair'), (46, 160, 'oak_medium'), (110, 146, 'oak_great'), (150, 150, 'oak_medium'), (12, 166, 'oak_small'), (84, 168, 'birch_tall'), (120, 170, 'oak_small'), (160, 136, 'birch_pair'), (8, 136, 'oak_medium'), (110, 60, 'oak_small'), (160, 110, 'oak_small')):
                     self.plant(name, ax, az, sx, sz, (ax + az) % 4)
 

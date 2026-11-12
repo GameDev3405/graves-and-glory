@@ -66,6 +66,10 @@ def house(w, d, floors=2, style='slate', ridge=None, shop=False, arch=False, hoi
                 for s in (-1, 1):
                     if x + s not in wx: b.set(x + s, y0 + 1, fz + 1, '%s_trapdoor[facing=south,half=top,open=true]' % st['trim'])
             b.set(w // 2, y0 + 1, 0, 'air')
+        zs = d // 2 if (d // 2) % 4 else d // 2 + 1               # a side window on each floor (hidden where houses share a wall)
+        for x in (0, w - 1):
+            if k: b.set(x, y0 + 1, zs, 'air')
+            elif not hoist and not (arch and x == w - 1): b.set(x, y0 + 1, zs, 'iron_bars[north=true,south=true]')
         top = y0 + 3
     # arch passage through the ground floor
     if arch:
