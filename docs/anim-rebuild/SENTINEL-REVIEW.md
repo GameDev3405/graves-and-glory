@@ -122,7 +122,14 @@ weapon_in_body (above).
 - `art/anim/sentinel/out/` is not regenerated: a full build of this troop ran over 80 minutes on this machine without
   finishing (an earlier one ran out of memory). The changed clips were rebuilt with the builder (part builds) and merged
   over the committed exported asset, then `soft_layers.py` ran. Re-running export.py from the stale out/ would drop the
-  builder changes: rebuild out/ before any re-export.
+  builder changes: rebuild out/ before any re-export. Fixed 2026-11-12: see "Build recipe" below.
+
+## Build recipe (2026-11-12)
+
+`GG_ANIM_TROOP=sentinel python art/anim/knight/rebuild_out.py` then `python art/anim/common/export.py sentinel` (about 4-15 min).
+It writes out/ whole: the builder's 40 clips, the 12 deaths spliced unchanged from 8cb35120 (the builder no longer reproduces
+them), then stances, reactions, charge, reactions (hit_pulled) and soft_layers.py. Checked 2026-11-12: out/ equals the shipped
+asset byte for byte and the export leaves it unchanged. Never run stances/reactions/soft_layers on the asset by hand again.
 
 ## Test results
 
