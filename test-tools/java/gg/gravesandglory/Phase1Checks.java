@@ -2296,8 +2296,8 @@ public final class Phase1Checks implements ClientModInitializer {
                 // p1-ui-alt-layer (UI Task 8c): at Compact the hint slip hangs in the round's first 15 s (the layer's last 2 s checked
                 // too), is gone a second after them and comes back while the hints key is held; the hint layer makes no card tall, the
                 // selection does (the army's three chips, then ranged's card between two chips)
-                case 14->{
-                    if(tick>=seen+2&&!CommandMode.active()){long now=net.minecraft.util.Util.getMeasuringTimeMs();tallFirst=talls();slipFirst=BattleHud.rects().containsKey("hints");inFirst=now-BattleHud.roundShownMs<BattleHud.hintLayerMs();
+                case 14->{ // the slip hides while the pennant panel slides shut (300 ms) and during the entrance cinematic, so wait them out
+                    if(tick>=seen+2&&!CommandMode.active()&&CommandPanel.slide()<=0&&GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()){long now=net.minecraft.util.Util.getMeasuringTimeMs();tallFirst=talls();slipFirst=BattleHud.rects().containsKey("hints");inFirst=now-BattleHud.roundShownMs<BattleHud.hintLayerMs();
                         BattleHud.roundShownMs=now-(BattleHud.hintLayerMs()-2000);seen=tick;stage=25;}
                 }
                 case 25->{if(tick>=seen+2){slipLast=BattleHud.rects().containsKey("hints");CommandMode.selected="ranged";BattleHud.roundShownMs=net.minecraft.util.Util.getMeasuringTimeMs()-(BattleHud.hintLayerMs()+1000);seen=tick;stage=15;}}
