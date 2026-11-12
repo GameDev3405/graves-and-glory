@@ -282,6 +282,22 @@ public final class BattleMathCheck {
         check(BattleMath.raiseShield("hold", false, 50, 4, true) && !BattleMath.raiseShield("hold", false, 3, 4, true), "hold: up, down to strike in reach");
         check(BattleMath.raiseShield("move", true, 400, 4, true) && !BattleMath.raiseShield("move", false, 400, 4, true), "moving: up only under fire");
         check(BattleMath.raiseShield("attack", true, 400, 4, false) && !BattleMath.raiseShield("attack", true, 400, 4, true), "attack: up under fire only until it has an enemy to close on, then down to run in (Kort 2026-11-11)");
+        // An archer's arrow (Projectiles.scatter, strike, flyOn; Kort 2026-11-11): a fixed arc to its aim point, judged against the target where it comes down.
+        double[] eye = {0, 1.6, 0}, body = {0, .9, 16};
+        double[] still = {-.45, -.15, 15.55, .45, 1.95, 16.45}; // a 0.6-wide, 1.8-tall troop standing 16 blocks out, HIT_MARGIN 0.15 round it
+        double[] aimStill = BattleMath.arrowAim(0, 0, body, 0, 0, 16, false, 0, 0, 0);
+        check(BattleMath.arrowStrike(eye, aimStill, 4, 16, still) != null, "arrow: a stationary target in range is hit at zero spread");
+        double[] aside = {1.55, -.15, 15.55, 2.45, 1.95, 16.45}; // the same troop 2 blocks off the line
+        check(BattleMath.arrowStrike(eye, aimStill, 4, 16, aside) == null, "arrow: a target 2 blocks off the line is missed");
+        double[] crossed = {2.75, -.15, 15.55, 3.65, 1.95, 16.45}; // a troop walking across at 0.2 blocks a tick, where it stands 16 ticks on
+        double[] led = BattleMath.arrowAim(0, 0, body, .2, 0, 16, true, 0, 0, 0), unled = BattleMath.arrowAim(0, 0, body, .2, 0, 16, false, 0, 0, 0);
+        check(Math.abs(led[0] - 3.2) < 1e-9 && BattleMath.arrowStrike(eye, led, 4, 16, crossed) != null, "arrow: a crossing mover on a path is led and hit");
+        check(BattleMath.arrowStrike(eye, unled, 4, 16, crossed) == null, "arrow: the same mover shot where it stood (standing to fight, not led) is missed");
+        double[] wide = BattleMath.arrowAim(0, 0, body, 0, 0, 16, false, 1, 0, 0);
+        check(Math.abs(wide[0] + 1) < 1e-9 && Math.abs(wide[2] - 16) < 1e-9, "arrow: the across error moves the aim square to the line (-x shooting +z: the shooter's right), the given blocks");
+        check(Math.abs(BattleMath.arrowSigma(.05, .01, 20) - .25) < 1e-12, "arrow: sigma = base + perBlock x range");
+        check(BattleMath.flyOnTicks(.9, 0, -.5, 10) == 2 && BattleMath.flyOnTicks(.9, 0, .1, 10) == 10 && BattleMath.flyOnTicks(80, 0, -1, 10) == 10 && BattleMath.flyOnTicks(0, 0, -1, 10) == 1,
+              "arrow: a miss flies on to the ground at its last fall a tick, 1 to FLY_ON_MAX ticks");
         check(BattleMath.raiseShield("hold", true, 0, 4, false), "hold: an archer it cannot see raises it");
         check(BattleMath.shieldOrder("move", true).equals("hold") && BattleMath.shieldOrder("move", false).equals("move") && BattleMath.shieldOrder("retreat", true).equals("retreat")
             && !BattleMath.raiseShield(BattleMath.shieldOrder("retreat", true), true, 1e9, 4, false) && BattleMath.raiseShield(BattleMath.shieldOrder("move", true), false, 100, 4, true),

@@ -42,6 +42,7 @@ public final class Projectiles {
     /** Archer shots (Tactics.archer: bow, crossbow, thrower) since the server started, by the shooter's team and the range at the loose (rangeBin:
      *  under 8 blocks, 8 to 16, 16 to 24, 24 and over): fired, struck their target, and lost (the target fell or left before the shot came down, so
      *  it was never judged). Counters only; the bot simulation reads them (AiMetrics). */
+    // Cheap (one array increment a shot), always on, never reset: readers take differences between two reads.
     public static final int RANGE_BINS=4;
     public static final long[][] ARROWS_FIRED=new long[2][RANGE_BINS],ARROWS_HIT=new long[2][RANGE_BINS],ARROWS_LOST=new long[2][RANGE_BINS],ARROWS_MISSED=new long[2][RANGE_BINS];
     /**
@@ -54,10 +55,11 @@ public final class Projectiles {
      */
     static Vec3d scatter(GravesAndGlory.Unit u,LivingEntity target,Vec3d from,Vec3d to,int travel){
         boolean marching=!(target instanceof net.minecraft.entity.mob.MobEntity m)||!m.getNavigation().isIdle(); // a mob is led only while it walks a path: a fighting troop shuffles, and its last tick foretells nothing
-        Vec3d led=marching?to.add((target.getX()-target.prevX)*travel,0,(target.getZ()-target.prevZ)*travel):to;
-        double dx=led.x-from.x,dz=led.z-from.z,len=Math.max(1e-6,Math.hypot(dx,dz)),sigma=C.arrowSpreadBase()+C.arrowSpreadPerBlock()*from.distanceTo(led);
+        double vx=target.getX()-target.prevX,vz=target.getZ()-target.prevZ;
+        double sigma=BattleMath.arrowSigma(C.arrowSpreadBase(),C.arrowSpreadPerBlock(),from.distanceTo(marching?to.add(vx*travel,0,vz*travel):to));
         var r=u.mob.getRandom();double across=r.nextGaussian()*sigma,along=r.nextGaussian()*sigma,up=r.nextGaussian()*sigma*.5;
-        return led.add(-dz/len*across+dx/len*along,up,dx/len*across+dz/len*along);
+        double[] aim=BattleMath.arrowAim(from.x,from.z,xyz(to),vx,vz,travel,marching,across,along,up); // the geometry is BattleMathCheck's
+        return new Vec3d(aim[0],aim[1],aim[2]);
     }
     /** How far round its hitbox a body is struck by a passing arrow (blocks): the arrow's own size. */
     static final double HIT_MARGIN=.15;
@@ -65,10 +67,10 @@ public final class Projectiles {
      *  point, against the target's hitbox (HIT_MARGIN round it) where it stands on the landing tick. */
     static Vec3d strike(Shot s){
         var box=s.target.getBoundingBox().expand(HIT_MARGIN);
-        Vec3d a=curve(s.from,s.aimPoint,s.peak,s.ticks,Math.max(0,s.ticks-3)),last=curve(s.from,s.aimPoint,s.peak,s.ticks,Math.max(0,s.ticks-1)),end=s.aimPoint;
-        if(box.contains(a))return a;
-        var hit=box.raycast(a,end);if(hit.isPresent())return hit.get();
-        return box.raycast(end,end.add(end.subtract(last).multiply(2))).orElse(null);
+        double[] hit=BattleMath.arrowStrike(xyz(s.from),xyz(s.aimPoint),s.peak,s.ticks,new double[]{box.minX,box.minY,box.minZ,box.maxX,box.maxY,box.maxZ}); // BattleMathCheck's geometry
+        return hit==null?null:new Vec3d(hit[0],hit[1],hit[2]);
+    }
+    static double[] xyz(Vec3d v){return new double[]{v.x,v.y,v.z};
     }
     /** At most this many ticks a missed arrow flies on past its aim point before it is gone. */
     static final int FLY_ON_MAX=10;
@@ -77,9 +79,8 @@ public final class Projectiles {
         b.shots.remove(s);if(s.visual==null)return;
         Vec3d step=s.aimPoint.subtract(curve(s.from,s.aimPoint,s.peak,s.ticks,Math.max(0,s.ticks-1)));
         double ground=b.world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING,MathHelper.floor(s.aimPoint.x),MathHelper.floor(s.aimPoint.z));
-        int ticks=step.y<-.05?(int)Math.ceil((s.aimPoint.y-ground)/-step.y):FLY_ON_MAX;
         s.visual.setVelocity(step);s.visual.velocityModified=true;
-        b.landed.add(new Landed(s.visual,b.time+Math.max(1,Math.min(FLY_ON_MAX,ticks))));
+        b.landed.add(new Landed(s.visual,b.time+BattleMath.flyOnTicks(s.aimPoint.y,ground,step.y,FLY_ON_MAX)));
     }
     static int rangeBin(double range){return Math.max(0,Math.min(RANGE_BINS-1,(int)(range/8)));}
     static void count(long[][] counter,Shot s){if(s.shooter!=null&&Tactics.archer(s.shooter)&&s.squad.team>=0&&s.squad.team<2)counter[s.squad.team][rangeBin(s.range)]++;}

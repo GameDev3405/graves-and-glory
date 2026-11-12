@@ -24,6 +24,51 @@ public final class BattleMath {
         double f = Math.max(0, Math.min(1, t));
         return 4 * peak * f * (1 - f);
     }
+    /** Where a shot from from to to, peaking at peak over ticks of flight, stands k ticks after it was fired (Projectiles.curve): {x, y, z}. */
+    public static double[] arcPoint(double[] from, double[] to, double peak, int ticks, long k) {
+        double t = k / (double) Math.max(1, ticks), f = Math.min(1, t);
+        return new double[]{from[0] + (to[0] - from[0]) * f, from[1] + (to[1] - from[1]) * f + arcHeight(t, peak), from[2] + (to[2] - from[2]) * f};
+    }
+    /** An archer's aim error, sigma in blocks (Projectiles.scatter): arrowSpreadBase + arrowSpreadPerBlock x the range. */
+    public static double arrowSigma(double base, double perBlock, double range) { return base + perBlock * range; }
+    /**
+     * An archer's aim point (Projectiles.scatter): the target's body to, led by its motion over the last tick (vx, vz) for the flight's travel ticks
+     * when it walks a path (marching), then moved by the error across (square to the line: the shooter's right), along (beyond) and up, in blocks, against the line
+     * from (fx, fz). {x, y, z}.
+     */
+    public static double[] arrowAim(double fx, double fz, double[] to, double vx, double vz, int travel, boolean marching, double across, double along, double up) {
+        double lx = to[0] + (marching ? vx * travel : 0), lz = to[2] + (marching ? vz * travel : 0);
+        double dx = lx - fx, dz = lz - fz, len = Math.max(1e-6, Math.hypot(dx, dz));
+        return new double[]{lx - dz / len * across + dx / len * along, to[1] + up, lz + dx / len * across + dz / len * along};
+    }
+    /** The first point of the segment a..b inside box {minX, minY, minZ, maxX, maxY, maxZ}, or null: a itself when it starts inside. */
+    public static double[] segmentEntry(double[] a, double[] b, double[] box) {
+        double lo = 0, hi = 1;
+        for (int i = 0; i < 3; i++) {
+            double d = b[i] - a[i];
+            if (Math.abs(d) < 1e-12) { if (a[i] < box[i] || a[i] > box[i + 3]) return null; continue; }
+            double t1 = (box[i] - a[i]) / d, t2 = (box[i + 3] - a[i]) / d;
+            lo = Math.max(lo, Math.min(t1, t2)); hi = Math.min(hi, Math.max(t1, t2));
+            if (lo > hi) return null;
+        }
+        return new double[]{a[0] + (b[0] - a[0]) * lo, a[1] + (b[1] - a[1]) * lo, a[2] + (b[2] - a[2]) * lo};
+    }
+    /**
+     * Where an archer's shot strikes a box (Projectiles.strike), or null for a miss: the shot from from to its aim point, peaking at peak over
+     * ticks of flight, is read from three ticks before landing to the aim point, then two ticks' travel on past it.
+     */
+    public static double[] arrowStrike(double[] from, double[] aim, double peak, int ticks, double[] box) {
+        double[] a = arcPoint(from, aim, peak, ticks, Math.max(0, ticks - 3)), last = arcPoint(from, aim, peak, ticks, Math.max(0, ticks - 1));
+        double[] hit = segmentEntry(a, aim, box);
+        if (hit != null) return hit;
+        return segmentEntry(aim, new double[]{aim[0] + 2 * (aim[0] - last[0]), aim[1] + 2 * (aim[1] - last[1]), aim[2] + 2 * (aim[2] - last[2])}, box);
+    }
+    /** How many ticks a missed arrow flies on (Projectiles.flyOn): down to the ground at its last step's fall per tick (stepY, negative going
+     *  down), or max when it is not falling; at least 1 and at most max. */
+    public static int flyOnTicks(double aimY, double ground, double stepY, int max) {
+        int ticks = stepY < -.05 ? (int) Math.ceil((aimY - ground) / -stepY) : max;
+        return Math.max(1, Math.min(max, ticks));
+    }
     /**
      * The launch angle, in degrees above the horizontal (Minecraft's own pitch is its negative), of a shot dist out horizontally and dy up whose
      * arc peaks at peak over ticks of flight: the tangent of the path at launch, the straight line's slope plus the parabola's starting climb
