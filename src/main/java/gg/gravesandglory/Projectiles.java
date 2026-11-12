@@ -21,7 +21,7 @@ import org.joml.Vector3f;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Delayed, visible ranged hits. Tactics still decides the hit; this queue only lands it after the shot's flight time. */
+/** Delayed, visible ranged hits. Tactics decides the shot; this queue lands it after its flight time. An archer's arrow is judged where it comes down (scatter, strike) and may miss; other shots land. */
 public final class Projectiles {
     public static final String TAG="gravesandglory-shot";
     static final Spec.CombatDisciplineRow C=Spec.COMBATDISCIPLINE[0];
@@ -31,18 +31,54 @@ public final class Projectiles {
      *  The blight cast's bolt has no target: it flies to the fixed point {@code at}; other shots follow their target and leave {@code at} null.
      *  peak is how far the shot's arc rises over its straight line mid-flight (0: a straight shot), and ticks its whole flight (lands - fired).
      *  aimed holds, in its one slot, the target's aim point when the visual was last steered (at first, when it was fired), so the steering can lead
-     *  a moving target by its last tick's motion (N6). */
-    public record Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at,double peak,int ticks,Vec3d[] aimed,double range){
+     *  a moving target by its last tick's motion (N6). range is the distance at the loose. aimPoint, an archer's shot only (scatter), is the fixed
+     *  point it was loosed at: it flies there unsteered and lands only if it strikes its target there (strike); null for the steered shots. */
+    public record Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at,double peak,int ticks,Vec3d[] aimed,double range,Vec3d aimPoint){
         /** A straight shot (no arc) whose flight is lands - fired. */
         public Shot(GravesAndGlory.Unit shooter,GravesAndGlory.Squad squad,LivingEntity target,String kind,float amount,Vec3d from,long fired,long lands,Entity visual,Vec3d at){
-            this(shooter,squad,target,kind,amount,from,fired,lands,visual,at,0,(int)(lands-fired),new Vec3d[1],0);
+            this(shooter,squad,target,kind,amount,from,fired,lands,visual,at,0,(int)(lands-fired),new Vec3d[1],0,null);
         }
     }
     /** Archer shots (Tactics.archer: bow, crossbow, thrower) since the server started, by the shooter's team and the range at the loose (rangeBin:
      *  under 8 blocks, 8 to 16, 16 to 24, 24 and over): fired, struck their target, and lost (the target fell or left before the shot came down, so
      *  it was never judged). Counters only; the bot simulation reads them (AiMetrics). */
     public static final int RANGE_BINS=4;
-    public static final long[][] ARROWS_FIRED=new long[2][RANGE_BINS],ARROWS_HIT=new long[2][RANGE_BINS],ARROWS_LOST=new long[2][RANGE_BINS];
+    public static final long[][] ARROWS_FIRED=new long[2][RANGE_BINS],ARROWS_HIT=new long[2][RANGE_BINS],ARROWS_LOST=new long[2][RANGE_BINS],ARROWS_MISSED=new long[2][RANGE_BINS];
+    /**
+     * An archer's aim (Kort 2026-11-11: no homing, believable misses). The shot is loosed once, at the target's body led by its motion over the
+     * last tick for the flight's ticks (a troop walking on into the shot is met; one that stops, turns or is shoved is not), scattered by a
+     * normal error of sigma = arrowSpreadBase + arrowSpreadPerBlock x range blocks across and along the line and half that up and down. The
+     * arrow then flies that fixed curve; strike judges it against the target where it comes down. The Mortar's crew, casters and mends keep
+     * the old steered shot that always lands.
+     */
+    static Vec3d scatter(GravesAndGlory.Unit u,LivingEntity target,Vec3d from,Vec3d to,int travel){
+        Vec3d led=to.add((target.getX()-target.prevX)*travel,0,(target.getZ()-target.prevZ)*travel);
+        double dx=led.x-from.x,dz=led.z-from.z,len=Math.max(1e-6,Math.hypot(dx,dz)),sigma=C.arrowSpreadBase()+C.arrowSpreadPerBlock()*from.distanceTo(led);
+        var r=u.mob.getRandom();double across=r.nextGaussian()*sigma,along=r.nextGaussian()*sigma,up=r.nextGaussian()*sigma*.5;
+        return led.add(-dz/len*across+dx/len*along,up,dx/len*across+dz/len*along);
+    }
+    /** How far round its hitbox a body is struck by a passing arrow (blocks): the arrow's own size. */
+    static final double HIT_MARGIN=.15;
+    /** Where an archer's shot strikes its target, or null for a miss: the last three ticks of its curve and two ticks' travel on past its aim
+     *  point, against the target's hitbox (HIT_MARGIN round it) where it stands on the landing tick. */
+    static Vec3d strike(Shot s){
+        var box=s.target.getBoundingBox().expand(HIT_MARGIN);
+        Vec3d a=curve(s.from,s.aimPoint,s.peak,s.ticks,Math.max(0,s.ticks-3)),last=curve(s.from,s.aimPoint,s.peak,s.ticks,Math.max(0,s.ticks-1)),end=s.aimPoint;
+        if(box.contains(a))return a;
+        var hit=box.raycast(a,end);if(hit.isPresent())return hit.get();
+        return box.raycast(end,end.add(end.subtract(last).multiply(2))).orElse(null);
+    }
+    /** At most this many ticks a missed arrow flies on past its aim point before it is gone. */
+    static final int FLY_ON_MAX=10;
+    /** A missed shot: out of the queue; its arrow keeps its last tick's step until it reaches the ground under its aim point (FLY_ON_MAX ticks at most), then goes. */
+    static void flyOn(GravesAndGlory.Battle b,Shot s){
+        b.shots.remove(s);if(s.visual==null)return;
+        Vec3d step=s.aimPoint.subtract(curve(s.from,s.aimPoint,s.peak,s.ticks,Math.max(0,s.ticks-1)));
+        double ground=b.world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING,MathHelper.floor(s.aimPoint.x),MathHelper.floor(s.aimPoint.z));
+        int ticks=step.y<-.05?(int)Math.ceil((s.aimPoint.y-ground)/-step.y):FLY_ON_MAX;
+        s.visual.setVelocity(step);s.visual.velocityModified=true;
+        b.landed.add(new Landed(s.visual,b.time+Math.max(1,Math.min(FLY_ON_MAX,ticks))));
+    }
     static int rangeBin(double range){return Math.max(0,Math.min(RANGE_BINS-1,(int)(range/8)));}
     static void count(long[][] counter,Shot s){if(s.shooter!=null&&Tactics.archer(s.shooter)&&s.squad.team>=0&&s.squad.team<2)counter[s.squad.team][rangeBin(s.range)]++;}
     /** A landed shot's arrow, held still where it landed until battle time until, then discarded (N7), so the client draws it arriving. */
@@ -172,10 +208,12 @@ public final class Projectiles {
         return MotionEvents.sendAttack(u,variant,start);
     }
     public static void fire(GravesAndGlory.Battle b,GravesAndGlory.Unit u,LivingEntity target,String kind,float amount){
-        Vec3d from=u.mob.getEyePos(),to=aim(target);
+        Vec3d from=u.mob.getEyePos(),to=aim(target);double range=from.distanceTo(to);
         Tactics.stamp(b,u,target); // archer fire: the target's group is under fire (Squad.shotAt)
         boolean arrow=kind.equals("arrow")||kind.equals("trident");
         Arc arc=arc(b,u,from,to,arrow); // the volley's arc, or a straight line for a bolt, a mend or the Mortar's shell
+        Vec3d aimPoint=null;
+        if(arrow&&Tactics.archer(u)){aimPoint=scatter(u,target,from,to,arc.travel());to=aimPoint;arc=arc(b,u,from,to,true);} // an archer's shot flies to where it was loosed at, and may miss (Kort 2026-11-11)
         double peak=arc.peak();int travel=arc.travel();
         loose(u,peak);
         long lands=b.time+travel;
@@ -194,7 +232,7 @@ public final class Projectiles {
             a.setVelocity(nose.normalize().multiply(SPAWN_NUDGE));
             visual=a;
         }
-        Shot shot=new Shot(u,u.squad,target,kind,amount,arrow?from:castFrom(u),b.time,lands,visual,null,peak,travel,new Vec3d[]{to},from.distanceTo(to));
+        Shot shot=new Shot(u,u.squad,target,kind,amount,arrow?from:castFrom(u),b.time,lands,visual,null,peak,travel,new Vec3d[]{to},range,aimPoint);
         b.shots.add(shot);count(ARROWS_FIRED,shot);
         // Queued first, then spawned: the load handler also runs for a new spawn, and discards a tagged arrow that no queued shot owns.
         if(visual!=null){
@@ -242,6 +280,12 @@ public final class Projectiles {
         for(Shot s:new ArrayList<>(b.shots)){
             // A fallen commander becomes a spectator at base: the shot is lost, it does not chase them home.
             boolean live=s.target==null||s.target.isAlive()&&!s.target.isRemoved()&&s.target.getWorld()==b.world&&!(s.target instanceof PlayerEntity p&&p.isSpectator());
+            if(s.aimPoint!=null){ // an archer's shot: on its fixed curve to its aim point, judged where it comes down (strike); a miss flies on into the ground
+                if(b.time<s.lands){if(s.visual!=null){s.visual.setVelocity(curve(s.from,s.aimPoint,s.peak,s.ticks,b.time-s.fired+1).subtract(s.visual.getPos()));s.visual.velocityModified=true;}continue;}
+                Vec3d struck=live?strike(s):null;
+                if(struck==null){count(live?ARROWS_MISSED:ARROWS_LOST,s);flyOn(b,s);continue;}
+                settle(b,s);land(b,s,struck);continue;
+            }
             if(!live){count(ARROWS_LOST,s);drop(b,s);continue;}
             Vec3d to=s.target==null?s.at:aim(s.target);
             if(b.time>=s.lands){settle(b,s);land(b,s,to);continue;}

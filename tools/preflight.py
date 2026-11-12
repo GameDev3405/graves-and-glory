@@ -407,7 +407,8 @@ for col,lo,hi in (('flankArcDegrees',0,180),('lastStandShare',0,1),('lastStandRa
     elif cd[col]<lo or hi is not None and cd[col]>hi or cd[col]==lo and col not in ('hornCooldownSeconds','lastStandFeedSeconds'): errors.append(f'combatDiscipline: {col} must be above {lo}'+(f' and at most {hi}' if hi is not None else ''))
 # Animation rework (plan Phase 1): the wall, the volley, the corpse and the hit-weight numbers. Each (column, low, high, low open, high open).
 for col,lo,hi,loOpen,hiOpen in (('shieldWallCell',.5,1.3,True,False),('crawlShare',0,1,True,True),('fireMemoryTicks',1,None,False,False),('volleyPeakPerBlock',0,None,True,False),('volleyPeakMax',0,None,True,False),
-        ('crossbowArcScale',0,1,True,False),('thrownArcScale',0,1,True,False),('meleeReachGrace',0,None,False,False),('corpseLieTicks',0,None,False,False),('corpseFadeTicks',1,None,False,False),('arcTravelScale',1,2,False,False),('mediumHitShare',0,1,True,True),('heavyHitShare',0,1,True,True),('sightMemoryTicks',0,None,False,False)):
+        ('crossbowArcScale',0,1,True,False),('thrownArcScale',0,1,True,False),('meleeReachGrace',0,None,False,False),('corpseLieTicks',0,None,False,False),('corpseFadeTicks',1,None,False,False),('arcTravelScale',1,2,False,False),('mediumHitShare',0,1,True,True),('heavyHitShare',0,1,True,True),('sightMemoryTicks',0,None,False,False),
+        ('arrowSpreadBase',0,2,False,False),('arrowSpreadPerBlock',0,.2,False,False)): # archer spread (Kort 2026-11-11): the scatter of a shot's aim point, blocks, at the target and per block of range (Projectiles.scatter)
     if col not in cd: errors.append(f'combatDiscipline: missing {col}'); continue
     v=cd[col]
     if isinstance(v,bool) or not isinstance(v,(int,float)) or v<lo or loOpen and v==lo or hi is not None and (v>hi or hiOpen and v==hi):
