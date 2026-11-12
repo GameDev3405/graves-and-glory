@@ -2550,6 +2550,10 @@ def main():
     doc = {"format_version": "1.8.0", "animations": anims}
     import limb_clear   # tc_raider and the Hollow King: the free forearm's bracer kept out of the body (keyed by troop)
     limb_clear.key_doc(TROOP, doc, GEO, OUT.parent / f"{TROOP}.rig.json")
+    if HK:   # batch review 2026-11-11: rags off the legs, cloaks and pauldrons alive, blade and knees off the ground
+        sys.modules.setdefault("build_anims", sys.modules[__name__])
+        import hk_polish  # noqa: E402
+        hk_polish.polish(doc, hk_polish.BUILT)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(doc, indent=1), encoding="utf-8")
     print("wrote", OUT, "clips:", ", ".join(anims))
