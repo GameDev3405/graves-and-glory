@@ -1,0 +1,240 @@
+<title>Match Ending Mockups</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Alegreya+Sans:wght@400;500;700&family=Silkscreen&display=swap">
+<style>
+/* Layout: one column of 16:9 game-screen mockups, each with its time band and a short caption; single dark look (the game's own UI). */
+:root{
+  --night:#14110e; --wood:#2a2019; --wood2:#3a2c21; --brass:#b98a3e; --gold:#e8c26a;
+  --parch:#e9dcbf; --ink:#2b2117; --muted:#a8977b; --dawn:#3f74b8; --dusk:#b0413a; --win:#e8c26a; --lose:#c4554c; --draw:#c9c3b4;
+  --display:"Cinzel",Georgia,serif; --body:"Alegreya Sans",system-ui,sans-serif; --px:"Silkscreen",ui-monospace,monospace;
+  color-scheme:dark;
+}
+body{background:var(--night);color:var(--parch);font-family:var(--body);font-size:16px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+main{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:36px}
+h1{font-family:var(--display);font-weight:800;color:var(--gold);font-size:clamp(26px,6vw,40px);margin:0;letter-spacing:.04em;text-wrap:balance}
+h2{font-family:var(--display);color:var(--gold);font-size:20px;margin:0;letter-spacing:.05em;text-wrap:balance}
+p{margin:0;max-width:65ch}
+.lede{color:var(--muted)}
+.timeline{display:grid;grid-template-columns:6fr 8fr 10fr 6fr;gap:3px;font-family:var(--px);font-size:11px;letter-spacing:.06em}
+.timeline div{background:var(--wood2);border-top:3px solid var(--brass);padding:6px 6px;min-width:0;overflow-wrap:anywhere}
+.timeline span{display:block;color:var(--muted)}
+section{display:flex;flex-direction:column;gap:12px}
+.band{font-family:var(--px);font-size:11px;color:var(--brass);letter-spacing:.08em}
+.screen{position:relative;aspect-ratio:16/9;max-width:100%;border:3px solid var(--brass);border-radius:4px;overflow:hidden;background:#000;container-type:inline-size}
+.cap{color:var(--parch)} .cap b{color:var(--gold);font-weight:700}
+.mine{color:var(--muted);font-size:14px}
+.skip{position:absolute;bottom:2.2cqw;left:0;right:0;text-align:center;font-family:var(--px);font-size:1.6cqw;color:#cfc3a8;opacity:.85}
+
+/* step 1: frozen battlefield */
+.field{position:absolute;inset:0;background:linear-gradient(#7fa6c9 0 38%,#9bb37a 38% 60%,#6f8a4f 60%);filter:saturate(.55) brightness(.8)}
+.field .hill{position:absolute;bottom:40%;left:-10%;width:60%;height:18%;background:#7d9660;border-radius:50% 50% 0 0}
+.troop{position:absolute;width:2.4cqw;height:5.6cqw;border-radius:1cqw 1cqw .3cqw .3cqw}
+.troop::before{content:"";position:absolute;top:-1.8cqw;left:.3cqw;width:1.8cqw;height:1.8cqw;background:#d7b48c;border-radius:.3cqw}
+.d{background:var(--dawn)} .k{background:var(--dusk)}
+.arrow{position:absolute;width:5cqw;height:.35cqw;background:#3b2a1a;transform:rotate(-14deg)}
+.arrow::after{content:"";position:absolute;right:-.8cqw;top:-.5cqw;border-left:1cqw solid #ccc;border-top:.65cqw solid transparent;border-bottom:.65cqw solid transparent}
+.you{position:absolute;bottom:6%;left:44%;width:8cqw;height:15cqw;background:#5a4632;border-radius:2cqw 2cqw 0 0;box-shadow:inset 0 0 0 .5cqw var(--dawn)}
+.banner{position:absolute;top:22%;left:0;right:0;text-align:center}
+.banner .word{font-family:var(--display);font-weight:800;font-size:11cqw;letter-spacing:.08em;line-height:1;text-shadow:0 .5cqw 0 #000,0 0 3cqw rgba(0,0,0,.6)}
+.banner .score{margin-top:1.4cqw;font-family:var(--display);font-size:2.6cqw;color:#f3ead6;text-shadow:0 .3cqw 0 #000}
+.banner .rule{display:block;margin:1.2cqw auto 0;width:40cqw;height:.4cqw;background:linear-gradient(90deg,transparent,var(--brass),transparent)}
+.frozen{position:absolute;top:3cqw;right:3cqw;font-family:var(--px);font-size:1.5cqw;color:#fff;background:rgba(0,0,0,.45);padding:.6cqw 1cqw}
+.variants{display:flex;gap:10px;flex-wrap:wrap}
+.chip{font-family:var(--display);font-weight:800;padding:4px 12px;border:2px solid currentColor;border-radius:3px;letter-spacing:.08em}
+
+/* step 2: podium */
+.stage{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 35%,#2d3550 0,#0d0f17 70%)}
+.wall{position:absolute;left:12%;right:12%;top:8%;bottom:30%;background:repeating-linear-gradient(90deg,#3c3c42 0 8cqw,#343439 8cqw 8.3cqw),#3a3a40;opacity:.9}
+.hang{position:absolute;top:8%;width:7cqw;height:22cqw;background:var(--dawn);clip-path:polygon(0 0,100% 0,100% 88%,50% 100%,0 88%)}
+.floor{position:absolute;left:0;right:0;bottom:0;height:30%;background:linear-gradient(#2a2622,#151311)}
+.plinth{position:absolute;bottom:18%;width:17cqw;background:linear-gradient(#6b4a2c,#4a321e);border-top:.6cqw solid var(--brass)}
+.plinth .n{position:absolute;top:1cqw;left:0;right:0;text-align:center;font-family:var(--display);font-weight:800;color:var(--gold);font-size:3cqw}
+.fig{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);display:flex;align-items:flex-end;gap:.6cqw}
+.cmd{width:4cqw;height:9cqw;border-radius:1.2cqw 1.2cqw .3cqw .3cqw;position:relative;box-shadow:inset 0 0 0 .45cqw var(--gold)}
+.cmd::before{content:"";position:absolute;top:-2.6cqw;left:.5cqw;width:3cqw;height:2.8cqw;background:#cfa47c;border-radius:.4cqw}
+.sq{width:2.2cqw;height:5.2cqw;border-radius:.8cqw .8cqw .2cqw .2cqw;position:relative}
+.sq::before{content:"";position:absolute;top:-1.6cqw;left:.25cqw;width:1.7cqw;height:1.7cqw;background:#cfa47c;border-radius:.3cqw}
+.plate{position:absolute;bottom:3cqw;width:22cqw;transform:translateX(-50%);text-align:center;background:rgba(20,16,12,.86);border:.25cqw solid var(--brass);padding:.8cqw .6cqw}
+.plate .nm{font-family:var(--display);font-weight:800;font-size:2cqw;color:var(--parch)}
+.plate .hs{font-family:var(--px);font-size:1.35cqw;color:var(--gold)}
+.plate .st{font-size:1.5cqw;color:#cdbf9f}
+.mvp{font-family:var(--px);font-size:1.3cqw;background:var(--gold);color:var(--ink);padding:0 .5cqw;margin-right:.4cqw}
+.letter{position:absolute;left:0;right:0;height:5cqw;background:#000} .letter.t{top:0} .letter.b{bottom:0}
+
+/* step 3 and 4: parchment screens */
+.paper{position:absolute;inset:2.5cqw 3cqw 5cqw;background:var(--parch);color:var(--ink);border:.5cqw solid var(--wood2);box-shadow:0 0 0 .3cqw var(--brass);padding:2cqw 2.4cqw;display:flex;flex-direction:column;gap:1.2cqw}
+.dim{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 35%,#20263a,#07080c 70%)}
+.ph{display:flex;justify-content:space-between;align-items:baseline;border-bottom:.25cqw solid #8a6a3f;padding-bottom:.6cqw}
+.ph .t{font-family:var(--display);font-weight:800;font-size:2.8cqw;color:#5a3b17}
+.ph .m{font-family:var(--px);font-size:1.3cqw;color:#6b5a43}
+table{border-collapse:collapse;width:100%;font-size:1.45cqw;font-variant-numeric:tabular-nums}
+th{font-family:var(--px);font-weight:400;font-size:1.15cqw;color:#6b5a43;text-align:right;padding:.2cqw .6cqw}
+th:first-child,td:first-child{text-align:left}
+td{text-align:right;padding:.25cqw .6cqw;border-top:.1cqw solid #cbb88f}
+tr.me td{background:#f4e7c4;font-weight:700}
+tr.gap td{border-top:.35cqw solid #8a6a3f}
+.sw{display:inline-block;width:1cqw;height:1cqw;margin-right:.6cqw;vertical-align:middle}
+.groups{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2cqw;flex:1;min-height:0}
+.g{border:.2cqw solid #a88a5c;padding:.8cqw 1cqw;display:flex;flex-direction:column;gap:.3cqw;min-width:0}
+.g h3{margin:0 0 .3cqw;font-family:var(--display);font-size:1.6cqw;color:#5a3b17}
+.kv{display:flex;justify-content:space-between;gap:.6cqw;font-size:1.35cqw;font-variant-numeric:tabular-nums}
+.kv span:first-child{color:#5d4d38}
+.kv b{color:var(--ink)}
+.best{margin-top:auto;font-size:1.25cqw;background:#f4e7c4;padding:.3cqw .5cqw}
+
+.rw{display:flex;flex-direction:column;gap:.7cqw;flex:1}
+.row{display:grid;grid-template-columns:1fr auto;align-items:baseline;border-bottom:.12cqw dashed #b79f73;padding-bottom:.4cqw;font-size:1.75cqw}
+.row .why{font-size:1.3cqw;color:#6b5a43;display:block}
+.row .amt{font-family:var(--display);font-weight:800;color:#5a3b17;font-variant-numeric:tabular-nums}
+.row.counting .amt{color:#9b6a1d}
+.row.wait{opacity:.28}
+.total{display:flex;justify-content:space-between;font-family:var(--display);font-weight:800;font-size:2.1cqw;color:#5a3b17;border-top:.35cqw double #8a6a3f;padding-top:.5cqw}
+.claim{background:#3a2c21;color:var(--gold);font-size:1.5cqw;padding:.7cqw 1cqw;display:flex;justify-content:space-between;gap:1cqw}
+.claim u{color:var(--parch)}
+
+/* step 5 */
+.table5{position:absolute;inset:0;background:linear-gradient(#2a2019,#1a1410)}
+.lob{position:absolute;inset:4cqw 8cqw 6cqw;background:var(--parch);color:var(--ink);border:.5cqw solid var(--wood2);box-shadow:0 0 0 .3cqw var(--brass);padding:2cqw;display:flex;flex-direction:column;gap:1cqw}
+.seats{display:grid;grid-template-columns:1fr 1fr;gap:1.4cqw;flex:1}
+.side{display:flex;flex-direction:column;gap:.6cqw}
+.seat{border:.2cqw solid #a88a5c;padding:.6cqw 1cqw;font-size:1.6cqw;display:flex;justify-content:space-between}
+.tag{position:absolute;right:9cqw;top:6cqw;background:var(--wood2);color:var(--gold);font-family:var(--px);font-size:1.3cqw;padding:.5cqw .9cqw;border:.2cqw solid var(--brass)}
+
+.calls{background:var(--wood);border:1px solid var(--wood2);border-left:4px solid var(--brass);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.calls ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.calls li{max-width:65ch}
+code{font-family:var(--px);font-size:12px;color:var(--gold)}
+@media (prefers-reduced-motion:no-preference){ .row.counting .amt{animation:tick .5s steps(2) infinite} @keyframes tick{50%{opacity:.6}} }
+</style>
+
+<main>
+  <header style="display:flex;flex-direction:column;gap:10px">
+    <h1>The match ending</h1>
+    <p class="lede">What a player sees from the last point to the room, in about 30 seconds. Each step runs on its own and <b style="color:var(--parch)">menu key or Escape skips ahead</b> for you alone. Mockups, not final art.</p>
+    <div class="timeline" aria-label="Timeline">
+      <div>1 RESULT<span>0–6 s</span></div><div>2 PODIUM<span>6–14 s</span></div><div>3 STATS<span>14–24 s</span></div><div>4 REWARDS<span>24–30 s</span></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="band">STEP 1 / RESULT / 0 TO 6 S</div>
+    <h2>Everything freezes, you walk</h2>
+    <div class="screen">
+      <div class="field"><div class="hill"></div></div>
+      <div class="troop d" style="left:20%;bottom:34%"></div><div class="troop d" style="left:25%;bottom:31%"></div><div class="troop d" style="left:30%;bottom:35%"></div>
+      <div class="troop k" style="left:60%;bottom:33%;transform:rotate(-8deg)"></div><div class="troop k" style="left:66%;bottom:30%"></div><div class="troop k" style="left:72%;bottom:36%"></div>
+      <div class="arrow" style="left:38%;top:44%"></div><div class="arrow" style="left:46%;top:40%"></div>
+      <div class="you"></div>
+      <div class="frozen">FROZEN</div>
+      <div class="banner"><div class="word" style="color:var(--win)">VICTORY</div><span class="rule"></span><div class="score">Dawn 300 &nbsp;/&nbsp; Dusk 214 &nbsp;·&nbsp; Kingsfield &nbsp;·&nbsp; 11:42</div></div>
+      <div class="skip">MENU KEY OR ESCAPE TO SKIP</div>
+    </div>
+    <div class="variants"><span class="chip" style="color:var(--win)">VICTORY</span><span class="chip" style="color:var(--lose)">DEFEAT</span><span class="chip" style="color:var(--draw)">DRAW</span></div>
+    <p class="cap">Troops, arrows in flight and bot armies stop dead in their pose. You can walk and look around, but nothing can hit you and you cannot strike or give orders. The sting plays as the word lands. Under it, the final score in the mode's own words (Siege: "Keep taken at 2:41").</p>
+  </section>
+
+  <section>
+    <div class="band">STEP 2 / PODIUM / 6 TO 14 S</div>
+    <h2>Top three of the whole match</h2>
+    <div class="screen">
+      <div class="stage"></div><div class="wall"></div>
+      <div class="hang" style="left:22%"></div><div class="hang" style="right:22%"></div>
+      <div class="floor"></div>
+      <div class="plinth" style="left:41.5%;height:22%"><div class="n">1</div>
+        <div class="fig"><div class="sq d"></div><div class="sq d"></div><div class="cmd d"></div><div class="sq d"></div></div></div>
+      <div class="plinth" style="left:22%;height:15%"><div class="n">2</div>
+        <div class="fig"><div class="sq k"></div><div class="cmd k"></div><div class="sq k"></div><div class="sq k"></div></div></div>
+      <div class="plinth" style="left:61%;height:10%"><div class="n">3</div>
+        <div class="fig"><div class="sq d"></div><div class="cmd d"></div><div class="sq d"></div></div></div>
+      <div class="letter t"></div><div class="letter b"></div>
+      <div class="plate" style="left:50%;bottom:6cqw"><div class="nm"><span class="mvp">MVP</span>Kort</div><div class="hs">612 · 38 KILLS</div><div class="st">Order of the Lion · Dawn</div></div>
+      <div class="plate" style="left:30.5%;bottom:6cqw"><div class="nm">Hard bot</div><div class="hs">488 · 4:12 ON POINTS</div><div class="st">Graveborn · Dusk</div></div>
+      <div class="plate" style="left:69.5%;bottom:6cqw"><div class="nm">Maffhew</div><div class="hs">402 · 17 OF 20 KEPT</div><div class="st">Tidecallers · Dawn</div></div>
+      <div class="skip" style="bottom:1.4cqw;color:#8d8371">MENU KEY OR ESCAPE TO SKIP</div>
+    </div>
+    <p class="cap">The camera cuts to one shared stage that stands outside every map, so the map redesigns never touch it. Each commander stands in their own gear with three of their troops, in their side's colours. <b>Both teams</b> can be on it, bots too. With fewer than three commanders the empty plinths stay bare.</p>
+    <p class="mine">Ranked by a match score: 10 per troop killed, 30 per enemy commander you downed, 1 per second on the objective, and up to 100 for troops kept alive. One minute holding a point is worth six kills, so objective players rank fairly. The weights can be tuned in the design sheet.</p>
+  </section>
+
+  <section>
+    <div class="band">STEP 3 / STATS / 14 TO 24 S</div>
+    <h2>Who did what</h2>
+    <div class="screen">
+      <div class="dim"></div>
+      <div class="paper">
+        <div class="ph"><span class="t">Battle of Kingsfield</span><span class="m">DOMINATION · 11:42 · DAWN 300 / DUSK 214</span></div>
+        <table>
+          <thead><tr><th>Commander</th><th>Score</th><th>K / D</th><th>Army kills</th><th>Lost</th><th>On points</th></tr></thead>
+          <tbody>
+            <tr class="me"><td><span class="sw" style="background:var(--dawn)"></span><span class="mvp">MVP</span>Kort</td><td>612</td><td>6 / 1</td><td>38</td><td>9</td><td>3:05</td></tr>
+            <tr><td><span class="sw" style="background:var(--dawn)"></span>Maffhew</td><td>402</td><td>2 / 2</td><td>21</td><td>3</td><td>2:20</td></tr>
+            <tr><td><span class="sw" style="background:var(--dawn)"></span>Normal bot</td><td>288</td><td>1 / 3</td><td>17</td><td>14</td><td>1:41</td></tr>
+            <tr class="gap"><td><span class="sw" style="background:var(--dusk)"></span>Hard bot</td><td>488</td><td>3 / 2</td><td>19</td><td>12</td><td>4:12</td></tr>
+            <tr><td><span class="sw" style="background:var(--dusk)"></span>Hard bot</td><td>341</td><td>2 / 4</td><td>22</td><td>18</td><td>1:58</td></tr>
+          </tbody>
+        </table>
+        <div class="groups">
+          <div class="g"><h3>Commander</h3><div class="kv"><span>Kills</span><b>6</b></div><div class="kv"><span>Deaths</span><b>1</b></div><div class="kv"><span>K/D</span><b>6.0</b></div><div class="kv"><span>Damage</span><b>1,240</b></div></div>
+          <div class="g"><h3>Army</h3><div class="kv"><span>Kills</span><b>38</b></div><div class="kv"><span>Losses</span><b>9</b></div><div class="kv"><span>Kept alive</span><b>17 / 20</b></div><div class="best">Best: Longbowmen, 14 kills</div></div>
+          <div class="g"><h3>Objectives</h3><div class="kv"><span>Captures</span><b>4</b></div><div class="kv"><span>Hold time</span><b>3:05</b></div><div class="kv"><span>Final score</span><b>300</b></div><div class="kv"><span>Length</span><b>11:42</b></div></div>
+          <div class="g"><h3>Economy &amp; orders</h3><div class="kv"><span>Gold earned</span><b>1,860</b></div><div class="kv"><span>Gold spent</span><b>1,720</b></div><div class="kv"><span>Trained</span><b>14</b></div><div class="kv"><span>Upgrades</span><b>3</b></div><div class="kv"><span>Orders</span><b>52</b></div></div>
+        </div>
+      </div>
+      <div class="skip">MENU KEY OR ESCAPE TO SKIP</div>
+    </div>
+    <p class="cap">On top, every commander of both teams, your team first. Below, your own four groups. Each troop type's kills, losses and fielded count are one tap away on the War Table report afterwards. The objectives box follows the mode: Siege shows stages, Convoy shows wagon progress, Survival shows waves.</p>
+  </section>
+
+  <section>
+    <div class="band">STEP 4 / REWARDS / 24 TO 30 S</div>
+    <h2>What you earned, one by one</h2>
+    <div class="screen">
+      <div class="dim"></div>
+      <div class="paper">
+        <div class="ph"><span class="t">Spoils of war</span><span class="m">VICTORY · KINGSFIELD</span></div>
+        <div class="rw">
+          <div class="row"><span>Troop writs<span class="why">Match complete</span></span><span class="amt">+3</span></div>
+          <div class="row"><span>Troop writs<span class="why">Victory</span></span><span class="amt">+1</span></div>
+          <div class="row"><span>Gear shards<span class="why">Match complete and victory</span></span><span class="amt">+40</span></div>
+          <div class="row counting"><span>Order of the Lion shards and Renown<span class="why">Your banner's House slots</span></span><span class="amt">+12 / +5</span></div>
+          <div class="row wait"><span>Chapter XP<span class="why">Tier 4 is 60 XP away</span></span><span class="amt">+250</span></div>
+          <div class="row wait"><span>Forge marks<span class="why">Victory</span></span><span class="amt">+100</span></div>
+        </div>
+        <div class="total"><span>Total</span><span>4 writs · 40 gear shards · 250 XP</span></div>
+        <div class="claim"><span>Ready to claim: <u>2 contracts</u> · <u>chapter tier 3</u></span><span>Contracts on the War Table</span></div>
+      </div>
+      <div class="skip">MENU KEY OR ESCAPE TO SKIP</div>
+    </div>
+    <p class="cap">Each line appears with its reason and counts up, then the total. Troop writs and gear shards are the army rework's new currencies; until that lands, the same rows show collection gold. Campaign wins add the bonus objective, Pacts and new titles as their own lines.</p>
+  </section>
+
+  <section>
+    <div class="band">STEP 5 / 30 S</div>
+    <h2>Back to the room</h2>
+    <div class="screen">
+      <div class="table5"></div>
+      <div class="lob">
+        <div class="ph"><span class="t">War council</span><span class="m">ROOM K7Q2 · DOMINATION · KINGSFIELD</span></div>
+        <div class="seats">
+          <div class="side"><div class="seat"><span>Kort</span><span>Not ready</span></div><div class="seat"><span>Maffhew</span><span>Not ready</span></div><div class="seat"><span>Bot</span><span>Filled at the start</span></div></div>
+          <div class="side"><div class="seat"><span>Bot</span><span>Filled at the start</span></div><div class="seat"><span>Bot</span><span>Filled at the start</span></div><div class="seat"><span>Open</span><span></span></div></div>
+        </div>
+      </div>
+      <div class="tag">LAST BATTLE ▸</div>
+    </div>
+    <p class="cap">You land on the war council page of your room, everything as you left it. Solo practice and campaign land on the War Table home. <b>Last battle</b> reopens the report with all of the above at any time.</p>
+  </section>
+
+  <aside class="calls">
+    <h2>Calls I made (yours to change)</h2>
+    <ul>
+      <li>Step lengths: 6, 8, 10 and 6 seconds (30 in total). The rewards step stretches a little when a campaign win has many lines.</li>
+      <li>Skip uses the same keys as skipping the entrance. Skipping only moves you; skipping the rewards sends you straight back to the room.</li>
+      <li>The match score weights above, and the MVP tie-break: more kills, then more objective time, then the winning side.</li>
+      <li>The stage stands near the camp, outside every map: dark stone, three oak plinths, the MVP's side banners, a slow camera push-in.</li>
+      <li>Each commander's three troops are their troop types with the most kills; someone with no kills shows their banner's first types.</li>
+      <li>Troop animations pause at the freeze (statues), not settle into idle.</li>
+      <li>This replaces the 10 November plan for the match end (8 s "Ended" plus a 4 s best-commander orbit). Play again and surrender from that plan are not part of this.</li>
+    </ul>
+  </aside>
+</main>
