@@ -20,6 +20,9 @@ final class DarkUi {
     static final int SILHOUETTE=0xff46555b;
     // The mockups' remaining inks: labels on brass plates, "Enter" on brass keys, keys on rail plaques, the ability's key,
     // the shadow under tags, and the cooldown sweep's veil, leading edge and twelve o'clock line.
+    /** The command panel's gold and cream (CommandPanel.GOLD, CREAM) as the battle HUD draws them: the Formation aim's strip (its fill, the lit
+     *  shape, the shape's name, the key words) and the group column's mouse washes (a card's formation box, a card or chip). */
+    static final int AIM_STRIP_FILL=0xb31b120c, AIM_SHAPE_ON=0x4dffd27a, AIM_GOLD=0xffffd27a, AIM_CREAM=0xfffff6dc, COLUMN_HOVER=0x40ffd27a, COLUMN_WASH=0x26ffd27a;
     static final int PLATE_INK=0xff1e1509, KEY_INK=0xff3a2a12, RAIL_KEY=0xfff0d9a0, ABILITY_KEY=0xff2e1f0c, TAG_SHADOW=0xff120d16;
     static final int SWEEP_VEIL=0xcd15191c, SWEEP_EDGE=0xe6dfbd77, SWEEP_LINE=0xc8b08a4a;
     // The Chapter track's inks (work/ui-concepts/track, approved 2026-10-18): the Oath row's names on its sepia plaques and their

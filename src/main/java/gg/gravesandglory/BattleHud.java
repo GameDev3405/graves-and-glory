@@ -274,7 +274,7 @@ public final class BattleHud {
     public static int[] aimStrip;
     /** The cursor in HUD canvas px while the panel holds it (null otherwise): the column then shows what a click would pick. */
     private static double[] cursor;
-    static final int HOVER_WASH=0x40ffd27a,CARD_WASH=0x26ffd27a;
+    static final int HOVER_WASH=DarkUi.COLUMN_HOVER,CARD_WASH=DarkUi.COLUMN_WASH;
     static boolean inside(double[] m,int[] b){return m[0]>=b[0]&&m[0]<b[0]+b[2]&&m[1]>=b[1]&&m[1]<b[1]+b[3];}
     static double[] hudCursor(){
         var c=MinecraftClient.getInstance();
@@ -309,21 +309,21 @@ public final class BattleHud {
         int words=Math.max(font.getWidth(DarkUi.heading(name)),ww+2+font.getWidth("Shape")+8+hw+2+font.getWidth("Confirm"));
         int pad=6,cell=STRIP_CELL,gap=2,cellsW=4*cell+3*gap,sw=pad+cellsW+8+words+pad,sh=pad*2+cell;
         int x=w/2-sw/2,y=STRIP_Y;
-        g.fill(x+2,y+2,x+sw-2,y+sh-2,0xb31b120c);
+        g.fill(x+2,y+2,x+sw-2,y+sh-2,DarkUi.AIM_STRIP_FILL);
         UiTex.nine(g,"command/tray",x,y,sw,sh);
         for(int i=0;i<CommandSelection.SHAPES.length;i++){
             int cx=x+pad+i*(cell+gap),cy=y+pad;boolean on=CommandSelection.SHAPES[i].equals(CommandMode.formation);
-            if(on){g.fill(cx,cy,cx+cell,cy+cell,0x4dffd27a);RenderSystem.setShaderColor(1f,0xd2/255f,0x7a/255f,1f);}
+            if(on){g.fill(cx,cy,cx+cell,cy+cell,DarkUi.AIM_SHAPE_ON);RenderSystem.setShaderColor(1f,0xd2/255f,0x7a/255f,1f);}
             UiTex.draw(g,CommandPanel.SHAPE_ICONS[i],cx+(cell-24)/2,cy+(cell-24)/2);
             RenderSystem.setShaderColor(1,1,1,1);
         }
         int tx=x+pad+cellsW+8;
-        g.drawText(font,DarkUi.heading(name),tx,y+pad+1,0xffffd27a,true);
+        g.drawText(font,DarkUi.heading(name),tx,y+pad+1,DarkUi.AIM_GOLD,true);
         int ky=y+pad+cell-12;
         UiTex.three(g,"hud/key-chip",tx,ky,ww);g.drawText(font,wheel,tx+2,ky+2,DarkUi.CHIP_TEXT,false);tx+=ww+2;
-        g.drawText(font,"Shape",tx,ky+2,0xfffff6dc,false);tx+=font.getWidth("Shape")+8;
+        g.drawText(font,"Shape",tx,ky+2,DarkUi.AIM_CREAM,false);tx+=font.getWidth("Shape")+8;
         UiTex.three(g,"hud/key-chip",tx,ky,hw);g.drawText(font,hit,tx+2,ky+2,DarkUi.CHIP_TEXT,false);tx+=hw+2;
-        g.drawText(font,"Confirm",tx,ky+2,0xfffff6dc,false);
+        g.drawText(font,"Confirm",tx,ky+2,DarkUi.AIM_CREAM,false);
         aimStrip=new int[]{x,y,sw,sh};
     }
     /** The aim strip's top (under the aimed point's name at AIM_NAME_Y) and a shape cell's side, canvas px. */

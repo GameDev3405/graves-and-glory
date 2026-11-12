@@ -621,9 +621,10 @@ public final class CommandPanel {
     public static boolean mouseClicked(double x, double y, int button, boolean shift) {
         if (button != 0 || !CommandSelection.panelOpen()) return false;
         int id = -1;
-        // the tray lies over the pennants' right ends, so it is hit first
+        // the tray lies over the pennants' right ends, so it is hit first, and its cells before the tray's own box, which holds them
+        // (in the map's order the box could come first and swallow a cell's click: Kort, 2026-11-11, "why cant i click which hold line i want?")
         List<Map.Entry<Integer, int[]>> order = new ArrayList<>(hits.entrySet());
-        order.sort(Comparator.comparingInt(e -> e.getKey() >= TRAY && e.getKey() < SWEEP ? 0 : 1));
+        order.sort(Comparator.comparingInt(e -> e.getKey() >= CELL && e.getKey() < SWEEP ? 0 : e.getKey() == TRAY ? 1 : 2));
         for (var e : order) {
             int[] b = e.getValue();
             if (e.getKey() == POLE || e.getKey() == SWEEP) continue;
