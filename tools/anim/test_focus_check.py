@@ -204,6 +204,18 @@ class Graded(unittest.TestCase):
     def test_shield_hand_is_not_a_grip(self):
         self.assertIsNone(self.second_grip("knight", CLIP, LEGS))
 
+    def weapon_gone(self, troop, clip, ticks):
+        rig = rig_of(troop)
+        anim = sc._read(os.path.join(REPO, "%s/animations/troop/%s.animation.json" % (sc.ASSETS, troop)))
+        scene = rg.Scene(rig.model, None, [rg.load_clip(anim, clip)], 0.0)
+        return [fc._weapon_gone(rig, scene, t) for t in ticks]
+
+    def test_a_thrown_harpoon_is_not_judged_while_the_fist_is_empty(self):     # the game hides it; the check did not
+        self.assertEqual(self.weapon_gone("tc_harpooner", "attack_throw", (4.0, 12.0, 24.0)), [False, True, False])
+
+    def test_a_drawn_bow_is_still_a_weapon(self):                   # its pull frames have cubes: the rest frame stands in
+        self.assertEqual(self.weapon_gone("archer", "attack_direct", (0.0, 10.0, 16.0, 22.0)), [False] * 4)
+
 
 class FitPairs(unittest.TestCase):
     """The row armour_clip names one pair; fit_pairs lists them all (round 2: a pauldron 1.88 px in the helm was hidden

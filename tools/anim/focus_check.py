@@ -359,6 +359,22 @@ def _pivot(rig, fr, bone):
 additive_under = rg.additive_under      # hit clips and the stun shake-off are judged added onto the ready stance
 
 
+def _weapon_gone(rig, scene, tick):
+    """True on a tick where the game draws no weapon in the hand: the clip keys the "draw" bone onto a draw frame that has
+    no cubes (a thrower's fist after the harpoon left, GeoTroopRenderer.setCustomAnimations hides the rest frame). The rest
+    frame is all these checks know of a weapon, so without this a hidden harpoon is judged through the body and the floor
+    while the hand goes back to the quiver (tc_harpooner attack_throw ticks 9 to 14, 2026-11-12). A bow's pull frames have
+    cubes: its rest frame still stands in for the bow."""
+    d = scene._pose(tick).get("draw", {}).get("position")
+    if d is None:
+        return False
+    k = int(max(0, min(len(rg.Scene.DRAW_FRAMES) - 1, round(abs(float(d[0]))))))
+    if k == 0:
+        return False
+    suffix = "_" + rg.Scene.DRAW_FRAMES[k]
+    return any(n.endswith(suffix) for n in rig.full.order) and not any(b.endswith(suffix) for b in rig.full.cube_bone)
+
+
 def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exempt=(), under=None):
     """All checks of one clip played over its base clips. Returns {"name", "kind", "results": [...], "ticks": {...}}.
     under: stance clips the clip and its base are ADDED onto (see additive_under); None plays them as poses."""
@@ -374,6 +390,7 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
     n = max(1, int(math.floor(top.length / STEP + 1e-6)))
     ts = [min(i * STEP, top.length - (1e-4 if top.loop == "once" else 0.0)) for i in range(n + 1)]
     frames = [scene.evaluate(t) for t in ts]
+    gone = [_weapon_gone(rig, scene, t) for t in ts]        # ticks on which the hand holds nothing the game draws
     P = Parts(rig)
     bone_of = rig.model.cube_bone
     res = {}
@@ -385,11 +402,11 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
     def name_pair(pair):
         return "" if pair is None else "%s into %s" % (bone_of[pair[0]], bone_of[pair[1]])
 
-    def worst(check, group, movers, boxes, why):
+    def worst(check, group, movers, boxes, why, skip=None):
         r = R(check, group)
         if not movers or not boxes:
             return r.note(why)
-        vals = [_depth(fr, P, movers, boxes) for fr in frames]
+        vals = [(0.0, None) if skip and skip[k] else _depth(fr, P, movers, boxes) for k, fr in enumerate(frames)]
         series[check] = [v[0] for v in vals]
         k = int(np.argmax(series[check]))
         return r.set(vals[k][0], ts[k], name_pair(vals[k][1]))
@@ -404,14 +421,16 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
     r = R("weapon_in_body", "CLIP")
     wtgt = P.idx(body + (arm(other(ws)) if ws else []))
     if w and wtgt:
-        vals = [_depth(fr, P, w, wtgt, free=_second_grip(rig, fr, P, w, other(ws)) if ws else None) for fr in frames]
+        vals = [(0.0, None) if gone[k] else
+                _depth(fr, P, w, wtgt, free=_second_grip(rig, fr, P, w, other(ws)) if ws else None)
+                for k, fr in enumerate(frames)]
         series["weapon_in_body"] = [v[0] for v in vals]
         k = int(np.argmax(series["weapon_in_body"]))
         r.set(vals[k][0], ts[k], name_pair(vals[k][1]))
     else:
         r.note("no weapon")
-    worst("weapon_in_arm", "CLIP", w, P.idx([ws + "_arm"]) if ws else [], "no weapon")
-    worst("weapon_in_prop", "CLIP", w, p, "no weapon and held prop together")
+    worst("weapon_in_arm", "CLIP", w, P.idx([ws + "_arm"]) if ws else [], "no weapon", gone)
+    worst("weapon_in_prop", "CLIP", w, p, "no weapon and held prop together", gone)
     worst("prop_in_body", "CLIP", p, P.idx(body + (arm(other(ps)) + [ps + "_arm"] if ps else [])), "no held prop")
     r = R("limb_in_body", "CLIP")
     if rig.biped:
@@ -438,8 +457,11 @@ def check_clip(rig, anim, name, base=(), kind=None, variant=None, speed=0.0, exe
         # A rig whose boots or foot gear hang under the sole at rest starts below the ground: only what a clip adds counts.
         rest = rg.Scene(rig.model, None, [], 0.0).evaluate(0.0)
         sole = max(0.0, -float(rest.corners[hard][:, :, 1].min()) * 16.0)
-        lows = [(-float(fr.corners[hard][:, :, 1].min()) * 16.0 - sole, bone_of[hard[int(np.argmin(fr.corners[hard][:, :, 1].min(axis=1)))]])
-                for fr in frames]
+        bare = [i for i in hard if P.part[i] != "weapon"] or hard
+        lows = []
+        for k, fr in enumerate(frames):
+            h = bare if gone[k] else hard
+            lows.append((-float(fr.corners[h][:, :, 1].min()) * 16.0 - sole, bone_of[h[int(np.argmin(fr.corners[h][:, :, 1].min(axis=1)))]]))
         series["floor"] = [max(0.0, v[0]) for v in lows]
         k = int(np.argmax(series["floor"]))
         r.set(series["floor"][k], ts[k], lows[k][1] + " under the ground" if series["floor"][k] > 0 else "")
