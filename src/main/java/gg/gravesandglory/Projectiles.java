@@ -46,13 +46,15 @@ public final class Projectiles {
     public static final long[][] ARROWS_FIRED=new long[2][RANGE_BINS],ARROWS_HIT=new long[2][RANGE_BINS],ARROWS_LOST=new long[2][RANGE_BINS],ARROWS_MISSED=new long[2][RANGE_BINS];
     /**
      * An archer's aim (Kort 2026-11-11: no homing, believable misses). The shot is loosed once, at the target's body led by its motion over the
-     * last tick for the flight's ticks (a troop walking on into the shot is met; one that stops, turns or is shoved is not), scattered by a
+     * last tick for the flight's ticks while it walks a path (a troop walking on into the shot is met; one that stops, turns or is shoved is
+     * not); a mob standing to fight is shot where it stands, since its shuffle foretells nothing (leading it lost hits in the sims). Scattered by a
      * normal error of sigma = arrowSpreadBase + arrowSpreadPerBlock x range blocks across and along the line and half that up and down. The
      * arrow then flies that fixed curve; strike judges it against the target where it comes down. The Mortar's crew, casters and mends keep
      * the old steered shot that always lands.
      */
     static Vec3d scatter(GravesAndGlory.Unit u,LivingEntity target,Vec3d from,Vec3d to,int travel){
-        Vec3d led=to.add((target.getX()-target.prevX)*travel,0,(target.getZ()-target.prevZ)*travel);
+        boolean marching=!(target instanceof net.minecraft.entity.mob.MobEntity m)||!m.getNavigation().isIdle(); // a mob is led only while it walks a path: a fighting troop shuffles, and its last tick foretells nothing
+        Vec3d led=marching?to.add((target.getX()-target.prevX)*travel,0,(target.getZ()-target.prevZ)*travel):to;
         double dx=led.x-from.x,dz=led.z-from.z,len=Math.max(1e-6,Math.hypot(dx,dz)),sigma=C.arrowSpreadBase()+C.arrowSpreadPerBlock()*from.distanceTo(led);
         var r=u.mob.getRandom();double across=r.nextGaussian()*sigma,along=r.nextGaussian()*sigma,up=r.nextGaussian()*sigma*.5;
         return led.add(-dz/len*across+dx/len*along,up,dx/len*across+dz/len*along);
