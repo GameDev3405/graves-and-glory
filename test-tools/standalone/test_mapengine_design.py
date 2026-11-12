@@ -41,7 +41,7 @@ class DesignTest(unittest.TestCase):
         d = new_design('t', 'T')
         del d['objects']
         self.assertTrue(any('objects' in m for m in validate(d)))
-        for y in (None, 40000, 64.5):
+        for y in (None, 40000, 64.5, -49):
             d = new_design('t', 'T')
             if y is None:
                 del d['baseY']

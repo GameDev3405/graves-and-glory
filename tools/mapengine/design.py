@@ -69,8 +69,8 @@ def validate(d):
     names = set()
     palettes = palette_keys()
     base_y = d.get('baseY')
-    if not (_int(base_y) and -64 <= base_y <= 300):
-        out.append('baseY must be an integer from -64 to 300')
+    if not (_int(base_y) and -48 <= base_y <= 300):  # build.FLOOR (-16) under baseY must stay above the world bottom (-64)
+        out.append('baseY must be an integer from -48 to 300')
     objects = d.get('objects')
     if not isinstance(objects, list):
         out.append('objects: not a list')
