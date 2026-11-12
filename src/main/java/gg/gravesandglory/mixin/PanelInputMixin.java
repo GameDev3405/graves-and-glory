@@ -16,7 +16,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * The command panel's hold on the mouse (command UI plan Task 7), only while CommandPanel.capturing (panel open, no order being aimed,
  * no Screen): the cursor stays free (the game may not relock it), a left click goes to the panel or picks the troop under the cursor and
- * never swings, a right drag turns the camera and never uses an item. Keyboard input is untouched, so WASD still walks.
+ * never swings, a right drag turns the camera and never uses an item. Releases are never swallowed: vanilla must clear a binding
+ * whose press it saw before the panel began capturing (C18-F1), and a release of a swallowed press only clears an unpressed binding. Keyboard input is untouched, so WASD still walks.
  */
 @Mixin(Mouse.class)
 abstract class PanelInputMixin {
@@ -28,7 +29,7 @@ abstract class PanelInputMixin {
     @Inject(method = "onMouseButton", at = @At("HEAD"), cancellable = true)
     private void graves$panelClick(long window, int button, int action, int mods, CallbackInfo ci) {
         if (window != client.getWindow().getHandle()) return;
-        if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && action == GLFW.GLFW_RELEASE && gravesRightHeld) { gravesRightHeld = false; ci.cancel(); return; }
+        if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && action == GLFW.GLFW_RELEASE && gravesRightHeld) { gravesRightHeld = false; return; } // a release always reaches vanilla, which clears the binding
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && action == GLFW.GLFW_RELEASE && CommandPanel.dragging()) CommandPanel.editRelease();
         if (!CommandPanel.capturing()) return;
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && CommandPanel.editing()) {
@@ -36,7 +37,7 @@ abstract class PanelInputMixin {
             var w = client.getWindow();
             if (action == GLFW.GLFW_PRESS) CommandPanel.editPress(x * w.getScaledWidth() / (double) w.getWidth(), y * w.getScaledHeight() / (double) w.getHeight());
             else if (action == GLFW.GLFW_RELEASE) CommandPanel.editRelease();
-            ci.cancel();
+            if (action != GLFW.GLFW_RELEASE) ci.cancel();
         } else if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             if (action == GLFW.GLFW_PRESS) {
                 var w = client.getWindow();
@@ -44,11 +45,11 @@ abstract class PanelInputMixin {
                 boolean shift = (mods & GLFW.GLFW_MOD_SHIFT) != 0 || CommandSelection.shiftHeld(client);
                 CommandPanel.mouseClicked(gx, gy, 0, shift);
             }
-            ci.cancel();
+            if (action != GLFW.GLFW_RELEASE) ci.cancel();
         } else if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
             gravesRightHeld = action == GLFW.GLFW_PRESS;
-            ci.cancel();
-        } else ci.cancel(); // middle and side buttons: nothing picks blocks or fires bindings while the panel holds the mouse
+            if (action != GLFW.GLFW_RELEASE) ci.cancel();
+        } else if (action != GLFW.GLFW_RELEASE) ci.cancel(); // middle and side buttons: nothing picks blocks or fires bindings while the panel holds the mouse
     }
 
     @Inject(method = "onCursorPos", at = @At("HEAD"))
