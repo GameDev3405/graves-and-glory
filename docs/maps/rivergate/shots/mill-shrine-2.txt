@@ -1,0 +1,15 @@
+note Rivergate K5 K6 round 2
+mc time set 3000
+mc execute as @a at @s run forceload add 0 -128 63 -80
+mc execute as @a at @s run forceload add 0 80 63 127
+mc execute as @a at @s run place template ggmaps:rg/k5_mill_ws 6 194 -122
+mc execute as @a at @s run place template ggmaps:rg/k6_shrine_ws 6 197 91
+wait 10
+shot m-wheel-se 44 201 -94 34 202 -106
+shot m-wheel-e 45 202 -106.5 34 202 -106.5
+shot m-from-square 6 201 -98 26 205 -107
+shot m-c-se 48 222 -84 28 203 -106
+shot h-from-square 6 201 98 26 206 107
+shot h-tower-ne 46 201 92 35 210 106
+shot h-north 26 201 90 26 206 104
+shot h-c-ne 48 226 82 28 205 106

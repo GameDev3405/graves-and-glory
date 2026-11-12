@@ -1,0 +1,23 @@
+note Rivergate K1 water gate
+mc time set 3000
+mc execute as @a at @s run forceload add -272 -64 -160 63
+mc execute as @a at @s run place template ggmaps:rg/k1_wg_00 -257 193 -46
+wait 10
+mc execute as @a at @s run place template ggmaps:rg/k1_wg_01 -257 193 0
+wait 10
+mc execute as @a at @s run place template ggmaps:rg/k1_wg_10 -212 193 -46
+wait 10
+mc execute as @a at @s run place template ggmaps:rg/k1_wg_11 -212 193 0
+wait 10
+shot s-gate-out -164 201 -25.5 -180 205 -25.5
+shot s-front -156 203 0 -181 204 0
+shot s-gate-in -196 201 -25.5 -180 203 -25.5
+shot s-court-e -215 201 -0.5 -181 204 0
+shot s-court-nw -212 201 -4 -238 202 -30
+shot s-yard-s -204 201 18 -238 202 33
+shot s-barracks-in -230 201 -32 -246 201 -33
+shot s-armoury-in -241 201 31 -229 201 33
+shot s-walk -182 205.6 -14 -182 205 14
+shot c-ne -158 234 -62 -215 200 0
+shot c-sw -272 234 62 -215 200 0
+shot c-e-low -148 214 8 -200 202 0

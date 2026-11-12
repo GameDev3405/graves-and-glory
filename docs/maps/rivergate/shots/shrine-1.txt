@@ -1,0 +1,15 @@
+note Rivergate K6 shrine
+mc time set 3000
+mc execute as @a at @s run forceload add 0 80 63 127
+mc execute as @a at @s run place template ggmaps:rg/k6_shrine_ws 6 197 91
+wait 10
+shot s-from-square 6 201 98 26 206 107
+shot s-door 11 201 106.5 24 203 106.5
+shot s-north 24 201 92 28 207 106
+shot s-tower-ne 46 201 94 35 208 106
+shot s-graves 44 202 112 34 201 111
+shot s-nave 20 201 106.5 30 202 106.5
+shot s-nave-back 28 201 106.5 18 203 106.5
+shot s-vestry 36 201 107 33 203 105
+shot c-ne 48 224 84 28 204 106
+shot c-sw 4 222 126 28 204 106

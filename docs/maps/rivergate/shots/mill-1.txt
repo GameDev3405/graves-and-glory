@@ -1,0 +1,15 @@
+note Rivergate K5 watermill
+mc time set 3000
+mc execute as @a at @s run forceload add 0 -128 63 -80
+mc execute as @a at @s run place template ggmaps:rg/k5_mill_ws 6 194 -122
+wait 10
+shot s-from-square 6 201 -98 26 205 -107
+shot s-door 12 201 -106.5 24 202 -106.5
+shot s-south 26 201 -92 28 205 -106
+shot s-wheel-se 44 201 -94 34 202 -106
+shot s-wheel-e 45 202 -106.5 34 202 -106.5
+shot s-in-stones 20 201 -103 26 201 -108
+shot s-in-east 20 201 -110 30 201 -104
+shot s-loft 28 206 -106 20 206 -107
+shot c-se 48 222 -84 28 203 -106
+shot c-nw 6 220 -124 28 203 -106

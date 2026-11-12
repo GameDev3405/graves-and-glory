@@ -1,0 +1,15 @@
+note Rivergate K3 market hall
+mc time set 3000
+mc execute as @a at @s run forceload add 0 -32 63 31
+mc execute as @a at @s run place template ggmaps:rg/k3_hall_ws 8 197 -20
+wait 10
+shot s-from-ring 4 201 0 30 206 0
+shot s-sw 10 201 16 30 206 0
+shot s-ne 51 201 -18 31 206 -1
+shot s-stair 50 201 12 43 204 0
+shot s-arcade 22 201 0 40 201 0
+shot s-arcade-across 30 201 9 30 202 -7
+shot s-chamber-e 39 206 0 22 206 -1
+shot s-chamber-w 22 206 1 40 206 -1
+shot c-sw 4 224 26 30 204 0
+shot c-n 30 222 -30 30 204 0
