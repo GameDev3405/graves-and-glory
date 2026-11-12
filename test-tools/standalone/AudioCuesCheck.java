@@ -101,7 +101,7 @@ public final class AudioCuesCheck {
  /** The ambience and music layers: each bed is chosen by some moment and played in the ambient category, and the briefing and overtime music have their play sites. */
  static void ambienceLayers(String code,Set<AudioCues.Cue> beds)throws Exception{
   String director=Files.readString(Path.of("src/main/java/gg/gravesandglory/MusicDirector.java"));
-  // Every bed is reachable from a moment: the camp, a survival battle on any map, or the battle bed of a map's theme (five maps, five themes, five beds).
+  // Every bed is reachable from a moment: the camp, a survival battle on any map, or the battle bed of a map's theme (five themes, five beds).
   Set<AudioCues.Cue> reached=EnumSet.noneOf(AudioCues.Cue.class);
   check(AudioCues.bed(true,"","")==AudioCues.Cue.CAMP_ROOM_TONE&&AudioCues.bed(true,"survival","river")==AudioCues.Cue.CAMP_ROOM_TONE,"The Banner Camp has its room tone");
   reached.add(AudioCues.Cue.CAMP_ROOM_TONE);
@@ -111,7 +111,8 @@ public final class AudioCuesCheck {
    var b=AudioCues.bed(false,"domination",m.theme());check(b.name().startsWith("AMBIENCE_"),m.id()+": a battle bed is an ambience bed, "+b.name());mapBeds.add(b);reached.add(b);reached.add(AudioCues.Cue.SURVIVAL_WIND);
    check(AudioCues.bed(false,"siege",m.theme())==b&&AudioCues.bed(false,"convoy",m.theme())==b,m.id()+": the bed follows the map, not the mode");
   }
-  check(mapBeds.size()==Spec.MAPS.length,"Each map has a bed of its own: "+mapBeds);
+  // one bed per theme: a map that shares a theme (New Kingsfield is plains, as Kingsfield) shares its bed
+  check(mapBeds.size()==java.util.Arrays.stream(Spec.MAPS).map(Spec.MapsRow::theme).distinct().count(),"Each theme has a bed of its own: "+mapBeds);
   check(AudioCues.bed(false,"domination","unknown")==AudioCues.Cue.AMBIENCE_WIND&&AudioCues.bed(false,"domination",null)==AudioCues.Cue.AMBIENCE_WIND,"An unknown theme falls back to the wind");
   reached.add(AudioCues.Cue.AMBIENCE_WIND);
   check(reached.containsAll(beds),"Every bed is chosen by some moment: "+reached);

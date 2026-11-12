@@ -20,6 +20,9 @@ import java.util.Deque;
  *   shot NAME x y z lookX lookY lookZ   the same, aimed at a point
  *   shot NAME x y z yaw pitch   move the player there as a spectator, wait for the chunks, save
  *                   (run folder)/mapforge/screenshots/NAME.png with the HUD hidden
+ *   practice        start a practice round (camp:practice, as MapTour does): bots field, the point flags and the battle HUD show
+ *   hudshot NAME x y z lookX lookY lookZ   teleport the player there in its own game mode and save NAME.png with the HUD shown
+ *   points          a line in the evidence with each point (id, name, x, y, z, owner) and the scores
  * Queue runs (tools/checkq.py) pass the script as --env GRAVES_MAPFORGE_SCRIPT=<path> in place of -PmapForge.
  * Evidence: (run folder)/mapforge/harness.txt; the client stops when the script ends, on the first failure, or after
  * 28 minutes. */
@@ -68,8 +71,16 @@ public final class MapForgeHarness implements ClientModInitializer {
             String[] v=line.split("\\s+",2);String rest=v.length>1?v[1]:"";
             switch(v[0]){
                 case "note"->log("note "+rest);
+                case "practice"->{var id=c.player.getUuid();log("practice round on map "+b.campaign.map);pause=200;
+                    server.execute(()->{var p=server.getPlayerManager().getPlayer(id);if(p!=null){b.campaign.handle(p,"camp:practice");b.campaign.introUntil=b.time;}});}
+                case "hudshot"->{String[] a=rest.trim().split("\\s+");
+                    if(a.length!=7){end(c,false,"hudshot NAME x y z lookX lookY lookZ: "+line);return;}
+                    shotName=a[0];pause=120;c.options.hudHidden=false;b.campaign.leash=false;String tp="tp @a "+a[1]+" "+a[2]+" "+a[3]+" facing "+a[4]+" "+a[5]+" "+a[6];
+                    server.execute(()->server.getCommandManager().executeWithPrefix(server.getCommandSource().withSilent(),tp));}
+                case "points"->{StringBuilder s=new StringBuilder("points");for(var p:b.points)s.append(" ").append(p.spec.id()).append("(").append(p.spec.name()).append(" ").append(p.spec.x()).append(",").append(p.spec.elevation()).append(",").append(p.spec.z()).append(" owner ").append(p.owner).append(")");
+                    log(s+" scores "+b.scores[0]+"-"+b.scores[1]+" field "+Field.halfX()+"x"+Field.halfZ()+" spawns "+Spec.FACTIONS[0].spawnX()+","+Spec.FACTIONS[0].spawnZ()+" / "+Spec.FACTIONS[1].spawnX()+","+Spec.FACTIONS[1].spawnZ());}
                 case "wait"->pause=Integer.parseInt(rest.trim());
-                case "shot"->{String[] a=rest.trim().split("\s+");
+                case "shot"->{String[] a=rest.trim().split("\\s+");
                     if(a.length!=6&&a.length!=7){end(c,false,"shot NAME x y z yaw pitch | shot NAME x y z lookX lookY lookZ: "+line);return;}
                     shotName=a[0];pause=120;c.options.hudHidden=true;b.campaign.leash=false;
                     String tp="execute as @a at @s run tp @s "+a[1]+" "+a[2]+" "+a[3]+(a.length==7?" facing "+a[4]+" "+a[5]+" "+a[6]:" "+a[4]+" "+a[5]);
