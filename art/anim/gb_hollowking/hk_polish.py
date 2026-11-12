@@ -24,17 +24,25 @@ the finished animation document (doc level, his clips only; every other troop's 
   edge       The cleave landed 14 degrees off its edge at the impact (scorecard edge_lead, limit 13.5): the sword hand rolls
              2 degrees about its y over three ticks each side of the impact.
   head       The knockback threw the head back into the spine fan (2.0 px): tipped back less, at most 14 degrees, eased.
+  plate      The knockback's folded right knee sat under its hip plate (hip_r into right_shin 1.94 px at t10): the plate
+             flares off the shin by the least angle, eased in and out (the knee, the boot and the hit keep their pose).
 
-Every fix is a constraint (re-running it on its own output changes nothing). Timing, length, the impact marker and the
-timeline markers are kept; channels it does not fix keep their keys.
+Each fix measures the clip it is given, so a pass is meant for fresh clips. polish() therefore records what each stage
+wrote (art/anim/gb_hollowking/out/hk_polish.state.json: per stage, a hash of every clip it changed) and does nothing when
+the document already holds exactly that output, so running it again changes no byte. A document that holds only part of
+a stage's output is refused (re-run the chain from the build). Timing, length, the impact marker and the timeline
+markers are kept; channels it does not fix keep their keys.
 
 Built clips: art/anim/knight/build_anims.py (GG_ANIM_TROOP=gb_hollowking) calls polish(doc, BUILT) before writing out/.
-Late clips (made in the exported asset by art/anim/common/stances.py, reactions.py and charge.py): after that chain run
+That stage ends with the same limb_clear pass (on the deployed geo and rig) that stances.py runs over the exported file,
+so out/ equals the exported asset on every clip they share. Late clips (made in the exported asset by
+art/anim/common/stances.py, reactions.py and charge.py): after that chain run
     python art/anim/gb_hollowking/hk_polish.py
 which polishes the LATE clips of the exported animation file in place.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -50,7 +58,9 @@ for _p in (ROOT / "tools" / "anim", ROOT / "art" / "anim" / "common", ROOT / "ar
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 os.environ.setdefault("GG_ANIM_TROOP", TROOP)
-ASSET = ROOT / "src/main/resources/assets/gravesandglory/animations/troop" / f"{TROOP}.animation.json"
+ASSETS = ROOT / "src/main/resources/assets/gravesandglory"
+ASSET = ASSETS / "animations/troop" / f"{TROOP}.animation.json"
+STATE = HERE / "out" / "hk_polish.state.json"
 
 SUB, TPS = 4, 20.0
 Z3 = (0.0, 0.0, 0.0)
@@ -64,6 +74,8 @@ PLATE_CLEAR = 1.2    # px a plate or the head may lie in the body beyond its res
 CUISSE_SLIDE = 2.5   # px a thigh plate slides down its thigh at most
 SLIDE_RATE = 0.15    # px per sample
 HEAD_MAX = 25.0
+PLATE_MAX = 30.0     # degrees a hip plate may flare at most
+HIP_CLEAR = 1.6      # px a hip plate may lie in the leg beyond its rest fit (it sits on the thigh at 1.1-1.3 all through)
 THIGH_CLEAR = 1.5    # px a thigh may lie in the hip block beyond its rest fit (armour_clip warns at 1.7)
 THIGH_MAX = 20.0     # degrees a thigh lifts less at most
 EDGE_LEAD = 12.5     # degrees the edge may lie off the blade's motion at the impact (scorecard limit 13.53)
@@ -84,7 +96,7 @@ HITS = ["hit_light_front", "hit_light_back", "hit_light_right", "hit_light_left"
 READY = ("stance_ready_upper", "stance_ready_legs", 0.0)
 BUILT = {
     "floor": [("run_legs", "run_upper", None), ("stance_wall_legs", "stance_wall_upper", None)],
-    "rags": [("walk_legs", "walk_upper", None), ("run_legs", "run_upper", None),
+    "rags": [("idle_legs", "idle_upper", None), ("walk_legs", "walk_upper", None), ("run_legs", "run_upper", None),
              ("attack_overhead_cleave_legs", "attack_overhead_cleave", None),
              ("attack_side_cut_legs", "attack_side_cut", None), ("attack_thrust_legs", "attack_thrust", None),
              ("stance_ready_legs", "stance_ready_upper", None), ("stance_brace_legs", "stance_brace_upper", None),
@@ -108,10 +120,31 @@ LATE = {
     "weapon": [("stun_upper", "stun_legs", None), ("stun_out_upper", "stun_legs", STUN)],
     "cuisse": [("hit_pulled_legs", "hit_pulled", READY)],
     "head": [("hit_knockback", "hit_knockback_legs", READY)],
+    "plate": [("hit_knockback_legs", "hit_knockback", READY)],
+    "seam": [("stun_legs", "stun_upper", None), ("stun_upper", "stun_legs", None)],
     "soft": [("hit_pulled", "hit_pulled_legs", READY), ("hit_knockback", "hit_knockback_legs", READY),
              ("stun_upper", "stun_legs", None), ("stun_out_upper", "stun_legs", STUN)],
 }
 STUN_LOOP = (4.0, 24.0)     # reactions.py: the stun clip plays its entry once, then loops ticks 4-24
+UNFOLDED = ("idle_legs",)   # at ease the strips keep their full length, as in the ready guard he goes to from idle
+HIP_PLATES = ("hip_r", "hip_l")
+
+
+def _seam(v, n):
+    """The stun's legs loop ticks 4-24 in game: the last STUN_LOOP[0] ticks of a per-sample curve blend onto the curve's
+    own run into tick 4, so tick 24 lands on tick 4 with the same speed (no pop at each wrap)."""
+    a, z = int(STUN_LOOP[0] * SUB), int(STUN_LOOP[1] * SUB)
+    if z > n:
+        return v
+    v = np.array(v, dtype=float)
+    src = v.copy()
+    for i in range(z - a, z + 1):
+        f = _B().smooth((i - (z - a)) / float(a))
+        v[i] = src[i] * (1.0 - f) + src[i - (z - a)] * f
+    d0 = v[z] - v[0]        # the clip's own wrap too (it is marked loop): the entry eases from tick 24's value
+    for i in range(0, a + 1):
+        v[i] += d0 * (1.0 - _B().smooth(i / float(a)))
+    return v
 
 
 def _B():
@@ -468,7 +501,7 @@ def fix_rags(rig, B, anims, name, partner, base, log):
     ctx = Ctx(anims, name, partner, base)
     ctx.clip["bones"].pop("rags", None)
     ts, n = _times(ctx)
-    folds = RAG_FOLDS
+    folds = (1.0,) if name in UNFOLDED else RAG_FOLDS
     if base is not None:     # HitController adds a hit's turns only: the strips keep the stance's length under it
         sc0 = anims[base[1]]["bones"].get("rags", {}).get("scale")
         folds = (_at(_keys(sc0), base[2])[1] if sc0 else 1.0,)
@@ -485,15 +518,19 @@ def fix_rags(rig, B, anims, name, partner, base, log):
         env = np.maximum(env - r0, 0.0)
         env[0] = env[-1] = 0.0
         fold[0] = fold[-1] = 0.0
+    seam = ()
+    if name == "stun_legs":      # the game loops ticks 4-24: tick 24 comes back to tick 4
+        env, fold = _seam(env, n), _seam(fold, n)
+        seam = (int(STUN_LOOP[0] * SUB), int(STUN_LOOP[1] * SUB))
     if max(env) < 0.05 and max(fold) < 0.005:
         log("  rags %-28s clear (no key)" % name)
         return
     ch = {}
     vals = [[round(rig.sign * float(v), 3), 0.0, 0.0] for v in env]
-    ch["rotation"] = {_ft(i / SUB / TPS): vals[i] for i in B.thin(vals, B.ROT_TOL)}
+    ch["rotation"] = {_ft(i / SUB / TPS): vals[i] for i in sorted(set(B.thin(vals, B.ROT_TOL)) | set(seam))}
     if max(fold) >= 0.005 and base is None:
         sv = [[1.0, round(1.0 - float(v), 4), 1.0] for v in fold]
-        ch["scale"] = {_ft(i / SUB / TPS): sv[i] for i in B.thin(sv, 0.002)}
+        ch["scale"] = {_ft(i / SUB / TPS): sv[i] for i in sorted(set(B.thin(sv, 0.002)) | set(seam))}
     ctx.clip["bones"]["rags"] = ch
     k = int(np.argmax(need))
     left = max(rig.rag_gap(rig.fk(ctx.pose(t, strip=("rags",))), rig.sign * float(env[i]) + (ctx.base_of("rags")[0][0] if base is not None else 0.0), folds[0] - float(fold[i]))[0]
@@ -971,15 +1008,129 @@ def fix_head(rig, B, anims, name, partner, base, log):
     log("  head %-28s tipped back %.1f deg less at most, t%s-%s" % (name, E.max(), B.fmt_t(lo_i / SUB), B.fmt_t(hi_i / SUB)))
 
 
+def fix_plate(rig, B, anims, name, partner, base, log):
+    """A hip plate (hip_r / hip_l, hung from the hips) that a folded knee comes up under: the plate flares off the leg by
+    the least angle about the axis that clears it soonest, eased in and out. The leg, the boot and the hit keep their
+    pose; an additive clip starts and ends on the stance."""
+    ctx = Ctx(anims, name, partner, base)
+    ts, n = _times(ctx)
+    did = []
+    for bone in HIP_PLATES:
+        def g(fr, pose, ax, d):
+            r, q = pose.get(bone, (Z3, None))
+            r = list(r)
+            r[ax] += d
+            return rig.gap(fr, bone, _posed(rig, fr[0], bone, rot=tuple(r), pos=q))
+
+        frames = [(i, ctx.pose(t)) for i, t in enumerate(ts)]
+        deep = []
+        for i, pose in frames:
+            fr = rig.fk(pose)
+            v = g(fr, pose, 0, 0.0)
+            if v > HIP_CLEAR:
+                deep.append((v, i, pose, fr))
+        if not deep:
+            continue
+        _, k, pk, fk = max(deep, key=lambda e: e[0])
+        best = None
+        for ax in (0, 2):             # forward/back or outward: the least flare that clears the worst sample
+            for s in (1.0, -1.0):
+                for x in np.arange(1.0, PLATE_MAX + 1e-6, 1.0):
+                    if g(fk, pk, ax, s * x) <= HIP_CLEAR:
+                        if best is None or x < best[2]:
+                            best = (ax, s, float(x))
+                        break
+        if best is None:
+            log("  plate %s %s: no flare within %.0f deg clears it" % (name, bone, PLATE_MAX))
+            continue
+        ax, s, _ = best
+        need = np.zeros(n + 1)
+        for _, i, pose, fr in deep:
+            lo, hi = 0.0, PLATE_MAX
+            for _ in range(10):
+                mid = (lo + hi) / 2.0
+                lo, hi = (lo, mid) if g(fr, pose, ax, s * mid) <= HIP_CLEAR else (mid, hi)
+            need[i] = hi
+        E = envelope(need, ARM_RATE, ARM_RATE, ctx.loop)
+        if base is not None:
+            E = np.minimum(E, np.array([ARM_RATE * min(i, n - i) for i in range(n + 1)]))
+        live = [i for i in range(n + 1) if E[i] > 1e-3]
+        lo_i, hi_i = max(0, live[0] - 1), min(n, live[-1] + 1)
+        ch = ctx.clip["bones"].get(bone, {}).get("rotation")
+        ks = _keys(ch) if ch is not None else [(0.0, list(Z3))]
+        vals = {}
+        for i in range(lo_i, hi_i + 1):
+            v = _at(ks, ts[i])
+            v[ax] += s * float(E[i])
+            vals[ts[i]] = v
+        write_channel(ctx.clip, bone, "rotation", vals)
+        did.append("%s %s %+.1f deg at most (t%s), t%s-%s" % (bone, "xyz"[ax], s * float(E.max()), B.fmt_t(k / SUB),
+                                                            B.fmt_t(lo_i / SUB), B.fmt_t(hi_i / SUB)))
+    log("  plate %-27s %s" % (name, ", ".join(did) or "clear"))
+
+
+def fix_seam(rig, B, anims, name, partner, base, log):
+    """The stun loops ticks 4-24 in game: every channel's value at tick 24 is set to its value at tick 4 (the rags are
+    already blended onto it; what is left is the made clip's own rounding)."""
+    clip = anims[name]
+    a, z = STUN_LOOP[0] / TPS, STUN_LOOP[1] / TPS
+    worst = (0.0, "")
+    for b, chans in clip["bones"].items():
+        for c, ch in chans.items():
+            if not isinstance(ch, dict):
+                continue
+            ks = _keys(ch)
+            va, vz = _at(ks, a), _at(ks, z)
+            d = max(abs(x - y) for x, y in zip(va, vz))
+            if d > 1e-4:     # one rounded value keyed at both ends of the loop, so they are equal to the last digit
+                va = [round(float(x), 4 if c == "position" else 3) for x in va]
+                write_channel(clip, b, c, {a: va, z: va})
+                worst = max(worst, (d, "%s %s" % (b, c)))
+    log("  seam %-28s tick 24 = tick 4 on every channel (largest change %.3f, %s)" % (name, worst[0], worst[1] or "none"))
+
+
 FIXES = (("floor", fix_floor), ("rags", fix_rags), ("cuisse", fix_cuisse), ("thigh", fix_thigh), ("weapon", fix_weapon),
-         ("edge", fix_edge), ("head", fix_head), ("soft", fix_soft))
+         ("edge", fix_edge), ("head", fix_head), ("plate", fix_plate), ("soft", fix_soft), ("seam", fix_seam))
+
+
+def _hash(clip):
+    """A clip's hash as it reads back from its file (key times are strings there, numbers plain floats)."""
+    flat = json.loads(json.dumps(clip))
+    return hashlib.sha1(json.dumps(flat, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def _state():
+    try:
+        return json.loads(STATE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def polished(doc, stage):
+    """True when doc already holds this stage's recorded output, False when it holds none of it. A document holding only
+    part of it (some clips polished, some fresh) raises: a second pass over polished clips would move them again."""
+    rec = _state().get(stage) or {}
+    anims = doc["animations"]
+    same = [c for c, h in rec.items() if c in anims and _hash(anims[c]) == h]
+    if rec and len(same) == len(rec):
+        return True
+    if same:
+        raise RuntimeError("hk_polish %s: %d of %d clips are already polished (%s); re-run the chain from the build"
+                           % (stage, len(same), len(rec), ", ".join(sorted(same))))
+    return False
 
 
 def polish(doc, plan, log=print):
-    """Applies the plan (BUILT or LATE) to an animation document in place."""
+    """Applies the plan (BUILT or LATE) to an animation document in place, once: a document that already holds the
+    stage's recorded output is left as it is (see the module note)."""
+    stage = "built" if plan is BUILT else "late" if plan is LATE else None
+    anims = doc["animations"]
+    if stage and polished(doc, stage):
+        log("hk_polish %s: already polished, nothing to do" % stage)
+        return doc
+    before = {c: _hash(v) for c, v in anims.items()}
     B = _B()
     rig = Rig()
-    anims = doc["animations"]
     log("hk_polish: ground %.2f px, rags turn %+d" % (rig.ground, int(rig.sign)))
     for kind, fn in FIXES:
         for name, partner, base in plan.get(kind, ()):
@@ -987,6 +1138,16 @@ def polish(doc, plan, log=print):
                 log("  %s %s: no such clip" % (kind, name))
                 continue
             fn(rig, B, anims, name, partner, base, log)
+    if stage == "built":     # as stances.py does over the exported file, so out/ equals the asset on the shared clips
+        import limb_clear
+        limb_clear.key_doc(TROOP, doc, ASSETS / "geo/troop" / f"{TROOP}.geo.json", ASSETS / "troop_rig" / f"{TROOP}.json",
+                           log=log)
+    if stage:
+        st = _state()
+        st[stage] = {c: _hash(v) for c, v in anims.items() if before.get(c) != _hash(v)}
+        STATE.parent.mkdir(parents=True, exist_ok=True)
+        with open(STATE, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(json.dumps(st, indent=1, sort_keys=True) + "\n")
     return doc
 
 

@@ -1,0 +1,36 @@
+{
+ "built": {
+  "attack_overhead_cleave": "19ad4807fdc9546d551be095cca1d879bfa9b3c2",
+  "attack_overhead_cleave_legs": "7641fd32bc7fb0613761c17cdf29b9a5de4364ff",
+  "attack_side_cut": "b2ad5708266a24f91670c95b13ea9843488e005d",
+  "attack_side_cut_legs": "31f4c70b30d5f3140aef43cb33b6e6c10afdcc7d",
+  "attack_thrust": "7923c2ec2130a7830fa1bb340d6b8e6d51fe9da6",
+  "attack_thrust_legs": "43845a9f224ea414d2075ee2bbcca1bb65120076",
+  "hit_block": "921b359716cce41820c5e9a8f26de76a310008ba",
+  "hit_medium_back": "b1f6d974e9372c0cf489b1915dc7e2173e52e984",
+  "hit_medium_back_legs": "29d69ff3572d4196f05028e50f6d7b1e809de8ae",
+  "hit_medium_front": "dd9a2a2cdbd89b9638f3dbbdbee8b5d645831974",
+  "hit_medium_front_legs": "ff27d6d6ef19b0f6fd0f2eb06850386bba5de9c3",
+  "hit_medium_left": "a807fefbc2f309bf987dab95ac7f3ce71c7ce982",
+  "hit_medium_left_legs": "2ea9077605af7e60af04df259d069faeaf7f3165",
+  "hit_medium_right": "895333254685c03fd41dc715ebe4ff7cbc52b908",
+  "hit_medium_right_legs": "ed228846be9324a307ef31a695ea13b71650c631",
+  "idle_legs": "0fcc5cdfbfdff9e3867291b892ac62bdcf235f75",
+  "run_legs": "16eb355a17ea303f2ff838b100739f0557b71edc",
+  "stance_brace_legs": "d088c05ffd66842fe9c325609ecf6036eefcf96c",
+  "stance_ready_legs": "b2537e11605d96e1cbcf83e95c5274490437798a",
+  "stance_wall_legs": "b62a03d4e4daee8c20df0398841d90c08f119d1d",
+  "walk_legs": "7b2881b2e0e5510a7bac24f71661f096c32180cf"
+ },
+ "late": {
+  "hit_knockback": "db3a8c527863c63c3da4c04e8a56cc05418ce76c",
+  "hit_knockback_legs": "0fc3bf50cde78e9385a9a607a35ac53991c8a6ef",
+  "hit_pulled": "5bb642a59c9026e66c09fe2d4f6691605e57ec67",
+  "hit_pulled_legs": "e53a3bdf07304f6a775afdca9576ffe2652ea168",
+  "stance_fallback_legs": "6cab5020b7db3b45491bdba7ddb2b4fea2f9b4b7",
+  "stance_hold_legs": "0c0c057ff8fc2c3a7be4f16f4ccb26c3e2fdc236",
+  "stun_legs": "403f3a3269603c604367496e3843ef21013a88c6",
+  "stun_out_upper": "ff72a7535a543184ff0e5c94f6d2e0024362dc1f",
+  "stun_upper": "42c046bfc8d7851e6a53c02df6bd51b21f6f61ba"
+ }
+}

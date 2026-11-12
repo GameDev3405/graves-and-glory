@@ -105,3 +105,41 @@ timeline markers are unchanged.
   - **Likely cause:** the blend weight comes from `StanceController` (Java), not from clip data. The server logged three
     "Can't keep up" lines (up to 160 ticks behind) during the run.
   - **Status:** not re-run; one reel per troop.
+
+## Fix round 1 (2026-11-12)
+
+The independent review (FIX, 7/10) found four faults, all on HK files only. Nothing else changed; rise, lengths and markers
+are identical.
+
+- **Knockback hip plate:** the folded right knee sat under hip_r (1.94 px at t10).
+  - **Fix:** the plate (its own bone under the hips) flares outward about z by the least angle, at most 18.3 deg at t10.25,
+    eased in and out over t6-15.25. It is keyed in `hit_knockback_legs`. The knee, boot and hit are unchanged.
+  - **Result:** no hip_r row (the WARN line is 1.7).
+- **Stun loop, rags:** the rags were at -34.2 deg at tick 4 and -38.4 at tick 24.
+  - **Fix:** the last 4 ticks of the rag turn and fold now blend onto the curve's own run into tick 4, so speed matches at
+    the wrap. The entry eases from tick 24's value, so the clip's own 0-24 wrap also closes.
+  - **Every other channel:** the stun legs and upper are keyed equal at ticks 4 and 24 (the largest change was 0.01 deg).
+    Every channel of both clips is now equal at the two ticks.
+- **Idempotence:** each fix measures the clip it is given, so a second pass moved clips again.
+  - **Fix:** `polish()` now records per stage a hash of every clip it changed (`art/anim/gb_hollowking/out/hk_polish.state.json`).
+    It does nothing when the document already holds that output, and it refuses a document that holds only part of it.
+  - **Test:** `art/anim/gb_hollowking/test_hk_polish.py` checks that a second BUILT or LATE pass changes no byte and that a
+    partly polished document is refused.
+- **out/ against the asset:**
+  - **Cause:** the builder's own limb_clear reads the build preview geo (`out/preview/t1.geo.json`). Stances.py reads the
+    deployed geo, where the cleave's left bracer is 1.86 px in the torso.
+  - **Fix:** the BUILT stage now ends with the same limb_clear call on the deployed geo and rig. Stances.py's later pass is
+    then a no-op.
+  - **Result:** `out/` equals the asset on all 54 shared clips.
+- **Idle rags:** `idle_legs` is now in the rags plan (turn only, full length), and idle_upper loses its 1.87 rags row.
+  - **What I saw:** idle turns the rags 9-12.5 deg at full length, and ready turns them 23-31 deg at full length. Walk,
+    run, brace and stun turn them 33-60 deg at 0.55-0.69 length.
+  - **Hand-over:** from idle the gait controller blends into walk by hand (`GaitController.blendFrom`). I did not see that
+    blend in game, so whether the length change reads as a pop is not verified.
+- **Rags from the side:** they still read as thin edge-on strips. This is a model limit and Kort's eye call; it is not
+  changed.
+
+**Gate:**
+- Focus check: 44 clips, 0 FAIL.
+- Scorecard: exit 0, with the 4 rise rows EXEMPT.
+- The allowed 9 unit-test files: all OK.
