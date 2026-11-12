@@ -61,3 +61,76 @@ Most of these come from the shared v2 builder, so they apply to the knight as we
 - **death_left:** ends half-down: a slumped kneel and lean, with the kept sword diagonal.
 - **death_left_drop2:** the shield lies flat beside the hips, partly under the slumped body. The builder's clearance check passes, but confirm it in game.
 - **Not seen in game:** only the harness and the offline reel were run.
+
+# Batch review 2026-11-11
+
+Branch `anim/review-sentinel` (from `anim/troop-sentinel`). Builder commit 89d82e46 (`art/anim/knight/build_anims.py`,
+gated on `ALIVE_TROOPS`; new `art/anim/knight/soft_layers.py`), outputs in the next commit. Knight, gl_marshal, revenant,
+tc_raider and gb_hollowking build byte-identical with the HEAD builder (non-death clips rebuilt with both builders and
+compared clip by clip; the deaths carry no gated code).
+
+**Focus check (raw, every clip over the bind pose):** before 16 of 41 clips with a FAIL (29 rows), after 7 (9 rows); all 9
+are rig differences or bind-pose artefacts (below). Composed the way the game plays it (HitController adds the hit over the
+ready stance; `work/review/sen_compose.py`), k 1.0: 0 FAIL except stun_out_upper whole_body (the composition holds the legs
+still; the game plays it over stun_legs). Scorecard: exit 0, 0 fails.
+
+## What changed, per clip
+
+- **Every attack, the medium hits and the block** (builder, `soft()`): the cape, the skirt plates and the pauldrons swing
+  (fullbody.soft_motion; the hits keep every piece in the upper clip). secondary_life FAIL -> pass (medium_back 3.01 WARN).
+- **attack_low_cut:** the shield fist rides 1.6 px lower and 0.5 px further out through the follow-through (t8-t11.5):
+  shield into helm 2.01 FAIL -> 1.36 WARN. The wrist's per-sample solve flipped (jitter 11.29 at t9.75): a binomial
+  low-pass over right_hand t8.75-t11.5 (`calm()`): pass.
+- **run_upper / charge_run_upper / stance_wall:** the leg skirt plates hang off the thigh (`skirt_hang`, keep 0.55): plate into
+  tabard skirt 1.97 FAIL -> pass/WARN (run 1.78 left_forearm into torso, charge 1.72 hips into left_leg, both WARN).
+- **stance_wall (legs):** the hips sit 1.25 px higher (1.3 overreaches the ankle): left knee 1.11 px under the ground -> pass.
+- **hit_pulled** (`soft_layers.py`, after reactions.py): sword arm wider of the helm through the fling, body lifted 2.6 px
+  off the dragged feet, toes 10 deg less, skirt swing capped at 5 deg. As played: sword into helm and toe 2.5 px under the
+  ground -> WARN only (k 1 and 1.55). Raw floor FAIL -> pass.
+- **hit_knockback** (`soft_layers.py`): hips sink 1.7 px less on the shove and each stumbling step, the braced toe lifts
+  10 deg in the recovery: right boot 1.47 px under -> 0.52 WARN.
+- **stun_upper / stun_out_upper** (`soft_layers.py`): the pieces swing; the stun loop (t4-t24) stays cut safe.
+
+Length, impact and timeline markers unchanged on every clip.
+
+## Remaining FAIL rows (raw), with reason
+
+| Clip | Row | Reason |
+|---|---|---|
+| stance_wall_upper | floor 1.17 t10, shield | the wall plants the shield rim in the ground on purpose (was 2.42) |
+| stun_upper | floor 1.81 t7.75, shield | the stunned troop leans on its planted shield (unchanged) |
+| stun_out_upper | floor 1.72 t0.75, right_boot | additive over the bind pose; over the stun's last pose: pass |
+| hit_pulled | weapon_t3 into right_leg 1.92 t2.25; elbow 162.8 t2.75 | bind-pose artefact; composed k 1 and 1.55: pass |
+| hit_knockback | weapon_t3 into right_leg 1.82 t1.5; elbow 146.58 t8.5 | bind-pose artefact; composed: pass |
+| hit_medium_back | knee -13.01 t11.5 | bind-pose artefact; composed: pass |
+| hit_block | elbow 176.88 t8.25 | bind-pose artefact; composed: pass |
+
+New WARNs that were a pass: attack_thrust cape_t3 into hips 1.70 t10 (the cape now swings), hit_pulled raw
+weapon_in_body (above).
+
+## Proposed exemptions (troop, clip, check, value, reason)
+
+- sentinel, stance_wall_upper, floor, 1.17, shield rim planted by design.
+- sentinel, stun_upper, floor, 1.81, leans on the planted shield by design.
+- sentinel, hit_pulled / hit_knockback / hit_medium_back / hit_block / stun_out_upper: the rows above, additive clip judged
+  over the bind pose (better: focus_check composing additive hits over the ready stance, a tool change).
+
+## Open
+
+- Heavy blows (k 1.55) on hit_knockback: gorget into helm 1.91 t3 and left knee_aim 88.8 t5.5 come from
+  art/anim/common/reactions.py (every biped); not changed here.
+- `art/anim/sentinel/out/` is not regenerated: a full build of this troop ran over 80 minutes on this machine without
+  finishing (an earlier one ran out of memory). The changed clips were rebuilt with the builder (part builds) and merged
+  over the committed exported asset, then `soft_layers.py` ran. Re-running export.py from the stale out/ would drop the
+  builder changes: rebuild out/ before any re-export.
+
+## Test results
+
+- `python -m unittest discover -s tools/anim`: 152 tests OK (`work/review/unittest_final.log`).
+- `python tools/verify.py fast`: build PASS, ui-assets PASS, python-tests 727 run, 1 failure:
+  test_where `test_extract_is_fast_and_covers_every_troop_and_section`, 87.2 s against its 30 s limit (a speed limit; the
+  machine was running several builds and test suites from other lanes). No animation test failed
+  (`work/review/verify_fast_final.log`).
+- In-game reel `sentinel-review3` (job 20261112-033758-640-5886): 22 `[p1] p1-` checks plus the suite line, 0 `=false`.
+  Two earlier runs each failed one lag-timed row on clips this batch did not change (review1: stance_ready shield_move;
+  review2: march walk/run sampled IDLE at speed 0).
