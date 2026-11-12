@@ -222,7 +222,7 @@ public final class ConvoyMode extends BattleMode {
         Vec3d at = wagon.getPos();
         count(b, at);
         String was = state;
-        state = ModeMath.convoyState(pushers, defenders, idleTicks, IDLE_TICKS);
+        state = ModeMath.convoyState(pushers, defenders, idleTicks, IDLE_TICKS, distance <= floor() + 1e-6);
         if (state.equals(ModeMath.CONTESTED)) contestedAt = b.time;
         idleTicks = state.equals(ModeMath.IDLE) || state.equals(ModeMath.ROLLBACK) ? idleTicks + 1 : 0;
         int seg = ModeMath.segment(stations, distance);

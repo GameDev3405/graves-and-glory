@@ -116,6 +116,11 @@ public final class ModeMath {
         if(pushers>0)return MOVING;
         return idleTicks>=idleLimit?ROLLBACK:IDLE;
     }
+    /** As above, but a wagon at its floor (the start or its last checkpoint) cannot roll back, so it shows idle (C05-F4). */
+    public static String convoyState(int pushers,int defenders,int idleTicks,int idleLimit,boolean atFloor) {
+        String state=convoyState(pushers,defenders,idleTicks,idleLimit);
+        return atFloor&&state.equals(ROLLBACK)?IDLE:state;
+    }
     /** Blocks a second for this many pushers: speeds[n-1], capped at the last entry; no pusher, no speed. */
     public static double pushSpeed(int pushers,double[] speeds) {
         if(pushers<=0||speeds.length==0)return 0;

@@ -16,6 +16,7 @@ public final class ConvoyCheck {
         check(ModeMath.convoyState(1, 0, 0, idle).equals("moving") && ModeMath.convoyState(3, 0, 500, idle).equals("moving"), "a pusher and no defender moves it");
         check(ModeMath.convoyState(3, 1, 0, idle).equals("contested") && ModeMath.convoyState(0, 1, 900, idle).equals("contested"), "any single defender stops it, whatever the pushers");
         check(ModeMath.convoyState(0, 0, 199, idle).equals("idle") && ModeMath.convoyState(0, 0, 200, idle).equals("rollback"), "alone: idle under 10 s, then rolling back");
+        check(ModeMath.convoyState(0, 0, 900, idle, true).equals("idle") && ModeMath.convoyState(0, 0, 900, idle, false).equals("rollback") && ModeMath.convoyState(0, 0, 199, idle, false).equals("idle") && ModeMath.convoyState(1, 0, 900, idle, true).equals("moving") && ModeMath.convoyState(0, 1, 900, idle, true).equals("contested"), "at its floor the wagon cannot roll back, so it shows idle (C05-F4)");
         double[] speeds = {1.2, 1.5, 1.8};
         check(ModeMath.pushSpeed(0, speeds) == 0 && ModeMath.pushSpeed(1, speeds) == 1.2 && ModeMath.pushSpeed(2, speeds) == 1.5 && ModeMath.pushSpeed(3, speeds) == 1.8 && ModeMath.pushSpeed(4, speeds) == 1.8, "push speed by pushers, capped at three");
         double[][] road = {{0, 0}, {30, 0}, {30, 40}, {60, 40}};
