@@ -61,3 +61,45 @@ Changed clips:
   - Brace and hold-the-line are close from the front.
 - **Harness.** geo-knight suite with `GRAVES_GEO_CHECK_TROOP=ic_arbalist`: **22 `[p1] p1-` lines, 0 `=false`** (a first launch hit a transient classpath failure before any check ran; the rerun passed, with two "Can't keep up" log lines and no lag failure).
 - Video: `group_d2_v2` (ic_arbalist, then tc_harpooner).
+
+## Batch review 2026-11-11 (branch anim/review-arbalist, from anim/fix-singles)
+
+Fixes made in `art/anim/crossbow/build_crossbow_anims.py` only, each with a comment at the change. The builder now also merges
+the shared stance, reaction and charge clips itself (stances, then reactions, then charge) and finishes them for the arbalist,
+so one build writes all 55 clips. **Running `stances.py`, `reactions.py` or `charge.py` on the arbalist afterwards would put back
+their unfinished versions.**
+
+- **Changed clips (29).** walk_upper, run_legs/upper, attack_loose(+legs), stance_ready/wall/shield_up upper, stance_wall_legs,
+  stance_rally_upper, stance_fallback_legs, charge_run_upper, stun_upper/legs, stun_out_upper, hit_knockback(+legs),
+  hit_pulled(+legs), the four medium hits and hit_block (+legs). Lengths, loop flags, impact tick 4 and the 50-tick shot unchanged;
+  idle, the other stances, light hits and the four deaths are byte-identical.
+- **What changed.** The prod and the left forearm clear the helm in the haul (t21) and the bolt reach (t25); the shot and haul
+  move the hips 2 px over a stepped-out lead foot; soft motion on the mantle, quiver, skirts and shoulder plates in the shot,
+  hits, stun and shake-off (the mantle damped harder than a plume: zeta 0.6, gain 1.0, max 8); leg skirts and the fauld follow the
+  run's thighs; carries a little wider in walk/run; wall and shield_up re-keyed so the bevor/helm stay off the bracers and the
+  knee off the ground; rally grip carried 2 px out; hips raised where a boot or the crossbow went under the ground (fallback,
+  stun, medium hits, knockback, pulled); the charge's support advance uses the arbalist's own hold.
+- **focus_check.** 18 clips / 43 FAIL rows before; 6 clips / 9 FAIL rows after (raw). Composed over the stance they are added to
+  (`work/review/tools/compose.py`), 5 clips / 6 rows. Remaining:
+  - attack_loose limb_in_body / armour_clip 2.36 px at t31.5: the left bracer passes the helm as the bolt comes down from the
+    quiver to the rail (joint-angle blend between the two contacts). Head, torso, timing and arm-arc variants did not clear it
+    (2.33-2.8). Open; needs a re-pathed bolt carry.
+  - stance_wall_upper armour_clip 1.96 at t30 (fauld into left_skirt), stun_upper armour_clip 1.99 at t6 (right forearm into
+    tabard, unchanged from before), hit_medium_front composed armour_clip 1.91 (quiver into tabard_skirt): marginal, open.
+  - Raw-only, additive clips read over the bind pose (clean when composed): hit_knockback weapon in right_leg 1.88, left forearm
+    in fauld 2.04, elbow 148; hit_pulled elbow 162.8; hit_medium_front knee -6.81.
+  - Composed-only: stun_out_legs secondary_life (the legs clip carries no soft pieces; the upper clip does).
+- **New WARN rows.** attack_loose floor 0.64 (right greave at t21, the haul's deeper sink); hit_medium_back weapon in fauld 0.83;
+  hit_pulled right_pauldron pop 9.72 (the plate trailing the pull).
+- **Scorecard** exit 0 (0 fail). **Unit tests** (`tools/anim`) 152 OK. **verify fast**: every check passes except python-tests,
+  which hit verify's 600 s cap with no failing test on a loaded machine; see below for the untimed run.
+- **Rule 6.** shield_up holds the crossbow upright before the face as cover; it reads oddly for a crossbowman. Reported, not
+  re-designed.
+- **verify fast, untimed python tests.** 727 tests, 726 pass; the one failure is `test_where`'s speed limit (extract 117 s, limit
+  30 s) on a machine running many parallel builds. No test touches the arbalist files.
+- **In-game reel** (checkq, geo-knight suite, `GRAVES_GEO_CHECK_TROOP=ic_arbalist`). Root `ic_arbalist-review1`: 22 `[p1] p1-`
+  check lines, 2 false (`attack-walk`: own unit in IDLE gait during the swing; `hit`: heavy-front far view had 0/4 frames).
+  Rerun `ic_arbalist-review2`: `hit` passed; `attack-walk` false again (own and foe IDLE at samples 83-84, foe backing speed
+  min 0). The swing's length and impact tick are unchanged, and the same check failed intermittently for archer, knight and
+  ic_hearthguard in other lanes' reels today, so it is likely not from these clips. Not proven: no reel was run at HEAD.
+- **Score** 7/10. Weakest clip: attack_loose (the left forearm across the helm at t31-32 as the bolt comes to the rail).
