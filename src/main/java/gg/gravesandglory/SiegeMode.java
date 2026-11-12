@@ -316,7 +316,7 @@ public final class SiegeMode extends BattleMode {
             keepSecond = second(b);
             staged(b, "keep", keepSecond);
             b.scores[0] = stage;
-            feed(b, "keep_taken", "team", attackers());
+            feed(b, "keep_taken", "team", attackers(b));
             b.campaign.finish(0); // the victory and defeat stings play from Campaign.finish
         }
     }
@@ -348,7 +348,7 @@ public final class SiegeMode extends BattleMode {
         held = 0;
         b.scores[0] = stage;
         b.roundSeconds += STAGE_BONUS;
-        feed(b, "yard_taken", "team", attackers());
+        feed(b, "yard_taken", "team", attackers(b));
         Audio.captured(b, "yard", 0);
         var row = gate();
         GravesAndGlory.Squad defender = null;
@@ -420,8 +420,8 @@ public final class SiegeMode extends BattleMode {
     }
 
     /** The attackers' short name for a feed line: "Gold" for the Gold Banner. */
-    static String attackers() {
-        return FeedLines.teamShort(Spec.FACTIONS[0].name());
+    static String attackers(GravesAndGlory.Battle b) {
+        return FeedLines.teamShort(b.side(0).name());
     }
 
     /** The objective panel's opening line (the modeLines siege start row): the flags are down, so "Capture the objectives." would mislead. */

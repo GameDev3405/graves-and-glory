@@ -280,7 +280,7 @@ public final class ConvoyMode extends BattleMode {
         if (index >= stops.length - 1) return; // the destination ends the round instead
         b.roundSeconds += CHECKPOINT_SECONDS;
         for (var s : b.squads.values()) if (s.seated && s.team == ESCORT) s.earn(CHECKPOINT_GOLD);
-        say(b, "checkpoint", "team", FeedLines.teamShort(Spec.FACTIONS[ESCORT].name()), "stop", stopNames[index]);
+        say(b, "checkpoint", "team", FeedLines.teamShort(b.side(ESCORT).name()), "stop", stopNames[index]);
         Audio.all(b, AudioCues.Cue.CONVOY_CHECKPOINT, "checkpoint");
     }
 

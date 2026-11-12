@@ -28,7 +28,7 @@ public final class FeedEvents {
 
     /** A point changed hands: "Dawn took Mill Hamlet", to every player. */
     public static void point(GravesAndGlory.Battle b, GravesAndGlory.Capture c, int team) {
-        String text = FeedLines.pointTaken(FeedLines.teamShort(Spec.FACTIONS[team].name()), c.spec.name());
+        String text = FeedLines.pointTaken(FeedLines.teamShort(b.side(team).name()), c.spec.name());
         for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) send(p, "point", team, text);
     }
 
