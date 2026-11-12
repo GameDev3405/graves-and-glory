@@ -147,12 +147,12 @@ HEW_PAULDRON = {"slide": (-2.0, 0.0, 0.0)}           # px, bone-local, t3-9
 HEW_TABARD, HEW_TABARD_LIFT = (6.0, 11.5), 8.0       # the hew's drive throws the lagging tabard back into the coat (t8.5)
 
 
-def _bump_hips(name):
-    imp, hs = IMPACT[name], []
+def _bump_hips(name, at=None, width=3.5, lift=HIPS_BUMP):
+    at, hs = IMPACT[name] + 0.8 if at is None else at, []
     for h in K.ATTACK_LEGS[name]["hips"]:
-        w = max(0.0, 1.0 - abs(h[0] - (imp + 0.8)) / 3.5)
+        w = max(0.0, 1.0 - abs(h[0] - at) / width)
         w = 0.5 - 0.5 * math.cos(math.pi * w)
-        hs.append((h[0], h[1], (h[2][0], h[2][1] + HIPS_BUMP * w, h[2][2])) + tuple(h[3:]))
+        hs.append((h[0], h[1], (h[2][0], h[2][1] + lift * w, h[2][2])) + tuple(h[3:]))
     K.ATTACK_LEGS[name]["hips"] = hs
 
 
@@ -178,6 +178,9 @@ def _push(samples, bone, t0, t1, rot=(0.0, 0.0, 0.0), pivot=None, slide=(0.0, 0.
 if TROOP == "ic_hearthguard":
     for _name in ATTACKS:
         _bump_hips(_name)
+    # fix round 1: from the ready footing the hew's rear knee guard dipped 1.0 px under the ground at t11; the hips ride
+    # 0.6 px higher there too
+    _bump_hips("hook_hew", at=11.0, width=3.0, lift=0.6)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -203,11 +206,11 @@ if TROOP == "ic_hearthguard":
     K.STANCE_UPPER.update({
         "ready": skey((6, 18, 0), (-58, 0, 26), -70, -82, 16, (4.8, 19.8, 5.6), hips=(0, 8, 0)),
         "brace": skey((14, 18, 0), (-30, 0, 14), -40, 20, 6, (5.5, 18.5, 6.0), hips=(2, 12, 0), tilt=6),
-        "brace_up": skey((15, 20, 0), (-32, 0, 14), -42, 18, 6, (5.5, 22.5, 6.0), hips=(2, 12, 0), tilt=2),
+        "brace_up": skey((15, 20, 0), (-52, 0, 14), -42, 18, 6, (5.5, 22.5, 6.0), hips=(2, 12, 0), tilt=2),
         "wall": skey((22, 16, 0), (-100, 0, 26), -50, -70, 14, (6.0, 18.8, 6.0), hips=(4, 16, 0), tilt=9),
         "wall_up": skey((24, 16, 0), (-108, 0, 26), -44, -66, 14, (6.0, 21.0, 6.0), hips=(4, 16, 0), tilt=4),
         "shield_up": skey((6, 18, 0), (-50, 0, 40), -90, -84, 30, (5.5, 22.0, 6.0)),
-        "ward": skey((-6, 10, 0), (-26, 0, 18), -56, 30, 14, (5.0, 18.0, 5.6), tilt=-6),
+        "ward": skey((-6, 10, 0), (-26, 0, 18), -56, 0, 14, (5.0, 21.0, 5.6), tilt=-6),
     })
     K.STANCE_LEGS.update({
         "ready": {"hips": ((0.0, 8.0, 0.0), (0.0, -1.5, 0.2)), "right": (-3.6, 2.0, 2.4), "left": (3.4, 2.0, -2.4),
@@ -219,12 +222,81 @@ if TROOP == "ic_hearthguard":
     })
 
 
+# Review fix round 1 (2026-11-12): both swings started and ended on the knight's guard, not on this dwarf's own stance_ready
+# (at t0 the forearm was 20 deg, the hand 20 deg and the arm 13.5 deg off it, so the axe jumped ~40 deg as the attack handed
+# back to the stance). The first and last keys are now the ready stance's own first sample (its breath and weight shift at
+# u = 0 included, as K.stance_upper / K.stance_legs compute it), the knight-guard recovery key is eased halfway onto it, and
+# the feet start from and walk back to the ready footing. The follow-through carries on past the impact (STYLE rule 5,
+# focus WARN phases): FOLLOW's (right_arm, torso) turn is added on a smooth bump peaking FOLLOW_AT ticks after the impact
+# (the chop drives on down and the chest goes further over; the hew carries on across the body), then the recovery runs as
+# before. Length and impact are unchanged.
+FOLLOW = {"overhead_chop": ((8.0, 0.0, 0.0), (8.0, 0.0, 0.0)), "hook_hew": ((0.0, -12.0, 0.0), (0.0, -8.0, 0.0))}
+FOLLOW_AT, FOLLOW_SPAN = 2.5, (0.6, 6.0)
+
+
+def _ready_t0():
+    """(upper key, hips (rot, pos), feet {side: (ankle px, yaw)}) of stance_ready at its first sample."""
+    pose, spec = K.STANCE_UPPER["ready"], K.STANCE_LEGS["ready"]
+    a_br, a_wt, a_lag = K.feel.stance_amps(K.STANCE_LIFE.get("ready", 1.0), True)
+    wt, wl, lag = a_wt * math.sin(-K.WEIGHT), a_wt * math.sin(-K.WEIGHT - 0.7), a_lag * math.sin(-0.6)
+    k = dict(pose)
+    tx, ty, tz = pose["torso"]
+    k["torso"] = (tx + 1.8 * wt, ty - 1.4 * wt, tz - 1.2 * wt)
+    hx, hy, hz = pose["head"]
+    k["head"] = (hx - 1.3 * wt, hy + 0.9 * wt, hz + 1.0 * wt)
+    ax, ay, az = pose["right_arm"]
+    k["right_arm"] = (ax - 1.3 * wl, ay, az)
+    sx, sy, sz = pose["left_arm"]
+    k["left_arm"] = (sx - 1.0 * wl, sy, sz)
+    fx_, fy_, fz_ = pose["_face"]
+    k["_face"] = (fx_ + 1.5 * lag, fy_ + 0.8 * lag, fz_ - 0.6 * lag)
+    (rx, ry, rz), (px, py, pz) = spec["hips"]
+    hips = ((rx + 1.5 * wt, ry - 2.2 * wt, rz + 1.6 * wt),
+            (px - 0.35 * wt, py - 0.12 * abs(wt) - 0.22 * max(0.0, wt), pz - 0.6 * wt))
+    feet = {"right": (spec["right"], spec["yaw"][0]), "left": (spec["left"], spec["yaw"][1])}
+    return k, hips, feet
+
+
+def _blend(a, b, f):
+    return {n: tuple(x + f * (y - x) for x, y in zip(a[n], b[n])) for n in a}
+
+
+if TROOP == "ic_hearthguard":
+    READY_KEY, READY_HIPS_T0, READY_FEET_T0 = _ready_t0()
+    for _name in ATTACKS:
+        _ks = ATTACKS[_name]
+        imp = IMPACT[_name]
+        mid = []
+        for _t, _k in _ks[1:-2]:
+            a, b = imp + FOLLOW_SPAN[0], imp + FOLLOW_SPAN[1]
+            if a < _t < b:
+                u = (_t - a) / (FOLLOW_AT + imp - a) if _t <= imp + FOLLOW_AT else 1.0 - (_t - imp - FOLLOW_AT) / (b - imp - FOLLOW_AT)
+                w = 0.5 - 0.5 * math.cos(math.pi * max(0.0, min(1.0, u)))
+                _k = dict(_k)
+                _k["right_arm"] = tuple(a + w * d for a, d in zip(_k["right_arm"], FOLLOW[_name][0]))
+                _k["torso"] = tuple(a + w * d for a, d in zip(_k["torso"], FOLLOW[_name][1]))
+            mid.append((_t, _k))
+        ATTACKS[_name] = [(0, READY_KEY)] + mid + [(_ks[-2][0], _blend(_ks[-2][1], READY_KEY, 0.5)), (ATTACK_TICKS, READY_KEY)]
+        _hs = K.ATTACK_LEGS[_name]["hips"]
+        K.ATTACK_LEGS[_name]["hips"] = [(0,) + READY_HIPS_T0] + _hs[1:-1] + [(ATTACK_TICKS,) + READY_HIPS_T0]
+        _st = []
+        for s in K.ATTACK_LEGS[_name]["steps"]:      # the steps home land on the ready footing
+            if tuple(s[3]) == tuple(K.READY_FEET[s[0]][0]):
+                s = (s[0], s[1], s[2], READY_FEET_T0[s[0]][0], READY_FEET_T0[s[0]][1]) + tuple(s[5:])
+            _st.append(s)
+        K.ATTACK_LEGS[_name]["steps"] = _st
+
+
 def attack_clips():
     n = ATTACK_TICKS * SUB
     out = {}
     soft = {k: v for k, v in fullbody.soft_parts_for().items() if k != "tabard"}
     for name, keys in ATTACKS.items():
+        feet = K.READY_FEET
+        if TROOP == "ic_hearthguard":
+            K.READY_FEET = READY_FEET_T0               # the attack's feet start from the ready footing
         legs = K.attack_legs(K.ATTACK_LEGS[name], ticks=ATTACK_TICKS)
+        K.READY_FEET = feet
         pace = (K.EDGE_RATE, K.EDGE_IN)
         K.EDGE_RATE, K.EDGE_IN = EDGE_PACE.get(name, pace)
         roll = K.edge_roll(name, keys, legs, n, report=True)
