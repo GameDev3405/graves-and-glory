@@ -920,28 +920,50 @@ POP_BONES = ("right_arm", "right_forearm", "right_hand", "left_arm", "left_forea
 
 
 LIMB_SLACK = 0.05   # px deeper in the torso than the solve itself that a despiked sample may put a forearm or hand
+# Where the guarded despike is used (fix round 1, measured on the admiral): high_thrust spreads half way, pen_limb 1.585 ->
+# 1.324 and no pop. The admiral's thrust keeps the full spread (1.405): half way read 1.441 and popped the left fringe (14.0
+# at t7), and no spread at all leaves the 23.4 deg arm pop (focus FAIL) that 51afd332 had. Tusk and tideguard are unchanged.
+DESPIKE_GUARDED = {("tc_admiral", "high_thrust")}
+LIMB_OK = 1.45     # px a despiked sample may reach in any case (sampled before the soft and armour passes; scorecard pen_limb knight attack limit 1.391)
 _LIMBFIT = []
 
 
 def _limb_depth(u, l):
-    """px the forearms and hands (with everything on them) sit in the torso and hips beyond the rest model's own fit: the
-    scorecard's pen_limb pairs, judged the way the armour passes judge theirs."""
+    """px the forearms and hands (with everything on them but the weapon) reach into the torso and hips, measured as the
+    scorecard measures pen_limb: a lattice over each limb cube, depth counted from the face the limb comes in through
+    (the side its elbow is on)."""
+    fb, _, model, _, by = _actx()
     if not _LIMBFIT:
-        bones = K.MODEL.bones
+        sys.path.insert(0, str(HERE.parents[2] / "tools" / "anim"))
+        import scorecard as sc   # noqa: E402
 
-        def under(b, roots):
+        def root_of(b):
             while b:
-                if b in roots:
-                    return True
-                b = getattr(bones[b], "parent", None) if b in bones else None
-            return False
-        by = _actx()[4]
-        mine = [b for b in by if under(b, ("right_forearm", "left_forearm"))]
+                if b in ("right_forearm", "left_forearm"):
+                    return b
+                b = model.bones[b].parent if b in model.bones else None
+            return None
+        limbs = [(b, root_of(b)) for b in by if root_of(b) and not is_weapon(b)]
         core = [b for b in by if b in ("torso", "hips", "body", "chest", "waist")]
-        _LIMBFIT.append((_Fit(mine, core), mine, core))
-    fit, mine, core = _LIMBFIT[0]
+        _LIMBFIT.append((sc, limbs, core))
+    sc, limbs, core = _LIMBFIT[0]
     pose = _posed(u, l)
-    return fit.deep(_wcubes(pose, mine), _wcubes(pose, core))[0]
+    pts, roots = [], []
+    for b, r in limbs:
+        M = fb._bone_world(pose, b, model)
+        Mr = fb._bone_world(pose, r, model)
+        piv = Mr[:3, :3] @ (np.asarray(model.bones[r].pivot, float) / 16.0) + Mr[:3, 3]
+        for c in by[b]:
+            p = sc.cube_points(fb._cube_world(M, c), sc.lattice(c))
+            pts.append(p)
+            roots.append(np.repeat(piv[None], len(p), axis=0))
+    boxes = [fb._cube_world(fb._bone_world(pose, b, model), c) for b in core for c in by[b]]
+    if not pts or not boxes:
+        return 0.0
+    J = np.array(boxes)
+    E = np.stack([J[:, 6] - J[:, 0], J[:, 2] - J[:, 0], J[:, 1] - J[:, 0]], axis=2)   # B x 3 x 3, edges as columns
+    A = E / np.maximum(np.linalg.norm(E, axis=1, keepdims=True), 1e-9)
+    return sc.entry_depth(np.concatenate(pts), np.concatenate(roots), J, A) * 16.0
 
 
 def despike(upper, label, legs=None):
@@ -949,9 +971,9 @@ def despike(upper, label, legs=None):
     turned 18 to 23 deg in one quarter tick, as much again as either neighbour), the two samples either side of the flip
     are laid on the path between the samples around them, so the flip is spread over three steps. Nothing else moves.
     Fix round 1 (2026-11-12): laid on the straight Euler line, the admiral's thrusts swung a forearm through the chest at
-    t6.5 (scorecard pen_limb 1.405 and 1.585, new). With the legs given, each spread is tried on that line and on the
-    shortest turn (slerp); one that sinks a forearm or hand deeper in the torso than the solve itself did (plus
-    LIMB_SLACK) is not used, and a flip no spread can take without it is left as the solve had it."""
+    t6.5 (scorecard pen_limb 1.405 and 1.585, new). With the legs given (DESPIKE_GUARDED), each spread is tried on that
+    line and on the shortest turn (slerp), all, three quarters and half of the way; the first that keeps the forearms and
+    hands within LIMB_OK (or LIMB_SLACK of the solve) is used, and a flip no spread can take is left as solved."""
     n = len(upper)
     worst, kept = 0.0, set()
     for _ in range(8):
@@ -986,12 +1008,23 @@ def despike(upper, label, legs=None):
                     best = spread("line")
                 else:
                     own = max(_limb_depth(upper[j], legs[j]) for j in (k, k + 1))
-                    for how in ("line", "slerp"):
-                        cand = spread(how)
-                        d = max(_limb_depth(cand[j], legs[j]) for j in (k, k + 1))
-                        if d <= own + LIMB_SLACK:
-                            best = (d, cand, how)
-                            break       # the line first: where it keeps the forearms out, the clip is as before
+                    ok = max(own + LIMB_SLACK, LIMB_OK)
+                    tried = []
+                    for w in (1.0, 0.75, 0.5):
+                        for how in ("line", "slerp"):
+                            cand = spread(how)
+                            if w < 1.0:     # only part of the way: the flip spread less, the forearm kept out
+                                cand = {j: dict(q, **{bb: (tuple(float(x) for x in near_euler(
+                                    slerp_rot(upper[j][bb][0], q[bb][0], w), upper[j][bb][0])), q[bb][1])
+                                    for bb in POP_BONES if bb in q}) for j, q in cand.items()}
+                            d = max(_limb_depth(cand[j], legs[j]) for j in (k, k + 1))
+                            tried.append("%s %.2f: %.2f" % (how, w, d))
+                            if d <= ok:
+                                best = (d, cand, "%s, %d%% of the way" % (how, round(w * 100)))
+                                break   # the full line first: where it keeps the forearms out, the clip is as before
+                        if best:
+                            break
+                    print("  %s: spreads tried at sample %d (px into the body): %s" % (label, k, ", ".join(tried)))
                     if best is None:
                         print("  %s: an arm flip of %.1f deg at sample %d left as solved (every spread sinks a forearm, %.2f px own)"
                               % (label, spike, k, own))
@@ -1327,7 +1360,7 @@ def attack_clips():
     for name in ATTACKS:
         upper, legs = attack_clip(name)
         if REVIEW:
-            upper = despike(upper, "attack_" + name, legs)
+            upper = despike(upper, "attack_" + name, legs if (TROOP, name) in DESPIKE_GUARDED else None)
         upper = gear(upper, legs)
         if REVIEW:
             upper, legs = soft(upper, legs, "attack_" + name)
