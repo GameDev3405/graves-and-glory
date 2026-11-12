@@ -73,7 +73,8 @@ class WholeUnit(unittest.TestCase):
 
     def test_soft_parts_are_found_on_the_knight(self):
         parts = fullbody.soft_parts_for()
-        self.assertTrue({"cape", "crest", "left_skirt", "right_skirt"} <= set(parts), sorted(parts))
+        self.assertTrue({"cape", "left_skirt", "right_skirt"} <= set(parts), sorted(parts))
+        self.assertNotIn("crest", parts)        # "remove the wobble of the red strip on his head" (Kort, round 3)
         self.assertEqual(parts["cape"]["period"], 7.0)                       # SOFT_TUNED wins over the measured value
         self.assertIn("left_skirt_plate", parts["left_skirt"]["bones"])     # same hinge: one piece
         self.assertEqual(parts["left_skirt"].get("clip"), "legs")
@@ -93,8 +94,9 @@ class WholeUnit(unittest.TestCase):
 
     def test_every_piece_moves_in_the_demo(self):
         up, legs = self.clips["attack_overhead"], self.clips["attack_overhead_legs"]
-        for bone in ("cape", "crest", "right_pauldron", "left_pauldron"):
+        for bone in ("cape", "right_pauldron", "left_pauldron"):
             self.assertGreaterEqual(swing(up, bone), 4.0, bone)
+        self.assertNotIn("crest", up["bones"])          # the crest rides the helm
         for bone in ("right_skirt", "left_skirt"):
             self.assertGreaterEqual(swing(legs, bone), 4.0, bone)
 
@@ -109,13 +111,12 @@ class WholeUnit(unittest.TestCase):
         up0, legs0 = dict(still[0][0]), dict(still[1][0])
         n = 12 * fullbody.SUB
         up, legs = fullbody.soft_motion([dict(up0) for _ in range(n)], [dict(legs0) for _ in range(n)])
-        for bone, src in (("cape", up), ("crest", up), ("left_skirt", legs)):
+        for bone, src in (("cape", up), ("left_skirt", legs)):
             xs = [src[i][bone][0] for i in range(n)]
             spread = max(max(x[k] for x in xs) - min(x[k] for x in xs) for k in range(3))
             self.assertGreater(spread, 0.4, bone)       # alive
             self.assertLess(spread, 6.0, bone)          # a breath, not a wind
-        for bone in ("cape", "crest"):                  # and it starts and ends where the stance has it
-            self.assertEqual(up[0][bone][0], up[-1][bone][0], bone)
+        self.assertEqual(up[0]["cape"][0], up[-1]["cape"][0])      # and it starts and ends where the stance has it
 
     def test_two_pieces_never_move_as_a_pair(self):
         geo = os.path.join(REPO, "src/main/resources/assets/gravesandglory/geo/troop/wm_tusk.geo.json")

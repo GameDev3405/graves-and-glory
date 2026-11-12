@@ -80,7 +80,10 @@ SOFT = {"cape", "cloak", "skirt", "tail", "tails", "mantle", "surcoat", "tippet"
 ALIVE_KINDS = {
     "cloth": {"cape", "cloak", "skirt", "tail", "tails", "tippet", "tabard", "pelt", "sash", "scarf", "kelp", "ribbon",
               "banner", "tasset", "kilt", "fringe", "shawl"},
-    "plume": {"hair", "plume", "crest", "fur", "tassel", "beard", "mane", "feather", "feathers", "tuft"},
+    # not "crest": a crest is combed along the helm's ridge and rides the helm. Kort asked for it to move (2026-11-11, "the
+    # red crest stands still"), saw it rock through two rounds and took it back (knight overhead round 3): "remove the
+    # wobble of the red strip on his head, i thought i wanted it but i don't". Things that HANG move; a ridge does not.
+    "plume": {"hair", "plume", "fur", "tassel", "beard", "mane", "feather", "feathers", "tuft"},
     "gear": {"quiver", "pouch", "trophy"},
     "plate": {"pauldron"},
 }
@@ -161,7 +164,7 @@ LIMITS = {
     "edge_lead": (25.0, 40.0, "deg off the cut's line while the tip is fast"),
     "point_lead": (25.0, 40.0, "deg between the blade and the hand's travel while the hand drives forward"),
     "grip_roll": (12.0, 20.0, "deg per tick the weapon turns about its own length (in the world and against the forearm) before the strike, or anywhere in a clip with no strike. Kort 2026-11-11, tick 5 of a wind-up: 'weapons spins around in hand'"),
-    "secondary_life": (4.0, 2.0, "deg, a minimum: how far the stillest cape, crest, skirt or shoulder plate turns in an action clip. Kort 2026-11-11: 'i want the whole unit to be animated including pieces of its armor'"),
+    "secondary_life": (4.0, 2.0, "deg, a minimum: how far the stillest cape, skirt, hung gear or shoulder plate turns in an action clip. Kort 2026-11-11: 'i want the whole unit to be animated including pieces of its armor'"),
     "roll_spin": (100.0, 140.0, "deg per tick about the blade's length (the edge roll may turn 100 a tick)"),
     "wrist": (135.0, 150.0, "deg between the blade and the forearm's line (0 is a thrust in line with the arm, 90 a hammer grip, 180 folded back on the elbow)"),
     "elbow": (105.0, 130.0, "deg the upper arm would have to twist at the shoulder for the elbow to bend the way it does (180 is an elbow bending backward)"),

@@ -61,6 +61,27 @@ has a history below and a mechanical check in `references/four-focus-points.md`.
 
 Add one block per round, newest first: date, clip, his overall score, then one line per tick he marked, in his words.
 
+### 2026-11-11, second pass the same day: knight round 3, archer round 2, tusk round 2 (in chat, no tick grades)
+His words, whole: "knight v3 looks good, but remove the wobble of the red strip on his head, i thought i wanted it
+but i don't. archer v2 looks good, but why does its feet/ankles look abnormal? the bottom flat piece is flush with
+the ground but then its lower leg is at an angle and it makes a weird crease. anything we can do to fix/edit this?
+for the tusk attack thrust can we make it a little bit less body movement and more arms/ thrusting the spear. right
+now he takes a couple steps forward and then a couple back, i like the steps but i feel like the strides are too
+long, shorten them up but extend the weapons reach."
+
+**Keep doing**: the knight overhead as it stands in round 3 ("looks good"); the archer shot as it stands in round
+2 ("looks good"); the tusk's steps ("i like the steps").
+
+| What he saw | Cause | Rule from now on | Where |
+|---|---|---|---|
+| The helm's red crest wobbles | The kit swung every `crest` bone like a plume (his own round 1 note asked for it) | **A crest fixed to a helm does not swing.** Things that hang move; a ridge goes with the head. This reverses the crest half of round 1's "stale cape and red fur"; the cape half stands. | `crest` out of `focus_check.ALIVE_KINDS` and `fullbody.SOFT_TUNED`, tests inverted; knight round 4 |
+| Archer: foot flat, shin at an angle, "a weird crease" at the ankle | The leg helper faces every knee to the front while the foot was turned out 44 degrees: ankle (-51, 26, -38) | **The knee tracks over the toes**; no ankle angle past about 30 degrees; rise a little into the draw. | `shot_legs` in the archer demo; archer round 3: (-27, -6, -12) |
+| Tusk: too much body, strides too long, wants more reach | Reach was bought with the body in round 2 at his own request for more poke | **Steps stay, strides halve, the arms carry the reach**: shoulders side-on, rear arm nearly straight, elbow out. | tusk round 3: strides 3.0 / 2.0 px (were 5.8 / 3.9), point +2.2 px |
+
+The same day he set the archer's shot length (asked after round 1's "shot seems quick"): **22 ticks to the loose,
+same damage per arrow**. Archer round 3 is built at 22 (clip 32 ticks, `full` 17, `impact` 22). The game still plays
+16 until the animation lead applies it.
+
 ### 2026-11-11, Warmaw tusk `attack_thrust` (round `wm_tusk-attack_thrust-r1`): no score
 Page: https://claude.ai/artifact/HgtYPfwf7mAbctsXDucheX. Overall, his words: "stance and body movement look good. the
 hand placement and lunge could do better. have the unit poke out the spear a tad bit more, not a lot just a little
@@ -102,7 +123,7 @@ the bows string is inside the archers arm to start. the head shake while the uni
 |---|---|---|
 | String inside the bow arm in the guard (ticks 0, 1, 21) | The lead's guard wrist lays the bow along the forearm; the resting string is 3.8 px behind the grip | A bow is held across the forearm, and the guard's hold is the aim's hold. Measured on every resting-string tick. |
 | "legs look abnormal" (every stepping tick only "ok") | Pelvis sunk 3 px over a 4 px stance: knees near 90 degrees; both feet in the air together on the way home | Archers stand tall on a long stance (knees about 50 degrees); one foot in the air at a time. |
-| "shot seems quick" | 16 ticks to the loose is the design sheet's number; the game adds a 0 to 3 tick hold | Gameplay timing: asked, not changed in a clip. Asked the same day (longer shot, reorder the clip inside 16 ticks, or leave it), he chose **"Make the shot longer"**. That is a rate-of-fire change (`sheets/design.json` `bow_direct` `impactTicks`, the bow builder's `ATTACK_TICKS` / `FULL_AT` / `IMPACT`): it waits for the coordinator's approval and a number. |
+| "shot seems quick" | 16 ticks to the loose is the design sheet's number; the game adds a 0 to 3 tick hold | Gameplay timing: asked, not changed in a clip. Asked the same day (longer shot, reorder the clip inside 16 ticks, or leave it), he chose **"Make the shot longer"**, then set it at 22 ticks to the loose, same damage per arrow (`sheets/design.json` `bow_direct` `impactTicks`, the bow builder's `ATTACK_TICKS` / `FULL_AT` / `IMPACT`: the animation lead's to apply). |
 
 ### 2026-11-11, knight `attack_overhead` (round `knight-attack_overhead-r2`): score 8
 Overall, his words: "sholder kind of twists out of place in a couple frames. ive labled them below". Tick 10 bad:
@@ -113,6 +134,7 @@ Overall, his words: "sholder kind of twists out of place in a couple frames. ive
 | The shoulder "twists out of place"; the arm above the shoulder (tick 10) | Round 2 let the pauldron follow only 30% of its arm (to keep it out of the helm for a reviewer's 1.88 px figure), so with the arm overhead the plate stayed down where the shoulder had been | **Armour never leaves its limb.** A plate trails its arm by at most 10 degrees and may slide down its own arm, nothing else. Do not detach a piece to win a clip number on ticks he graded good. | `test_fullbody.py` (the plate stays within `PLATE_LAG`) |
 
 Everything round 1 complained of was graded good in round 2: the grip, the moving cape and crest, the chest plates.
+(The crest's swing was taken out again after round 3, at his word: see the second pass above.)
 
 ### 2026-11-11, knight `attack_overhead` (round `knight-attack_overhead-r1`): score 7
 Built as this skill's first demo with the full-body kit. Grading page:
@@ -145,7 +167,7 @@ i want the whole unit to be animated including pieces of its armor that way it f
 | What he saw | Cause | Rule from now on | Check |
 |---|---|---|---|
 | The sword turns in the hand during the wind-up (ticks 5, 6) | The kit rolled the hand to put the edge on the tip's path whenever the tip was fast, the wind-up included | **The grip only turns inside the strike** (3 ticks before the impact to 2 after). In a wind-up the wrist carries the blade; it never spins about its own length. | `grip_roll` |
-| Cape and the red crest stand still | Only the cape had a lag, scaled small; crest, plates and skirts had no keys | **Every piece that hangs or sits on the body moves**: cloth, crest, plume, skirt plates, shoulder plates, hung trophies. `fullbody.soft_motion` does it for any rig. | `secondary_life` |
+| Cape and the red crest stand still | Only the cape had a lag, scaled small; crest, plates and skirts had no keys | **Every piece that hangs or sits on the body moves**: cloth, plume, skirt plates, shoulder plates, hung trophies. `fullbody.soft_motion` does it for any rig. | `secondary_life` |
 | Chest textures "glitching into each other" (ticks 7, 8) | The shield arm's plates sat inside the chest plates by under 2 px: too shallow for `limb_in_body`, but two textures in one place flicker | **Armour on one bone never sits inside armour on another**, even shallowly. | `armour_clip` |
 | Limb wrong and clipping (ticks 11, 14) | The shield arm folded across the chest in the cut and the follow-through; the pauldron rode the arm into the helm | Keep the shield fist outside the chest's width while the body turns. (Round 2 also let the plate follow only part of the arm; he rejected that, see round 2 above: the plate stays on its arm.) | `armour_clip`, `limb_in_body` |
 

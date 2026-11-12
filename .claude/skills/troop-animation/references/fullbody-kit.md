@@ -140,7 +140,11 @@ for v in side three_quarter front; do python tools/anim/render_geo.py --geo $A/g
 the helm's crest as stale. `fullbody.soft_motion(upper, legs)` is the answer for every rig:
 
 - It finds the pieces by itself (`soft_parts_for()`, the same list `focus_check`'s `secondary_life` judges): cloth
-  (cape, kilt, skirt, tippet, hood cape), plumes and crests, hung gear (quiver, pouch, trophy, necklace, hip skull).
+  (cape, kilt, skirt, tippet, hood cape), plumes, hung gear (quiver, pouch, trophy, necklace, hip skull).
+  **Not a helm's crest**: he named it stale in round 1, saw it swing in rounds 2 and 3, and had it taken out
+  ("remove the wobble of the red strip on his head, i thought i wanted it but i don't"). Things that hang move; a
+  ridge fixed to the helm goes with the head. `crest` is out of `ALIVE_KINDS`, so every troop with a `crest` bone
+  loses its crest keys at its next rebuild.
   Each one is a weight on a damped spring behind its parent bone, measured from the geo: longer pieces swing slower.
 - Every piece also has a slow swing of its own (`sway`, about 2 degrees) with its own phase and its own period, so
   it is not a statue while the body holds a pose (a full draw, a held lunge, the top of a wind-up) and two pieces on
@@ -276,10 +280,24 @@ bows string is inside the archers arm to start. the head shake while the unit is
   foot back and turned out about 45 degrees.
 - **One foot in the air at a time**, out and back. Plant the first before the second lifts (step tuples must not
   overlap). Two feet off the ground at once reads as a hop, and he marked every stepping tick "ok", not "good".
-- **Clip length is gameplay.** "shot seems quick": 16 ticks to the loose come from `sheets/design.json`
+- **Clip length is gameplay.** "shot seems quick": the ticks to the loose come from `sheets/design.json`
   (`impactTicks`), and in game the hold at `full` adds only 0 to 3 ticks (`MotionMath.LOOSE_MAX`). Do not slow a
-  clip to answer a note like this; say where the number lives and ask. (Asked: he wants the shot longer. Until the
-  design sheet changes, the clip stays 16 ticks to the loose.)
+  clip to answer a note like this; say where the number lives and ask. Asked, he set the shot at **22 ticks to the
+  loose, same damage per arrow** (2026-11-11; it was 16). The demo is 32 ticks, `full` at 17, `impact` at 22; the
+  animation lead applies 22 to the design sheet and the bow builder.
+- **Re-time with one map, not key by key.** The demo's `RETIME` is a piecewise-linear map from the old clock to the
+  new one (`w(t)`), and every key, step and marker goes through it. Keep each piece near a plain stretch, and keep
+  the keys at their exact warped times: snapping them to the quarter-tick grid moved the reach's elbow from 103 to
+  110 degrees. Re-run the string, grab, nock and loose measurements afterwards; they held to 0.1 px.
+- **The knee tracks over the toes.** Archer round 2, his words: "why does its feet/ankles look abnormal? the bottom
+  flat piece is flush with the ground but then its lower leg is at an angle and it makes a weird crease." Cause:
+  `K.attack_legs` turns each thigh to face the troop's FRONT whatever the foot does, so a foot turned out 44
+  degrees under a pelvis turned 72 put the ankle at pitch -51, twist 26, roll -38. A foot is a flat box: any ankle
+  angle past about 30 degrees shows as that crease. Fix, in this order: (1) turn the thigh with the foot
+  (`shot_legs` and `KNEE_TURN` in the archer demo: the knee yaw eases in with the step), (2) aim the foot where the
+  leg can follow (-36 and 6 degrees, not -44 and -18), (3) rise 0.5 px into the draw so the shins stand nearer
+  upright (more and the rear ankle goes out of reach). Result: right ankle (-27, -6, -12), left (-8, 1, 5).
+  Print the foot's local rotation per tick (the third value `K.leg_pose` returns) on any side-on stance.
 - **Keep**: the head settling onto the arrow during the draw ("nice touch"), the elbow-first reach to the quiver, the
   arrow going onto the string, shoulder and elbow at full draw, the loose (all graded good).
 - At full draw limit the head (16 degrees off the foe) and the chest (84 degrees side-on) in the solve, or `head_turn`
@@ -314,6 +332,18 @@ bows string is inside the archers arm to start. the head shake while the unit is
   leg's limit: the solver says "ankle unreachable" one step past it), pelvis 1.1 px further, the leading shoulder 4
   degrees further forward, chest 2 degrees lower, and the rear fist driving the shaft through the front hand (8.0
   apart in the guard to 6.3 at full reach). Squaring the shoulders did nothing: it moves the wrong shoulder.
+- **Short strides, long reach** (tusk round 2: "a little bit less body movement and more arms / thrusting the
+  spear ... i like the steps but i feel like the strides are too long, shorten them up but extend the weapons
+  reach"). Strides went 5.8 and 3.9 px to 3.0 and 2.0, pelvis travel 7.0 to 4.2, and the point still goes 2.2 px
+  further (45.8 px ahead of the pelvis, was 41.4). The geometry: shoulders 11 px apart, fists 6, so one arm always
+  crosses the chest and the crossing eats its reach (round 2's front arm spent 6 of 8 px on it). What works:
+  shoulders about 35 degrees side-on at full reach with the leading one at the foe, the shaft low (fist y 14, under
+  the chest), the rear arm nearly straight, and the **rear elbow carried out and level through the drive** (an `rp`
+  prior on the drive keys, about `(-75, 0, 40, -25)` at full reach). Without the prior the same reach lays the
+  rear upper arm 2.0 px in the chest (`armour_clip` FAIL); with it 1.87 against the guard's own 1.8. What does
+  not: more chest yaw than that (the rear arm lies across the chest), a chest-height thrust (shaft 1.8 px in the
+  torso), sliding the shaft in the rear hand (the grip section is thicker than the shaft), fully side-on (loses
+  the rear shoulder). Add an in-between key each way where the fist passes the flank, a pixel outside it.
 - A deeper lunge needs the rear foot to let go earlier (lift at 7.2, not 7.8) and the lead foot to lift earlier on
   the way home, or the planted ankle goes out of reach by a few hundredths of a px and the build stops.
 - A load must show from the side: sit the pelvis back and down over the rear foot, draw the **front** hand back with

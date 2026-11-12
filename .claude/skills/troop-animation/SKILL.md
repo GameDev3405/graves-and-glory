@@ -43,7 +43,8 @@ Every animation session works on these four, and proves each one before showing 
 1. **No clipping.** Weapon, shield, arms and legs never pass through the body, each other or the ground, and armour
    plates never sit inside each other ("the textures on its chest are glitching into each other", 2026-11-11).
 2. **Nothing stale or stagnant.** The whole body drives every move; a hold still drifts; a shield is never glued.
-   **Every piece of the unit moves**: cape, crest, skirt and shoulder plates, quiver, trophies ("i want the whole
+   **Every piece that hangs moves**: cape, plume, skirt and shoulder plates, quiver, trophies; a helm's fixed
+   crest does not ("remove the wobble of the red strip on his head", knight round 3) ("i want the whole
    unit to be animated including pieces of its armor that way it feels alive", 2026-11-11).
    But not swaying either: he cut sway to 25-40% and rejected hits that "break their back".
 3. **The blade or weapon faces the right way on every frame.** Edge leading through a cut, point leading a thrust,

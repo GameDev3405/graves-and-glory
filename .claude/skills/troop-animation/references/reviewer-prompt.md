@@ -36,7 +36,7 @@ into a scratch folder under `work/` if you need a frame the author did not rende
    Three things Kort marked on 2026-11-11 that two reviewers before you let through. Look for each one by name:
    (a) the weapon turning about its own length in the hand during the wind-up ("weapons spins around in hand");
    compare the blade's flat and edge from one tick to the next before the strike;
-   (b) any piece of the unit that stands still while the body moves: cape, crest or plume, skirt and shoulder
+   (b) any piece of the unit that stands still while the body moves: cape, plume, skirt and shoulder
    plates, quiver, pouches, trophies ("i want the whole unit to be animated including pieces of its armor");
    (c) armour plates of two different parts drawn in the same place, even shallowly ("the textures on its chest are
    glitching into each other"): look at the chest, the shoulders and the hips on every tick.

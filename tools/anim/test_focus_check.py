@@ -143,7 +143,7 @@ class Graded(unittest.TestCase):
         r = run(data)["grip_roll"]
         self.assertEqual(r["status"], "FAIL", r)
 
-    def test_cape_crest_and_plates_standing_still(self):            # "i want the whole unit to be animated"
+    def test_cape_and_plates_standing_still(self):            # "i want the whole unit to be animated"
         alive = fc.alive_pieces(RIG.full)
         data = copy.deepcopy(ANIM)
         for name in (CLIP, LEGS):
@@ -151,8 +151,9 @@ class Graded(unittest.TestCase):
                 del data["animations"][name]["bones"][bone]
         r = run(data)["secondary_life"]
         self.assertEqual(r["status"], "FAIL", r)
-        for piece in ("cape", "crest", "left_pauldron"):
+        for piece in ("cape", "left_pauldron"):
             self.assertIn(piece, r["detail"])
+        self.assertNotIn("crest", r["detail"])          # a crest rides its helm (Kort, knight round 3)
 
     def test_the_demo_moves_every_piece(self):
         r = run(ANIM)["secondary_life"]
@@ -172,7 +173,8 @@ class Graded(unittest.TestCase):
         self.assertIn("fix the stance", r["detail"])
 
     def test_alive_pieces_by_troop(self):
-        self.assertTrue({"cape", "crest", "left_pauldron", "right_pauldron"} <= set(fc.alive_pieces(RIG.full)))
+        self.assertTrue({"cape", "left_pauldron", "right_pauldron"} <= set(fc.alive_pieces(RIG.full)))
+        self.assertNotIn("crest", fc.alive_pieces(RIG.full))
         tusk = set(fc.alive_pieces(rig_of("wm_tusk").full))
         self.assertTrue({"kilt", "trophy", "tooth_necklace", "hip_skull", "pauldron", "left_pauldron"} <= tusk, tusk)
         for bone in ("torso", "head", "right_forearm", "weapon"):

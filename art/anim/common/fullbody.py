@@ -60,8 +60,9 @@ EDGE_BEFORE = 3.0    # ticks before the impact from which the edge may turn onto
 EDGE_AFTER = 2.0     # ticks after the impact the fast roll rate still applies
 
 # Secondary motion (Kort 2026-11-11: "i want the whole unit to be animated including pieces of its armor that way it
-# feels alive"; he named the cape and the helmet's red crest as stale). Each soft piece is a weight on a spring that
-# trails its parent bone. soft_parts_for() finds the pieces of any rig by name (the same name tokens focus_check's
+# feels alive"; he named the cape and the helmet's red crest as stale, then took the crest back after seeing it rock:
+# "remove the wobble of the red strip on his head", so a crest rides its helm and gets no keys). Each soft piece is a
+# weight on a spring that trails its parent bone. soft_parts_for() finds the pieces of any rig by name (the same name tokens focus_check's
 # secondary_life check judges) and measures each one from the geo; SOFT_TUNED overrides a piece per troop.
 #   pivot/tip  where it hangs from and its free end, in the geo file's pixels
 #   period     ticks of one swing; zeta = damping; gain scales the angle; max caps it (degrees)
@@ -82,9 +83,6 @@ SOFT_TUNED = {
     "knight": {
         "cape": dict(pivot=(0, 24, 3.6), tip=(0, 7, 4.1), period=7.0, zeta=0.28, gain=1.25, max=34.0, plumb=0.45,
                      lim=((0.0, 34.0), (-3.0, 3.0), (-14.0, 14.0))),
-        # the crest's bone pivot is the neck; it rocks about the ridge's own foot on the helm
-        "crest": dict(pivot=(0, 33, 0.5), tip=(0, 38, 2.5), period=4.5, zeta=0.22, gain=2.6, max=16.0, plumb=0.0,
-                      lim=((-7.0, 14.0), (-9.0, 9.0), (-14.0, 14.0))),
         "right_skirt": dict(lim=((-11.0, 11.0), (0.0, 0.0), (-6.0, 6.0)), max=11.0, gain=0.9, plumb=0.25, period=4.0),
         "left_skirt": dict(lim=((-11.0, 11.0), (0.0, 0.0), (-6.0, 6.0)), max=11.0, gain=0.9, plumb=0.25, period=4.0),
     },

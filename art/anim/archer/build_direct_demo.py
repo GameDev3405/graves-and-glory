@@ -35,29 +35,28 @@ archer's current shot):
   the whole unit  hood cape, tippet, quiver, skirts and belt pouch swing on fullbody.soft_motion (the current clip only
                 scales the knight's cape lag onto two of them). "i want the whole unit to be animated".
 
-Gameplay is untouched: 26 ticks, "full" marker on tick 12 (AttackController holds there), "impact" on tick 16.
-Kort, round 1: "shot seems quick". The 16 ticks to the loose are sheets/design.json's (bow_direct impactTicks), and in
-game the hold at "full" adds only 0-3 ticks (MotionMath.LOOSE_MAX), so the page shows the shot about as quick as the
-game plays it. A slower shot is a rate-of-fire decision, not this clip's: asked, not changed.
-
-What the checks say (focus_check, 2026-11-11, after Kort's round 1 grades): 0 FAIL, 2 WARN (weapon_in_body 1.28 t5
-bow into the face plane as it passes in front of the head, limb_in_body 1.65 t7 string forearm into the jerkin);
-scorecard pass.
+Timing: 32 ticks, "full" marker on tick 17 (AttackController holds there), "impact" on tick 22.
+Kort, round 1: "shot seems quick". The 16 ticks to the loose were sheets/design.json's (bow_direct impactTicks), and
+in game the hold at "full" adds only 0-3 ticks (MotionMath.LOOSE_MAX). Asked what should change he chose "Make the
+shot longer" and set 22 ticks to the loose, same damage per arrow (2026-11-11). Round 3 is the round 2 shot re-timed
+to that (RETIME below). design.json and the bow builder are not touched here: the animation lead applies 22 to the game,
+and until then this clip's markers do not match the game's 16.
 
 Known model fault, not this clip's: the exported bow geo carries the weapon builder's cube turns with the wrong sign
 for a Bedrock geo (GeckoLib BakedModelFactory keeps rotation z and mirrors x), so in game every limb cube tilts the
 wrong way and the drawn string opens away from the bow. art/anim/archer/fix_geo_for_render.py makes a corrected copy for renders.
 
 Phases:
-  0-1.5     anticipation  eyes on the foe, the bow dips, the weight settles
-  0.6-4.6   reach         the string-side foot drops back 7.6 px; the string hand goes over the shoulder to the quiver
-  3.0-6.4   bow up        the arm carries the bow up onto the line, held as it was in the guard
-  4.8-7.2   nock          the bow-side foot turns onto the line; the arrow comes down onto the string, low
-  7.8-12    raise, draw   one long pull up to the ear, standing tall and side-on
-  12-16     hold          at the anchor; the back keeps squeezing, the bow arm trembles
-  16        loose         the fist flies back behind the ear, the bow rocks forward in the hand, the pelvis rocks back
-  16-19     follow        held open, everything loose still swinging
-  17.8-26   recover       the bow comes down (18.6-23); the bow-side foot steps home, then the string-side foot
+  0-2       anticipation  eyes on the foe, the bow dips, the weight settles
+  0.8-6     reach         the string-side foot drops back 7.6 px; the string hand goes over the shoulder to the quiver
+  4.1-4.6   in the quiver a beat on the fletching, then the arrow is drawn up and out (5.3)
+  4-8       bow up        the arm carries the bow up onto the line, held as it was in the guard
+  6.1-9.1   nock          the bow-side foot turns onto the line; the arrow comes down onto the string (8.75), low
+  10-17     raise, draw   one long pull up to the ear, standing tall and side-on
+  17-22     hold          at the anchor; the back keeps squeezing, the bow arm trembles
+  22        loose         the fist flies back behind the ear, the bow rocks forward in the hand, the pelvis rocks back
+  22-25     follow        held open, everything loose still swinging
+  23.8-32   recover       the bow comes down (24.6-29); the bow-side foot steps home, then the string-side foot
 """
 import json
 import math
@@ -75,7 +74,23 @@ import fullbody  # noqa: E402
 
 K, np = BW.K, BW.np
 SUB, Z3 = BW.SUB, BW.Z3
-T, FULL_AT, IMPACT = BW.ATTACK_TICKS, BW.FULL_AT, BW.IMPACT
+# Kort, 2026-11-11, on round 1 ("shot seems quick"), asked what should change: "Make the shot longer". He set it at 22
+# ticks to the loose, same damage per arrow. The bow builder and sheets/design.json still say 16 (the animation lead
+# applies 22 to the game); this demo is its own lane's proposal at the new length: 32 ticks, "full" on 17, "impact" on 22.
+# Every key below is written in the 26-tick shot's time he graded and moved by w(): the same poses in the same order,
+# so what he marked good stays. The six ticks go where a shot's weight is: the reach and the nock a quarter slower,
+# a slower pull (5.5 ticks, was 3), a hold of 5 (was 4). Everything after the loose keeps its speed.
+T, FULL_AT, IMPACT = 32, 17, 22
+RETIME = [(0.0, 0.0), (6.9, 8.75), (9.0, 11.5), (12.0, 17.0), (16.0, 22.0), (26.0, 32.0)]
+assert (BW.ATTACK_TICKS, BW.FULL_AT, BW.IMPACT) == (26, 12, 16), "the bow builder's timing moved: rewrite RETIME from it"
+
+
+def w(t):
+    """A tick of the 26-tick shot (loose on 16) in this clip's time (loose on 22)."""
+    for (a, b), (c, e) in zip(RETIME, RETIME[1:]):
+        if t <= c:
+            return b + (e - b) * (t - a) / (c - a)
+    return RETIME[-1][1]
 ELEV = BW.ELEV["direct"]
 BW.ANCHOR = (-6.5, 25.0, 0.0)       # head-local: drawn to the ear, outside the hood (was (-5, 26, -1), inside it)
 ELBOW = (-6.0, 18.0, 0.0)           # right_forearm-local: the string arm's elbow
@@ -130,6 +145,7 @@ LOOSE = P((0, 38, 0), (-4, -71, 0), (-88, -44, 0), 0, 0, (-100, -5, -10), (0, 95
 FOLLOW = P((-2, 39, 0), (-4, -71, 0), (-84, -46, 0), 0, 4, (-104, 0, -16), (0, 100, 0))
 DOWN = guard(P((3, 24, 0), (-4, -44, 0), (-62, -30, -3), -6, -4, (-58, -8, 11), (-16, 50, 0)))
 
+SHOT_FEET = {"right": (-2.2, 2.0, -5.6), "left": (2.6, 2.0, 1.6)}     # the ankles in the shooting stance
 LEGS = {
     # Kort, archer round 1: "legs look abnormal". Round 1 stood side-on on feet 3.8 px apart with the pelvis sunk 3.1 px:
     # both knees bent 90 degrees through the draw and the hold (the guard bends them 45), a squat on a tightrope. An
@@ -137,32 +153,33 @@ LEGS = {
     # no lower than the guard carries it, knees 47 to 52 degrees. The pelvis travels back and turns instead of sinking.
     # (tick, (pitch, yaw, roll), (x, y, z)): the position is in the clip's own frame, +x the troop's left, +z BACK.
     "hips": [(0, *K.READY_HIPS),
-             (1.5, (1.0, 8.0, 0.0), (0.6, -1.2, 0.2)),        # onto the bow-side foot
-             (4.0, (0.0, 20.0, 0.0), (0.4, -1.1, 1.6)),       # back with the right foot as it drops behind
-             (5.6, (0.0, 30.0, 0.0), (-0.3, -1.0, 2.6)),      # over the rear foot while the lead foot steps onto the line
-             (7.4, (1.0, 40.0, 0.0), (0.1, -1.0, 2.2)),       # side-on already
-             (10.0, (1.5, 45.0, 0.0), (0.2, -1.2, 2.0)),
-             (FULL_AT, (2.0, 47.0, 0.0), (0.2, -1.25, 1.9)),  # between the feet, tall
-             (IMPACT, (2.0, 48.0, 0.0), (0.2, -1.3, 1.8)),
-             (17.3, (-0.5, 50.0, 0.0), (0.1, -1.0, 2.5)),     # the loose rocks it back and up
-             (19.0, (0.0, 47.0, 0.0), (0.1, -1.0, 2.3)),
-             (22.0, (0.5, 24.0, 0.0), (0.0, -1.1, 0.8)),
+             (w(1.5), (1.0, 8.0, 0.0), (0.6, -1.2, 0.2)),        # onto the bow-side foot
+             (w(4.0), (0.0, 20.0, 0.0), (0.4, -1.1, 1.6)),       # back with the right foot as it drops behind
+             (w(5.6), (0.0, 30.0, 0.0), (-0.3, -1.0, 2.6)),      # over the rear foot while the lead foot steps onto the line
+             (w(7.4), (1.0, 40.0, 0.0), (0.1, -1.0, 2.2)),       # side-on already
+             (w(10.0), (1.5, 45.0, 0.0), (0.2, -1.0, 2.0)),         # and RISES into the draw (round 3): the knees
+             #                                                    open from 45 to 33 degrees, the shins stand up off the feet
+             (FULL_AT, (2.0, 47.0, 0.0), (0.2, -0.75, 1.9)),  # between the feet, tall
+             (IMPACT, (2.0, 48.0, 0.0), (0.2, -0.8, 1.8)),
+             (w(17.3), (-0.5, 50.0, 0.0), (0.1, -0.7, 2.5)),     # the loose rocks it back and up
+             (w(19.0), (0.0, 47.0, 0.0), (0.1, -1.0, 2.3)),
+             (w(22.0), (0.5, 24.0, 0.0), (0.0, -1.1, 0.8)),
              (T, *K.READY_HIPS)],
     # (foot, lift tick, plant tick, (x, y, z) of the ankle, foot yaw, lift height)
     # The string-side foot drops back 7.6 px as the hand goes to the quiver; the bow-side foot then steps 3.6 px towards
     # the foe onto the line of the shot. One foot at a time, on the way back too (round 1 had both in the air at 20-21.4).
-    "steps": [("right", 0.6, 4.6, (-2.2, 2.0, -5.6), -44.0, 1.0),
-              ("left", 4.8, 7.2, (2.6, 2.0, 1.6), -18.0, 0.8),
-              ("left", 17.8, 20.6, (3.2, 2.0, -2.0), 7.0, 0.8),
-              ("right", 20.8, 24.8, (-3.4, 2.0, 2.0), -12.0, 0.9)],
+    "steps": [("right", w(0.6), w(4.6), SHOT_FEET["right"], -36.0, 1.0),      # yaws: see KNEE_TURN
+              ("left", w(4.8), w(7.2), SHOT_FEET["left"], 6.0, 0.8),
+              ("left", w(17.8), w(20.6), (3.2, 2.0, -2.0), 7.0, 0.8),
+              ("right", w(20.8), w(24.8), (-3.4, 2.0, 2.0), -12.0, 0.9)],
 }
 
-ARROW_ON = 6.9     # fix r1 F2: the arrow is on the string as the fist arrives with it (was 7.8, in a closed fist)
-DRAW_KEYS = [(ARROW_ON, 1.0), (7.8, 1.0), (9.0, 1.15), (10.6, 2.4), (FULL_AT, 3.0), (IMPACT, 3.0)]
-AIM_IN, AIM_OUT = (3.0, 6.4), (18.6, 23.0)   # the bow comes onto the line as the arm rises to the nock (round 1: by 4.4,
+ARROW_ON = w(6.9)  # fix r1 F2: the arrow is on the string as the fist arrives with it (was 7.8, in a closed fist)
+DRAW_KEYS = [(ARROW_ON, 1.0), (w(7.8), 1.0), (w(9.0), 1.15), (w(10.6), 2.4), (FULL_AT, 3.0), (IMPACT, 3.0)]
+AIM_IN, AIM_OUT = (w(3.0), w(6.4)), (w(18.6), w(23.0))   # the bow comes onto the line as the arm rises to the nock (round 1: by 4.4,
 #                                              with the arm still low, which put the resting string through the forearm)
 STRING_CLEAR = 48.0                          # degrees the arrow line keeps off the forearm's line while the string is at rest
-STRING_OUT = (18.4, 22.6)
+STRING_OUT = (w(18.4), w(22.6))
 # fix r1 F1/F3: the string arm's way to the quiver and back, as arm keys SOLVED onto targets (torso-local px, or the
 # fletching, or the nock) on the body's own pose at that tick, then eased between as joint angles: the fist travels in
 # arcs, it is exact where it must touch, and nothing chases a moving target through two answers of the shoulder.
@@ -170,12 +187,12 @@ STRING_OUT = (18.4, 22.6)
 # (tick, target, the arm's starting guess (right_arm x, y, z, right_forearm x)). The guesses hold the one natural answer:
 # the upper arm raised in FRONT towards overhead, the elbow flexed, so the flexion carries the hand back behind the head
 # (the solver left to itself twists the shoulder round and bends the elbow backward). Quiver to nock: 4.0 to 6.25.
-REACH_KEYS = [(2.0, "via_up", (-115.0, 0.0, 0.0, -85.0)), (3.25, "grab", (-160.0, 0.0, 0.0, -110.0)),
-              (3.6, "grab", (-160.0, 0.0, 0.0, -110.0)), (4.2, "pluck", (-165.0, 0.0, 0.0, -100.0)),
-              (5.2, "via_out", (-125.0, 0.0, 0.0, -95.0)), (ARROW_ON, "nock", None)]
+REACH_KEYS = [(w(1.8), "via_up", (-115.0, 0.0, 0.0, -85.0)), (w(3.25), "grab", (-160.0, 0.0, 0.0, -110.0)),
+              (w(3.6), "grab", (-160.0, 0.0, 0.0, -110.0)), (w(4.2), "pluck", (-165.0, 0.0, 0.0, -100.0)),
+              (w(5.2), "via_out", (-125.0, 0.0, 0.0, -95.0)), (ARROW_ON, "nock", None)]
 NOCK_FWD = 0.8      # the elbow comes forward at the nock (the fist is a pixel off the chest there; a tucked elbow lays
 #                     the forearm along the jerkin)
-REACH_FROM = 0.25   # the string hand leaves the guard (the arm keys before it are the keyed guard)
+REACH_FROM = w(0.25)   # the string hand leaves the guard (the arm keys before it are the keyed guard)
 
 FLY = 9.0          # px the fist flies back along the arrow's line at the loose (fix r1 F3: was 4.4)
 FLY_OUT = -1.5      # px it clears the hood sideways on the way
@@ -187,11 +204,14 @@ TREMBLE = 1.6      # degrees, the held draw's tremble (was 0.9)
 BREATH = 1.0       # degrees of torso pitch, one breath across the hold
 
 
+NOCK_AT, SET_AT = round(w(6.75) * SUB) / SUB, w(9.0)     # on the sample grid: their bow arms are solved on that sample's legs
+
+
 def keys(drawn, nock, set_):
-    return [(0, READY), (1.5, ANTIC), (3.2, mix(ANTIC, REACH, 0.86)), (3.8, REACH), (4.8, PLUCK),
-            (6.75, nock), (9.0, set_), (FULL_AT, drawn(FULL)), (15.4, drawn(TENSE)),
-            (IMPACT, drawn(LOOSE)), (17.6, drawn(FOLLOW)), (19.2, drawn(mix(FOLLOW, LOOSE, 0.5))),
-            (22.4, DOWN), (T, READY)]
+    return [(0, READY), (w(1.5), ANTIC), (w(3.2), mix(ANTIC, REACH, 0.86)), (w(3.8), REACH), (w(4.8), PLUCK),
+            (NOCK_AT, nock), (SET_AT, set_), (FULL_AT, drawn(FULL)), (w(15.4), drawn(TENSE)),
+            (IMPACT, drawn(LOOSE)), (w(17.6), drawn(FOLLOW)), (w(19.2), drawn(mix(FOLLOW, LOOSE, 0.5))),
+            (w(22.4), DOWN), (T, READY)]
 
 
 def draw_amount(t):
@@ -317,8 +337,41 @@ def torso_local(pose, w):
     return np.array([-v[0] * 16.0, v[1] * 16.0, v[2] * 16.0])
 
 
+# Kort, archer round 2: "the bottom flat piece is flush with the ground but then its lower leg is at an angle and it makes
+# a weird crease". K.attack_legs keeps every knee facing the troop's front whatever the foot does: side-on, on feet turned
+# 32 and 25 degrees from the guard, that twisted the right ankle 26 degrees and rolled it 38 (left: twisted 19). The knee
+# tracks over the toes: each thigh turns with its own foot, and the feet point where their legs can follow (the rear foot
+# across the line, the lead foot at the foe, an open stance). Swept at full draw (work/ar_ankle2.py): these leave each
+# ankle within 10 degrees of twist and of roll, what the guard itself has. Degrees in the world, the foot yaw's sense.
+KNEE_TURN = {"right": -37.0, "left": 6.0}
+
+
+def shot_legs(turn=None):
+    """K.attack_legs with each thigh turned KNEE_TURN in the shooting stance, eased in and out with the foot's own step
+    (by how far the ankle is from the guard's footing), so the clip still starts and ends on the guard's legs."""
+    turn = KNEE_TURN if turn is None else turn
+    hips_rot = [(k[0], k[1]) for k in LEGS["hips"]]
+    hips_pos = [(k[0], k[2]) for k in LEGS["hips"]]
+    out, guesses = [], {}
+    for i in range(T * SUB + 1):
+        t = i / SUB
+        hips = (K.curve(hips_rot, t), K.curve(hips_pos, t))
+        pose, f = {"hips": hips}, {"hips": hips}
+        feet = K.feet_at(LEGS["steps"], t)
+        for side in ("right", "left"):
+            at, yaw, pitch = feet[side]
+            home, there = np.array(K.READY_FEET[side][0]), np.array(SHOT_FEET[side])
+            u = min(1.0, float(np.linalg.norm((np.array(at) - home)[[0, 2]]) / np.linalg.norm((there - home)[[0, 2]])))
+            pose[side + "_leg"] = ((0, -hips[0][1] - turn[side] * u, 0), (0, 0, 0))
+            lr, sr, fr = K.leg_pose(pose, side, at, pitch, foot_yaw=yaw, guess=guesses.get(side))
+            guesses[side] = (lr[0], lr[2], sr[0])
+            f[side + "_leg"], f[side + "_shin"], f[side + "_foot"] = (lr, None), (sr, None), (fr, None)
+        out.append(f)
+    return out
+
+
 def shot():
-    legs = K.attack_legs(LEGS, ticks=T)
+    legs = shot_legs()
     solved, yaw, err = solve_full(FULL, legs[FULL_AT * SUB], ELEV)
     if err > 0.3:
         raise ValueError("anchor unreachable by %.2f px" % err)
@@ -331,7 +384,8 @@ def shot():
         return q
 
     d, u = BW.aim(ELEV, yaw)
-    ks = keys(drawn, fit_bow_arm(NOCK, legs[27], NOCK_GRIP, d, u), fit_bow_arm(SET, legs[9 * SUB], SET_GRIP, d, u))
+    ks = keys(drawn, fit_bow_arm(NOCK, legs[int(round(NOCK_AT * SUB))], NOCK_GRIP, d, u),
+              fit_bow_arm(SET, legs[int(round(SET_AT * SUB))], SET_GRIP, d, u))
     side = np.cross(u, d)
     grab, qup = quiver_local()
 
@@ -428,7 +482,7 @@ def shot():
         amt = draw_amount(t)
         if t <= ARROW_ON:                   # guard, over the shoulder, the quiver, the pluck, round and onto the string
             x = K.curve(arm_keys, t)
-            kf = np.array(s["right_forearm"][0]) * (1.0 - BW.ramp(t, REACH_FROM, 2.0))     # the guard's forearm twist lets go
+            kf = np.array(s["right_forearm"][0]) * (1.0 - BW.ramp(t, REACH_FROM, w(2.0)))     # the guard's forearm twist lets go
             s["right_arm"], s["right_forearm"] = (tuple(x[:3]), None), ((x[3], kf[1], kf[2]), None)
         elif t <= STRING_OUT[1]:
             Fk = K.point(K.world(pose, "right_forearm"), BW.FIST)
@@ -436,7 +490,7 @@ def shot():
                 target = nock_at(pose, t)
             else:                           # loosed: the fist flies back along the arrow's line, clear of the hood, and drifts on
                 target = loose_target(pose, t, Fk)
-            up = 0.15 - 0.35 * BW.ramp(t, ARROW_ON, 8.6) + 0.55 * BW.ramp(t, 8.6, 11.0) - 0.4 * BW.ramp(t, IMPACT, IMPACT + 2.0)
+            up = 0.15 - 0.35 * BW.ramp(t, ARROW_ON, w(8.6)) + 0.55 * BW.ramp(t, w(8.6), w(11.0)) - 0.4 * BW.ramp(t, IMPACT, IMPACT + 2.0)
             if t == IMPACT:                 # the string slips off the fingers: the arm holds the anchor's answer for this sample
                 ra, rf, e = tuple(warm[:3]), (warm[3], 0.0, 0.0), 0.0
             elif IMPACT < t < IMPACT + FLY_TICKS:
@@ -448,7 +502,7 @@ def shot():
             else:
                 g = (*s["right_arm"][0], s["right_forearm"][0][0])
                 ra, rf, e = string_arm(pose, target, g, warm, damp=0.04, up=up,
-                                       fwd=NOCK_FWD * (1.0 - BW.ramp(t, ARROW_ON + 1.0, 11.0)))
+                                       fwd=NOCK_FWD * (1.0 - BW.ramp(t, w(7.9), w(11.0))))
             warm = (*ra, rf[0])
             if t == IMPACT:                 # solve where the fly ends, from here
                 j = i + int(round(FLY_TICKS * SUB))

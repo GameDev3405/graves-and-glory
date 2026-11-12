@@ -104,8 +104,8 @@ reviewers let through, and what the archer and the Warmaw tusk taught on top:
   (`grip_roll`, `secondary_life`, `armour_clip`). When he marks a tick, first ask what number would have shown it.
 - **Edge-on-the-path belongs to the strike only.** Rolling the hand to keep the edge on the tip's line during the
   wind-up reads as the weapon spinning in the hand. The kit now limits it to the strike window.
-- **Nothing on the unit stands still in an action.** A cape lag alone is not enough; crest, plates, skirts, quivers
-  and trophies all get `fullbody.soft_motion`. This is the cheapest gain there is: one call before baking.
+- **Nothing that hangs stands still in an action.** A cape lag alone is not enough; plumes, plates, skirts, quivers
+  and trophies all get `fullbody.soft_motion`. (Not the helm's crest: see 7e.) This is the cheapest gain there is: one call before baking.
 - **Shallow overlaps flicker.** Two textured plates 1.7 px inside each other z-fight even though no limb is
   "through" anything. Judge armour against armour, not only limbs against the body.
 - **Look at the model before the motion.** The bow of every bow troop is exported with its limb cubes turned the
@@ -158,6 +158,30 @@ reviewers let through, and what the archer and the Warmaw tusk taught on top:
 - **The leg solver's error is tiny when the cause is big.** "ankle unreachable (err 0.07 px)" on a foot that has not
   moved means the pelvis left it behind: lift that foot earlier or keep the pelvis back, do not hunt the step that
   was just edited.
+
+## 7e. From Kort's grades of knight round 3, archer round 2 and tusk round 2 (2026-11-11)
+
+"knight v3 looks good", "archer v2 looks good", and three notes.
+
+- **He can take back something he asked for.** Round 1: the "red fur on the helmet" was stale. Round 3: "remove
+  the wobble of the red strip on his head, i thought i wanted it but i don't." Record both, date both, and change
+  the kit (not the clip) so no other troop repeats it. The rule that survives: things that hang move, things fixed
+  to a rigid piece do not.
+- **A joint the checks do not look at is still a joint he looks at.** No row measures the ankle. The archer's rear
+  foot was flat on the ground with its shin 50 degrees off it, and he called the crease. Print the foot's local
+  rotation on every stance where the feet turn, and keep each angle under about 30 degrees.
+- **A shared helper carries its assumptions.** `K.attack_legs` was written for a knight who faces his foe: knees to
+  the front. Side-on stances need the thigh to follow the foot. Read what a borrowed helper pins before trusting it
+  on a new stance; wrap it in the demo, report it to its owner, do not edit it.
+- **"Less body, more arms" is a geometry problem, not a slider.** Shortening the steps takes the reach away px for
+  px unless the arms find it, and they find it only where the chest lets them. Measure shoulder to wrist for both
+  arms, find what each px is spent on (crossing the chest, a folded elbow), and change that.
+- **When a limb clips only by its elbow's choice, steer the elbow, not the fist.** Four attempts moved the fist and
+  the chest and stayed at 1.97 to 2.0 px; one elbow prior cleared it with more reach than any of them.
+- **Look at a stance's own number before judging a move.** The tusk's guard stands at limb 1.6 / armour 1.8, so a
+  drive at 1.87 adds 0.07, and one at 2.0 adds 0.2. Print the per-tick series, not only the worst row.
+- **Re-time through one map** (the archer's 16 to 22 ticks): every key, step and marker through the same
+  piecewise-linear `w(t)`, exact times, then re-measure everything that has to touch.
 
 ## 8. Legacy clip pipeline (for old-model fixes only)
 
