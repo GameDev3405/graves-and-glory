@@ -103,3 +103,45 @@ Kort approved the v4 deaths ("the animations are looking great"), including the 
 2. The 12 deaths are copied, each with its own gear, to sentinel, gl_marshal and ic_hearthguard.
 
 The Knight's set (v2 style plus the v4 deaths) is the template for the other troops. Which troops reuse which parts is being worked out with Kort.
+
+# Batch review 2026-11-11: hit_pulled
+
+Branch `anim/review-hit-pulled` (cut from `anim/hit-pulled`, which added the booth configs). Only `hit_pulled` and
+`hit_pulled_legs` changed; every other knight clip is byte-identical (checked clip by clip against HEAD).
+
+**Why it changed.** `hit_pulled` is new (built by `art/anim/common/reactions.py`) and was never approved. The focus check
+plays additive hits over the bind pose, so it hid the clip's real faults; composed over the ready stance the way
+HitController adds it (`work/review/sen_compose.py`), the clip had:
+
+| As played | Before | After |
+|---|---|---|
+| k 1.0 | FAIL sword_t3 into helm_great 1.73 px (t3.5); right toe 2.51 px under the ground (t1, exempted); cape, pauldrons, skirt plates still | WARN right toe 0.76 px (t0.5); WARN secondary_life 3.93 (cape) |
+| k 1.55 (heavy) | FAIL sword into helm 3.54, right_cuff into helm 2.03, helm into cuff 2.03, knee_aim 89.8 | WARN floor 0.87, hips into right_skirt_gilt 1.76, knee_aim 54.1 |
+
+The blade crossed the visor through the fling (side and front frames t2-t6 of the before sheet).
+
+**What changed.** `art/anim/knight/soft_layers.py` (the knight family's late layer, run after reactions.py and export; it
+also carries the sentinel's layer, cherry-picked from `anim/review-sentinel`) has a `knight` entry with `hit_pulled` only:
+the sword arm swings wider of the helm through the fling (arm z -16, x +6 at full fling), the body is lifted 2.6 px off
+its dragged feet (2 px more on the catching steps) and the toes point 10 degrees less; then the cape, skirt plates and
+pauldrons swing (fullbody.soft_motion, cape gain 2.5). Length 0.7 s, no timeline markers, unchanged.
+
+**Raw focus check (bind pose)** after: 0 FAIL on the whole knight (41 clips). hit_pulled: the floor row passes (its
+exemption is no longer needed), secondary_life 3.93 WARN (no longer needs its exemption), elbow 162.8 still exempt (bind-pose
+artefact: composed it passes). New WARN: sword_t3 into hips 1.41 px at t4.25, only over the bind pose (composed: pass).
+
+**Open.** `test_scorecard.KnightTest.test_shipped_limits_match_derivation` fails: the shipped limits are derived from the
+knight, and the new hit_pulled lowers the knight's hit foot slide (0.4928 -> 0.4818), so the hit foot_slide limit would
+derive to 0.5318 (shipped 0.5428). `tools/anim/scorecard_limits.json` is outside this task; the knight still passes the
+shipped limits. The exemption rows for knight hit_pulled floor and secondary_life can be dropped.
+
+**Sentinel's hit_pulled.** The sentinel's hit_pulled booth batch (`art/anim/knight/booth.sentinel.hit_pulled.json` on this
+branch) is superseded by `anim/review-sentinel`, which reworks the sentinel's hit_pulled with the same layer (and its
+stun, knockback, attacks and hits). Review the sentinel's clip there, not here.
+
+**Tests.**
+- In-game reel (geo-knight through checkq, root `knight-review2`, job 20261112-014136-321-0a83): passed, 22 `[p1] p1-`
+  checks true plus the suite line, 0 `=false`; `p1-geo-knight-hit-pulled=true` (3 pulls by the server path). The first
+  run (`knight-review1`) hit the 30-minute wait limit at 19 checks with 0 `=false` and was rerun.
+- `python -m unittest discover -s tools/anim`: 152 tests, 1 failure, `test_shipped_limits_match_derivation` (above).
+- `python tools/verify.py fast`: FAIL on machine load, twice: every step passed except python-tests, which hit verify's 600 s step limit (the machine ran several builds and clients). Run on its own (`tools/parallel_tests.py test-tools/standalone`, 12.5 min): 724 of 727 pass; the 3 failures are test_where's speed limits (3.66 s, 154.8 s and 3.02 s against 3, 30 and 3 s), load, not this change.

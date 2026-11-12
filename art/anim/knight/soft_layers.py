@@ -64,6 +64,12 @@ LAYERS = {
                        kb_tune={"cape": dict(max=14.0), "fur_collar": dict(gain=1.0, max=6.0, zeta=0.5)},
                        stun_tune={"fur_collar": dict(gain=1.0, max=6.0, zeta=0.5)},
                        stun_out_tune={n: dict(gain=2.0) for n in ("cape", "cape_t2", "left_skirt", "right_skirt")}),
+    # the knight (APPROVED): hit_pulled only, the clip added after the approval. As the game plays it the fling put the
+    # blade 1.7 px into the great helm at t3.5 (3.5 px at the heavy scale 1.55) and the dragged toe 2.5 px under the ground;
+    # the same arm, lift and toe fix as the sentinel clears both, and the cape and skirt plates swing. Every other knight
+    # clip stays byte-identical (no other key here).
+    "knight": dict(soft=("hit_pulled",), pull_arm=(6.0, 0.0, -16.0), pull_toe=10.0, pull_lift=2.6, pull_step_lift=2.0,
+                   pull_tune={"cape": dict(gain=2.5)}),
 }
 
 
