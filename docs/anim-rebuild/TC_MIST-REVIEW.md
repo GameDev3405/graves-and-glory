@@ -126,3 +126,12 @@ MAGE-REVIEW.md, same date.
   (reactions.py, stances.py, charge.py), as before this review.
 - Rule 6: hold (stances.py, gear `staff`/`focus`) holds the caster's focus forward; brace, wall, ward and shield_up are this
   builder's caster poses. The cast's `impact` stays tick 10, the release key (the bolt leaves).
+
+### Fix round 1 (2026-11-12, from work/reviewer/CASTER-sonnet-review.md)
+
+- `CLIP_NUDGE` (builder, added onto the baked keys before the life pass, part of every build): brace both arms lower
+  (left +25, right +20: the bells were in the hood 2.62 / 2.30); shield_up left arm +20, rod arm +12 and 5 out (left bell in
+  the hood 2.44); mist rod arm 10 out over ticks 5-16 (right bell in the mantle 2.13) and the head 15 deg less tipped back
+  over ticks 8-18. mist's sweep bows 8 deg less (the head tipped back into the torso to keep its gaze, 2.1 at t17).
+- Changed clips: stance_brace_upper, stance_shield_up_upper, mist (every other clip byte-identical). Focus 3 FAIL rows -> 0;
+  scorecard 35 clips, 0 failing. Renders `work/review/frames/r1/tc_all.jpg`.

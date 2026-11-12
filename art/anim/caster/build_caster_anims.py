@@ -866,9 +866,11 @@ def mist():
     g = GUARD
     draw = KEY((-2, -22, 0), (0, -10, 0), (4.6, -1.0, 5.0), aim(20, 40), u=UP, rp=(-90, 0, -10, -60), lp=(-40, 0, -45, -30))
     sink = KEY((30, -26, 0), (-12, -26, 0), (4.8, -5.2, 4.2), aim(-35, 55), u=UP, rp=(-70, 0, -15, -30), lp=(-45, 0, -55, -15))
-    sweep_l = KEY((36, -18, 0), (-14, -22, 0), (3.6, -6.0, 4.6), aim(-40, 40), u=UP, rp=(-60, 0, -5, -15), lp=(-55, 0, -40, -10))
-    sweep_c = KEY((38, 0, 0), (-14, 0, 0), (0.6, -6.0, 4.2), aim(-40, 0), u=UP, rp=(-60, 0, 10, -10), lp=(-60, 0, -10, -10))
-    sweep_r = KEY((34, 20, 0), (-12, 22, 0), (-3.6, -5.8, 4.4), aim(-36, -45), u=UP, rp=(-55, 0, 30, -10), lp=(-62, 0, 18, -12))
+    # (fix round 1, 2026-11-12: the sweep's bow 8 deg shallower; at 36-38 the head tipped back into the mantle to keep
+    # its gaze, head and hood peak 2.0-2.1 px in the torso at ticks 11-17)
+    sweep_l = KEY((28, -18, 0), (-14, -22, 0), (3.6, -6.0, 4.6), aim(-40, 40), u=UP, rp=(-60, 0, -5, -15), lp=(-55, 0, -40, -10))
+    sweep_c = KEY((30, 0, 0), (-14, 0, 0), (0.6, -6.0, 4.2), aim(-40, 0), u=UP, rp=(-60, 0, 10, -10), lp=(-60, 0, -10, -10))
+    sweep_r = KEY((26, 20, 0), (-12, 22, 0), (-3.6, -5.8, 4.4), aim(-36, -45), u=UP, rp=(-55, 0, 30, -10), lp=(-62, 0, 18, -12))
     # the release: the sweep ends wide at the right, the rod flicks out level, the free hand open behind it
     flick = KEY((20, 28, 0), (-6, 28, 0), (-4.8, -3.6, 4.6), aim(-8, -60), u=UP, rp=(-70, 0, 40, -8), lp=(-70, 0, 22, -8))
     drift = nudge(flick, torso=(-2, 1, 0), head=(-1, 0, 0), R=(-0.2, 0.3, 0.0), d=aim(-2, -62))
@@ -1167,11 +1169,9 @@ def _rate(d, cap):
     return [tuple(0.5 * (x + y) for x, y in zip(u, v)) for u, v in zip(f, b)]
 
 
-def life_pass(upper_clip, legs_clip, loop_from=None, report=True, name="", upper_bones=(), legs_add=False):
+def life_pass(upper_clip, legs_clip, loop_from=None, report=True, name="", upper_bones=()):
     """Adds the spring swing of every hanging piece to a baked upper clip (and its legs clip). loop_from: the tick a
-    looping clip's loop starts on (the stun: 4); the spring then runs three laps and the steady middle lap is used.
-    legs_add: an additive upper clip played over legs another clip keys (the stun shake-off): the swing of the legs
-    clip's pieces is keyed in the upper clip as a pure offset (an additive clip may key bones the clips under it key)."""
+    looping clip's loop starts on (the stun: 4); the spring then runs three laps and the steady middle lap is used."""
     ticks = int(round(float(upper_clip["animation_length"]) * TPS))
     n = ticks * SUB
     nl = int(round(float(legs_clip["animation_length"]) * TPS)) * SUB if legs_clip else n
@@ -1194,11 +1194,6 @@ def life_pass(upper_clip, legs_clip, loop_from=None, report=True, name="", upper
     if loop_from is None and nl != n:      # each clip's pieces settle by its own end (soft_motion fades out on the last sample)
         Du = _spring(up[:n + 1], lg[:n + 1], parts)
         D = {b: ((Du[b][0], Du[b][1], False) if not v[2] and b in Du else v) for b, v in D.items()}
-    offset_only = set()
-    if legs_add:
-        Du = _spring(up[:n + 1], lg[:n + 1], parts)
-        offset_only = {b for b, v in D.items() if v[2] and b in Du}
-        D = {b: ((Du[b][0], Du[b][1], False) if b in offset_only else v) for b, v in D.items()}
     U0 = clip_samples(upper_clip, n)
     L0 = clip_samples(legs_clip, nl) if legs_clip else None
     for b, (dr, dp, in_legs) in D.items():
@@ -1243,15 +1238,13 @@ def life_pass(upper_clip, legs_clip, loop_from=None, report=True, name="", upper
             dr = [tuple(k * v for v in e) for e in dr]
             dp = [tuple(k * v for v in e) for e in dp]
         clip, S = (legs_clip, L0) if in_legs else (upper_clip, U0)
-        if b in offset_only:
-            S = [{} for _ in range(k_end + 1)]
         if clip is None:
             continue
         rots = [_add(S[i].get(b, (Z3, None))[0], dr[i]) for i in range(k_end + 1)]
         poss = [_add(S[i].get(b, (Z3, None))[1] or Z3, dp[i]) for i in range(k_end + 1)]
         if not any(any(abs(v) > 1e-3 for v in p) for p in dp):
             poss = [S[i].get(b, (Z3, None))[1] for i in range(k_end + 1)]
-        if not in_legs and b not in PANELS and b not in offset_only and parts.get(b, {}).get("kind") in ("cloth", "plume"):
+        if not in_legs and b not in PANELS and parts.get(b, {}).get("kind") in ("cloth", "plume"):
             rots, poss = _unsink(b, U0, L0, rots, poss)
         write_bone(clip, b, rots, poss)
         if report:
@@ -1381,6 +1374,47 @@ def replace_clips(clips, paths):
         hang_swing.key_doc(TROOP, doc, log=False)   # a hanging focus (the hexer's lantern): its swing re-keyed over every clip
         path.write_bytes(json.dumps(doc, indent=1).encode("utf-8"))
         print("replaced", ", ".join(clips), "in", path)
+
+
+# Fix round 1 (2026-11-12): per troop, builder clip: [(bone, rotation added, from tick, to tick, ramp ticks)]. Added onto
+# the baked keys before the life pass (main and GG_CAST_ONLY), smoothstepped in and out over the ramp; a stance loop takes
+# it on every key (None, None), so its wrap stays closed. Each entry's reason is beside it.
+ALL = (None, None, 1.0)
+CLIP_NUDGE = {
+    # tc_mist brace: both bells sat in the hood (left 2.62 at t29.5, right 2.30 at t37): both arms 20-25 deg lower
+    # shield_up: the left bell in the hood (2.44 at t3.5): the left arm 20 lower, the rod arm 12 lower and 5 out
+    # mist: the right bell in the mantle on the low sweep (2.13 at t13): the rod arm 10 out over ticks 5-16; the head,
+    # tipped back to keep its gaze over the bowed body, sat in the torso (2.1 at t17): 15 deg less over 8-18
+    "tc_mist": {"stance_brace_upper": [("left_arm", (25, 0, 0)) + ALL, ("right_arm", (20, 0, 0)) + ALL],
+                "stance_shield_up_upper": [("left_arm", (20, 0, 0)) + ALL, ("right_arm", (12, 0, 5)) + ALL],
+                "mist": [("right_arm", (0, 0, 10), 5, 16, 3), ("head", (15, 0, 0), 8, 18, 3)]},
+}
+
+
+def _ramp(tk, t0, t1, r):
+    if t0 is None:
+        return 1.0
+    if tk <= t0 - r or tk >= t1 + r:
+        return 0.0
+    if t0 <= tk <= t1:
+        return 1.0
+    x = (tk - (t0 - r)) / r if tk < t0 else ((t1 + r) - tk) / r
+    return x * x * (3 - 2 * x)
+
+
+def clip_nudge(clips):
+    for clip, ns in CLIP_NUDGE.get(TROOP, {}).items():
+        if clip not in clips:
+            continue
+        for b, d, t0, t1, r in ns:
+            ch = clips[clip]["bones"][b]["rotation"]
+            items = ch.items() if isinstance(ch, dict) else [("0.0", ch)]
+            for k, v in items:
+                v = v["vector"] if isinstance(v, dict) else v
+                w = _ramp(float(k) * TPS, t0, t1, r)
+                for i in range(3):
+                    v[i] = round(v[i] + w * d[i], 3)
+    return clips
 
 
 GROUPS = {"hits": lambda: hit_clips(), "attack": lambda: attack_clips(), "ability": lambda: ability_clips(),
@@ -2376,7 +2410,7 @@ def main():
         clips = {}
         for g in os.environ["GG_CAST_ONLY"].split(","):
             clips.update(GROUPS[g]())
-        alive_clips(only_rig(clips))
+        alive_clips(clip_nudge(only_rig(clips)))
         paths = [K.OUT, ASSET_ANIMS / f"{TROOP}.animation.json"]
         if os.environ.get("GG_CAST_DRY"):   # a trial: into a copy of the exported file in this folder, the real files untouched
             dry = Path(os.environ["GG_CAST_DRY"]) / f"{TROOP}.animation.json"
@@ -2393,6 +2427,7 @@ def main():
              "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **ability_clips(), **stance_clips(), **hit_clips(),
              **death_clips()}
     only_rig(anims)
+    clip_nudge(anims)
     alive_clips(anims)
     hang_swing.key_doc(TROOP, {"animations": anims})   # a hanging focus (the hexer's lantern): the swing baked over every clip
     K.OUT.parent.mkdir(parents=True, exist_ok=True)
