@@ -44,7 +44,7 @@ final class AiMetrics {
         "approaches","approachMeanS","approachMedianS","approachSpeed","approachCrawl","spawnReversals","spawnReversalsOpening","baseYawFlips"};
     static final double SPAWN_RADIUS=40;static final int TRAIL_SECONDS=2;static final long OPENING_TICKS=400; // spawnReversalsOpening: those in the round's first 20 s
     static final class TeamAcc {final long[][] arrows0=new long[3][];final List<Double> apSeconds=new ArrayList<>();double apDist;long apTicks,apCrawl;int reversals,reversalsOpening,yawFlips;}
-    TeamAcc[] teams={new TeamAcc(),new TeamAcc()};final StringBuilder pacingRows=new StringBuilder();Path pacingCsv;final Map<GravesAndGlory.Squad,Float> lastYaw=new IdentityHashMap<>();Path troopCsv;
+    TeamAcc[] teams={new TeamAcc(),new TeamAcc()};final StringBuilder pacingRows=new StringBuilder(),blindRows=new StringBuilder();Path pacingCsv,blindCsv;final Map<GravesAndGlory.Squad,Float> lastYaw=new IdentityHashMap<>();Path troopCsv;
     static long[] row(long[][] counter,int team){return counter[team].clone();}
 
     final AiState state=new AiState();
@@ -61,6 +61,7 @@ final class AiMetrics {
         BotSimulation.append(metricsCsv,String.join(",",COLUMNS)+"\n");
         BotSimulation.append(decisionsCsv,String.join(",",DECISION_COLUMNS)+"\n");
         troopCsv=dir.resolve("troop-metrics.csv");BotSimulation.append(troopCsv,String.join(",",TROOP_COLUMNS)+"\n");
+        blindCsv=dir.resolve("blind.csv");BotSimulation.append(blindCsv,"match,second,team,group,ranged,order,kind,distance,cacheAge,speed\n"); // one row per blind pick: what was picked, and how old its sight cache (Tactics.sees) was
         pacingCsv=dir.resolve("pacing.csv");BotSimulation.append(pacingCsv,"match,second,team,army,group,slot,x0,z0,x1,z1,x2,z2,order,formation,targetX,targetZ,yaw,muster,retreating,entity\n"); // one row per spawnReversals event
     }
     void reset(List<GravesAndGlory.Squad> armies,int match,String mode){
@@ -101,13 +102,22 @@ final class AiMetrics {
 
     // ---- every tick -----------------------------------------------------------------------------------------------------------------------
 
+    /** A blind pick's row (blind.csv): the target's kind (troop, player, structure), its distance, how many ticks ago the picker's sight cache last saw
+     *  it (Tactics.sees; -1 never), and the picker's speed (blocks a second, its last tick). */
+    void blind(GravesAndGlory.Battle b,GravesAndGlory.Unit u,net.minecraft.entity.LivingEntity t){
+        String kind=t instanceof net.minecraft.server.network.ServerPlayerEntity?"player":b.units.stream().anyMatch(o->o.mob==t)?"troop":"structure";
+        long[] r=u.sight.get(t.getUuid());long age=r==null||r[1]<0?-1:b.time-r[1];
+        double v=Math.hypot(u.mob.getX()-u.mob.prevX,u.mob.getZ()-u.mob.prevZ)*20;
+        blindRows.append(String.format(Locale.ROOT,"%d,%d,%s,%s,%b,%s,%s,%.1f,%d,%.2f%n",match+1,(b.time-b.roundStarted)/20,SEATS[u.squad.team],u.spec.group(),u.spec.ranged(),b.assignment(u).order,kind,Math.sqrt(u.mob.squaredDistanceTo(t)),age,v));
+    }
+
     void tick(GravesAndGlory.Battle b){
         long t0=System.nanoTime();
         for(var u:b.units){
             if(!u.mob.isAlive()||u.temporary)continue;Integer i=index.get(u.squad);if(i==null)continue;var a=acc[i];var m=mem.computeIfAbsent(u,k->new UnitMem());
             var t=u.lockedTarget;
             if(t!=m.target){
-                if(t!=null){a.picks++;if(!u.mob.canSee(t))a.blind++;if(m.target!=null&&m.target.isAlive())a.switches++;}
+                if(t!=null){a.picks++;if(!u.mob.canSee(t)){a.blind++;blind(b,u,t);}if(m.target!=null&&m.target.isAlive())a.switches++;}
                 m.target=t;
             }
             casts(b,u,m,a);
@@ -229,6 +239,7 @@ final class AiMetrics {
                 .append(',').append(sum<=0?"":String.format(Locale.ROOT,"%.2f",ta.apDist/sum)).append(',').append(ta.apTicks==0?"":String.format(Locale.ROOT,"%.3f",ta.apCrawl/(double)ta.apTicks))
                 .append(',').append(ta.reversals).append(',').append(ta.reversalsOpening).append(',').append(ta.yawFlips).append('\n');}
         BotSimulation.append(troopCsv,troops.toString());
+        if(blindRows.length()>0){BotSimulation.append(blindCsv,blindRows.toString());blindRows.setLength(0);}
         if(pacingRows.length()>0){BotSimulation.append(pacingCsv,pacingRows.toString());pacingRows.setLength(0);}
     }
     String row(String map,String scope,String id,int team,String banner,List<Acc> list,String tickMean,String tickP99){
