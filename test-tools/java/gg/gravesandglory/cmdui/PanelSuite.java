@@ -62,8 +62,9 @@ public final class PanelSuite implements CommandUiChecks.Suite {
 
     /** Hover: the cursor is put on the Attack pennant until the panel reports it hovered, then the shot is taken from that frame. */
     void hoverShot(MinecraftClient c, int tick, int within, String size) {
+        int frame = CommandPanel.frames;
         waits.when(tick, within, () -> CommandPanel.hovered == CommandPanel.PENNANT, () -> cursorTo(c, CommandPanel.PENNANT), ok -> {
-            hover.put(size, (ok ? "hovered" : "NOT hovered") + " (" + hoverDiag(c) + ")");
+            hover.put(size, (ok ? "hovered" : "NOT hovered") + " (" + hoverDiag(c) + ", " + (CommandPanel.frames - frame) + " frames since the request, window " + c.getWindow().getWidth() + "x" + c.getWindow().getHeight() + ")");
             edges(c, "hover-" + size); shot(c, "panel-hover-" + size + ".png"); cursorCentre(c);
         });
     }
@@ -112,10 +113,11 @@ public final class PanelSuite implements CommandUiChecks.Suite {
             CommandUiChecks.report("cu-panel-alpha", ok && seen == 5, "Spec pennantAlpha " + want + "; idle pennants drawn at " + d.toString().trim());
             shot(c, "panel-open-1920.png"); shot(c, "panel-open.png");
         }
-        if (tick == 80) hoverShot(c, tick, 5, "1920"); // hover Attack
+        // hover Attack: up to 15 ticks, as at 2560 (5 ran out under load right after the resize); the walk below does not need the cursor
+        if (tick == 80) hoverShot(c, tick, 15, "1920");
 
-        // walking with the panel open
-        if (tick == 86) { cursorCentre(c); walkFrom = c.player.getPos(); c.options.forwardKey.setPressed(true); }
+        // walking with the panel open (the cursor goes back to the centre here only if the hover shot is done; otherwise the hover's own end does it)
+        if (tick == 86) { if (hover.containsKey("1920")) cursorCentre(c); walkFrom = c.player.getPos(); c.options.forwardKey.setPressed(true); }
         if (tick == 106) {
             c.options.forwardKey.setPressed(false);
             double moved = Math.sqrt(c.player.getPos().squaredDistanceTo(walkFrom.x, c.player.getY(), walkFrom.z));
