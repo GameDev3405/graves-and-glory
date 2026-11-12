@@ -48,3 +48,16 @@ In the medium hit from the right, the bow arm opens less: `BOW_ARM_RIGHT` (-4, -
   - The plain idle weight shift is subtle.
 - **Harness.** geo-knight suite with `GRAVES_GEO_CHECK_TROOP=wm_hunter`: 22 `[p1] p1-` lines, 0 `=false`.
 - Video: `wm_hunter_v2feel`.
+
+## Batch review 2026-11-11
+
+Bow-family batch review on `anim/review-bow`. Timing unchanged: `ATTACK_TICKS` 32, `FULL_AT` 16.5, `IMPACT` 22; both attacks keep `full` 0.825 and `impact` 1.1.
+
+- **Rows before -> after** (`work/review/wm_hunter.{before,after}.json`): clips with a FAIL 15 -> 7, FAIL rows 32 -> 11, WARN rows 36 -> 44. Every added WARN is a former FAIL (no PASS became a WARN).
+- **Changed clips (16, spliced; every other clip byte-identical to HEAD).** The hit `_legs` clips came out identical, so they are unchanged.
+  - `attack_direct`, `attack_volley` (+legs): Kort's archer r3 shot fitted to the hunter (`direct_shot.FIT["wm_hunter"]`): anchor 1 px further back and lower for the snout, quiver roll -16, bow canted -30 deg and raised 20 deg, head turned 34 deg off the arrow and away at the nock so the bow and string hand clear the snout; nock grip 1 px further forward so the string forearm clears the jerkin (scorecard `pen_limb` 1.52 -> 1.07, limit 1.39). The quiver channel now reaches the clip (`_own_bones`: the per-troop gear remap had dropped it). Fist through the head (3.04) and the loose pop are gone. Bow into the cap at t12.5 is 1.48-1.50, a WARN on the limit.
+  - Aim stances: from the r3 full-draw frame, chest takes 85% of the pitch.
+  - Hits and `hit_block`: gear swings (cloak, feather fan, quiver, tusk necklace) soft and low-passed: the feather pops (up to 31 deg) and `secondary_life` FAILs are gone.
+- **Remaining FAIL rows.** `stance_rally_upper` right bracer into the snout 2.22 at t6.5 (rally is not a bow clip of this batch; second fix round not spent on it). `death_forward` shoulder 108 at t20 (pre-existing). Common modules: `hit_pulled`, `stun_upper`, `stun_out_upper`, `hit_knockback` (hoof under the ground, still gear), `charge_run_upper` (forearm in the jerkin 2.50).
+- **Proposed exemptions.** None for the bow clips. The common-module rows belong to `reactions.py` / `charge.py`.
+- **Tests.** Scorecard exit 0 (35 clips, 0 fail) after the nock-grip fix (it failed `pen_limb` on both attacks before it). Unit tests OK (see ARCHER-REVIEW batch section). Booth config valid.

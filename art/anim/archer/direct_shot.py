@@ -104,7 +104,7 @@ FIT = {
     # the bow arm, at the nock and at full draw (the snout lay on the bow arm, 1.94 px).
     "wm_hunter": {"quiver": "quiver", "roll": -16.0, "fletch": (-2.6, 25.4, 3.5), "anchor": (-7.5, 24.5, 0.0),
                   "cant": -30.0, "cant_out": (7.5, 11.5), "bow_raise": 20.0, "nock_head": (-10, -30, 0), "head_yaw": -34.0,
-                  "nock_grip": (4.8, 21.6, -7.2), "set_grip": (5.0, 22.0, -7.6)},
+                  "nock_grip": (4.8, 21.6, -8.2), "set_grip": (5.0, 22.0, -7.6)},  # nock grip 1 px further forward (z -8.2): the string forearm cleared the jerkin (scorecard pen_limb 1.52 -> 1.07)
 }[BW.TROOP]
 # The clock: B's. The keys are written in the 26-tick shot Kort graded (loose on B.IMPACT0 = 16, full on 12).
 OLD_FULL, OLD_TICKS = 12.0, 26.0
