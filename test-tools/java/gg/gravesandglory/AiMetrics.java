@@ -44,7 +44,7 @@ final class AiMetrics {
         "approaches","approachMeanS","approachMedianS","approachSpeed","approachCrawl","spawnReversals","spawnReversalsOpening","baseYawFlips"};
     static final double SPAWN_RADIUS=40;static final int TRAIL_SECONDS=2;static final long OPENING_TICKS=400; // spawnReversalsOpening: those in the round's first 20 s
     static final class TeamAcc {final long[][] arrows0=new long[3][];final List<Double> apSeconds=new ArrayList<>();double apDist;long apTicks,apCrawl;int reversals,reversalsOpening,yawFlips;}
-    TeamAcc[] teams={new TeamAcc(),new TeamAcc()};final StringBuilder pacingRows=new StringBuilder(),blindRows=new StringBuilder();Path pacingCsv,blindCsv;final Map<GravesAndGlory.Squad,Float> lastYaw=new IdentityHashMap<>();Path troopCsv;
+    TeamAcc[] teams={new TeamAcc(),new TeamAcc()};final StringBuilder pacingRows=new StringBuilder(),blindRows=new StringBuilder(),stuckRows=new StringBuilder();Path pacingCsv,blindCsv,stuckCsv;final Map<GravesAndGlory.Squad,Float> lastYaw=new IdentityHashMap<>();Path troopCsv;
     static long[] row(long[][] counter,int team){return counter[team].clone();}
 
     final AiState state=new AiState();
@@ -62,6 +62,7 @@ final class AiMetrics {
         BotSimulation.append(decisionsCsv,String.join(",",DECISION_COLUMNS)+"\n");
         troopCsv=dir.resolve("troop-metrics.csv");BotSimulation.append(troopCsv,String.join(",",TROOP_COLUMNS)+"\n");
         blindCsv=dir.resolve("blind.csv");BotSimulation.append(blindCsv,"match,second,team,group,ranged,order,kind,distance,cacheAge,speed\n"); // one row per blind pick: what was picked, and how old its sight cache (Tactics.sees) was
+        stuckCsv=dir.resolve("stuck.csv");BotSimulation.append(stuckCsv,"match,second,team,army,group,ranged,order,state,x,z,spotX,spotZ,spotDistance,hasTarget,targetDistance,navIdle,stuckTicks\n"); // one row per troop counted in stuck30
         pacingCsv=dir.resolve("pacing.csv");BotSimulation.append(pacingCsv,"match,second,team,army,group,slot,x0,z0,x1,z1,x2,z2,order,formation,targetX,targetZ,yaw,muster,retreating,entity\n"); // one row per spawnReversals event
     }
     void reset(List<GravesAndGlory.Squad> armies,int match,String mode){
@@ -109,6 +110,13 @@ final class AiMetrics {
         long[] r=u.sight.get(t.getUuid());long age=r==null||r[1]<0?-1:b.time-r[1];
         double v=Math.hypot(u.mob.getX()-u.mob.prevX,u.mob.getZ()-u.mob.prevZ)*20;
         blindRows.append(String.format(Locale.ROOT,"%d,%d,%s,%s,%b,%s,%s,%.1f,%d,%.2f%n",match+1,(b.time-b.roundStarted)/20,SEATS[u.squad.team],u.spec.group(),u.spec.ranged(),b.assignment(u).order,kind,Math.sqrt(u.mob.squaredDistanceTo(t)),age,v));
+    }
+
+    /** A troop counted in stuck30 (stuck.csv): where it stands, its spot and order, its target and whether its navigation has given up. */
+    void stuck(GravesAndGlory.Battle b,GravesAndGlory.Unit u,AiState.Read r,int army){
+        var t=u.lockedTarget;Vec3d spot=r.spot;
+        stuckRows.append(String.format(Locale.ROOT,"%d,%d,%s,%d,%s,%b,%s,%s,%.1f,%.1f,%.1f,%.1f,%.1f,%b,%.1f,%b,%d%n",match+1,(b.time-b.roundStarted)/20,SEATS[u.squad.team],army,u.spec.group(),u.spec.ranged(),r.order,r.state,
+            u.mob.getX(),u.mob.getZ(),spot==null?Double.NaN:spot.x,spot==null?Double.NaN:spot.z,r.spotDistance,t!=null&&t.isAlive(),t!=null&&t.isAlive()?Math.sqrt(u.mob.squaredDistanceTo(t)):-1,u.mob.getNavigation().isIdle(),u.stuckTicks));
     }
 
     void tick(GravesAndGlory.Battle b){
@@ -170,7 +178,7 @@ final class AiMetrics {
             boolean idle=AiState.idle(r),holdIdle=idle&&r.holdAtOwn(),otherIdle=idle&&!holdIdle;
             if(holdIdle)a.holdIdleSec++;else if(otherIdle)a.idleSec++;
             if(r.objective())a.objSec++;
-            if(m.noMoveTicks>=600){if(m.stuckCounted==0){a.stuck30++;m.stuckCounted=1;}}else if(m.noMoveTicks==0)m.stuckCounted=0;
+            if(m.noMoveTicks>=600){if(m.stuckCounted==0){a.stuck30++;m.stuckCounted=1;stuck(b,u,r,i);}}else if(m.noMoveTicks==0)m.stuckCounted=0;
             var g=groups.computeIfAbsent(i+"/"+r.group,k->new int[2]);g[0]++;if(otherIdle)g[1]++;
         }
         state.retain(alive);mem.keySet().retainAll(Set.copyOf(alive));
@@ -239,6 +247,7 @@ final class AiMetrics {
                 .append(',').append(sum<=0?"":String.format(Locale.ROOT,"%.2f",ta.apDist/sum)).append(',').append(ta.apTicks==0?"":String.format(Locale.ROOT,"%.3f",ta.apCrawl/(double)ta.apTicks))
                 .append(',').append(ta.reversals).append(',').append(ta.reversalsOpening).append(',').append(ta.yawFlips).append('\n');}
         BotSimulation.append(troopCsv,troops.toString());
+        if(stuckRows.length()>0){BotSimulation.append(stuckCsv,stuckRows.toString());stuckRows.setLength(0);}
         if(blindRows.length()>0){BotSimulation.append(blindCsv,blindRows.toString());blindRows.setLength(0);}
         if(pacingRows.length()>0){BotSimulation.append(pacingCsv,pacingRows.toString());pacingRows.setLength(0);}
     }
