@@ -96,6 +96,8 @@ public final class SurvivalMode extends BattleMode {
     /** The defending banners counted at setup, and the shrine and court of the map. */
     int banners = 1;
     Spec.ModeSitesRow shrine, court;
+    /** The court's surface as read before the pole rose (C05-F1: the pole tops the heightmap there), cleared at teardown. */
+    Vec3d courtBase;
 
     SurvivalMode(Spec.ModesRow row) {
         super(row);
@@ -123,7 +125,7 @@ public final class SurvivalMode extends BattleMode {
     }
     /** The court is the defenders' base, respawn and barracks; the dead fall back on the shrine they want. */
     @Override public Vec3d fieldBase(GravesAndGlory.Battle b, int team) {
-        if (team == DEFENDERS) { var c = court(b); return surface(b, c.x(), c.z()); }
+        if (team == DEFENDERS) { if (courtBase == null) { var c = court(b); courtBase = surface(b, c.x(), c.z()); } return courtBase; }
         return shrineCentre(b);
     }
     @Override public Vec3d fieldBarracks(GravesAndGlory.Battle b, int team) { return team == DEFENDERS ? fieldBase(b, team) : super.fieldBarracks(b, team); }
@@ -145,6 +147,7 @@ public final class SurvivalMode extends BattleMode {
      */
     @Override public void setup(GravesAndGlory.Battle b) {
         var c = b.campaign;
+        courtBase = null; // read afresh this round, before raisePole
         b.squads.values().removeIf(s -> s.bot && s.team == DEAD);
         int humans = 0;
         for (var s : b.squads.values()) if (s.seated && !s.bot) { s.team = DEFENDERS; humans++; }
@@ -176,6 +179,7 @@ public final class SurvivalMode extends BattleMode {
     /** The court's banner pole, only where every block of it is air, so it never cuts into the shrine. */
     void raisePole(GravesAndGlory.Battle b) {
         var c = court(b);
+        fieldBase(b, DEFENDERS); // read the court's surface before the pole tops it
         int x = (int) Math.floor(c.x()), z = (int) Math.floor(c.z()), y = b.world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
         for (int dy = 1; dy <= Arena.POINT_POLE + 1; dy++) if (!b.world.getBlockState(new BlockPos(x, y + dy, z)).isAir()) return;
         for (int dx = 1; dx <= 3; dx++) for (int dy = Arena.POINT_POLE - 2; dy < Arena.POINT_POLE; dy++) if (!b.world.getBlockState(new BlockPos(x + dx, y + dy, z)).isAir()) return;
@@ -337,6 +341,7 @@ public final class SurvivalMode extends BattleMode {
         removeStray(b);
         for (var p : b.points) Arena.flag(b.world, p.spec, -1);
         if (pole) { lowerPole(b, b.campaign.map); pole = false; }
+        courtBase = null;
         if (timeBefore >= 0) { b.world.setTimeOfDay(timeBefore); timeBefore = -1; }
         over = true;
     }

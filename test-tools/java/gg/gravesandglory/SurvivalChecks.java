@@ -99,6 +99,10 @@ final class SurvivalChecks implements Phase4Checks.Suite, Phase4Checks.ServerWat
                         "rule " + m.rule() + ", roundSeconds " + b.roundSeconds + ", banners " + m.banners);
                 Phase4Checks.report("p4-surv-sites", Math.abs(base.x - court.x()) < 1e-6 && Math.abs(base.z - court.z()) < 1e-6 && !m.capturesPoints(b) && Math.abs(b.world.getTimeOfDay() % 24000 - SurvivalMode.NIGHT) < 200 && m.timeBefore == timeBefore,
                         "base " + base + ", court " + court.x() + "," + court.z() + ", time " + b.world.getTimeOfDay());
+                // C05-F1: the base stands on the ground at the court, at the pole's foot, not on the sea lantern on top of the pole
+                var foot = new BlockPos((int) Math.floor(court.x()), (int) Math.floor(base.y), (int) Math.floor(court.z()));
+                Phase4Checks.report("p4-surv-base-ground", m.pole && b.world.getBlockState(foot).isOf(Blocks.OAK_FENCE),
+                        "pole raised " + m.pole + ", base y " + base.y + ", the block there " + b.world.getBlockState(foot).getBlock() + " (want the pole's foot fence)");
                 Phase4Checks.report("p4-surv-barracks", barracks.equals(base) && b.campaign.size == 1 && b.squads.values().stream().filter(s -> s.seated).count() == 1, "barracks " + barracks + ", seated " + b.squads.values().stream().filter(s -> s.seated).count());
                 stage = 12; at = b.time;
             }
