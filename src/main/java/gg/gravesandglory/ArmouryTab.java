@@ -64,7 +64,7 @@ final class ArmouryTab {
     /** The group whose name is being typed (0 for none) and the name so far; a Delete pressed once (the group, until when). */
     int editing; String draft = ""; int deleteArmed; long deleteUntil;
     /** The first visible troop row, how many fit, how many rows the banner has, the row height, the most lines a button holds and whether the rows scroll. */
-    int first, shown, total, rowH, lineCap = 2; boolean scrolling;
+    int first, shown, total, rowH, lineCap = 2, labelForm; boolean scrolling;
     /** The papers' top left corners in canvas px (the note's, the sheet's) and a buy tag's width. */
     int nx, ny, sx, sy, bw;
     /** What the page drew in its last frame (the checks read them): the notice line, the key line, the name lines of each visible row, the header's lines. */
@@ -118,9 +118,9 @@ final class ArmouryTab {
         return full.startsWith("Needs a Rank " + tier) ? "Needs Rank " + tier : full;
     }
 
-    static List<String> words(Spec.TroopsRow t, String track, int tier, LevelMath.ArmouryRow row, LevelMath.Buy state, boolean here, int w, int cap, ToIntFunction<String> width) {
+    static List<String> words(Spec.TroopsRow t, String track, int tier, LevelMath.ArmouryRow row, LevelMath.Buy state, boolean here, int w, int cap, int form, ToIntFunction<String> width) {
         int price = LevelMath.price(t.rarity(), tier);
-        List<String> out = new ArrayList<>(List.of(UpgradeStats.cell(t, track, tier, w, width))); // what the tier gives, first line on every cell (Kort 2026-11-12)
+        List<String> out = new ArrayList<>(List.of(UpgradeStats.cell(t, track, tier, form))); // what the tier gives, first line on every cell (Kort 2026-11-12)
         out.addAll(switch (state) {
             case BOUGHT -> List.of(BOUGHT);
             case LOCKED -> UiMath.lines(lockedShort(t, track, tier, row), w, Math.max(1, cap - 1), width);
@@ -176,6 +176,12 @@ final class ArmouryTab {
         return 1 + worst;
     }
 
+    /** The grid's label form (UpgradeStats.form) at the narrowest cell's text width (a tag with a glyph). */
+    static int labelForm(List<LevelMath.ArmouryRow> rows, ToIntFunction<String> width) {
+        List<Spec.TroopsRow> ts = new ArrayList<>(); for (var r : rows) { var t = ArmyCards.spec(r.troop()); if (t != null) ts.add(t); }
+        return UpgradeStats.form(ts, tagWidth() - 8 - 14, width);
+    }
+
     /** The height a row needs for this many text lines in a buy tag: the lines and the tag's padding, never less than the portrait's frame. */
     static int rowFor(int lines) { return Math.max(MIN_ROW, lines * LINE + 10); }
 
@@ -207,6 +213,7 @@ final class ArmouryTab {
         if (!builtOn && !groupsMode) return;
         var lay = layout(rows, width());
         rowH = lay.rowH(); shown = lay.shown(); scrolling = lay.scrolling(); lineCap = lay.lines();
+        labelForm = labelForm(rows, width()); // one label form for every row, the scrolled-off ones too
         first = Math.max(0, Math.min(first, total - shown));
         list = new Rect(sx + PAD, sy + ROW_Y, TEXT_W, shown * rowH);
         for (int r = 0; r < shown; r++) {
@@ -373,7 +380,7 @@ final class ArmouryTab {
             boolean sent = sentAt == CampaignClient.acceptedStates && System.currentTimeMillis() < sentUntil;
             pressable = row != null && state == LevelMath.Buy.OPEN && here && !sent;
             if (row != null) {
-                lines = words(troop, track, tier, row, state, here, innerW(), Math.max(2, tab.lineCap), width());
+                lines = words(troop, track, tier, row, state, here, innerW(), Math.max(2, tab.lineCap), tab.labelForm, width());
                 String next = tipText(troop, track, tier, row, state, here, GravesAndGloryClient.gold);
                 if (!next.equals(tip)) { tip = next; setTooltip(Tooltip.of(Text.literal(next))); setMessage(Text.literal(next)); }
             }

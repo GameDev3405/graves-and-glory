@@ -49,15 +49,25 @@ final class UpgradeStats {
     }
 
     /** The cell's line labelled with the Rank it is shown on, so tier III (shown on a Rank 3 soldier, who also has his Rank's own bonus) does not
-     *  read as a jump from tier II's numbers: "Rank 3: Dmg 10.8→11.7", or "R3 Dmg 10.8→11.7" or "R3 10.8→11.7" where the cell is too narrow. The effect line of a
-     *  troop with no hit damage is a share of base, the same at every Rank, so it has no label. */
-    static String cell(Spec.TroopsRow t, String track, int tier, int w, java.util.function.ToIntFunction<String> width) {
+     *  read as a jump from tier II's numbers. One form for the whole grid (see form): 0 "Rank 3: Dmg 10.8→11.7", 1 "R3 Dmg 10.8→11.7",
+     *  2 "R3 10.8→11.7" (the column's head, Weapons or Armour, names the stat). The effect line of a troop with no hit damage is a share of
+     *  base, the same at every Rank, so it has no label. */
+    static String cell(Spec.TroopsRow t, String track, int tier, int form) {
         String line = cell(t, track, tier);
         if (noHit(t, track)) return line;
-        String full = "Rank " + tier + ": " + line, mid = "R" + tier + " " + line;
-        if (width.applyAsInt(full) <= w) return full;
-        if (width.applyAsInt(mid) <= w) return mid;
-        return "R" + tier + " " + line.substring(line.indexOf(' ') + 1); // the column's head (Weapons, Armour) names the stat
+        return form <= 0 ? "Rank " + tier + ": " + line : form == 1 ? "R" + tier + " " + line : "R" + tier + " " + line.substring(line.indexOf(' ') + 1);
+    }
+
+    /** The widest form every cell of these troops fits in w px (the narrowest cell, one with a glyph): the stat word stays unless some cell
+     *  cannot hold it. The whole grid then reads alike. */
+    static int form(Iterable<Spec.TroopsRow> troops, int w, java.util.function.ToIntFunction<String> width) {
+        for (int form = 0; form < 2; form++) {
+            boolean fits = true;
+            for (var t : troops) for (String track : new String[] {LevelMath.WEAPON, LevelMath.ARMOUR}) for (int tier = 2; tier <= 3 && fits; tier++)
+                if (width.applyAsInt(cell(t, track, tier, form)) > w) fits = false;
+            if (fits) return form;
+        }
+        return 2;
     }
 
     /** The tooltip's longer form: "Damage per hit 5.3 → 5.8 (+10% of base) on a Rank 2 soldier; only soldiers at Rank 2 or higher wear it." */

@@ -170,8 +170,8 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
         // 2560x1440: edit with the handles, the moved HUD
         if (tick == 204) GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 2560, 1440);
         if (tick == 222) { onScreen(c, "2560"); shot(c, "hud-moved-2560.png"); press(c, "key.gravesandglory.panel_edit"); }
-        if (tick == 228) { tagsClear("2560"); shot(c, "hud-edit-2560.png"); press(c, "key.gravesandglory.panel_edit"); }
-        if (tick == 232) GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 1920, 1080);
+        if (tick == 238) { tagsClear("2560"); shot(c, "hud-edit-2560.png"); press(c, "key.gravesandglory.panel_edit"); } // edit mode has frames to draw at the new size first
+        if (tick == 242) GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 1920, 1080);
         // Reset: every part and the panel back where the layout puts them, saved
         if (tick == 250) press(c, "key.gravesandglory.panel_edit");
         if (tick == 254) clickId(c, CommandPanel.RESET);
@@ -213,12 +213,22 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
             for (int[] d : CommandPanel.lastDrawn) if ((d[0] == CommandPanel.CAPTION || d[0] == CommandPanel.TOOLBAR || d[0] == CommandPanel.EDGE) && meets(a, new int[]{d[1], d[2], d[3], d[4]}))
                 tagBad.append(size + ": " + tags.get(i).getKey() + " tag covers the panel's " + (d[0] == CommandPanel.CAPTION ? "caption" : d[0] == CommandPanel.TOOLBAR ? "toolbar" : "outline") + "; ");
             for (String p : HudLayout.PARTS) { int[] b = HudLayout.guiBox(p); if (b != null && meets(a, b)) tagBad.append(size + ": " + tags.get(i).getKey() + " tag covers " + (p.equals(tags.get(i).getKey()) ? "its own part" : "the " + p + " part") + " " + box(b) + "; "); }
+            int[] van = CommandPanel.vanillaHudWide(c().getWindow().getScaledWidth(), c().getWindow().getScaledHeight());
+            if (meets(a, van)) tagBad.append(size + ": " + tags.get(i).getKey() + " tag covers the vanilla HUD (hotbar, offhand, hearts) " + box(van) + "; ");
+        }
+        // leaders: none across the panel's toolbar, caption or outline or the vanilla HUD
+        int[] van = CommandPanel.vanillaHudWide(c().getWindow().getScaledWidth(), c().getWindow().getScaledHeight());
+        for (var e : HudLayout.lastLeaders.entrySet()) for (int[] l : e.getValue()) {
+            if (meets(l, van)) tagBad.append(size + ": the " + e.getKey() + " leader crosses the vanilla HUD; ");
+            for (int[] d : CommandPanel.lastDrawn) if ((d[0] == CommandPanel.CAPTION || d[0] == CommandPanel.TOOLBAR || d[0] == CommandPanel.EDGE) && meets(l, new int[]{d[1], d[2], d[3], d[4]}))
+                tagBad.append(size + ": the " + e.getKey() + " leader crosses the panel's " + (d[0] == CommandPanel.CAPTION ? "caption" : d[0] == CommandPanel.TOOLBAR ? "toolbar" : "outline") + "; ");
         }
         for (int[] d : CommandPanel.lastDrawn) if (d[0] == CommandPanel.TOOLBAR || d[0] == CommandPanel.CAPTION) for (String p : HudLayout.PARTS) { // the caption sits on the panel's corner; only a part drawn now counts there (a ghost under it gives the panel the press, cu-hud-panel-grab)
             int[] b = HudLayout.guiBox(p);
             if (b != null && (d[0] == CommandPanel.TOOLBAR || HudLayout.drawn(p)) && meets(new int[]{d[1], d[2], d[3], d[4]}, b)) tagBad.append(size + ": the " + (d[0] == CommandPanel.CAPTION ? "caption" : "toolbar") + " covers the " + p + " part; ");
         }
     }
+    static MinecraftClient c() { return MinecraftClient.getInstance(); }
     static boolean meets(int[] a, int[] b) { return a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3]; }
 
     void shot(MinecraftClient c, String name) {

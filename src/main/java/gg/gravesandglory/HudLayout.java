@@ -186,13 +186,31 @@ public final class HudLayout {
     /** Edit mode, after the HUD is drawn: each part's dashed outline and its name (dim for a part not on screen now), the one under the cursor or dragged lit. */
     /** The name tags drawn last frame in edit mode, part to (x, y, w, h) in GUI px (for the checks). */
     public static final Map<String, int[]> lastTags = new LinkedHashMap<>();
+    /** The leaders drawn last frame, part to its one or two segments (x, y, w, h) in GUI px (for the checks). */
+    public static final Map<String, int[][]> lastLeaders = new LinkedHashMap<>();
+
+    /** A chip's leader to its box's nearest edge as two thin segments (across, then up or down), or null when the chip is within 12 px. */
+    static int[][] leader(int[] t, int tw, int x0, int y0, int x1, int y1) {
+        int cx = Math.max(x0, Math.min(x1 - 1, t[0] + tw / 2)), cy = Math.max(y0, Math.min(y1 - 1, t[1] + 5)), fx = t[0] + tw / 2, fy = t[1] + 5;
+        if (Math.abs(cx - fx) + Math.abs(cy - fy) <= 12) return null;
+        // both segments stop one pixel short of the box's edge point (cx, cy): it lies on the own box, which may overlap another part
+        if (fy == cy) return new int[][]{{fx < cx ? fx : cx + 1, fy, Math.abs(fx - cx), 1}};
+        return new int[][]{{Math.min(fx, cx), fy, Math.abs(fx - cx) + 1, 1}, {cx, fy < cy ? fy : cy + 1, 1, Math.abs(fy - cy)}};
+    }
+    static boolean rectsMeet(int[] a, int[] b) { return a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3]; }
+    /** Whether a leader (leader) crosses any of these rects. */
+    static boolean hitsAny(int[][] lead, List<int[]> rects) {
+        if (lead == null) return false;
+        for (int[] l : lead) for (int[] o : rects) if (rectsMeet(l, o)) return true;
+        return false;
+    }
 
     public static void drawEdit(DrawContext g, TextRenderer font, int sw, int sh, double[] mouse, int[]... keepClear) {
         if (!CommandPanel.editing()) return;
         relicShift(sw, sh); // the relics' box on this GUI, drawn or not
         String hot = dragging != null ? dragging : at(mouse);
         List<int[]> tags = new ArrayList<>();
-        lastTags.clear();
+        lastTags.clear(); lastLeaders.clear();
         List<int[]> clear = new ArrayList<>(); // the panel's outline, caption and toolbar (x, y, w, h): no name tag may cover them
         for (int[] k : keepClear) if (k != null) clear.add(k);
         for (String part : PARTS) {
@@ -210,10 +228,10 @@ public final class HudLayout {
             int tw = font.getWidth(name) + 4;
             int[] t = tag(part, tw, x0, y0, x1, y1, sw, sh, tags, clear);
             int tx = t[0], ty = t[1];
-            // a chip set away from its box keeps a thin leader to the box's nearest edge
-            int cx = Math.max(x0, Math.min(x1 - 1, tx + tw / 2)), cy = Math.max(y0, Math.min(y1 - 1, ty + 5));
-            int fromX = tx + tw / 2, fromY = ty + 5;
-            if (Math.abs(cx - fromX) + Math.abs(cy - fromY) > 12) { g.fill(Math.min(fromX, cx), fromY, Math.max(fromX, cx) + 1, fromY + 1, ink); g.fill(cx, Math.min(fromY, cy), cx + 1, Math.max(fromY, cy) + 1, ink); }
+            // a chip set away from its box keeps a thin leader to the box's nearest edge; none within 12 px, and none that would cross the
+            // panel, its toolbar or the vanilla HUD (tag tries for a spot whose leader is clear first)
+            int[][] lead = leader(t, tw, x0, y0, x1, y1);
+            if (lead != null && !hitsAny(lead, clear)) { for (int[] l : lead) g.fill(l[0], l[1], l[0] + l[2], l[1] + l[3], ink); lastLeaders.put(part, lead); }
             tags.add(new int[]{tx - 4, ty - 1, tw + 8, 12}); // with a gap, so two chips never read as one name
             lastTags.put(part, new int[]{tx, ty, tw, 10});
             g.fill(tx, ty, tx + tw, ty + 10, lit ? 0xe0000000 : 0xb0000000);
@@ -232,15 +250,19 @@ public final class HudLayout {
         int[] own = {x0, y0, x1 - x0, y1 - y0};
         int far = Math.max(sw, sh) / 3;
         // rings ever further out: at gap d, the row above the box (left to right), the row below, the column left of it, the column right of it;
-        // first a spot clear of every part, then one clear of the own part only (a part lying under the panel or among others)
-        for (int pass = 0; pass < 2; pass++)
+        // the chip off every part: 0 with its leader off every part too, 1 with a leader off the panel, toolbar, vanilla HUD and chips,
+        // 2 with no leader (drawEdit draws none that would cross the panel or the vanilla HUD); then, only if none fits, the chip on another
+        // part: 3 with a clear leader, 4 with none
+        for (int pass = 0; pass < 5; pass++)
             for (int d = 0; d <= far; d += 4) {
                 List<int[]> ring = new ArrayList<>();
                 for (int y : new int[]{y0 - 11 - d, y1 + 1 + d}) for (int x = x0 - d; x <= Math.max(x0 - d, x1 + d - tw); x += 4) ring.add(new int[]{x, y});
                 for (int x : new int[]{x0 - tw - 1 - d, x1 + 1 + d}) for (int y = y0 - 11 - d; y <= y1 + 1 + d; y += 4) ring.add(new int[]{x, y});
                 for (int[] t : ring) {
                     if (t[0] < 0 || t[1] < 0 || t[0] + tw > sw || t[1] + 10 > sh) continue;
-                    if (meets(t, tw, own) || hits(t, tw, tags) || hits(t, tw, clear) || (pass == 0 && hits(t, tw, others))) continue;
+                    if (meets(t, tw, own) || hits(t, tw, tags) || hits(t, tw, clear) || (pass < 3 && hits(t, tw, others))) continue;
+                    int[][] lead = pass == 2 || pass == 4 ? null : leader(t, tw, x0, y0, x1, y1);
+                    if (lead != null && (hitsAny(lead, clear) || hitsAny(lead, tags) || (pass == 0 && hitsAny(lead, others)))) continue;
                     return t;
                 }
             }

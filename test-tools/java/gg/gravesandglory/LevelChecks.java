@@ -1213,7 +1213,12 @@ final class LevelChecks {
             return (weapon ? "Dmg " : "HP ") + one(before) + "→" + one(after);
         }
         /** A cell's first line: the stat line, labelled "Rank N: " (or "RN " in a narrow cell) unless it is a share of base (no hit damage). */
-        static boolean statOk(String first, String stat, int tier) { return stat.startsWith("Heal/effect") ? first.equals(stat) : first.equals("Rank " + tier + ": " + stat) || first.equals("R" + tier + " " + stat) || first.equals("R" + tier + " " + stat.substring(stat.indexOf(' ') + 1)); }
+        static boolean statOk(String first, String stat, int tier) { return first.equals(labelled(stat, tier, 0)) || first.equals(labelled(stat, tier, 1)) || first.equals(labelled(stat, tier, 2)); }
+        /** The stat line in one of the grid's label forms: 0 "Rank N: Dmg a→b", 1 "RN Dmg a→b", 2 "RN a→b"; a share of base has none. */
+        static String labelled(String stat, int tier, int form) {
+            if (stat.startsWith("Heal/effect")) return stat;
+            return form <= 0 ? "Rank " + tier + ": " + stat : form == 1 ? "R" + tier + " " + stat : "R" + tier + " " + stat.substring(stat.indexOf(' ') + 1);
+        }
         static String one(double v) { double r = Math.round(v * 10) / 10.0; return r == Math.rint(r) ? String.valueOf((long) r) : String.format(java.util.Locale.ROOT, "%.1f", r); }
 
         void phases(MinecraftClient c) {
@@ -1359,7 +1364,7 @@ final class LevelChecks {
                 if (!g.troop.id().equals(row.troop()) || !g.track.equals(ArmouryTab.TRACKS[col]) || g.tier != ArmouryTab.TIERS[col]) bad.append(who + " is in the place of " + row.troop() + " column " + col + "; ");
                 if (g.state != want) bad.append(who + " reads " + g.state + ", the server's row says " + want + "; ");
                 String stat = statLine(g.troop, g.track, g.tier), first = g.lines.isEmpty() ? "" : g.lines.get(0);
-                if (!statOk(first, stat, g.tier)) bad2.append(who + " leads with \"" + first + "\", want the stat line \"" + stat + "\" labelled with its Rank (\"Rank " + g.tier + ": \" or \"R" + g.tier + " \"); ");
+                if (!first.equals(labelled(stat, g.tier, a.labelForm))) bad2.append(who + " leads with \"" + first + "\", want the stat line \"" + stat + "\" in the grid's one label form " + a.labelForm + " (\"" + labelled(stat, g.tier, a.labelForm) + "\"); ");
                 var rest = g.lines.isEmpty() ? List.<String>of() : g.lines.subList(1, g.lines.size());
                 String refusal = sn.refusals().get(who), text = String.join(" ", rest);
                 var exp = expect(g.troop, g.tier, want, true, refusal);
@@ -1376,6 +1381,14 @@ final class LevelChecks {
                 if (want == LevelMath.Buy.OPEN && openFill < 0) openFill = g.fillUsed;
                 if (g.drawnLines == 0) bad2.append(who + " was never drawn; ");
                 if (i < 8) words.append(who).append("=").append(want).append(g.lines).append(" ");
+            }
+            { // one label form for the grid, the widest every cell holds at the narrowest text width (a tag with a glyph): the stat word stays unless a cell cannot hold it
+                var font = ArmouryTab.width(); int narrow = ArmouryTab.tagWidth() - 8 - 14, widestBetter = 0; String tooWide = "";
+                if (a.labelForm > 0) for (var r : rows) { var t = Campaign.troop(r.troop()); if (t == null) continue;
+                    for (int col = 0; col < 4; col++) { String l = labelled(statLine(t, ArmouryTab.TRACKS[col], ArmouryTab.TIERS[col]), ArmouryTab.TIERS[col], a.labelForm - 1);
+                        if (font.applyAsInt(l) > widestBetter) { widestBetter = font.applyAsInt(l); tooWide = l; } } }
+                if (a.labelForm > 0 && widestBetter <= narrow) bad2.append("the grid uses label form " + a.labelForm + " though every cell holds form " + (a.labelForm - 1) + " (widest \"" + tooWide + "\" " + widestBetter + " px in " + narrow + "); ");
+                words.append("label form " + a.labelForm + (a.labelForm > 0 ? " (form " + (a.labelForm - 1) + "'s widest, \"" + tooWide + "\", is " + widestBetter + " px in " + narrow + ")" : "") + "; ");
             }
             double focusContrast = UiMath.contrast(DarkUi.INK_TEXT, ArmouryTab.OPEN_FOCUS); // the hovered tag keeps its ink and gains an underline
             if (focusContrast < 4.5) bad2.append("the hovered buy has contrast " + fmt(focusContrast) + "; ");

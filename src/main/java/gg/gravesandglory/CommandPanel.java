@@ -172,7 +172,7 @@ public final class CommandPanel {
         try { draw(g, font, sw, sh, eased, mouse); }
         finally { RenderSystem.setShaderColor(1, 1, 1, 1); }
         if (editing) {
-            try { editChrome(g, font, sw, sh, mouse); HudLayout.drawEdit(g, font, sw, sh, mouse, bounds == null ? null : new int[]{bounds[0] - 1, bounds[1] - 1, bounds[2] + 2, bounds[3] + 2}, hits.get(CAPTION), hits.get(TOOLBAR), vanillaHud(sw, sh)); } // the panel's chrome, then every HUD part's outline with its name chip kept off the panel, caption and toolbar
+            try { editChrome(g, font, sw, sh, mouse); HudLayout.drawEdit(g, font, sw, sh, mouse, bounds == null ? null : new int[]{bounds[0] - 1, bounds[1] - 1, bounds[2] + 2, bounds[3] + 2}, hits.get(CAPTION), hits.get(TOOLBAR), vanillaHudWide(sw, sh)); } // the panel's chrome, then every HUD part's outline with its name chip kept off the panel, caption and toolbar
             finally { RenderSystem.setShaderColor(1, 1, 1, 1); }
         }
     }
@@ -633,6 +633,10 @@ public final class CommandPanel {
         int top = sh - 39 - (rows - 1) * rowH - 10; // the armour row sits one row above the top heart row
         return new int[]{sw / 2 - 91, top, 182, sh - top};
     }
+
+    /** The vanilla HUD's box with the offhand slot's room on either side of the hotbar (29 px: a left- or right-handed player's offhand),
+     *  which edit mode's name chips and leaders keep off. */
+    public static int[] vanillaHudWide(int sw, int sh) { int[] v = vanillaHud(sw, sh); return new int[]{v[0] - 29, v[1], v[2] + 58, v[3]}; }
 
     /** Room a pennant keeps for its key (Charge: also its cooldown seconds, which take the key's place). */
     static int keySlot(TextRenderer font, int i) { return Math.max(font.getWidth(key(ORDERS[i])), i == 1 ? font.getWidth("20s") : 0); }
