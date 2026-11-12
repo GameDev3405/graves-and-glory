@@ -1,0 +1,244 @@
+# Rivergate: sections placed one at a time, a picture of each before the next.
+note Rivergate sections
+mc time set 3000
+mc execute as @a at @s run forceload add -32 -64 31 -1
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_e3 -32 191 -64
+wait 10
+shot sec-e3 0 245 21 0 199 -28
+mc execute as @a at @s run forceload add -96 -64 -33 -1
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_d3 -96 191 -64
+wait 10
+shot sec-d3 -64 245 21 -64 199 -28
+mc execute as @a at @s run forceload add -160 -64 -97 -1
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_c3 -160 191 -64
+wait 10
+shot sec-c3 -128 245 21 -128 199 -28
+mc execute as @a at @s run forceload add -224 -64 -161 -1
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_b3 -224 191 -64
+wait 10
+shot sec-b3 -192 245 21 -192 199 -28
+mc execute as @a at @s run forceload add -288 -64 -225 -1
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_a3 -288 191 -64
+wait 10
+shot sec-a3 -256 245 21 -256 199 -28
+mc execute as @a at @s run forceload add -32 -128 31 -65
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_e2 -32 191 -128
+wait 10
+shot sec-e2 0 245 -43 0 199 -92
+mc execute as @a at @s run forceload add -96 -128 -33 -65
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_d2 -96 191 -128
+wait 10
+shot sec-d2 -64 245 -43 -64 199 -92
+mc execute as @a at @s run forceload add -160 -128 -97 -65
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_c2 -160 191 -128
+wait 10
+shot sec-c2 -128 245 -43 -128 199 -92
+mc execute as @a at @s run forceload add -224 -128 -161 -65
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_b2 -224 191 -128
+wait 10
+shot sec-b2 -192 245 -43 -192 199 -92
+mc execute as @a at @s run forceload add -288 -128 -225 -65
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_a2 -288 191 -128
+wait 10
+shot sec-a2 -256 245 -43 -256 199 -92
+mc execute as @a at @s run forceload add -32 -192 31 -129
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_e1 -32 191 -192
+wait 10
+shot sec-e1 0 245 -107 0 199 -156
+mc execute as @a at @s run forceload add -96 -192 -33 -129
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_d1 -96 191 -192
+wait 10
+shot sec-d1 -64 245 -107 -64 199 -156
+mc execute as @a at @s run forceload add -160 -192 -97 -129
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_c1 -160 191 -192
+wait 10
+shot sec-c1 -128 245 -107 -128 199 -156
+mc execute as @a at @s run forceload add -224 -192 -161 -129
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_b1 -224 191 -192
+wait 10
+shot sec-b1 -192 245 -107 -192 199 -156
+mc execute as @a at @s run forceload add -288 -192 -225 -129
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_a1 -288 191 -192
+wait 10
+shot sec-a1 -256 245 -107 -256 199 -156
+mc execute as @a at @s run forceload add 32 -192 95 -129
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_f1 32 191 -192
+wait 10
+shot sec-f1 64 245 -107 64 199 -156
+mc execute as @a at @s run forceload add 96 -192 159 -129
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_g1 96 191 -192
+wait 10
+shot sec-g1 128 245 -107 128 199 -156
+mc execute as @a at @s run forceload add 160 -192 223 -129
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_h1 160 191 -192
+wait 10
+shot sec-h1 192 245 -107 192 199 -156
+mc execute as @a at @s run forceload add 224 -192 287 -129
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_i1 224 191 -192
+wait 10
+shot sec-i1 256 245 -107 256 199 -156
+mc execute as @a at @s run forceload add 32 -128 95 -65
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_f2 32 191 -128
+wait 10
+shot sec-f2 64 245 -43 64 199 -92
+mc execute as @a at @s run forceload add 96 -128 159 -65
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_g2 96 191 -128
+wait 10
+shot sec-g2 128 245 -43 128 199 -92
+mc execute as @a at @s run forceload add 160 -128 223 -65
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_h2 160 191 -128
+wait 10
+shot sec-h2 192 245 -43 192 199 -92
+mc execute as @a at @s run forceload add 224 -128 287 -65
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_i2 224 191 -128
+wait 10
+shot sec-i2 256 245 -43 256 199 -92
+mc execute as @a at @s run forceload add 32 -64 95 -1
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_f3 32 191 -64
+wait 10
+shot sec-f3 64 245 21 64 199 -28
+mc execute as @a at @s run forceload add 96 -64 159 -1
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_g3 96 191 -64
+wait 10
+shot sec-g3 128 245 21 128 199 -28
+mc execute as @a at @s run forceload add 160 -64 223 -1
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_h3 160 191 -64
+wait 10
+shot sec-h3 192 245 21 192 199 -28
+mc execute as @a at @s run forceload add 224 -64 287 -1
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_i3 224 191 -64
+wait 10
+shot sec-i3 256 245 21 256 199 -28
+mc execute as @a at @s run forceload add -288 0 -225 63
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_a4 -288 191 0
+wait 10
+shot sec-a4 -256 245 85 -256 199 36
+mc execute as @a at @s run forceload add -224 0 -161 63
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_b4 -224 191 0
+wait 10
+shot sec-b4 -192 245 85 -192 199 36
+mc execute as @a at @s run forceload add -160 0 -97 63
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_c4 -160 191 0
+wait 10
+shot sec-c4 -128 245 85 -128 199 36
+mc execute as @a at @s run forceload add -96 0 -33 63
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_d4 -96 191 0
+wait 10
+shot sec-d4 -64 245 85 -64 199 36
+mc execute as @a at @s run forceload add -32 0 31 63
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_e4 -32 191 0
+wait 10
+shot sec-e4 0 245 85 0 199 36
+mc execute as @a at @s run forceload add 32 0 95 63
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_f4 32 191 0
+wait 10
+shot sec-f4 64 245 85 64 199 36
+mc execute as @a at @s run forceload add 96 0 159 63
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_g4 96 191 0
+wait 10
+shot sec-g4 128 245 85 128 199 36
+mc execute as @a at @s run forceload add 160 0 223 63
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_h4 160 191 0
+wait 10
+shot sec-h4 192 245 85 192 199 36
+mc execute as @a at @s run forceload add 224 0 287 63
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_i4 224 191 0
+wait 10
+shot sec-i4 256 245 85 256 199 36
+mc execute as @a at @s run forceload add -288 64 -225 127
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_a5 -288 191 64
+wait 10
+shot sec-a5 -256 245 149 -256 199 100
+mc execute as @a at @s run forceload add -224 64 -161 127
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_b5 -224 191 64
+wait 10
+shot sec-b5 -192 245 149 -192 199 100
+mc execute as @a at @s run forceload add -160 64 -97 127
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_c5 -160 191 64
+wait 10
+shot sec-c5 -128 245 149 -128 199 100
+mc execute as @a at @s run forceload add -96 64 -33 127
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_d5 -96 191 64
+wait 10
+shot sec-d5 -64 245 149 -64 199 100
+mc execute as @a at @s run forceload add -32 64 31 127
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_e5 -32 191 64
+wait 10
+shot sec-e5 0 245 149 0 199 100
+mc execute as @a at @s run forceload add 32 64 95 127
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_f5 32 191 64
+wait 10
+shot sec-f5 64 245 149 64 199 100
+mc execute as @a at @s run forceload add 96 64 159 127
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_g5 96 191 64
+wait 10
+shot sec-g5 128 245 149 128 199 100
+mc execute as @a at @s run forceload add 160 64 223 127
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_h5 160 191 64
+wait 10
+shot sec-h5 192 245 149 192 199 100
+mc execute as @a at @s run forceload add 224 64 287 127
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_i5 224 191 64
+wait 10
+shot sec-i5 256 245 149 256 199 100
+mc execute as @a at @s run forceload add -288 128 -225 191
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_a6 -288 191 128
+wait 10
+shot sec-a6 -256 245 213 -256 199 164
+mc execute as @a at @s run forceload add -224 128 -161 191
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_b6 -224 191 128
+wait 10
+shot sec-b6 -192 245 213 -192 199 164
+mc execute as @a at @s run forceload add -160 128 -97 191
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_c6 -160 191 128
+wait 10
+shot sec-c6 -128 245 213 -128 199 164
+mc execute as @a at @s run forceload add -96 128 -33 191
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_d6 -96 191 128
+wait 10
+shot sec-d6 -64 245 213 -64 199 164
+mc execute as @a at @s run forceload add -32 128 31 191
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_e6 -32 191 128
+wait 10
+shot sec-e6 0 245 213 0 199 164
+mc execute as @a at @s run forceload add 32 128 95 191
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_f6 32 191 128
+wait 10
+shot sec-f6 64 245 213 64 199 164
+mc execute as @a at @s run forceload add 96 128 159 191
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_g6 96 191 128
+wait 10
+shot sec-g6 128 245 213 128 199 164
+mc execute as @a at @s run forceload add 160 128 223 191
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_h6 160 191 128
+wait 10
+shot sec-h6 192 245 213 192 199 164
+mc execute as @a at @s run forceload add 224 128 287 191
+mc execute as @a at @s run place template ggmaps:rg/sec/rg_i6 224 191 128
+wait 10
+shot sec-i6 256 245 213 256 199 164
+shot air-town 0 300 160 0 199 -10
+shot air-west -150 290 130 -150 199 -10
+shot air-east 150 290 130 150 199 -10
+shot st-main -92 200 -91 -20 202 -91
+shot st-bridge-n 0 200 -76 0 203 -30
+shot st-bridge 0 200 -49 0 204 0
+shot st-isle -26 200 -6 30 205 0
+shot st-isle-w 12 200 10 -35 203 -2
+shot st-quay -101 200 -14 -60 203 -30
+shot st-ford -106 200 -44 -106 201 5
+shot st-causeway -106 200 -13 -106 200 20
+shot st-gate -160 200 -26 -185 205 -26
+shot st-toll -106 200 -90 -106 203 -112
+shot st-cross -53 200 -84 -53 201 -40
+shot st-a 10 200 -72 -12 205 -102
+shot st-c 10 200 71 -15 206 101
+shot st-plots -140 200 -82 -140 200 -40
+shot st-lane -40 200 -128 -90 201 -128
+shot st-yard -70 200 -66 -50 202 -70
+shot st-pool -52 200 -44 -20 204 -20
+shot st-dusk 160 200 25 185 205 25
+shot cmd-a 0 226 -135 0 199 -85
+shot cmd-b -72 232 -62 0 199 0
+shot cmd-base -148 232 0 -215 199 0
+shot cmd-town -110 235 -140 -50 199 -70

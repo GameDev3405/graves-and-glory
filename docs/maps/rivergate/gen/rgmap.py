@@ -108,7 +108,21 @@ def plots(ax, az):
 
 
 def wood(ax, az):
-    return ax > 170 and az > 120 and bank(ax, az) == 0
+    """the corner woods, and copses on the open ground north of each base"""
+    if bank(ax, az) > 0 or path(ax, az) < 10: return False
+    return (ax > 170 and az > 120) or (ax > 176 and az > 48 and fbm(SEED, ax, az, 23) > 0.1)
+
+
+HEDGES = [('z', 131, 4, 170, 'hedge'), ('x', 30, 132, 177, 'hedge'), ('x', 62, 132, 177, 'wall'), ('x', 96, 132, 177, 'hedge'), ('x', 134, 124, 177, 'hedge'),
+          ('z', 154, 31, 133, 'wall'), ('x', 174, 50, 119, 'hedge'), ('z', 78, 120, 173, 'hedge') if False else ('z', 121, 119, 133, 'hedge')]
+
+
+def hedge(ax, az):
+    """field boundaries out of town: 'hedge', 'wall' or None; each has gaps to walk through"""
+    for axis, at, lo, hi, kind in HEDGES:
+        a, t = (az, ax) if axis == 'z' else (ax, az)
+        if a == at and lo <= t <= hi and not 11 <= (t + at) % 29 <= 14 and path(ax, az) > 4: return kind
+    return None
 
 
 def mix(r, table):
@@ -196,6 +210,9 @@ def column(x, z):
         return 64, 'farmland[moisture=7]', 'dirt', [plant]
     d = path(ax, az)
     if d <= 1.2 and r1 < 0.6: return 64, 'coarse_dirt', 'dirt', top
+    w = hedge(ax, az)
+    if w == 'wall': return 64, 'coarse_dirt', 'dirt', ['mossy_cobblestone' if r1 < 0.3 else 'cobblestone', 'cobblestone_wall' if r2 < 0.85 else 'mossy_cobblestone_wall']
+    if w == 'hedge': return 64, 'coarse_dirt', 'dirt', ['oak_leaves[persistent=true]', 'oak_leaves[persistent=true]'] + (['oak_leaves[persistent=true]'] if r2 < 0.2 else [])
     if wood(ax, az):
         s = 'grass_block' if r1 < 0.6 else ('podzol' if r1 < 0.85 else 'coarse_dirt')
         if r2 > 0.955: top = ['oak_leaves[persistent=true]']
@@ -204,6 +221,17 @@ def column(x, z):
         return 64, s, 'dirt', top
     if edge:                                                       # the river bank out of town: mud and gravel at the water
         return 64, ('grass_block' if r1 < 0.5 else ('coarse_dirt' if r1 < 0.75 else ('mud' if r1 < 0.9 else 'gravel'))), 'dirt', top
+    if az > 131 and ax < 170:                                       # the pastures behind the town, field by field
+        f = (sum(1 for g in (30, 62, 96, 134) if g < ax) * 2 + (1 if az > 154 else 0)) % 5
+        if f == 1:                                                 # mown and stooked
+            s = 'grass_block' if r1 < 0.5 else ('coarse_dirt' if r1 < 0.85 else 'rooted_dirt')
+            if ax % 6 == 4 and az % 5 == 3 and r2 < 0.8: top = ['hay_block[axis=y]'] * (2 if r3 < 0.3 else 1)
+            return 64, s, 'dirt', top
+        if f == 3:                                                 # a flower meadow
+            return 64, 'grass_block', 'dirt', ([FLOWERS[int(r3 * 6)]] if r2 < 0.3 else (['grass'] if r2 < 0.55 else []))
+        if f == 4:                                                 # grazed hard
+            s = 'grass_block' if r1 < 0.75 else ('coarse_dirt' if r1 < 0.9 else 'podzol')
+            return 64, s, 'dirt', (['grass'] if r2 < 0.05 and s == 'grass_block' else [])
     town = ax <= 96 and az <= 130
     meadow = az <= 34 and ax > 113
     n = fbm(SEED, x + 500, z - 300, 17)
@@ -355,6 +383,7 @@ class Map:
         self.forest()
         self.guard()
         self.works()
+        self.fold()
         qs = [quarter(i) for i in range(4)]
         qs[1] = xf.mirror(qs[1], 'x', -1); qs[2] = xf.mirror(qs[2], 'z', -1); qs[3] = xf.mirror(xf.mirror(qs[3], 'x', -1), 'z', -1)
         for cells in qs + singles():
@@ -408,8 +437,22 @@ class Map:
                         if j > 0.12: self.plant('apple', ax + (3 if (az // 7) % 2 else 0) + int(j * 3) - 1, az + int(j * 7) % 3 - 1, sx, sz, (ax + az) % 4)
                 for ax, az in ((42, 120), (80, 118), (30, 121), (14, 120), (70, 54), (80, 50), (76, 60), (64, 58), (92, 60), (96, 44), (90, 36)): self.plant('apple', ax, az, sx, sz, ax % 4)
                 for ax, az, name in ((126, 22, 'oak_medium'), (150, 28, 'oak_medium'), (168, 31, 'oak_small'), (140, 30, 'birch_pair'), (121, 31, 'oak_small'), (260, 20, 'oak_medium'),
-                                     (100, 110, 'oak_great') if False else (93, 112, 'oak_medium'), (70, 134, 'oak_great'), (20, 140, 'birch_pair'), (110, 60, 'oak_small'), (160, 110, 'oak_small')):
+                                     (100, 110, 'oak_great') if False else (93, 112, 'oak_medium'), (70, 140, 'oak_great'), (20, 142, 'birch_pair'), (46, 160, 'oak_medium'), (110, 146, 'oak_great'), (150, 150, 'oak_medium'), (12, 166, 'oak_small'), (84, 168, 'birch_tall'), (120, 170, 'oak_small'), (160, 136, 'birch_pair'), (8, 136, 'oak_medium'), (110, 60, 'oak_small'), (160, 110, 'oak_small')):
                     self.plant(name, ax, az, sx, sz, (ax + az) % 4)
+
+    def fold(self):
+        """a stone sheepfold and a hay rick in the pastures; the same in all four quarters"""
+        for sx in (1, -1):
+            for sz in (1, -1):
+                for ax in range(40, 51):
+                    for az in range(160, 168):
+                        if not (ax in (40, 50) or az in (160, 167)) or (az == 160 and ax in (44, 45)): continue
+                        x, z = W(ax, az, sx, sz)
+                        if (x, z) in self.col: self.extra[(x, 65, z)] = 'cobblestone'; self.extra[(x, 66, z)] = 'cobblestone_wall'
+                for ax, az, n in ((47, 164, 2), (48, 164, 1), (47, 165, 1), (110, 160, 3), (111, 160, 2), (110, 161, 2), (111, 161, 1), (109, 160, 1)):
+                    x, z = W(ax, az, sx, sz)
+                    if (x, z) in self.col:
+                        for i in range(n): self.extra[(x, 65 + i, z)] = 'hay_block[axis=y]'
 
     def plant(self, name, ax, az, sx, sz, k=0):
         x0, z0 = W(ax, az, sx, sz)
@@ -425,7 +468,7 @@ class Map:
         BANK = ['spruce_tall', 'spruce_small', 'oak_medium', 'birch_tall', 'spruce_tall', 'oak_small']
         spots = []
         for gx in range(174, 258, 7):
-            for gz in range(124, 178, 7):
+            for gz in range(52, 178, 7):
                 ax, az = gx + int(hash01(SEED, gx, gz, 21) * 5) - 2, gz + int(hash01(SEED, gx, gz, 22) * 5) - 2
                 if hash01(SEED, gx, gz, 23) < 0.78 and wood(ax, az):
                     spots.append((WOOD[int(hash01(SEED, gx, gz, 24) * len(WOOD))], ax, az, int(hash01(SEED, gx, gz, 25) * 4)))
