@@ -86,3 +86,46 @@ Redone in caster style v2 (`CASTER-V2-DESIGN.md`), the last of the four casters 
 - **F3 gait loops:** walk and run are sampled 0.28 of a cycle later (`GAIT_PHASE`), and charge_run_upper LP is moved half a tick earlier (`charge.py LP_SHIFT`). Clip lengths are unchanged. The scorecard has 35 clips, 0 failing.
   - Why the right foot: the old wrap fell on a stride extreme of the 4-tick run_legs (the base clip), so the 1-tick speed reversed there.
 - **Open minors:** at game16, rally, brace, wall and rest are still close to ready (not in this round's scope). The run_legs left_leg wrap sits at 1.355 against a limit of 1.362, so the margin is thin.
+
+## Batch review 2026-11-11 (branch anim/review-caster)
+
+Kort's four focus points, checked with `tools/anim/focus_check.py`. Additive clips (hits, knockback, pulled, stun_out) are
+also judged as the game plays them, on the guard (`work/review/compose.py`); the raw check plays them on the bind pose.
+The family-wide part of the fix (life pass, reaction layers, front blow, stun loop) is described in MAGE-REVIEW.md, same date.
+
+- **Baseline:** the rebuild at the lane commit matched `out/` clip for clip (CRLF only): no drift.
+- **Rows:** lead's first run 21 clips with a FAIL (34 rows). Before, composed: 22 clips (36). After: raw 10 clips (13),
+  composed 15 clips (17). Scorecard 35 clips, 0 failing.
+- **Changes:**
+  - **Life pass** on the cast, the blight, every hit, stun, stun_out, knockback and pulled: the pauldrons, hood tail, vestment
+    and the four robe panels swing (they stood still in every action clip: 12 secondary_life FAILs before). The vestment the
+    builder keys in the upper clip stays there (a bone may be keyed by only one of two clips played together).
+  - **Floor:** stun hips up 1.31 px at tick 0 (the right foot was 1.6 px under), knockback 0.94, pulled 0.73.
+  - **attack_cast:** the drive carries 0.3 px further (hips travelled 1.9 of the 2.0 px a heavy cast needs); the held lantern
+    fist 1.2 px out to the right (the hood sat on the cuff at full reach).
+  - **blight_gravecaller:** the fist rises outside the hood (the cuff went through the head), the claw 12 deg further back off
+    the hood on the coil (2.9 px in it).
+  - **Stances:** brace off arm (-165, 5) (its cuff 3.7 px in the head; -40 out made it worse), wall fist a px lower and out
+    (hood on the cuff 3.5), ward fist out (2.6). Rally and fallback (stances.py layers): the lantern arm 30 out, 15 forward
+    (cuff 2.3-2.7 in the hood); aim_up head up 8 and arm out 8 (mask in the mantle), aim_down forearm 10 more bent.
+  - **Stun loop:** the first tick eases out of the lap's last pose, so the loop has no jump at the wrap.
+- **Remaining FAIL rows (open, two fix rounds used):**
+  - The burial hood is a wide box over the shoulders: brace right cuff in the head 2.28 / hood on the cuff 3.69 (t12-13),
+    wall 2.81, blight left cuff 2.94 (t18.5), pulled 2.43 (t3.5), cast mantle on the cuff 2.03 (t5). All were 2.2-4.7 before.
+  - The guard's free arm: hit_light_front, hit_medium_front, hit_block left cuff in the mantle 1.93-2.17 (unchanged from
+    before), hit_medium_back / left into the pauldron 1.93-2.0. A fling of the free arm (as on tc_mist and wm_seer) was not
+    tried in the two rounds.
+  - stun hood_tail into the mantle 2.04 (t20; was 1.92 plus the floor and the still pieces).
+  - hit_block vestment_front settle 2.76 at tick 9: the block's legs clip runs 2 ticks past its upper body and the skirt panel
+    under the vestment is still swinging when the check stops at the upper clip's end; in game it settles by tick 11.
+  - **Shared hang_swing (not mine to change):** knockback lantern settle 2.25, death_back lantern pop 14.4 (t16.75),
+    death_left 24.2 (t15.25).
+- **Proposed exemption:** death_right shoulder 164.5 at t16.75: lying on its side, the arm stretched past the head reads
+  right (frame `work/review/frames/hexer_dr_16.75`).
+- **Bind-pose artefacts (raw only, pass composed):** knockback elbow 150.9, pulled elbow 164.6.
+- **Looked at:** all ticks, three views: attack_cast, blight_gravecaller (`work/review/frames/all_hexer_*.jpg`), and the
+  brace, wall, rally and blight FAIL ticks at full size.
+- **Tests:** unit tests and verify fast as in MAGE-REVIEW.md (the same builder; `test_where` timing under machine load).
+  In game: root `hexer-review1` failed under load (the server ran up to 23 s behind while this review's builds ran: walk
+  and run side 1-2 samples, death and light-front blow weights 0); the rerun `hexer-review2` with nothing else of mine
+  running passed: 22 `p1-geo-hexer` lines and the suite line all true, 0 `=false`.
