@@ -75,3 +75,37 @@ The Mist Caller (tc_mist), the Tidecallers caster: a driftwood rod with a conch 
 - **Run:** the trailing free arm reads like a stray pole. This is the shared gait carry, and was not reopened.
 - **Shared with the mage, not reopened:** the heavy front hit folds about 80 degrees with a rebound (knight hit keys); the deaths have a long static end; there is a walk and run seam pop; the run has little forward lean.
 - The early announce needs the mist ability to be off cooldown on the beat before the cast. The harness checks the announce and release timing through `Tactics.shoot`, not the live mist targeting itself.
+
+## Batch review 2026-11-11 (branch anim/review-caster)
+
+Kort's four focus points, checked with `tools/anim/focus_check.py`; additive clips also judged on the guard
+(`work/review/compose.py`). The family-wide part of the fix (life pass, reaction layers, front blow, stun loop) is in
+MAGE-REVIEW.md, same date.
+
+- **Baseline:** the rebuild at the lane commit matched `out/` clip for clip (CRLF only): no drift.
+- **Rows:** lead's first run 20 clips with a FAIL (36 rows). Before, composed: 16 clips (27). After, composed: 3 clips
+  (3 rows); raw 15 clips (17), the extra 14 bind-pose artefacts (wrist 180 at t0 on every additive clip, knockback and
+  pulled elbows). Scorecard 35 clips, 0 failing.
+- **Changes:**
+  - **Life pass** on the cast, mist, every hit, stun, stun_out, knockback, pulled: the kelp hood, pauldrons, sash tail and the
+    robe panels swing (still in every action clip before). The sash tail the guard keys in its upper clip stays in the hit's
+    upper clip.
+  - **attack_cast (whole_body 0.51):** the hips load back as the body turns, carry over the gliding right foot and drive into
+    the release (they travelled 0.5 px; the step was 1.4).
+  - **Blows:** the guard already holds the free arm 40 deg out; a blow now adds 0.4 of its outward swing on top of it (the arm
+    went past the head: head into the pauldron 2.4-2.75, shoulder 115-129 in the medium back and left blows).
+  - **Floor:** knockback (1.06 px under) and pulled (1.28): hips lifted at the tick. The rally's foot (1.75 under) passes
+    with the stance layers rebuilt from the re-keyed clips.
+  - **Stances:** brace rod fist a px out and the off arm 25 deg round (right bell 2.7 in the hood); ward off arm 12 deg off
+    the mantle (1.95). Rally (stances.py layer): the rod arm 25 forward and 5 out (bell in the mantle plate 2.48; further
+    out put the forearm in the head, scorecard pen_limb 1.98); aim_up arm 14 out.
+  - **Stun loop:** the first tick eases out of the lap's last pose (the kelp hood stood 23 deg apart across the wrap,
+    scorecard loop_pose).
+- **Remaining FAIL rows (open, two fix rounds used):** the bell sleeves against the hood and mantle with an arm raised:
+  brace hood into the left bell 2.62 (t29.5), shield_up hood into the left bell 2.44 (t3.5, unchanged), mist mantle into the
+  right bell 2.13 (t13, unchanged). Rounds tried: brace off arm z -25/-50/0 (-50 best), shield_up z -5/-22/+12 (original
+  best), the mist sweep keys moved and put back. The bell is 2 px wider than the arm and the hood 1 px over the shoulder.
+- **Looked at:** all ticks, three views: attack_cast, hit_medium_left (`work/review/frames/all_tc_*.jpg`).
+- **Tests:** unit tests and verify fast as in MAGE-REVIEW.md (the same builder; `test_where` timing under machine load).
+  In game: geo-knight suite through checkq, root `tc_mist-review1`: 22 `p1-geo-tc_mist` lines and the suite line all true,
+  0 `=false`.
