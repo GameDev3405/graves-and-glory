@@ -74,6 +74,7 @@ public final class CommanderClips {
     /** Poses the arms after vanilla setAngles. age is the model's animation progress in ticks; 0 is the first-person arm, left alone. */
     public static void pose(PlayerEntityModel<?> m, LivingEntity e, float age) {
         wristOf = null; playing = "";
+        if (!e.isInSneakingPose()) sneakFrom.remove(e.getId()); // C17-F2: before every return, so a swap or unload mid-sneak cannot leave it stale
         if (age == 0f) return;
         var a = GearLooks.art(CommanderGearFeature.stack(e, EquipmentSlot.MAINHAND)); if (a == null) return;
         var clips = items.get(a.item()); var w = GearModels.weapon(a.item());
@@ -87,7 +88,6 @@ public final class CommanderClips {
                 float from = sneakFrom.computeIfAbsent(e.getId(), id -> age);
                 clip = sneak; t = Math.min(1, (age - from) / 20f / sneak.length);
             }
-            if (!e.isInSneakingPose()) sneakFrom.remove(e.getId());
         }
         if (clip != null) {
             Key at = sample(clip, t);
