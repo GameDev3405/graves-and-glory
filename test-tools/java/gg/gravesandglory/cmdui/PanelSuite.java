@@ -42,7 +42,7 @@ public final class PanelSuite implements CommandUiChecks.Suite {
     List<Entity> candidates = List.of();
     int tryIndex, troopNext;
     String troopWant = "cavalry", troopDetail = "";
-    boolean troopDone, troopPass;
+    boolean troopDone, troopPass, troopStarted;
     int sentBefore;
     // disconnect: watched from a tick listener of our own while the suite's ticks pause without a world
     static volatile PanelSuite live;
@@ -137,7 +137,8 @@ public final class PanelSuite implements CommandUiChecks.Suite {
 
         // a click on a troop of the army selects its group, with no swing
         if (tick == 117) spawnRider(c);
-        if (tick == 120) troopStart(c);
+        // the rider counts as own only once a state packet (every 10 ticks) has its marker: start when it is seen, else at 138 with the fallback group
+        if (tick >= 120 && tick <= 138 && !troopStarted && (tick == 138 || own(c, "cavalry"))) troopStart(c, tick);
         if (tick > 120 && tick < 178 && !troopDone && tick == troopNext) troopStep(c, tick);
         if (tick == 178) {
             if (!troopDone) troopDetail += " (ran out of time)";
@@ -396,19 +397,28 @@ public final class PanelSuite implements CommandUiChecks.Suite {
                 for (Method k : b.getClass().getDeclaredMethods()) if (k.getName().equals("spawn") && k.getParameterCount() == 4) m = k;
                 m.setAccessible(true);
                 m.invoke(b, squad, hound, 90, at);
-            } catch (Exception e) { troopDetail = "could not spawn a rider: " + e + ";"; }
+            } catch (Exception e) { troopDetail += "could not spawn a rider: " + e + ";"; }
         });
     }
-    void troopStart(MinecraftClient c) {
+    static boolean own(MinecraftClient c, String group) {
+        for (Entity e : c.world.getEntities()) if (group.equals(CommandPanel.troopGroup(e))) return true;
+        return false;
+    }
+    void troopStart(MinecraftClient c, int tick) {
+        troopStarted = true;
         CommandSelection.setPanelOpen(true);
         List<Entity> own = new ArrayList<>(), want = new ArrayList<>();
         Set<String> groups = new TreeSet<>();
         for (Entity e : c.world.getEntities()) { String g = CommandPanel.troopGroup(e); if (g == null) continue; own.add(e); groups.add(g); if (g.equals("cavalry")) want.add(e); }
-        if (want.isEmpty() && !own.isEmpty()) { troopWant = CommandPanel.troopGroup(own.get(0)); want = own.stream().filter(e -> troopWant.equals(CommandPanel.troopGroup(e))).collect(java.util.stream.Collectors.toList()); troopDetail = "no cavalry fielded (own groups " + groups + "), used " + troopWant + ";"; }
+        if (want.isEmpty() && !own.isEmpty()) { troopWant = CommandPanel.troopGroup(own.get(0)); want = own.stream().filter(e -> troopWant.equals(CommandPanel.troopGroup(e))).collect(java.util.stream.Collectors.toList()); troopDetail += "no cavalry seen as own by tick " + tick + " (own groups " + groups + "), used " + troopWant + ";"; }
         want.sort(Comparator.comparingDouble(e -> e.squaredDistanceTo(c.player)));
+        // prefer troops no other own troop hides from the camera (the pick takes the nearest on the ray)
+        List<Entity> clear = want.stream().filter(e -> nearestOnRay(c, e) == e).collect(java.util.stream.Collectors.toList());
+        if (clear.size() < want.size()) troopDetail += " " + (want.size() - clear.size()) + " of " + want.size() + " " + troopWant + " hidden behind other own troops;";
+        if (!clear.isEmpty()) want = clear;
         candidates = want.subList(0, Math.min(6, want.size()));
-        if (candidates.isEmpty()) { troopDone = true; troopDetail = "no own troops visible to the client"; return; }
-        tryIndex = 0; look(c, candidates.get(0)); troopNext = 124;
+        if (candidates.isEmpty()) { troopDone = true; troopDetail += "no own troops visible to the client"; return; }
+        troopDetail += " started at tick " + tick + ";"; tryIndex = 0; look(c, candidates.get(0)); troopNext = tick + 4;
     }
     int troopPhase;
     void troopStep(MinecraftClient c, int tick) {
@@ -417,6 +427,9 @@ public final class PanelSuite implements CommandUiChecks.Suite {
             CommandSelection.select("all", false); CommandSelection.setPanelOpen(true);
             double[] at = CommandPanel.project(e.getBoundingBox().getCenter());
             if (at == null) { troopDetail += " candidate " + tryIndex + " behind the camera;"; next(c, tick); return; }
+            // the pick takes the nearest own troop on the cursor ray: a candidate behind another own troop is skipped, not judged
+            Entity front = nearestOnRay(c, e);
+            if (front != e) { troopDetail += " candidate " + tryIndex + " behind " + (front == null ? "nothing on the ray" : (front.getCustomName() == null ? "?" : front.getCustomName().getString()) + " [" + CommandPanel.troopGroup(front) + "]") + ", skipped;"; next(c, tick); return; }
             sentBefore = OrderIntakeProbe.ordersSent();
             clickGui(c, at[0], at[1], 0);
             troopDetail += String.format(Locale.ROOT, " candidate %d (%s, %.1f blocks) clicked at gui (%.0f, %.0f);", tryIndex, e.getCustomName() == null ? "?" : e.getCustomName().getString(), Math.sqrt(e.squaredDistanceTo(c.player)), at[0], at[1]);
@@ -426,13 +439,26 @@ public final class PanelSuite implements CommandUiChecks.Suite {
             int sent = OrderIntakeProbe.ordersSent() - sentBefore;
             var sel = CommandSelection.selected();
             troopDetail += " -> selection " + sel + ", swing=" + swung + ", orders sent " + sent + ";";
-            if (sel.equals(List.of(troopWant)) && !swung && sent == 0) { troopPass = troopWant.equals("cavalry"); troopDone = true; return; }
-            troopPhase = 0; next(c, tick);
+            // the first candidate nothing hides is judged: it must select its own group, with no swing and no order
+            troopPass = sel.equals(List.of(troopWant)) && !swung && sent == 0; troopDone = true;
         }
     }
     void next(MinecraftClient c, int tick) {
         if (++tryIndex >= candidates.size()) { troopDone = true; return; }
         look(c, candidates.get(tryIndex)); troopNext = tick + 4;
+    }
+    /** The nearest own troop whose box (grown 0.25, as CommandPanel.troopAt) the camera ray through e's centre meets. */
+    static Entity nearestOnRay(MinecraftClient c, Entity e) {
+        Vec3d from = c.gameRenderer.getCamera().getPos(), to = from.add(e.getBoundingBox().getCenter().subtract(from).normalize().multiply(160));
+        Entity best = null; double bestD = Double.MAX_VALUE;
+        for (Entity o : c.world.getEntities()) {
+            if (o == c.player || !o.isAlive() || CommandPanel.troopGroup(o) == null) continue;
+            var hit = o.getBoundingBox().expand(0.25).raycast(from, to);
+            if (hit.isEmpty()) continue;
+            double d = hit.get().squaredDistanceTo(from);
+            if (d < bestD) { bestD = d; best = o; }
+        }
+        return best;
     }
     static void look(MinecraftClient c, Entity e) {
         Vec3d eye = c.player.getEyePos(), to = e.getBoundingBox().getCenter().subtract(eye);
