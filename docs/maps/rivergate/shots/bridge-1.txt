@@ -1,0 +1,17 @@
+note Rivergate K4 bridge and gatehouse
+mc time set 3000
+mc execute as @a at @s run forceload add -32 -80 31 -16
+mc execute as @a at @s run place template ggmaps:rg/k4_bridge_ws -22 193 -68
+wait 10
+shot s-field-face 0 201 -67.5 0 204 -55
+shot s-field-angle -14 201 -67 0 205 -55
+shot s-passage 0 201 -57 0 201 -40
+shot s-bridge-back 0 201 -33 0 205 -52
+shot s-bridge-side 12 201 -30 -2 203 -46
+shot s-guard-w -8 200 -53 -8 200 -57
+shot s-guard-e 6 200 -56 8 200 -52
+shot s-chamber-e 7 205 -55 -9 205 -55
+shot s-chamber-w -8 205 -54 8 205 -55
+shot c-nw -24 222 -76 0 202 -50
+shot c-se 24 218 -24 0 202 -48
+shot c-water 22 202 -40 0 201 -42
