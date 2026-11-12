@@ -174,3 +174,15 @@ Source: pixabay.com, downloaded 2026-11-02 (Pixabay Content Licence). Author is 
 | magic.impact | magic_impact_3.ogg | qubodup | CC-BY 4.0 | https://freesound.org/people/qubodup/sounds/442827 | "Fireball" by qubodup, freesound, CC-BY 4.0 |
 | magic.impact | magic_impact_4.ogg | EminYILDIRIM | CC-BY 4.0 | https://freesound.org/people/EminYILDIRIM/sounds/541478 | "Magic Fire Spell Impact & Punch" by EminYILDIRIM, freesound, CC-BY 4.0 |
 | combat.bow_shoot | bow_shoot_2.ogg | saturdaysoundguy | CC0 1.0 | https://freesound.org/people/saturdaysoundguy/sounds/394178 | No credit required (CC0). |
+
+## Generated audio: Stable Audio 3 (read 2026-11-12, Kort allowed it 2026-11-11)
+
+Some sounds may be made with Stability AI's Stable Audio 3 `small-sfx` model (generated with prompts, then trimmed and levelled by `tools/audio/mixfix.py`-style steps). Nothing generated has shipped yet; every shipped file gets its own row below with its prompt and seed.
+
+- Model: `stabilityai/stable-audio-3-small-sfx`, under the Stability AI Community License (dated 2024-07-05) and, for its bundled T5Gemma text encoder, the Gemma Terms of Use (2026-04-01). The generation library (`Stability-AI/stable-audio-3`) is MIT.
+- Outputs: the licence says we own the outputs (Community License 4(c)(iii); outputs are not "Derivative Works"; Google claims no rights in Gemma outputs, Gemma 3.3). We do not distribute the model, so its Notice-file duty does not apply.
+- Conditions that stay on us: (1) if the game is a commercial product, register with Stability AI at https://stability.ai/community-license and stay under USD 1,000,000 annual revenue (above that the licence ends and a new one must be requested); Kort does this himself; (2) do not use outputs to train a new foundational AI model; (3) obey the Stability AI Acceptable Use Policy and the Gemma Prohibited Use Policy (nothing in game sound effects comes near them).
+- Credit line, shown conservatively although the licence ties it to distributing the model: "Some sound effects made with Stable Audio 3, Powered by Stability AI."
+
+| Event | File | Prompt | Seed | Source |
+| --- | --- | --- | --- | --- |
