@@ -640,21 +640,140 @@ def attack_clips():
 
 
 # ------------------------------------------------------------------------------------------------
-# Stances: the bow at rest in the guard; StanceController plays ready (fighting), brace / wall (Hold), ward (fall_back).
+# Stances: StanceController plays ready (fighting), brace / wall (Hold), ward (fall_back) and shield_up (a raised-shield order,
+# which a bowman answers with cover). Kort's rule 6 (2026-11-10): every clip suits its unit and its weapon, so each bow troop has
+# its own set and its own stance legs, each order read as a bowman's version of it:
+#   ready      the guard: bow low and forward, string hand by the string
+#   brace      make ready: the bow brought up to the half-aim, the string hand on the string
+#   wall       the firing line: side-on, the bow up on the line, the string hand at the quiver's mouth for the next arrow
+#   ward       giving ground: the bow held up across the body as a parry, leaning away
+#   shield_up  cover: ducked behind the raised bow, the head down, the string hand tucked in
+# The bow is held ACROSS the forearm, the aim's own hold (the archer lane's GUARD_WRIST, Kort archer round 1: "the bows string is
+# inside the archers arm to start"): the arm alone carries the bow, and the resting string stays out of the forearm.
 # ------------------------------------------------------------------------------------------------
 
-STANCE_UPPER = {
+GUARD_WRIST = (-15.3, -2.8, -73.2)
+
+
+def H(torso, head, larm, lfore, rarm, rfore, quiver=Z3, wrist=GUARD_WRIST):
+    """A stance key with the bow held across the forearm (left_hand is the whole wrist, not only its pitch)."""
+    p = P(torso, head, larm, lfore, 0.0, rarm, rfore, Z3, quiver)
+    p["left_hand"] = tuple(wrist)
+    return p
+
+
+# Per troop: the poses, how alive each loop is (life: breath and weight rock), its own stance legs (hips (rot, pos), ankle
+# targets, foot yaw; the torso yaw is set against the legs' hips yaw so the shoulders face as each order needs), and extra motion:
+#   scan       the head's slow look along the line (degrees of yaw)
+#   twitch     (bone, offset, on, off): an offset snapped in over about a tick at loop phase `on` and out at `off`
+# The ready legs stay within a pixel and a few degrees of the shot's own ready footing (K.READY_HIPS), so a shot starts clean.
+BOW_STANCES = {
+    # The archer: drilled. Square, upright and economical; the same picture every loop.
+    "archer": {
+        "pose": {
+            "ready": H((6, 19, 0), (-4, -23, 0), (-38, -18, -8), -14, (-34, -10, 6), (-30, 40, 0)),
+            "brace": H((8, 18, 0), (-4, -24, 0), (-56, -10, -8), -30, (-60, -30, 20), (-50, 42, 0)),
+            "wall": H((3, 16, 0), (-4, -30, 0), (-74, -28, -4), -8, (-122, 6, -10), (-52, 0, 0), quiver=(0, 0, -4)),
+            "ward": H((-7, 16, 0), (3, -18, 0), (-70, 10, 60), -80, (-40, -10, 20), (-60, 30, 0)),
+            "shield_up": H((12, 16, 0), (12, -18, 0), (-75, -25, 0), -10, (-46, -18, 16), (-74, 40, 0)),
+        },
+        "life": {"ready": 3.0, "brace": 1.4, "wall": 1.2, "ward": 1.8, "shield_up": 2.2},
+        "legs": {
+            "ready": {"hips": ((0.0, 8.0, 0.0), (0.0, -1.0, 0.1)), "right": (-3.4, 2.0, 2.2), "left": (3.2, 2.0, -2.0), "yaw": (-14.0, 6.0)},
+            "brace": {"hips": ((2.0, 12.0, 0.0), (0.0, -1.8, 0.4)), "right": (-3.6, 2.0, 3.0), "left": (3.4, 2.0, -2.6), "yaw": (-18.0, 6.0)},
+            "wall": {"hips": ((2.0, 24.0, 0.0), (0.0, -2.4, 0.4)), "right": (-3.6, 2.0, 3.6), "left": (3.2, 2.0, -3.4), "yaw": (-34.0, 14.0)},
+        },
+        "scan": 0.0, "twitch": (),
+    },
+    # The longbowman: tall and heavy. Upright on a wide base, the long stave carried straight-armed, a big slow breath.
+    "longbow": {
+        "pose": {
+            "ready": H((2, 18, 0), (-1, -20, 0), (-28, -12, -12), -8, (-24, -8, 8), (-26, 34, 0)),
+            "brace": H((1, 16, -2), (-2, -22, 0), (-76, -52, 28), -45, (-44, 12, -14), (-50, 30, 0)),
+            "wall": H((0, 18, 0), (-3, -36, 0), (-82, -32, -2), -4, (-150, 8, -8), (-44, 0, 0), quiver=(0, 0, -3)),
+            "ward": H((-10, 8, 0), (4, -10, 0), (-60, 0, 60), -80, (-56, -10, -10), (-64, 30, 0)),
+            "shield_up": H((14, 12, 0), (12, -14, 0), (-90, 8, 14), -10, (-34, -10, 12), (-66, 30, 0)),
+        },
+        "life": {"ready": 3.8, "brace": 1.8, "wall": 1.6, "ward": 2.2, "shield_up": 2.6},
+        "legs": {
+            "ready": {"hips": ((-1.0, 5.0, 0.0), (0.0, -0.8, 0.1)), "right": (-3.8, 2.0, 2.2), "left": (3.6, 2.0, -2.2), "yaw": (-16.0, 10.0)},
+            "brace": {"hips": ((0.0, 14.0, 0.0), (0.0, -1.4, 0.3)), "right": (-4.2, 2.0, 3.2), "left": (4.0, 2.0, -3.0), "yaw": (-22.0, 10.0)},
+            "wall": {"hips": ((0.0, 28.0, 0.0), (0.0, -2.7, 0.5)), "right": (-4.0, 2.0, 3.6), "left": (3.6, 2.0, -3.4), "yaw": (-40.0, 18.0)},
+        },
+        "scan": 0.0, "twitch": (),
+    },
+    # The bone archer: skeletal. Head cocked, shoulders askew, the string arm hanging from a bent elbow; almost no breath, and
+    # the skull and the bow hand snap to new angles and back instead of drifting.
+    "bonebow": {
+        "pose": {
+            "ready": H((8, 20, -4), (-6, -22, 10), (-42, -22, -6), -20, (-20, -14, 14), (-50, 30, 0)),
+            "brace": H((12, 16, -6), (-8, -18, 14), (-50, -28, -10), -26, (-30, -20, 22), (-70, 20, 0)),
+            "wall": H((10, 20, -4), (-6, -28, 12), (-80, -34, -6), -14, (-126, 10, -4), (-62, 0, 0)),
+            "ward": H((-4, 22, 6), (4, -26, -14), (-55, 5, 60), -85, (-26, -10, 26), (-40, 10, 0)),
+            "shield_up": H((16, 22, -6), (12, -16, 16), (-85, -28, 5), -10, (-58, -24, 24), (-88, 30, 0)),
+        },
+        "life": {"ready": 1.3, "brace": 1.1, "wall": 1.05, "ward": 1.2, "shield_up": 1.2},
+        "legs": {
+            "ready": {"hips": ((1.0, 6.0, 2.5), (0.2, -1.2, 0.1)), "right": (-3.2, 2.0, 1.8), "left": (3.0, 2.0, -1.8), "yaw": (-8.0, 12.0)},
+            "brace": {"hips": ((3.0, 9.0, 3.0), (0.3, -2.0, 0.4)), "right": (-3.4, 2.0, 2.6), "left": (3.4, 2.0, -2.4), "yaw": (-10.0, 14.0)},
+            "wall": {"hips": ((3.0, 20.0, 3.0), (0.3, -2.4, 0.5)), "right": (-3.4, 2.0, 3.4), "left": (3.2, 2.0, -3.2), "yaw": (-26.0, 20.0)},
+        },
+        "scan": 0.0,
+        "twitch": (("head", (0.0, 9.0, -8.0), 0.18, 0.46), ("head", (-5.0, -6.0, 6.0), 0.62, 0.84),
+                   ("left_hand", (6.0, 0.0, 0.0), 0.30, 0.70)),
+    },
+    # The hide hunter: wild. Hunched low over wide feet, the head thrust forward and sweeping the ground ahead, the bow loose in a
+    # bent arm, a heavy, ragged breath.
+    "wm_hunter": {
+        "pose": {
+            "ready": H((14, 22, 2), (-12, -24, 0), (-30, -16, -14), -24, (-38, -14, 16), (-46, 40, 0)),
+            "brace": H((20, 22, 4), (-18, -26, -4), (-44, -20, -16), -28, (-56, -18, 22), (-60, 44, 0)),
+            "wall": H((16, 22, 0), (-14, -34, 0), (-100, -34, 0), -12, (-110, 0, -16), (-70, 0, 0)),
+            "ward": H((4, 18, -6), (-6, -20, 8), (-90, 0, 50), -50, (-60, -10, 36), (-80, 40, 0)),
+            "shield_up": H((22, 20, 0), (-8, -18, 0), (-70, -12, -12), -34, (-50, -20, 20), (-90, 40, 0)),
+        },
+        "life": {"ready": 4.2, "brace": 2.2, "wall": 1.8, "ward": 2.6, "shield_up": 3.0},
+        "legs": {
+            "ready": {"hips": ((4.0, 4.0, 0.0), (0.0, -1.7, 0.2)), "right": (-3.8, 2.0, 2.4), "left": (3.6, 2.0, -2.0), "yaw": (-22.0, 14.0)},
+            "brace": {"hips": ((8.0, 8.0, 0.0), (0.0, -3.0, 0.6)), "right": (-4.0, 2.0, 3.0), "left": (3.8, 2.0, -2.4), "yaw": (-24.0, 16.0)},
+            "wall": {"hips": ((10.0, 18.0, 0.0), (0.0, -3.6, 0.6)), "right": (-4.0, 2.0, 3.8), "left": (3.8, 2.0, -3.4), "yaw": (-30.0, 18.0)},
+        },
+        "scan": 7.0, "twitch": (),
+    },
+}
+
+# The stalker keeps the family's former shared set (its own clips live on anim/stalker-fable-2).
+_SHARED_UPPER = {
     "ready": READY,
-    # brace: lower and wider over the braced legs, the bow held further out, ready to come up
     "brace": P((10, 16, 0), (-8, -24, 0), (-44, -16, -8), -12, -10, (-38, -10, 6), (-34, 40, 0)),
-    # wall: the formed line, crouched over the deep set, bow forward and the string hand already at the quiver's mouth
     "wall": P((16, 12, 0), (-14, -24, 0), (-50, -14, -8), -10, -12, (-120, 6, -10), (-50, 0, 0), quiver=(0, 0, -4)),
-    # ward: giving ground, leaning back, the bow held across the body toward the foe
     "ward": P((-6, 14, 0), (2, -18, 0), (-46 + CHAR["ward_arm"], -24, -10), -18, -8, (-22, -6, 8), (-40, 30, 0)),
 }
-STANCE_UPPER["shield_up"] = STANCE_UPPER["ready"]
-LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
+_SHARED_UPPER["shield_up"] = _SHARED_UPPER["ready"]
+_SHARED_LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
+
+if TROOP in BOW_STANCES:
+    _BS = BOW_STANCES[TROOP]
+    STANCE_UPPER, LIFE = _BS["pose"], _BS["life"]
+    STANCE_LEGS, STANCE_LEGS_LIFE = dict(_BS["legs"]), {k: LIFE[k] for k in _BS["legs"]}
+    SCAN, TWITCH = _BS["scan"], _BS["twitch"]
+else:
+    STANCE_UPPER, LIFE, SCAN, TWITCH = _SHARED_UPPER, _SHARED_LIFE, 0.0, ()
+    STANCE_LEGS = dict(K.STANCE_LEGS)
+    STANCE_LEGS_LIFE = dict(K.STANCE_LIFE)
+    if V2:
+        STANCE_LEGS["brace"] = {"hips": ((2.0, 10.0, 0.0), (0.0, -2.2, 0.5)), "right": (-3.8, 2.0, 2.8), "left": (3.6, 2.0, -2.8),
+                                "yaw": (-16.0, 9.0)}
+        STANCE_LEGS_LIFE.update({"brace": LIFE["brace"], "wall": LIFE["wall"]})
 READY_LIKE = ("ready", "shield_up")     # these loops run at V2_READY_SWAY_SCALE (0.25); the other stances at V2_SWAY_SCALE
+
+
+def _snap(u, on, off, w=0.03):
+    """0 -> 1 over w of the loop at `on`, held, 1 -> 0 at `off` (a smoothstep each way): a snap, not a drift."""
+    def step(x):
+        x = max(0.0, min(1.0, x))
+        return x * x * (3 - 2 * x)
+    return step((u - on) / w) * (1.0 - step((u - off) / w))
 
 
 def stance_upper(pose, life, ready=False):
@@ -670,26 +789,20 @@ def stance_upper(pose, life, ready=False):
         tx, ty, tz = pose["torso"]
         f["torso"] = ((tx + 0.8 * br + 1.8 * wt, ty - 1.4 * wt, tz - 1.2 * wt), None)
         hx, hy, hz = pose["head"]
-        f["head"] = ((hx - 0.5 * br - 1.3 * wt, hy + 0.9 * wt, hz + 1.0 * wt), None)
+        scan = SCAN * math.sin(2 * math.pi * u - 1.2)
+        f["head"] = ((hx - 0.5 * br - 1.3 * wt, hy + 0.9 * wt + scan, hz + 1.0 * wt), None)
         ax, ay, az = pose["right_arm"]
         f["right_arm"] = ((ax - 0.6 * br - 1.3 * wl, ay, az + 0.6 * wl), None)
         sx, sy, sz = pose["left_arm"]   # the bow arm steadier than the string hand: it keeps the bow on line
         f["left_arm"] = ((sx - 0.5 * br - 0.8 * wl, sy, sz), None)
-        f["left_hand"] = ((pose["left_hand"][0] + 0.8 * math.sin(2 * math.pi * u - 0.6) * a_lag, 0.0, 0.0), None)
+        lx, ly, lz = pose["left_hand"]
+        f["left_hand"] = ((lx + 0.8 * math.sin(2 * math.pi * u - 0.6) * a_lag, ly, lz), None)
+        for bone, offset, on, off in TWITCH:
+            k = _snap(u, on, off)
+            f[bone] = (tuple(a + k * b for a, b in zip(f[bone][0], offset)), None)
         f["quiver"] = ((0.3 * br, 0.0, pose["quiver"][2]), None)
         out.append(f)
     return K.bake(gear(out), K.STANCE_TICKS)
-
-
-STANCE_LEGS = dict(K.STANCE_LEGS)
-STANCE_LEGS_LIFE = dict(K.STANCE_LIFE)
-if V2:
-    # V2: the three commands read apart from the ready footing. brace sinks a step lower and wider (the knight's v2 brace);
-    # the wall stays the deepest. The legs of the brace and the wall carry the same weight cycle as their upper bodies, so the
-    # hips move with the chest instead of holding still under it.
-    STANCE_LEGS["brace"] = {"hips": ((2.0, 10.0, 0.0), (0.0, -2.2, 0.5)), "right": (-3.8, 2.0, 2.8), "left": (3.6, 2.0, -2.8),
-                            "yaw": (-16.0, 9.0)}
-    STANCE_LEGS_LIFE.update({"brace": LIFE["brace"], "wall": LIFE["wall"]})
 
 
 def stance_clips():
