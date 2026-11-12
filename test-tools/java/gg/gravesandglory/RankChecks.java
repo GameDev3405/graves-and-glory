@@ -26,7 +26,7 @@ import static gg.gravesandglory.Phase2Checks.shot;
  * over rank_v1.
  * <p>The Squire (troop knight) draws through GeckoLib (GeoTroopRenderer.handles), the renderer going forward: its draws, the sheet
  * it binds and the rig bones its tiers show are read from GeoTroopRenderer.PROBE (geo), never from TroopRenderer.drawn, which only
- * the legacy path records. The Revenant and the Sunweaver still draw through the vanilla and legacy renderers, and their checks
+ * the legacy path records. The Revenant and the Sunweaver still draw through the legacy renderer, and their checks
  * keep reading TroopRenderer.drawn.
  */
 final class RankChecks {
@@ -42,8 +42,8 @@ final class RankChecks {
 
     /**
      * The ranks suite. Scene A (12 blocks from the camera): a level-2 gold Squire, a level-3 violet Squire, a level-1 gold Squire
-     * and a level-3 violet Revenant (a Graveborn troop, drawn by its vanilla renderer: no Graveborn model yet). Scene B (5 blocks):
-     * three Squires at 1/1, 2/2 and 3/3, then the Sunweaver (an Epic with only _s1), then the cost row.
+     * and a level-3 violet Revenant (a Graveborn troop, drawn by the legacy renderer with its own model, not GeckoLib). Scene B (5 blocks):
+     * three Squires at 1/1, 2/2 and 3/3, then the Sunweaver (an Epic, its tiers painted since 6a041963), then the cost row.
      */
     static final class Ranks extends Phase2Checks.Stage {
         String name() { return "ranks"; }
@@ -162,21 +162,21 @@ final class RankChecks {
                 }
                 case 2 -> { wait++; // p2-chevrons-both-teams and the 12-block shot
                     if (wait % 600 == 0) System.out.println("[p2-wait] ranks step 2 after " + wait + " ticks: Squires drew (legacy or GeckoLib) since the mark=" + drewSince(c, List.of(gk2, vk3, gk1), 5) + ", Revenant chevron " + mark(TroopChevrons.drawn(e(c, vr3))));
-                    if (wait >= 40 && drewSince(c, List.of(gk2, vk3, gk1), 5)) { // the Revenant draws through its vanilla renderer, so it has no model draw to count
+                    if (wait >= 40 && drewSince(c, List.of(gk2, vk3, gk1), 5)) { // the Revenant draws through the legacy renderer (its own model), not GeckoLib
                         if (!shotReady(c, "ranks-chevrons")) { wait--; return; }
                         var a = TroopChevrons.drawn(e(c, gk2)); var bb = TroopChevrons.drawn(e(c, vk3)); var one = TroopChevrons.drawn(e(c, gk1)); var r = TroopChevrons.drawn(e(c, vr3));
                         int goldC = TroopChevrons.colour("gold"), violetC = TroopChevrons.colour("violet");
                         long now = c.world.getTime();
                         boolean fresh = a != null && bb != null && r != null && now - a.time() < 5 && now - bb.time() < 5 && now - r.time() < 5;
                         boolean ok = fresh && a.chevrons() == 1 && a.colour() == goldC && bb.chevrons() == 2 && bb.colour() == violetC && (one == null || now - one.time() > 30)
-                            && r.chevrons() == 2 && r.colour() == violetC && TroopRenderer.drawn(e(c, vr3)) == null && geo(e(c, vr3)) == null && Math.abs(a.distance() - FAR) < 1.0
+                            && r.chevrons() == 2 && r.colour() == violetC && geo(e(c, vr3)) == null && Math.abs(a.distance() - FAR) < 1.0
                             && geo(e(c, gk2)) != null && geo(e(c, vk3)) != null;
                         var tex = c.getResourceManager().getResource(TroopChevrons.TEXTURE); int[] size = {0, 0};
                         if (tex.isPresent()) try (var in = tex.get().getInputStream(); var img = net.minecraft.client.texture.NativeImage.read(in)) { size[0] = img.getWidth(); size[1] = img.getHeight(); } catch (Exception ex) { size[0] = -1; }
                         boolean texOk = size[0] == TroopChevrons.TEX_W && size[1] == TroopChevrons.TEX_H;
                         shot(c, "ranks-chevrons");
                         report("p2-chevrons-both-teams", ok && texOk, "level-2 gold Squire: " + mark(a) + " (want 1 in gold #" + String.format("%06X", goldC) + "); level-3 violet Squire: " + mark(bb) + " (want 2 in violet #" + String.format("%06X", violetC)
-                            + "); level-1 gold Squire: " + (one == null || now - one.time() > 30 ? "no chevron" : mark(one) + " (BAD)") + "; Squires drawn by GeckoLib=" + (geo(e(c, gk2)) != null && geo(e(c, vk3)) != null) + "; level-3 violet Revenant (vanilla renderer, own model drawn=" + (TroopRenderer.drawn(e(c, vr3)) != null) + ", GeckoLib drawn=" + (geo(e(c, vr3)) != null) + "): " + mark(r)
+                            + "); level-1 gold Squire: " + (one == null || now - one.time() > 30 ? "no chevron" : mark(one) + " (BAD)") + "; Squires drawn by GeckoLib=" + (geo(e(c, gk2)) != null && geo(e(c, vk3)) != null) + "; level-3 violet Revenant (not GeckoLib: legacy model drawn=" + (TroopRenderer.drawn(e(c, vr3)) != null) + ", GeckoLib drawn=" + (geo(e(c, vr3)) != null) + "): " + mark(r)
                             + "; chevron.png " + size[0] + "x" + size[1] + " (want " + TroopChevrons.TEX_W + "x" + TroopChevrons.TEX_H + "); picture p2-ranks-chevrons.png at about " + (int) FAR + " blocks");
                         // C15-F2: the level-3 violet Squire wears armour tier 3 and draws through GeckoLib; its chevrons sit clear of the rig's crown and crest
                         double crown = geoCrown(c, "knight"); boolean geo = GeoTroopRenderer.handles(TroopModels.resolve(e(c, vk3)));
@@ -272,17 +272,17 @@ final class RankChecks {
                         wait = 0; cs = 9;
                     }
                 }
-                case 9 -> { wait++; // p2-tier-stopgap: the Sunweaver (an Epic, only _s1) at armour III draws _s1; its two chevrons still show the level
+                case 9 -> { wait++; // p2-tier-stopgap: the Sunweaver at armour III draws its own painted _s3 (6a041963; every troop model now has skins 1 to 3, so the stopgap has no live case); its two chevrons still show the level
                     if (!mageUp || e(c, mage) == null) { wait = 0; return; }
                     if (wait == 2) markDraws(c, List.of(mage));
                     if (wait >= 30 && drewSince(c, List.of(mage), 5)) {
                         var x = e(c, mage); var l = last(x); var m = TroopModels.model("mage"); var ch = TroopChevrons.drawn(x);
-                        boolean ok = l != null && l.look().armourTier() == 3 && file(l.skin()).equals("mage_s1.png") && m != null && m.armourArt(3) == 1 && !m.ownSkins().contains(3)
-                            && (l.relief() == null || l.relief().equals("1")) && ch != null && ch.chevrons() == 2 && c.world.getTime() - ch.time() < 5 && "sun_staff_t3".equals(l.weaponId());
-                        boolean trim = l != null && l.look().veteran() && l.look().armourTier() == 3 && file(l.skin()).equals("mage_s1.png") && String.valueOf(l.trim()).replace("_far.png", ".png").equals(TEX + "mage/mage_veteran.png");
-                        report("p2-veteran-trim-tier", trim, "the Sunweaver, a Mastery II Veteran at armour III, drew skin " + (l == null ? "none" : file(l.skin())) + " with trim " + (l == null ? "none" : String.valueOf(l.trim())) + " (want mage_s1 under " + TEX + "mage/mage_veteran.png: a troop's trim draws over whichever armour tier it wears)");
+                        boolean ok = l != null && l.look().armourTier() == 3 && file(l.skin()).equals("mage_s3.png") && m != null && m.armourArt(3) == 3 && m.ownSkins().contains(3)
+                            && (l.relief() == null || l.relief().equals("3")) && ch != null && ch.chevrons() == 2 && c.world.getTime() - ch.time() < 5 && "sun_staff_t3".equals(l.weaponId());
+                        boolean trim = l != null && l.look().veteran() && l.look().armourTier() == 3 && file(l.skin()).equals("mage_s3.png") && String.valueOf(l.trim()).replace("_far.png", ".png").equals(TEX + "mage/mage_veteran.png");
+                        report("p2-veteran-trim-tier", trim, "the Sunweaver, a Mastery II Veteran at armour III, drew skin " + (l == null ? "none" : file(l.skin())) + " with trim " + (l == null ? "none" : String.valueOf(l.trim())) + " (want mage_s3, the tier's own skin since 6a041963, under " + TEX + "mage/mage_veteran.png: a troop's trim draws over whichever armour tier it wears)");
                         report("p2-tier-stopgap", ok, "the Sunweaver at rank " + rank(RankSync.client(x)) + " (own skins " + (m == null ? "-" : m.ownSkins()) + ") drew skin " + (l == null ? "none" : file(l.skin())) + ", relief key " + (l == null ? "-" : l.relief()) + ", weapon " + (l == null ? "none" : l.weaponId())
-                            + " (want mage_s1, relief 1 or flat, sun_staff_t3: the staff's tier III art is painted, the Sunweaver's armour tier III skin is not) and " + mark(ch) + " (want 2)");
+                            + " (want mage_s3, armourArt 3, relief 3 or flat, sun_staff_t3: the Sunweaver's tier III skin is painted since 6a041963 and every troop model has skins 1 to 3, so the missing-tier stopgap has no live case) and " + mark(ch) + " (want 2)");
                         wait = 0; cs = 10;
                     }
                 }
