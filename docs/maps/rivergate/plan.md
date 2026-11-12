@@ -26,6 +26,8 @@ Status: SIGNED by Kort 2026-11-12 ("Signed, start"; bases "Keep over the river";
 
 Distances: base to causeway 109; base to A or C along the road about 235; A to B 91; causeway to bridge street 106.
 
+Water guard (Kort 2026-11-12: "add a fence ... so unit and players cant just fall in and get stuck in the water"): every water edge is closed. Stone parapet 1 high (stone_brick_wall) round the whole island, round the pool, along both river banks in town and on bridges and causeways; post-and-rail fence along the river banks out of town. No open river stairs: stairs end at a gated landing above the water. The whole-map check walks the water edge and fails on any gap.
+
 ## 2. Mode sites
 
 - Domination: A, B, C above.
@@ -60,7 +62,7 @@ Key pieces (Kort sees them before paste):
 | # | Piece | Footprint, height | Notes |
 |---|---|---|---|
 | K1 | Water gate (Dawn; Dusk mirrored in purple) | 72 x 80, wall 6, gate towers 13 | The base straddles the river. The river runs through it in a walled channel with a bridge inside; a water arch with a raised portcullis faces the field. One gate onto each bank (north and south, 8 wide) and a muster yard on each bank. Barracks north, stores and armoury south |
-| K2 | The ribs | 12 ribs, each about 6 x 22, tips at y 80 | Six pairs: three ribs each side of each bridge, rising from the pool at the island's rim and curving in over the bridgeheads. They stand in water. The breastbone is gone; a few rib tips are snapped |
+| K2 | The ribs | 16 ribs (Kort 2026-11-12: "add another pair"), each about 6 x 22, tips at y 80 | Eight pairs: four ribs each side of each bridge, the fourth at the island's ends, rising from the pool at the island's rim and curving in over the bridgeheads. They stand in water. The breastbone is gone; a few rib tips are snapped |
 | K3 | Market hall | 22 x 14, eaves 6, ridge 13 | Open arcaded ground floor (troops walk through), chamber above reached by an outside stair. East of the ring; a market cross and stalls mirror its cover on the west |
 | K4 | Bridge and gatehouse (north; south mirrored) | bridge 16 x 20; gatehouse 20 x 8, 11 high | Gate passage 8 wide, open. The gatehouse stands on the bank end, outside both rings |
 | K5 | Watermill (point A) | 20 x 14, ridge 13, wheel 9 across | On the pool edge north bank with a wheel in a short mill race. Point A on its forecourt, on the bridge street |

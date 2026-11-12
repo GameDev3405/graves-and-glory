@@ -1,4 +1,4 @@
-"""K2 the ribs: twelve giant ribs standing in the pool round the Eyot, six north and six south of the island, curving in
+"""K2 the ribs: sixteen giant ribs standing in the pool round the Eyot, eight north and eight south of the island, curving in
 over it. ribs() returns {(x, y, z): block} in map coordinates (water surface y 62, street y 64).
 Run as a script it writes a workshop plan with a stand-in island, pool and bridges for pictures.
 Usage: python ribs.py OUT.json"""
@@ -6,7 +6,7 @@ import math, random, sys
 
 BED, WATER, STREET = 59, 62, 64
 # one quarter (x > 0, z < 0): x, |z| of the foot, rise above the bed, reach inward, foot radius
-QUARTER = [(16, 43, 20, 15, 2.0), (28, 40, 22, 16, 2.2), (40, 34, 18, 13, 1.9)]
+QUARTER = [(16, 43, 20, 15, 2.0), (28, 40, 22, 16, 2.2), (40, 34, 18, 13, 1.9), (51, 23, 15, 10, 1.7)]
 # broken ribs, by (sign x, sign z, index): fraction of the length that still stands
 SNAP = {(-1, -1, 2): 0.66, (1, 1, 2): 0.66, (1, -1, 0): 0.86, (-1, 1, 0): 0.86}
 TMAX = math.radians(102)
@@ -75,7 +75,7 @@ def ribs():
     cells, rng = {}, random.Random(12)
     for sx in (-1, 1):
         for sz in (-1, 1):
-            for i in range(3):
+            for i in range(len(QUARTER)):
                 rib(cells, rng, sx, sz, i)
     return cells
 
