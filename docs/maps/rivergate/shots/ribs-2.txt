@@ -1,0 +1,28 @@
+note Rivergate K2 ribs workshop, round 2
+mc time set 3000
+mc execute as @a at @s run forceload add -96 -64 95 63
+mc execute as @a at @s run place template ggmaps:rg/k2_ribs_00 -84 193 -62
+wait 10
+mc execute as @a at @s run place template ggmaps:rg/k2_ribs_01 -84 193 0
+wait 10
+mc execute as @a at @s run place template ggmaps:rg/k2_ribs_10 -28 193 -62
+wait 10
+mc execute as @a at @s run place template ggmaps:rg/k2_ribs_11 -28 193 0
+wait 10
+mc execute as @a at @s run place template ggmaps:rg/k2_ribs_20 28 193 -62
+wait 10
+mc execute as @a at @s run place template ggmaps:rg/k2_ribs_21 28 193 0
+wait 10
+shot s-bridge-n 0 201 -49 0 204 0
+shot s-bridge-side 0 201 -40 30 208 -32
+shot s-island-centre 0 201 0 28 211 -30
+shot s-island-under 28 201 -16 28 216 -40
+shot s-island-south 0 201 6 -24 210 34
+shot s-snapped -34 201 -10 -44 204 -36
+shot s-bank-n -34 201 -58 6 206 -22
+shot s-quay-w -47 201 0 -10 208 -30
+shot c-north 0 226 -78 0 200 -5
+shot c-west -92 222 0 0 202 0
+shot c-corner -72 232 -72 0 199 0
+shot c-low-east 70 212 30 0 204 0
+shot air-top 0 290 1 0 199 0
