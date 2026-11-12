@@ -24,7 +24,7 @@ for x in range(24):
 for x in (GATE[0] - 1, GATE[-1] + 1): b.box(x, B0, 23, x, B0 + 4, 23, 'oak_log[axis=y]')
 b.box(GATE[0] - 1, B0 + 5, 23, GATE[-1] + 1, B0 + 5, 23, 'stripped_oak_log[axis=x]')
 for x in (GATE[0] - 1, GATE[-1] + 1): b.set(x, B0 + 6, 23, 'lantern[hanging=false]')
-for x in (GATE[0] + 1, GATE[0] + 2): b.set(x, B0 + 4, 23, 'yellow_wool')              # the band's plain cloth
+for x in GATE: b.set(x, B0 + 4, 23, 'yellow_wool' if x in (GATE[0], GATE[-1]) else 'white_wool')   # a cloth valance right across, under the lintel
 
 # hall: 12 x 7, stone below, daub above
 hx0, hx1, hz0, hz1 = 2, 13, 2, 8
@@ -58,6 +58,43 @@ for z in (18, 19, 20): b.set(21, B0, z, 'stripped_oak_log[axis=z]')
 b.set(2, B0, 19, 'hay_block[axis=x]'); b.set(2, B0 + 1, 19, 'hay_block[axis=x]'); b.set(2, B0, 20, 'hay_block[axis=z]'); b.set(3, B0, 20, 'barrel[facing=up]')
 b.set(18, B0, 9, 'campfire[lit=true]')
 b.set(2, B0, 12, 'grindstone[face=floor,facing=east]')
+
+# ---- furnishing and dressing ---------------------------------------------------------------------------------
+# hall (inside x 3..12, z 3..7): two cots, a board with seats, the hearth under the stack
+for x in (3, 12):
+    b.set(x, B0, 4, 'yellow_bed[facing=north,part=foot]'); b.set(x, B0, 3, 'yellow_bed[facing=north,part=head]')
+b.set(9, B0, 5, 'spruce_stairs[facing=west,half=top,shape=straight]'); b.set(10, B0, 5, 'spruce_stairs[facing=east,half=top,shape=straight]')
+b.set(9, B0 + 1, 5, 'lantern[hanging=false]')
+for x in (9, 10): b.set(x, B0, 4, 'spruce_stairs[facing=north,half=bottom,shape=straight]'); b.set(x, B0, 6, 'spruce_stairs[facing=south,half=bottom,shape=straight]')
+for z in (4, 6): b.box(hx0, B0, z, hx0, B0 + 1, z, 'bricks')
+b.set(hx0, B0 + 1, 5, 'bricks'); b.set(hx0, B0, 5, 'campfire[lit=true]'); b.set(hx0 + 1, G, 5, 'bricks')
+b.set(12, B0, 7, 'chest[facing=west]'); b.set(12, B0, 6, 'barrel[facing=up]'); b.set(4, B0, 3, 'barrel[facing=up]'); b.set(3, B0, 7, 'oak_log[axis=x]')
+for x in (7, 8): b.set(x, B0, 7, 'yellow_carpet'); b.set(x, B0 + 2, hz1, 'stripped_oak_log[axis=x]')
+for z in range(hz0 + 1, hz1): b.set(6, B0 + 4, z, 'stripped_oak_log[axis=z]')
+b.set(6, B0 + 3, 5, 'lantern[hanging=true]')
+for x in (4, 11):
+    for k in (-1, 1): b.set(x + k, B0 + 2, hz1 + 1, 'spruce_trapdoor[facing=south,half=top,open=true]')
+for x in (5, 9, 13): b.set(x, B0 + 4, hz1 + 1, 'spruce_stairs[facing=north,half=top,shape=straight]')
+# shed: more stores
+b.set(17, B0 + 1, 3, 'barrel[facing=up]'); b.set(17, B0, 4, 'barrel[facing=up]'); b.set(20, B0, 5, 'hay_block[axis=x]'); b.set(20, B0 + 1, 4, 'hay_block[axis=y]')
+b.set(17, B0, 5, 'chest[facing=east]')
+# lookout in the south-west corner: a deck on four posts over the straw, a ladder, a rail
+for x, z in ((1, 19), (4, 19), (1, 22), (4, 22)): b.box(x, B0, z, x, B0 + 3, z, 'oak_log[axis=y]')
+for x in range(1, 5):
+    for z in range(19, 23): b.set(x, B0 + 4, z, 'spruce_planks')
+for y in range(B0, B0 + 5): b.set(4, y, 20, 'ladder[facing=south]')
+for x in range(1, 5): b.set(x, B0 + 5, 19, 'oak_fence')
+for z in (21, 22): b.set(4, B0 + 5, z, 'oak_fence')
+b.set(1, B0 + 5, 22, 'barrel[facing=up]')
+# well by the east wall
+for dx in (-1, 0, 1):
+    for dz in (-1, 0, 1): b.set(21 + dx, B0, 15 + dz, 'water' if dx == dz == 0 else b.pick(FOOT))
+for z in (14, 16): b.box(21, B0 + 1, z, 21, B0 + 2, z, 'oak_log[axis=y]')
+for z in (14, 15, 16):
+    b.set(21, B0 + 3, z, 'stripped_oak_log[axis=z]')
+    b.set(20, B0 + 3, z, 'spruce_stairs[facing=east,half=bottom,shape=straight]'); b.set(22, B0 + 3, z, 'spruce_stairs[facing=west,half=bottom,shape=straight]')
+    b.set(21, B0 + 4, z, 'spruce_slab[type=bottom]')
+b.set(21, B0 + 2, 15, 'chain[axis=y]')
 
 bad = [k for k in b.c if k[1] > G and b.c[k] != 'air' and math.hypot(k[0] - 12, k[2] - 15) < 6.0]
 print('cells inside the yard ring:', len(bad), bad[:5])

@@ -6,7 +6,7 @@ Nothing here touches a Minecraft world: it renders pictures and writes one nbt t
   python kfmap.py check
 
 Coordinates: x east, z south, ground y 64. The design is mirrored in x and in z (docs/maps/kingsfield/plan.md)."""
-import sys, os, math, json
+import sys, os, math, json, functools
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.normpath(os.path.join(HERE, '..', '..', '..', '..', 'tools')))
 from mapforge.world import World, Cell
@@ -54,15 +54,44 @@ def ramp(ax, az):
     return None
 
 
+@functools.lru_cache(maxsize=None)
 def knoll(ax, az):
-    """extra height of the B / D knoll: flat top 22 around the line z 92..112, slope 1 in 4"""
+    """extra height of the B / D knoll: flat top 22 around the line z 92..112, then an uneven slope of about 1 in 4"""
     d = seg(ax, az, 0, 92, 0, 112)
-    return 3 if d <= 22 else max(0, 3 - math.ceil((d - 22) / 4))
+    if d <= 22: return 3
+    d = max(22.01, d + 2.4 * fbm(SEED, ax + 300, az + 300, 9))
+    return max(0, 3 - math.ceil((d - 22) / 4))
 
 
+@functools.lru_cache(maxsize=None)
 def bank(ax, az):
+    """the edge bank: its foot wanders in and out instead of running dead straight"""
     t = max(ax - 258, az - 178)
+    if t <= -3: return 0
+    t += 2.6 * fbm(SEED, ax + 77, az + 33, 13)
     return 0 if t <= 0 else min(10, round(t * 10 / 12))
+
+
+PONDS = [(106, 50, 5.0, 3.5), (40, 76, 4.5, 3.0), (62, 44, 4.0, 3.0)]     # (x, z, rx, rz): duck pond, mill pond, flooded digging
+
+
+def pond(ax, az):
+    for cx, cz, rx, rz in PONDS:
+        if abs(ax - cx) < rx + 4 and abs(az - cz) < rz + 4:
+            e = ell(ax - cx, az - cz, rx, rz) + 0.22 * fbm(SEED, ax * 3, az * 3, 5)
+            if e < 1.6: return e
+    return None
+
+
+PLOTS = [(160, 101, 6, 6), (142, 75, 11, 8), (54, 131, 7, 8), (107, 137, 8, 6), (89, 109, 3, 3)]   # small buildings stand on level ground
+
+
+def strata(x, y, z):
+    """the banded rock of the quarry faces"""
+    r = hash01(SEED, x + 31 * y, z, 11)
+    if r < 0.12: return 'cobblestone'
+    if r < 0.2: return 'stone'
+    return {63: 'stone', 62: 'diorite', 61: 'stone', 60: 'stone', 59: 'tuff', 58: 'stone', 57: 'andesite'}.get(y, 'stone')
 
 
 def in_box(ax, az, cx, cz, hx, hz, pad=0):
@@ -72,7 +101,8 @@ def in_box(ax, az, cx, cz, hx, hz, pad=0):
 def reserved(ax, az):
     """ground that stays dead level: bases, granges, point rings, hold plots, the pit and its rim"""
     return (in_box(ax, az, 215.5, 0, 36, 40, 6) or in_box(ax, az, 128, 0, 28, 28, 6) or ell(ax, az, 80, 64) < 1
-            or in_box(ax, az, 70.5, 96.5, 12, 12, 4) or knoll(ax, az) > 0 or az < 46)
+            or in_box(ax, az, 70.5, 96.5, 12, 12, 4) or knoll(ax, az) > 0 or az < 46 or pond(ax, az) is not None
+            or any(in_box(ax, az, *p) for p in PLOTS))
 
 
 def height(x, z):
@@ -89,6 +119,7 @@ def height(x, z):
     return h
 
 
+CROPS = ['wheat', 'stooks', 'carrots', 'young', 'beetroots', 'fallow', 'potatoes']
 WALLS = [(-170, 50, 176, 'hedge', (118, 130)), (-124, 40, 176, 'wall', (138, 150)), (-84, 44, 176, 'hedge', (150, 162)),
          (-38, 140, 176, 'wall', (153, 165))]          # (x, from |z|, to |z|, kind, gap |z| range)
 STRIPS = [(176, 170, 'grass'), (170, 124, 'stubble'), (124, 84, 'grass'), (84, 38, 'stubble'), (38, 0, 'grass')]
@@ -116,10 +147,28 @@ def column(x, z):
         return h, ('gravel' if r1 < 0.35 else ('coarse_dirt' if r1 < 0.75 else 'cobblestone')), 'stone', top
     e = ell(ax, az, 66, 50)
     if e < 1:
-        if h == 56: return h, ('stone' if r1 < 0.5 else ('gravel' if r1 < 0.8 else 'andesite')), 'stone', top
-        return h, rock, 'stone', top
+        if h == 56:                                                # the floor: cart-worn earth in drifts, white chips round the Hand
+            n = fbm(SEED, x + 60, z - 40, 9)
+            if ell(ax, az, 27, 29) < 1 and r2 < 0.16: return h, ('calcite' if r3 < 0.6 else 'diorite'), 'stone', top
+            if n > 0.22: return h, ('coarse_dirt' if r1 < 0.55 else ('packed_mud' if r1 < 0.8 else 'gravel')), 'stone', top
+            if n < -0.3: return h, ('tuff' if r1 < 0.5 else ('cobbled_deepslate' if r1 < 0.7 else 'stone')), 'stone', top
+            return h, ('stone' if r1 < 0.5 else ('gravel' if r1 < 0.8 else 'andesite')), 'stone', top
+        if r2 < 0.05: return h, 'moss_block', 'strata', (['grass'] if r3 < 0.5 else [])       # green creeping back on the benches
+        if r2 < 0.09: return h, 'mossy_cobblestone', 'strata', top
+        return h, rock, 'strata', top
+    p = pond(ax, az)
+    if p is not None and p < 1:
+        return h, 'water', 'gravel', (['lily_pad'] if r2 < 0.1 and p < 0.8 else [])
+    if p is not None and p < 1.45:
+        s = 'gravel' if r1 < 0.3 else ('coarse_dirt' if r1 < 0.6 else 'grass_block')
+        return h, s, 'dirt', ([('fern' if r3 < 0.4 else 'grass')] if r2 < 0.45 and s != 'gravel' else [])
     if ell(ax, az, 76, 60) < 1:                                    # the bare rim
-        return h, ('gravel' if r1 < 0.45 else ('stone' if r1 < 0.7 else ('coarse_dirt' if r1 < 0.9 else 'andesite'))), 'stone', top
+        if r2 < 0.05 and e > 1.12: return h, 'grass_block', 'strata', ['grass']
+        return h, ('gravel' if r1 < 0.45 else ('stone' if r1 < 0.7 else ('coarse_dirt' if r1 < 0.9 else 'andesite'))), 'strata', top
+    if knoll(ax, az) == 3:                                         # B and D: the ring let into the ground, a compass in the middle
+        dd = math.hypot(ax, az - 114)
+        if 15.0 <= dd < 17.0: return h, ('smooth_stone' if dd < 16 else ('polished_andesite' if (ax + az) % 5 else 'chiseled_stone_bricks')), 'dirt', top
+        if dd < 3.3 or (dd < 6.5 and (ax < 1 or abs(az - 114) < 1)): return h, ('chiseled_stone_bricks' if dd < 1 else ('smooth_stone' if dd >= 3.3 else 'polished_andesite')), 'dirt', top
     d, kind = road(-ax, -az)
     b = bank(ax, az)
     if d <= 0 and b < 3:
@@ -127,31 +176,61 @@ def column(x, z):
         else: s = 'dirt_path'
         return h, s, 'dirt', top
     if d <= 1.2 and b == 0 and r1 < 0.6: return h, 'coarse_dirt', 'dirt', top
+    if 0 < d <= 3.2 and b == 0 and r1 > 0.8: return h, ('gravel' if r3 < 0.35 else 'coarse_dirt'), 'dirt', top     # a ragged verge
     if b > 0:
+        if fbm(SEED, ax + 40, az + 90, 8) > 0.28:                   # rock breaking through the bank
+            s = 'stone' if r1 < 0.45 else ('mossy_cobblestone' if r1 < 0.75 else 'andesite')
+            if r2 < 0.14 and b >= 2: top = ['mossy_cobblestone' if r3 < 0.5 else 'cobblestone']
+            return h, s, 'stone', top
         s = 'grass_block' if r1 < 0.7 else ('podzol' if r1 < 0.85 else 'coarse_dirt')
-        if b >= 4 and r2 < 0.085: top = tree(x, z, r3, tall=True)
-        elif r2 > 0.9: top = ['fern' if r3 < 0.5 else 'grass']
+        if r2 > 0.93: top = ['oak_leaves[persistent=true]']         # undergrowth
+        elif r2 > 0.68: top = ['fern' if r3 < 0.5 else 'grass']
         return h, s, 'dirt', top
     w = wall_at(ax, az)
     if w == 'wall': return h, 'coarse_dirt', 'dirt', ['mossy_cobblestone' if r1 < 0.3 else 'cobblestone', 'cobblestone_wall' if r2 < 0.85 else 'mossy_cobblestone_wall']
     if w == 'hedge': return h, 'coarse_dirt', 'dirt', ['oak_leaves[persistent=true]', 'oak_leaves[persistent=true]'] + (['oak_leaves[persistent=true]'] if r2 < 0.2 else [])
     if wood(ax, az):
         s = 'grass_block' if r1 < 0.6 else ('podzol' if r1 < 0.85 else 'coarse_dirt')
-        if hash01(SEED, x // 1, z // 1, 9) < 0.016: top = tree(x, z, r3)
-        elif r2 > 0.85: top = ['fern' if r3 < 0.4 else 'grass']
+        if r2 > 0.955: top = ['oak_leaves[persistent=true]']         # bushes under the trees
+        elif r2 > 0.7: top = ['fern' if r3 < 0.55 else 'grass']
+        elif r2 < 0.006: top = ['brown_mushroom' if r3 < 0.6 else 'red_mushroom']
         return h, s, 'dirt', top
     strip = next((k for a, c, k in STRIPS if c <= ax < a), 'grass')
     if strip == 'stubble' and az > 46 and az < 176 and not reserved(ax, az) and d > 3:
-        rows = ax if (ax // 46) % 2 else az                         # the rows turn from strip to strip
-        s = 'rooted_dirt' if rows % 4 == 0 else ('coarse_dirt' if r1 < 0.9 else 'grass_block')
-        if ax % 9 == 4 and az % 7 == 3 and r2 < 0.75: top = ['hay_block[axis=y]'] * (2 if r3 < 0.3 else 1)
-        elif r2 > 0.985: top = ['dead_bush']
-        return h, s, 'dirt', top
+        lo, hi = (124, 170) if ax >= 124 else (38, 84)
+        sid = 0 if ax >= 124 else 1
+        along, off = (az - 47) // 24, (az - 47) % 24
+        if off < 2 or ax - lo < 2 or hi - 1 - ax < 2:                # grass baulks between the plots, a headland by the hedge
+            s = 'grass_block' if r1 < 0.8 else 'coarse_dirt'
+            if s == 'grass_block': top = ['grass'] if r2 < 0.3 else (['dandelion' if r3 < 0.5 else 'oxeye_daisy'] if r2 > 0.95 else [])
+            return h, s, 'dirt', top
+        crop = CROPS[(along * 3 + sid * 4 + 1) % len(CROPS)]
+        rows = ax if sid else az                                    # the rows turn from strip to strip
+        if off == 7 and ax == (lo + hi) // 2 and crop not in ('stooks', 'fallow'):
+            return h, 'coarse_dirt', 'dirt', ['oak_fence', 'hay_block[axis=x]', 'carved_pumpkin[facing=south]']   # a scarecrow
+        if crop == 'stooks':                                        # cut and stooked
+            s = 'rooted_dirt' if rows % 4 == 0 else ('coarse_dirt' if r1 < 0.9 else 'grass_block')
+            if ax % 6 == 4 and az % 5 == 3 and r2 < 0.8: top = ['hay_block[axis=y]'] * (2 if r3 < 0.3 else 1)
+            elif r2 > 0.985: top = ['dead_bush']
+            return h, s, 'dirt', top
+        if crop == 'fallow':
+            s = 'grass_block' if r1 < 0.55 else ('coarse_dirt' if r1 < 0.85 else 'rooted_dirt')
+            if s == 'grass_block': top = ['grass'] if r2 < 0.45 else (['poppy' if r3 < 0.5 else 'cornflower'] if r2 > 0.93 else [])
+            return h, s, 'dirt', top
+        furrow = rows % (6 if crop in ('wheat', 'young') else 3) == 0
+        if furrow: return h, ('coarse_dirt' if r1 < 0.8 else 'rooted_dirt'), 'dirt', top
+        plant = {'wheat': 'wheat[age=%d]' % (7 if r2 > 0.12 else 6), 'young': 'wheat[age=%d]' % (2 if r2 < 0.5 else 3),
+                 'carrots': 'carrots[age=%d]' % (7 if r2 > 0.2 else 4), 'potatoes': 'potatoes[age=%d]' % (7 if r2 > 0.2 else 4),
+                 'beetroots': 'beetroots[age=%d]' % (3 if r2 > 0.2 else 2)}[crop]
+        return h, 'farmland[moisture=7]', 'dirt', [plant]
     n = fbm(SEED, x + 500, z - 300, 17)
-    s = 'grass_block' if n < 0.22 else ('coarse_dirt' if r1 < 0.6 else ('podzol' if r1 < 0.8 else 'rooted_dirt'))
+    s = 'grass_block' if n < 0.3 else ('coarse_dirt' if r1 < 0.45 else ('grass_block' if r1 < 0.8 else 'rooted_dirt'))
     if s == 'grass_block' and not reserved(ax, az) and d > 2:
-        if r2 < 0.07: top = ['grass']
-        elif r2 > 0.996: top = ['poppy']
+        f = fbm(SEED, x - 900, z + 700, 11)                         # flowers come in drifts
+        if f > 0.3 and r2 < 0.3: top = [('oxeye_daisy', 'cornflower', 'poppy', 'dandelion', 'azure_bluet')[int(r3 * 5)]]
+        elif f < -0.3 and r2 < 0.2: top = ['fern']
+        elif r2 < 0.16: top = ['grass']
+    elif s == 'grass_block' and any(in_box(ax, az, *p) for p in PLOTS) and r2 < 0.1: top = ['grass']
     return h, s, 'dirt', top
 
 
@@ -205,13 +284,17 @@ def placements():
     out.append(('k6_crane', 10, 64, -63, False, False))
     out.append(('s9_hold', -83, 64, -108, False, False)); out.append(('s9_hold', -83, 64, -108, True, True))
     out.append(('s2_lodge', -93, 64, -25, False, False)); out.append(('s2_lodge', -93, 64, -25, True, True))
-    four('s1_beacon', -164, 64, -105)
-    four('s4a_cottage', -147, 64, -79)
-    four('s4b_cottage', -59, 64, -137)
-    four('s5_haybarn', -113, 64, -141)
-    four('s7_cross', -90, 64, -110)
+    def diag(a, b, x, y, z, bx=None, bz=None):
+        """a on the north-west and south-east quarters, its variant b on the other two: the map stays the same from both ends"""
+        for mx, mz in ((False, False), (True, True)): out.append((a, x, y, z, mx, mz))
+        for mx, mz in ((True, False), (False, True)): out.append((b, x if bx is None else bx, y, z if bz is None else bz, mx, mz))
+    diag('s1_beacon', 's1_bell', -164, 64, -105, -165, -106)
+    diag('s4a_cottage', 's4a_tile', -147, 64, -79)
+    diag('s4b_cottage', 's4b_board', -59, 64, -137)
+    diag('s5_haybarn', 's5_cart', -113, 64, -141)
+    diag('s7_cross', 's7_shrine', -90, 64, -110)
     for mx, mz in ((True, False), (False, True)):                 # the two plots without a hold: a small farmstead
-        out.append(('s4a_cottage', -80, 64, -105, mx, mz)); out.append(('s5_haybarn', -76, 64, -94, mx, mz))
+        out.append(('s4a_stone', -80, 64, -105, mx, mz)); out.append(('s5_cart', -76, 64, -94, mx, mz))
     return out
 
 
@@ -238,8 +321,10 @@ class Map:
             for i, b in enumerate(top):
                 if b.startswith('@tree'): continue
                 else: self.extra[(x, h + 1 + i, z)] = b
+        self.tufts()
         self.mill_yard()
         self.forest()
+        self.dress()
         self.works()
         for p in placements(): place(self.extra, *p)
 
@@ -268,12 +353,36 @@ class Map:
         """S3 quarry works on the bench, S8 wells, the orchards behind the barn and the mill; all mirrored four ways"""
         for sx in (1, -1):
             for sz in (1, -1):
-                # timber scaffold against the rim face, north and south of the pit (bench y 60, rim y 64)
+                ms = lambda st: mirror_state(st, sx < 0, sz < 0)
+                # timber staging against the rim face, north and south of the pit (bench y 60, rim y 64): log posts, braces, a ladder
                 for x in range(18, 27):
-                    if x % 4 == 2:
-                        for y in (61, 62): self.put(sx * x, y, sz * 47, 'oak_fence'); self.put(sx * x, y, sz * 45, 'oak_fence')
                     for z in (45, 46, 47): self.put(sx * x, 63, sz * z, 'spruce_slab[type=top]')
+                for x in (18, 22, 26):
+                    for z in (45, 47):
+                        for y in (61, 62, 63): self.put(sx * x, y, sz * z, 'oak_log[axis=y]')
+                    self.put(sx * x, 63, sz * 46, 'stripped_oak_log[axis=z]')
+                for z in (45, 47):
+                    for x in (19, 23): self.put(sx * x, 62, sz * z, ms('spruce_stairs[facing=west,half=top,shape=straight]'))
+                    for x in (21, 25): self.put(sx * x, 62, sz * z, ms('spruce_stairs[facing=east,half=top,shape=straight]'))
+                for y in (61, 62, 63): self.put(sx * 22, y, sz * 44, ms('ladder[facing=north]'))
+                self.put(sx * 25, 61, sz * 46, 'barrel[facing=up]'); self.put(sx * 24, 61, sz * 46, 'smooth_stone')
+                # a tram line across the pit floor to the spoil, on sleepers
+                for x in range(24, 39): self.put(sx * x, 57, sz * 10, 'rail[shape=east_west]')
+                self.put(sx * 39, 57, sz * 10, 'cobblestone'); self.put(sx * 39, 58, sz * 10, 'oak_log[axis=z]')
+                self.put(sx * 23, 57, sz * 10, 'cobblestone'); self.put(sx * 23, 58, sz * 10, 'oak_log[axis=z]')
+                for x, z, n in ((24, 12, 2), (25, 12, 1), (24, 13, 1)):    # cut blocks waiting by the line
+                    for i in range(n): self.put(sx * x, 57 + i, sz * z, 'smooth_stone' if (x + i) % 2 else 'stone_bricks')
+                # the point standards of B and D, outside the ring
+                for k in (-1, 1):
+                    zc = 114 + 13 * k
+                    for y in range(68, 78): self.put(sx * 13, y, sz * zc, 'stripped_spruce_log[axis=y]')
+                    self.put(sx * 13, 78, sz * zc, 'lantern[hanging=false]')
+                    for y in range(74, 78):
+                        for j in (1, 2, 3): self.put(sx * 13, y, sz * (zc + j * k), 'white_wool')
+                    for y in (75, 76): self.put(sx * 13, y, sz * (zc + 4 * k), 'white_wool')
                 # cut stone waiting on the bench
+                for x, z, n in ((40, 38, 2), (41, 38, 2), (40, 39, 1), (41, 39, 2), (48, 30, 1), (49, 30, 2), (49, 31, 1), (60, 8, 2), (60, 9, 1)):
+                    for i in range(n): self.put(sx * x, 61 + i, sz * z, ('stone_bricks', 'smooth_stone', 'chiseled_stone_bricks')[(x + z + i) % 3])
                 for x, z, n in ((32, 40, 2), (33, 40, 1), (32, 41, 1), (56, 20, 2), (56, 21, 2), (57, 20, 1), (12, 44, 1), (13, 44, 2)):
                     for i in range(n): self.put(sx * x, 61 + i, sz * z, 'stone_bricks' if (x + i) % 2 else 'smooth_stone')
                 # spoil heaps on the pit floor, low, clear of the Hand, the ramps and the middle
@@ -288,7 +397,8 @@ class Map:
                 # orchard: rows of small trees behind the knoll
                 for x in range(10, 36, 6):
                     for z in range(138, 170, 7):
-                        self.plant('apple', x, z, sx, sz, (x + z) % 4)
+                        j = hash01(SEED, x, z, 51)                 # not on a ruler: rows stagger, a tree missing here and there
+                        if j > 0.12: self.plant('apple', x + (3 if (z // 7) % 2 else 0) + int(j * 3) - 1, z + int(j * 7) % 3 - 1, sx, sz, (x + z) % 4)
                 # well beside the first cottage
                 wx, wz = sx * 133, sz * 76
                 if (wx, wz) in self.col:
@@ -331,12 +441,50 @@ class Map:
         for gx in range(0, 290, 6):
             for gz in range(0, 194, 6):
                 ax, az = gx + int(hash01(SEED, gx, gz, 31) * 4) - 1, gz + int(hash01(SEED, gx, gz, 32) * 4) - 1
-                if bank(ax, az) >= 4 and hash01(SEED, gx, gz, 33) < 0.72:
+                if bank(ax, az) >= 4 and ax <= 283 and az <= 187 and hash01(SEED, gx, gz, 33) < (0.95 if fbm(SEED, ax + 9, az + 5, 30) > -0.05 else 0.22):   # in clumps, with gaps
                     spots.append((BANK[int(hash01(SEED, gx, gz, 34) * len(BANK))], ax, az, int(hash01(SEED, gx, gz, 35) * 4)))
         spots += [('oak_great', 190, 70, 0), ('oak_great', 60, 150, 1), ('birch_pair', 140, 112, 2), ('oak_small', 196, 62, 3)]
         for name, ax, az, k in spots:
             for sx in (1, -1):
                 for sz in (1, -1): self.plant(name, ax, az, sx, sz, k)
+
+    def tufts(self):
+        """long grass and fern at the foot of every one-block step in the grass, so the raw dirt face is half hidden"""
+        for (x, z), (h, s, u, top) in self.col.items():
+            if s != 'grass_block' or (x, h + 1, z) in self.extra: continue
+            if any(self.col.get((x + dx, z + dz), (h,))[0] == h + 1 for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                r = hash01(SEED, x, z, 61)
+                if r < 0.7: self.extra[(x, h + 1, z)] = 'fern' if r < 0.15 else 'grass'
+
+    def dress(self):
+        """boulders in the meadows and on the bank foot, fallen logs in the woods; the same in all four quarters"""
+        for gx in range(6, 262, 19):
+            for gz in range(50, 180, 19):
+                ax, az = gx + int(hash01(SEED, gx, gz, 41) * 13), gz + int(hash01(SEED, gx, gz, 42) * 13)
+                if hash01(SEED, gx, gz, 43) > 0.6: continue
+                if any(reserved(ax + i, az + j) or road(-(ax + i), -(az + j))[0] < 5 or wall_at(ax + i, az + j) for i in (-3, 0, 3) for j in (-3, 0, 3)): continue
+                if ell(ax, az, 84, 68) < 1 or bank(ax, az) > 2: continue
+                in_field = (124 <= ax < 170 or 38 <= ax < 84) and not wood(ax, az)
+                if in_field: continue
+                k = hash01(SEED, gx, gz, 44)
+                for sx in (1, -1):
+                    for sz in (1, -1):
+                        if wood(ax, az) and k < 0.6:                 # a fallen trunk
+                            n, along_x = 4 + int(k * 5), k < 0.3
+                            for i in range(n):
+                                x, z = (sx * (ax + i), sz * az) if along_x else (sx * ax, sz * (az + i))
+                                if (x, z) in self.col: self.extra[(x, self.col[(x, z)][0] + 1, z)] = 'oak_log[axis=%s]' % ('x' if along_x else 'z')
+                        else:                                        # a boulder
+                            r = 1.2 + k * 1.3
+                            for i in range(-2, 3):
+                                for j in range(-2, 3):
+                                    dd = math.hypot(i, j * 1.2)
+                                    if dd > r: continue
+                                    x, z = sx * (ax + i), sz * (az + j)
+                                    if (x, z) not in self.col: continue
+                                    hh = hash01(SEED, ax + i, az + j, 45)
+                                    for y in range(2 if dd < r - 1.3 else 1):
+                                        self.extra[(x, self.col[(x, z)][0] + 1 + y, z)] = 'andesite' if hh < 0.4 else ('mossy_cobblestone' if hh < 0.7 else 'stone')
 
     def mill_yard(self):
         """the windmill's yard wall, the mirror of the barn's cover: 34 x 22, 3 high, gates north and south on the road"""
@@ -355,7 +503,7 @@ class Map:
                 h, s, u, _ = self.col[(x, z)]
                 low = lo[1] if solid else min([self.col.get((x + dx, z + dz), (h,))[0] for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1))] + [h]) - 1
                 for y in range(max(lo[1], low), min(h, hi[1]) + 1):
-                    out[(x, y, z)] = s if y == h else (u if y > h - 4 else 'stone')
+                    out[(x, y, z)] = s if y == h else (strata(x, y, z) if u == 'strata' else (u if y > h - 4 else 'stone'))
         for (x, y, z), b in self.extra.items():
             if lo[0] <= x <= hi[0] and lo[1] <= y <= hi[1] and lo[2] <= z <= hi[2]: out[(x, y, z)] = b
         return out

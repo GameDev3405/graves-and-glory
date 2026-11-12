@@ -94,4 +94,34 @@ for x in (9, 24):                                   # lamps on chains from the t
         b.set(x, EAVE - 1, z, 'chain[axis=y]')
         b.set(x, EAVE - 2, z, 'lantern[hanging=true]')
 
+# ---- the long walls and the yard side --------------------------------------------------------------------------
+for z, dz, f in ((Z0, -1, 'north'), (Z1, 1, 'south')):
+    for x in range(X0 + 1, X1):
+        if DOOR[0] - 1 <= x <= DOOR[-1] + 1: continue
+        if 'oak_log' not in (b.get(x, B0 + 3, z) or ''): b.set(x, B0 + 3, z, 'stripped_spruce_log[axis=x]')      # a mid rail between the posts
+    for x in (2, 7, 26, 31):                                                                             # vent slits with shutters
+        b.set(x, B0 + 4, z, 'air'); b.set(x + 1, B0 + 4, z, 'air')
+        b.set(x - 1, B0 + 4, z + dz, 'spruce_trapdoor[facing=%s,half=top,open=true]' % f); b.set(x + 2, B0 + 4, z + dz, 'spruce_trapdoor[facing=%s,half=top,open=true]' % f)
+    for x in (0, 5, 10, 23, 28, 33): b.set(x, EAVE, z + dz, 'spruce_stairs[facing=%s,half=top,shape=straight]' % ('south' if dz < 0 else 'north'))
+# an open lean-to on the south wall, east of the porch: firewood, barrels, a hay stack
+for x in range(22, 33):
+    b.set(x, B0 + 3, Z1 + 1, 'spruce_slab[type=top]'); b.set(x, B0 + 3, Z1 + 2, 'spruce_slab[type=bottom]'); b.set(x, B0 + 2, Z1 + 3, 'spruce_slab[type=top]')
+    for z in (Z1 + 1, Z1 + 2, Z1 + 3): b.set(x, G, z, 'coarse_dirt')
+for x in (22, 27, 32): b.box(x, B0, Z1 + 3, x, B0 + 1, Z1 + 3, 'oak_log[axis=y]')
+for x in (23, 24, 25):
+    b.set(x, B0, Z1 + 1, 'oak_log[axis=x]'); b.set(x, B0 + 1, Z1 + 1, 'oak_log[axis=x]')
+b.set(23, B0, Z1 + 2, 'oak_log[axis=x]'); b.set(24, B0, Z1 + 2, 'oak_log[axis=x]')
+b.set(28, B0, Z1 + 1, 'barrel[facing=up]'); b.set(29, B0, Z1 + 1, 'barrel[facing=up]'); b.set(29, B0 + 1, Z1 + 1, 'barrel[facing=up]')
+b.set(30, B0, Z1 + 1, 'hay_block[axis=x]'); b.set(31, B0, Z1 + 1, 'hay_block[axis=x]'); b.set(31, B0 + 1, Z1 + 1, 'hay_block[axis=z]'); b.set(31, B0, Z1 + 2, 'hay_block[axis=z]')
+# the north side: a wood pile and a trough against the wall
+for x in (2, 3, 4, 5): b.set(x, B0, Z0 - 1, 'oak_log[axis=x]')
+for x in (3, 4): b.set(x, B0 + 1, Z0 - 1, 'oak_log[axis=x]')
+b.set(8, B0, Z0 - 1, 'water_cauldron[level=3]'); b.set(9, B0, Z0 - 1, 'barrel[facing=up]')
+# a loft floor over the west bay with a ladder, stores on it
+for x in range(1, 5):
+    for z in range(1, 15): b.set(x, B0 + 4, z, 'spruce_planks')
+for y in range(B0, B0 + 5): b.set(5, y, 4, "ladder[facing=east]")
+for x, z in ((1, 2), (2, 2), (1, 12), (2, 13), (1, 13)): b.set(x, B0 + 5, z, 'hay_block[axis=x]')
+b.set(3, B0 + 5, 13, 'barrel[facing=up]'); b.set(1, B0 + 5, 6, 'white_wool'); b.set(1, B0 + 5, 7, 'white_wool')
+
 print(b.emit(sys.argv[1], 'kf-k3-barn', 'K3 Tithe Barn, workshop build', pad=((-8, 40, -8), (48, 120, 32))), 'ops', b.bounds())

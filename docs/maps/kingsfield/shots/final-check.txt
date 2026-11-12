@@ -1,0 +1,221 @@
+# Kingsfield: sections placed one at a time, a picture of each before the next.
+note Kingsfield sections
+mc time set 3000
+mc execute as @a at @s run forceload add -32 0 31 63
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_e4 -32 189 0
+wait 10
+mc execute as @a at @s run forceload add -32 -64 31 -1
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_e3 -32 189 -64
+wait 10
+mc execute as @a at @s run forceload add 32 -64 95 -1
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_f3 32 189 -64
+wait 10
+mc execute as @a at @s run forceload add 32 0 95 63
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_f4 32 189 0
+wait 10
+mc execute as @a at @s run forceload add -96 -64 -33 -1
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_d3 -96 189 -64
+wait 10
+mc execute as @a at @s run forceload add -96 0 -33 63
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_d4 -96 189 0
+wait 10
+mc execute as @a at @s run forceload add -32 64 31 127
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_e5 -32 189 64
+wait 10
+mc execute as @a at @s run forceload add -32 -128 31 -65
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_e2 -32 189 -128
+wait 10
+mc execute as @a at @s run forceload add -96 64 -33 127
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_d5 -96 189 64
+wait 10
+mc execute as @a at @s run forceload add 32 64 95 127
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_f5 32 189 64
+wait 10
+mc execute as @a at @s run forceload add -96 -128 -33 -65
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_d2 -96 189 -128
+wait 10
+mc execute as @a at @s run forceload add 32 -128 95 -65
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_f2 32 189 -128
+wait 10
+mc execute as @a at @s run forceload add 96 0 159 63
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_g4 96 189 0
+wait 10
+mc execute as @a at @s run forceload add -160 0 -97 63
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_c4 -160 189 0
+wait 10
+mc execute as @a at @s run forceload add 96 -64 159 -1
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_g3 96 189 -64
+wait 10
+mc execute as @a at @s run forceload add -160 -64 -97 -1
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_c3 -160 189 -64
+wait 10
+mc execute as @a at @s run forceload add 96 64 159 127
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_g5 96 189 64
+wait 10
+mc execute as @a at @s run forceload add -160 64 -97 127
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_c5 -160 189 64
+wait 10
+mc execute as @a at @s run forceload add -32 128 31 191
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_e6 -32 189 128
+wait 10
+mc execute as @a at @s run forceload add 96 -128 159 -65
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_g2 96 189 -128
+wait 10
+mc execute as @a at @s run forceload add -160 -128 -97 -65
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_c2 -160 189 -128
+wait 10
+mc execute as @a at @s run forceload add -32 -192 31 -129
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_e1 -32 189 -192
+wait 10
+mc execute as @a at @s run forceload add -96 128 -33 191
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_d6 -96 189 128
+wait 10
+mc execute as @a at @s run forceload add 32 128 95 191
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_f6 32 189 128
+wait 10
+mc execute as @a at @s run forceload add -96 -192 -33 -129
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_d1 -96 189 -192
+wait 10
+mc execute as @a at @s run forceload add 32 -192 95 -129
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_f1 32 189 -192
+wait 10
+mc execute as @a at @s run forceload add 160 -64 223 -1
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_h3 160 189 -64
+wait 10
+mc execute as @a at @s run forceload add 160 0 223 63
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_h4 160 189 0
+wait 10
+mc execute as @a at @s run forceload add -224 -64 -161 -1
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_b3 -224 189 -64
+wait 10
+mc execute as @a at @s run forceload add -224 0 -161 63
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_b4 -224 189 0
+wait 10
+mc execute as @a at @s run forceload add 96 128 159 191
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_g6 96 189 128
+wait 10
+mc execute as @a at @s run forceload add -160 128 -97 191
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_c6 -160 189 128
+wait 10
+mc execute as @a at @s run forceload add 96 -192 159 -129
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_g1 96 189 -192
+wait 10
+mc execute as @a at @s run forceload add -160 -192 -97 -129
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_c1 -160 189 -192
+wait 10
+mc execute as @a at @s run forceload add 160 -128 223 -65
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_h2 160 189 -128
+wait 10
+mc execute as @a at @s run forceload add 160 64 223 127
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_h5 160 189 64
+wait 10
+mc execute as @a at @s run forceload add -224 -128 -161 -65
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_b2 -224 189 -128
+wait 10
+mc execute as @a at @s run forceload add -224 64 -161 127
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_b5 -224 189 64
+wait 10
+mc execute as @a at @s run forceload add 160 128 223 191
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_h6 160 189 128
+wait 10
+mc execute as @a at @s run forceload add -224 128 -161 191
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_b6 -224 189 128
+wait 10
+mc execute as @a at @s run forceload add 160 -192 223 -129
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_h1 160 189 -192
+wait 10
+mc execute as @a at @s run forceload add -224 -192 -161 -129
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_b1 -224 189 -192
+wait 10
+mc execute as @a at @s run forceload add 224 0 287 63
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_i4 224 189 0
+wait 10
+mc execute as @a at @s run forceload add -288 0 -225 63
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_a4 -288 189 0
+wait 10
+mc execute as @a at @s run forceload add 224 -64 287 -1
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_i3 224 189 -64
+wait 10
+mc execute as @a at @s run forceload add -288 -64 -225 -1
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_a3 -288 189 -64
+wait 10
+mc execute as @a at @s run forceload add 224 -128 287 -65
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_i2 224 189 -128
+wait 10
+mc execute as @a at @s run forceload add 224 64 287 127
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_i5 224 189 64
+wait 10
+mc execute as @a at @s run forceload add -288 -128 -225 -65
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_a2 -288 189 -128
+wait 10
+mc execute as @a at @s run forceload add -288 64 -225 127
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_a5 -288 189 64
+wait 10
+mc execute as @a at @s run forceload add 224 128 287 191
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_i6 224 189 128
+wait 10
+mc execute as @a at @s run forceload add -288 128 -225 191
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_a6 -288 189 128
+wait 10
+mc execute as @a at @s run forceload add 224 -192 287 -129
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_i1 224 189 -192
+wait 10
+mc execute as @a at @s run forceload add -288 -192 -225 -129
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_a1 -288 189 -192
+wait 10
+wait 100
+shot f4-air-nw -284.5 276 -184.5 -139.5 199 -59.5
+shot f4-air-ne 285.5 276 -184.5 140.5 199 -59.5
+shot f4-air-se 285.5 276 185.5 140.5 199 60.5
+shot f4-air-sw -284.5 276 185.5 -139.5 199 60.5
+shot f4-air-dawn-n -214.5 261 -89.5 -214.5 199 0.5
+shot f4-air-dawn-w -294.5 246 0.5 -214.5 199 0.5
+shot f4-air-dusk-n 215.5 261 -89.5 215.5 199 0.5
+shot f4-air-pit-n 0.5 266 -94.5 0.5 191 0.5
+shot f4-air-pit-e 85.5 246 0.5 0.5 191 0.5
+shot f4-air-axis-n 0.5 261 -187.5 0.5 199 0.5
+shot f4-air-axis-s 0.5 261 188.5 0.5 199 0.5
+shot f4-air-kings-road -286.5 236 0.5 0.5 199 0.5
+shot f4-air-grange-a -127.5 246 -79.5 -127.5 199 0.5
+shot f4-air-nw-farm -149.5 246 -189.5 -109.5 199 -99.5
+shot f4-tent-close -189.5 200 -11.5 -196.5 201 -18.5
+shot f4-dawn-gate-lantern -187.5 200 -19.5 -192.5 201 -15.5
+shot f4-cottage-a-eave -150.5 200 -83.5 -146.5 204 -78.5
+shot f4-cottage-a-roof-above -141.5 216 -61.5 -141.5 201 -74.5
+shot f4-cottage-b-roof-above -40.5 216 -117.5 -53.5 201 -130.5
+shot f4-haybarn-roof-above -105.5 216 -125.5 -105.5 201 -136.5
+shot f4-grange-hall-roof-above -137.5 216 10.5 -137.5 201 -11.5
+shot f4-barn-eave-nw -21.5 203 -97.5 -16.5 205 -91.5
+shot f4-hold-gate-close -69.5 200 -91.5 -69.5 203 -84.5
+shot f4-hold-wall-top -74.5 206 -111.5 -62.5 207.62 -111.5
+shot f4-pit-scaffold-side -29.5 196 -35.5 -21.5 197 -44.5
+shot f4-pit-bench-works -25.5 194 -25.5 -31.5 195.32 -35.5
+shot f4-pit-cliff-step -35.5 196 -17.5 -43.5 197.12 -19.5
+shot f4-pit-ramp-top-rim -51.5 200 3.5 -39.5 200.62 3.5
+shot f4-crane-boom-chain 6.5 200 -49.5 18.5 211 -51.5
+shot f4-lodge-eave -79.5 200 -11.5 -88.5 203 -18.5
+shot f4-lodge-shelter-close -95.5 200 -9.5 -91.5 201.12 -16.5
+shot f4-point-b-ring 0.5 203 -127.5 0.5 203.42000000000002 -113.5
+shot f4-point-b-ring-b 14.5 203 -107.5 -9.5 203.62 -119.5
+shot f4-point-d-ring 0.5 203 128.5 0.5 203.42000000000002 114.5
+shot f4-point-d-ring-b 14.5 203 106.5 -9.5 203.62 122.5
+shot f4-point-d-mill-view 0.5 203 120.5 6.5 207.62 96.5
+shot f4-point-e-from-grange-gate 100.5 200 0.5 160.5 200.62 0.5
+shot f4-kings-road-mid -49.5 194 6.5 0.5 194.62 0.5
+shot f4-road-junction-nw -111.5 200 -89.5 -79.5 200.62 -107.5
+shot f4-field-fence-nw -99.5 199 -119.5 -95.5 200.12 -139.5
+shot f4-hay-scatter-field -79.5 200 -149.5 -99.5 200.62 -129.5
+shot f4-orchard-aerial -21.5 226 -119.5 -21.5 199 -169.5
+shot f4-wood-gap-aerial -199.5 231 -139.5 -229.5 199 -169.5
+shot f4-edge-east-high 262.5 236 40.5 300.5 197 40.5
+shot f4-edge-south-high 40.5 236 168.5 40.5 197 205.5
+shot f4-edge-nw-corner-high -261.5 236 -164.5 -299.5 197 -204.5
+shot f-orchard -23.5 200 -131.5 -21.5 201.12 -154.5
+shot f-cottage-a-out -141.5 201 -61.5 -141.5 203 -74.5
+shot f-barn-nw-corner -29.5 201 -104.5 -11.5 207 -89.5
+shot f-knoll-b-ring 12.5 203 -127.5 -3.5 202.62 -111.5
+shot f-mill-forecourt-d 0.5 203 125.5 0.5 204.62 100.5
+shot f-point-a-ring -127.5 200 12.5 -127.5 200.62 -11.5
+shot f-grange-e-yard 152.5 200 0.5 118.5 200.62 0.5
+shot f-point-e-ring 128.5 200 12.5 128.5 200.62 -11.5
+shot f-north-edge-out 100.5 206 -175.5 100.5 207.62 -199.5

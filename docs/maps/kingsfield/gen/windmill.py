@@ -69,4 +69,23 @@ for dx, dy in ((1, 0), (0, 1), (-1, 0), (0, -1)):
                 b.set(x + px * k, y + py * k, SZ, 'white_wool')
 b.set(CX, HY, SZ, 'dark_oak_log[axis=z]')
 
+# ---- inside ----------------------------------------------------------------------------------------------------
+# base: sacks and barrels round the wall, two lamps under the floor, a ladder up the post to the buck
+for y in range(B0 + 1, Y0 + 1): b.set(CX, y, CZ + 1, 'ladder[facing=south]')
+b.set(4, B0 + 4, 4, 'lantern[hanging=true]'); b.set(8, B0 + 4, 8, 'lantern[hanging=true]')
+for x, y, z in ((2, 0, 5), (2, 0, 6), (2, 1, 6), (2, 0, 7), (5, 0, 2), (6, 0, 2), (6, 1, 2), (9, 0, 3)): b.set(x, B0 + y, z, 'white_wool')
+for x, y, z in ((5, 0, 10), (6, 0, 10), (7, 0, 10), (6, 1, 10), (3, 0, 9)): b.set(x, B0 + y, z, 'barrel[facing=up]')
+# buck: the stones under a hopper, the upright shaft and brake wheel on the windshaft, flour sacks, a meal chest
+for x in (5, 6):
+    for z in (4, 5): b.set(x, Y0 + 1, z, 'smooth_stone')
+b.set(5, Y0 + 2, 5, 'hopper[facing=down]')
+for y in range(Y0 + 2, HY): b.set(6, y, 4, 'stripped_dark_oak_log[axis=y]')
+b.set(CX, HY, 4, 'stripped_dark_oak_log[axis=z]')
+for x in (5, 7): b.set(x, HY, 4, 'dark_oak_planks')
+b.set(6, HY + 1, 4, 'dark_oak_planks')
+for x, y, z in ((9, 1, 9), (8, 1, 9), (9, 1, 8), (9, 2, 9), (3, 1, 3)): b.set(x, Y0 + y, z, 'white_wool')
+b.set(3, Y0 + 1, 9, 'barrel[facing=up]'); b.set(3, Y0 + 1, 8, 'barrel[facing=up]'); b.set(3, Y0 + 2, 9, 'barrel[facing=up]'); b.set(9, Y0 + 1, 3, 'chest[facing=west]')
+for x in range(x0 + 1, x1): b.set(x, Y0 + 5, 8, 'stripped_spruce_log[axis=x]')
+b.set(4, Y0 + 4, 8, 'lantern[hanging=true]'); b.set(8, Y0 + 4, 8, 'lantern[hanging=true]')
+
 print(b.emit(sys.argv[1], 'kf-k4-windmill', 'K4 Windmill, workshop build', pad=((-12, 40, -12), (28, 130, 28))), 'ops', b.bounds())

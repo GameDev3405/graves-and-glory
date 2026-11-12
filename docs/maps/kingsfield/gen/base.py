@@ -85,7 +85,7 @@ for pz in (dz0 + 1, dz1 - 1):                                # standards at the 
     b.box(dx1, B0 + 2, pz, dx1, B0 + 9, pz, 'oak_fence')
     for y in range(B0 + 6, B0 + 10): b.set(dx1, y, pz + (1 if pz < 40 else -1), CLOTH)
 
-def hall(x0, z0, x1, z1, h, wall, door_z, doors, roof='x'):
+def hall(x0, z0, x1, z1, h, wall, door_z, doors, roof='x', rf=(ROOF, ROOF_SLAB)):
     """timber-framed hall on a stone footing; doors: x positions on the wall line door_z"""
     b.box(x0, G, z0, x1, G, z1, FLOOR)
     for x in range(x0, x1 + 1):
@@ -99,16 +99,28 @@ def hall(x0, z0, x1, z1, h, wall, door_z, doors, roof='x'):
     for x in doors: b.air(x, B0, door_z, x + 1, B0 + 1, door_z)
     for x in range(x0 + 2, x1 - 1, 4):
         for z in (z0, z1):
-            if b.get(x, B0 + 2, z) == wall and x not in doors and x - 1 not in doors: b.set(x, B0 + 2, z, 'air')
-    if roof == 'x': b.gable_x(x0, x1, z0, z1, B0 + h, ROOF, ROOF_SLAB, fill=[(wall, 1)])
-    else: b.gable_z(x0, x1, z0, z1, B0 + h, ROOF, ROOF_SLAB, fill=[(wall, 1)])
+            if b.get(x, B0 + 2, z) == wall and x not in doors and x - 1 not in doors:
+                b.set(x, B0 + 2, z, 'air')
+                dz, f = (-1, 'north') if z == z0 else (1, 'south')
+                for k in (-1, 1):                                # shutters folded back on the wall
+                    if b.get(x + k, B0 + 2, z) == wall: b.set(x + k, B0 + 2, z + dz, 'spruce_trapdoor[facing=%s,half=top,open=true]' % f)
+    for x in doors:                                              # a log lintel over every doorway
+        for k in (0, 1): b.set(x + k, B0 + 2, door_z, 'stripped_oak_log[axis=x]')
+    if roof == 'x': b.gable_x(x0, x1, z0, z1, B0 + h, rf[0], rf[1], fill=[(wall, 1)])
+    else: b.gable_z(x0, x1, z0, z1, B0 + h, rf[0], rf[1], fill=[(wall, 1)])
+    for x in range(x0, x1 + 1, 4):                               # brackets under the eaves at every post
+        b.set(x, B0 + h - 1, z0 - 1, 'spruce_stairs[facing=south,half=top,shape=straight]')
+        b.set(x, B0 + h - 1, z1 + 1, 'spruce_stairs[facing=north,half=top,shape=straight]')
+    for x in range(x0 + 8, x1 - 3, 8):                           # tie beams, a lamp hung from each
+        for z in range(z0 + 1, z1): b.set(x, B0 + h - 1, z, 'stripped_oak_log[axis=z]')
+        b.set(x, B0 + h - 2, (z0 + z1) // 2, 'lantern[hanging=true]')
 
 # barracks: long hall on the north side, doors to the yard
 hall(14, 5, 45, 14, 5, DAUB, 14, (21, 29, 37))
 b.box(13, B0, 9, 13, B0 + 9, 9, FOOT); b.set(13, B0 + 10, 9, 'cobblestone_wall')
 for x in (17, 41): b.box(x, B0, 16, x, B0 + 1, 16, 'oak_fence'); b.set(x, B0 + 2, 16, 'lantern[hanging=false]')   # lamp posts
 # armoury: small stone store beside the barracks
-hall(50, 5, 60, 13, 5, 'stone_bricks', 13, (54,))
+hall(50, 5, 60, 13, 5, 'stone_bricks', 13, (54,), rf=('cobbled_deepslate_stairs', 'cobbled_deepslate_slab'))
 for x, z in ((48, 16), (49, 16), (62, 15)): b.set(x, B0, z, 'barrel[facing=up]')
 # weapon racks and practice posts north of the lane
 for x in (24, 30, 36):                                       # archery butts: straw bales with a target on top
@@ -117,7 +129,7 @@ for x in (24, 30, 36):                                       # archery butts: st
 b.set(40, B0, 21, 'fletching_table'); b.set(41, B0, 21, 'barrel[facing=up]')
 
 # stores: hall on the south side; stable: open-fronted, stalls and hay
-hall(14, 65, 31, 74, 5, 'spruce_planks', 65, (20, 26))
+hall(14, 65, 31, 74, 5, 'spruce_planks', 65, (20, 26), rf=('spruce_stairs', 'spruce_slab'))
 for x, z, h in ((33, 66, 2), (34, 66, 1), (33, 67, 1), (12, 62, 1), (11, 62, 2)):
     b.box(x, B0, z, x, B0 + h - 1, z, 'barrel[facing=up]' if h == 1 else 'hay_block[axis=y]')
 sx0, sx1, sz0, sz1 = 38, 61, 67, 75
@@ -158,10 +170,64 @@ def tent(tx, tz, door):
 tent(46, 55, -1); tent(56, 56, -1); tent(51, 17, 1)
 # campfire and benches south of the lane
 b.set(40, B0, 58, 'campfire[lit=true]')
-for x, z in ((38, 58), (42, 58), (40, 56), (40, 60)): b.set(x, B0, z, 'spruce_slab[type=bottom]')
+for x, z, ax in ((38, 58, 'z'), (42, 58, 'z'), (40, 56, 'x'), (40, 60, 'x')): b.set(x, B0, z, 'stripped_oak_log[axis=%s]' % ax)   # log seats
 # well in the north-west
 for ddx in (-1, 0, 1):
     for ddz in (-1, 0, 1): b.set(8 + ddx, B0, 20 + ddz, 'water' if ddx == ddz == 0 else b.pick(FOOT))
+for x in (7, 9): b.box(x, B0 + 1, 20, x, B0 + 2, 20, 'oak_log[axis=y]')          # well head: two posts, a beam, a pent roof
+for x in (7, 8, 9):
+    b.set(x, B0 + 3, 20, 'stripped_oak_log[axis=x]')
+    b.set(x, B0 + 3, 19, 'spruce_stairs[facing=south,half=bottom,shape=straight]'); b.set(x, B0 + 3, 21, 'spruce_stairs[facing=north,half=bottom,shape=straight]')
+    b.set(x, B0 + 4, 20, 'spruce_slab[type=bottom]')
+b.set(8, B0 + 2, 20, 'chain[axis=y]'); b.set(10, B0, 21, 'barrel[facing=up]'); b.set(10, B0, 19, 'cauldron')
+
+# ---- inside the halls ------------------------------------------------------------------------------------
+TEAM = CLOTH.replace('_wool', '')
+def table(x, z):
+    b.set(x, B0, z, 'spruce_stairs[facing=west,half=top,shape=straight]'); b.set(x + 1, B0, z, 'spruce_stairs[facing=east,half=top,shape=straight]')
+# barracks (inside x 15..44, z 6..13): a row of cots along the back wall, mess tables by the doors, a hearth
+for i, x in enumerate(range(16, 44, 3)):
+    b.set(x, B0, 7, '%s_bed[facing=north,part=foot]' % (TEAM if i % 2 == 0 else 'white')); b.set(x, B0, 6, '%s_bed[facing=north,part=head]' % (TEAM if i % 2 == 0 else 'white'))
+    if i % 2 == 0: b.set(x + 1, B0, 6, 'chest[facing=south]')
+    else: b.set(x + 1, B0, 6, 'barrel[facing=up]')
+for x in (25, 33):
+    table(x, 11); b.set(x, B0 + 1, 11, 'lantern[hanging=false]')
+    for k in (0, 1):
+        b.set(x + k, B0, 12, 'spruce_stairs[facing=south,half=bottom,shape=straight]'); b.set(x + k, B0, 10, 'spruce_stairs[facing=north,half=bottom,shape=straight]')
+for x in (21, 22, 29, 30, 37, 38): b.set(x, B0, 13, '%s_carpet' % TEAM)
+for z in (8, 10): b.box(14, B0, z, 14, B0 + 1, z, 'bricks')                       # hearth in the west gable, under the stack
+b.set(14, B0 + 1, 9, 'bricks'); b.set(14, B0, 9, 'campfire[lit=true]'); b.set(15, G, 9, 'bricks')
+b.set(15, B0, 12, 'oak_log[axis=z]'); b.set(15, B0, 13, 'oak_log[axis=z]'); b.set(15, B0 + 1, 13, 'oak_log[axis=z]')
+b.set(44, B0, 12, 'barrel[facing=up]'); b.set(44, B0, 13, 'barrel[facing=up]'); b.set(44, B0 + 1, 13, 'barrel[facing=up]')
+b.set(30, B0 + 3, 6, '%s_wall_banner[facing=south]' % TEAM)
+# armoury (inside x 51..59, z 6..12): forge, anvil, grindstone, quench trough, arms chests
+b.set(52, B0, 6, 'blast_furnace[facing=south]'); b.set(53, B0, 6, 'water_cauldron[level=3]'); b.set(52, B0, 8, 'anvil[facing=east]')
+b.set(51, B0, 10, 'grindstone[face=floor,facing=east]'); b.set(51, B0, 6, 'smithing_table')
+for x in (57, 58, 59): b.set(x, B0, 6, 'chest[facing=south]' if x != 58 else 'barrel[facing=up]')
+b.set(59, B0, 8, 'barrel[facing=up]'); b.set(59, B0, 9, 'barrel[facing=up]'); b.set(59, B0 + 1, 9, 'barrel[facing=up]')
+b.set(59, B0, 11, 'iron_block'); b.set(59, B0, 12, 'coal_block'); b.set(58, B0, 12, 'coal_block'); b.set(59, B0 + 1, 12, 'iron_block')
+b.set(57, B0 + 3, 6, '%s_wall_banner[facing=south]' % TEAM)
+for z in range(6, 13): b.set(55, B0 + 4, z, 'stripped_oak_log[axis=z]')
+b.set(55, B0 + 3, 9, 'lantern[hanging=true]')
+# stores (inside x 15..30, z 66..73): stacked barrels, sacks, straw and chests along the back wall, an aisle by the doors
+for x in range(15, 31):
+    k = (x * 7) % 5
+    col = (['barrel[facing=up]', 'barrel[facing=up]'] if k == 0 else ['hay_block[axis=x]', 'hay_block[axis=x]', 'hay_block[axis=z]'] if k == 1
+           else ['white_wool', 'white_wool'] if k == 2 else ['chest[facing=north]'] if k == 3 else ['barrel[facing=up]', 'barrel[facing=north]', 'barrel[facing=up]'])
+    for i, blk in enumerate(col): b.set(x, B0 + i, 73, blk)
+    if k in (1, 4): b.set(x, B0, 72, col[0])
+    if k == 2: b.set(x, B0, 72, 'white_wool')
+for z in (67, 68, 70, 71):
+    b.set(15, B0, z, 'barrel[facing=up]'); b.set(30, B0, z, 'hay_block[axis=z]')
+b.set(15, B0 + 1, 67, 'barrel[facing=up]'); b.set(30, B0 + 1, 71, 'hay_block[axis=z]'); b.set(23, B0, 69, 'composter'); b.set(24, B0, 69, 'barrel[facing=up]')
+# cook place by the fire, banner poles along the lane
+table(35, 60); b.set(35, B0 + 1, 60, 'lantern[hanging=false]'); b.set(37, B0, 60, 'smoker[facing=north]'); b.set(34, B0, 60, 'cauldron')
+b.set(34, B0, 61, 'barrel[facing=up]'); b.set(35, B0, 61, 'barrel[facing=up]')
+for x in (24, 36):
+    for z, k in ((26, -1), (53, 1)):
+        b.box(x, B0, z, x, B0 + 6, z, 'stripped_spruce_log[axis=y]')
+        for y in range(B0 + 4, B0 + 7): b.set(x, y, z + k, CLOTH)
+        b.set(x, B0 + 5, z + 2 * k, CLOTH); b.set(x, B0 + 6, z + 2 * k, CLOTH)
 
 # check: the muster lane is empty from the dais steps to the front
 bad = [k for k in b.c if k[1] > G and b.c[k] != 'air' and k[2] in LANE and 20 <= k[0] <= 71 and k[1] <= WT]

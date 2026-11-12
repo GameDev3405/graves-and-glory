@@ -149,6 +149,76 @@ for x in (19, 20, 21): b.box(x, B0, 5, x, B0 + (1 if x < 21 else 0), 5, 'oak_log
 b.set(14, B0, 46, 'barrel[facing=up]')
 b.set(14, B0, 47, 'hay_block[axis=y]')
 
+# ---- furnishing and dressing ---------------------------------------------------------------------------------
+def table(x, z):
+    b.set(x, B0, z, 'spruce_stairs[facing=west,half=top,shape=straight]'); b.set(x + 1, B0, z, 'spruce_stairs[facing=east,half=top,shape=straight]')
+# hall (inside x 7..16, z 6..11): a long board with benches, the hearth under the stack, a bed, chests
+for x in (10, 12):
+    table(x, 8)
+    for k in (0, 1):
+        b.set(x + k, B0, 7, 'spruce_stairs[facing=north,half=bottom,shape=straight]'); b.set(x + k, B0, 9, 'spruce_stairs[facing=south,half=bottom,shape=straight]')
+b.set(11, B0 + 1, 8, 'lantern[hanging=false]')
+for z in (7, 9): b.box(hx0, B0, z, hx0, B0 + 1, z, 'bricks')
+b.set(hx0, B0 + 1, 8, 'bricks'); b.set(hx0, B0, 8, 'campfire[lit=true]'); b.set(hx0 + 1, G, 8, 'bricks')
+b.set(7, B0, 10, 'red_bed[facing=south,part=foot]'); b.set(7, B0, 11, 'red_bed[facing=south,part=head]')
+b.set(16, B0, 6, 'chest[facing=west]'); b.set(16, B0, 7, 'barrel[facing=up]'); b.set(16, B0, 10, 'barrel[facing=up]'); b.set(16, B0, 11, 'barrel[facing=up]')
+b.set(16, B0 + 1, 11, 'barrel[facing=up]'); b.set(7, B0, 6, 'oak_log[axis=x]'); b.set(8, B0, 6, 'oak_log[axis=x]')
+for x in (11, 12):
+    for z in (10, 11): b.set(x, B0, z, 'red_carpet')
+for z in range(hz0 + 1, hz1): b.set(14, B0 + 4, z, 'stripped_oak_log[axis=z]')
+b.set(14, B0 + 3, 9, 'lantern[hanging=true]'); b.set(12, B0 + 3, hz0 + 1, 'white_wall_banner[facing=south]')
+for x in (8, 15):                                           # shutters by the yard windows, a lintel over the door
+    for k in (-1, 1): b.set(x + k, B0 + 2, hz1 + 1, 'spruce_trapdoor[facing=south,half=top,open=true]')
+for x in (11, 12): b.set(x, B0 + 2, hz1, 'stripped_oak_log[axis=x]')
+for x in range(hx0, hx1 + 1, 4):
+    b.set(x, B0 + 4, hz1 + 1, 'spruce_stairs[facing=north,half=top,shape=straight]')
+# granary (inside x 7..11, z 45..49): barrels, sacks and straw below, a loft reached by a ladder, a hoist over the door
+for z in range(45, 50):
+    b.set(7, B0, z, 'barrel[facing=up]')
+    if z % 2: b.set(7, B0 + 1, z, 'barrel[facing=up]')
+for z in (47, 48, 49): b.set(11, B0, z, 'hay_block[axis=z]')
+b.set(11, B0 + 1, 49, 'hay_block[axis=z]'); b.set(11, B0 + 1, 48, 'hay_block[axis=x]')
+for x in (8, 9, 10): b.set(x, B0, 49, 'white_wool')
+b.set(9, B0 + 1, 49, 'white_wool')
+for x in range(7, 12):
+    for z in range(45, 50): b.set(x, B0 + 4, z, 'spruce_planks')
+for y in range(B0, B0 + 5): b.set(11, y, 45, 'ladder[facing=west]')
+b.set(8, B0 + 5, 48, 'hay_block[axis=x]'); b.set(8, B0 + 5, 49, 'hay_block[axis=x]'); b.set(7, B0 + 5, 49, 'white_wool'); b.set(10, B0 + 5, 49, 'barrel[facing=up]')
+b.set(9, B0 + 2, gz0, 'stripped_spruce_log[axis=x]')
+b.set(9, B0 + 6, gz0 - 1, 'stripped_spruce_log[axis=z]'); b.set(9, B0 + 5, gz0 - 1, 'chain[axis=y]'); b.set(9, B0 + 4, gz0 - 1, 'chain[axis=y]')
+# smithy: a lean-to against the north wall, east of the side door
+for x in range(31, 39):
+    for z in range(3, 8):
+        b.set(x, B0 + 3, z, 'dark_oak_slab[type=bottom]' if z == 7 else 'dark_oak_slab[type=top]'); b.set(x, G, z, 'gravel')
+for x in (31, 38): b.box(x, B0, 7, x, B0 + 2, 7, 'oak_log[axis=y]')
+b.set(32, B0, 3, 'water_cauldron[level=3]'); b.set(34, B0, 3, 'blast_furnace[facing=south]'); b.set(35, B0, 3, 'coal_block')
+b.set(37, B0, 3, 'smithing_table'); b.set(34, B0, 5, 'anvil[facing=east]'); b.set(37, B0, 5, 'grindstone[face=floor,facing=south]')
+b.set(36, B0, 3, 'barrel[facing=up]'); b.set(34, B0 + 2, 6, 'lantern[hanging=true]')
+# a round hay rick by the cart shed, a trough in the pen
+for x in range(33, 38):
+    for z in range(45, 50):
+        d = math.hypot(x - 35, z - 47)
+        for y in range(B0, B0 + (3 if d < 1.2 else 2 if d < 2.3 else 0)): b.set(x, y, z, 'hay_block[axis=y]')
+b.set(35, B0 + 3, 47, "hay_block[axis=y]")
+b.set(43, B0, 14, 'water_cauldron[level=3]')
+# buttresses on the outer face of the curtain
+for k in (10, 18, 37, 45):
+    for x, f in ((-1, 'east'), (56, 'west')):
+        b.box(x, B0, k, x, B0 + 2, k, FOOT); b.set(x, B0 + 3, k, 'stone_brick_stairs[facing=%s,half=bottom,shape=straight]' % f)
+    for z, f in ((-1, 'south'), (56, 'north')):
+        b.box(k, B0, z, k, B0 + 2, z, FOOT); b.set(k, B0 + 3, z, 'stone_brick_stairs[facing=%s,half=bottom,shape=straight]' % f)
+# the point: a stone ring let into the yard on the capture line, a compass in the middle, four white standards outside it
+for x in range(8, 48):
+    for z in range(8, 48):
+        d = math.hypot(x - 27.5, z - 27.5)
+        if 15.0 <= d < 17.0: b.set(x, G, z, 'smooth_stone' if d < 16 else ('polished_andesite' if (x + z) % 5 else 'chiseled_stone_bricks'))
+        elif d < 3.3 or (d < 6.5 and (abs(x - 27.5) < 1 or abs(z - 27.5) < 1)): b.set(x, G, z, 'chiseled_stone_bricks' if d < 1 else ('smooth_stone' if d >= 3.3 else 'polished_andesite'))
+for x, z, k in ((14, 14, -1), (41, 14, -1), (14, 41, 1), (41, 41, 1)):
+    b.box(x, B0, z, x, B0 + 9, z, 'stripped_spruce_log[axis=y]'); b.set(x, B0 + 10, z, 'lantern[hanging=false]')
+    for y in range(B0 + 6, B0 + 10):
+        for j in (1, 2, 3): b.set(x, y, z + j * k, 'white_wool')
+    for y in (B0 + 7, B0 + 8): b.set(x, y, z + 4 * k, 'white_wool')
+
 # check: nothing above ground within 17.5 of the point
 bad = [k for k in b.c if k[1] > G and b.c[k] != 'air' and math.hypot(k[0] - 27.5, k[2] - 27.5) < 17.0]
 print('cells inside the capture ring:', len(bad), bad[:5])
