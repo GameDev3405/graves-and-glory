@@ -7,13 +7,17 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import gg.gravesandglory.mixin.LivingEntityRendererAccessor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.client.render.DiffuseLighting;
+import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.util.Identifier;
+import org.joml.Matrix4f;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
 
 import java.io.Reader;
@@ -35,6 +39,7 @@ import java.util.*;
  * <li>Phase: each frame on screen draws its own copy of the portrait mob ({@link #twin}), whose clock runs {@link #phase} ticks
  * apart from its neighbours', so a row of frames never breathes in lockstep. TroopMotion and GeckoLib both read that clock.</li>
  * </ul>
+ * Light: a portrait-only key and fill ({@link #KEY}, {@link #FILL}).
  * Canvas pixels: call draw between UiCanvas.begin and end.
  */
 final class Portrait {
@@ -62,6 +67,13 @@ final class Portrait {
     static final Map<String, float[]> TUNE = Map.of(
         // the Tidecaller brute's hunched back stands well above its low-slung head: frame up and out to keep both
         "tc_brute", new float[]{1.2f, -6f, 0f});
+    /** The most a low model (a hound) grows on the roll card over a biped's size. */
+    static final float CARD_GROW = 1.25f;
+    /** The portrait's two lights (the entity shader's Light0 and Light1, GUI space: -y up, -z toward the viewer). The key is the
+     *  inventory's own, from above and in front; the fill comes from the camera, slightly high, in place of the inventory's second
+     *  light from straight above, so the faces turned to the viewer read at full strength and dark troops stand off the dark frame
+     *  back (the audit, 2026-11-11). Portrait draws only: the world's and the inventory's lights are put back after each. */
+    static final Vector3f KEY = new Vector3f(0.2f, -1f, -1f).normalize(), FILL = new Vector3f(0f, -0.25f, -1f).normalize();
     /** The most model px a window spans for a head whose gear stands tall over its face (see fit). */
     static final float HEAD_SPAN = 30f;
 
@@ -112,7 +124,7 @@ final class Portrait {
                 RenderSystem.setShaderFogColor(((s >> 16) & 255) / 255f, ((s >> 8) & 255) / 255f, (s & 255) / 255f, 1f);
             }
             last = new Drawn(cx, feet, f.size(), window, f.span(), scale, silhouette, x, y, phase);
-            InventoryScreen.drawEntity(g, cx, feet, f.size(), body, camera, e);
+            entity(g, cx, feet, f.size(), body, camera, e);
             // the model stands in front of the page (z 50 and up), and text drawn later tests depth: clear the window's depth
             // (the scissor bounds the clear) so a note laid over the portrait is not cut where the model was
             RenderSystem.clear(GL11.GL_DEPTH_BUFFER_BIT, MinecraftClient.IS_SYSTEM_MAC);
@@ -126,24 +138,48 @@ final class Portrait {
     }
 
     /**
-     * A whole-body portrait in GUI px (the roll card and the old troop card): the feet at (x, bottom), sized as ArmyCards.size asks,
-     * shrunk further when the model stands taller than a 32 px biped so its head stays on the card; posed and phased as a framed one.
+     * A whole-body portrait in GUI px (the roll card and the old troop card): the feet at (x, bottom), `size` px a block for a 32 px
+     * biped. A model whose head stands taller is shrunk once, by its head's height, so every troop's head tops out where a biped's
+     * does (the hitbox's height no longer shrinks it a second time); a low beast grows up to {@link #CARD_GROW}, and a wide one
+     * (a hitbox over 1.95 blocks wide) shrinks to fit. Posed, phased and lit as a framed one.
      */
     static void full(DrawContext g, MobEntity source, int x, int bottom, int size) {
         var c = MinecraftClient.getInstance();
         LivingEntity e = twin(source, x, bottom, size);
         int phase = e == source ? 0 : phase(x, bottom, size);
         Bounds b = bounds(e);
-        int sized = Math.max(1, Math.round(size * Math.min(1f, 33f / (b.top() + 1f))));
+        float wide = 1.95f / Math.max(.6f, e.getWidth());
+        int sized = Math.max(1, Math.round(size * Math.min(CARD_GROW, Math.min(wide, 33f / (b.top() + 1f)))));
         Quaternionf camera = new Quaternionf().rotateX(TILT * (float) Math.PI / 180f);
         Quaternionf body = new Quaternionf().rotateZ((float) Math.PI).mul(camera);
         Pose pose = Pose.of(e, c);
         try {
             pose.apply(e, c, clock(e, source, phase));
             TroopModels.sized(e, sized);
-            InventoryScreen.drawEntity(g, x, bottom, sized, body, camera, e);
+            entity(g, x, bottom, sized, body, camera, e);
         } finally {
             pose.restore(e, c);
+        }
+    }
+
+    /** InventoryScreen.drawEntity with the portrait's own lights (KEY and FILL) in place of the inventory's. */
+    private static void entity(DrawContext g, int x, int y, int size, Quaternionf body, Quaternionf camera, LivingEntity e) {
+        MatrixStack m = g.getMatrices();
+        m.push();
+        m.translate(x, y, 50.0);
+        m.multiplyPositionMatrix(new Matrix4f().scaling(size, size, -size));
+        m.multiply(body);
+        RenderSystem.setShaderLights(KEY, FILL);
+        EntityRenderDispatcher d = MinecraftClient.getInstance().getEntityRenderDispatcher();
+        d.setRotation(new Quaternionf(camera).conjugate());
+        d.setRenderShadows(false);
+        try {
+            RenderSystem.runAsFancy(() -> d.render(e, 0.0, 0.0, 0.0, 0.0f, 1.0f, m, g.getVertexConsumers(), LightmapTextureManager.MAX_LIGHT_COORDINATE));
+            g.draw();
+        } finally {
+            d.setRenderShadows(true);
+            m.pop();
+            DiffuseLighting.enableGuiDepthLighting();
         }
     }
 
@@ -197,20 +233,25 @@ final class Portrait {
             JsonObject geo = JsonParser.parseReader(r).getAsJsonObject().getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject();
             Map<String, String> parent = new HashMap<>();
             for (var el : geo.getAsJsonArray("bones")) { var b = el.getAsJsonObject(); parent.put(b.get("name").getAsString(), b.has("parent") ? b.get("parent").getAsString() : null); }
-            float top = -Float.MAX_VALUE, faceTop = -Float.MAX_VALUE, faceBottom = Float.MAX_VALUE, forward = 0; int n = 0;
-            for (var el : geo.getAsJsonArray("bones")) {
-                var b = el.getAsJsonObject(); String name = b.get("name").getAsString();
-                if (!b.has("cubes") || !under(name, parent)) continue;
-                for (var ce : b.getAsJsonArray("cubes")) {
-                    var cube = ce.getAsJsonObject(); var o = cube.getAsJsonArray("origin"); var s = cube.getAsJsonArray("size");
-                    float inflate = cube.has("inflate") ? cube.get("inflate").getAsFloat() : 0f;
-                    float y0 = o.get(1).getAsFloat() - inflate, y1 = o.get(1).getAsFloat() + s.get(1).getAsFloat() + inflate;
-                    top = Math.max(top, y1);
-                    if (face(name, parent)) { faceTop = Math.max(faceTop, y1); faceBottom = Math.min(faceBottom, y0); forward += -(o.get(2).getAsFloat() + s.get(2).getAsFloat() / 2f); n++; }
+            // a rig with no face boxes of its own (the Ironclad breaker's and arbalist's great helms hang empty heads) is framed by
+            // its helm, which is the face it shows
+            for (boolean helm : new boolean[]{false, true}) {
+                float top = -Float.MAX_VALUE, faceTop = -Float.MAX_VALUE, faceBottom = Float.MAX_VALUE, forward = 0; int n = 0;
+                for (var el : geo.getAsJsonArray("bones")) {
+                    var b = el.getAsJsonObject(); String name = b.get("name").getAsString();
+                    if (!b.has("cubes") || !under(name, parent)) continue;
+                    boolean isFace = helm ? name.equals("helm") && "head".equals(parent.get(name)) : face(name, parent);
+                    for (var ce : b.getAsJsonArray("cubes")) {
+                        var cube = ce.getAsJsonObject(); var o = cube.getAsJsonArray("origin"); var s = cube.getAsJsonArray("size");
+                        float inflate = cube.has("inflate") ? cube.get("inflate").getAsFloat() : 0f;
+                        float y0 = o.get(1).getAsFloat() - inflate, y1 = o.get(1).getAsFloat() + s.get(1).getAsFloat() + inflate;
+                        top = Math.max(top, y1);
+                        if (isFace) { faceTop = Math.max(faceTop, y1); faceBottom = Math.min(faceBottom, y0); forward += -(o.get(2).getAsFloat() + s.get(2).getAsFloat() / 2f); n++; }
+                    }
                 }
+                if (n > 0) return new Bounds(top, faceTop, faceBottom, forward / n);
             }
-            if (n == 0) return null;
-            return new Bounds(top, faceTop, faceBottom, forward / n);
+            return null;
         } catch (Exception ex) { return null; }
     }
 

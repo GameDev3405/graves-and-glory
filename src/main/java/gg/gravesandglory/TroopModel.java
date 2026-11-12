@@ -218,6 +218,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
         }
         List<double[]> own=corners.getOrDefault("head",List.of());
         if(own.isEmpty())own=corners.getOrDefault("face_v0",List.of()); // a head bone with no boxes of its own carries its faces as children
+        if(own.isEmpty()&&info.containsKey("helm")&&"head".equals(info.get("helm").parent()))own=corners.getOrDefault("helm",List.of()); // nor faces: a great helm is the face (the Ironclad breaker, the arbalist)
         for(double[] w:own){faceTop=Math.min(faceTop,w[1]);faceBottom=Math.max(faceBottom,w[1]);front+=-w[2];n++;}
         if(n==0||top==Double.MAX_VALUE)return null;
         return new double[]{top,faceTop,faceBottom,front/n};
