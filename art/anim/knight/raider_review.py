@@ -21,6 +21,16 @@ starts from the clip's own bones; the bones it adds are dropped and made again).
             2026-11-11: "weapons spins around in hand" (focus check grip_roll). The pointing of the blade is unchanged: only
             its turn about its own length is re-timed, and it reaches the builder's edge before the impact.
   SETTLE    the attacks end exactly on their first pose (the free forearm drifted 3 to 12 degrees off it).
+  HANDOFF   (fix round 1) the attacks' first and last pose ARE stance_ready's (the phase both halves are nearest): the free arm,
+            torso, head, legs and hips started about 15 degrees off it. Eased out over the first 2 ticks and back in over the
+            last 3; the right arm, the impact marker and the length are untouched.
+  HELM      (fix round 1) the helm stays off the shoulder shells in the medium hits, the block, the knockback and the stun, as
+            the game plays them (hits added onto stance_ready): the shell slides down its arm off the helm, then the head
+            rolls away, then (hits only) the arm gives back part of its flinch, each only where and as much as a sample needs.
+  FLOOR     (fix round 1) the hips rise where the pulled hit, the knockback or the stun put a foot under the ground.
+  STANCE    (fix round 1) stance_ready's free upper arm turns elbow-out until its bracer is out of the chest (HANDOFF lands on it).
+HELM and FLOOR measure with focus_check's own geometry (tools/anim), so they need the repo's tools on the path. Test:
+tools/anim/test_raider_review.py (the shipped file is this layer's output, and a second pass changes nothing).
 """
 import argparse
 import json
@@ -41,6 +51,7 @@ import fullbody  # noqa: E402
 
 TID = "tc_raider"
 ASSET = ROOT / "src/main/resources/assets/gravesandglory/animations/troop" / f"{TID}.animation.json"
+OUT = HERE.parent / TID / "out" / f"{TID}.animation.json"   # kept equal to ASSET (main)
 SUB, TPS = B.SUB, B.TPS
 
 LIFE = ("attack_thrust", "attack_overhead", "attack_low_cut", "hit_medium_front", "hit_medium_back", "hit_medium_right",
@@ -63,6 +74,20 @@ SETTLE_TICKS = 3.0
 # the z angle ticking 24, 0, -14, 0, 18 round tick 10, jitter): over these ticks the hand turns on one axis from the pose it
 # has at the start to the one at the end, at the speeds it carries in and out (a Hermite ease, so no new kick at either end)
 HAND_EASE = {"attack_overhead": (11.25, 13.25), "attack_low_cut": (8.75, 11.5)}
+HANDOFF_IN, HANDOFF_OUT, HANDOFF_TOL = 2.0, 3.0, 0.05
+HANDOFF_SHARE = {}
+STANCE_FREE, STANCE_TURN_MAX = 1.27, 24
+# the clips the helm rule judges, each over the base the game (and focus_check) plays it on
+HELM = (("hit_medium_front", ["hit_medium_front_legs"]), ("hit_medium_back", ["hit_medium_back_legs"]),
+        ("hit_medium_right", ["hit_medium_right_legs"]), ("hit_medium_left", ["hit_medium_left_legs"]),
+        ("hit_block", ["hit_block_legs"]), ("hit_knockback", ["hit_knockback_legs"]), ("stun_upper", ["stun_legs"]))
+HELM_FIT, HELM_SLIDE, HELM_ROLL, HELM_GAIN, HELM_ARM, HELM_ARM_GAIN, HELM_ITER = 1.5, 1.5, 12.0, 5.0, 0.7, 0.4, 16
+HELM_TOL = 0.1
+# legs clip -> the clips judged over it
+FLOOR = (("hit_pulled_legs", [("hit_pulled", ["hit_pulled_legs"])]),
+         ("hit_knockback_legs", [("hit_knockback", ["hit_knockback_legs"])]),
+         ("stun_legs", [("stun_upper", ["stun_legs"])]))
+FLOOR_KEEP, FLOOR_TOL = 0.4, 0.05
 
 
 # ---------------------------------------------------------------------------------------------- clip sampling
@@ -348,15 +373,280 @@ def settle(clip):
     set_bones(clip, chans)
 
 
+# ---------------------------------------------------------------------------------------------- HANDOFF
+def handoff(anims, name):
+    """The attack's first and last pose onto stance_ready (one phase of it for the upper and the legs, the one they are
+    nearest): the difference is added in full at the ends and eased out over HANDOFF_IN ticks from the start and in over
+    HANDOFF_OUT ticks before the end, so the swing itself (the right arm, the impact, the length) is untouched."""
+    pairs = [(anims[name], anims["stance_ready_upper"])]
+    if name + "_legs" in anims:
+        pairs.append((anims[name + "_legs"], anims["stance_ready_legs"]))
+    loop = ticks_of(anims["stance_ready_upper"])
+    hard = set(B.MODEL.bones) - soft_bones()
+    firsts = [(c, s, sample(c, 0.0)) for c, s in pairs]
+
+    def cost(ph):
+        return sum(math.degrees(_axis_angle(_m(a[b][0]) @ _m(sp[b][0]).T)[1])
+                   for c, s, a in firsts for sp in [sample(s, ph)] for b in sp if b in a and b in hard)
+    ph = min((i / SUB for i in range(loop * SUB)), key=cost)
+    for c, s, a in firsts:
+        sp = sample(s, ph)
+        n = ticks_of(c) * SUB
+        ts = [i / SUB for i in range(n + 1)]
+        end = ts[-1]
+        chans = {}
+        for b in sorted(sp):
+            if b not in a or b not in hard:
+                continue
+            dr = HANDOFF_SHARE.get(b, 1.0) * (np.array(_euler_near(_m(sp[b][0]), a[b][0])) - np.array(a[b][0]))
+            dp = np.array(sp[b][1]) - np.array(a[b][1]) if sp[b][1] is not None and a[b][1] is not None else np.zeros(3)
+            if max(np.abs(dr).max(), 10.0 * np.abs(dp).max()) < HANDOFF_TOL:
+                continue          # already on the stance (an earlier pass)
+            samples = []
+            for t in ts:
+                w = 1.0 - B.smooth(t / HANDOFF_IN) if t < HANDOFF_IN else B.smooth((t - (end - HANDOFF_OUT)) / HANDOFF_OUT) if t > end - HANDOFF_OUT else 0.0
+                r, p = sample(c, t)[b]
+                r = tuple(float(v) for v in np.array(r) + w * dr)
+                p = None if p is None else tuple(float(v) for v in np.array(p) + w * dp)
+                samples.append({b: (r, p)})
+            chans.update(bake_bones(samples, [b]))
+        set_bones(c, chans)
+
+
+# ---------------------------------------------------------------------------------------------- HELM and FLOOR (measured)
+# Both rules measure the clip the way focus_check judges it (its own geometry: hits ADDED onto stance_ready, the stun over
+# its legs) and add only what a sample needs, so a second pass finds nothing to add.
+_GEO = {}
+
+
+def _geo():
+    if not _GEO:
+        sys.path.insert(0, str(ROOT / "tools/anim"))
+        import focus_check as F   # noqa: E402
+        rel = "%s/geo/troop/%s.geo.json" % (F.sc.ASSETS, TID)
+        model = F.rg.load_geo(str(ROOT / rel))
+        rig = F.sc.Rig(model, F.sc.rig_rules_for(str(ROOT), rel), TID)
+        P = F.Parts(rig)
+        rest = F.rg.Scene(model, None, [], 0.0).evaluate(0.0)
+        hard = P.hard()
+        _GEO.update(F=F, model=model, P=P, hard=hard, rest=rest,
+                    sole=max(0.0, -float(rest.corners[hard][:, :, 1].min()) * 16.0))
+    return _GEO
+
+
+def _frames(doc, name, base, n):
+    """Frames of clip `name` over its base clips at samples 0..n (SUB per tick), composed as focus_check composes them."""
+    g = _geo()
+    F, rg = g["F"], g["F"].rg
+    under = F.additive_under(name, set(doc["animations"]))
+    clips = [rg.load_clip(doc, b) for b in base] + [rg.load_clip(doc, name)]
+    if under:
+        held = [rg.load_clip(doc, u) for u in under if u not in base]
+        scene = rg.Scene(g["model"], None, held, 0.0, None, clips)
+    else:
+        scene = rg.Scene(g["model"], None, clips, 0.0)
+    top = clips[-1]
+    return [scene.evaluate(min(i / SUB, top.length - (1e-4 if top.loop == "once" else 0.0))) for i in range(n + 1)]
+
+
+def _pair_fit(fr, a, b):
+    """focus_check's fit of bone a's cubes and bone b's (px, the deepest lattice point of either inside the other)."""
+    g = _geo()
+    F, P, bone_of = g["F"], g["P"], g["model"].cube_bone
+    A = [i for i, x in enumerate(bone_of) if x == a]
+    Bc = [i for i, x in enumerate(bone_of) if x == b]
+    best = 0.0
+    for mv, bx in ((A, Bc), (Bc, A)):
+        for i in mv:
+            pts = F.sc.cube_points(fr.corners[i], P.lat[i])
+            for j in bx:
+                R = F.sc._rot(fr.cube_M[j])
+                C = fr.corners[j]
+                c = C.mean(axis=0)
+                half = np.abs((C - c) @ R).max(axis=0)
+                q = (pts - c) @ R
+                best = max(best, float((half - np.abs(q)).min(axis=1).max()) * 16.0)
+    return best
+
+
+def _rest_pair(a, b):
+    key = ("rest", a, b)
+    if key not in _GEO:
+        _GEO[key] = _pair_fit(_geo()["rest"], a, b)
+    return _GEO[key]
+
+
+def _floor_depth(fr):
+    g = _geo()
+    return -float(fr.corners[g["hard"]][:, :, 1].min()) * 16.0 - g["sole"]
+
+
+def _spread(need):
+    """A curve at or above `need` everywhere, without one-sample spikes: widened one sample each way, then [1 2 1]/4."""
+    need = np.asarray(need, dtype=float)
+    wide = np.maximum.reduce([need, np.roll(need, 1), np.roll(need, -1)])
+    wide[0], wide[-1] = max(need[0], need[1]), max(need[-1], need[-2])
+    sm = wide.copy()
+    sm[1:-1] = (wide[:-2] + 2 * wide[1:-1] + wide[2:]) / 4.0
+    return np.maximum(sm, need)
+
+
+def _loop_safe(curve, k0):
+    """For the stun (looped from sample k0, first sample = last): a constant over the loop, plus an entry bump that is
+    0 at the first sample, so the loop and the clip's wrap stay closed."""
+    curve = np.asarray(curve, dtype=float)
+    c = float(curve[k0:].max())
+    out = np.full(len(curve), c)
+    out[1:k0] = np.maximum(curve[1:k0], c)
+    return out
+
+
+def _loop_safe_signed(curve, k0):
+    """The same for a signed curve (the head's roll): over the loop the value of largest size the loop or its first
+    sample asks for, free over the entry."""
+    curve = np.asarray(curve, dtype=float)
+    tail = np.concatenate([curve[:1], curve[k0:]])
+    c = float(tail[int(np.argmax(np.abs(tail)))])
+    out = np.full(len(curve), c)
+    out[1:k0] = curve[1:k0]
+    return out
+
+
+def _ends_zero(curve):
+    curve = np.array(curve, dtype=float)
+    curve[0] = curve[-1] = 0.0
+    return curve
+
+
+def _add_channel(clip, bone, n, rot=None, pos=None):
+    """Re-bake `bone` with per-sample additions: rot (n+1, 3) degrees, pos (n+1, 3) px."""
+    samples = []
+    for i in range(n + 1):
+        r, p = sample(clip, i / SUB).get(bone, ((0.0, 0.0, 0.0), None))
+        if rot is not None:
+            r = tuple(float(v) for v in np.array(r) + rot[i])
+        if pos is not None:
+            p = tuple(float(v) for v in np.array(p if p is not None else (0.0, 0.0, 0.0)) + pos[i])
+        samples.append({bone: (r, p)})
+    set_bones(clip, bake_bones(samples, [bone]))
+
+
+def clear_helm(anims, doc, name, base):
+    """HELM: the helm stays off the shoulder shells. Where a sample sinks it more than HELM_FIT px past their rest fit, the
+    shell first slides down its arm off the helm (at most HELM_SLIDE px, as the kit's shoulder plates do), then the head
+    rolls away from it (at most HELM_ROLL deg), and in a hit, where the arm keys are the hit's own additions, the shell's
+    arm last gives back part of its flinch (at most HELM_ARM of it)."""
+    clip = anims[name]
+    n = ticks_of(clip) * SUB
+    additive = _geo()["F"].additive_under(name, set(anims)) is not None
+    k0 = int(LOOP_FROM[name] * SUB) if name in LOOP_FROM else None
+    shells = {s: s + "_shell_barn" for s in ("left", "right")}
+    keep = ("head", "left_arm", "right_arm") + tuple(shells.values())
+    orig = json.loads(json.dumps({b: clip["bones"].get(b) for b in keep}))
+    roll = np.zeros(n + 1)
+    slide = {s: np.zeros(n + 1) for s in shells}
+    cut = {s: np.zeros(n + 1) for s in shells}
+    for _ in range(HELM_ITER):
+        frames = _frames(doc, name, base, n)
+        over = {s: np.array([_pair_fit(fr, "head", sh) - _rest_pair("head", sh) - HELM_FIT for fr in frames])
+                for s, sh in shells.items()}
+        if max(o.max() for o in over.values()) <= HELM_TOL:
+            break                 # clear (on a second pass: at once)
+        if os.environ.get("RR_DEBUG"):
+            print("  helm", name, "over", round(max(o.max() for o in over.values()), 2),
+                  "slide", round(max(v.max() for v in slide.values()), 2), "roll", round(float(np.abs(roll).max()), 1),
+                  "cut", round(max(c.max() for c in cut.values()), 2))
+        for s, sign in (("left", -1.0), ("right", 1.0)):
+            o = np.maximum(over[s], 0.0)
+            if not o.any():
+                continue
+            ds = np.minimum(o, HELM_SLIDE - slide[s])
+            slide[s] = slide[s] + _spread(ds)
+            o = np.maximum(o - ds, 0.0)
+            dr = np.minimum(HELM_GAIN * o, HELM_ROLL - np.abs(roll))
+            roll += sign * _spread(dr)
+            o = np.maximum(o - dr / HELM_GAIN, 0.0)
+            if additive:
+                cut[s] = np.minimum(cut[s] + _spread(HELM_ARM_GAIN * o), HELM_ARM)
+            slide[s] = np.minimum(slide[s], HELM_SLIDE)
+            slide[s] = _loop_safe(slide[s], k0) if k0 else _ends_zero(slide[s])
+        roll = np.clip(roll, -HELM_ROLL, HELM_ROLL)
+        roll = _loop_safe_signed(roll, k0) if k0 else _ends_zero(roll)
+        for b, ch in orig.items():   # rebuild from the clip's own keys plus the curves so far
+            if ch is None:
+                clip["bones"].pop(b, None)
+            else:
+                clip["bones"][b] = json.loads(json.dumps(ch))
+        z = np.zeros(n + 1)
+        if roll.any():
+            _add_channel(clip, "head", n, rot=np.stack([z, z, roll], axis=1))
+        for s, sh in shells.items():
+            if slide[s].any():
+                _add_channel(clip, sh, n, pos=np.stack([z, -slide[s], z], axis=1))
+            if cut[s].any():
+                c = _ends_zero(cut[s])
+                rots = np.array([sample(clip, i / SUB)[s + "_arm"][0] for i in range(n + 1)])
+                _add_channel(clip, s + "_arm", n, rot=-c[:, None] * rots)
+    return clip
+
+
+def stance_clear(anims, doc):
+    """STANCE: the ready stance's free bracer sat 1.69 px in the chest on every tick (focus_check limb_in_body); the attacks
+    start and end on this pose (HANDOFF), where the scorecard's attack limit is 1.39 px. The free upper arm turns about its
+    own length (elbow out) by the least whole degrees that bring it to STANCE_FREE px; every key keeps its time."""
+    g = _geo()
+    F, P = g["F"], g["P"]
+    clip = anims["stance_ready_upper"]
+    n = ticks_of(clip) * SUB
+    fore = P.idx(["left_forearm", "left_hand"])
+    body = P.idx(["torso", "hips", "head", "right_arm", "right_forearm"])
+
+    def depth():
+        return max(F._depth(fr, P, fore, body)[0] for fr in _frames(doc, "stance_ready_upper", ["stance_ready_legs"], n)[::2])
+    keys = clip["bones"]["left_arm"]["rotation"]
+    orig = {t: list(v) for t, v in keys.items()}
+    turn = 0
+    while depth() > STANCE_FREE and turn > -STANCE_TURN_MAX:
+        turn -= 1
+        for t, v in orig.items():
+            keys[t] = [v[0], round(v[1] + turn, 3), v[2]]
+
+
+def lift_floor(anims, doc, legs, comps):
+    """FLOOR: where a sample puts a hard piece more than FLOOR_KEEP px under the ground (judged on every clip in comps,
+    (upper, base) pairs that play over `legs`), the hips rise by what it needs."""
+    clip = anims[legs]
+    n = ticks_of(clip) * SUB
+    k0 = int(LOOP_FROM["stun_upper"] * SUB) if legs == "stun_legs" else None
+    need = np.zeros(n + 1)
+    for name, base in comps:
+        m = ticks_of(anims[name]) * SUB
+        d = np.array([_floor_depth(fr) - FLOOR_KEEP for fr in _frames(doc, name, base, m)])
+        need[:m + 1] = np.maximum(need[:m + 1], d)
+    need = np.maximum(need, 0.0)
+    if need.max() < FLOOR_TOL:
+        return                    # nothing under the ground (an earlier pass lifted it)
+    lift = _spread(need)
+    lift = _loop_safe(lift, k0) if k0 else _ends_zero(lift)
+    _add_channel(clip, "hips", n, pos=np.stack([np.zeros(n + 1), lift, np.zeros(n + 1)], axis=1))
+
+
 # ---------------------------------------------------------------------------------------------- main
 def apply(doc):
     anims = doc["animations"]
+    stance_clear(anims, doc)
     for name in SETTLE:
         settle(anims[name])
+    for name in SETTLE:
+        handoff(anims, name)
     for name in ROLL_WINDOW:
         roll(anims[name], name)
     for name in HAND_EASE:
         hand_ease(anims[name], name)
+    for name, base in HELM:
+        clear_helm(anims, doc, name, base)
+    for legs, comps in FLOOR:
+        lift_floor(anims, doc, legs, comps)
     legs = []
     for name in LIFE:
         ln = life(anims, name)
@@ -369,6 +659,10 @@ def apply(doc):
     return doc
 
 
+def dumps(doc):
+    return json.dumps(doc, indent=1)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--anim", default=str(ASSET))
@@ -378,9 +672,11 @@ def main():
     doc = json.loads(src.read_text(encoding="utf-8"))
     apply(doc)
     dst = Path(a.out) if a.out else src
-    with open(dst, "w", newline="\n", encoding="utf-8") as fh:
-        fh.write(json.dumps(doc, indent=1))
-    print("wrote", dst)
+    # the shipped file is the troop's finished clip file: out/ keeps the same bytes, so export.py ships it unchanged
+    for d in [dst] + ([OUT] if not a.out and src.resolve() == ASSET.resolve() else []):
+        with open(d, "w", newline="\n", encoding="utf-8") as fh:
+            fh.write(dumps(doc))
+        print("wrote", d)
 
 
 if __name__ == "__main__":

@@ -58,6 +58,8 @@ The tc_raider now builds in the knight's v2 style, rebuilt for one hand and an e
 
 Branch `anim/review-raider` (lane `anim/stance-raider` WIP 268da402 plus the skill lane). The stance redo was spliced in (stance and idle clips only), and a late layer `art/anim/knight/raider_review.py` fixes the attacks, hits and stun. Every other clip is byte-identical to the committed asset.
 
+Correction (fix round 1): commit 50f9b616 changed 42 of the 65 clips, not 32. The ten `_legs` partners of the LIFE clips (and the gait legs) got skirt and tail keys. No death changed.
+
 ## Baseline drift (not touched)
 
 A full rebuild of tc_raider with HEAD code differs from the committed `out/` in 31 clips:
@@ -80,7 +82,7 @@ All of these were looked at in front, side and three-quarter views, near and at 
 
 ## Late layer `raider_review.py` (tc_raider only; edits the exported asset; idempotent: a second pass is byte-identical)
 
-Run it after build, export, stances, reactions and charge.
+Run it after build, export, stances, reactions and charge. The full recipe is in the docstring of `art/anim/knight/build_anims.py`.
 - **LIFE:** `fullbody.soft_motion` on the attacks, the medium hits, hit_block, hit_pulled, hit_knockback, stun_upper and stun_out_upper. This covers kelp_helm, kelp_left_shoulder, scarf, skirt, the hip sash `tail`, and both pauldrons.
   - stun_upper's loop runs to a steady swing and closes exactly.
   - stun_out_upper reads stun_legs but never writes the hip pieces (stun_legs owns them).
@@ -129,3 +131,23 @@ Run it after build, export, stances, reactions and charge.
   - Every frame, hit, hit-pulled and death check passed.
   - Other lanes' reels on this machine the same night failed timing checks the same way.
   - Needs a re-run on a quiet machine.
+
+# Fix round 1 (2026-11-12, after the independent Sonnet review, 6.5/10)
+
+Tools at 861c69c2: hits and the stun shake-off are judged over stance_ready, as the game plays them. All fixes are in the tc_raider layer `raider_review.py`; 19 clips changed against 50f9b616, no death, every length and impact marker unchanged.
+
+- **Build recipe:** in the docstring of `build_anims.py`. The layer is the last step. Run on the asset, it writes the same bytes to the asset and to `art/anim/tc_raider/out/`, so out/ now equals the shipped file. `tools/anim/test_raider_review.py` runs the layer twice on the shipped file and asserts byte-identical output.
+- **HELM** (hit_medium_front/back/right/left, hit_block, hit_knockback, stun_upper): one measured rule.
+  - First the shoulder shell slides down its arm off the helm, at most 1.5 px.
+  - Then the head rolls away from it, at most 12 deg.
+  - Last, in hits only, the arm gives back part of its flinch. It was not needed.
+  - The target is the rest fit plus 1.5 px.
+- **FLOOR** (hit_pulled, hit_knockback, stun): the hips rise by what each sample needs, to 0.4 px. The stun keeps its loop closed: a constant over the loop plus an entry bump.
+- **STANCE:** stance_ready's free upper arm turns elbow-out by 19 deg. Its bracer sat 1.69 px in the chest on every tick, which the attacks inherit once they start on the stance (scorecard pen_limb, attack limit 1.39).
+- **HANDOFF:** the three attacks' first and last poses are now exactly stance_ready's at one phase (the free arm, torso, head, legs and hips). They ease out over 2 ticks and back over the last 3; the right arm and the blow are untouched.
+- **stun_out:** with the new tool (a stun-to-stance handover), stun_out has no FAIL and no knee_aim row. The round-0 floor and knee_aim rows came from stun_legs being added twice, so nothing was changed for them.
+- **Rows:** before, at 861c69c2 on the 50f9b616 asset, 8 clips had a FAIL (10 rows). After: 0. Scorecard: 42 clips, 0 failing.
+- **Open:**
+  - attack_low_cut still shares the overhead's wind-up.
+  - limb_in_body WARN in the stun (bracer 1.99 px), from reactions.py.
+  - attack_overhead armour_clip WARN 1.86 (head into right shell, t14.5).

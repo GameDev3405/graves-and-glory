@@ -21,6 +21,14 @@ Signs (checked numerically against render_geo, see signs()):
   hips pos x+ moves it to its left       hips pos z+ moves it back
   arm  x-  raises the hand forward       arm  z+  swings the right hand out
   head y+  turns toward its right
+
+Build recipe for tc_raider (this builder writes the raw stage to out/; the last step writes the finished file to both the
+asset and out/, so the committed out/ equals the shipped clip file):
+  GG_ANIM_TROOP=tc_raider python art/anim/knight/build_anims.py
+  python art/anim/common/export.py tc_raider
+  python art/anim/common/stances.py tc_raider, then reactions.py, charge.py and heldprop.py tc_raider (same folder)
+  python art/anim/knight/raider_review.py      (the troop's late layer, always last; a second run changes nothing,
+                                                tools/anim/test_raider_review.py checks the shipped file is its output)
 """
 from __future__ import annotations
 
