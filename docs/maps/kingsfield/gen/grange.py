@@ -12,7 +12,7 @@ for x in range(0, 56):
     for z in range(0, 56):
         n = math.sin(x * 0.37 + 1) * math.cos(z * 0.31) + 0.6 * math.sin((x - z) * 0.21)
         yard = 'coarse_dirt' if n > -0.2 else ('rooted_dirt' if n > -0.7 else 'gravel')
-        if b.rng.random() < 0.06: yard = 'dirt_path'
+        if b.rng.random() < 0.06: yard = 'packed_mud'
         b.set(x, G, z, 'dirt_path' if 25 <= z <= 30 else yard)
 
 # curtain wall, 3 thick, with parapet and merlons on the outer edge

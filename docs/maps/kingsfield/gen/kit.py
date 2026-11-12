@@ -106,5 +106,5 @@ MASON = [('stone_bricks', 70), ('cracked_stone_bricks', 14), ('mossy_stone_brick
 FOOT = [('cobblestone', 70), ('mossy_cobblestone', 20), ('andesite', 10)]
 DAUB = 'white_terracotta'
 FLOOR = [('spruce_planks', 85), ('oak_planks', 15)]
-YARD = [('coarse_dirt', 55), ('dirt_path', 25), ('rooted_dirt', 12), ('gravel', 8)]
+YARD = [('coarse_dirt', 55), ('packed_mud', 25), ('rooted_dirt', 12), ('gravel', 8)]
 ROOF, ROOF_SLAB = 'dark_oak_stairs', 'dark_oak_slab'

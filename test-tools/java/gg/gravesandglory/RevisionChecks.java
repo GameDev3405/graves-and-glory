@@ -16,6 +16,7 @@ public final class RevisionChecks implements ClientModInitializer {
     void shot(MinecraftClient c,String name){ScreenshotRecorder.saveScreenshot(c.runDirectory,"revision-"+name+".png",c.getFramebuffer(),t->{});}
     @Override public void onInitializeClient(){
         // The battle self-test (-PselfTest) drives its own battle; these suites would fight it for the same world.
+        {String forge=System.getenv("GRAVES_MAPFORGE_SCRIPT");if(forge!=null&&!forge.isBlank())return;} // the map forge harness drives its own world and camera (maps lead, 2026-11-12)
         if(!MeltyTest.active()||Boolean.getBoolean("gravesandglory.selfTest"))return;
         ClientTickEvents.END_CLIENT_TICK.register(c->{
             if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;

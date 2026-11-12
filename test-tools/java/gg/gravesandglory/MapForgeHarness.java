@@ -25,7 +25,7 @@ import java.util.Deque;
  * 28 minutes. */
 public final class MapForgeHarness implements ClientModInitializer {
     static final long LIMIT=28L*60*1000;
-    int ticks,buildWait,pause;String shotName,shotTp;boolean hosted,building,waitingJob,expectFail,done;volatile Integer result;String current;long began,stepAt;
+    int ticks,buildWait,pause,settle;String shotName,shotTp;boolean hosted,building,waitingJob,expectFail,done;volatile Integer result;String current;long began,stepAt;
     final Deque<String> script=new ArrayDeque<>();File evidence;
 
     void log(String text){
@@ -43,11 +43,11 @@ public final class MapForgeHarness implements ClientModInitializer {
             if(done||c.getOverlay()!=null)return;
             if(c.world==null){if(!hosted&&++ticks>60){hosted=true;began=System.currentTimeMillis();GravesAndGloryClient.connectOrHost(c);}return;}
             var b=GravesAndGlory.battle;var server=c.getServer();if(b==null||server==null||c.player==null)return;
-            c.options.pauseOnLostFocus=false;
+            c.options.pauseOnLostFocus=false;c.options.getCloudRenderMode().setValue(net.minecraft.client.option.CloudRenderMode.OFF);
             if(began==0)began=System.currentTimeMillis();if(evidence==null){evidence=new File(c.runDirectory,"mapforge/harness.txt");evidence.getParentFile().mkdirs();log("script "+path+", "+script.size()+" steps");}
             if(System.currentTimeMillis()-began>LIMIT){end(c,false,"28 minute limit");return;}
             if(building){if(!b.ready){buildWait=0;return;}if(++buildWait<60)return;building=false;log("map "+b.campaign.map+" ready in "+(System.currentTimeMillis()-stepAt)+" ms; adoption: "+MapAdoption.status);return;}
-            if(pause>0){pause--;if(shotName!=null&&shotTp!=null){String tp=shotTp;server.execute(()->{for(var p:server.getPlayerManager().getPlayerList())if(p.interactionManager.getGameMode()!=net.minecraft.world.GameMode.SPECTATOR){p.changeGameMode(net.minecraft.world.GameMode.SPECTATOR);server.getCommandManager().executeWithPrefix(server.getCommandSource().withSilent(),tp);}});}return;}
+            if(c.player.isDead()){c.player.requestRespawn();c.setScreen(null);settle=40;return;}if(shotName!=null&&shotTp!=null){String tp=shotTp;server.execute(()->{for(var p:server.getPlayerManager().getPlayerList())if(p.interactionManager.getGameMode()!=net.minecraft.world.GameMode.SPECTATOR){p.changeGameMode(net.minecraft.world.GameMode.SPECTATOR);server.getCommandManager().executeWithPrefix(server.getCommandSource().withSilent(),tp);}});}if(!building&&!b.ready){settle=40;return;}if(settle>0){settle--;return;}if(pause>0){pause--;return;}
             if(shotName!=null){
                 String name=shotName;shotName=null;
                 net.minecraft.client.util.ScreenshotRecorder.saveScreenshot(new File(c.runDirectory,"mapforge"),name+".png",c.getFramebuffer(),t->{});

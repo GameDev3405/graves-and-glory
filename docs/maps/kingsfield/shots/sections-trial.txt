@@ -1,0 +1,15 @@
+# Kingsfield: sections placed one at a time, a picture of each before the next.
+note Kingsfield sections
+mc time set 3000
+mc execute as @a at @s run forceload add -32 0 31 63
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_e4 -32 189 0
+wait 10
+shot sec-e4 0 249 93 0 199 33
+mc execute as @a at @s run forceload add -32 -64 31 -1
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_e3 -32 189 -64
+wait 10
+shot sec-e3 0 249 29 0 199 -30
+mc execute as @a at @s run forceload add -96 -64 -33 -1
+mc execute as @a at @s run place template ggmaps:kf/sec/kf_d3 -96 189 -64
+wait 10
+shot sec-d3 -64 249 29 -64 199 -30

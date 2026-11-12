@@ -10,7 +10,7 @@ GATE = range(10, 14)
 
 for x in range(24):
     for z in range(24):
-        b.set(x, G, z, b.pick([('coarse_dirt', 5), ('dirt_path', 3), ('gravel', 2)]))
+        b.set(x, G, z, b.pick([('coarse_dirt', 5), ('packed_mud', 3), ('gravel', 2)]))
 for z in range(14, 24):
     for x in GATE: b.set(x, G, z, 'dirt_path')
 
