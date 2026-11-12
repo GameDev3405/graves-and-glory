@@ -458,6 +458,12 @@ if 'morale' in data: errors.append('morale: the sheet went with routing (Task 8b
 if len(data['recruitment'])!=1: errors.append('recruitment: exactly one row')
 if any(data['campaign'][0].get(k,-1)<0 for k in ('completionShards','victoryShards','completionRenown','victoryRenown')): errors.append('campaign: completionShards, victoryShards, completionRenown and victoryRenown must be 0 or more')
 if not isinstance(data['campaign'][0].get('disconnectGraceSeconds'),int) or data['campaign'][0]['disconnectGraceSeconds']<0: errors.append('campaign: disconnectGraceSeconds must be a whole number of seconds, 0 or more (MatchRules.takeoverAt)')
+if len(data['ending'])!=1: errors.append('ending: exactly one row')
+else:
+    en=data['ending'][0]
+    bad=[k for k,v in en.items() if k!='id' and (isinstance(v,bool) or not isinstance(v,int) or v<0)]
+    if bad: errors.append(f'ending: {", ".join(bad)} must be whole numbers, 0 or more')
+    elif en['rewardsMaxSeconds']<en['rewardsSeconds']: errors.append('ending: rewardsMaxSeconds must be at least rewardsSeconds')
 cap=data['recruitment'][0]['capPct']
 for r in rarities.values():
     if not 0<=r['starPct2']<=r['starPct3']<=cap+1e-9: errors.append(f'rarities/{r["id"]}: star bonuses must rise and stay within recruitment.capPct')

@@ -11877,5 +11877,20 @@
       "id": "tip-20",
       "text": "Hold {key:hints} in battle to see every key hint on screen."
     }
+  ],
+  "ending": [
+    {
+      "id": "default",
+      "resultSeconds": 6,
+      "podiumSeconds": 8,
+      "statsSeconds": 10,
+      "rewardsSeconds": 6,
+      "rewardsMaxSeconds": 10,
+      "rewardRowTenths": 4,
+      "killWeight": 10,
+      "commanderWeight": 30,
+      "objectiveWeight": 1,
+      "survivalMax": 100
+    }
   ]
 }
