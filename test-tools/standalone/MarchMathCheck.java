@@ -141,6 +141,8 @@ public final class MarchMathCheck {
         check(dates.equals(Arrays.asList(java.time.LocalDate.of(2026, 11, 20), java.time.LocalDate.of(2026, 12, 20), null)), "season: start dates parse; a bad entry keeps its place as null: " + dates);
         var gap = Arrays.asList(java.time.LocalDate.of(2026, 11, 20), null, java.time.LocalDate.of(2027, 1, 20));
         check(MarchMath.Seasons.current(gap, java.time.LocalDate.of(2027, 1, 20)) == 3 && MarchMath.Seasons.current(gap, java.time.LocalDate.of(2027, 1, 19)) == 1, "season: a bad date never shifts the seasons after it");
+        long clock = 1_763_000_000_000L; // C06-F1: the season file is read on the first ask (never-read sentinel Long.MIN_VALUE), then at most every 30 s
+        check(MarchMath.Seasons.reread(Long.MIN_VALUE, clock) && MarchMath.Seasons.reread(clock - 30_000L, clock) && !MarchMath.Seasons.reread(clock - 29_999L, clock), "season: the file is read first, then every 30 s");
         check(MarchMath.Seasons.parse("").isEmpty() && MarchMath.Seasons.parse("not json").isEmpty(), "season: a missing or broken file is no dates");
         check(MarchMath.Seasons.current(List.of(), java.time.LocalDate.of(2030, 1, 1)) == 1, "season: no dates, season 1");
         check(MarchMath.Seasons.current(dates, java.time.LocalDate.of(2026, 11, 19)) == 1 && MarchMath.Seasons.current(dates, java.time.LocalDate.of(2026, 11, 20)) == 1

@@ -304,7 +304,7 @@ public final class Campaign {
     /** The season start dates (brief G2) from config/gravesandglory/seasons.json beside the server (the game folder in solo); none without the file. */
     private static List<java.time.LocalDate> seasonCache=List.of();private static long seasonReadAt=Long.MIN_VALUE;
     static List<java.time.LocalDate> seasonStarts(){ // read at most every 30 seconds: the snapshot asks every 10 ticks per player
-        long now=System.currentTimeMillis();if(now-seasonReadAt<30_000L)return seasonCache;seasonReadAt=now;seasonCache=readSeasonStarts();return seasonCache;
+        long now=System.currentTimeMillis();if(!MarchMath.Seasons.reread(seasonReadAt,now))return seasonCache;seasonReadAt=now;seasonCache=readSeasonStarts();return seasonCache;
     }
     private static List<java.time.LocalDate> readSeasonStarts(){
         try{Path f=net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("gravesandglory").resolve("seasons.json");return Files.exists(f)?MarchMath.Seasons.parse(Files.readString(f)):List.of();}

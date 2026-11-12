@@ -147,6 +147,9 @@ public final class MarchMath {
         private Seasons() {}
         private static final java.util.regex.Pattern DATE = java.util.regex.Pattern.compile("\"([^\"]*)\"");
 
+        /** Whether Campaign.seasonStarts reads seasons.json again: readAt is the last read (Long.MIN_VALUE before the first), now the clock; at most every 30 seconds. */
+        static boolean reread(long readAt, long now) { return readAt == Long.MIN_VALUE || now - readAt >= 30_000L; } // the sentinel check first: now - Long.MIN_VALUE overflows
+
         /** The start dates in the file's text, in order; an entry that is not a date stays as null, so the seasons after it keep their numbers. Never throws. */
         static List<java.time.LocalDate> parse(String json) {
             List<java.time.LocalDate> out = new ArrayList<>();
