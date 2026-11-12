@@ -114,3 +114,13 @@ Focus check (hits and stun_out played over stance_ready): 12 clips / 22 FAIL row
 - The hit file grew (trailing pieces keyed every sample).
 
 **Checks:** `python -m unittest discover -s tools/anim` 153 OK. Booth batch `ic_hearthguard-20261112-b9c6d2f` (40 clips, built at b9c6d2fb, not uploaded); phone video `status/booth-videos/ic_hearthguard_review.mp4` (3:08, previous beside new). In game, `ic_hearthguard-review2` (geo-knight suite through checkq): 23 p1 checks, all true, 0 `=false` ("Can't keep up" 3 times).
+
+## Fix round 2 (2026-11-12, last round)
+
+Re-measured on the round 1 tip with the current tool (hits, block and stun_out played over the stance; stun_out_upper handed from the stun pose to the stance): 2 FAIL rows. stun_out's floor row cleared with the tool change alone.
+
+- **One recipe for the clip file:** `python art/anim/axe/rebuild_hearthguard.py` then `python art/anim/common/export.py ic_hearthguard` (the shield family's `rebuild_out.py` pattern). Steps: builder clips (build_axe_anims, the same calls as its main()), the 12 deaths copied unchanged from 8cb35120, stances.py (rally, fallback), reactions.py (stun, stun_out, knockback), charge.py, reactions.py (hit_pulled), hearthguard_hits.py (in place), hearthguard_finish.py (in place). out/ and the exported asset are now byte-equal; two runs give the same bytes. Clip by clip against the round 1 export only run_upper and charge_run_upper change; clip order, lengths, loop flags and markers are unchanged.
+- **run_upper** (limb_in_body 2.03 at t0.25, left forearm in the breastplate): the shield arm rides 4 deg further out all through the loop -> WARN 1.88. 6 deg puts the boss in the helm (2.02); unbending the forearm puts it in the coat (1.99).
+- **charge_run_upper** (beard braid into the right thigh, 1.93 at t5.5): the braid swings 8 deg forward around that stride only. With the braid clear, the tabard showed on the other thigh (1.92 at t1.5), so it swings 14 deg forward around that stride -> WARN 1.86. charge.py now rebuilds the clip from the current ready stance (changed in rounds 0 and 1), so the axe wrist is up to 26 deg different and the head and shield hand are within 2 deg of the old export.
+- Renders: `work/review/render/r2/*_cmp.png` (before rows above after rows, over run_legs at speed 0.26).
+- **Checks:** `focus_check.py --troop ic_hearthguard` 40 clips, 0 FAIL rows. `scorecard.py --troop ic_hearthguard` 40 clips, 0 fail, exit 0. Unit tests test_scorecard (22), test_focus_check (24), test_render_geo (20), test_booth_* (74): all OK.

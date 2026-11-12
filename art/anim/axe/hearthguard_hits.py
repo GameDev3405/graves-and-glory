@@ -1,6 +1,7 @@
 """ic_hearthguard only: its hit and stun clips, built by the shared builders and then fitted to this dwarf.
 
-    python art/anim/axe/hearthguard_hits.py [--out FILE] [--only CLIP,CLIP]
+    python art/anim/axe/hearthguard_hits.py [--out FILE] [--only CLIP,CLIP]   # a check only: the troop's file is built by
+                                                                              # rebuild_hearthguard.py (its step 7)
 
 Review fix round 1 (2026-11-12). The hits (hit_light_*, hit_medium_*, hit_block: the knight builder's, run through
 build_axe_anims exactly as the troop's export builds them) and the reactions (stun_upper / stun_legs, stun_out_upper,
@@ -105,15 +106,16 @@ def _plain(frames):
              for b, (r, p) in f.items() if not b.startswith("_")} for f in frames]
 
 
-def raw_clips():
-    """{clip: (samples, ticks, loop, bake)} for every clip this module rebuilds, as their own builders build them."""
+def raw_clips(path=None):
+    """{clip: (samples, ticks, loop, bake)} for every clip this module rebuilds, as their own builders build them.
+    path: the clip file to read the stance from (default: the exported one)."""
     out = {}
     got, clips = _capture(K, K.hit_clips)
     for n in K_HITS:
         for m in (n, n + "_legs"):
             s, ticks, loop = got[id(clips[m])]
             out[m] = (_plain(s), ticks, loop, K.bake)
-    tr = S.Troop(TROOP)
+    tr = S.Troop(TROOP, path)
     got, clips = _capture(R, lambda: R.build_all(tr))
     for m, c in clips.items():
         s, ticks, loop = got[id(c)]
@@ -215,8 +217,8 @@ def _close_loop(upper, legs, bones, j0):
                 clip[i][b] = (tuple(r + u * (r0 - rn)), tuple(p + u * (p0 - pn)) if haspos else None)
 
 
-def build(only=None):
-    raw, tr = raw_clips()
+def build(only=None, path=None):
+    raw, tr = raw_clips(path)
     names = [n for n in K_HITS + REACTIONS if not only or n in only]
     out = {}
     for name in names:
