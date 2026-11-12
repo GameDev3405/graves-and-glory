@@ -235,7 +235,7 @@ final class CampScreen extends ArmyScreen {
         int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);line(g,page.equals("troop")?"TROOP CARD":page.equals("train")?"TRAINING YARD":"A PLACE TO PREPARE",x,91,DarkUi.GOLD,w);
         var progress=CampaignClient.profile.progression;
         if(page.equals("troop")){
-            var t=ArmyCards.spec(troop);if(t!=null)RecruitPages.troopPage(g,textRenderer,t,CampaignClient.profile,x,108,w);
+            var t=ArmyCards.spec(troop);if(t!=null&&TroopKnowledge.owned(t.id()))RecruitPages.troopPage(g,textRenderer,t,CampaignClient.profile,x,108,w);else if(t!=null)g.drawText(textRenderer,TroopKnowledge.UNKNOWN+". "+TroopKnowledge.HIDDEN,x,108,DarkUi.MUTED,false); // nothing of a troop not yet recruited (TroopKnowledge)
         }else if(page.equals("train")){
             var march=Spec.CAMPAIGNBATTLES[0];
             line(g,"Battle "+march.order()+" / "+march.name(),x,117,DarkUi.PAPER,w);

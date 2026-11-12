@@ -196,7 +196,7 @@ final class WarTableRecruit {
             var b = buttons.get("row-" + i);
             if (b == null) continue;
             b.visible = scroll + i < roll.size();
-            b.setMessage(Text.literal(b.visible ? roll.get(scroll + i).name() : ""));
+            b.setMessage(Text.literal(b.visible ? TroopKnowledge.name(roll.get(scroll + i).troopId(), roll.get(scroll + i).name()) : ""));
         }
         var row = row(roll, selected);
         if (choose != null) {
@@ -210,7 +210,7 @@ final class WarTableRecruit {
             sheet.visible = row != null;
             if (row != null) {
                 var font = MinecraftClient.getInstance().textRenderer;
-                int[] lo = letterAt(), w = {font.getWidth(DarkUi.focal(UiMath.trim(row.name(), LINE_W, s -> font.getWidth(DarkUi.focal(s))))) + 8};
+                int[] lo = letterAt(), w = {font.getWidth(DarkUi.focal(UiMath.trim(TroopKnowledge.name(row.troopId(), row.name()), LINE_W, s -> font.getWidth(DarkUi.focal(s))))) + 8};
                 sheet.moveTo(lo[0] + LETTER_X + 152 - w[0] / 2, lo[1] + LETTER_Y + WarTableTroop.NAME_Y, w[0], WarTableTroop.NAME_H);
             }
         }
@@ -474,7 +474,7 @@ final class WarTableRecruit {
         }
         UiTex.draw(g, "table/frame-rim-48", x + 4, y + 4);
         int color = r.owned() ? DarkUi.INK_TEXT : DarkUi.SEPIA, ny = y + (r.locked() ? 20 : 12);
-        String name = UiMath.trim(r.name(), NAME_W, s -> font.getWidth(heading(s)));
+        String name = UiMath.trim(TroopKnowledge.name(r.troopId(), r.name()), NAME_W, s -> font.getWidth(heading(s)));
         g.drawText(font, heading(name), x + 60, ny, color, false);
         if (hot) underline(g, "row-" + i, x + 60, ny + 12, font.getWidth(heading(name)), color);
         if (r.locked()) UiTex.draw(g, "recruit/padlock-brass", x + 23, y + 22);
@@ -502,17 +502,18 @@ final class WarTableRecruit {
         UiTex.draw(g, "table/frame-back-160", x + 72, y + 40);
         var e = model(r.troopId());
         if (e != null) {
-            Portrait.draw(g, e, x + 72, y + 40, 160); // Phase 2: tall 2 for the troops it marks Tall
+            Portrait.draw(g, e, x + 72, y + 40, 160, !r.owned()); // the silhouette until recruited (TroopKnowledge). Phase 2: tall 2 for the troops it marks Tall
             var d = Portrait.last();
             portraitsDrawn.add(new PortraitDraw(r.troopId(), "letter", d));
             rectsDrawn.put("window", new int[]{d.left(), d.top(), d.window(), d.window()}); // the window Portrait scissored
         }
         UiTex.draw(g, "table/frame-ornate-184", x + 60, y + 28);
-        String name = UiMath.trim(r.name(), LINE_W, s -> font.getWidth(DarkUi.focal(s)));
+        String name = UiMath.trim(TroopKnowledge.name(r.troopId(), r.name()), LINE_W, s -> font.getWidth(DarkUi.focal(s)));
         int nameInk = DarkUi.INK_TEXT;
         int nameX = WarTableHome.centred(g, DarkUi.focal(name), x + 152, y + 224, nameInk);
         rectsDrawn.put("name", new int[]{nameX, y + 224, font.getWidth(DarkUi.focal(name)), 11}); // the words the sheet widget covers
         String kind = r.rarity().isEmpty() ? r.group() + (r.owned() ? ", recruited" : ", not yet recruited") : r.rarity() + " " + r.group().toLowerCase(Locale.ROOT);
+        if (!r.owned()) kind = TroopKnowledge.NOT_RECRUITED;
         kind = UiMath.trim(kind, LINE_W, s -> font.getWidth(DarkUi.body(s)));
         int kindInk = DarkUi.SEPIA;
         WarTableHome.centred(g, DarkUi.body(kind), x + 152, y + 246, kindInk);
@@ -536,7 +537,7 @@ final class WarTableRecruit {
             if (fill.growing() >= 0) textsDrawn.put("letter-fill", String.valueOf(Math.round(fill.part() * 100))); // how far the growing star has filled, in percent
         }
         var spec = ArmyCards.spec(r.troopId());
-        String deploy = spec == null ? "" : "Deploys in battle for " + spec.cost() + " gold"; // Phase 2: the star bonus
+        String deploy = spec == null || !r.owned() ? "" : "Deploys in battle for " + spec.cost() + " gold"; // Phase 2: the star bonus
         String outcome = lighting ? RecruitPages.outcome(lit, CampaignClient.profile) : "";
         int deployInk = DarkUi.INK_TEXT;
         if (outcome.isEmpty()) WarTableHome.centred(g, DarkUi.body(deploy), x + 152, y + 292, deployInk);
@@ -564,7 +565,7 @@ final class WarTableRecruit {
         textsDrawn.put("letter-troop", r.troopId());
         textsDrawn.put("letter-name", name);
         textsDrawn.put("letter-line1", kind);
-        if (outcome.isEmpty()) textsDrawn.put("letter-line2", deploy);
+        if (outcome.isEmpty() && !deploy.isEmpty()) textsDrawn.put("letter-line2", deploy);
         colorsDrawn.put("letter-name", nameInk);
         colorsDrawn.put("letter-line1", kindInk);
         colorsDrawn.put("letter-line2", deployInk);

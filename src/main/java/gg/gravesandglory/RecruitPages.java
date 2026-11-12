@@ -40,9 +40,9 @@ final class RecruitPages {
                 if(o!=null){if(full)return null;var r=RosterMath.rarityRow(t.rarity());int cost=r==null?0:o.stars<=1?r.shardStar2():r.shardStar3();boolean ok=shards>=cost;
                     return new Action("Star "+(o.stars+1),"star:"+t.id(),ok,ok?"Star "+(o.stars+1)+" for "+cost+" "+house+" shards.":"Need "+cost+" "+house+" shards. You have "+shards+".");}
                 if(t.rarity().equals("epic"))return null;
-                if(p.writs>0)return new Action("Pact","legendary:"+t.house()+":pact",true,"Spend your Pact: "+t.name()+" joins your collection.");
+                if(p.writs>0)return new Action("Pact","legendary:"+t.house()+":pact",true,"Spend your Pact: "+TroopKnowledge.name(t)+" joins your collection.");
                 boolean ready=renown>=R.renownForLegendary()&&shards>=R.legendaryShards();
-                String tip=ready?t.name()+" joins your collection for "+R.legendaryShards()+" "+house+" shards."
+                String tip=ready?TroopKnowledge.name(t)+" joins your collection for "+R.legendaryShards()+" "+house+" shards."
                     :"Needs "+(renown<R.renownForLegendary()?R.renownForLegendary()+" "+house+" Renown (you have "+renown+")":"")+(renown<R.renownForLegendary()&&shards<R.legendaryShards()?" and ":"")+(shards<R.legendaryShards()?R.legendaryShards()+" shards (you have "+shards+")":"")+", or a Pact.";
                 return new Action(R.legendaryShards()+" shards","legendary:"+t.house()+":shards",ready,tip);
             }

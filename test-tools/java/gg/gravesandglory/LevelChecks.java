@@ -1199,6 +1199,21 @@ final class LevelChecks {
             };
         }
 
+        /** The stat line a buy leads with (Kort 2026-11-12), worked out here from the sheet rows alone: a Rank-tier soldier of the type, the tier below to this tier,
+         *  base damage (weapon) or health (armour) x the star bonus x (1 + the Rank's pct + the tier's pct), one decimal without a trailing .0. */
+        static String statLine(Spec.TroopsRow t, String track, int tier) {
+            boolean weapon = track.equals(LevelMath.WEAPON);
+            Spec.LevelsRow lv = null; for (var r : Spec.LEVELS) if (r.level() == tier) lv = r;
+            Spec.GearTiersRow lo = null, hi = null; for (var r : Spec.GEARTIERS) { if (r.tier() == tier - 1) lo = r; if (r.tier() == tier) hi = r; }
+            var o = CampaignClient.profile.owned.get(t.id()); Spec.RaritiesRow rr = null; for (var r : Spec.RARITIES) if (r.id().equals(t.rarity())) rr = r;
+            double star = o == null || rr == null ? 0 : o.stars >= 3 ? rr.starPct3() : o.stars == 2 ? rr.starPct2() : 0, mult = Math.min(1 + Spec.RECRUITMENT[0].capPct(), 1 + star);
+            double base = (weapon ? t.damage() : t.health()) * mult, rank = lv == null ? 0 : weapon ? lv.damagePct() : lv.healthPct();
+            if (weapon && t.damage() <= 0) return "Heal/effect +" + Math.round((hi.weaponPct() - lo.weaponPct()) * 100) + "%"; // no hit damage: the tier raises its heal or cloud instead
+            double before = base * (1 + rank + (weapon ? lo.weaponPct() : lo.armourPct())), after = base * (1 + rank + (weapon ? hi.weaponPct() : hi.armourPct()));
+            return (weapon ? "Dmg " : "HP ") + one(before) + "→" + one(after);
+        }
+        static String one(double v) { double r = Math.round(v * 10) / 10.0; return r == Math.rint(r) ? String.valueOf((long) r) : String.format(java.util.Locale.ROOT, "%.1f", r); }
+
         void phases(MinecraftClient c) {
             pt++;
             var s = rs(c);
@@ -1341,12 +1356,15 @@ final class LevelChecks {
                 String who = key(g);
                 if (!g.troop.id().equals(row.troop()) || !g.track.equals(ArmouryTab.TRACKS[col]) || g.tier != ArmouryTab.TIERS[col]) bad.append(who + " is in the place of " + row.troop() + " column " + col + "; ");
                 if (g.state != want) bad.append(who + " reads " + g.state + ", the server's row says " + want + "; ");
-                String refusal = sn.refusals().get(who), text = String.join(" ", g.lines);
+                String stat = statLine(g.troop, g.track, g.tier), first = g.lines.isEmpty() ? "" : g.lines.get(0);
+                if (!first.equals(stat)) bad2.append(who + " leads with \"" + first + "\", want the stat line \"" + stat + "\"; ");
+                var rest = g.lines.isEmpty() ? List.<String>of() : g.lines.subList(1, g.lines.size());
+                String refusal = sn.refusals().get(who), text = String.join(" ", rest);
                 var exp = expect(g.troop, g.tier, want, true, refusal);
                 if (want == LevelMath.Buy.LOCKED) {
                     boolean second = g.tier == 3 && (stateAt(row, col - 1) == LevelMath.Buy.OPEN || stateAt(row, col - 1) == LevelMath.Buy.UNAFFORDABLE) && text.equals("Buy " + (g.track.equals(LevelMath.ARMOUR) ? "Armour" : "Weapon") + " II first");
                     if (!(text.equals(refusal) || second)) bad2.append(who + " says \"" + text + "\", the server's own refusal is \"" + refusal + "\"; ");
-                } else if (!g.lines.equals(exp)) bad2.append(who + " says " + g.lines + ", want " + exp + "; ");
+                } else if (!rest.equals(exp)) bad2.append(who + " says " + g.lines + ", want the stat line and " + exp + "; ");
                 if ((want == LevelMath.Buy.OPEN) != g.pressable) bad2.append(who + " " + want + " but pressable " + g.pressable + "; ");
                 if (g.hasGlyph() != (want == LevelMath.Buy.LOCKED || want == LevelMath.Buy.BOUGHT)) bad2.append(who + " glyph " + g.hasGlyph() + " for " + want + "; ");
                 double c1 = UiMath.contrast(g.mainUsed, g.fillUsed), c2 = g.lines.size() > 1 ? UiMath.contrast(g.secondUsed, g.fillUsed) : 21;
@@ -1371,7 +1389,7 @@ final class LevelChecks {
                 if (g.pressable) bad.append(key(g) + " can be pressed away from a buy place; ");
                 if (st == LevelMath.Buy.OPEN || st == LevelMath.Buy.UNAFFORDABLE) {
                     greyed++; var exp = expect(g.troop, g.tier, st, false, "");
-                    if (!g.lines.equals(exp)) bad.append(key(g) + " says " + g.lines + ", want " + exp + "; ");
+                    if (g.lines.size() < 1 || !g.lines.subList(1, g.lines.size()).equals(exp) || !g.lines.get(0).equals(statLine(g.troop, g.track, g.tier))) bad.append(key(g) + " says " + g.lines + ", want " + statLine(g.troop, g.track, g.tier) + " and " + exp + "; ");
                     if (g.fillUsed == openFill) bad.append(key(g) + " is drawn as a buy that is ready; ");
                 }
             }

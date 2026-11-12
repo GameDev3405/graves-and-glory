@@ -140,6 +140,7 @@ public final class BattleHud {
             try{
                 var win=c.getWindow();long now=Util.getMeasuringTimeMs();int size=HudSize.get();var s=state(font,now);
                 var at=UiMath.hudLayout(win.getFramebufferWidth(),win.getFramebufferHeight(),(int)win.getScaleFactor(),UiCanvas.hudK(),size,s);
+                HudLayout.place(at,win.getFramebufferWidth(),win.getFramebufferHeight(),(int)win.getScaleFactor(),UiCanvas.hudK(),size,s); // the player's own places (edit mode)
                 ledger(g,font,at,rectsDrawn,textsDrawn);
                 seals(g,font,at,rectsDrawn,sealsDrawn,textsDrawn);
                 column(g,font,s,at,rectsDrawn,cardsDrawn,textsDrawn);
@@ -265,7 +266,7 @@ public final class BattleHud {
             String id=i<pts.length?pts[i].id():String.valueOf((char)('A'+i));
             g.drawText(font,id,centred(font,id,sc),y+9,DarkUi.IVORY,true);
             sd.add(new SealDraw(sprite,sc-13,y));r.put("seal-"+i,box);
-            if(aim==i&&i<pts.length){String name=pts[i].name();int nx=centred(font,name,sc);g.drawText(font,name,nx,AIM_NAME_Y,DarkUi.IVORY,true);tx.put("aim-name",name);r.put("aim-name",new int[]{nx,AIM_NAME_Y,font.getWidth(name)+1,9});}
+            if(aim==i&&i<pts.length){String name=pts[i].name();int nx=centred(font,name,sc);g.drawText(font,name,nx,box[1]+AIM_NAME_Y-37,DarkUi.IVORY,true);tx.put("aim-name",name);r.put("aim-name",new int[]{nx,box[1]+AIM_NAME_Y-37,font.getWidth(name)+1,9});}
         }
     }
 
@@ -668,7 +669,7 @@ public final class BattleHud {
     /** One relic slot (ability): its rect and texts under key (key-icon, key-seconds, key-key). */
     static void relicSlot(DrawContext g,MinecraftClient c,TextRenderer font,Map<String,int[]> r,Map<String,String> tx,int slot,String rk,String id,int left,int total){
         if(id.equals("none")||id.isEmpty()||id.equals(UNSHOWN_ABILITY))return;
-        var w=c.getWindow();int[] at=UiMath.relicAt(slot,w.getScaledWidth(),w.getScaledHeight());int x=at[0],y=at[1];
+        var w=c.getWindow();int[] at=UiMath.relicAt(slot,w.getScaledWidth(),w.getScaledHeight()),d=HudLayout.relicShift(w.getScaledWidth(),w.getScaledHeight());int x=at[0]+d[0],y=at[1]+d[1];
         UiTex.draw(g,"hud/ability-slot",x,y);
         String icon=abilityIcon(id);if(UiTex.has(icon))UiTex.draw(g,icon,x+5,y+6); // 22 x 20 as the horn was; an id with no picture leaves the vellum bare
         if(left>0&&total>0)sweep(g,x+4,y+4,Math.min(1,left/(double)total));

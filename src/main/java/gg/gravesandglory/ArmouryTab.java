@@ -113,12 +113,14 @@ final class ArmouryTab {
     /** The words on a button: its state, its price, what is needed. At most cap lines of w px (UiMath.lines); a locked text breaks at spaces and is never cut while the row has the room. */
     static List<String> words(Spec.TroopsRow t, String track, int tier, LevelMath.ArmouryRow row, LevelMath.Buy state, boolean here, int w, int cap, ToIntFunction<String> width) {
         int price = LevelMath.price(t.rarity(), tier);
-        return switch (state) {
+        List<String> out = new ArrayList<>(List.of(UpgradeStats.cell(t, track, tier))); // what the tier gives, first line on every cell (Kort 2026-11-12)
+        out.addAll(switch (state) {
             case BOUGHT -> List.of(BOUGHT);
-            case LOCKED -> UiMath.lines(lockedText(t, track, tier, row), w, cap, width);
+            case LOCKED -> UiMath.lines(lockedText(t, track, tier, row), w, Math.max(1, cap - 1), width);
             case OPEN -> here ? List.of("Buy", price + " gold") : List.of(price + " gold", NOT_HERE);
             case UNAFFORDABLE -> List.of(price + " gold", here ? NO_GOLD : NOT_HERE);
-        };
+        });
+        return out;
     }
 
     /** The tooltip and the narrated sentence of a button: the troop, the tier, the state and what to do. */
@@ -130,7 +132,7 @@ final class ArmouryTab {
             case LOCKED -> lockedText(t, track, tier, row) + ".";
             case OPEN -> here ? price + " gold. Press to buy it for every " + t.name() + " this round." : price + " gold. " + AWAY + ".";
             case UNAFFORDABLE -> price + " gold, and you have " + gold + "." + (here ? "" : " " + AWAY + ".");
-        };
+        } + " " + UpgradeStats.tip(t, track, tier);
     }
 
     /** The troop's best bought tier on a track, 1 when none: the tier its portrait wears. */
@@ -154,17 +156,17 @@ final class ArmouryTab {
 
     // ---- layout ----
 
-    /** The most lines any button of the banner could need at this inner width, over every troop and both reasons a locked button gives: the row is tall enough for it, at least two lines. */
+    /** The most lines any button of the banner needs at this inner width: the stat line every cell leads with (UpgradeStats.cell, Kort
+     *  2026-11-12) over its state's words, the locked ones as lockedText words them for the row's states; at least three, which keep five
+     *  rows of the banner whole. A troop whose locked words take three lines makes the rows taller (and the list scroll sooner). */
     static int worstLines(List<LevelMath.ArmouryRow> rows, int w, ToIntFunction<String> width) {
         int worst = 2;
         for (var r : rows) {
             var t = ArmyCards.spec(r.troop()); if (t == null) continue;
-            for (String track : new String[] {LevelMath.WEAPON, LevelMath.ARMOUR}) for (int tier = 2; tier <= 3; tier++) {
-                worst = Math.max(worst, UiMath.lines(LevelMath.refusal(tier, tier - 1, 1, 0, 0, true, track, ownName(t, tier)), w, 5, width).size());
-                if (tier == 3) worst = Math.max(worst, UiMath.lines(LevelMath.refusal(3, 3, 1, 0, 0, true, track, null), w, 5, width).size());
-            }
+            for (String track : new String[] {LevelMath.WEAPON, LevelMath.ARMOUR}) for (int tier = 2; tier <= 3; tier++)
+                if (stateOf(r, track, tier) == LevelMath.Buy.LOCKED) worst = Math.max(worst, UiMath.lines(lockedText(t, track, tier, r), w, 5, width).size());
         }
-        return worst;
+        return 1 + worst;
     }
 
     /** The height a row needs for this many text lines in a buy tag: the lines and the tag's padding, never less than the portrait's frame. */

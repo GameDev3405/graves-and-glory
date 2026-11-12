@@ -26,7 +26,7 @@ final class WarTableTroop {
     static final int[] COMPACT = {-53, -32};
     /** On the sheet (sheet-relative): the text's left edge and width, the tags' row, the first section's head and the last row the
      *  content may use (the notice line lies under it). */
-    static final int PAD = 22, TEXT_W = 360, TAB_Y = 14, TAB_W = 88, TAB_H = 24, TAB_GAP = 8, HEAD_Y = 48, CONTENT_END = 334, NOTICE_Y = 338, STEP = 12;
+    static final int PAD = 22, TEXT_W = 360, TAB_Y = 14, TAB_W = 84, TAB_H = 24, TAB_GAP = 8, HEAD_Y = 48, CONTENT_END = 334, NOTICE_Y = 338, STEP = 12;
     /** The name's hit box on the letter (letter-relative, as WarTableRecruit places the name): its top and height. */
     static final int NAME_Y = 222, NAME_H = 18;
 
@@ -125,6 +125,7 @@ final class WarTableTroop {
         add("tab-troop", new UiButton(sx + PAD, sy + TAB_Y, TAB_W, TAB_H, Text.literal("Troop"), b -> face("troop"), (g, x, y, w, h, hot) -> paintTab(g, "troop", "Troop", x, y, w, h)));
         add("tab-matchups", new UiButton(sx + PAD + TAB_W + TAB_GAP, sy + TAB_Y, TAB_W, TAB_H, Text.literal("Matchups"), b -> face("matchups"), (g, x, y, w, h, hot) -> paintTab(g, "matchups", "Matchups", x, y, w, h)));
         add("tab-growth", new UiButton(sx + PAD + 2 * (TAB_W + TAB_GAP), sy + TAB_Y, TAB_W, TAB_H, Text.literal("Growth"), b -> face("growth"), (g, x, y, w, h, hot) -> paintTab(g, "growth", "Growth", x, y, w, h)));
+        add("tab-stats", new UiButton(sx + PAD + 3 * (TAB_W + TAB_GAP), sy + TAB_Y, TAB_W, TAB_H, Text.literal("Stats"), b -> face("stats"), (g, x, y, w, h, hot) -> paintTab(g, "stats", "Stats", x, y, w, h)));
         choose = add("choose", new UiButton(o[0] + LETTER_X + WarTableRecruit.CHOOSE_X, o[1] + TOP + WarTableRecruit.CHOOSE_Y, WarTableRecruit.CHOOSE_W, WarTableRecruit.CHOOSE_H, Text.literal("Buy"), b -> chooseTroop(), this::paintChoose));
         refresh();
     }
@@ -247,16 +248,17 @@ final class WarTableTroop {
         UiTex.draw(g, "table/frame-back-160", x + 72, y + 40);
         var e = WarTableRecruit.model(troop);
         if (e != null) {
-            Portrait.draw(g, e, x + 72, y + 40, 160);
+            Portrait.draw(g, e, x + 72, y + 40, 160, o == null); // the silhouette until recruited (TroopKnowledge)
             var d = Portrait.last();
             portraitsDrawn.add(new PortraitDraw(troop, "letter", d));
             rectsDrawn.put("window", new int[]{d.left(), d.top(), d.window(), d.window()});
         }
         UiTex.draw(g, "table/frame-ornate-184", x + 60, y + 28);
-        String name = UiMath.trim(t.name(), WarTableRecruit.LINE_W, s -> font.getWidth(DarkUi.focal(s)));
+        String name = UiMath.trim(TroopKnowledge.name(t), WarTableRecruit.LINE_W, s -> font.getWidth(DarkUi.focal(s)));
         int nw = font.getWidth(DarkUi.focal(name));
         WarTableHome.centred(g, DarkUi.focal(name), x + 152, y + 224, DarkUi.INK_TEXT);
         String kind = RosterMath.houseName(t.house()) + ", " + t.rarity() + " " + RecruitView.group(t.group()).toLowerCase(Locale.ROOT);
+        if (o == null) kind = TroopKnowledge.NOT_RECRUITED;
         kind = UiMath.trim(kind, WarTableRecruit.LINE_W, s -> font.getWidth(DarkUi.body(s)));
         WarTableHome.centred(g, DarkUi.body(kind), x + 152, y + 246, DarkUi.SEPIA);
         boolean lighting = lit != null && troop.equals(lit.troop()) && WarTableRecruit.revealing();
@@ -279,7 +281,7 @@ final class WarTableTroop {
             textsDrawn.put("letter-stars", fill.filled() + (fill.growing() >= 0 ? "+" : ""));
             if (fill.growing() >= 0) textsDrawn.put("letter-fill", String.valueOf(Math.round(fill.part() * 100)));
         }
-        String deploy = "Deploys in battle for " + t.cost() + " gold";
+        String deploy = o == null ? "" : "Deploys in battle for " + t.cost() + " gold";
         String outcome = lighting ? RecruitPages.outcome(lit, CampaignClient.profile) : "";
         if (outcome.isEmpty()) WarTableHome.centred(g, DarkUi.body(deploy), x + 152, y + 292, DarkUi.INK_TEXT);
         else {
@@ -306,7 +308,7 @@ final class WarTableTroop {
         textsDrawn.put("letter-troop", troop);
         textsDrawn.put("letter-name", name);
         textsDrawn.put("letter-line1", kind);
-        if (outcome.isEmpty()) textsDrawn.put("letter-line2", deploy);
+        if (outcome.isEmpty() && !deploy.isEmpty()) textsDrawn.put("letter-line2", deploy);
         colorsDrawn.put("letter-name", DarkUi.INK_TEXT);
         colorsDrawn.put("letter-line1", DarkUi.SEPIA);
         colorsDrawn.put("letter-line2", DarkUi.INK_TEXT);
@@ -369,7 +371,9 @@ final class WarTableTroop {
     void sheet(DrawContext g, Spec.TroopsRow t, int x, int y) {
         rectsDrawn.put("sheet", UiTex.draw(g, "table/sheet-banner", x, y));
         textsDrawn.put("tab", tab);
-        if (tab.equals("matchups")) matchups(g, t, x + PAD, y);
+        if (owned() == null) hidden(g, x + PAD, y);
+        else if (tab.equals("stats")) stats(g, t, x + PAD, y);
+        else if (tab.equals("matchups")) matchups(g, t, x + PAD, y);
         else if (tab.equals("growth")) growth(g, t, x + PAD, y);
         else levels(g, t, x + PAD, y);
         notice(g, x + PAD, y);
@@ -540,6 +544,26 @@ final class WarTableTroop {
         colorsDrawn.put(key, DarkUi.INK_TEXT);
         rectsDrawn.put(key + "-bar", new int[]{bx, y + 2, bw, 6});
         textsDrawn.put(key + "-fill", String.valueOf(fill));
+    }
+
+    // The Stats face and an unrecruited troop's faces (TroopKnowledge) ----------------------------------------------------
+    void stats(DrawContext g, Spec.TroopsRow t, int x, int y) {
+        int ry = y + HEAD_Y;
+        head(g, "stats", "Stats", null, x, ry);
+        ry += 18;
+        for (var s : TroopKnowledge.stats(t)) {
+            line(g, null, s.label(), x, ry, DarkUi.SEPIA);
+            int w = line(g, "stat-" + s.key(), s.value(), x + 130, ry, DarkUi.INK_TEXT);
+            if (!s.note().isEmpty()) line(g, "stat-" + s.key() + "-note", s.note(), x + 130 + w + 8, ry, DarkUi.SEPIA);
+            ry += STEP + 3;
+        }
+    }
+
+    /** Every face of a troop not yet recruited: the face's word and one line, no numbers, Ranks, stars or Mastery. */
+    void hidden(DrawContext g, int x, int y) {
+        int ry = y + HEAD_Y;
+        head(g, "hidden", TroopKnowledge.UNKNOWN, null, x, ry);
+        block(g, "hidden-line", TroopKnowledge.HIDDEN, x, ry + 18, TEXT_W, 2, DarkUi.INK_TEXT);
     }
 
     // The Matchups face -----------------------------------------------------------------------------------------------

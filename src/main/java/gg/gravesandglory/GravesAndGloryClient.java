@@ -155,7 +155,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // next join clears them as well; no HUD frame runs without a world to clear them before the next one.
         ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{CommandPanel.disconnected(client);if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);EndingClient.forget(client);CampaignClient.forget();MusicDirector.reset(client);TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(client->{
-            if(!toolbarFreed&&client.options!=null){toolbarFreed=true;freeToolbarKeys(client,toolbarFlag());}
+            if(!toolbarFreed&&client.options!=null){toolbarFreed=true;freeToolbarKeys(client,toolbarFlag());KeyMigration.run(client);} // the old G / V command keys move to Z / C once (KeyMigration)
             if(hudResetPending&&client.world==null)resetHud();
             if(client.getOverlay()==null&&client.currentScreen instanceof TitleScreen){
                 if(!attempted){PackControls.prepare(client);attempted=true;}

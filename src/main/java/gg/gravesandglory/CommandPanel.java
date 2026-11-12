@@ -172,7 +172,7 @@ public final class CommandPanel {
         try { draw(g, font, sw, sh, eased, mouse); }
         finally { RenderSystem.setShaderColor(1, 1, 1, 1); }
         if (editing) {
-            try { editChrome(g, font, sw, sh, mouse); }
+            try { HudLayout.drawEdit(g, font, sw, sh, mouse); editChrome(g, font, sw, sh, mouse); } // every HUD part's outline, then the panel's chrome over them
             finally { RenderSystem.setShaderColor(1, 1, 1, 1); }
         }
     }
@@ -486,6 +486,8 @@ public final class CommandPanel {
         editing = false; dragging = sliding = false;
         if (PanelLayout.hidden) CommandSelection.setPanelOpen(false); // keyboard-only mode: the panel stays shut
         PanelLayout.save(c);
+        HudLayout.release();
+        HudLayout.save(c); // the HUD parts moved in the same mode
     }
 
     /** Every client tick: edit mode ends (saving) when the battle does. */
@@ -498,6 +500,7 @@ public final class CommandPanel {
         if (editing) leaveEdit(c);
         dragging = sliding = false;
         PanelLayout.forget();
+        HudLayout.forget();
     }
 
     /** A left press in edit mode (GUI px): a toolbar control, else a press on the panel starts a drag. Never an order. */
@@ -506,10 +509,12 @@ public final class CommandPanel {
         var c = MinecraftClient.getInstance();
         if (inside(SLIDER, x, y)) { sliding = true; slideTo(x); return; }
         if (inside(HIDE, x, y)) { PanelLayout.hidden = !PanelLayout.hidden; return; }
-        if (inside(RESET, x, y)) { PanelLayout.reset(); return; }
+        if (inside(RESET, x, y)) { PanelLayout.reset(); HudLayout.reset(); return; } // Reset restores the panel and every HUD part
         if (inside(DONE, x, y)) { leaveEdit(c); return; }
-        if (inside(TOOLBAR, x, y) || rest == null) return;
-        if (x >= rest[0] && x < rest[0] + rest[2] && y >= rest[1] && y < rest[1] + rest[3]) { dragging = true; grabX = x - rest[0]; grabY = y - rest[1]; }
+        if (inside(TOOLBAR, x, y)) return;
+        if (rest == null) { HudLayout.press(x, y); return; }
+        if (x >= rest[0] && x < rest[0] + rest[2] && y >= rest[1] && y < rest[1] + rest[3]) { dragging = true; grabX = x - rest[0]; grabY = y - rest[1]; return; }
+        HudLayout.press(x, y); // else a battle HUD part under the cursor (HudLayout)
     }
 
     /** The cursor moved in edit mode (GUI px): the panel follows a drag, the opacity follows the slider. */
@@ -517,9 +522,10 @@ public final class CommandPanel {
         if (!editing) return;
         if (sliding) slideTo(x);
         else if (dragging && rest != null) PanelLayout.moveTo(x - grabX, y - grabY, rest[2], rest[3], rest[4], rest[5], restK);
+        else HudLayout.drag(x, y);
     }
 
-    public static void editRelease() { dragging = false; sliding = false; }
+    public static void editRelease() { dragging = false; sliding = false; HudLayout.release(); }
 
     private static void slideTo(double x) { PanelLayout.opacity = PanelLayout.snapOpacity(PanelLayout.MIN_OPACITY + (x - sliderX) / Math.max(1, sliderW) * (1 - PanelLayout.MIN_OPACITY)); }
 
