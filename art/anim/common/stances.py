@@ -498,8 +498,10 @@ def build_hold(tr):
 BOW_FALLBACK_FIT = {"right_arm": (0.0, 0.0, 9.0), "right_forearm": (0.0, -12.0, 0.0)}
 # revenant: its ward pose sank both vambraces into the breastplate (scorecard pen_limb 1.01 px); the sword arm lifts 8 deg forward
 # with the forearm turned 12 deg, the free fist swings 8 deg out and 4 deg forward (now under 0.4 px).
+# Batch review 2026-11-11: the hung, cocked head sank the coif 2.1 px into the left pauldron; it tips 6 deg less onto that shoulder.
 FALLBACK_FIT = {**{t: BOW_FALLBACK_FIT for t in ("archer", "longbow", "bonebow", "stalker", "wm_hunter")},
-                "revenant": {"right_arm": (-8.0, 0.0, 0.0), "right_forearm": (0.0, 12.0, 0.0), "left_arm": (-4.0, 0.0, -8.0)}}
+                "revenant": {"right_arm": (-8.0, 0.0, 0.0), "right_forearm": (0.0, 12.0, 0.0), "left_arm": (-4.0, 0.0, -8.0),
+                             "head": (0.0, 0.0, -6.0)}}
 
 
 def fallback_fit(tr, base):
@@ -524,7 +526,8 @@ FALLBACK_LEGS = {
     "tc_raider": dict(amp={}, base=0.7,
                       hips=lambda ph: ((2.0, 8.0, 2.0 * math.sin(ph)), (0.4 * math.sin(ph), 0.0, 0.0))),
     "revenant": dict(amp={"left_leg": 0.35, "left_shin": 0.3, "left_foot": 0.35, "left_boot": 0.35}, base=0.75,
-                     hips=lambda ph: ((0.0, 0.0, -4.0 + 2.0 * math.sin(ph)), (0.3 * math.sin(ph), -0.2 * max(0.0, math.sin(ph)), 0.0))),
+                     # batch review 2026-11-11: hips 1.0 px higher (the shortened stride left the boots 1.2 px under the ground)
+                     hips=lambda ph: ((0.0, 0.0, -4.0 + 2.0 * math.sin(ph)), (0.3 * math.sin(ph), 1.0 - 0.2 * max(0.0, math.sin(ph)), 0.0))),
 }
 
 

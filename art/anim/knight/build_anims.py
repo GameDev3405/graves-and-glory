@@ -1888,11 +1888,38 @@ OWN_IDLE = {
                   "right_arm": (-12.0, 0.0, 6.0), "right_forearm": -30.0, "right_hand": (52.0, 0.0, 0.0),
                   "left_arm": (4.0, 0.0, -24.0), "left_forearm": -62.0},
     "revenant": {"right": (-2.2, 2.0, 0.6), "left": (2.9, 2.0, -0.9), "yaw": (-4.0, 16.0), "hips": ((2.0, 3.0, -4.0), (0.5, -0.75, 0.2)),
-                 "torso": (9.0, -4.0, 3.0), "head": (14.0, -8.0, 16.0),
+                 # batch review 2026-11-11: the head hung 14/-8/16 sank the coif 2.0 px into the left pauldron (armour_clip, t20.5)
+                 "torso": (9.0, -4.0, 3.0), "head": (12.0, -6.0, 9.0),
                  # the sword hangs from a slack arm, point low and forward; the free arm hangs a little out in front
                  "right_arm": (0.0, 0.0, 6.0), "right_forearm": -18.0, "right_hand": (28.0, 0.0, 0.0),
                  "left_arm": (-16.0, 0.0, -4.0), "left_forearm": -10.0},
 }
+
+
+# The troop's own walk carry (batch review 2026-11-11, rule 6): the shared walk marched the revenant upright with its eyes level
+# and the blade held out level like a bar, between a hunched stance and a slumped idle. Same legs and timing; the chest hunches
+# (torso pitch added after the head's counter, so the head hangs with it), the head hangs and cocks, the blade rides lower and
+# turned out (the near thigh stays clear).
+OWN_WALK = {"revenant": {"carry": dict(blade=8.0, blade_out=40.0, arm_out=9.0), "torso_x": 6.0, "head_x": 5.0, "head_z": 8.0}}
+
+
+def own_walk_upper():
+    import copy
+    w = OWN_WALK[TROOP]
+    c = copy.copy(WALK_CARRY)
+    for k, v in w["carry"].items():
+        setattr(c, k, v)
+    n = WALK.ticks * SUB
+    samples = []
+    for i in range(n):
+        f = upper_pose(WALK, c, i / n)
+        (a, b, z), p = f["torso"]
+        f["torso"] = ((a + w["torso_x"], b, z), p)
+        (a, b, z), p = f["head"]
+        f["head"] = ((a + w["head_x"], b, z + w["head_z"]), p)
+        samples.append(f)
+    samples.append(samples[0])
+    return bake(samples, WALK.ticks)
 
 
 def own_idle_clips():
@@ -2715,7 +2742,7 @@ def main():
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
     idle_legs, idle_upper = own_idle_clips() if TROOP in OWN else idle_clips()   # the falls keep idle_start's shared idle
-    anims = {"walk_legs": gait_legs(WALK), "walk_upper": gait_upper(WALK, WALK_CARRY),
+    anims = {"walk_legs": gait_legs(WALK), "walk_upper": own_walk_upper() if TROOP in OWN_WALK else gait_upper(WALK, WALK_CARRY),
              "run_legs": gait_legs(RUN), "run_upper": gait_upper(RUN, RUN_CARRY),
              "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **hit_clips(),
              **death_clips()}

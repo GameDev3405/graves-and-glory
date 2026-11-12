@@ -42,3 +42,63 @@ The revenant now builds in the knight's v2 style, rebuilt for one hand and an em
 - **death_back / death_forward / death_right (kept weapon):** the blade lies near floor level beside the body; confirm in game.
 - **Boots:** the boot cube inflate leaves them 0.3 px proud of the shin.
 - **Not seen in game:** only the harness and the offline reel were run.
+
+# Batch review 2026-11-11
+
+Lane `anim/stance-revenant` (ee9e5d69 WIP) with the skill lane merged in, reviewed on `anim/review-revenant`. Logs and frames
+in `work/review/` (not committed).
+
+## Before and after
+
+- **Focus check:** before 42 clips, 15 with a FAIL, 36 FAIL rows; after 10 with a FAIL, 12 rows (WARN rows 86 -> 97: the
+  pieces now swing, and a swinging piece gets near-pop and near-clip WARNs).
+- **Scorecard:** before and after 1 fail, `attack_overhead` edge_lead 14.24 deg against 13.53. The limit tightened when the
+  skill merge re-derived it from the knight (the WIP had 0 fails on the old limits). Not fixed: proposed exemption below.
+- **Baseline rebuild (no edit):** differs from the export on `hit_light_front` (max 0.17), `hit_medium_front` (0.97) and all
+  12 deaths. Drift from the newer shared modules: not committed, the exported clips stay.
+
+## Changes per clip
+
+- **idle_upper** (`OWN_IDLE` head 14/-8/16 -> 12/-6/9): the hung head sank the coif 2.0 px into the left pauldron (t20.5).
+- **walk_upper** (new `OWN_WALK`, gated `OWN`): the shared walk marched him upright, eyes level, blade held out level like a
+  bar (Kort's unsent note on tick 5). Now the chest hunches, the head hangs and cocks, the blade rides lower and turned out.
+  Same legs, timing and length. 0 FAIL.
+- **stance_fallback_upper/_legs** (`stances.py` revenant rows: head -6 roll, hips +1 px): coif into pauldron 2.1 and the left
+  boot 1.2 px under the ground. Rally and hold regenerate byte-identical.
+- **Attacks, hits, stun** (new `art/anim/revenant/review_layer.py`, run after the export, revenant only): every hanging piece
+  swings (secondary_life FAILs gone); the overhead and low-cut edge roll eases instead of snapping (pops of 19 and 20 deg);
+  the front flap gives way to the lifting thigh; the hung head lifts through the heavier hits; the hips ride higher in
+  knockback, pulled and stun (boots up to 2.2 px under the ground). Lengths, loop flags, markers and `impact` unchanged.
+
+## Remaining FAIL rows and why
+
+- **Hits played raw** (hit_block elbow 176.9, hit_knockback elbow 145.0 and weapon 1.7, hit_pulled elbow 165.6 and floor 1.1,
+  hit_medium_back knee -13.0, hit_medium_front coif 2.01): the hits are additive, and focus_check plays them over the bind
+  pose. Composed over the ready stance (`work/review/compose.py`, as HitController plays them) none of these rows appear.
+  Composed, one row is left: hit_knockback gilt_rim_r into torso 2.0 at t1 (the same rigid rim row the attacks have on
+  their own; exactly at the limit). The composed check also flags settle on every hit: the looping stance under them.
+- **attack_overhead** gilt_rim_r into torso 2.0 (t4), **attack_low_cut** right_plate into torso 2.0 (t6.5): both rigid and
+  both in the clips before this review, at the limit.
+- **charge_run_upper** half_cape into left_boot 1.93: before this review too (the charge comes from charge.py, shared).
+- **stun_upper** coif into right_spike2 2.52 (was 2.72; stun from shared reactions.py over his hung head);
+  **stun_out_upper** secondary_life 0.95: a 6 tick hand-back where the spring's fade in and out leaves under a tick of swing.
+
+## Proposed exemptions (troop, clip, check, value, reason)
+
+- revenant, attack_overhead, scorecard edge_lead, 14.24 deg (limit 13.53): the shoulder-driven slash leads 0.7 deg past a
+  limit re-derived after the WIP was scored; the edge faces the cut by eye.
+- revenant, stun_out_upper, secondary_life, 0.95: a 6 tick clip.
+- revenant, stun_upper, armour_clip, 2.52: the coif against the right shoulder spikes; the head offset that clears it
+  stretches the neck.
+
+## Other troops
+
+The builder hunks are gated on `OWN` and the stances rows keyed `revenant`. walk_upper, idle_upper and idle_legs from the
+builder for knight, sentinel, gl_marshal, tc_raider and gb_hollowking match their committed `out/` byte for byte;
+`stances.py all --out` matches every other troop's export except hexer (the known drift) and stalker (the same with the
+unedited stances.py: pre-existing). A full revenant build differs from the baseline build only in walk_upper and idle_upper.
+
+## Tests
+
+`python -m unittest discover -s tools/anim` OK. `verify.py fast`: python-tests timed out and two Java checks could not
+start (the paging file was full: the machine ran out of memory); every other step PASS. In-game reel: see the report.
