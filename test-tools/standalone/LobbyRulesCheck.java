@@ -65,7 +65,7 @@ public final class LobbyRulesCheck {
   check(one.fill,"Bots fill empty seats by default");
   solo.ready(s);check(solo.startFailure(s,false).isEmpty()&&solo.countdown(10,false,"").started().contains(one),"One commander with bot fill counts down: bots take the five other seats");
   solo.configure(s,3,0,false,5);check(!one.fill&&one.ready.contains(s),"The host turns bot fill off, and a ready commander stays ready (match flow spec 3: a bot change does not un-ready)");
-  solo.ready(s);check(solo.startFailure(s,false).equals("Fill both teams or enable bots.")&&solo.countdown(10,false,"").started().isEmpty(),"Without bots a room short of commanders does not count down");
+  check(solo.startFailure(s,false).equals("Fill both teams or enable bots.")&&solo.countdown(10,false,"").started().isEmpty(),"Without bots a room short of commanders does not count down");
   check(solo.configure(t,3,0,true,5).startsWith("Only an idle room host"),"Only the host turns bot fill back on");
   solo.configure(s,1,0,false,5);solo.joinRoom(t,one.code);solo.ready(s);solo.ready(t);
   check(solo.startFailure(s,false).isEmpty()&&solo.countdown(10,false,"").started().contains(one),"Without bots a full room (1v1 here) counts down");
