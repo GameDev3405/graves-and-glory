@@ -306,7 +306,7 @@ RALLY_UP = {"tc_harpooner": dict(right_arm=2.0, right_forearm=1.5)}
 
 # per troop overrides of its gear's RALLY row (Kort's rule 6: the order in the troop's own manner)
 #   tc_raider: the cutlass brandished out to the side, the chest turned and dropped behind it
-RALLY_OWN = {"tc_raider": dict(lift=112, keep=0.35, fore=-34, out=-24, chest=(-3, -6))}
+RALLY_OWN = {"tc_raider": dict(lift=104, keep=0.6, fore=-30, out=-24, chest=(-3, -6))}
 
 
 def rally_pose(tr, e, c, t=None):
@@ -503,11 +503,11 @@ def fallback_fit(tr, base):
 #   ic_hearthguard (Kort's rule 6, 2026-11-10): gives ground short-stepped (0.55), shield side leading (hips yaw 7 deg toward the
 #     shield side). Its extra 0.6 px hips drop is gone (batch review 2026-11-11): the walk is not re-solved here, so the drop pushed
 #     the boot 1.33 px under the ground at tick 0 (focus check floor FAIL); without it the floor row is the family's 0.73 WARN.
-#   tc_raider: a quick low backward shuffle, knees bent, steps a little wider
+#   tc_raider: a backward shuffle turned side-on behind the cutlass, the hips rolling from foot to foot
 FALLBACK_LEGS = {
     "ic_hearthguard": dict(amp={}, base=0.55, hips=lambda ph: ((0.0, 7.0, 0.0), (0.0, 0.0, 0.0))),
-    "tc_raider": dict(amp={}, base=0.85,
-                      hips=lambda ph: ((3.0, 8.0, 2.0 * math.sin(ph)), (0.4 * math.sin(ph), -1.0, 0.0))),
+    "tc_raider": dict(amp={}, base=0.7,
+                      hips=lambda ph: ((2.0, 8.0, 2.0 * math.sin(ph)), (0.4 * math.sin(ph), 0.0, 0.0))),
 }
 
 

@@ -53,3 +53,79 @@ The tc_raider now builds in the knight's v2 style, rebuilt for one hand and an e
 - **death_forward / death_right (kept weapon):** the cutlass is 0.10 and 0.06 px into the floor at its lowest.
 - **death_forward drop1/drop2:** the probe flags POP? on the weapon throw (138 deg/tick at t12.5), as the knight does on its throws.
 - **Not seen in game:** only the harness and the offline reel were run.
+
+# Batch review 2026-11-11
+
+Branch `anim/review-raider` (lane `anim/stance-raider` WIP 268da402 plus the skill lane). The stance redo was spliced in (stance and idle clips only), and a late layer `art/anim/knight/raider_review.py` fixes the attacks, hits and stun. Every other clip is byte-identical to the committed asset.
+
+## Baseline drift (not touched)
+
+A full rebuild of tc_raider with HEAD code differs from the committed `out/` in 31 clips:
+- idle and the 12 stance builder clips: the WIP;
+- attack_thrust, attack_overhead(+_legs), attack_low_cut(+_legs), hit_light_front, hit_medium_front and all 12 deaths: shared-module drift.
+
+The revenant shows the same drift on HEAD (attacks, hit fronts, deaths). That is why only the stance and idle clips were spliced (`work/review/splice.py`, unversioned), not rebuilt.
+
+## Stance redo (what can play: no shield and no spear, so `holdStance` gives hold; brace, wall, shield_up and ward cannot play)
+
+| Clip | What makes it the raider's |
+|---|---|
+| idle | Cutlass carried low and forward, free fist on the hip; the deck-roll hip sway. |
+| stance_ready | Wide, low sea legs, chest side-on, deck roll. Builder change: the free hand drops and opens out from the hilt (`OWN_UPPER` left_arm (8, 0, -14)). Feet within 0.98 px of the attacks' tick 0. |
+| stance_hold | Cutlass cocked high by the helm, free hand out low, legs from the brace row. |
+| stance_rally | Cutlass brandished out to the side, chest turned behind it. Slowed (`RALLY_OWN` lift 104, keep 0.6, fore -30): the scorecard's ang_speed_weapon failed at 64 deg/100ms. |
+| stance_fallback | Backward shuffle turned side-on behind a low cutlass, the hips rolling foot to foot. Hip drop removed (base 0.7): the foot was 1.96 px under the floor. |
+
+All of these were looked at in front, side and three-quarter views, near and at game16.
+
+## Late layer `raider_review.py` (tc_raider only; edits the exported asset; idempotent: a second pass is byte-identical)
+
+Run it after build, export, stances, reactions and charge.
+- **LIFE:** `fullbody.soft_motion` on the attacks, the medium hits, hit_block, hit_pulled, hit_knockback, stun_upper and stun_out_upper. This covers kelp_helm, kelp_left_shoulder, scarf, skirt, the hip sash `tail`, and both pauldrons.
+  - stun_upper's loop runs to a steady swing and closes exactly.
+  - stun_out_upper reads stun_legs but never writes the hip pieces (stun_legs owns them).
+  - Hit cloth is softened over [1 2 1] three times, so there is no pop.
+- **SASH:** the hip sash follows the left thigh in walk_legs, run_legs, stance_fallback_legs and the LIFE legs clips. Before, the greave cut through it.
+- **ROLL** (overhead, low cut): the edge's half turn onto the cut no longer snaps in the wind-up.
+  - It turns at most 11.5 deg/tick from tick 0 to 1.25 ticks before the arc, then finishes by the arc's first fast sample.
+- **HAND_EASE** (overhead t11.25-13.25, low cut t8.75-11.5): the after-cut wobble through the Euler pole becomes one Hermite turn.
+- **SETTLE:** the attacks ease back to their first pose over the last 3 ticks, as a rotation, not an Euler blend.
+
+## Rows (focus check)
+
+- **Before:** 14 clips with a FAIL, 33 FAIL rows.
+- **After:** 7 clips, 11 rows.
+- **Fixed:**
+  - every secondary_life;
+  - walk_upper and stance_fallback_upper armour_clip (greave into sash);
+  - grip_roll on overhead (42.2) and low cut (46.1);
+  - overhead pop (19.9) and low cut jitter (11.8);
+  - settle on the three attacks;
+  - the knockback greave into sash.
+- **New WARNs:**
+  - attack_low_cut weapon_in_body 0.85 px (belt) at t10, from the hand ease;
+  - stance_wall(_up) knee_aim 54 (wall cannot play for this troop).
+
+## Open (not fixed: fix rounds used up; pre-existing, unchanged)
+
+- **hit_pulled:** floor 1.64 at t5.25; elbow 165.6 at t5.75 (reactions.py, common).
+- **stun_upper:** floor 1.72 at t0.75; head into right_shell_barn 2.36 at t1.0 (reactions.py).
+- **stun_out_upper:** floor 1.72 at t0.75 (reactions.py).
+- **hit_knockback:** weapon_in_body 1.81 (right_leg) at t1.75; floor 1.5 at t10; elbow 145 at t7.5 (reactions.py).
+- **hit_medium_front:** head into left_shell_barn 2.32 at t4.5 (builder hit_clips: the head tilts into the raider's shoulder shell).
+- **hit_medium_back:** knee -13 at t11.5 (builder).
+- **hit_block:** elbow 176.5 at t8.25 (builder).
+
+## Tests
+
+- **Scorecard:** 42 clips, 0 failing.
+- **Unit tests:** `unittest discover -s tools/anim`: 152 OK.
+- **verify fast:** every check passed except python-tests, which hit verify's 600 s step timeout (exit 124) on the overloaded machine. That suite was re-run alone: see the report.
+- **In-game (checkq, root `tc_raider-review1`, geo-knight with `GRAVES_GEO_CHECK_TROOP=tc_raider`):** NOT a pass. 23 p1 lines, 6 `=false`, 4 "Can't keep up".
+  - The failures are timing checks:
+    - run-side: client speed spread 0.116-0.446;
+    - one of 124 swings unmatched (clip null), which fails attack-sync-stand, attack-plays and attack-footwork together;
+    - brace stance ramp lag 5-6 ticks against 4.
+  - Every frame, hit, hit-pulled and death check passed.
+  - Other lanes' reels on this machine the same night failed timing checks the same way.
+  - Needs a re-run on a quiet machine.

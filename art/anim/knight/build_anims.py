@@ -1789,7 +1789,8 @@ OWN_HIPS_LIFE = {
 # The upper body's own character over every stance pose: fixed offsets (torso, head, left arm, left forearm) and a life
 # function of u giving (torso, head) offsets.
 OWN_UPPER = {
-    "tc_raider": {"torso": (-2.0, 8.0, 0.0), "head": (-4.0, -8.0, 0.0), "left_arm": (0.0, 0.0, -4.0), "left_forearm": 0.0,
+    # tc_raider: the free hand dropped and opened out from the chest (balancing, off the cutlass's hilt)
+    "tc_raider": {"torso": (-2.0, 8.0, 0.0), "head": (-4.0, -8.0, 0.0), "left_arm": (8.0, 0.0, -14.0), "left_forearm": 0.0,
                   # the chest counter-rolls the deck roll so the head stays level-ish
                   "life": lambda u: ((0.0, -0.8 * math.sin(2 * math.pi * u), -1.8 * math.sin(2 * math.pi * u)),
                                      (0.0, 0.0, 1.2 * math.sin(2 * math.pi * u)))},
