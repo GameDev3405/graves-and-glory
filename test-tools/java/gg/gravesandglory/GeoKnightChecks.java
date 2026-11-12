@@ -645,7 +645,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
      *  read a real backpedal and the minimum only that it never walked forward. */
     final List<Double> foeBack = new ArrayList<>();
     static double median(List<Double> v) { if (v.isEmpty()) return 0; var c = new ArrayList<>(v); java.util.Collections.sort(c); return c.get(c.size() / 2); }
-    int impactSamples, footSamples, gapSamples, walkSwingSamples, deadSamples;
+    int impactSamples, footSamples, gapSamples, walkSwingSamples, deadSamples, cancelledSamples;
     final Set<String> walkWrong = new LinkedHashSet<>(), deadWrong = new LinkedHashSet<>();
 
     /** One client tick of a duel: every duelist's announced swings and what its attack layer drew last frame. */
@@ -665,7 +665,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             if (ac.shownAt > now - 1) for (var a : MotionEvents.Client.attacks(id)) if (a.startTick() + ablLead <= ac.shownAt && ac.shownAt <= a.startTick() + ablLead + (ABL_CAST ? Math.min(30, MELEE_T - 1) : 30) && ac.shownAt > clientKnown.getOrDefault(id + ":" + a.startTick(), Long.MAX_VALUE)) clientDrawn.add(id + ":" + a.startTick());
             boolean dead = ac.shownDeath >= 0;
             double t = ac.shownAt - latest;
-            if (!dead && latest != Long.MIN_VALUE && ac.shownStart == latest && ac.shownImpact >= 0 && Math.abs(ac.shownT - ac.shownImpact) <= 1) {
+            // A draw the server dropped (attack_v1 cancel: the harness moves on from a nudged shot between views) fades out, not to its impact: not judged as a shot.
+            boolean dropped = latest != Long.MIN_VALUE && MotionInput.cancelled(MotionEvents.Client.cancels(id), latest) != null; if (dropped) cancelledSamples++;
+            if (!dead && !dropped && latest != Long.MIN_VALUE && ac.shownStart == latest && ac.shownImpact >= 0 && Math.abs(ac.shownT - ac.shownImpact) <= 1) {
                 if (ac.shownWeight < minImpactW) minImpactWhy = String.format("%d:%d at %.2f t %.2f seen %.2f", id, latest, ac.shownAt, ac.shownT, ac.shownSeenAt);
                 minImpactW = Math.min(minImpactW, ac.shownWeight); impactSamples++;
                 // A ranged troop's footwork is judged on the duel's own shots: one the battle's own beat began in the march before lands in the duel's first ticks,
@@ -678,7 +680,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 }
             }
             int gapT = GAP_T + ablLead + (BOW ? Projectiles.hold(u) : 0);
-            if (!dead && latest != Long.MIN_VALUE && t >= gapT && t <= gapT + 2.5) { maxGapW = Math.max(maxGapW, ac.shownWeight); gapSamples++; }
+            if (!dead && !dropped && latest != Long.MIN_VALUE && t >= gapT && t <= gapT + 2.5) { maxGapW = Math.max(maxGapW, ac.shownWeight); gapSamples++; }
             Gait g = Gait.LIVE.get(e);
             if (d.mode.equals("walk") && d.k > WALK0 + 6 && d.k < WALK0 + WALK && ac.shownWeight > .5) {
                 walkSwingSamples++;
@@ -934,7 +936,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     else {
                         syncReport(d);
                         Phase1Checks.report("p1-geo-" + TROOP + "-attack-plays", impactSamples > 10 && minImpactW > .9 && gapSamples > 4 && maxGapW == 0,
-                            String.format("weight at impact (+-1 tick) min %.4f (%s) over %d samples; between swings max %.5f over %d; draws dropped (attack_v1 cancel) %d", minImpactW, minImpactWhy, impactSamples, maxGapW, gapSamples, Projectiles.drawsDropped));
+                            String.format("weight at impact (+-1 tick) min %.4f (%s) over %d samples; between swings max %.5f over %d; draws dropped (attack_v1 cancel) %d, %d samples of them not judged", minImpactW, minImpactWhy, impactSamples, maxGapW, gapSamples, Projectiles.drawsDropped, cancelledSamples));
                         Phase1Checks.report("p1-geo-" + TROOP + "-attack-footwork", impactSamples > 10 && footSamples >= 4 && minImpactLegsW > .9,
                             String.format("standing: attack legs weight at impact min %.4f (%s) over %d of %d samples", minImpactLegsW, minImpactLegsWhy, footSamples, impactSamples));
                         duel = null; i = 0; next(tick, 6);
