@@ -87,7 +87,7 @@ class RecruitmentScreen extends ArmyScreen {
         if(armoury!=null&&armoury.matchesKey(key,scan)&&!(tab==1&&page.editing>0)){if(tab==1)close();else show(1);return true;}
         if(tab==1&&(key==GLFW.GLFW_KEY_PAGE_UP||key==GLFW.GLFW_KEY_PAGE_DOWN)&&page.scroll(key==GLFW.GLFW_KEY_PAGE_UP?-1:1))return true;
         if(tab==0){ // Enter recruits the picked troop (the key its plate shows); Up and Down pick the row above or below; Page Up and Down scroll the roll
-            if((key==GLFW.GLFW_KEY_ENTER||key==GLFW.GLFW_KEY_KP_ENTER)&&recruit!=null&&recruit.active&&!(getFocused() instanceof ButtonWidget f&&f!=recruit&&f.isFocused())){recruit.onPress();return true;}
+            if((key==GLFW.GLFW_KEY_ENTER||key==GLFW.GLFW_KEY_KP_ENTER)&&recruit!=null&&recruit.active&&!(getFocused() instanceof ButtonWidget f&&f!=recruit&&f.isFocused()&&client.getNavigationType().isKeyboard())){recruit.onPress();return true;}
             if(key==GLFW.GLFW_KEY_UP||key==GLFW.GLFW_KEY_DOWN){barracks.step(key==GLFW.GLFW_KEY_UP?-1:1);return true;}
             if((key==GLFW.GLFW_KEY_PAGE_UP||key==GLFW.GLFW_KEY_PAGE_DOWN)&&barracks.scroll(key==GLFW.GLFW_KEY_PAGE_UP?-1:1))return true;
         }
