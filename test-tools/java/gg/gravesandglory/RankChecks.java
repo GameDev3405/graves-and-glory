@@ -8,6 +8,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.util.Identifier;
+import software.bernie.geckolib.cache.object.BakedGeoModel;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -23,6 +24,10 @@ import static gg.gravesandglory.Phase2Checks.shot;
  * print through Phase2Checks.report. It runs on the art suites' sky platform (Phase2Checks.Stage), gold against violet, the troops
  * posted with Battle.spawn and ranked on the server through Stage.stage (RankSync.changed), so every rank the client draws came
  * over rank_v1.
+ * <p>The Squire (troop knight) draws through GeckoLib (GeoTroopRenderer.handles), the renderer going forward: its draws, the sheet
+ * it binds and the rig bones its tiers show are read from GeoTroopRenderer.PROBE (geo), never from TroopRenderer.drawn, which only
+ * the legacy path records. The Revenant and the Sunweaver still draw through the vanilla and legacy renderers, and their checks
+ * keep reading TroopRenderer.drawn.
  */
 final class RankChecks {
     private RankChecks() {}
@@ -62,7 +67,49 @@ final class RankChecks {
         }
         static Entity e(MinecraftClient c, GravesAndGlory.Unit u) { return u == null ? null : client(c, u.mob); }
         static TroopRenderer.Draw last(Entity e) { var d = e == null ? null : TroopRenderer.drawn(e); return d == null ? null : d.last; }
-        static int drawCount(Entity e) { var d = e == null ? null : TroopRenderer.drawn(e); return d == null ? 0 : d.count; }
+        /** Every draw of the entity, through either path: the legacy model's (TroopRenderer.drawn) and GeckoLib's (geo). */
+        static int drawCount(Entity e) { if (e == null) return 0; var d = TroopRenderer.drawn(e); var g = GEO.get(e); return (d == null ? 0 : d.count) + (g == null ? 0 : g.count); }
+
+        /** The rig bones whose showing depends on the troop's tiers (troop_rig/knight.json): the helms by armour tier, the swords by weapon tier. */
+        static final List<String> TIERED = List.of("helm_squire", "helm_great", "helm_crown", "crest", "sword_t1", "sword_t2", "sword_t3");
+        /** One GeckoLib draw as GeoTroopRenderer.PROBE saw it, right after it: the Look drawn, the sheet bound and the tiered bones shown (TIERED order). */
+        record GeoDraw(TroopModels.Look look, Identifier texture, List<String> shown) {
+            String swords() { return String.join(" ", shown.stream().filter(b -> b.startsWith("sword")).toList()); }
+            String helms() { return String.join(" ", shown.stream().filter(b -> !b.startsWith("sword")).toList()); }
+            /** The sheet's folder and file, e.g. knight_geo/t3_gold.png. */
+            String sheet() { if (texture == null) return "none"; String p = texture.getPath(); return p.substring(p.lastIndexOf('/', p.lastIndexOf('/') - 1) + 1); }
+        }
+        static final class GeoSeen { int count; GeoDraw last; }
+        /** GeckoLib draws per entity, by identity (a portrait may share a world troop's id). */
+        static final Map<Entity, GeoSeen> GEO = new com.google.common.collect.MapMaker().weakKeys().makeMap();
+        static GeoTroopRenderer.Probe probeBefore; static boolean probing;
+        static java.lang.reflect.Field geoRenderers;
+        /** The entity's last GeckoLib draw, or null when GeckoLib never drew it. */
+        static GeoDraw geo(Entity e) { var g = e == null ? null : GEO.get(e); return g == null ? null : g.last; }
+        /** Hooks GeoTroopRenderer.PROBE (handing every draw on to a probe already there) to count each GeckoLib draw and keep what it drew. */
+        static void installProbe() {
+            if (probing) return; probing = true; var prev = probeBefore = GeoTroopRenderer.PROBE;
+            GeoTroopRenderer.PROBE = (Entity e, BakedGeoModel model, float td) -> {
+                if (prev != null) prev.seen(e, model, td);
+                var l = TroopModels.resolve(e); if (l == null) return;
+                List<String> shown = new ArrayList<>(); for (String b : TIERED) model.getBone(b).ifPresent(x -> { if (!x.isHidden()) shown.add(b); });
+                var s = GEO.computeIfAbsent(e, k -> new GeoSeen()); s.count++; s.last = new GeoDraw(l, geoTexture(e, l), shown);
+            };
+        }
+        static void removeProbe() { if (!probing) return; GeoTroopRenderer.PROBE = probeBefore; probeBefore = null; probing = false; }
+        /** The sheet GeoTroopRenderer bound for this draw: its model's texture, set by draw just before it rendered (TroopRenderer keeps one GeoTroopRenderer per troop id). */
+        @SuppressWarnings("unchecked")
+        static Identifier geoTexture(Entity e, TroopModels.Look l) {
+            try {
+                var r = MinecraftClient.getInstance().getEntityRenderDispatcher().getRenderer(e); if (!(r instanceof TroopRenderer<?> tr)) return null;
+                if (geoRenderers == null) { var f = TroopRenderer.class.getDeclaredField("geo"); f.setAccessible(true); geoRenderers = f; }
+                var g = ((Map<String, GeoTroopRenderer<?>>) geoRenderers.get(tr)).get(l.troop().id());
+                return g == null ? null : ((GeoTroopRenderer.Model) g.getGeoModel()).texture;
+            } catch (ReflectiveOperationException ex) { return null; }
+        }
+        /** The helm bones the knight rig shows at each armour tier (troop_rig/knight.json). */
+        static String helmsAt(int armour) { return armour >= 3 ? "helm_great helm_crown crest" : armour == 2 ? "helm_great" : "helm_squire"; }
+        static String geoText(GeoDraw g) { return g == null ? "no GeckoLib draw" : "sheet " + g.sheet() + ", helm " + g.helms() + ", sword " + g.swords(); }
         static String rank(RankSync.Rank r) { return r == null ? "none" : r.level() + "/" + r.weaponTier() + "/" + r.armourTier(); }
         static String file(Identifier id) { if (id == null) return "none"; String p = id.getPath(); return p.substring(p.lastIndexOf('/') + 1); }
         static String mark(TroopChevrons.Mark m) { return m == null ? "no chevron" : m.chevrons() + " chevron(s) in #" + String.format("%06X", m.colour()) + String.format(Locale.ROOT, " at %.1f blocks", m.distance()); }
@@ -90,6 +137,7 @@ final class RankChecks {
         static void restoreT2() { TroopModels.addWeapon(SWORD_T2, shippedT2); }
 
         public void step(MinecraftClient c, int tick) {
+            installProbe();
             if (tick == 20) { c.setScreen(null); UUID id = c.player.getUuid(); server(c, b -> { player = id; stage = 1; }); }
             if (finished) return;
             if (tick > 12000) { report("p2-ranks-timeout", false, "stuck at client step " + cs + ", server stage " + stage); end(c); return; }
@@ -113,7 +161,7 @@ final class RankChecks {
                     if (syncBack && Objects.equals(RankSync.client(e(c, gk1)), RankSync.Rank.FRESH)) { markDraws(c, posted); wait = 0; cs = 2; }
                 }
                 case 2 -> { wait++; // p2-chevrons-both-teams and the 12-block shot
-                    if (wait % 600 == 0) System.out.println("[p2-wait] ranks step 2 after " + wait + " ticks: Squires drew since the mark=" + drewSince(c, List.of(gk2, vk3, gk1), 5) + ", Revenant chevron " + mark(TroopChevrons.drawn(e(c, vr3))));
+                    if (wait % 600 == 0) System.out.println("[p2-wait] ranks step 2 after " + wait + " ticks: Squires drew (legacy or GeckoLib) since the mark=" + drewSince(c, List.of(gk2, vk3, gk1), 5) + ", Revenant chevron " + mark(TroopChevrons.drawn(e(c, vr3))));
                     if (wait >= 40 && drewSince(c, List.of(gk2, vk3, gk1), 5)) { // the Revenant draws through its vanilla renderer, so it has no model draw to count
                         if (!shotReady(c, "ranks-chevrons")) { wait--; return; }
                         var a = TroopChevrons.drawn(e(c, gk2)); var bb = TroopChevrons.drawn(e(c, vk3)); var one = TroopChevrons.drawn(e(c, gk1)); var r = TroopChevrons.drawn(e(c, vr3));
@@ -121,13 +169,14 @@ final class RankChecks {
                         long now = c.world.getTime();
                         boolean fresh = a != null && bb != null && r != null && now - a.time() < 5 && now - bb.time() < 5 && now - r.time() < 5;
                         boolean ok = fresh && a.chevrons() == 1 && a.colour() == goldC && bb.chevrons() == 2 && bb.colour() == violetC && (one == null || now - one.time() > 30)
-                            && r.chevrons() == 2 && r.colour() == violetC && TroopRenderer.drawn(e(c, vr3)) == null && Math.abs(a.distance() - FAR) < 1.0;
+                            && r.chevrons() == 2 && r.colour() == violetC && TroopRenderer.drawn(e(c, vr3)) == null && geo(e(c, vr3)) == null && Math.abs(a.distance() - FAR) < 1.0
+                            && geo(e(c, gk2)) != null && geo(e(c, vk3)) != null;
                         var tex = c.getResourceManager().getResource(TroopChevrons.TEXTURE); int[] size = {0, 0};
                         if (tex.isPresent()) try (var in = tex.get().getInputStream(); var img = net.minecraft.client.texture.NativeImage.read(in)) { size[0] = img.getWidth(); size[1] = img.getHeight(); } catch (Exception ex) { size[0] = -1; }
                         boolean texOk = size[0] == TroopChevrons.TEX_W && size[1] == TroopChevrons.TEX_H;
                         shot(c, "ranks-chevrons");
                         report("p2-chevrons-both-teams", ok && texOk, "level-2 gold Squire: " + mark(a) + " (want 1 in gold #" + String.format("%06X", goldC) + "); level-3 violet Squire: " + mark(bb) + " (want 2 in violet #" + String.format("%06X", violetC)
-                            + "); level-1 gold Squire: " + (one == null || now - one.time() > 30 ? "no chevron" : mark(one) + " (BAD)") + "; level-3 violet Revenant (vanilla renderer, own model drawn=" + (TroopRenderer.drawn(e(c, vr3)) != null) + "): " + mark(r)
+                            + "); level-1 gold Squire: " + (one == null || now - one.time() > 30 ? "no chevron" : mark(one) + " (BAD)") + "; Squires drawn by GeckoLib=" + (geo(e(c, gk2)) != null && geo(e(c, vk3)) != null) + "; level-3 violet Revenant (vanilla renderer, own model drawn=" + (TroopRenderer.drawn(e(c, vr3)) != null) + ", GeckoLib drawn=" + (geo(e(c, vr3)) != null) + "): " + mark(r)
                             + "; chevron.png " + size[0] + "x" + size[1] + " (want " + TroopChevrons.TEX_W + "x" + TroopChevrons.TEX_H + "); picture p2-ranks-chevrons.png at about " + (int) FAR + " blocks");
                         // C15-F2: the level-3 violet Squire wears armour tier 3 and draws through GeckoLib; its chevrons sit clear of the rig's crown and crest
                         double crown = geoCrown(c, "knight"); boolean geo = GeoTroopRenderer.handles(TroopModels.resolve(e(c, vk3)));
@@ -180,43 +229,45 @@ final class RankChecks {
                         wait = 0; cs = 6;
                     }
                 }
-                case 6 -> { wait++; // p2-armour-tier-skin and the ranks-tiers shot: the Squire at 1/1, 2/2 and 3/3, each tier with its own sword (the art is painted: arming_sword, _t2, _t3)
+                case 6 -> { wait++; // p2-armour-tier-skin and the ranks-tiers shot: the Squire at 1/1, 2/2 and 3/3; through GeckoLib each tier binds its own sheet (knight_geo/t<n>_gold) and shows its own helm and sword bones (sword_t1, _t2, _t3)
                     if (!sceneB || tiers.size() < 3 || tiers.stream().anyMatch(u -> e(c, u) == null)) { wait = 0; return; }
                     if (wait == 2) markDraws(c, tiers);
                     if (wait >= 50 && drewSince(c, tiers, 5)) { if (!shotReady(c, "ranks-tiers")) { wait--; return; }
                         boolean ok = true; StringBuilder why = new StringBuilder();
-                        for (var u : tiers) { var x = e(c, u); var l = last(x); int t = u.armourTier;
-                            boolean good = l != null && l.look().armourTier() == t && l.look().weaponTier() == t && file(l.skin()).equals("knight_s" + t + ".png") && (t >= 3 ? SWORD_T3 : t == 2 ? SWORD_T2 : SWORD).equals(l.weaponId()) && Objects.equals(RankSync.client(x), RankSync.of(u));
-                            ok &= good; why.append(rank(RankSync.client(x))).append(": skin ").append(l == null ? "none" : file(l.skin())).append(", weapon ").append(l == null ? "none" : l.weaponId()).append(good ? "" : " (BAD)").append("; "); }
+                        for (var u : tiers) { var x = e(c, u); var g = geo(x); int t = u.armourTier;
+                            boolean good = g != null && g.look().armourTier() == t && g.look().weaponTier() == t && g.sheet().equals("knight_geo/t" + t + "_gold.png") && g.helms().equals(helmsAt(t)) && g.swords().equals("sword_t" + t) && Objects.equals(RankSync.client(x), RankSync.of(u));
+                            ok &= good; why.append(rank(RankSync.client(x))).append(": ").append(geoText(g)).append(good ? "" : " (BAD)").append("; "); }
                         shot(c, "ranks-tiers");
-                        report("p2-armour-tier-skin", ok, "Squires at rank_v1 1/1/1, 2/2/2 and 3/3/3 bind knight_s1, _s2 and _s3, and with the tier art painted tiers 1, 2 and 3 draw arming_sword, arming_sword_t2 and arming_sword_t3: " + why.toString().trim() + " picture p2-ranks-tiers.png");
+                        report("p2-armour-tier-skin", ok, "Squires at rank_v1 1/1/1, 2/2/2 and 3/3/3 drawn by GeckoLib bind knight_geo/t1_gold, t2_gold and t3_gold, show helm_squire, helm_great and helm_great with helm_crown and crest, and swords sword_t1, sword_t2 and sword_t3: " + why.toString().trim() + " picture p2-ranks-tiers.png");
                         markDraws(c, tiers); wait = 0; cs = 7;
                     }
                 }
-                case 7 -> { wait++; // p2-weapon-tier-model: tiers 1, 2 and 3 draw their own sword models; without the tier 2 model tier 2 draws tier I
+                case 7 -> { wait++; // p2-weapon-tier-model: tiers 1, 2 and 3 show their own sword bones; without the tier 2 model the legacy weapon lookup falls to tier I (the rig keeps its own)
                     if (wait >= 10 && drewSince(c, tiers, 3) && marks == 0) {
-                        String[] got = new String[3]; for (int i = 0; i < 3; i++) { var l = last(e(c, tiers.get(i))); got[i] = l == null ? "none" : l.weaponId(); }
+                        String[] got = new String[3]; for (int i = 0; i < 3; i++) { var g = geo(e(c, tiers.get(i))); got[i] = g == null ? "none" : g.swords(); }
                         var three = TroopModels.weapon(SWORD, 3); int art3 = TroopModels.weaponArt(SWORD, 3);
-                        boolean with = SWORD.equals(got[0]) && SWORD_T2.equals(got[1]) && SWORD_T3.equals(got[2]) && three != null && SWORD_T3.equals(three.id()) && art3 == 3;
-                        report("p2-weapon-tier-model", with, "with the tier art painted the Squires at weapon tiers 1, 2 and 3 draw " + Arrays.toString(got) + " (want arming_sword, arming_sword_t2, arming_sword_t3); TroopModels.weapon(arming_sword, 3) is " + (three == null ? "none" : three.id()) + ", weaponArt 3 -> " + art3);
+                        boolean with = "sword_t1".equals(got[0]) && "sword_t2".equals(got[1]) && "sword_t3".equals(got[2]) && three != null && SWORD_T3.equals(three.id()) && art3 == 3;
+                        report("p2-weapon-tier-model", with, "the Squires at weapon tiers 1, 2 and 3 drawn by GeckoLib show " + Arrays.toString(got) + " (want sword_t1, sword_t2, sword_t3, one each); for the legacy renderer TroopModels.weapon(arming_sword, 3) is " + (three == null ? "none" : three.id()) + ", weaponArt 3 -> " + art3 + " (want arming_sword_t3, 3)");
                         shippedT2 = TroopModels.weapon(SWORD_T2); tookT2 = true; TroopModels.addWeapon(SWORD_T2, null); markDraws(c, tiers); marks = 1;
                     }
                     if (marks == 1 && drewSince(c, tiers, 3)) {
-                        var l = last(e(c, tiers.get(1)));
-                        boolean back = l != null && SWORD.equals(l.weaponId()) && TroopModels.weaponArt(SWORD, 2) == 1;
-                        report("p2-weapon-tier-stopgap", back, "without arming_sword_t2 the tier 2 Squire draws " + (l == null ? "none" : l.weaponId()) + " (want arming_sword: a missing tier draws the highest tier below it)");
+                        var g = geo(e(c, tiers.get(1))); var w = TroopModels.weapon(SWORD, 2);
+                        boolean back = w != null && SWORD.equals(w.id()) && TroopModels.weaponArt(SWORD, 2) == 1 && g != null && "sword_t2".equals(g.swords());
+                        report("p2-weapon-tier-stopgap", back, "without arming_sword_t2 the legacy renderer's weapon for tier 2, TroopModels.weapon(arming_sword, 2), is " + (w == null ? "none" : w.id()) + ", weaponArt 2 -> " + TroopModels.weaponArt(SWORD, 2)
+                            + " (want arming_sword, 1: a missing tier draws the highest tier below it); the GeckoLib tier 2 Squire, whose rig carries its own tier swords, still shows " + (g == null ? "none" : g.swords()) + " (want sword_t2)");
                         restoreT2(); marks = 0; server(c, b -> { var u = tiers.get(2); u.mob.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(u.spec, 3) + ArmyMobs.VETERAN)); stage(u, 3, 3, 3); vetSet = true; });
                         markDraws(c, tiers); wait = 0; cs = 8;
                     }
                 }
-                case 8 -> { wait++; // p2-veteran-over-tier: a Mastery II Squire at armour III draws _s3 as a Veteran (the hand-authored knight has no trim since 25ecd79: none drawn)
+                case 8 -> { wait++; // p2-veteran-over-tier: a Mastery II Squire at armour III draws its tier III sheet and helm as a Veteran (the GeckoLib knight draws no trim layer)
                     var vx = e(c, tiers.get(2));
                     if (!vetSet || vx == null || vx.getCustomName() == null || !vx.getCustomName().getString().endsWith(ArmyMobs.VETERAN)) { wait = 0; return; }
                     if (wait == 2) markDraws(c, tiers);
                     if (wait >= 10 && drewSince(c, tiers, 3)) {
-                        var x = e(c, tiers.get(2)); var l = last(x);
-                        boolean ok = l != null && l.look().veteran() && l.look().armourTier() == 3 && file(l.skin()).equals("knight_s3.png") && l.trim() == null;
-                        report("p2-veteran-over-tier", ok, "\"" + (x == null || x.getCustomName() == null ? "" : x.getCustomName().getString()) + "\" at rank " + rank(RankSync.client(x)) + " drew skin " + (l == null ? "none" : file(l.skin())) + " with trim " + (l == null ? "none" : file(l.trim())) + " (want knight_s3 as a Veteran with no trim: the hand-authored knight has none since 25ecd79; p2-veteran-trim-tier draws a trim over tier III)");
+                        var x = e(c, tiers.get(2)); var g = geo(x); var l = last(x);
+                        boolean ok = g != null && g.look().veteran() && g.look().armourTier() == 3 && g.sheet().equals("knight_geo/t3_gold.png") && g.helms().equals(helmsAt(3)) && l == null;
+                        report("p2-veteran-over-tier", ok, "\"" + (x == null || x.getCustomName() == null ? "" : x.getCustomName().getString()) + "\" at rank " + rank(RankSync.client(x)) + " drawn by GeckoLib as Veteran=" + (g != null && g.look().veteran()) + ": " + geoText(g)
+                            + ", legacy model drawn=" + (l != null) + " (want knight_geo/t3_gold with helm_great, helm_crown and crest as a Veteran, and no legacy draw, so no trim: the GeckoLib knight has no trim layer; p2-veteran-trim-tier draws a trim over tier III)");
                         server(c, b -> { mage = post(b, gold, "mage", -4.5, Phase2Checks.GildedArt.STUDIO, 180 + 20); mage.mob.setCustomName(net.minecraft.text.Text.literal(ArmyMobs.levelName(mage.spec, 3) + ArmyMobs.VETERAN)); stage(mage, 3, 3, 3); mageUp = true; });
                         wait = 0; cs = 9;
                     }
@@ -238,15 +289,15 @@ final class RankChecks {
                 case 10 -> { // p2-weapon-parts-tier: a weaponTiers part set switches with the weapon tier (no weaponless troop has a model yet: a fixture of the Squire's model)
                     weaponParts(c); wait = 0; cs = 11;
                 }
-                case 11 -> { wait++; // p2-portrait-tiers: ArmyCards.portrait(knight, 2, 3) draws the tier-3 skin and the tier-2 weapon
+                case 11 -> { wait++; // p2-portrait-tiers: ArmyCards.portrait(knight, 2, 3) draws, through GeckoLib, the tier-3 sheet and the tier-2 sword
                     if (wait == 1) { var w = TroopModels.weapon(SWORD); if (w != null && TroopModels.weapon(SWORD_T2) == null) TroopModels.addWeapon(SWORD_T2, renamed(w, SWORD_T2)); // the shipped one when it is there, else a fixture
                         portrait = ArmyCards.portrait(ArmyCards.spec("knight"), 2, 3); probe = new Phase2Checks.PortraitProbe(List.of(portrait)); c.setScreen(probe); marks = drawCount(portrait); }
                     if (wait >= 20 && drawCount(portrait) - marks >= 5) {
-                        var l = last(portrait); var plain = ArmyCards.portrait(ArmyCards.spec("knight"), 1, 1);
-                        boolean ok = l != null && l.look().weaponTier() == 2 && l.look().armourTier() == 3 && file(l.skin()).equals("knight_s3.png") && SWORD_T2.equals(l.weaponId())
+                        var g = geo(portrait); var plain = ArmyCards.portrait(ArmyCards.spec("knight"), 1, 1);
+                        boolean ok = g != null && g.look().weaponTier() == 2 && g.look().armourTier() == 3 && g.sheet().startsWith("knight_geo/t3_") && g.helms().equals(helmsAt(3)) && "sword_t2".equals(g.swords())
                             && new RankSync.Rank(1, 2, 3).equals(RankSync.client(portrait)) && plain != portrait && TroopChevrons.drawn(portrait) == null;
-                        report("p2-portrait-tiers", ok, "the portrait at weapon 2, armour 3 (RankSync.client " + rank(RankSync.client(portrait)) + ") drew skin " + (l == null ? "none" : file(l.skin())) + " and weapon " + (l == null ? "none" : l.weaponId())
-                            + " (want knight_s3 and arming_sword_t2), no chevron=" + (TroopChevrons.drawn(portrait) == null) + ", cached apart from the 1/1 portrait=" + (plain != portrait));
+                        report("p2-portrait-tiers", ok, "the portrait at weapon 2, armour 3 (RankSync.client " + rank(RankSync.client(portrait)) + ") drawn by GeckoLib: " + geoText(g)
+                            + " (want a knight_geo/t3 sheet, the tier III helm and sword_t2), no chevron=" + (TroopChevrons.drawn(portrait) == null) + ", cached apart from the 1/1 portrait=" + (plain != portrait));
                         restoreT2(); c.setScreen(null); marks = 0; wait = 0; cs = 12;
                         server(c, b -> { for (int i = 0; i < 24; i++) { var u = post(b, i % 2 == 0 ? gold : violet, "knight", (i % 8 - 3.5) * 1.4, Phase2Checks.GildedArt.STUDIO + 3 + (i / 8) * 1.6, 180); stage(u, 3); crowd.add(u); } crowdUp = true; });
                     }
@@ -270,9 +321,9 @@ final class RankChecks {
                 }
                 case 13 -> { wait++; // p2-rank-clear: a round boundary (Battle.clearProgression) empties this client's store; the troops draw at 1/1/1 again
                     if (cleared && wait == 20) {
-                        var x = e(c, crowd.get(0)); var l = last(x);
-                        boolean ok = RankSync.RANKS.isEmpty() && RankSync.clearSends > clearBefore && RankSync.client(x) == null && l != null && l.look().armourTier() == 1 && l.look().level() == 1;
-                        report("p2-rank-clear", ok, "after Battle.clearProgression the server sent " + (RankSync.clearSends - clearBefore) + " CLEAR packet(s); this client's store holds " + RankSync.RANKS.size() + " rank(s) (want 0) and a level-3 Squire now draws at " + (l == null ? "-" : l.look().level() + "/" + l.look().weaponTier() + "/" + l.look().armourTier()) + " (want 1/1/1)");
+                        var x = e(c, crowd.get(0)); var l = geo(x);
+                        boolean ok = RankSync.RANKS.isEmpty() && RankSync.clearSends > clearBefore && RankSync.client(x) == null && l != null && l.look().armourTier() == 1 && l.look().level() == 1 && "sword_t1".equals(l.swords()) && l.helms().equals(helmsAt(1));
+                        report("p2-rank-clear", ok, "after Battle.clearProgression the server sent " + (RankSync.clearSends - clearBefore) + " CLEAR packet(s); this client's store holds " + RankSync.RANKS.size() + " rank(s) (want 0) and a level-3 Squire now draws at " + (l == null ? "-" : l.look().level() + "/" + l.look().weaponTier() + "/" + l.look().armourTier()) + " (want 1/1/1), GeckoLib " + geoText(l) + " (want helm_squire, sword_t1)");
                         server(c, b -> { // p2-rank-clear-once: with nothing sent since that clear a second one sends nothing; after a rank change the next one does
                             int base = RankSync.clearSends; b.clearProgression(); onceQuiet = RankSync.clearSends - base;
                             stage(crowd.get(0), 2); b.clearProgression(); onceLoud = RankSync.clearSends - base - onceQuiet;
@@ -346,6 +397,6 @@ final class RankChecks {
             } catch (Exception ex) { report("p2-weapon-parts-tier", false, ex.toString()); ex.printStackTrace(); }
         }
 
-        @Override public void cleanup(MinecraftClient c) { TroopDepth.enabled = true; if (tookT2) restoreT2(); super.cleanup(c); }
+        @Override public void cleanup(MinecraftClient c) { TroopDepth.enabled = true; removeProbe(); if (tookT2) restoreT2(); super.cleanup(c); }
     }
 }
