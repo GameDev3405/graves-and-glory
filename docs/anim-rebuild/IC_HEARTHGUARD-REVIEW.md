@@ -94,3 +94,23 @@ The hits are measured over their `_legs` only. In the game they are added on top
 - `ic_hearthguard-review1`: 22 p1 lines and 2 `=false`: march-run-side (wrong clip) and attack-walk (gait while swinging). The server was 21 s behind ("Can't keep up" 4 times).
 - Rerun `ic_hearthguard-review1b`: 22 p1 lines and 1 `=false`: march-run-threequarter (speed samples 0.010 under lag, "Can't keep up" 3 times).
 - Every attack, stance, hit, hit_pulled and death check passed in both runs. Each failing check passed in the other run.
+
+## Fix round 1 (2026-11-12, Sonnet review FIX 6/10)
+
+Focus check (hits and stun_out played over stance_ready): 12 clips / 22 FAIL rows before, 3 clips / 3 FAIL rows after. Scorecard 40 clips, 0 fail.
+
+- **Hits and stuns, this troop only:** `art/anim/axe/hearthguard_hits.py` rebuilds hit_light_*, hit_medium_*, hit_block (knight builder, through build_axe_anims) and stun / stun_out / knockback / pulled (`reactions.py`) sample for sample (checked: with no fixes the core bones match the old export exactly), then adds the per-clip fixes and runs `fullbody.soft_motion` over each clip added onto stance_ready. Braid, tabard, tassets and pauldrons now trail in every hit and stun clip; no secondary_life FAIL is left. Knight and sentinel files are not read or written.
+  - hit_pulled: axe arm flung 25 deg less (haft in helm 2.41 -> WARN 1.5); hips up to 2.5 px higher through the drag and the catch (boot 2.29 -> WARN 0.88).
+  - stun_upper: snap flares the axe arm 25 deg less, head thrown back 14 deg less and turned 10 deg off the boss (3.57 -> WARN 1.81); shield arm 8 deg higher; hips 2.2 px up through the snap, 0.6 px through the loop (floor 1.91 -> WARN 0.81). The trailing pieces are run over three loop passes and the middle one kept, so the loop closes exactly.
+  - hit_knockback: wrist flick 18 deg less (haft on helm 1.64 -> WARN 1.07); hips raised through both stumbling steps (1.9 -> WARN 0.68); tabard swung off the thigh.
+  - hit_medium_right / stun: the tabard swings forward off the thigh where the soft lag put it on the leg.
+- **Attack hand-off:** both swings start and end on stance_ready's own first sample (upper exact; legs within 1.1 deg), the feet start from and walk back to the ready footing, and the knight-guard recovery key is eased halfway onto the stance. Length and impact unchanged.
+- **Follow-through:** the chop's arm drives 8 deg further down and the chest 8 deg further over, the hew carries 12 deg further across (chest 8), peaking 2.5 ticks after the impact. Both phases WARNs are gone. The hew's hips ride 0.6 px higher at t11 (knee guard).
+- **Stances:** brace_up axe arm 20 deg higher; ward shield fist 3 px higher, axe level. Focus check clean (`work/review/render/stances_cmp.png`, old row top). Brace and brace_up still share the footing and read close at 16 blocks.
+
+**Still open:**
+- stun_out_upper floor 1.87 (t6). The check adds the ABSOLUTE stun_legs (its booth base) on top of stance_ready_legs, which doubles the knee bend; stun_legs alone is WARN 0.81. The knight has an exemption for this row. Needs a tool or booth-base decision, not a clip change.
+- run_upper limb_in_body 2.03 and charge_run_upper braid 1.93 (review F6): not in this round's list, not touched.
+- The hit file grew (trailing pieces keyed every sample).
+
+**Checks:** `python -m unittest discover -s tools/anim` 153 OK. Booth batch `ic_hearthguard-20261112-b9c6d2f` (40 clips, built at b9c6d2fb, not uploaded); phone video `status/booth-videos/ic_hearthguard_review.mp4` (3:08, previous beside new). In game, `ic_hearthguard-review2` (geo-knight suite through checkq): 23 p1 checks, all true, 0 `=false` ("Can't keep up" 3 times).
