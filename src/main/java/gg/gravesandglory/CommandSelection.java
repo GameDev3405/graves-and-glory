@@ -200,8 +200,13 @@ public final class CommandSelection {
         return c.options.sneakKey.isPressed() && (bound.equals("key.keyboard.left.shift") || bound.equals("key.keyboard.right.shift"));
     }
 
-    /** Every client tick in battle: the panel cannot stay open once the battle is over. */
+    /** Every client tick in battle: the panel cannot stay open once the battle is over, and a custom group deleted in the Armoury
+     *  (C04-F3) leaves the selection, which falls back to the whole army when nothing else is left. */
     static void tick() {
+        if (CampaignClient.received && selected.removeIf(id -> id.startsWith(CustomGroups.PREFIX) && pills().stream().noneMatch(p -> p.id().equals(id)))) {
+            if (selected.isEmpty()) selected.add("all");
+            mirror();
+        }
         if (panelOpen && !GravesAndGloryClient.battleActive()) setPanelOpen(false);
     }
 
