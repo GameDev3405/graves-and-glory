@@ -79,6 +79,11 @@ public final class BattleHud {
      *  from GUI px, rounded outward). */
     public static Map<String,int[]> rects(){return rects;}
     /** Top (GUI px) of the group cards and chips this frame drew in the lower-left quarter, or -1: the pennant stack stays above them (the hint slip hides while the panel is open). */
+    /** The gold plaque the last frame drew, in GUI px {x, y, w, h}, or null: the pennant panel keeps its pills off it. */
+    static int[] goldGui(double guiScale){
+        int[] b=rectsDrawn.get("gold");if(b==null||b.length<4)return null;double k=UiCanvas.hudK()/guiScale;
+        return new int[]{(int)Math.floor(b[0]*k),(int)Math.floor(b[1]*k),(int)Math.ceil(b[2]*k),(int)Math.ceil(b[3]*k)};
+    }
     static int lowerLeftTop(double guiScale){
         int hw=UiCanvas.hudWidth(),hh=UiCanvas.hudHeight(),top=Integer.MAX_VALUE;
         for(var e:rectsDrawn.entrySet()){int[] b=e.getValue();String k=e.getKey();
@@ -286,7 +291,8 @@ public final class BattleHud {
     /** What a click at (gx, gy) GUI px meets on the column the last frame drew: {"form"|"card", group}, or null. The formation box is tested first. */
     public static String[] columnAt(double gx,double gy){
         var c=MinecraftClient.getInstance();double f=c.getWindow().getScaleFactor()/UiCanvas.hudK();double[] m={gx*f,gy*f};
-        for(var e:formBoxes.entrySet())if(inside(m,e.getValue()))return new String[]{"form",e.getKey()};
+        // only a selected group shows its formation box: a box left from before the selection changed never takes a click meant for a chip
+        for(var e:formBoxes.entrySet())if(CommandSelection.isSelected(e.getKey())&&!CommandSelection.selected().contains("all")&&inside(m,e.getValue()))return new String[]{"form",e.getKey()};
         for(var e:rectsDrawn.entrySet()){String k=e.getKey();if(k.startsWith("card-")&&e.getValue()!=null&&inside(m,e.getValue()))return new String[]{"card",k.substring(5)};}
         return null;
     }
@@ -480,7 +486,7 @@ public final class BattleHud {
         g.drawText(font,formLabel,x+84,y+31,DarkUi.INK_TEXT,false);
         // the formation is a click target while the panel holds the cursor (it opens the tray for this group): the glyph and its word
         int[] form={x+70,y+28,Math.max(96,14+font.getWidth(formLabel)+4),14};formBoxes.put(id,form);
-        if(cursor!=null&&inside(cursor,form)){g.fill(form[0],form[1],form[0]+form[2],form[1]+form[3],HOVER_WASH);g.fill(x+84,y+40,x+84+font.getWidth(formLabel),y+41,DarkUi.BRASS);hoveredCard="form-"+id;}
+        if(cursor!=null&&inside(cursor,form)){g.fill(form[0],form[1],form[0]+form[2],form[1]+form[3],HOVER_WASH);g.fill(x+84,y+40,x+84+font.getWidth(formLabel),y+42,DarkUi.BRASS);hoveredCard="form-"+id;}
         else if(cursor!=null&&inside(cursor,box)){g.fill(x+2,y+2,x+box[2]-2,y+box[3]-2,CARD_WASH);hoveredCard="card-"+id;}
         cd.add(new CardDraw(id,state,true,x,y,box[2],box[3]));r.put("card-"+id,box);
         tx.put("count-"+id,count);tx.put("state-"+id,word);tx.put("plate-"+id,plate);

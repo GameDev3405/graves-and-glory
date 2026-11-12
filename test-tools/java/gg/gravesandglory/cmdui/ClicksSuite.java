@@ -34,7 +34,7 @@ public final class ClicksSuite implements CommandUiChecks.Suite {
     final Map<String, String> trayHover = new LinkedHashMap<>(), cardHover = new LinkedHashMap<>();
     int stripChecked;
     // per-size results
-    boolean[] cellOk = new boolean[3], cardOk = new boolean[3], wheelOk = new boolean[3];
+    boolean[] cellOk = new boolean[3], cardOk = new boolean[3], staleOk = new boolean[3], wheelOk = new boolean[3];
     int slotBefore, sentBefore;
 
     @Override public int limit() { return BASE + STEP * 3 + 200; }
@@ -61,6 +61,7 @@ public final class ClicksSuite implements CommandUiChecks.Suite {
         if (tick == end) {
             CommandUiChecks.report("cu-clicks-tray-cell", allOf(cellOk), "a tray cell clicked by mouse (no number key) at 1920, 854 and 2560: " + Arrays.toString(cellOk) + "; " + String.join("; ", filter("cell")));
             CommandUiChecks.report("cu-clicks-card-form", allOf(cardOk), "a click on a group card's formation opened the tray for that group: " + Arrays.toString(cardOk) + "; " + String.join("; ", filter("card")));
+            CommandUiChecks.report("cu-clicks-stale-form", allOf(staleOk), "after the selection changed, a click on the old group's formation box opened no tray: " + Arrays.toString(staleOk) + "; " + String.join("; ", filter("stale")));
             CommandUiChecks.report("cu-clicks-wheel", allOf(wheelOk), "the wheel during the Formation aim stepped the shape and left the hotbar: " + Arrays.toString(wheelOk) + "; " + String.join("; ", filter("wheel")));
             boolean hovers = trayHover.size() == 3 && trayHover.values().stream().allMatch(v -> v.startsWith("hovered")) && cardHover.size() == 3 && cardHover.values().stream().allMatch(v -> v.startsWith("hovered"));
             CommandUiChecks.report("cu-clicks-hover", hovers, "tray cell hover " + trayHover + "; card formation hover " + cardHover);
@@ -118,7 +119,16 @@ public final class ClicksSuite implements CommandUiChecks.Suite {
             log.add("card " + size + ": tray open " + CommandSelection.trayOpen() + ", selection " + CommandSelection.selected() + ", aiming '" + CommandSelection.aiming() + "'");
             shot(c, "clicks-card-tray-" + size + ".png");
         }
-        if (t == 100) { CommandSelection.setTrayOpen(false); CommandSelection.setPanelOpen(false); }
+        // a changed selection: a click where infantry's formation box was (before any frame redraws the column) must not open a tray
+        if (t == 100) {
+            int[] old = BattleHud.toGui(BattleHud.formBox("infantry"));
+            CommandSelection.setTrayOpen(false); CommandSelection.select("ranged", false);
+            if (old == null) { log.add("stale " + size + ": no infantry formation box to test"); return; }
+            PanelSuite.clickGui(c, old[0] + old[2] / 2.0, old[1] + old[3] / 2.0, 0);
+            staleOk[k] = !CommandSelection.trayOpen();
+            log.add("stale " + size + ": after selecting ranged, a click on infantry's old formation box left the tray " + (CommandSelection.trayOpen() ? "OPEN" : "shut") + ", selection " + CommandSelection.selected());
+        }
+        if (t == 104) { CommandSelection.setTrayOpen(false); CommandSelection.setPanelOpen(false); }
     }
     String wheelDown = "";
 

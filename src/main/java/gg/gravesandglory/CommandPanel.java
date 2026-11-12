@@ -196,6 +196,22 @@ public final class CommandPanel {
     static int fa(int argb) { return ((int) Math.round((argb >>> 24) * op) << 24) | (argb & 0xffffff); }
     static int ta(int argb) { return ((int) Math.round((argb >>> 24) * ink) << 24) | (argb & 0xffffff); }
 
+    /** Lays the pills left to right from the pole, wrapping inside limit; returns the rows. */
+    static int layPills(TextRenderer font, List<CommandSelection.Pill> pills, int sw, int limit, int flagX, int pad, int gap, List<int[]> box, List<String> text) {
+        int px = flagX + 2, rows = 1;
+        for (int i = 0; i < pills.size(); i++) {
+            String t = pills.get(i).custom() ? pills.get(i).label() : (i < 4 && sw >= 500 ? (i + 1) + " " : "") + shortName(pills.get(i).id()); // narrow screens drop the number: one row; a custom group's pill is "<n> <name>" (Task 12)
+            int w = font.getWidth(t) + pad;
+            if (px + w > limit && px > flagX + 2) { px = flagX + 2; rows++; }
+            box.add(new int[]{px, rows - 1, w});
+            text.add(t);
+            px += w + gap;
+        }
+        return rows;
+    }
+    /** Whether a first-row pill, shifted by sx, ends past x. */
+    static boolean reaches(List<int[]> box, int sx, int x) { for (int[] b : box) if (b[1] == 0 && b[0] + b[2] + sx > x) return true; return false; }
+
     /** One frame of the panel: its default layout, moved to the player's placement (PanelLayout) and slid in by eased (0 off screen .. 1 open). */
     static void draw(DrawContext g, TextRenderer font, int sw, int sh, double eased, double[] mouse) {
         float alpha = (float) Spec.COMMANDINTERFACE[0].pennantAlpha();
@@ -212,15 +228,8 @@ public final class CommandPanel {
         var pills = CommandSelection.pills();
         List<int[]> pillBox = new ArrayList<>();
         List<String> pillText = new ArrayList<>();
-        int px = flagX + 2, rows = 1, pillPad = sw < 600 ? 6 : 10, pillGap = sw < 600 ? 2 : 3; // narrow screens: tighter pills, so they keep one row
-        for (int i = 0; i < pills.size(); i++) {
-            String t = pills.get(i).custom() ? pills.get(i).label() : (i < 4 && sw >= 500 ? (i + 1) + " " : "") + shortName(pills.get(i).id()); // narrow screens drop the number: one row; a custom group's pill is "<n> <name>" (Task 12)
-            int w = font.getWidth(t) + pillPad;
-            if (px + w > limit && px > flagX + 2) { px = flagX + 2; rows++; }
-            pillBox.add(new int[]{px, rows - 1, w});
-            pillText.add(t);
-            px += w + pillGap;
-        }
+        int pillPad = sw < 600 ? 6 : 10, pillGap = sw < 600 ? 2 : 3; // narrow screens: tighter pills, so they keep one row
+        int rows = layPills(font, pills, sw, limit, flagX, pillPad, pillGap, pillBox, pillText);
         int pillsH = rows * PILL_H + (rows - 1) * 3;
         // the stack ends above the group column and hint slip (lower left); on a short screen the pennants close up to fit
         int floor = (int) Math.floor(sh * 0.74);
@@ -242,6 +251,15 @@ public final class CommandPanel {
         double[] at = PanelLayout.place(bw, bh, sw, sh, k, vanillaHud(sw, sh));
         int sx = at == null ? 0 : (int) Math.round(at[0]) - bx0, sy = at == null ? 0 : (int) Math.round(at[1]) - by0;
         boolean rightSide = at != null && bx0 + sx + bw / 2.0 > sw / 2.0;
+        // a first pill row that reaches the HUD's gold plaque (a narrow screen squeezes the stack up to it): the pills close up, one row still
+        int[] gold = BattleHud.goldGui(win.getScaleFactor());
+        if (gold != null && top + sy < gold[1] + gold[3] && top + sy + PILL_H > gold[1]) {
+            for (int pad = pillPad - 1, gap = Math.max(1, pillGap - 1); pad >= 4 && reaches(pillBox, sx, gold[0] - 3); pad--) {
+                List<int[]> box = new ArrayList<>(); List<String> text = new ArrayList<>();
+                if (layPills(font, pills, sw, limit, flagX, pad, gap, box, text) != rows) break;
+                pillBox = box; pillText = text;
+            }
+        }
         // the slide: in from the left edge, or from the right edge for a panel placed in the right half
         int dx = at == null ? (int) Math.round(-(1 - eased) * (sw * 0.30 + 8))
             : rightSide ? (int) Math.round((1 - eased) * (sw - (bx0 + sx) + 8)) : (int) Math.round(-(1 - eased) * (bx0 + sx + bw + 8));
@@ -427,8 +445,8 @@ public final class CommandPanel {
                 boolean hov = over(mouse, cx, cy, cw, CELL_H);
                 double fl = flashLeft(CELL + j);
                 if (picked) g.fill(cx, cy, cx + cw, cy + CELL_H, 0x4d000000 | GOLD);
-                else if (hov) g.fill(cx, cy, cx + cw, cy + CELL_H, 0x33000000 | GOLD);
-                if (hov) { g.drawBorder(cx, cy, cw, CELL_H, 0xff000000 | TRIM); hovered = CELL + j; } // a click picks this shape: the cell's rim turns gold under the cursor
+                else if (hov) g.fill(cx, cy, cx + cw, cy + CELL_H, 0x4d000000 | GOLD);
+                if (hov) { g.drawBorder(cx, cy, cw, CELL_H, 0xff000000 | TRIM); if (sw < 600) g.drawBorder(cx + 1, cy + 1, cw - 2, CELL_H - 2, 0xff000000 | TRIM); hovered = CELL + j; } // a click picks this shape: the cell's rim turns gold under the cursor
                 if (fl > 0) g.fill(cx, cy, cx + cw, cy + CELL_H, ((int) Math.round(fl * 0.5 * 255) << 24) | GOLD);
                 if (picked) RenderSystem.setShaderColor(((GOLD >> 16) & 255) / 255f, ((GOLD >> 8) & 255) / 255f, (GOLD & 255) / 255f, 1f);
                 // the key number in its own row at the top-left, the shape below it, the name at the foot: nothing overlaps
