@@ -19,7 +19,7 @@ the right fist drives over the shoulder and through, the harpoon leaving on the 
 low across the body; the right hand reaches back over the shoulder, draws the next harpoon up out of the quiver and swings it
 over into the cocked guard.
 """
-import json, math, os, sys
+import copy, json, math, os, sys
 from pathlib import Path
 
 TROOP = os.environ.get("GG_THROW_TROOP", "tc_harpooner")
@@ -117,12 +117,38 @@ def _arm(side, pose, x):
     return p
 
 
-def reach(pose, target, prior, warm=None, w=0.02):
-    """The right arm (x, y, z) and forearm x putting the fist on target, nearest the prior arm."""
+def swing_twist(Rm):
+    """A bone rotation (relative to its parent) split into the bend of its long axis and the signed turn about it, in
+    degrees (the same split focus_check's elbow row judges)."""
+    wq = math.sqrt(max(0.0, 1.0 + Rm[0, 0] + Rm[1, 1] + Rm[2, 2])) / 2.0
+    yq = (Rm[0, 2] - Rm[2, 0]) / (4.0 * wq) if wq > 1e-6 else 1.0
+    turn = (math.degrees(2.0 * math.atan2(yq, wq)) + 180.0) % 360.0 - 180.0
+    v = Rm @ np.array([0.0, 1.0, 0.0])
+    return math.degrees(math.acos(max(-1.0, min(1.0, float(v[1]))))), turn
+
+
+# Batch review 2026-11-11 (focus_check elbow, attack_throw tick 6.75: 171 deg): the reach solve left the upper arm free to
+# turn about its own length, and in the coil (arm near vertical) it slid onto the branch where the forearm folds backward.
+# TWIST_OK is the most the upper arm may turn on the chest before the solve pulls it back; it only bites once the arm has
+# come down off the vertical (TWIST_FREE_SWING), where an elbow has a direction at all.
+TWIST_OK, TWIST_W, TWIST_FREE_SWING = 80.0, 0.0, 160.0
+
+
+def reach(pose, target, prior, warm=None, w=0.02, twist_w=None):
+    """The right arm (x, y, z) and forearm x putting the fist on target, nearest the prior arm. With twist_w the upper
+    arm's turn about its own length on the chest is held under TWIST_OK."""
     prior = np.asarray(prior, float)
+    tw_w = TWIST_W if twist_w is None else twist_w
+    Rt = K.world(pose, "torso")[:3, :3] if tw_w else None
 
     def f(x):
-        return np.concatenate([4.0 * (K.point(K.world(_arm("right", pose, x), "right_hand"), GRIP) - target), w * (x - prior)])
+        p = _arm("right", pose, x)
+        r = [4.0 * (K.point(K.world(p, "right_hand"), GRIP) - target), w * (x - prior)]
+        if tw_w:
+            sw, tw = swing_twist(Rt.T @ K.world(p, "right_arm")[:3, :3])
+            s = min(1.0, max(0.0, (TWIST_FREE_SWING - sw) / 20.0))
+            r.append([tw_w * s * max(0.0, abs(tw) - TWIST_OK)])
+        return np.concatenate(r)
 
     x = gn(f, prior if warm is None else warm, clamp=lambda x: np.r_[x[:3], min(-2.0, max(-150.0, x[3]))])
     return x, np.linalg.norm(f(x)[:3]) / 4.0
@@ -283,9 +309,12 @@ def attack_keys():
     coil_a = KEY((-5, 18, 0), (3, 0, 0), (-0.6, 3.4, -5.8), aim(20, -4), lp=(-80, 0, -9, -12))
     coil = KEY((-10, 26, 0), (2, 0, 0), (-0.3, 3.8, -6.6), aim(28, -4), lp=(-95, 0, -6, -4))
     held = nudge(coil, torso=(-1.5, 2, 0), R=(0.0, 0.1, -0.3), lp=(-2, 0, 0, 0))
-    drive = KEY((4, -6, 0), (2, 0, 0), (0.0, 6.5, 0.5), aim(16, -2), lp=(-40, 0, -4, -78))
+    # batch review 2026-11-11: the fist drives up and over OUTSIDE the helm (x -2.2 from the shoulder, was 0 to +1.5, which
+    # carried the wrist wrap through the head, armour_clip 2.9 px at tick 7.5), the elbow leading it past the ear
+    rise = KEY((0, 8, 0), (2, 0, 0), (-2.4, 5.6, -3.4), aim(24, -3), lp=(-60, 0, -5, -45))
+    drive = KEY((4, -6, 0), (2, 0, 0), (-2.2, 6.2, 0.5), aim(16, -2), lp=(-40, 0, -4, -78))
     # the left arm yanks in to the chest with the elbow kept out at the side, so the bracer clears the ribs
-    release = KEY((14, -22, 0), (6, 0, 0), (1.5, 1.0, 6.8), aim(-5, 0), lp=(-25, 0, -26, -90))
+    release = KEY((14, -22, 0), (6, 0, 0), (-0.4, 1.4, 6.8), aim(-5, 0), lp=(-25, 0, -26, -90))
     over = KEY((20, -26, -4), (10, 0, 0), (4.0, -5.0, 4.0), aim(-35, 15), lp=(-10, 0, -30, -80))
     recover = KEY((10, -12, 0), (6, 0, 0), (1.0, -4.0, 3.5), aim(-20, 5), lp=(-30, 0, -20, -60))
     # the fist goes back over the right shoulder behind the ear and closes on the next harpoon; drawn up out of the quiver it
@@ -295,14 +324,14 @@ def attack_keys():
     grab = KEY((0, 8, 0), (6, 14, 3), (-0.6, 3.6, -4.9), BACK, lp=(-42, 0, -15, -42))
     draw_out = KEY((0, 8, 0), (6, 12, 2), (-0.6, 6.0, -4.2), unit((0.25, 0.9, -0.35)), lp=(-44, 0, -15, -41))
     lift = KEY((0, 8, 0), (5, 6, 1), (-0.3, 6.6, -2.6), unit((0.1, 1.0, -0.15)), lp=(-46, 0, -14, -40))
-    swing = KEY((2, 10, 0), (4, 2, 0), (-1.0, 4.5, -1.5), aim(50, -4), lp=(-52, 0, -12, -36))
-    over_g = nudge(GUARD, R=(0.0, -0.4, 0.3), d=aim(3, -4), torso=(1, -1, 0))
+    swing = KEY((2, 10, 0), (4, 2, 0), (-1.8, 4.5, -1.5), aim(50, -4), lp=(-52, 0, -12, -36))
+    over_g = nudge(GUARD, R=(-0.6, -0.4, 0.3), d=aim(3, -4), torso=(1, -1, 0))   # batch review: the fist a little wider of the helm
     settle = nudge(GUARD, R=(0.0, 0.15, -0.1), d=aim(9, -4))
     # on the way up to the quiver the empty fist swings out wide of the right shoulder (the elbow opens instead of folding
     # shut against the head)
     wide = KEY((6, -3, 0), (6, 5, 1), (-5.5, 1.0, 0.0), unit((-0.6, 0.5, -0.3)), lp=(-35, 0, -10, -50))
     return [(0, GUARD), (3.0, coil_a), (5.0, coil), (6.6, held),            # coil back over the rear foot; the load held
-            (7.4, drive), (IMPACT, release),                                  # unwind and whip: the harpoon leaves
+            (7.0, rise), (7.4, drive), (IMPACT, release),                                  # unwind and whip: the harpoon leaves
             (10.0, over), (13.0, recover),                                    # the follow-through low across the body
             (14.8, wide), (16.5, reach_q), (18.5, grab), (20.0, draw_out), (22.0, lift),                      # over the shoulder, the next harpoon drawn up
             (25.0, swing), (29.0, over_g), (33.0, settle), (ATTACK_TICKS, GUARD)]
@@ -326,8 +355,8 @@ def attack_legs():
     R0, R1 = READY_HIPS
     spec = {"hips": [(0, R0, R1), (3.0, (-2.0, 30.0, 0.0), (0.0, -1.5, -0.4)), (5.0, (-3.0, 34.0, 0.0), (0.0, -1.6, -0.6)),
                      (6.6, (-3.0, 35.0, 0.0), (0.0, -1.7, -0.6)), (7.4, (2.0, 22.0, 0.0), (0.0, -1.9, 0.4)),
-                     (IMPACT, (5.0, 8.0, 0.0), (0.0, -2.4, 1.0)), (10.0, (7.0, 2.0, -2.0), (0.0, -2.7, 1.4)),
-                     (13.0, (4.0, 10.0, 0.0), (0.0, -2.1, 0.8)), (17.0, (1.0, 18.0, 0.0), (0.0, -1.5, 0.3)),
+                     (IMPACT, (5.0, 8.0, 0.0), (0.0, -2.2, 1.0)), (10.0, (7.0, 2.0, -2.0), (0.0, -2.3, 1.4)),
+                     (13.0, (4.0, 10.0, 0.0), (0.0, -1.9, 0.8)), (17.0, (1.0, 18.0, 0.0), (0.0, -1.5, 0.3)),
                      (24.0, (0.0, 20.0, 0.0), (0.0, -1.4, 0.2)), (30.0, R0, R1), (ATTACK_TICKS, R0, R1)],
             "steps": [("left", 2.0, 6.0, (3.8, 2.0, 4.4), 20.0), ("right", 9.0, 13.0, (-3.0, 2.0, -0.6), -2.0),
                       ("left", 22.0, 27.0, (3.4, 2.0, 2.4), 14.0), ("right", 27.0, 31.0, (-3.2, 2.0, -2.2), -6.0)]}
@@ -351,7 +380,7 @@ class Solver:
         self.warm = None
         self.worst = 0.0
 
-    def pose(self, legs, torso, head, R, d, u, rp, lp, q=0.0, Lq=QGRIP, extra=None, w=0.02):
+    def pose(self, legs, torso, head, R, d, u, rp, lp, q=0.0, Lq=QGRIP, extra=None, w=0.02, twist_w=None):
         s = {"torso": (tuple(torso), None), "head": (tuple(head), None)}
         if extra:
             s.update(extra)
@@ -359,7 +388,7 @@ class Solver:
         O = shoulder(pose) + np.asarray(R, float)
         if q > 0.0:
             O = (1.0 - q) * O + q * quiver_point(pose, Lq)
-        x, e = reach(pose, O, rp, self.warm, w)
+        x, e = reach(pose, O, rp, self.warm, w, twist_w)
         self.warm = x
         self.worst = max(self.worst, e)
         s["right_arm"], s["right_forearm"] = (tuple(x[:3]), None), ((x[3], 0.0, 0.0), None)
@@ -370,11 +399,19 @@ class Solver:
         return s
 
 
-def sample(keys, legs_at, sol, t, extra=None, w=0.02):
+def sample(keys, legs_at, sol, t, extra=None, w=0.02, twist_w=None, u_prev=None, u_keep=1.0):
+    """One solved sample. With u_prev the harpoon's side is carried on from the last sample (parallel transport: it never
+    turns about the shaft by itself) and only u_keep of the way is pulled back toward the keyed side."""
     v = {n: interp(keys, t, n) for n in ("torso", "head", "R", "d", "u", "rp", "lp", "q", "Lq")}
     d, u = frame(v["d"], v["u"])
+    if u_prev is not None:
+        _, ut = frame(d, u_prev)
+        u = frame(d, ut + u_keep * (u - ut))[1] if u_keep > 0 else ut
     head = head_local(v["head"], v["torso"], legs_at["hips"][0])
-    return sol.pose(legs_at, v["torso"], head, v["R"], d, u, v["rp"], v["lp"], max(0.0, min(1.0, v["q"][0])), v["Lq"], extra, w)
+    s = sol.pose(legs_at, v["torso"], head, v["R"], d, u, v["rp"], v["lp"], max(0.0, min(1.0, v["q"][0])), v["Lq"], extra, w,
+                 twist_w)
+    s["_u"] = u
+    return s
 
 
 def gear(samples, legs=None):
@@ -399,21 +436,68 @@ def unwind_w(t):
     return 0.02 + k * (K.smooth((t - a) / (b - a)) if t < c else K.smooth((e - t) / (e - c)))
 
 
-def attack_clip():
-    keys, legs = attack_keys(), attack_legs()
-    sol = Solver()
-    out, hits = [], []
-    for i in range(ATTACK_TICKS * SUB + 1):
+THROW_TWIST_W = 0.15
+U_HOME = (30.0, 35.0)    # the side carried through the throw is eased back onto the guard's over these ticks
+
+
+def u_keep(t):
+    """How much of the keyed side each sample takes (the rest is carried on from the last sample): 0 through the throw, so
+    the harpoon never turns about its own length in the hand (focus_check roll_spin and grip_roll; Kort 2026-11-11: "weapons
+    spins around in hand"), then a slow ease onto the guard's side for the settle."""
+    a, b = U_HOME
+    return 0.0 if t <= a else 0.25 * K.smooth((t - a) / (b - a)) if t < b else 1.0
+
+
+SPLIT = 14.8        # the "wide" key: the empty arm out to the side, where the throw's solve and the draw's solve meet
+SPLIT_BLEND = 1.5   # ticks each side of SPLIT over which the two solves are blended
+
+
+def _solve_run(keys, legs, idx, w_fn):
+    """Solves the samples idx in that order, each warm-started from the last; the harpoon's side is carried along."""
+    sol, out, u_prev = Solver(), {}, None
+    for i in idx:
         t = i / SUB
-        s = sample(keys, legs[i], sol, t, w=unwind_w(t))
+        s = sample(keys, legs[i], sol, t, w=w_fn(t), twist_w=THROW_TWIST_W, u_prev=u_prev, u_keep=0.0)
+        u_prev = s.pop("_u")
+        out[i] = s
+    return out, sol.worst
+
+
+def attack_clip():
+    """Batch review 2026-11-11: the throw is solved forward from the guard up to the empty arm swinging out wide (SPLIT),
+    and the draw backward from the guard at the end down to it, so the arm reaches back for the next harpoon on the guard's
+    own branch (elbow up) and never has to be pulled across onto it (the old UNWIND pull popped the arm 69 deg at tick 24
+    and spun the wrist a turn). Around SPLIT the hand is empty and the two solves are blended joint by joint."""
+    keys, legs = attack_keys(), attack_legs()
+    n = ATTACK_TICKS * SUB
+    k = int(round(SPLIT * SUB)), int(round(SPLIT_BLEND * SUB))
+    fw, e1 = _solve_run(keys, legs, range(0, k[0] + k[1] + 1), lambda t: 0.02)
+    bw, e2 = _solve_run(keys, legs, range(n, k[0] - k[1] - 1, -1), lambda t: 0.02)
+    out, hits = [], []
+    for i in range(n + 1):
+        t = i / SUB
+        if i < k[0] - k[1]:
+            s = fw[i]
+        elif i > k[0] + k[1]:
+            s = bw[i]
+        else:
+            a = K.smooth((i - (k[0] - k[1])) / (2.0 * k[1]))
+            s = dict(fw[i])
+            for b in ("right_arm", "right_forearm", "right_hand"):
+                s[b] = (tuple(slerp_rot(fw[i][b][0], bw[i][b][0], a)), None)
         s["draw"] = (Z3, (draw_at(t), 0.0, 0.0))
         if draw_at(t) == 0.0:
             h = shaft_hits(fk_pose(s, legs[i]))
             if h:
                 hits.append((t, h[0]))
         out.append(s)
-    print("attack_throw: fist err max %.3f px, samples with the shaft in the body %d %s" % (sol.worst, len(hits), hits))
+    gap = max(turn_deg(fw[i]["right_arm"][0], bw[i]["right_arm"][0]) for i in range(k[0] - k[1], k[0] + k[1] + 1))
+    print("attack_throw: fist err max %.3f px, samples with the shaft in the body %d %s; arm solves %.0f deg apart at the "
+          "split" % (max(e1, e2), len(hits), hits, gap))
     return out, legs
+
+
+REWIND_EPS = 0.0001   # s
 
 
 def rewind(clip):
@@ -431,9 +515,14 @@ def rewind(clip):
             continue
         half = [k for k in ks if float(k) >= float(ks[-1]) / 2]
         cut = max(range(1, len(half)), key=lambda j: sum(abs(rot[half[j]][i] - rot[half[j - 1]][i]) for i in range(3)))
+        # Batch review 2026-11-11: the turn is taken off between two keys REWIND_EPS apart (the same rotation written
+        # twice), not across a whole sample, where the interpolation swept it as a one-sample spin (roll_spin, jitter).
+        orig = list(rot[half[cut]])
         for k in half[cut:]:
             rot[k] = [round(rot[k][i] - off[i], 3) for i in range(3)]
-        print("rewind %s: %s from %ss" % (b, off, half[cut]))
+        rot[K.fmt_t(float(half[cut]) - REWIND_EPS)] = orig
+        clip["bones"][b]["rotation"] = {k: rot[k] for k in sorted(rot, key=float)}
+        print("rewind %s: %s at %ss" % (b, off, half[cut]))
 
 
 def attack_clips():
@@ -444,10 +533,52 @@ def attack_clips():
         j = 4.0 * math.exp(-max(0.0, t - IMPACT) / 1.5) * (t >= IMPACT) + 5.0 * math.sin(math.pi * np.clip((t - 18.5) / 3.5, 0, 1))
         s["quiver"] = ((j, 0.0, 0.4 * j), None)
     upper = gear(upper, legs)
+    # batch review 2026-11-11 (secondary_life: kelp, pauldron, sash, scarf, skirt and the tooth necklace stood still): every
+    # piece that hangs swings on the kit's spring behind its parent (Kort: "the whole unit to be animated")
+    upper, legs = soft(upper, legs)
+    upper, legs = plate_and_sash(upper, legs)
     clip = K.bake(upper, ATTACK_TICKS, loop=False)
     rewind(clip)
     clip["timeline"] = {K.fmt_t(IMPACT / TPS): "impact"}
     return {"attack_throw": clip, "attack_throw_legs": K.bake(legs, ATTACK_TICKS, loop=False)}
+
+
+PAULDRON_FOLLOW, PAULDRON_MAX = 0.15, 9.0   # of the right arm's lift on the chest (deg), and the most the plate lifts
+PUSH = {"sash": (("right",), 0.65, 28.0), "skirt": (("right", "left"), 0.30, 14.0)}   # thighs, share, most (deg)
+
+
+def _arm_lift(u, l):
+    p = fk_pose(u, l)
+    return swing_twist(K.world(p, "torso")[:3, :3].T @ K.world(p, "right_arm")[:3, :3])[0]
+
+
+def plate_and_sash(upper, legs):
+    """Batch review 2026-11-11. The harpooner's shoulder plate hangs from the TORSO (not the arm, so fullbody.plates_for
+    does not see it; focus_check secondary_life called it still): it rides a share of the throwing arm's lift on the chest,
+    eased over two ticks, capped, faded in and out like the kit's pieces. The sash hangs over the right thigh and the long
+    skirt over both: a thigh swinging forward past the stance pushes the cloth forward instead of going through it
+    (armour_clip: the right greave into the sash, a foot into the skirt's hem)."""
+    n = len(upper) - 1
+    lift0 = _arm_lift(upper[0], legs[0])
+    leg0 = {sd: float(legs[0][sd + "_leg"][0][0]) for sd in ("right", "left") if legs[0].get(sd + "_leg")}
+    rest = {c: np.array(legs[0].get(c, (Z3, None))[0], float) for c in PUSH}
+    lift = 0.0
+    for i, (u, l) in enumerate(zip(upper, legs)):
+        fade = K.smooth(max(0.0, min(1.0, i / float(SUB), (n - i) / (2.0 * SUB))))
+        lift += (_arm_lift(u, l) - lift0 - lift) / (2.0 * SUB) * 2.0    # a two-tick ease behind the arm
+        z = float(np.clip(PAULDRON_FOLLOW * lift, -PAULDRON_MAX, PAULDRON_MAX)) * fade
+        u["pauldron"] = ((0.4 * z, 0.0, z), None)
+        for c, (sides, k, top) in PUSH.items():
+            fwd = max([max(0.0, leg0[sd] - float(l[sd + "_leg"][0][0])) for sd in sides if sd in leg0 and l.get(sd + "_leg")] or [0.0])
+            cur = np.array(l.get(c, (rest[c], None))[0], float)
+            l[c] = ((float(cur[0] - min(top, k * fwd) * fade), float(cur[1]), float(cur[2])), None)
+    return upper, legs
+
+
+def soft(upper, legs, report=True):
+    """fullbody.soft_motion over a one-shot clip's samples (any rig; it finds the hanging pieces by name)."""
+    import fullbody   # imported late: it reads build_anims, which this module has already set up for the troop
+    return fullbody.soft_motion(upper, legs, report=report)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -527,8 +658,10 @@ STANCE_KEYS = {
     # ward: giving ground, the harpoon dropped to an underhand fend before the body, the barbs raised at the foe's face
     "ward": KEY((-2, 8, 0), (0, 0, 0), (-3.0, -7.0, 4.0), aim(30, -4), rp=(-45, 0, 15, -45), lp=(-40, 0, -18, -55)),
     # shield_up (the harpooner has no shield; StanceController plays this when the line moves under missiles): head ducked
-    # behind the left forearm raised across the brow, the harpoon kept cocked low by the hip, point at the foe
-    "shield_up": KEY((10, 10, 0), (10, 0, 0), (-2.5, -6.0, -1.0), aim(10, -4), rp=(-25, 0, 15, -40), lp=(-140, 0, -25, -95)),
+    # behind the left forearm raised across the brow, the harpoon kept cocked low by the hip, point at the foe. Batch review
+    # 2026-11-11: the arm lower and rolled out with the forearm folded tighter, so the cover sits before the brow instead of
+    # in it (was lp (-140, 0, -25, -95): left forearm 3.1 px into the head, wrap 3.6)
+    "shield_up": KEY((10, 10, 0), (10, 0, 0), (-2.5, -6.0, -1.0), aim(10, -4), rp=(-25, 0, 15, -40), lp=(-115, 0, 25, -120)),
 }
 LIFE = {"ready": 3.4, "brace": 1.6, "wall": 1.4, "ward": 2.0, "shield_up": 3.4}
 IDLE_LIFE = 2.2
@@ -674,7 +807,87 @@ V2_HIT_LEGS = {"front": mirror_legs(_V2_KNIGHT_LEGS["front"]), "back": mirror_le
                "right": mirror_legs(_V2_KNIGHT_LEGS["left"]), "left": mirror_legs(_V2_KNIGHT_LEGS["right"])}
 
 
+def _hit_leg_samples(weight, dname):
+    """The leg samples K.hit_legs_clips bakes for this blow (the same footwork, V2_HIT_LEGS), kept as samples so the soft
+    pieces and the sash can follow them (batch review 2026-11-11)."""
+    spec = V2_HIT_LEGS[dname]
+    ticks = K.HIT_TICKS[weight]
+    if weight == "medium":
+        return K.legs_offset(K.attack_legs(spec, ticks=ticks))
+    r_rot, r_pos = K.READY_HIPS
+    k2 = spec["hips"][1]
+    mid = lambda k: (tuple(a + k * (b - a) for a, b in zip(r_rot, k2[1])), tuple(a + k * (b - a) for a, b in zip(r_pos, k2[2])))
+    light = {"hips": [(0, *K.READY_HIPS), (1.5, *mid(0.45)), (4, *mid(-0.08)), (ticks, *K.READY_HIPS)], "steps": []}
+    return K.legs_offset(K.attack_legs(light, ticks=ticks))
+
+
+def ease_soft(upper, legs, passes=2):
+    """A blow jerks the torso in two ticks, and the soft pieces' spring answers with a kink (focus_check pop on the scarf,
+    up to 24 deg). A [1 2 3 2 1] filter over the pieces' own samples smooths the kink and keeps the swing; the first and
+    last two samples stay put, so the clip still starts and ends at the stance (batch review 2026-11-11)."""
+    import fullbody
+    bones = {b for c in fullbody.soft_parts_for().values() for b in c["bones"]}
+    kern = np.array([1.0, 2.0, 3.0, 2.0, 1.0]) / 9.0
+    for side in (upper, legs):
+        for b in bones:
+            if not all(b in f for f in side):
+                continue
+            for _ in range(passes):
+                R = np.array([f[b][0] for f in side], float)
+                S = R.copy()
+                for i in range(2, len(R) - 2):
+                    S[i] = kern @ R[i - 2:i + 3]
+                for f, r in zip(side, S):
+                    f[b] = (tuple(float(x) for x in r), f[b][1])
+    return upper, legs
+
+
+RARM_OUT = 0.5    # half the old roll, outward: clear of the head in game, and of the hips and skirt on the bind pose
+
+
+def _rarm_out(pk):
+    """Batch review 2026-11-11: the guard holds the harpoon up by the head, so a blow that rolls the right arm inward
+    (+z) or swings it back past the stance put the bracer and the forearm into the head in game (the hits add onto the
+    stance; up to 3.5 px). The arm now rolls out, and (hold keys, every direction) it never overshoots back in."""
+    out = dict(pk)
+    x, y, z = pk["right_arm"]
+    out["right_arm"] = (x, y, -RARM_OUT * abs(z))
+    return out
+
+
+LIFE_MIN = 7.0     # deg: the least every hanging piece turns in a heavy hit, a stun or a reaction (focus_check wants 4)
+
+
+def ensure_life(upper, legs, min_deg=LIFE_MIN):
+    """A hanging piece the body barely shakes (a stun's small sway, the stun-out's 5 deg nudge) still stands still after
+    soft_motion. Each piece that turns less than `min_deg` takes one slow swing on top, out and back over the clip (zero
+    at both ends, so a loop still closes), trailing the torso's own pitch (batch review 2026-11-11)."""
+    import fullbody
+    import focus_check as fc
+    model = fullbody._full_model(K.TROOP)
+    alive = set(fc.alive_pieces(model))
+    n = len(upper) - 1
+    t0 = np.array(upper[0].get("torso", (Z3, None))[0], float)
+    tx = float(np.mean([f.get("torso", (Z3, None))[0][0] - t0[0] for f in upper]))
+    sign = -1.0 if tx > 0 else 1.0
+    for side in (upper, legs):
+        for b in sorted({b for f in side for b in f if b in alive}):
+            if not all(b in f for f in side):
+                continue
+            R = np.array([f[b][0] for f in side], float)
+            rng = float(np.abs(R - R[0]).max())
+            if rng >= min_deg:
+                continue
+            amp = sign * (min_deg - rng + 1.0)
+            for i, f in enumerate(side):
+                bump = amp * (1.0 - math.cos(2.0 * math.pi * i / n)) / 2.0
+                f[b] = ((f[b][0][0] + bump, f[b][0][1], f[b][0][2]), f[b][1])
+    return upper, legs
+
+
 def v2_hit_clips():
+    """Batch review 2026-11-11: the hanging pieces (fullbody.soft_motion), the shoulder plate and the sash now ride every
+    blow (focus_check secondary_life called them still); the clips stay additive offsets as before."""
     out = {}
     for weight, ticks in K.HIT_TICKS.items():
         for dname, peak in HIT_PEAK.items():
@@ -682,7 +895,7 @@ def v2_hit_clips():
             armed = ARM_BONES["left"] + ARM_BONES["right"]
             body = only(pk, [b for b in pk if b not in armed])
             tracks = [(K.front_onset(v2_keys(body, weight), dname, weight), None),   # a 2-tick onset on the front medium blow
-                      (K.front_onset(v2_keys(only(pk, ARM_BONES["right"]), weight, hold=dname == "front"), dname, weight), "right"),
+                      (K.front_onset(v2_keys(only(_rarm_out(pk), ARM_BONES["right"]), weight, hold=True), dname, weight), "right"),
                       (K.front_onset(v2_keys(only(pk, ARM_BONES["left"]), weight), dname, weight), "left")]
             samples = []
             for i in range(ticks * SUB + 1):
@@ -691,16 +904,20 @@ def v2_hit_clips():
                     v = K.sample_keys(keys, i / SUB)
                     smp.update(v if side is None else {x: v[x] for x in ARM_BONES[side]})
                 samples.append(smp)
+            legs = _hit_leg_samples(weight, dname)
+            samples, legs = soft(samples, legs, report=False)
+            samples, legs = ease_soft(samples, legs)
+            samples, legs = plate_and_sash(samples, legs)
+            if weight == "light" and dname == "front":
+                # the block is the light front flinch, but focus_check judges it with the heavy hits: its plates and kelp
+                # get the same minimum ride there (the light hits themselves stay as they were)
+                bu, bl = ensure_life(copy.deepcopy(samples), copy.deepcopy(legs))
+                out["hit_block"] = K.bake(bu, ticks, loop=False)
+                out["hit_block_legs"] = K.bake(bl, ticks, loop=False)
+            if weight != "light":
+                samples, legs = ensure_life(samples, legs)
             out["hit_%s_%s" % (weight, dname)] = K.bake(samples, ticks, loop=False)
-    out["hit_block"] = out["hit_light_front"]
-    saved = K.HIT_LEGS
-    K.HIT_LEGS = V2_HIT_LEGS     # K.hit_legs_clips reads the module global; restored at once (nothing else reads it here)
-    try:
-        legs = K.hit_legs_clips()
-    finally:
-        K.HIT_LEGS = saved
-    legs["hit_block_legs"] = legs["hit_light_front_legs"]
-    out.update(legs)
+            out["hit_%s_%s_legs" % (weight, dname)] = K.bake(legs, ticks, loop=False)
     return out
 
 
@@ -985,7 +1202,361 @@ def dump(path, ticks):
     print("dumped", len(rows), "poses to", path)
 
 
+# ------------------------------------------------------------------------------------------------
+# Batch review 2026-11-11: fixes on baked clips. The gaits are fixed here as the builder writes them; the clips the shared
+# layers add after the export (common/stances.py: fall back, rest; reactions.py: stun, stun out, knockback, pulled;
+# charge.py: charge run) are fixed by `--post` on the exported file, which must run after those three (pipeline:
+# builder, export, stances, reactions, charge, then `build_thrower_anims.py --post`). Only the bones a fix touches are
+# re-keyed; every other bone of the clip stays as the shared layer baked it.
+# ------------------------------------------------------------------------------------------------
+
+def clip_samples(clip):
+    """A baked clip back to SUB samples a tick: [{bone: (rot, pos|None)}] (linear between its keys)."""
+    import stances as S
+    ticks = int(round(float(clip["animation_length"]) * TPS))
+    out = []
+    for i in range(ticks * SUB + 1):
+        f = {}
+        for b, (r, p) in S.pose_at(clip, i / SUB / TPS).items():
+            f[b] = (tuple(float(x) for x in r), None if p is None else tuple(float(x) for x in p))
+        out.append(f)
+    return out, ticks
+
+
+def rekey(clip, samples, ticks, bones):
+    """The clip with `bones` re-baked from the samples; the other bones untouched."""
+    import stances as S
+    new = S.bake([{b: f.get(b, (Z3, None)) for b in bones} for f in samples], ticks, clip.get("loop", False))
+    out = dict(clip)
+    out["bones"] = dict(clip["bones"])
+    for b in bones:
+        if b in new["bones"]:
+            out["bones"][b] = new["bones"][b]
+    return out
+
+
+def _depth(pts, box):
+    o, axes = box
+    d = np.full(len(pts), np.inf)
+    for a, L in axes:
+        s = (pts - o) @ a
+        d = np.minimum(d, np.minimum(s, L - s))
+    return float(max(0.0, d.max())) if len(d) else 0.0
+
+
+def _hold_and_ease(add, loop, reach=3, passes=2):
+    """A per-sample need (deg) widened over `reach` samples each side (the larger need wins), then eased with a
+    [1 2 3 2 1] filter, so the piece moves out ahead of the contact and back after it."""
+    n = len(add)
+    idx = lambda j: (j % (n - 1)) if loop else min(max(j, 0), n - 1)
+    wide = np.array([max((add[idx(j)] for j in range(i - reach, i + reach + 1)), key=abs) for i in range(n)])
+    kern = np.array([1.0, 2.0, 3.0, 2.0, 1.0]) / 9.0
+    for _ in range(passes):
+        wide = np.array([sum(k * wide[idx(j)] for k, j in zip(kern, range(i - 2, i + 3))) for i in range(n)])
+    if not loop:
+        wide[0], wide[-1] = add[0], add[-1]
+    return wide
+
+
+SKIRT_HITTERS = ("right_foot_gear", "left_foot_gear", "kelp_shin", "right_greave", "left_greave", "torso", "belt", "kelp_belt")
+SKIRT_OK = 0.8      # px a piece may sink into the hem past its rest fit (focus_check armour_clip fails near 1.9)
+
+
+def _lattice(box, n=5):
+    o, axes = box
+    g = np.linspace(0.0, 1.0, n)
+    pts = [o]
+    for a, L in axes:
+        pts = [p + a * L * t for p in pts for t in g]
+    return np.array(pts)
+
+
+_SKIRT_REST = {}
+
+
+def _skirt_depth(q, _rest=False):
+    """Deepest point of a boot or greave inside the skirt, or of the skirt inside it, past the pair's rest fit (px;
+    lattices of both boxes, as focus_check's armour_clip measures)."""
+    if not _rest and not _SKIRT_REST:
+        _skirt_depth({}, _rest=True)
+    P, owner = _CORNERS(q)
+    by = {}
+    for c in range(0, len(owner), 8):
+        if owner[c] == "skirt" or owner[c] in SKIRT_HITTERS:
+            by.setdefault(owner[c], []).append(_boxes(P[c:c + 8], [owner[c]] * 8)[0])
+    worst = 0.0
+    for h in SKIRT_HITTERS:
+        d = 0.0
+        for sk in by.get("skirt", ()):
+            for bx in by.get(h, ()):
+                d = max(d, _depth(_lattice(bx), sk), _depth(_lattice(sk), bx))
+        if _rest:
+            _SKIRT_REST[h] = d
+        else:
+            worst = max(worst, d - _SKIRT_REST.get(h, 0.0))
+    return worst
+
+
+SKIRT_PITCH, SKIRT_LIFT = np.arange(-20.0, 20.1, 2.0), np.arange(0.0, 2.51, 0.25)   # deg, px the hem may give
+
+
+def skirt_clear(upper, legs, loop, cloth=("skirt", "sash")):
+    """The long skirt hangs to the ankle from the hips: as the hips drop over a planted boot the hem comes down onto it.
+    The skirt (and the sash over it, which hangs from the same hinge) rides up and swings by the least it takes to keep
+    the boots out of the hem (cost: lift px + pitch / 10 deg); widened, eased and closed on a loop."""
+    n = len(upper)
+    base = {c: [np.array((upper[i].get(c) or legs[i].get(c) or (Z3, None))[0], float) for i in range(n)] for c in cloth}
+    pitch, lift = np.zeros(n), np.zeros(n)
+    for i in range(n):
+        q = fk_pose(upper[i], legs[i])
+        if _skirt_depth(q) <= SKIRT_OK:
+            continue
+        best = None
+        for y in SKIRT_LIFT:
+            for d in SKIRT_PITCH:
+                q["skirt"] = (tuple(base["skirt"][i] + (d, 0.0, 0.0)), (0.0, float(y), 0.0))
+                v = _skirt_depth(q)
+                c = (0.0 if v <= SKIRT_OK else 10.0 + v) + float(y) + abs(float(d)) / 10.0
+                if best is None or c < best[0]:
+                    best = (c, d, y)
+        pitch[i], lift[i] = best[1], best[2]
+    pitch, lift = _hold_and_ease(pitch, loop), _hold_and_ease(lift, loop)
+    if loop:
+        pitch[-1], lift[-1] = pitch[0], lift[0]
+    for i in range(n):
+        for c in cloth:
+            upper[i][c] = (tuple(base[c][i] + (pitch[i], 0.0, 0.0)), (0.0, float(lift[i]), 0.0))
+    return upper
+
+
+
+
+def _harpoon_low(pose):
+    P, owner = _CORNERS(pose)
+    isw = np.array([is_weapon(o) for o in owner])
+    return float(P[isw, 1].min() - body_ground(P, owner, isw))
+
+
+def ground_samples(upper, legs, base=None, loop=False):
+    """The harpoon kept off the ground by one tip of the wrist (ground_hand's, solved at the lowest sample), eased in
+    and out over the samples that need it, so the shaft never spins or snaps (a per-sample solve did: roll_spin 300).
+    Up to three passes, each at the lowest sample left. `base` (additive clips): the pose under the offsets; the tip is
+    solved on base + offset and written back as an offset."""
+    n = len(upper)
+
+    def full(i):
+        u, lg = dict(upper[i]), legs[i]
+        if base is not None:
+            u = {b: (tuple(np.add(base[i]["u"].get(b, (Z3, None))[0], u.get(b, (Z3, None))[0])), None)
+                 for b in set(base[i]["u"]) | set(u)}
+            lg = {b: (tuple(np.add(base[i]["l"].get(b, (Z3, None))[0], legs[i].get(b, (Z3, None))[0])),
+                      base[i]["l"].get(b, (Z3, (0, 0, 0)))[1] if b == "hips" else None)
+                  for b in set(base[i]["l"]) | set(legs[i])}
+        return fk_pose(u, lg)
+
+    changed = False
+    for _ in range(3):
+        poses = [full(i) for i in range(n)]
+        lows = np.array([_harpoon_low(q) for q in poses])
+        w = int(np.argmin(lows))
+        if lows[w] >= GROUND_CLEAR - 0.05:
+            break
+        hand = tuple(poses[w]["right_hand"][0])
+        r = ground_hand(poses[w], hand, None)
+        L = K.decompose_zyx(_rot(hand).T @ _rot(r))
+        need = (lows < GROUND_CLEAR - 0.05).astype(float)
+        k = _hold_and_ease(need, loop, reach=4)
+        k = np.clip(k / max(float(k.max()), 1e-9), 0.0, 1.0)
+        prev = None
+        for i in range(n):
+            if k[i] <= 1e-4:
+                prev = None
+                continue
+            h_full = tuple(poses[i]["right_hand"][0])
+            h_new = K.decompose_zyx(_rot(h_full) @ _rot(slerp_rot(Z3, L, float(k[i]))))
+            h_new = near_euler(h_new, h_full)
+            cur = upper[i].get("right_hand", (Z3, None))
+            off = np.subtract(h_new, h_full)
+            upper[i]["right_hand"] = (tuple(np.add(cur[0], off)), cur[1])
+        changed = True
+    return upper, changed
+
+
+_SOLE = []
+
+
+def _composed(up, lg, base, i):
+    """(upper, legs) of sample i as the game shows it: the additive offsets on the base pose (or the sample itself)."""
+    if base is None:
+        return up[i], lg[i]
+    u = {b: (tuple(np.add(base[i]["u"].get(b, (Z3, None))[0], up[i].get(b, (Z3, None))[0])), None)
+         for b in set(base[i]["u"]) | set(up[i])}
+    l = {}
+    for b in set(base[i]["l"]) | set(lg[i]):
+        r0, p0 = base[i]["l"].get(b, (Z3, None))
+        r1, p1 = lg[i].get(b, (Z3, None))
+        pos = None if p0 is None and p1 is None else tuple(np.add(p0 if p0 is not None else Z3, p1 if p1 is not None else Z3))
+        l[b] = (tuple(np.add(r0, r1)), pos)
+    return u, l
+
+
+def lift_feet(up, lg, base=None):
+    """Where a boot or greave goes under the ground (in game: the stance + the offsets of an additive clip), the hips
+    ride up by just that much, eased, never the whole clip (focus_check floor; batch review 2026-11-11)."""
+    if not _SOLE:
+        P, owner = _CORNERS({})
+        _SOLE.append(float(P[~np.array([is_weapon(o) for o in owner]), 1].min()))
+    n = len(up)
+    sink = np.zeros(n)
+    for i in range(n):
+        P, owner = _CORNERS(fk_pose(*_composed(up, lg, base, i)))
+        hard = ~np.array([is_weapon(o) for o in owner]) & np.array([not any(o.startswith(h) for h in K.SOFT) for o in owner])
+        sink[i] = max(0.0, _SOLE[0] - float(P[hard, 1].min()) + 0.15)
+    if not sink.any():
+        return lg, False
+    loop = base is None and np.allclose(sink[0], sink[-1])
+    add = np.maximum(_hold_and_ease(sink, loop, reach=3), sink)
+    if base is not None:
+        add[0] = add[-1] = 0.0
+    for i in range(n):
+        r, p = lg[i].get("hips", (Z3, None))
+        p = tuple(np.add(p if p is not None else Z3, (0.0, float(add[i]), 0.0)))
+        lg[i]["hips"] = (r, p)
+    return lg, True
+
+
+def skirt_clear_additive(up, lg, base):
+    """skirt_clear on the pose the game shows, written back as the skirt's offset."""
+    cu, cl = zip(*[_composed(up, lg, base, i) for i in range(len(up))])
+    cu = [dict(x) for x in cu]
+    cu = skirt_clear(cu, list(cl), False, cloth=("skirt",))
+    for i, f in enumerate(up):
+        b0 = np.array(base[i]["u"].get("skirt", (Z3, None))[0], float)
+        f["skirt"] = (tuple(np.array(cu[i]["skirt"][0]) - b0), cu[i]["skirt"][1])
+    return up
+
+
+PULL_ARM = 0.4      # share of reactions.py's right-arm offsets kept on hit_knockback / hit_pulled (the guard's arm is up)
+PULL_ROLL = -15.0   # deg the right arm rolls out at the reaction's peak, clear of the head
+QUIVER_FOLLOW = 0.5  # share of the torso's backward bend the quiver on the back takes (it went into the torso, 2.0 px)
+
+
+def _calm_right_arm(upper, keep=PULL_ARM):
+    mag = np.array([float(np.linalg.norm(f.get("right_arm", (Z3, None))[0])) for f in upper])
+    env = mag / max(float(mag.max()), 1e-9)
+    for f, e in zip(upper, env):
+        for b in ("right_arm", "right_forearm", "right_hand"):
+            if b in f:
+                r = keep * np.array(f[b][0], float)
+                if b == "right_arm":
+                    r[2] += PULL_ROLL * e
+                f[b] = (tuple(r), f[b][1])
+    return upper
+
+
+def _quiver_follow(upper):
+    for f in upper:
+        t = f.get("torso", (Z3, None))[0]
+        q = f.get("quiver", (Z3, None))
+        f["quiver"] = ((q[0][0] + QUIVER_FOLLOW * t[0], q[0][1], q[0][2]), q[1])
+    return upper
+
+
+_LEGS = ("hips", "right_leg", "right_shin", "right_foot", "left_leg", "left_shin", "left_foot")
+
+
+def _cloth_up(up, lg):
+    """The soft pieces and the cloth soft_motion / plate_and_sash wrote into the legs samples ride the upper clip instead:
+    the shared layers' upper clips already key some of them (kelp_belt), and stun_out plays over the stun's legs, so a
+    piece in a legs clip would be animated by two clips at once."""
+    for u, l in zip(up, lg):
+        for b in [b for b in l if b not in _LEGS]:
+            u[b] = l.pop(b)
+    return up, lg
+
+
+def _keyed(samples):
+    return sorted({b for f in samples for b in f})
+
+
+def post_shared(path):
+    """`--post`: the shared layers' clips on the exported file (see the note above clip_samples)."""
+    import stances as S
+    path = Path(path)
+    doc = json.loads(path.read_text())
+    A = doc["animations"]
+    done = []
+    ready_u = clip_samples(A["stance_ready_upper"])[0]
+    ready_l = clip_samples(A["stance_ready_legs"])[0]
+
+    def put(name, samples, ticks, bones):
+        A[name] = rekey(A[name], samples, ticks, bones)
+        done.append(name)
+
+    # absolute clips: the harpoon off the ground (stun, fall back, rest); the hanging pieces alive on the stun;
+    # the skirt clear of the boots and greaves on the fall back
+    for up_n, lg_n, alive, cloth in (("stun_upper", "stun_legs", True, False), ("stance_fallback_upper", "stance_fallback_legs", False, True),
+                                     ("stance_rest_upper", None, False, False)):
+        up, ticks = clip_samples(A[up_n])
+        lg = clip_samples(A[lg_n])[0] if lg_n else [dict(x) for x in (ready_l * (len(up) // len(ready_l) + 1))[:len(up)]]
+        before_u, before_l = set(_keyed(up)), set(_keyed(lg))
+        up, _ = ground_samples(up, lg, loop=A[up_n].get("loop", False) is True)
+        touched_u, touched_l = {"right_hand"}, set()
+        if lg_n:
+            lg, lifted = lift_feet(up, lg)
+            if lifted:
+                touched_l.add("hips")
+        if alive:
+            up, lg = soft(up, lg, report=False)
+            up, lg = ease_soft(up, lg)
+            up, lg = plate_and_sash(up, lg)
+            up, lg = _cloth_up(up, lg)
+            up, lg = ensure_life(up, lg)
+            touched_u |= set(_keyed(up)) - before_u | (set(_keyed(up)) - set(_LEGS))
+        if cloth:
+            up = skirt_clear(up, lg, A[up_n].get("loop", False) is True)
+            touched_u |= {"skirt", "sash"}
+        put(up_n, up, ticks, sorted(touched_u))
+        if touched_l and lg_n:
+            put(lg_n, lg, ticks, sorted(touched_l))
+
+    # additive clips (added onto the stance in game): the hanging pieces alive; the throwing arm calmer on the two big
+    # reactions (it is up by the head in the guard: the full offsets put it through the head and past the shoulder)
+    for up_n, lg_n in (("hit_knockback", "hit_knockback_legs"), ("hit_pulled", "hit_pulled_legs"), ("stun_out_upper", None)):
+        up, ticks = clip_samples(A[up_n])
+        lg = clip_samples(A[lg_n])[0] if lg_n else [{} for _ in up]
+        before_u, before_l = set(_keyed(up)), set(_keyed(lg))
+        if up_n != "stun_out_upper":
+            up = _calm_right_arm(up)
+            if up_n == "hit_knockback":
+                up = _quiver_follow(up)
+            base = [{"u": ready_u[i % (len(ready_u) - 1)], "l": ready_l[i % (len(ready_l) - 1)]} for i in range(len(up))]
+            lg, lifted = lift_feet(up, lg, base)
+            if lifted:
+                put(lg_n, lg, ticks, ["hips"])
+        else:      # stun out plays over the stun's loop from its 4th tick: the harpoon off the ground over that pose
+            st, _ = clip_samples(A["stun_upper"])
+            stl, _ = clip_samples(A["stun_legs"])
+            base = [{"u": st[(16 + i) % (len(st) - 1)], "l": stl[(16 + i) % (len(stl) - 1)]} for i in range(len(up))]
+            up, _ = ground_samples(up, [{} for _ in up], base=base)
+        up, lg = soft(up, lg, report=False)
+        up, lg = ease_soft(up, lg)
+        up, lg = plate_and_sash(up, lg)
+        up, lg = _cloth_up(up, lg)
+        up, lg = ensure_life(up, lg)
+        if up_n != "stun_out_upper":     # last: the skirt clear of the boots over whatever swing the steps above gave it
+            up = skirt_clear_additive(up, lg, base)
+        put(up_n, up, ticks, sorted(set(_keyed(up)) - set(_LEGS)))
+    with open(path, "w", newline="\n") as fh:
+        fh.write(json.dumps(doc, indent=1))
+    print("post:", ", ".join(dict.fromkeys(done)), "->", path)
+
+
 def main():
+    if "--post" in sys.argv:
+        post_shared(sys.argv[sys.argv.index("--post") + 1] if len(sys.argv) > sys.argv.index("--post") + 1 else
+                    HERE.parents[2] / "src/main/resources/assets/gravesandglory/animations/troop" / (K.TROOP + ".animation.json"))
+        return
     if os.environ.get("THROW_DUMP"):
         dump(os.environ["THROW_DUMP"], [float(x) for x in os.environ.get("THROW_TICKS", "0,3,5,7.4,8,10,13,16.5,18.5,21,25,29").split(",")])
         return

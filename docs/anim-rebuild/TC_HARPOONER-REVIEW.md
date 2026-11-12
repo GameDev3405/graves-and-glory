@@ -44,3 +44,53 @@ Changed clips:
   - Walk and run sheet samples are hard to judge at the cycle period.
 - **Harness.** geo-knight suite with `GRAVES_GEO_CHECK_TROOP=tc_harpooner`: **22 `[p1] p1-` lines, 0 `=false`** (two "Can't keep up" log lines, no lag failure).
 - Video: `group_d2_v2` (ic_arbalist, then tc_harpooner).
+
+## Batch review 2026-11-11 (branch anim/review-harpooner, cut from anim/fix-singles)
+
+Kort's four focus points and the batch brief (`bb-anim-skill-fable/work/batch/BRIEF.md`). All changes are in
+`art/anim/thrower/build_thrower_anims.py` (builder, then export, the shared stances / reactions / charge layers, then the new
+`--post` step for the shared-layer clips). Logs: `work/review/tc_harpooner.{before,after}.{txt,json}`, scorecard logs beside them.
+
+**Focus check:** before 16 clips with a FAIL (about 50 rows); after 11 clips, 15 rows, all listed below as rig/tool rows or
+open. **Scorecard:** before attack_throw knee_bend 108.12 FAIL; after 34 clips, 0 failures, exit 0.
+
+### Drift (no edit of mine)
+- **Deaths (4):** the builder no longer reproduces the committed deaths (right_hand track differs; the committed file
+  carries a dead weapon_t3 track). The rebuild FAILs (death_left pop 22; death_right roll_spin 240, pop 58), so the committed
+  deaths are kept: the rebuild step copies them from the committed asset into `out/` before export.
+- **`out/` was stale:** the committed `out/` predates f6b5064a (own ward, shield_up, brace; deaths). It now matches the asset
+  for brace, ward and the deaths; those asset clips are byte-identical to HEAD.
+
+### Changed clips and why
+- **attack_throw (+legs), whole-body rework.** Same length (36 ticks), impact 8, markers kept. The point leads from the
+  cock-back to the release (twist-limited reach, the harpoon frame carried, never rolled about its length); hips drop
+  and a step drive it; the release is on tick 8 and the arm carries across. Fixed: roll_spin 203, pop 69, elbow 171, knee_bend
+  108, right_bracer into head, head into wrap, secondary_life. The stance_aim clips follow (stances.py takes the aim pose
+  from this clip's full-draw frame; only their hanging pieces move).
+- **Hits (light x4, medium x4, block):** soft hanging pieces (eased so the scarf does not pop), the plate and sash ride,
+  a minimum ride for the alive pieces on medium hits and the block, the right arm rolled half out so it does not cross the
+  head in game; the medium legs rebuilt per hit.
+- **hit_knockback, hit_pulled, stun, stun_out (post step):** the harpoon grounded by one eased local tip, eased feet lift
+  where gear goes under the sole, the arm calmed and rolled out, soft pieces and skirt clearance on the composite.
+- **stance_fallback, stance_rest (post step):** harpoon off the floor; fallback skirt clearance search.
+- **stance_shield_up:** left arm lp (-140,0,-25,-95) -> (-115,0,25,-120): the forearm sits before the brow instead of
+  3.1 px in the head (now WARN 1.55 / 1.85).
+
+### Remaining rows (frames in `work/hp/look/`)
+- **Tool rows, not faults:** the additive clips (hits, knockback, pulled) are judged on the bind pose. On the in-game
+  composite (ready stance + offsets, `work/hp/compose.py`) all medium hits, block, light hits have 0 CLIP/LIMB FAILs; the
+  elbow 148/164.6, the knee -9.01 (medium_back 11.5), bow_t3_rest floor, left_arm into torso and forearm into skirt rows exist
+  only on the bind pose. The composite's only rows are `settle` (the ready loop at a different phase at the clip end; the
+  same value for every direction) and the skirt rows below.
+- **attack_throw weapon_in_body 2.0 / floor 6.66 on bow_t3_rest:** the hidden spare harpoon (draw channel hides it; the
+  check ignores the draw channel). Not visible in any frame.
+- **Open, ankle-length skirt:** walk 2.34, run 2.53, charge_run 2.53 (foot gear into skirt), fallback 2.12 (kelp_shin),
+  knockback/pulled composite 2.05 / 2.2. The skirt is a tube from y 2.5 to 14 parented to the hips; the swinging boot passes
+  inside it. No skirt pitch (+-20) or lift (0-2.5) clears it without driving it into the torso. A model or gait question.
+
+### Rule 6 (by eye)
+Hold: harpoon levelled forward like a spear. Shield_up: harpoon low and level, left forearm raised as cover; from the side
+it reads close to hold. Wall: crouched and cocked to throw. Ward: an underhand fend. All suit a harpoon thrower.
+
+### Tests
+See the commit message for unit tests, verify fast and the geo-knight reel.
