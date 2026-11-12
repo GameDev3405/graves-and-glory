@@ -215,6 +215,7 @@ final class GearCombatChecks implements Phase1Checks.Suite {
     volatile boolean ok;
     volatile String keyWhy = "", campScreen = "";
     volatile boolean inBattle, fired, drawn, camp;
+    int entranceWait; // ticks p1-gear-combat-relic-keys waited for the battle entrance camera (120 client ticks) to end
     volatile int clientSlot = -1, serverSlot = -1;
     /** Presses hotbar key i+1 as the keyboard would: one press counted on the binding. */
     static void press(MinecraftClient c, int i) {
@@ -344,6 +345,8 @@ final class GearCombatChecks implements Phase1Checks.Suite {
             }
             case 7 -> { // p1-gear-combat-relic-keys: in battle key 2 fires slot 1 and the hotbar stays on slot 0; in camp key 2 selects slot 1
                 int t = tick - stageAt;
+                // the entrance camera hides the battle HUD (renderHud), so start only once it has ended (bounded: the report then shows it was still on)
+                if (t == 1 && CampaignClient.cinematic() && entranceWait < 200) { entranceWait++; stageAt = tick; return; }
                 if (t == 1) Phase1Checks.server(c, b -> {
                     var p = sp(b, player); var pr = b.campaign.profile(player); var s = b.squads.get(player);
                     if (!pr.relics.contains("stand_fast")) pr.relics.add("stand_fast");
@@ -352,7 +355,7 @@ final class GearCombatChecks implements Phase1Checks.Suite {
                     b.campaign.introUntil = b.time; p.getInventory().selectedSlot = 0;
                     GravesAndGlory.sendRelics(b, s);
                 });
-                if (t == 12) { inBattle = GravesAndGloryClient.battleActive() && c.currentScreen == null; press(c, 1); }
+                if (t == 12) { inBattle = GravesAndGloryClient.battleActive() && c.currentScreen == null && !CampaignClient.cinematic(); press(c, 1); }
                 if (t == 30) {
                     clientSlot = c.player.getInventory().selectedSlot; drawn = BattleHud.rects().containsKey("relic-1");
                     Phase1Checks.server(c, b -> {
@@ -369,7 +372,7 @@ final class GearCombatChecks implements Phase1Checks.Suite {
                     int got = c.player.getInventory().selectedSlot;
                     boolean pass = keyWhy.isEmpty() && inBattle && fired && clientSlot == 0 && serverSlot == 0 && drawn && camp && got == 1;
                     Phase1Checks.report("p1-gear-combat-relic-keys", pass, "slot 1 holds stand_fast (" + (keyWhy.isEmpty() ? "set" : keyWhy) + "); in battle=" + inBattle + " key 2 started slot 1 only=" + fired
-                        + ", the hotbar stayed on slot " + clientSlot + " (client) and " + serverSlot + " (server), the HUD drew relic-1=" + drawn + "; in camp=" + camp + " (screen " + campScreen + ", closed) key 2 selected hotbar slot " + got + " (want 1)");
+                        + ", the hotbar stayed on slot " + clientSlot + " (client) and " + serverSlot + " (server), the HUD drew relic-1=" + drawn + " (waited " + entranceWait + " ticks for the entrance camera); in camp=" + camp + " (screen " + campScreen + ", closed) key 2 selected hotbar slot " + got + " (want 1)");
                     c.player.getInventory().selectedSlot = 0;
                     battleAt = -1; next(tick, 8);
                 }
