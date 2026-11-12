@@ -306,7 +306,9 @@ RALLY_UP = {"tc_harpooner": dict(right_arm=2.0, right_forearm=1.5)}
 
 # per troop overrides of its gear's RALLY row (Kort's rule 6: the order in the troop's own manner)
 #   tc_raider: the cutlass brandished out to the side, the chest turned and dropped behind it
-RALLY_OWN = {"tc_raider": dict(lift=104, keep=0.6, fore=-30, out=-24, chest=(-3, -6))}
+#   revenant: the sword thrust up like the others, but the head thrown back (a howl)
+RALLY_OWN = {"tc_raider": dict(lift=104, keep=0.6, fore=-30, out=-24, chest=(-3, -6)),
+             "revenant": dict(chest=(-7, -22))}
 
 
 def rally_pose(tr, e, c, t=None):
@@ -394,7 +396,16 @@ def _hold_raider(P):
     P["left_arm"][0][2] -= 10
 
 
-HOLD_OWN = {"tc_raider": _hold_raider}
+def _hold_revenant(P):
+    """Hunched over the threat, the notched sword out stiffly with the point up at it, the free hand reaching to grab."""
+    chest(P, torso_x=6, head_x=2, off="left")
+    lift_arm(P, "right", 20, keep=0.35)
+    P["right_forearm"][0][0] += 6
+    lift_arm(P, "left", 38, keep=0.0)
+    P["left_forearm"][0][0] = max(P["left_forearm"][0][0] + 18, -14.0)
+
+
+HOLD_OWN = {"tc_raider": _hold_raider, "revenant": _hold_revenant}
 
 
 def hold_pose(tr, phase):
@@ -507,10 +518,13 @@ def fallback_fit(tr, base):
 #     shield side). Its extra 0.6 px hips drop is gone (batch review 2026-11-11): the walk is not re-solved here, so the drop pushed
 #     the boot 1.33 px under the ground at tick 0 (focus check floor FAIL); without it the floor row is the family's 0.73 WARN.
 #   tc_raider: a backward shuffle turned side-on behind the cutlass, the hips rolling from foot to foot
+#   revenant: the lead leg steps, the rear one drags (a limp), the hips sagging onto the dragged side
 FALLBACK_LEGS = {
     "ic_hearthguard": dict(amp={}, base=0.55, hips=lambda ph: ((0.0, 7.0, 0.0), (0.0, 0.0, 0.0))),
     "tc_raider": dict(amp={}, base=0.7,
                       hips=lambda ph: ((2.0, 8.0, 2.0 * math.sin(ph)), (0.4 * math.sin(ph), 0.0, 0.0))),
+    "revenant": dict(amp={"left_leg": 0.35, "left_shin": 0.3, "left_foot": 0.35, "left_boot": 0.35}, base=0.75,
+                     hips=lambda ph: ((0.0, 0.0, -4.0 + 2.0 * math.sin(ph)), (0.3 * math.sin(ph), -0.2 * max(0.0, math.sin(ph)), 0.0))),
 }
 
 

@@ -1778,14 +1778,21 @@ def stance_clips():
 # drift. Each foot target stays within about 1 px of the ready footing so an attack still blends in without a skid.
 #   tc_raider (Drowned Raider, cutlass): sea legs. Wide and low, toes out, the hips rolling side to side as on a deck,
 #     chest turned side-on behind the cutlass, chin up.
+#   revenant (Risen, notched sword): a dead man standing. Stiff legs, hips slung onto the rear leg with the lead knee half
+#     buckled, chest hunched, head hanging and cocked; the weight lurches instead of breathing, with a twitch of the head.
 # ------------------------------------------------------------------------------------------------
 
-OWN = ("tc_raider",)
+OWN = ("tc_raider", "revenant")
 OWN_LEGS = {
     "tc_raider": {
         "ready": {"hips": ((1.0, 12.0, 0.0), (0.0, -1.9, 0.2)), "right": (-4.3, 2.0, 2.2), "left": (4.1, 2.0, -1.6), "yaw": (-22.0, 16.0)},
         "brace": {"hips": ((3.0, 16.0, 0.0), (0.0, -2.8, 0.5)), "right": (-4.7, 2.0, 3.0), "left": (4.5, 2.0, -2.4), "yaw": (-24.0, 18.0)},
         "wall": {"hips": ((5.0, 20.0, 0.0), (0.0, -3.8, 0.7)), "right": (-4.8, 2.0, 4.0), "left": (4.4, 2.0, -3.4), "yaw": (-26.0, 18.0)},
+    },
+    "revenant": {
+        "ready": {"hips": ((3.0, 4.0, -5.0), (0.6, -0.8, 0.3)), "right": (-3.0, 2.0, 1.4), "left": (3.6, 2.0, -2.4), "yaw": (-4.0, 18.0)},
+        "brace": {"hips": ((5.0, 8.0, -6.0), (0.7, -1.7, 0.6)), "right": (-3.2, 2.0, 2.6), "left": (3.9, 2.0, -2.9), "yaw": (-6.0, 20.0)},
+        "wall": {"hips": ((7.0, 12.0, -6.0), (0.7, -3.0, 0.9)), "right": (-3.4, 2.0, 3.6), "left": (3.8, 2.0, -3.4), "yaw": (-8.0, 20.0)},
     },
 }
 # The legs' own life, added to the stance hips each sample (u = 0..1 round the loop, so it closes): (rot, pos) offsets.
@@ -1793,6 +1800,9 @@ OWN_HIPS_LIFE = {
     # the deck roll: the hips rock from foot to foot and dip as they cross
     "tc_raider": lambda u: ((0.0, 1.2 * math.sin(2 * math.pi * u), 2.6 * math.sin(2 * math.pi * u)),
                             (0.45 * math.sin(2 * math.pi * u), -0.15 * abs(math.cos(2 * math.pi * u)), 0.0)),
+    # a lurch: the weight sags onto the rear leg and catches, twice per loop, uneven
+    "revenant": lambda u: ((0.0, 0.0, -1.6 * math.sin(2 * math.pi * u) - 0.8 * math.sin(4 * math.pi * u + 0.7)),
+                           (0.25 * math.sin(2 * math.pi * u), -0.12 * max(0.0, math.sin(2 * math.pi * u)), 0.0)),
 }
 # The upper body's own character over every stance pose: fixed offsets (torso, head, left arm, left forearm) and a life
 # function of u giving (torso, head) offsets.
@@ -1802,6 +1812,10 @@ OWN_UPPER = {
                   # the chest counter-rolls the deck roll so the head stays level-ish
                   "life": lambda u: ((0.0, -0.8 * math.sin(2 * math.pi * u), -1.8 * math.sin(2 * math.pi * u)),
                                      (0.0, 0.0, 1.2 * math.sin(2 * math.pi * u)))},
+    "revenant": {"torso": (4.0, 0.0, 0.0), "head": (7.0, -6.0, 12.0), "left_arm": (-6.0, 0.0, 0.0), "left_forearm": 8.0,
+                 # the head twitches up once per loop (a quick jerk at u 0.62, settling back over a few ticks)
+                 "life": lambda u: ((0.0, 0.0, 0.0), (-6.0 * math.exp(-((u - 0.62) / 0.035) ** 2), 3.0 * math.exp(-((u - 0.63) / 0.05) ** 2),
+                                                       -5.0 * math.exp(-((u - 0.62) / 0.04) ** 2)))},
 }
 
 
@@ -1866,13 +1880,18 @@ def own_stance_clips(out):
 
 
 # The troop's own idle (at ease, out of a fight): feet (ankle targets), foot yaw, hips (rot, pos), and the upper pose; the life
-# is the same per-troop life (the raider's deck roll) at the idle's slower 60 tick loop.
+# is the same per-troop life (the raider's deck roll, the revenant's lurch) at the idle's slower 60 tick loop.
 OWN_IDLE = {
     "tc_raider": {"right": (-3.7, 2.0, 0.8), "left": (3.5, 2.0, -0.6), "yaw": (-16.0, 14.0), "hips": ((0.0, 6.0, 0.0), (0.0, -1.0, 0.0)),
                   "torso": (-1.0, 6.0, 0.0), "head": (-5.0, -6.0, 0.0),
                   # the cutlass carried low and forward, the free fist set on the hip
                   "right_arm": (-12.0, 0.0, 6.0), "right_forearm": -30.0, "right_hand": (52.0, 0.0, 0.0),
                   "left_arm": (4.0, 0.0, -24.0), "left_forearm": -62.0},
+    "revenant": {"right": (-2.2, 2.0, 0.6), "left": (2.9, 2.0, -0.9), "yaw": (-4.0, 16.0), "hips": ((2.0, 3.0, -4.0), (0.5, -0.75, 0.2)),
+                 "torso": (9.0, -4.0, 3.0), "head": (14.0, -8.0, 16.0),
+                 # the sword hangs from a slack arm, point low and forward; the free arm hangs a little out in front
+                 "right_arm": (0.0, 0.0, 6.0), "right_forearm": -18.0, "right_hand": (28.0, 0.0, 0.0),
+                 "left_arm": (-16.0, 0.0, -4.0), "left_forearm": -10.0},
 }
 
 
