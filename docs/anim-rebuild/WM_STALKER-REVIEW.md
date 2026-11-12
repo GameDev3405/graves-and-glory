@@ -124,3 +124,107 @@ claw's touchdown or lift-off; the run's sac bounce phase moves 0.42 -> 0.36 of a
 on frame 0, as the knight's does (the controller loops ticks 4..24, so tick 0 plays once). Only walk, run and stun
 changed; scorecard 26 clips, 0 failing. Not yet re-rendered or re-reviewed. The old branch's AttackController ensnare
 hook was not ported (gameplay code).
+
+## Batch review 2026-11-11
+
+Batch wm_stalker-20261111-ddde785 (27 clips), branch `anim/review-wm_stalker` cut from `anim/troop-wm_stalker`. Baseline
+rebuild: no drift. Content is identical; only `hit_pulled`'s position in the file differs, because it was spliced in
+last. A full build now keeps the committed clip order.
+
+### Rows before and after (focus_check)
+
+- **Before:** 27 clips, 20 with a FAIL, 43 FAIL rows.
+- **After:** 27 clips, 11 with a FAIL, 12 FAIL rows.
+- **Scorecard:** 27 clips, 0 failing.
+- **What remains:**
+  - **`floor` on every additive clip** (8 hits, knockback, hit_pulled; stun_out `sacs` 2.74 at t0.75). A check artefact, see below.
+  - **run_upper:** `armour_clip` 2.01 (abdomen into right_leg_4_low, t3) and `jitter` 13.74 (right_leg_4, t3). Open, see below.
+
+**Rig difference: `floor` on additive clips.** render_geo's Scene cannot layer clips: bones must be disjoint and values
+replace. So focus_check and the booth play an additive hit (deltas over ready) over its own `_legs` delta, on the
+rest pose of the hand art. The game never shows that pose.
+
+`work/review/abs_check.py` (scratch) rebuilds these clips as the game plays them (ready + delta; stun_out over the stun
+loop) and checks those. Every `floor` row clears. Proof frames for hit_medium_right t1.75:
+`work/review/r0/hmr_asplayedbycheck/` (claws sink) against `work/review/r0/hmr_asgame/` (claws on the floor).
+
+**As played in game, after:**
+- 9 of 11 clips are clean.
+- **hit_medium_back:** `armour_clip` 1.98, left_leg_1_guard into left_leg_2_spur, t3.
+- **hit_medium_left:** `armour_clip` 1.95, right_leg_3_low into right_leg_4_guard, t2.
+
+Both are leg-on-leg, and both are open.
+
+**Checks that do not look at the spider (n/a every clip):**
+- weapon_in_body, weapon_in_arm, weapon_in_prop, prop_in_body, limb_in_body
+- whole_body, phases, edge_lead, point_lead, at_foe, guard_up
+- roll_spin, grip_roll, wrist, elbow, knee, knee_aim, shoulder, elbow_cross, feet_cross
+- head_turn (no torso bone)
+
+What applies to the spider: floor, armour_clip, dead_hold, loop_life, secondary_life, pop, jitter, settle.
+- `armour_clip` exempts a limb's own segments only for two-token names like `right_leg`, so it does not exempt the
+  spider's own leg segments.
+- Foot slide is not measured by focus_check.
+
+### Changes, by clip (builder `build_wm_stalker_anims.py`, `stalker_ik.py`)
+
+- **Leg solve (`STEADY` clips: walk, idle, stance_fallback, stance_wall, bite, lunge, ensnare, stun, 7 hits, knockback,
+  hit_pulled):** `solve_leg` gains `keep` and `avoid`.
+  - `keep` (0.04 per deg) holds the leg's spare degree of freedom near the previous sample. The femur flicked
+    8-14 deg while the claw stayed put (jitter).
+  - `avoid` keeps the fore legs out of the head and mask, and the hind legs out of the abdomen and sacs. The limit is
+    each pair's rest fit + 1.4 px, measured on focus_check's lattice. This fixes the armour_clip rows: lunge t4
+    forelegs' spur and guard through the head, abdomen into the hind claws, guard into sacs_ii.
+  - `run` is left out: with `keep` its loop seam failed scorecard `loop_vel` (28.9 vs 21.8), so it keeps its
+    committed solve, byte for byte.
+- **Trophy (secondary_life "still: trophy"):**
+  - Attacks, hits, knockback and pulled: a damped spring lags the body, thorax and abdomen pitch and roll. The trophy
+    turns about its own base.
+  - stun and stun_out: a periodic sway.
+- **attack_bite, attack_lunge (settle 2.82 fangs):** they ease back to `ready_pose(0)` from t13.5 and t14, and start on
+  it.
+- **stance_wall (pop 14.1, t24):** the wall step's onset is eased (`damp` times a half-tick smoothstep).
+- **ensnare:**
+  - backcloth into ridge_plates 2.15 at t8: the abdomen rides back up to 1.2 px as it whips.
+  - Abdomen pop 23 at t7.75: the curl unwinds from 7.0 and lands at 8.25 instead of 8.0. On the floor the abdomen dipped,
+    then whipped 29 deg in a quarter tick.
+  - Foreleg pop 15-35 at t7.75-9.25: the fling target moves from (7.5, 4, 17) to (7, 6, 15). The old target was out of
+    reach (IK miss 1.05 px), so the reel's half-pixel tugs swung the femur.
+- **hit_medium x4 and knockback (backcloth into ridge_plates 2.0-2.2, as played):** `pedicel_clear` slides the abdomen
+  back up to 1.6 px, only as far as needed.
+- **death_back:**
+  - Abdomen pop 69.7 at t6.5: the head and abdomen folds ease in over 2 ticks of look-ahead (`FOLD_EASE`), instead of
+    snapping when the trophy meets the floor.
+  - left_leg_4 branch flip (pop 32, t5.25): `keep` only (`KEEP_ONLY`).
+- **hit_pulled: decision.** The front pitches **down** toward the line; that reads right for a spider dragged by a
+  harpoon. The clip had the abdomen flung up, which read as rearing. Now the abdomen trails low and bobs up as it
+  settles, and the docstring says so.
+- **Unchanged and byte-identical:** idle_upper, walk_upper, run (both), stance_ready, stance_brace, stance_ward,
+  stance_wall_upper, stance_fallback_upper, hit_light_back, death_forward, death_left, death_right. A rebuild of
+  hit_light_back, death_forward and stance_ready reproduces them exactly.
+
+### Open
+
+- **run_upper:** `armour_clip` 2.01 and `jitter` 13.74 at t3 (committed state).
+- **hit_medium_back and hit_medium_left: leg-on-leg armour 1.98 and 1.95, as played.** I tried a neighbour-leg avoid
+  term; its build crashed, and it was reverted at the fix-round cap.
+- **Proposed exemption:** wm_stalker, all additive hit clips, hit_pulled, hit_knockback and stun_out_upper, check
+  `floor`, values 1.1-4.9 px. Reason: the check plays additive deltas over the rest pose. As played in game, they
+  clear.
+- **render_geo** shows the rest pose on the final tick of play-once clips; the committed clips do this too.
+
+### Tests
+
+- `python -m unittest discover -s tools/anim`: 152 tests OK.
+- `verify.py fast`:
+  - Every step PASS except `python-tests`, which hit the step's 600 s timeout (exit 124) on a machine at 100% CPU.
+  - Run untimed, 727 tests: 1 failure, `test_where` extract speed (96.9 s vs 30 s), load-related.
+  - Logs: `work/review/verify_fast.log`, `work/review/python_tests_untimed.log`.
+- **In-game, geo-knight through checkq, root `wm_stalker-review1b`:** 23 `[p1]` lines, 6 `=false`. The server logged
+  "Can't keep up", up to 436 ticks behind.
+  - march-walk-side (0 samples), march-walk-front, march-run-front
+  - stance: ward lag 7. The ward clip is unchanged.
+  - hit: heavy-front side frames 6/8
+  - knight-suite
+  - attack-frames 34/34/16, sync 14/14 and 4/4, hit-pulled and death all true.
+  - Not a pass. Rerun on a quieter machine.

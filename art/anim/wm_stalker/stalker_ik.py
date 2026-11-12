@@ -84,15 +84,54 @@ class Spider:
     def knee(s, M, leg):
         return s.point(M, leg + "_low", s.m.bones[leg + "_low"].pivot)
 
-    def solve_leg(s, leg, target, base, guess=None):
+    def cubes_of(s, bones):
+        """[(bone, centre, half extents, lattice)] of every cube on `bones`, rest model space blocks; the lattice (N x 4,
+        homogeneous) is focus_check's: a grid at most 1 px apart, corners included. The rig's cubes are unrotated."""
+        out = []
+        for ci, cube in enumerate(s.m.cube_list):
+            b = s.m.cube_bone[ci]
+            if b not in bones:
+                continue
+            c = cube.corners
+            lo, hi = c.min(axis=0), c.max(axis=0)
+            n = [max(2, min(25, int(math.ceil((hi[k] - lo[k]) * 16.0 - 1e-6)) + 1)) for k in range(3)]
+            g = np.stack(np.meshgrid(*[np.linspace(lo[k], hi[k], n[k]) for k in range(3)], indexing="ij"), -1).reshape(-1, 3)
+            out.append((b, (lo + hi) / 2, (hi - lo) / 2, np.hstack([g, np.ones((len(g), 1))])))
+        return out
+
+    def leg_cubes(s, leg):
+        key = ("legcubes", leg)
+        if key not in s.__dict__:
+            s.__dict__[key] = s.cubes_of({leg, leg + "_low", leg + "_guard", leg + "_spur"})
+        return s.__dict__[key]
+
+    @staticmethod
+    def pair_depth(Ma, ca, ha, Pa, Mb, cb, hb, Pb):
+        """How deep (px) two posed boxes sink into each other: the deepest lattice point of either inside the other, as
+        focus_check measures it. M: bone world matrices; c, h: box centre and half extents in the bone's rest frame."""
+        Ab = np.linalg.inv(Mb) @ Ma          # a's rest frame to b's
+        qa = (Pa @ Ab.T)[:, :3] - cb
+        d1 = float((hb - np.abs(qa)).min(axis=1).max())
+        qb = (Pb @ np.linalg.inv(Ab).T)[:, :3] - ca
+        d2 = float((ha - np.abs(qb)).min(axis=1).max())
+        return max(d1, d2) * 16.0
+
+    def solve_leg(s, leg, target, base, guess=None, keep=0.0, avoid=None):
         """Femur [pitch, yaw, roll] and tibia bend (deg, clip keys) putting the claw tip on `target` (world px). `base` is the world
         matrix of the femur's parent (body). The femur's roll lifts about the body's forward axis, which goes slack once a fore or
         hind leg swings toward the front or back (gimbal), so its pitch is free too, but costs more than a yaw or a roll. Soft
-        terms keep the knee above the claw and, on the fore and hind pairs, out ahead of (behind) the hip."""
+        terms keep the knee above the claw and, on the fore and hind pairs, out ahead of (behind) the hip.
+
+        keep (per deg): pulls the answer toward `guess` (the previous sample's), so the leg's spare degree of freedom does not
+        flick from one sample to the next. avoid: ([(body bone, world matrix, centre, half, lattice)], {(leg bone, body bone):
+        allowed px}): the leg's cubes stay out of those body cubes (beyond what the rest pose already overlaps, per pair of
+        bones, as focus_check's armour_clip judges it), using the same spare freedom first, then the tip."""
         sg = side(leg)
         i = int(leg[-1])
         names = [leg, leg + "_low"]
         hip = None
+        g0 = np.array(guess, float) if (guess is not None and keep > 0) else None
+        lc = s.leg_cubes(leg) if avoid else None
 
         def mats(v):
             M = {}
@@ -108,6 +147,23 @@ class Spider:
             if i in (1, 4):
                 fwd = 1 if i == 1 else -1
                 soft.append(max(0.0, (hip[2] - kn[2]) * fwd) * 0.5)
+            if g0 is not None:
+                soft.extend((np.asarray(v) - g0) * keep)
+            if avoid:
+                body, allow = avoid
+                worst = {}
+                for lb, lcen, lh, lp in lc:
+                    # guard and spur ride the femur unkeyed (their own transform is the identity about the femur's pivot)
+                    Ml = M[names[1]] if lb == names[1] else M[names[0]]
+                    lw = (Ml @ np.append(lcen, 1.0))[:3]
+                    lr = float(np.linalg.norm(lh))
+                    for bb, Mb, bc, bh, bp, bw, br in body:
+                        if np.linalg.norm(lw - bw) > lr + br:      # bounding spheres apart: nothing to measure
+                            continue
+                        k = (lb, bb)
+                        worst[k] = max(worst.get(k, 0.0), s.pair_depth(Ml, lcen, lh, lp, Mb, bc, bh, bp))
+                over = max([0.0] + [d - allow.get(k, allow["_"]) for k, d in worst.items()])
+                soft.append(over * 3.0)
             return np.concatenate([e, soft])
         hip = (base @ np.append(s.m.bones[leg].pivot / 16.0, 1.0))[:3] * 16.0
         # the tibia only folds downward (the knee stays up): its bend sign by side

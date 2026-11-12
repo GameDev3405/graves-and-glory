@@ -236,20 +236,143 @@ def floor_clear(pose):
     _clear(pose, "abdomen", ABD_GEAR, 60.0, +1)
 
 
-# ------------------------------------------------------------------------------------------------ solve
+# Batch review 2026-11-11: in the medium hits and the knockback the abdomen whips while the thorax pitches, and the front lip
+# of its backcloth folded into the thorax's ridge plates (focus_check armour_clip 2.0-2.2, tick 2.5-3, played over ready as
+# the game plays it). As in the ensnare, the pedicel stretches: the abdomen rides back off the thorax just as far as it needs
+# (at most 1.6 px), so the cloth stays within PEDICEL_SLACK px of its rest fit.
+PEDICEL = {"hit_medium_front", "hit_medium_back", "hit_medium_right", "hit_medium_left", "hit_knockback"}
+PEDICEL_SLACK = 1.2
+_PED = {}
+
+
+def _cloth_depth(pose):
+    if not _PED:
+        _PED["cubes"] = (S.cubes_of({"backcloth"}), S.cubes_of({"ridge_plates"}))
+        _PED["rest"] = 0.0
+        _PED["rest"] = _cloth_depth({})
+    a, b = _PED["cubes"]
+    M = S.fk(pose, ["backcloth", "ridge_plates"])
+    return max(S.pair_depth(M[ab], ac, ah, ap, M[bb], bc, bh, bp) for ab, ac, ah, ap in a for bb, bc, bh, bp in b) - _PED["rest"]
+
+
+def pedicel_clear(pose):
+    if _cloth_depth(pose) <= PEDICEL_SLACK:
+        return
+    ab = pose.setdefault("abdomen", {"rotation": [0, 0, 0]})
+    p0 = list(ab.get("position", [0.0, 0.0, 0.0]))
+
+    def at(z):
+        ab["position"] = [p0[0], p0[1], p0[2] + z]
+        return _cloth_depth(pose)
+    lo, hi = 0.0, 1.6
+    if at(hi) > PEDICEL_SLACK:
+        return
+    for _ in range(10):
+        mid = (lo + hi) / 2
+        if at(mid) > PEDICEL_SLACK:
+            lo = mid
+        else:
+            hi = mid
+    at(hi)
+
+
+# ------------------------------------------------------------------------------------------------ the trophy
+# The skull trophy lashed on top of the abdomen (tier III) stood dead still in every attack, hit and stun (focus_check
+# secondary_life; Kort 2026-11-11: "i want the whole unit to be animated including pieces of its armor"). It now rocks on
+# its lashing: a damped spring lags the abdomen's pitch and roll and the body's heave, and the bone turns about the trophy's
+# own base (its pivot is the abdomen's, 10 px away, so a position key holds the base in place).
+TROPHY_CUBE = max((ci for ci, b in enumerate(S.m.cube_bone) if b == "trophy"), key=lambda ci: np.prod(S.m.cube_list[ci].size))
+_tc = S.m.cube_list[TROPHY_CUBE].corners
+TROPHY_BASE = np.array([(_tc[:, 0].min() + _tc[:, 0].max()) / 2, _tc[:, 1].min(), (_tc[:, 2].min() + _tc[:, 2].max()) / 2, 1.0])
+UPPER_T = UPPER + ["trophy"]
+
+
+def trophy_key(rx, rz):
+    """The trophy's rotation and the position that keeps its base where it sits."""
+    A = S.local("trophy", {"rotation": [rx, 0.0, rz]})
+    d = (TROPHY_BASE - A @ TROPHY_BASE)[:3] * 16.0
+    return {"rotation": [rx, 0.0, rz], "position": [-float(d[0]), float(d[1]), float(d[2])]}
+
+
+def swing_trophy(samples, period=3.2, zeta=0.3, gain=1.0, most=12.0):
+    """Adds the trophy's rock to absolute samples (in place): zero on the first sample, eased back to zero over the last two
+    ticks, so the clip still starts and ends on its stance."""
+    def drive(p):
+        r = [p[b]["rotation"] for b in ("body", "thorax", "abdomen")]
+        y = p["body"].get("position", [0, 0, 0])[1]
+        return np.array([sum(v[0] for v in r) - 6.0 * y, sum(v[2] for v in r)])
+    dt = 1.0 / SUB
+    w = 2 * math.pi / period
+    th = drive(samples[0]).astype(float)
+    v = np.zeros(2)
+    n = len(samples) - 1
+    for i, p in enumerate(samples):
+        d = drive(p)
+        if i:
+            for _ in range(4):
+                a = w * w * (d - th) - 2 * zeta * w * v
+                v = v + a * dt / 4
+                th = th + v * dt / 4
+        fade = ss((n - i) / (2.0 * SUB))
+        rx, rz = np.clip((th - d) * gain, -most, most) * fade
+        p["trophy"] = trophy_key(float(rx), float(rz))
+    return samples
+# Batch review 2026-11-11. The clips named here solve their legs with two extra terms (stalker_ik.solve_leg): `keep` holds
+# each leg's spare degree of freedom near the previous sample's answer (the femur used to flick 8-14 deg between samples
+# while the claw stayed put: focus_check jitter), and `avoid` keeps the fore legs out of the head and the hind legs out of
+# the abdomen and its sacs (focus_check armour_clip). Clips not named keep the solve they were built and reviewed with.
+# run is left out: with `keep` its spare freedom drifted over the stride and did not come back at the wrap (scorecard loop_vel
+# 28.9 vs 21.8 on run_upper); it keeps its committed solve and its armour and jitter rows stay open.
+STEADY = {"walk", "idle", "stance_fallback", "attack_bite", "attack_lunge", "ensnare", "stun",
+          "hit_medium_front", "hit_medium_back", "hit_medium_right", "hit_medium_left", "hit_light_front",
+          "hit_light_right", "hit_light_left", "hit_knockback", "hit_pulled"}
+# death_back's left hind leg flipped solution branch at tick 5.25 (femur 16, 30 deg to -13, -12 in a quarter tick: focus_check
+# pop 32); the deaths named here keep `keep` alone (no avoid: a dying spider's legs fold into it)
+KEEP_ONLY = {"death_back"}
+KEEP = 0.04          # per deg of change from the previous sample (a claw miss costs 4 per px)
+AVOID_BONES = {1: ("head", "mask"), 2: ("head", "mask"), 3: ("abdomen", "sacs", "sacs_ii"), 4: ("abdomen", "sacs", "sacs_ii")}
+AVOID_SLACK = 1.4    # px a leg may sink into those cubes beyond its rest fit (focus_check warns at 1.7, fails at 1.9)
+_ALLOW = {}
+
+
+def avoid_for(leg, M):
+    """The avoid terms for one leg in a pose whose bone matrices are M: the body cubes near it, and how deep each (leg
+    bone, body bone) pair may sit: its rest fit (what focus_check subtracts) plus AVOID_SLACK."""
+    i = idx(leg)
+    if i not in _ALLOW:
+        _ALLOW[i] = S.cubes_of(set(AVOID_BONES[i]))
+    if leg not in _ALLOW:
+        M0 = S.fk({})
+        allow = {"_": AVOID_SLACK}
+        for lb, lc, lh, lp in S.leg_cubes(leg):
+            ml = M0[lb if lb == leg + "_low" else leg]
+            for bb, bc, bh, bp in _ALLOW[i]:
+                k = (lb, bb)
+                allow[k] = max(allow.get(k, AVOID_SLACK), max(0.0, S.pair_depth(ml, lc, lh, lp, M0[bb], bc, bh, bp)) + AVOID_SLACK)
+        _ALLOW[leg] = allow
+    body = [(bb, M[bb], bc, bh, bp, (M[bb] @ np.append(bc, 1.0))[:3], float(np.linalg.norm(bh))) for bb, bc, bh, bp in _ALLOW[i]]
+    return body, _ALLOW[leg]
+
+
 class Solver:
     def __init__(s):
         s.guess = {}
 
     def legs(s, pose, feet, tag):
         """Leg rotations putting each claw tip in `feet` {leg: world px}; legs not in feet keep what the pose gives them."""
-        base = S.fk(pose, ["body"])["body"]
+        steady = tag in STEADY
+        held = steady or tag in KEEP_ONLY
+        M = S.fk(pose) if steady else None
+        base = M["body"] if steady else S.fk(pose, ["body"])["body"]
         worst = 0.0
         for leg, tgt in feet.items():
             key = (tag, leg)
-            sol, err, _ = S.solve_leg(leg, np.asarray(tgt, float), base, s.guess.get(key))
-            if err > 0.08:   # try from the standing solution
-                sol2, err2, _ = S.solve_leg(leg, np.asarray(tgt, float), base, STAND_GUESS.get(leg))
+            kw = dict(keep=KEEP, avoid=avoid_for(leg, M)) if steady else (dict(keep=KEEP) if held else {})
+            if held and key not in s.guess:
+                kw["keep"] = 0.0
+            sol, err, _ = S.solve_leg(leg, np.asarray(tgt, float), base, s.guess.get(key), **kw)
+            if err > 0.08 and not (held and key in s.guess):   # try from the standing solution
+                sol2, err2, _ = S.solve_leg(leg, np.asarray(tgt, float), base, STAND_GUESS.get(leg), **dict(kw, keep=0.0))
                 if err2 < err:
                     sol, err = sol2, err2
             s.guess[key] = sol
@@ -341,6 +464,8 @@ def pose_of(fn, t, tag, solve=True):
         for k, v in extra[0].items():
             pose[k] = dict(v)
     floor_clear(pose)
+    if tag in PEDICEL:
+        pedicel_clear(pose)
     err = SOLVER.legs(pose, feet, tag) if solve else 0.0
     return full(pose), err
 
@@ -362,7 +487,7 @@ def sample_clip(name, ticks, fn, loop=True, solve=True):
 
 
 def emit(name, ticks, samples, loop, timeline=None, legs_name=None, upper_name=None):
-    CLIPS[upper_name or name + "_upper"] = bake(samples, ticks, loop, UPPER, timeline)
+    CLIPS[upper_name or name + "_upper"] = bake(samples, ticks, loop, UPPER_T if "trophy" in samples[0] else UPPER, timeline)
     CLIPS[legs_name or name + "_legs"] = bake(samples, ticks, loop, LOWER)
 
 
@@ -496,7 +621,7 @@ def wall(t):
     """Hold the line: a sentry. Up tall and square on straightened legs, the abdomen raised, dead still; only a slow breath, the
     palps lifting now and then, and one sharp foreleg twitch."""
     b = wave(t, 40)
-    tw = damp(t, 24, 2.0, 1.2)
+    tw = damp(t, 24, 2.0, 1.2) * ss((t - 24) / 0.5)   # sharp, but eased in over half a tick (it popped 14 deg in one sample)
     up = U(thorax=(-3 + 0.3 * b, 0, 0), head=(-5 - 0.3 * b, 0, 0), abd=(12 + 0.6 * b, 0, 0),
            palps=-20 - 8 * max(0.0, damp(t, 8, 3.0, 2.0)), fang=-4, mand=3, sacs=(-0.6 * b, 0, 0))
     body = B(9.2, (0, 0.06 * b, 0.2), (-1.0, 0, 0))
@@ -531,6 +656,12 @@ def fallback(t):
 
 # attacks ---------------------------------------------------------------------------------------------------------
 ATK_T, IMPACT = 18.0, 8.0   # equal lengths: the harness expects every frame of every variant
+
+
+def ends_ready(t, t_out):
+    """The weight toward ready for an attack that starts AND ends exactly on ready_pose(0) (batch review 2026-11-11: the bite
+    and the lunge ended 2.8 deg off their first frame, focus_check settle): in over the first 1.2 ticks, back over 4."""
+    return max(ss((t - t_out) / 4.0), 1.0 - ss(t / 1.2))
 
 
 def blend_ready(t, up, body, feet, w):
@@ -574,8 +705,7 @@ def bite(t):
         s = sg(l)
         a, b2 = rf[l], rf[l] + [0, 0, 2.2]
         feet[l] = step(a, b2, (t - 6.6) / 2.0, 1.6) if t < 11 else step(b2, a, (t - 12.2 - (0.8 if s < 0 else 0)) / 2.6, 1.3)
-    w = ss((t - 13.5) / 4.0)
-    return blend_ready(t, up, body, feet, w)
+    return blend_ready(0.0, up, body, feet, ends_ready(t, 13.5))
 
 
 def lunge(t):
@@ -615,8 +745,14 @@ def lunge(t):
             else:
                 dl = (0.0 if s > 0 else 0.6) + (0.0 if i == 3 else 1.2)
                 feet[l] = step(mid, base, (t - 12.4 - dl) / 2.2, 1.2)
-    w = ss((t - 14.0) / 4.0)
-    return blend_ready(t, up, body, feet, w)
+    return blend_ready(0.0, up, body, feet, ends_ready(t, 14.0))
+
+
+# where the forelegs' claws land at the cast, anim px (x: out, y: up, z: forward). Batch review 2026-11-11: was (7.5, 4, 17),
+# past the leg's reach (IK miss 1.05 px at tick 8): the foreleg sat at full stretch and the reel's half-pixel tugs swung its
+# femur 25-45 deg a quarter tick (focus_check pop 15-35, ticks 7.75-9.25). One px higher and two nearer it is in reach.
+ENSNARE_FLING = (7.0, 6.0, 15.0)
+ENSNARE_CURL = [(0, 0), (2.6, 0.4), (4.8, 1.0), (7.0, 1.12), (7.5, 0.6), (8.25, -0.45), (10.8, -0.35), (13, 0.05), (18, 0)]
 
 
 def ensnare(t):
@@ -627,7 +763,10 @@ def ensnare(t):
     with small tugs, then drops back to guard."""
     ru, rb, rf = ready_pose(0)
     rear = K([(0, 0), (2.2, 0.5), (4.6, 1.2), (7.2, 1.3), (7.7, 0.85), (8, 0.5), (11, 0.45), (13.5, 0.12), (18, 0)])(t)
-    curl = K([(0, 0), (2.6, 0.4), (4.8, 1.0), (7.2, 1.12), (7.7, 0.6), (8, -0.45), (10.8, -0.35), (13, 0.05), (18, 0)])(t)
+    # Batch review 2026-11-11: the curl unwinds from 7.0 and lands a quarter tick after the impact (was 7.2 / 7.7 / 8.0): resting
+    # on the floor (floor_clear) the abdomen dipped as the front came down, then whipped 29 deg in one quarter tick (focus_check
+    # pop 23, tick 7.75); now the dip is a wind-up and the whip spreads over three quarter ticks
+    curl = K(ENSNARE_CURL)(t)
     cast = K([(0, 0), (4.4, -0.25), (7.2, -0.4), (7.6, 0.55), (8, 1), (11, 0.95), (12.6, 0.6), (15, 0.1), (18, 0)])(t)
     trem = math.sin(2 * math.pi * t / 0.9) * env(t, 4.8, 5.4, 6.9, 7.3)
     reel = math.sin(2 * math.pi * (t - 8.5) / 1.6) * env(t, 8.6, 9.3, 11.2, 13.0)
@@ -635,13 +774,16 @@ def ensnare(t):
     up = U(thorax=(-4 - 16 * rear + 5 * max(cast, 0), 0, 0), head=(-2 + 12 * rear - 5 * cast + 2 * reel + 1.5 * trem, 0, 0),
            abd=(7 + 22 * rear - 62 * curl, 0, 0), palps=-12 - 22 * rear + 14 * max(cast, 0),
            fang=-32 * gape, mand=7 + 22 * gape, sacs=(-8 * curl - 3 * reel, 0, 0))
+    # as the abdomen whips up at the cast its front lip folds into the thorax's ridge plates (focus_check armour_clip 2.15,
+    # backcloth into ridge_plates, tick 8): the pedicel stretches, the abdomen riding back off the thorax by up to 1.2 px
+    up["abdomen"]["position"] = [0.0, 0.0, 1.2 * min(1.0, max(0.0, -curl) / 0.45)]
     body = B(READY_H, (0, 5.5 * rear - 0.4 * reel + 0.25 * trem, 0.4 + 2.4 * rear - 1.4 * cast),
              (-2 - 13 * rear + 5 * max(cast, 0), 0, 0))
     feet = dict(rf)
     for l in ("left_leg_1", "right_leg_1"):
         s = sg(l)
         hi = np.array([s * 9.5, 15.0, 12.5])
-        fling = np.array([s * 7.5, 4.0, 17.0])
+        fling = np.array([s * ENSNARE_FLING[0], ENSNARE_FLING[1], ENSNARE_FLING[2]])
         feet[l] = K([(0, rf[l]), (2.2, rf[l] + [0, 3.0, -1.0]), (4.6, hi), (7.2, hi + [s * 0.8, 0.6, -0.8]),
                      (7.7, (hi + fling) / 2 + [0, 1.5, 0]), (8.0, fling), (11.0, fling + [0, 0.6, -1.2]),
                      (13.6, (fling + rf[l]) / 2 + [0, 1.4, 0]), (16, rf[l]), (18, rf[l])])(t)
@@ -767,7 +909,8 @@ PULL_T = 14.0   # hit_pulled's length, as every troop's (art/anim/common/reactio
 
 def pulled(t):
     """Harpooned (hit_v1 flag 8: dragged toward a puller in front; the server moves the body): the whole spider yanked forward
-    off its claws, the front pitching down, the head lagging then lifting to the puller, the abdomen trailing and whipping up;
+    off its claws, the front pitching down toward the line, the head lagging then lifting to the puller, the abdomen trailing
+    low behind it and bobbing up as it settles;
     the forelegs flung forward, flailing, then hooked down to dig in; the other six claws scrape along the turf behind the body,
     then scrabble back under it, set A then set B, and it settles. Additive, zero at both ends."""
     ru, rb, rf = ready_pose(0)
@@ -784,7 +927,9 @@ def pulled(t):
     body["rotation"][2] += 2.2 * damp(t, 3.0, 2.4, 2.5) * fade   # a scrabbling rock
     add_rot(up, "thorax", [5 * a, 0, 0])
     add_rot(up, "head", [14 * lag - 6 * a * (1 - ss(t / 3.0)) - 10 * a * ss((t - 3.0) / 2.0), 0, 0])
-    add_rot(up, "abdomen", [22 * lag + 6 * a, 0, 0])
+    # the abdomen trails: as the front is hauled down and forward it stays back and low (its world pitch near level, not
+    # flung up behind: whipped up 22 deg it read as the spider rearing, the lane's last note), then bobs up as it settles
+    add_rot(up, "abdomen", [-8 * lag + 6 * a, 0, 0])
     add_rot(up, "sacs", [-12 * lag, 0, 0])
     add_rot(up, "palps", [22 * a, 0, 0])
     for f in FANGS:
@@ -836,6 +981,8 @@ def stun(t):
         tw = max(0.0, math.sin(2 * math.pi * (ph * 2 - k / 8.0))) ** 6
         p = p + np.array([-s * 1.5 * tw, 2.2 * tw, 0])
         feet[l] = p
+    # the trophy lolls with the daze, a beat behind the body's wobble (periodic, so the 4..24 loop has no seam)
+    up["trophy"] = trophy_key(5.0 * math.sin(2 * math.pi * (ph - 0.2)) - 6.0 * sn, 4.5 * math.cos(2 * math.pi * (ph - 0.15)) * (1 - sn))
     return up, body, feet
 
 
@@ -845,7 +992,8 @@ def stun_out(t):
     sh = math.sin(2 * math.pi * t / 2.0) * e
     return {"thorax": {"rotation": [0, 3 * sh, 4 * sh]}, "head": {"rotation": [-6 * e, 14 * sh, 6 * sh]},
             "abdomen": {"rotation": [4 * e, -6 * sh, 0]}, "palps": {"rotation": [-16 * e, 0, 0]},
-            "sacs": {"rotation": [-4 * sh, 4 * sh, 0]}}
+            "sacs": {"rotation": [-4 * sh, 4 * sh, 0]},
+            "trophy": trophy_key(5 * math.sin(2 * math.pi * (t - 0.4) / 2.0) * e, -6 * math.sin(2 * math.pi * (t - 0.5) / 2.0) * e)}
 
 
 # deaths -------------------------------------------------------------------------------------------------------------
@@ -1031,15 +1179,31 @@ def death_clip(direction):
         a = [_fold_angle(last, joint, gear, 75.0, s) for s in (-1, 1)]
         signs[joint] = -1 if a[1] is None or (a[0] is not None and a[0] <= a[1]) else 1
     c0 = None
+    lifts = []
     for t, pose in poses:
         free = max(0.0, -lowest(pose))                      # standing and falling: nothing digs in
         set_lift(pose, free)
         rest = free
+        rx0 = {j: pose[j]["rotation"][0] for j in ("head", "abdomen")}
         for _ in range(3):                                  # lying: on the CORE, the tier gear folded clear
             rest = rest_height(pose)
             set_lift(pose, rest)
             for joint, gear in (("head", FOLD_HEAD), ("abdomen", FOLD_ABD)):
                 _clear(pose, joint, gear, 75.0, signs[joint])
+        lifts.append((free, rx0, {j: pose[j]["rotation"][0] - rx0[j] for j in rx0}))
+    if direction in FOLD_EASE:
+        # Batch review 2026-11-11: on its back the trophy meets the floor within a quarter tick and the abdomen folded
+        # 72 deg in one sample (focus_check pop 70). The fold now starts early and eases in: each sample takes the
+        # largest fold of the next FOLD_EASE ticks, scaled down by how far ahead it is, so it is never less than the
+        # floor needs.
+        n_ahead = int(FOLD_EASE[direction] * SUB)
+        for j in ("head", "abdomen"):
+            raw = [f[2][j] for f in lifts]
+            for i, (t, pose) in enumerate(poses):
+                v = max((raw[k] * ss(1.0 - (k - i) / n_ahead) for k in range(i, min(len(raw), i + n_ahead + 1))),
+                        key=abs)
+                pose[j]["rotation"][0] = lifts[i][1][j] + v
+    for (t, pose), (free, _, _) in zip(poses, lifts):
         w = ss((t - 3.0) / 5.0)
         lift = free * (1 - w) + rest_height(pose) * w
         # the corpse lies over the spot it stood on (its shadow): a roll turns about the root on the floor and would carry the
@@ -1060,6 +1224,7 @@ def death_clip(direction):
 
 
 TIER_REPORT = {}
+FOLD_EASE = {"back": 2.0}    # deaths whose head and abdomen folds ease in (ticks of look-ahead)
 
 
 # ------------------------------------------------------------------------------------------------ main
@@ -1067,18 +1232,74 @@ def delta_of(samples, ref):
     out = []
     for smp in samples:
         dd = {}
-        for b in UPPER + LOWER:
-            dd[b] = {"rotation": [a - c for a, c in zip(smp[b]["rotation"], ref[b]["rotation"])]}
-            if b in ("body", "head", "thorax"):
-                dd[b]["position"] = [a - c for a, c in zip(smp[b].get("position", [0, 0, 0]), ref[b].get("position", [0, 0, 0]))]
+        for b in UPPER + LOWER + (["trophy"] if "trophy" in smp else []):
+            rr = ref.get(b, {}).get("rotation", [0, 0, 0])
+            dd[b] = {"rotation": [a - c for a, c in zip(smp[b]["rotation"], rr)]}
+            if b in ("body", "head", "thorax", "trophy") or (b == "abdomen" and "position" in smp[b]):
+                dd[b]["position"] = [a - c for a, c in zip(smp[b].get("position", [0, 0, 0]), ref.get(b, {}).get("position", [0, 0, 0]))]
         out.append(dd)
     return out
 
 
 def pulled_clip(ready0):
-    dl = delta_of(sample_clip("hit_pulled", PULL_T, pulled, loop=False), ready0)
-    CLIPS["hit_pulled"] = bake(dl, PULL_T, False, UPPER)
+    dl = delta_of(swing_trophy(sample_clip("hit_pulled", PULL_T, pulled, loop=False)), ready0)
+    CLIPS["hit_pulled"] = bake(dl, PULL_T, False, UPPER_T)
     CLIPS["hit_pulled_legs"] = bake(dl, PULL_T, False, LOWER)
+
+
+def build_all(only=None):
+    def want(nm):
+        return only is None or nm in only
+    if want("idle"):
+        emit("idle", IDLE_P, sample_clip("idle", IDLE_P, idle), True)
+    if want("walk"):
+        emit("walk", WALK_P, sample_clip("walk", WALK_P, walk), True)
+    if want("run"):
+        emit("run", RUN_P, sample_clip("run", RUN_P, run), True)
+    for nm, fn in (("ready", ready), ("brace", brace), ("wall", wall)):
+        if want("stance_" + nm):
+            emit("stance_" + nm, READY_P, sample_clip("stance_" + nm, READY_P, fn), True)
+    if want("stance_fallback"):
+        emit("stance_fallback", WALK_P, sample_clip("stance_fallback", WALK_P, fallback), True)
+    if want("stance_ward"):
+        CLIPS["stance_ward_upper"] = bake(sample_clip("stance_ward", READY_P, ward, solve=False), READY_P, True, UPPER)
+    tl = {fmt_t(IMPACT / TPS): "impact"}
+    for nm, fn in (("attack_bite", bite), ("attack_lunge", lunge), ("ensnare", ensnare)):
+        if want(nm):
+            emit(nm, ATK_T, swing_trophy(sample_clip(nm, ATK_T, fn, loop=False)), False, upper_name=nm,
+                 legs_name=nm + "_legs", timeline=tl)
+    ready0, _ = pose_of(ready_pose, 0, "ready0")
+    for kind in ("light", "medium"):
+        for d in ("front", "back", "right", "left"):
+            nm = f"hit_{kind}_{d}"
+            if not want(nm):
+                continue
+            L, fn = hit(kind, d)
+            s = sample_clip(nm, L, fn, loop=False)
+            if nm in STEADY:
+                s = swing_trophy(s)
+            dl = delta_of(s, ready0)
+            CLIPS[nm] = bake(dl, L, False, UPPER_T if nm in STEADY else UPPER)
+            CLIPS[nm + "_legs"] = bake(dl, L, False, LOWER)
+    if want("hit_knockback"):
+        dl = delta_of(swing_trophy(sample_clip("hit_knockback", 20, knockback, loop=False)), ready0)
+        CLIPS["hit_knockback"] = bake(dl, 20, False, UPPER_T)
+        CLIPS["hit_knockback_legs"] = bake(dl, 20, False, LOWER)
+    if want("hit_pulled"):
+        pulled_clip(ready0)
+    if want("stun"):
+        s = sample_clip("stun", STUN_ENTRY + STUN_LOOP, stun, loop=False)
+        CLIPS["stun_upper"] = bake(s, STUN_ENTRY + STUN_LOOP, True, UPPER_T)
+        CLIPS["stun_legs"] = bake(s, STUN_ENTRY + STUN_LOOP, True, LOWER)
+    if want("stun_out"):
+        so = []
+        for i in range(6 * SUB + 1):
+            d = stun_out(i / SUB)
+            so.append({b: d.get(b, {"rotation": [0, 0, 0]}) for b in UPPER_T})
+        CLIPS["stun_out_upper"] = bake(so, 6, False, UPPER_T)
+    for d in ("back", "forward", "left", "right"):
+        if want("death_" + d):
+            death_clip(d)
 
 
 def main():
@@ -1092,7 +1313,7 @@ def main():
         if "--pulled" in sys.argv:
             pulled_clip(pose_of(ready_pose, 0, "ready0")[0])
         if "--ensnare" in sys.argv:
-            emit("ensnare", ATK_T, sample_clip("ensnare", ATK_T, ensnare, loop=False), False, upper_name="ensnare",
+            emit("ensnare", ATK_T, swing_trophy(sample_clip("ensnare", ATK_T, ensnare, loop=False)), False, upper_name="ensnare",
                  legs_name="ensnare_legs", timeline={fmt_t(IMPACT / TPS): "impact"})
         if "--fallback" in sys.argv:
             emit("stance_fallback", WALK_P, sample_clip("stance_fallback", WALK_P, fallback), True)
@@ -1107,40 +1328,24 @@ def main():
         for k, v in TIER_REPORT.items():
             print(f"  {k:24s} final lowest by tier (no spurs / with spurs): " + "  ".join(f"t{i+1} {a:5.2f}/{b:5.2f}" for i, (a, b) in enumerate(v)))
         return
-    emit("idle", IDLE_P, sample_clip("idle", IDLE_P, idle), True)
-    emit("walk", WALK_P, sample_clip("walk", WALK_P, walk), True)
-    emit("run", RUN_P, sample_clip("run", RUN_P, run), True)
-    for nm, fn in (("ready", ready), ("brace", brace), ("wall", wall)):
-        emit("stance_" + nm, READY_P, sample_clip("stance_" + nm, READY_P, fn), True)
-    emit("stance_fallback", WALK_P, sample_clip("stance_fallback", WALK_P, fallback), True)
-    CLIPS["stance_ward_upper"] = bake(sample_clip("stance_ward", READY_P, ward, solve=False), READY_P, True, UPPER)
-    tl = {fmt_t(IMPACT / TPS): "impact"}
-    for nm, fn in (("attack_bite", bite), ("attack_lunge", lunge), ("ensnare", ensnare)):
-        emit(nm, ATK_T, sample_clip(nm, ATK_T, fn, loop=False), False, upper_name=nm, legs_name=nm + "_legs", timeline=tl)
-    ready0, _ = pose_of(ready_pose, 0, "ready0")
-    for kind in ("light", "medium"):
-        for d in ("front", "back", "right", "left"):
-            L, fn = hit(kind, d)
-            nm = f"hit_{kind}_{d}"
-            dl = delta_of(sample_clip(nm, L, fn, loop=False), ready0)
-            CLIPS[nm] = bake(dl, L, False, UPPER)
-            CLIPS[nm + "_legs"] = bake(dl, L, False, LOWER)
-    dl = delta_of(sample_clip("hit_knockback", 20, knockback, loop=False), ready0)
-    CLIPS["hit_knockback"] = bake(dl, 20, False, UPPER)
-    CLIPS["hit_knockback_legs"] = bake(dl, 20, False, LOWER)
-    pulled_clip(ready0)
-    s = sample_clip("stun", STUN_ENTRY + STUN_LOOP, stun, loop=False)
-    CLIPS["stun_upper"] = bake(s, STUN_ENTRY + STUN_LOOP, True, UPPER)
-    CLIPS["stun_legs"] = bake(s, STUN_ENTRY + STUN_LOOP, True, LOWER)
-    so = []
-    for i in range(6 * SUB + 1):
-        d = stun_out(i / SUB)
-        so.append({b: d.get(b, {"rotation": [0, 0, 0]}) for b in UPPER})
-    CLIPS["stun_out_upper"] = bake(so, 6, False, UPPER)
-    for d in ("back", "forward", "left", "right"):
-        death_clip(d)
-    out = {"format_version": "1.8.0", "animations": CLIPS}
-    path = os.path.join(HERE, "out", "wm_stalker.animation.json")
+    only = None
+    if "--only" in sys.argv:     # rebuild just these clips (stems: idle, walk, stance_wall, attack_bite, hit_medium_left,
+        only = set(sys.argv[sys.argv.index("--only") + 1].split(","))   # stun, stun_out, death_back, ...), spliced in
+    build_all(only)
+    if "--part" in sys.argv:     # write just the rebuilt clips to this file (parallel partial builds, merged afterwards)
+        json.dump({"animations": CLIPS}, open(sys.argv[sys.argv.index("--part") + 1], "w"), separators=(",", ":"))
+        print("part", sorted(CLIPS))
+        for k, (w, lb, ll) in REPORT.items():
+            print(f"  {k:24s} {w:6.3f} {lb:7.2f} {ll:7.2f}")
+        return
+    if only:
+        out = json.load(open(path))
+        out["animations"].update(CLIPS)
+    else:
+        # keep the committed file's clip order (hit_pulled was spliced in last), so a rebuild with no change is byte-identical
+        prev = list(json.load(open(path))["animations"]) if os.path.exists(path) else []
+        order = [k for k in prev if k in CLIPS] + [k for k in CLIPS if k not in prev]
+        out = {"format_version": "1.8.0", "animations": {k: CLIPS[k] for k in order}}
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print("wrote", path, len(CLIPS), "clips")
     print("clip: worst IK miss px / lowest body px / lowest leg px")
