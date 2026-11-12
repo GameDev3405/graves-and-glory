@@ -96,6 +96,20 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
             CommandUiChecks.report("cu-hud-edit", ok, "editing=" + CommandPanel.editing() + ", parts outlined " + (HudLayout.PARTS.size() - missing.size()) + " of " + HudLayout.PARTS.size() + (missing.isEmpty() ? "" : ", missing " + missing) + "; boxes " + boxes());
             tagsClear("1920");
             shot(c, "hud-edit-1920.png");
+            // the panel's caption and its tab row take a press before any HUD part (or edit-mode ghost) under them
+            StringBuilder grab = new StringBuilder();
+            int[] cap = null; for (int[] d : CommandPanel.lastDrawn) if (d[0] == CommandPanel.CAPTION) cap = new int[]{d[1], d[2], d[3], d[4]};
+            int[] pb = CommandPanel.bounds;
+            double[][] presses = {cap == null ? null : new double[]{cap[0] + cap[2] / 2.0, cap[1] + cap[3] / 2.0}, pb == null ? null : new double[]{pb[0] + pb[2] / 2.0, pb[1] + 4}};
+            String[] what = {"caption", "tab row"};
+            for (int i = 0; i < 2; i++) {
+                if (presses[i] == null) { grab.append(what[i] + " not drawn; "); continue; }
+                CommandPanel.editPress(presses[i][0], presses[i][1]);
+                boolean panel = CommandPanel.dragging() && HudLayout.dragging() == null;
+                if (!panel) grab.append(what[i] + " press went to " + (HudLayout.dragging() == null ? "nothing" : HudLayout.dragging()) + "; ");
+                CommandPanel.editRelease();
+            }
+            CommandUiChecks.report("cu-hud-panel-grab", grab.length() == 0, grab.length() == 0 ? "a press on the panel's caption and on its tab row drags the panel, not a HUD part under it" : grab.toString());
         }
         // four drags: the gold line past the bottom-left corner (clamped), the score toward the foot, the feed past the top-left, the objectives to the left middle
         if (tick >= 70 && tick <= 77) drag(c, tick, 70, "gold", -80, sh(c) + 80);
@@ -110,6 +124,7 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
             boolean on = onScreen(c, "dragged-1920");
             CommandUiChecks.report("cu-hud-drag", clamp && moved && on && fails.isEmpty(), "gold past the corner " + box(gold) + " clamped=" + clamp + "; places " + places() + "; " + (fails.isEmpty() ? "every part on screen" : String.join("; ", fails)));
             fails.clear();
+            tagsClear("moved-1920");
             shot(c, "hud-edit-moved-1920.png");
             savesBefore = HudLayout.saves;
             clickId(c, CommandPanel.DONE);
@@ -155,8 +170,7 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
         // 2560x1440: edit with the handles, the moved HUD
         if (tick == 204) GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 2560, 1440);
         if (tick == 222) { onScreen(c, "2560"); shot(c, "hud-moved-2560.png"); press(c, "key.gravesandglory.panel_edit"); }
-        if (tick == 228) { tagsClear("2560"); CommandUiChecks.report("cu-hud-tags", tagBad.length() == 0 && tagsSeen == 3, "edit-mode name tags at 1920, 854 and 2560 (" + tagsSeen + " looked at): "
-                + (tagBad.length() == 0 ? "none covers another or the panel's caption or toolbar" : tagBad)); shot(c, "hud-edit-2560.png"); press(c, "key.gravesandglory.panel_edit"); }
+        if (tick == 228) { tagsClear("2560"); shot(c, "hud-edit-2560.png"); press(c, "key.gravesandglory.panel_edit"); }
         if (tick == 232) GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 1920, 1080);
         // Reset: every part and the panel back where the layout puts them, saved
         if (tick == 250) press(c, "key.gravesandglory.panel_edit");
@@ -168,8 +182,19 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
             boolean ok = none && HudLayout.saves == savesBefore + 1 && !f.contains("\"gold\"") && fails.isEmpty();
             CommandUiChecks.report("cu-hud-reset", ok, "after Reset and Done: places " + places() + ", panel moved " + PanelLayout.moved() + ", file " + f + "; 2560 " + (fails.isEmpty() ? "on screen" : fails) + "; shots " + String.join(", ", shotLog));
             shot(c, "hud-reset-1920.png");
-            CommandUiChecks.finish(c);
+            press(c, "key.gravesandglory.panel_edit");
+            GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 854, 480);
         }
+        // the default layout in edit mode at 854 and 2560 (1920 is above): the name chips again
+        if (tick == 280) { tagsClear("default-854"); shot(c, "hud-edit-default-854.png"); GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 2560, 1440); }
+        if (tick == 300) {
+            tagsClear("default-2560"); shot(c, "hud-edit-default-2560.png");
+            CommandUiChecks.report("cu-hud-tags", tagBad.length() == 0 && tagsSeen == 6, "edit-mode name chips at 1920, moved 1920, moved 854, moved 2560, default 854 and default 2560 (" + tagsSeen + " looked at): "
+                + (tagBad.length() == 0 ? "each outside its own box, none covers another chip, another part, the panel or its caption or toolbar, and the toolbar covers no part" : tagBad));
+            press(c, "key.gravesandglory.panel_edit");
+            GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 1920, 1080);
+        }
+        if (tick == 306) CommandUiChecks.finish(c);
     }
 
     static String boxes() { StringBuilder b = new StringBuilder(); for (var e : HudLayout.boxes().entrySet()) b.append(e.getKey()).append(box(e.getValue())).append(' '); return b.toString().trim(); }
@@ -185,8 +210,13 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
         for (int i = 0; i < tags.size(); i++) {
             int[] a = tags.get(i).getValue();
             for (int j = i + 1; j < tags.size(); j++) if (meets(a, tags.get(j).getValue())) tagBad.append(size + ": " + tags.get(i).getKey() + " tag covers " + tags.get(j).getKey() + "'s; ");
-            for (int[] d : CommandPanel.lastDrawn) if ((d[0] == CommandPanel.CAPTION || d[0] == CommandPanel.TOOLBAR) && meets(a, new int[]{d[1], d[2], d[3], d[4]}))
-                tagBad.append(size + ": " + tags.get(i).getKey() + " tag covers the panel's " + (d[0] == CommandPanel.CAPTION ? "caption" : "toolbar") + "; ");
+            for (int[] d : CommandPanel.lastDrawn) if ((d[0] == CommandPanel.CAPTION || d[0] == CommandPanel.TOOLBAR || d[0] == CommandPanel.EDGE) && meets(a, new int[]{d[1], d[2], d[3], d[4]}))
+                tagBad.append(size + ": " + tags.get(i).getKey() + " tag covers the panel's " + (d[0] == CommandPanel.CAPTION ? "caption" : d[0] == CommandPanel.TOOLBAR ? "toolbar" : "outline") + "; ");
+            for (String p : HudLayout.PARTS) { int[] b = HudLayout.guiBox(p); if (b != null && meets(a, b)) tagBad.append(size + ": " + tags.get(i).getKey() + " tag covers " + (p.equals(tags.get(i).getKey()) ? "its own part" : "the " + p + " part") + " " + box(b) + "; "); }
+        }
+        for (int[] d : CommandPanel.lastDrawn) if (d[0] == CommandPanel.TOOLBAR || d[0] == CommandPanel.CAPTION) for (String p : HudLayout.PARTS) { // the caption sits on the panel's corner; only a part drawn now counts there (a ghost under it gives the panel the press, cu-hud-panel-grab)
+            int[] b = HudLayout.guiBox(p);
+            if (b != null && (d[0] == CommandPanel.TOOLBAR || HudLayout.drawn(p)) && meets(new int[]{d[1], d[2], d[3], d[4]}, b)) tagBad.append(size + ": the " + (d[0] == CommandPanel.CAPTION ? "caption" : "toolbar") + " covers the " + p + " part; ");
         }
     }
     static boolean meets(int[] a, int[] b) { return a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3]; }

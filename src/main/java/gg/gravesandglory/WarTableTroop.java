@@ -143,10 +143,12 @@ final class WarTableTroop {
     void show(String id) {
         if (ArmyCards.spec(id) == null) return;
         troop = id; broken = false; lit = null; pendingState = "";
+        if (owned() == null) tab = "troop";
         refresh();
     }
 
-    void face(String which) { tab = which; }
+    /** Shows a face of the sheet; a troop not yet recruited has only the Troop face, with its one note (TroopKnowledge.HIDDEN). */
+    void face(String which) { tab = owned() == null ? "troop" : which; }
 
     /** Whether a press of the tag is still on its way: the camp has not answered it (its state is as at the press) and PENDING_TICKS have not passed. */
     boolean pending() { return !pendingState.isEmpty() && ticks - pendingAt < WarTableRecruit.PENDING_TICKS && pendingState.equals(screen.state()); }
@@ -354,14 +356,16 @@ final class WarTableTroop {
     /** A face tag of the sheet: a vellum tag with the word; the face shown has a heavy bar under its word (a shape, not only an ink), the other a thin line while hot. */
     void paintTab(DrawContext g, String which, String label, int x, int y, int w, int h) {
         var font = font();
-        boolean on = tab.equals(which);
+        boolean on = tab.equals(which), off = owned() == null && !which.equals("troop"); // the other faces greyed and closed for a troop not yet recruited
+        var button = buttons.get("tab-" + which);
+        if (button != null) button.active = !off;
         String plate = "table/btn-vellum-88x24";
         UiTex.nine(g, plate, x, y, w + 1, h + 2);
         var t = heading(label);
-        int tw = font.getWidth(t), lx = x + (w - tw) / 2, ink = on ? DarkUi.INK_TEXT : DarkUi.SEPIA;
+        int tw = font.getWidth(t), lx = x + (w - tw) / 2, ink = off ? DarkUi.TAB_OFF : on ? DarkUi.INK_TEXT : DarkUi.SEPIA;
         g.drawText(font, t, lx, y + 6, ink, false);
         if (on) g.fill(lx, y + 18, lx + tw, y + 20, DarkUi.INK_TEXT);
-        else if (WarTableRecruit.hot(buttons.get("tab-" + which))) underline(g, "tab-" + which, lx, y + 18, tw, ink);
+        else if (!off && WarTableRecruit.hot(buttons.get("tab-" + which))) underline(g, "tab-" + which, lx, y + 18, tw, ink);
         rectsDrawn.put("tab-" + which, new int[]{x, y, w, h});
         texturesDrawn.put("tab-" + which, plate);
         colorsDrawn.put("tab-" + which, ink);

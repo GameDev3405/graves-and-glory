@@ -172,7 +172,7 @@ public final class CommandPanel {
         try { draw(g, font, sw, sh, eased, mouse); }
         finally { RenderSystem.setShaderColor(1, 1, 1, 1); }
         if (editing) {
-            try { editChrome(g, font, sw, sh, mouse); HudLayout.drawEdit(g, font, sw, sh, mouse, hits.get(CAPTION), hits.get(TOOLBAR)); } // the panel's chrome, then every HUD part's outline with its name tag kept off the caption and toolbar
+            try { editChrome(g, font, sw, sh, mouse); HudLayout.drawEdit(g, font, sw, sh, mouse, bounds == null ? null : new int[]{bounds[0] - 1, bounds[1] - 1, bounds[2] + 2, bounds[3] + 2}, hits.get(CAPTION), hits.get(TOOLBAR), vanillaHud(sw, sh)); } // the panel's chrome, then every HUD part's outline with its name chip kept off the panel, caption and toolbar
             finally { RenderSystem.setShaderColor(1, 1, 1, 1); }
         }
     }
@@ -513,7 +513,7 @@ public final class CommandPanel {
         if (inside(DONE, x, y)) { leaveEdit(c); return; }
         if (inside(TOOLBAR, x, y)) return;
         if (rest == null) { HudLayout.press(x, y); return; }
-        if (x >= rest[0] && x < rest[0] + rest[2] && y >= rest[1] && y < rest[1] + rest[3]) { dragging = true; grabX = x - rest[0]; grabY = y - rest[1]; return; }
+        if ((x >= rest[0] && x < rest[0] + rest[2] && y >= rest[1] && y < rest[1] + rest[3]) || inside(CAPTION, x, y) || inside(EDGE, x, y)) { dragging = true; grabX = x - rest[0]; grabY = y - rest[1]; return; } // the panel (its tabs, outline and caption) before any HUD part under it
         HudLayout.press(x, y); // else a battle HUD part under the cursor (HudLayout)
     }
 
@@ -534,6 +534,12 @@ public final class CommandPanel {
     private static void chrome(int id, int x, int y, int w, int h) { lastDrawn.add(new int[]{id, x, y, w, h}); hits.put(id, new int[]{x, y, w, h}); }
 
     static final int WOOD = 0xff3b2818, WOOD_HOVER = 0xff5a3d24, BRASS = 0xffb08d3c, BRASS_LIGHT = 0xffe0bf6a;
+
+    /** Whether a GUI px rect meets any battle HUD part's box (HudLayout) this frame. */
+    static boolean coversHudPart(int x, int y, int w, int h) {
+        for (String p : HudLayout.PARTS) { int[] o = HudLayout.guiBox(p); if (o != null && meets(x, y, w, h, o)) return true; }
+        return false;
+    }
 
     /** Edit mode's chrome in screen GUI px: a dashed gold outline around the panel, the caption above it and the toolbar below it (above when there is no room). */
     static void editChrome(DrawContext g, TextRenderer font, int sw, int sh, double[] mouse) {
@@ -563,13 +569,19 @@ public final class CommandPanel {
         int capX = Math.max(1, Math.min(sw - 1 - capW, b[0]));
         int[] vh = vanillaHud(sw, sh);
         int ax = Math.max(2, Math.min(sw - 2 - tw, b[0])), sy = Math.max(2, Math.min(sh - 2 - th, b[1]));
-        int[][] spots = {{ax, belowTop}, {ax, (capAbove ? capY : b[1]) - 3 - th}, {b[0] - 3 - tw, sy}, {b[0] + b[2] + 3, sy}};
-        int tx = ax, ty = Math.max(2, Math.min(sh - 2 - th, belowTop));
+        List<int[]> spots = new ArrayList<>(List.of(new int[]{ax, belowTop}, new int[]{ax, (capAbove ? capY : b[1]) - 3 - th}, new int[]{b[0] - 3 - tw, sy}, new int[]{b[0] + b[2] + 3, sy}));
+        // where those all meet a battle HUD part: down the screen beside the panel, in the middle and at the right edge
+        for (int y = 2; y + th <= sh - 2; y += 6) for (int x : new int[]{b[0] + b[2] + 3, (sw - tw) / 2, sw - 2 - tw}) spots.add(new int[]{x, y});
+        int tx = ax, ty = Math.max(2, Math.min(sh - 2 - th, belowTop)), fx = 0, fy = 0;
+        boolean fallback = false;
         for (int[] o : spots) {
             if (o[0] < 2 || o[1] < 2 || o[0] + tw > sw - 2 || o[1] + th > sh - 2) continue;
             if (meets(o[0], o[1], tw, th, vh) || meets(o[0], o[1], tw, th, b) || meets(o[0], o[1], tw, th, new int[]{capX, capY, capW, capH})) continue;
-            tx = o[0]; ty = o[1]; break;
+            if (!fallback) { fallback = true; fx = o[0]; fy = o[1]; }
+            if (coversHudPart(o[0], o[1], tw, th)) continue; // a spot clear of the battle HUD's parts too, when there is one
+            tx = o[0]; ty = o[1]; fallback = false; break;
         }
+        if (fallback) { tx = fx; ty = fy; }
 
         g.fill(capX, capY, capX + capW, capY + capH, 0xb3000000);
         g.drawText(font, cap, capX + 4, capY + 2, 0xff000000 | GOLD, true);

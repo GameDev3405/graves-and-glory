@@ -111,12 +111,19 @@ final class ArmouryTab {
     }
 
     /** The words on a button: its state, its price, what is needed. At most cap lines of w px (UiMath.lines); a locked text breaks at spaces and is never cut while the row has the room. */
+    /** The cell's short form of lockedText: "Needs Rank 2" for the Rank reason (the troop's name, which the tooltip keeps, would fill the
+     *  cell again); the other reasons are short already. Display only: the state and what the server refuses are unchanged. */
+    static String lockedShort(Spec.TroopsRow t, String track, int tier, LevelMath.ArmouryRow row) {
+        String full = lockedText(t, track, tier, row);
+        return full.startsWith("Needs a Rank " + tier) ? "Needs Rank " + tier : full;
+    }
+
     static List<String> words(Spec.TroopsRow t, String track, int tier, LevelMath.ArmouryRow row, LevelMath.Buy state, boolean here, int w, int cap, ToIntFunction<String> width) {
         int price = LevelMath.price(t.rarity(), tier);
-        List<String> out = new ArrayList<>(List.of(UpgradeStats.cell(t, track, tier))); // what the tier gives, first line on every cell (Kort 2026-11-12)
+        List<String> out = new ArrayList<>(List.of(UpgradeStats.cell(t, track, tier, w, width))); // what the tier gives, first line on every cell (Kort 2026-11-12)
         out.addAll(switch (state) {
             case BOUGHT -> List.of(BOUGHT);
-            case LOCKED -> UiMath.lines(lockedText(t, track, tier, row), w, Math.max(1, cap - 1), width);
+            case LOCKED -> UiMath.lines(lockedShort(t, track, tier, row), w, Math.max(1, cap - 1), width);
             case OPEN -> here ? List.of("Buy", price + " gold") : List.of(price + " gold", NOT_HERE);
             case UNAFFORDABLE -> List.of(price + " gold", here ? NO_GOLD : NOT_HERE);
         });
@@ -164,7 +171,7 @@ final class ArmouryTab {
         for (var r : rows) {
             var t = ArmyCards.spec(r.troop()); if (t == null) continue;
             for (String track : new String[] {LevelMath.WEAPON, LevelMath.ARMOUR}) for (int tier = 2; tier <= 3; tier++)
-                if (stateOf(r, track, tier) == LevelMath.Buy.LOCKED) worst = Math.max(worst, UiMath.lines(lockedText(t, track, tier, r), w, 5, width).size());
+                if (stateOf(r, track, tier) == LevelMath.Buy.LOCKED) worst = Math.max(worst, UiMath.lines(lockedShort(t, track, tier, r), w, 5, width).size());
         }
         return 1 + worst;
     }

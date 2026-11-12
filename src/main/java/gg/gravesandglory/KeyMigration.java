@@ -29,6 +29,9 @@ public final class KeyMigration {
 
     public static boolean run(MinecraftClient client, Path flag) {
         if (client.options == null || Files.exists(flag)) return false;
+        // the marker first: if it cannot be written, nothing moves, so a later launch can never move a key the player has since chosen
+        try { Files.createDirectories(flag.getParent()); Files.writeString(flag, "commandKeys=zxcvb\n"); }
+        catch (Exception e) { System.err.println("[Graves and Glory] Could not record the command key move, so the keys stay as they are: " + e.getMessage()); return false; }
         runs++;
         moved.clear();
         for (String[] o : OLD) {
@@ -38,8 +41,7 @@ public final class KeyMigration {
             moved.add(o[0].substring(o[0].lastIndexOf('.') + 1));
         }
         if (!moved.isEmpty()) { KeyBinding.updateKeysByCode(); client.options.write(); }
-        try { Files.createDirectories(flag.getParent()); Files.writeString(flag, "commandKeys=zxcvb\nmoved=" + String.join(",", moved) + "\n"); }
-        catch (Exception e) { System.err.println("[Graves and Glory] Could not record the command key move: " + e.getMessage()); }
+        try { Files.writeString(flag, "commandKeys=zxcvb\nmoved=" + String.join(",", moved) + "\n"); } catch (Exception ignored) { } // what moved, for the record; the marker is already there
         return !moved.isEmpty();
     }
 

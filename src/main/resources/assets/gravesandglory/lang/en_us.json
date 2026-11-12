@@ -3,7 +3,7 @@
   "category.gravesandglory": "Graves and Glory",
   "key.gravesandglory.menu": "Command panel",
   "key.gravesandglory.panel_edit": "Arrange command panel",
-  "gui.gravesandglory.panel_edit.caption": "Drag the panel or any outlined part",
+  "gui.gravesandglory.panel_edit.caption": "Drag any outlined part",
   "gui.gravesandglory.panel_edit.caption_hidden": "Hidden - drag to move",
   "gui.gravesandglory.panel_edit.opacity": "Opacity",
   "gui.gravesandglory.panel_edit.hide": "Hide",

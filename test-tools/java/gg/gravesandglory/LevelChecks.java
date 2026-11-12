@@ -1212,6 +1212,8 @@ final class LevelChecks {
             double before = base * (1 + rank + (weapon ? lo.weaponPct() : lo.armourPct())), after = base * (1 + rank + (weapon ? hi.weaponPct() : hi.armourPct()));
             return (weapon ? "Dmg " : "HP ") + one(before) + "→" + one(after);
         }
+        /** A cell's first line: the stat line, labelled "Rank N: " (or "RN " in a narrow cell) unless it is a share of base (no hit damage). */
+        static boolean statOk(String first, String stat, int tier) { return stat.startsWith("Heal/effect") ? first.equals(stat) : first.equals("Rank " + tier + ": " + stat) || first.equals("R" + tier + " " + stat) || first.equals("R" + tier + " " + stat.substring(stat.indexOf(' ') + 1)); }
         static String one(double v) { double r = Math.round(v * 10) / 10.0; return r == Math.rint(r) ? String.valueOf((long) r) : String.format(java.util.Locale.ROOT, "%.1f", r); }
 
         void phases(MinecraftClient c) {
@@ -1357,13 +1359,15 @@ final class LevelChecks {
                 if (!g.troop.id().equals(row.troop()) || !g.track.equals(ArmouryTab.TRACKS[col]) || g.tier != ArmouryTab.TIERS[col]) bad.append(who + " is in the place of " + row.troop() + " column " + col + "; ");
                 if (g.state != want) bad.append(who + " reads " + g.state + ", the server's row says " + want + "; ");
                 String stat = statLine(g.troop, g.track, g.tier), first = g.lines.isEmpty() ? "" : g.lines.get(0);
-                if (!first.equals(stat)) bad2.append(who + " leads with \"" + first + "\", want the stat line \"" + stat + "\"; ");
+                if (!statOk(first, stat, g.tier)) bad2.append(who + " leads with \"" + first + "\", want the stat line \"" + stat + "\" labelled with its Rank (\"Rank " + g.tier + ": \" or \"R" + g.tier + " \"); ");
                 var rest = g.lines.isEmpty() ? List.<String>of() : g.lines.subList(1, g.lines.size());
                 String refusal = sn.refusals().get(who), text = String.join(" ", rest);
                 var exp = expect(g.troop, g.tier, want, true, refusal);
                 if (want == LevelMath.Buy.LOCKED) {
                     boolean second = g.tier == 3 && (stateAt(row, col - 1) == LevelMath.Buy.OPEN || stateAt(row, col - 1) == LevelMath.Buy.UNAFFORDABLE) && text.equals("Buy " + (g.track.equals(LevelMath.ARMOUR) ? "Armour" : "Weapon") + " II first");
-                    if (!(text.equals(refusal) || second)) bad2.append(who + " says \"" + text + "\", the server's own refusal is \"" + refusal + "\"; ");
+                    String shortRefusal = refusal != null && refusal.startsWith("Needs a Rank " + g.tier) ? "Needs Rank " + g.tier : refusal; // the cell's short form; the tooltip keeps the server's words
+                    if (!(text.equals(shortRefusal) || second)) bad2.append(who + " says \"" + text + "\", want \"" + shortRefusal + "\" for the server's own refusal \"" + refusal + "\"; ");
+                    if (!second && refusal != null && !g.getMessage().getString().contains(refusal)) bad2.append(who + " tooltip \"" + g.getMessage().getString() + "\" lacks the full refusal \"" + refusal + "\"; ");
                 } else if (!rest.equals(exp)) bad2.append(who + " says " + g.lines + ", want the stat line and " + exp + "; ");
                 if ((want == LevelMath.Buy.OPEN) != g.pressable) bad2.append(who + " " + want + " but pressable " + g.pressable + "; ");
                 if (g.hasGlyph() != (want == LevelMath.Buy.LOCKED || want == LevelMath.Buy.BOUGHT)) bad2.append(who + " glyph " + g.hasGlyph() + " for " + want + "; ");
@@ -1389,7 +1393,7 @@ final class LevelChecks {
                 if (g.pressable) bad.append(key(g) + " can be pressed away from a buy place; ");
                 if (st == LevelMath.Buy.OPEN || st == LevelMath.Buy.UNAFFORDABLE) {
                     greyed++; var exp = expect(g.troop, g.tier, st, false, "");
-                    if (g.lines.size() < 1 || !g.lines.subList(1, g.lines.size()).equals(exp) || !g.lines.get(0).equals(statLine(g.troop, g.track, g.tier))) bad.append(key(g) + " says " + g.lines + ", want " + statLine(g.troop, g.track, g.tier) + " and " + exp + "; ");
+                    if (g.lines.size() < 1 || !g.lines.subList(1, g.lines.size()).equals(exp) || !statOk(g.lines.get(0), statLine(g.troop, g.track, g.tier), g.tier)) bad.append(key(g) + " says " + g.lines + ", want " + statLine(g.troop, g.track, g.tier) + " and " + exp + "; ");
                     if (g.fillUsed == openFill) bad.append(key(g) + " is drawn as a buy that is ready; ");
                 }
             }

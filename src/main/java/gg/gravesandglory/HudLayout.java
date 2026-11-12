@@ -193,7 +193,7 @@ public final class HudLayout {
         String hot = dragging != null ? dragging : at(mouse);
         List<int[]> tags = new ArrayList<>();
         lastTags.clear();
-        List<int[]> clear = new ArrayList<>(); // the panel's caption and toolbar (x, y, w, h): no name tag may cover them
+        List<int[]> clear = new ArrayList<>(); // the panel's outline, caption and toolbar (x, y, w, h): no name tag may cover them
         for (int[] k : keepClear) if (k != null) clear.add(k);
         for (String part : PARTS) {
             int[] b = guiBox(part);
@@ -205,31 +205,58 @@ public final class HudLayout {
             int ink = lit ? 0xffffd27a : shown ? 0xffe6c46a : 0xb0e6c46a;
             for (int x = x0; x < x1; x += 4) { g.fill(x, y0, Math.min(x + 2, x1), y0 + 1, ink); g.fill(x, y1 - 1, Math.min(x + 2, x1), y1, ink); }
             for (int y = y0; y < y1; y += 4) { g.fill(x0, y, x0 + 1, Math.min(y + 2, y1), ink); g.fill(x1 - 1, y, x1, Math.min(y + 2, y1), ink); }
-            // the name on a dark tag in the box's top-left corner
+            // the name on a small dark chip outside the box, so it never covers the part's own content (tag)
             String name = label(part);
-            int tw = font.getWidth(name) + 4, tx = Math.max(0, Math.min(sw - tw, x0 + 1)), ty = Math.max(0, Math.min(sh - 10, y0 + 1));
-            // the corners inside the box first, then just outside it (under, over), then down its left and right sides: the first spot clear of every tag and of the panel's caption and toolbar
-            int left = tx, right = Math.max(0, Math.min(sw - tw, x1 - 1 - tw));
-            List<int[]> tries = new ArrayList<>(List.of(new int[]{left, ty}, new int[]{left, y1 - 11}, new int[]{right, ty}, new int[]{right, y1 - 11}, new int[]{left, y1 + 1}, new int[]{left, y0 - 11}, new int[]{right, y1 + 1}, new int[]{right, y0 - 11}));
-            for (int y = y0 - 21; y <= y1 + 11; y += 5) { tries.add(new int[]{left, y}); tries.add(new int[]{right, y}); }
-            for (int[] t : tries) {
-                t[1] = Math.max(0, Math.min(sh - 10, t[1]));
-                boolean free = true;
-                for (int[] o : tags) if (t[0] < o[0] + o[2] && o[0] < t[0] + tw && t[1] < o[1] + 10 && o[1] < t[1] + 10) free = false;
-                for (int[] o : clear) if (t[0] < o[0] + o[2] && o[0] < t[0] + tw && t[1] < o[1] + o[3] && o[1] < t[1] + 10) free = false;
-                if (free) { tx = t[0]; ty = t[1]; break; }
-            }
-            tags.add(new int[]{tx, ty, tw});
+            int tw = font.getWidth(name) + 4;
+            int[] t = tag(part, tw, x0, y0, x1, y1, sw, sh, tags, clear);
+            int tx = t[0], ty = t[1];
+            // a chip set away from its box keeps a thin leader to the box's nearest edge
+            int cx = Math.max(x0, Math.min(x1 - 1, tx + tw / 2)), cy = Math.max(y0, Math.min(y1 - 1, ty + 5));
+            int fromX = tx + tw / 2, fromY = ty + 5;
+            if (Math.abs(cx - fromX) + Math.abs(cy - fromY) > 12) { g.fill(Math.min(fromX, cx), fromY, Math.max(fromX, cx) + 1, fromY + 1, ink); g.fill(cx, Math.min(fromY, cy), cx + 1, Math.max(fromY, cy) + 1, ink); }
+            tags.add(new int[]{tx - 4, ty - 1, tw + 8, 12}); // with a gap, so two chips never read as one name
             lastTags.put(part, new int[]{tx, ty, tw, 10});
             g.fill(tx, ty, tx + tw, ty + 10, lit ? 0xe0000000 : 0xb0000000);
             g.drawText(font, name, tx + 2, ty + 1, ink, false);
         }
     }
 
-    /** The part under a GUI point, smallest first, or null. */
+    /**
+     * Where a part's name chip (tw x 10) goes: above the box, then below it, then to its left or right, each at the box's left and right
+     * ends; a spot must be on screen and clear of the tags already placed and of the panel (its outline, caption and toolbar). First a spot
+     * clear of every part's box, then one clear of the own box only; only when nothing outside fits, a corner inside the box.
+     */
+    static int[] tag(String part, int tw, int x0, int y0, int x1, int y1, int sw, int sh, List<int[]> tags, List<int[]> clear) {
+        List<int[]> others = new ArrayList<>();
+        for (String o : PARTS) { int[] ob = guiBox(o); if (ob != null && !o.equals(part)) others.add(new int[]{ob[0] - 1, ob[1] - 1, ob[2] + 2, ob[3] + 2}); }
+        int[] own = {x0, y0, x1 - x0, y1 - y0};
+        int far = Math.max(sw, sh) / 3;
+        // rings ever further out: at gap d, the row above the box (left to right), the row below, the column left of it, the column right of it;
+        // first a spot clear of every part, then one clear of the own part only (a part lying under the panel or among others)
+        for (int pass = 0; pass < 2; pass++)
+            for (int d = 0; d <= far; d += 4) {
+                List<int[]> ring = new ArrayList<>();
+                for (int y : new int[]{y0 - 11 - d, y1 + 1 + d}) for (int x = x0 - d; x <= Math.max(x0 - d, x1 + d - tw); x += 4) ring.add(new int[]{x, y});
+                for (int x : new int[]{x0 - tw - 1 - d, x1 + 1 + d}) for (int y = y0 - 11 - d; y <= y1 + 1 + d; y += 4) ring.add(new int[]{x, y});
+                for (int[] t : ring) {
+                    if (t[0] < 0 || t[1] < 0 || t[0] + tw > sw || t[1] + 10 > sh) continue;
+                    if (meets(t, tw, own) || hits(t, tw, tags) || hits(t, tw, clear) || (pass == 0 && hits(t, tw, others))) continue;
+                    return t;
+                }
+            }
+        int left = Math.max(0, Math.min(sw - tw, x0 + 1)), right = Math.max(0, Math.min(sw - tw, x1 - 1 - tw)), top = Math.max(0, Math.min(sh - 10, y0 + 1)), foot = Math.max(0, Math.min(sh - 10, y1 - 11));
+        int[][] inside = {{left, top}, {left, foot}, {right, top}, {right, foot}};
+        for (int[] t : inside) if (!hits(t, tw, tags) && !hits(t, tw, clear)) return t;
+        return inside[0];
+    }
+    static boolean meets(int[] t, int tw, int[] o) { return t[0] < o[0] + o[2] && o[0] < t[0] + tw && t[1] < o[1] + (o.length > 3 ? o[3] : 10) && o[1] < t[1] + 10; }
+    static boolean hits(int[] t, int tw, List<int[]> rects) { for (int[] o : rects) if (meets(t, tw, o)) return true; return false; }
+
+    /** The part under a GUI point, or null: parts drawn now first, then edit-mode ghosts (so a ghost never takes a press from a live part); smallest first within each. */
     static String at(double[] m) {
         if (m == null) return null;
-        for (String part : PARTS) { int[] b = guiBox(part); if (b != null && m[0] >= b[0] && m[0] < b[0] + b[2] && m[1] >= b[1] && m[1] < b[1] + b[3]) return part; }
+        for (int pass = 0; pass < 2; pass++)
+            for (String part : PARTS) { if (drawn(part) != (pass == 0)) continue; int[] b = guiBox(part); if (b != null && m[0] >= b[0] && m[0] < b[0] + b[2] && m[1] >= b[1] && m[1] < b[1] + b[3]) return part; }
         return null;
     }
 

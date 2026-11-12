@@ -42,10 +42,10 @@ final class TroopKnowledge {
         double hit = t.damage() * mult;
         out.add(new Stat("damage", "Damage per hit", UpgradeStats.num(hit), bonus.isEmpty() ? "" : String.format(Locale.ROOT, bonus, t.damage())));
         double every = t.cooldown() / 20.0;
-        out.add(new Stat("interval", "Attacks every", UpgradeStats.num(every) + " s", ""));
+        out.add(new Stat("interval", "Attacks every", String.format(java.util.Locale.ROOT, "%.2f", every) + " s", "")); // two decimals, so it agrees with the damage per second
         if (every > 0) out.add(new Stat("dps", "Damage per second", UpgradeStats.num(hit / every), ""));
         out.add(new Stat("range", "Range", UpgradeStats.num(t.range()) + " blocks", t.ranged() ? "" : "melee reach"));
-        out.add(new Stat("speed", "Move speed", UpgradeStats.num(t.speed()), speedWord(t.speed())));
+        out.add(new Stat("speed", "Move speed", speedLabel(t.speed()), "")); // the word only: the sheet's raw speed is no unit a player knows
         out.add(new Stat("cost", "Deploy cost", t.cost() + " gold", ""));
         out.add(new Stat("training", "Training time", UpgradeStats.num(t.trainingSeconds()) + " s", ""));
         out.add(new Stat("slots", "Army slots", String.valueOf(t.slotWeight()), ""));
@@ -56,6 +56,9 @@ final class TroopKnowledge {
         if (!armour.isEmpty()) out.add(new Stat("armour", "Armour", String.join(", ", armour), ""));
         return out;
     }
+
+    /** speedWord with a capital: "Slow", "Average" or "Fast". */
+    static String speedLabel(double speed) { String w = speedWord(speed); return w.isEmpty() ? "" : Character.toUpperCase(w.charAt(0)) + w.substring(1); }
 
     /** "slow", "average" or "fast": where the speed falls among every troop of the sheet, by thirds. */
     static String speedWord(double speed) {

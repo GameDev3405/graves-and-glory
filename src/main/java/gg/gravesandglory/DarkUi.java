@@ -28,6 +28,8 @@ final class DarkUi {
     // The Chapter track's inks (work/ui-concepts/track, approved 2026-10-18): the Oath row's names on its sepia plaques and their
     // second lines, and "Enter" on the dull Claim plate's key.
     static final int SEPIA_L=0xffc4b28a, SEPIA_LINE=0xffb9a77f, DULL_KEY=0xffb3ad9f;
+    // A troop sheet's face tag that cannot be opened (a troop not yet recruited): a grey that still reads on the vellum.
+    static final int TAB_OFF=0xff8a8070;
     // The battlefield map's inks: the dark pin under a point's mark, a group's pin, the contested ring, anything fighting, the
     // friendly troop marks, fresh and remembered enemy sightings, pings and the player.
     static final int MAP_PIN=0xcc101722, MAP_GROUP=0xff111923, CONTEST=0xffffaa55, WARN=0xffff9955, MAP_TROOP=0xfff5e2a8, MAP_ENEMY=0xffff6860, MAP_STALE=0xffa2a5aa, PING=0xffffcc55, MAP_YOU=0xffffffff;

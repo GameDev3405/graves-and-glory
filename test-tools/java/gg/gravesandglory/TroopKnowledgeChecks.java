@@ -82,6 +82,7 @@ final class TroopKnowledgeChecks implements Phase1Checks.Suite {
                     var a = RecruitView.action(legendary == null ? unowned : legendary);
                     if (a != null) for (String n : unownedNames) if (a.tip().contains(n)) bad.add("tip \"" + a.tip() + "\"");
                     bad.addAll(leaks(WarTableRecruit.texts()));
+                    for (String lockedId : WarTableRecruit.padlocks()) if (!TroopKnowledge.owned(lockedId)) bad.add("a padlock on the unowned row " + lockedId + " (it marks a Legendary)");
                     shot(c, "know-recruit-legendary");
                     return;
                 }
@@ -105,8 +106,8 @@ final class TroopKnowledgeChecks implements Phase1Checks.Suite {
                     double m = UpgradeStats.starMult(t);
                     Map<String, String> want = new LinkedHashMap<>();
                     want.put("stat-health", UpgradeStats.num(t.health() * m)); want.put("stat-damage", UpgradeStats.num(t.damage() * m));
-                    want.put("stat-interval", UpgradeStats.num(t.cooldown() / 20.0) + " s"); want.put("stat-range", UpgradeStats.num(t.range()) + " blocks");
-                    want.put("stat-speed", UpgradeStats.num(t.speed())); want.put("stat-cost", t.cost() + " gold");
+                    want.put("stat-interval", String.format(java.util.Locale.ROOT, "%.2f", t.cooldown() / 20.0) + " s"); want.put("stat-range", UpgradeStats.num(t.range()) + " blocks");
+                    want.put("stat-speed", TroopKnowledge.speedLabel(t.speed())); want.put("stat-cost", t.cost() + " gold");
                     want.put("stat-training", UpgradeStats.num(t.trainingSeconds()) + " s"); want.put("stat-slots", String.valueOf(t.slotWeight()));
                     for (var e : want.entrySet()) if (!e.getValue().equals(w.get(e.getKey()))) bad.add(e.getKey() + " \"" + w.get(e.getKey()) + "\" (want \"" + e.getValue() + "\")");
                     if (!t.name().equals(w.get("letter-name"))) bad.add("name \"" + w.get("letter-name") + "\"");
@@ -158,7 +159,12 @@ final class TroopKnowledgeChecks implements Phase1Checks.Suite {
         if (j != 7) return;
         var w = WarTableTroop.texts();
         String at = TABS[tabAt] + suffix;
-        if (!TABS[tabAt].equals(w.get("tab"))) bad.add(at + ": face " + w.get("tab"));
+        if (!"troop".equals(w.get("tab"))) bad.add(at + ": face " + w.get("tab") + " opened (only the Troop face opens for a troop not yet recruited)");
+        for (String t : TABS) {
+            var b = s.troopSheet.buttons.get("tab-" + t);
+            boolean want = t.equals("troop");
+            if (b == null || b.active != want) bad.add(at + ": tab-" + t + " active=" + (b == null ? "none" : b.active) + " (want " + want + ")");
+        }
         if (!TroopKnowledge.UNKNOWN.equals(w.get("letter-name"))) bad.add(at + ": name \"" + w.get("letter-name") + "\"");
         if (!TroopKnowledge.HIDDEN.equals(w.get("hidden-line"))) bad.add(at + ": no placeholder line");
         for (var e : w.keySet()) for (String p : SECRET) if (e.startsWith(p)) bad.add(at + ": draws " + e + " \"" + w.get(e) + "\"");
@@ -166,7 +172,7 @@ final class TroopKnowledgeChecks implements Phase1Checks.Suite {
         bad.addAll(leaks(w));
         shot(c, "know-unowned-" + at);
         if (++tabAt < TABS.length) return;
-        if (suffix.isEmpty()) { report("p1-know-unowned", bad.isEmpty(), bad.isEmpty() ? "the four faces of " + unowned + " show \"Unknown troop\", a silhouette and only \"" + TroopKnowledge.HIDDEN + "\"" : String.join("; ", bad)); bad.clear(); }
+        if (suffix.isEmpty()) { report("p1-know-unowned", bad.isEmpty(), bad.isEmpty() ? "pressing each of the four faces of " + unowned + " keeps the Troop face (Matchups, Growth and Stats greyed and closed), with \"Unknown troop\", a silhouette and only \"" + TroopKnowledge.HIDDEN + "\"" : String.join("; ", bad)); bad.clear(); }
         stage = next;
     }
 }

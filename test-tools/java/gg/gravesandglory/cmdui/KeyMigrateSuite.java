@@ -59,8 +59,22 @@ public final class KeyMigrateSuite implements CommandUiChecks.Suite {
             boolean ran = KeyMigration.run(c, temp);
             boolean fresh = ran && bound(c, "key.gravesandglory.attack").equals("key.keyboard.z") && bound(c, "key.gravesandglory.follow").equals("key.keyboard.c") && KeyMigration.moved.equals(List.of("attack")) && Files.exists(temp);
             try { Files.deleteIfExists(temp); } catch (Exception ignored) { }
-            CommandUiChecks.report("cu-keys-migrate", startupOk && kept && fresh, startup + "; a deliberate G after it: run again changed=" + again + ", Attack still G=" + kept
-                + "; no marker: changed=" + ran + ", moved " + KeyMigration.moved + ", Attack " + bound(c, "key.gravesandglory.attack") + ", Follow me " + bound(c, "key.gravesandglory.follow"));
+            String freshNote = "no marker: changed=" + ran + ", moved " + KeyMigration.moved + ", Attack " + bound(c, "key.gravesandglory.attack") + ", Follow me " + bound(c, "key.gravesandglory.follow");
+            // a marker that cannot be written (its folder is a file): nothing moves, so no later launch moves a key chosen since
+            Path blocker = FabricLoader.getInstance().getGameDir().resolve("keys-migrate-blocker");
+            boolean blockedKept = false; String blockedNote = "";
+            try {
+                Files.deleteIfExists(blocker); Files.writeString(blocker, "a file where the marker's folder would be");
+                c.options.setKeyCode(attack, InputUtil.fromTranslationKey("key.keyboard.g")); KeyBinding.updateKeysByCode();
+                int runsBefore = KeyMigration.runs;
+                boolean changed = KeyMigration.run(c, blocker.resolve("keys.done"));
+                blockedKept = !changed && KeyMigration.runs == runsBefore && bound(c, "key.gravesandglory.attack").equals("key.keyboard.g");
+                blockedNote = "unwritable marker: changed=" + changed + ", ran " + (KeyMigration.runs - runsBefore) + "x, Attack " + bound(c, "key.gravesandglory.attack");
+                c.options.setKeyCode(attack, InputUtil.fromTranslationKey("key.keyboard.z")); KeyBinding.updateKeysByCode();
+                Files.deleteIfExists(blocker);
+            } catch (Exception e) { blockedNote = "unwritable marker check failed: " + e; }
+            CommandUiChecks.report("cu-keys-migrate", startupOk && kept && fresh && blockedKept, startup + "; a deliberate G after it: run again changed=" + again + ", Attack still G=" + kept
+                + "; " + freshNote + "; " + blockedNote);
             CommandUiChecks.seatAndStart(c);
         }
         if (tick == 40) {

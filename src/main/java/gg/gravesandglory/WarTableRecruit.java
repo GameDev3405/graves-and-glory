@@ -393,7 +393,7 @@ final class WarTableRecruit {
     static Text heading(String s) { return DarkUi.heading(s); }
 
     void render(DrawContext g) {
-        rectsDrawn.clear(); textsDrawn.clear(); texturesDrawn.clear(); colorsDrawn.clear(); portraitsDrawn.clear(); rowsDrawn.clear(); underlinedDrawn.clear();
+        rectsDrawn.clear(); textsDrawn.clear(); texturesDrawn.clear(); colorsDrawn.clear(); portraitsDrawn.clear(); rowsDrawn.clear(); underlinedDrawn.clear(); padlocksDrawn.clear();
         UiCanvas.begin(g);
         try {
             int[] ro = rollAt(), lo = letterAt(), la = ladderAt();
@@ -463,6 +463,10 @@ final class WarTableRecruit {
 
     /** Row i: the portrait in its frame (the silhouette until the troop is recruited), the name (ink when recruited, sepia when
      *  not), and the stars or, on a locked troop, the padlock with the name lower. */
+    /** The rows that drew a padlock in the last frame (for the checks). */
+    private static final List<String> padlocksDrawn = new ArrayList<>();
+    static List<String> padlocks() { return padlocksDrawn; }
+
     void rowAt(DrawContext g, RecruitView.Row r, int i, int x, int y, boolean hot) {
         var font = MinecraftClient.getInstance().textRenderer;
         UiTex.draw(g, "table/frame-back-48", x + 8, y + 8);
@@ -473,18 +477,20 @@ final class WarTableRecruit {
             portraitsDrawn.add(new PortraitDraw(r.troopId(), "row-" + i, Portrait.last())); // what reached drawEntity
         }
         UiTex.draw(g, "table/frame-rim-48", x + 4, y + 4);
-        int color = r.owned() ? DarkUi.INK_TEXT : DarkUi.SEPIA, ny = y + (r.locked() ? 20 : 12);
+        boolean padlock = r.locked() && TroopKnowledge.SHOW_UNOWNED_NAMES; // a padlock only on a Legendary, so it is hidden with the name (Kort 2026-11-12)
+        int color = r.owned() ? DarkUi.INK_TEXT : DarkUi.SEPIA, ny = y + (padlock ? 20 : 12);
         String name = UiMath.trim(TroopKnowledge.name(r.troopId(), r.name()), NAME_W, s -> font.getWidth(heading(s)));
         g.drawText(font, heading(name), x + 60, ny, color, false);
         if (hot) underline(g, "row-" + i, x + 60, ny + 12, font.getWidth(heading(name)), color);
-        if (r.locked()) UiTex.draw(g, "recruit/padlock-brass", x + 23, y + 22);
-        else if (r.stars() > 0)
+        if (padlock) UiTex.draw(g, "recruit/padlock-brass", x + 23, y + 22);
+        else if (!r.locked() && r.stars() > 0)
             for (int s = 0; s < 3; s++) {
                 if (s < r.stars()) UiTex.draw(g, "recruit/star-s", x + 60 + 12 * s, y + 30);
                 else UiTex.draw(g, "recruit/star-s-empty", x + 60 + 12 * s, y + 30);
             }
         rectsDrawn.put("row-" + i, new int[]{x, y, ROLL_W, ROW_H});
         rowsDrawn.add(new RowDraw(i, r.troopId(), name, color, silhouette));
+        if (padlock) padlocksDrawn.add(r.troopId());
     }
 
     /** Whether a reveal is on: the reveal's 2400 ms have not run out, or the harness holds its clock (CampaignClient.revealHeldAt). */
