@@ -127,3 +127,16 @@ MAGE-REVIEW.md, same date.
   (reactions.py, stances.py, charge.py), as before this review.
 - Rule 6: hold (stances.py, gear `staff`/`focus`) holds the caster's focus forward; brace, wall, ward and shield_up are this
   builder's caster poses. The cast's `impact` stays tick 10, the release key (the bolt leaves).
+
+### Fix round 1 (2026-11-12, from work/reviewer/CASTER-sonnet-review.md)
+
+- **Model nudge (for Kort):** both `*_shoulder_tusks` groups 2 px down into the shoulder pad, toward the shoulder pivot
+  (`art/hand/wm_seer/build_wm_seer.py`, tier III only; 1 texel per model pixel, textures unchanged). They ride the pad, not
+  the skull, and grazed the head whenever the arm rolled the pad in (12 rows, 2.3-2.9). Rebuilt: the old-format
+  `models/troop/wm_seer.json` (tools/build_skins.py; no other troop's output changed), the rig (`troop_rig.py`), the asset geo.
+- Two rows left at the limit, finished by pose: attack_cast head 5 deg up over ticks 2-6 (`CLIP_NUDGE`, head into the right
+  pad 1.96 at t4); stun_upper left arm 5 deg out (`LAYER_NUDGE`, which now reaches reaction layers too; tusk into the torso
+  1.97 at t1).
+- Changed clips: attack_cast, stun_upper, and the three aim layers (cut from attack_cast). Focus 13 FAIL rows -> 1: death_forward
+  shoulder 106 at t20 (agreed exemption, for the lead to add). Scorecard 35 clips, 0 failing. Layer pass re-run: same bytes.
+  Renders `work/review/frames/r1/wm_all.jpg`.

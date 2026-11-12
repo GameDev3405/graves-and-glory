@@ -1398,6 +1398,9 @@ CLIP_NUDGE = {
                 "mist": [("right_arm", (0, 0, 10), 5, 16, 3), ("head", (15, 0, 0), 8, 18, 3)]},
     # mage shield_up: with the staff slanted the cowl met the left bell (2.2): the head tips 8 up and turns 8 to the right
     "mage": {"stance_shield_up_upper": [("head", (-8, 8, 0)) + ALL]},
+    # wm_seer cast: with the shoulder tusks sunk into the pad, the head turning to the foe met the right pad (1.96 at t4):
+    # the head 5 deg up over ticks 2-6
+    "wm_seer": {"attack_cast": [("head", (-5, 0, 0), 2, 6, 2)]},
 }
 
 
@@ -1445,8 +1448,10 @@ LAYER_NUDGE = {"mage": {"stance_aim_up_upper": {"left_arm": (18.0, 0.0, 0.0)}},
                # (25 forward, 5 out: further out put the forearm in the head, scorecard pen_limb 1.98 px)
                "tc_mist": {"stance_rally_upper": {"right_arm": (25.0, 0.0, -5.0)},
                            "stance_aim_up_upper": {"right_arm": (0.0, 0.0, -14.0)}},
-               # wm_seer: the rally's raised wand cuff sat 3.3 px in the head
-               "wm_seer": {"stance_rally_upper": {"right_arm": (15.0, 0.0, -20.0)}}}
+               # wm_seer: the rally's raised wand cuff sat 3.3 px in the head; (fix round 1) with the shoulder tusks sunk into
+               # the pad, the stun's left pad still put a tusk 1.97 px in the torso: the left arm 5 deg further out
+               "wm_seer": {"stance_rally_upper": {"right_arm": (15.0, 0.0, -20.0)},
+                           "stun_upper": {"left_arm": (0.0, 0.0, 5.0)}}}
 # per troop, more stance layers whose feet the floor pass lifts (wm_seer: the fallback's right hoof 1.1 px under at tick 0)
 LAYER_FLOOR_TROOP = {"wm_seer": (("stance_fallback_upper", "stance_fallback_legs"),)}
 
@@ -1459,14 +1464,14 @@ def review_layers(path):
     fresh = reactions.build_all(tr)
     if True:                               # the stance layers (stances.py: rally, hold, fallback, rest, aim; the aim is cut
         st = stances.build_all(tr)         # from attack_cast, so it follows a re-keyed cast), with the review's re-poses
-        for clip, bones in LAYER_NUDGE.get(TROOP, {}).items():
-            for b, d in bones.items():
-                ch = st[clip]["bones"][b]["rotation"]
-                for v in (ch.values() if isinstance(ch, dict) else [ch]):
-                    v = v["vector"] if isinstance(v, dict) else v
-                    for i in range(3):
-                        v[i] = round(v[i] + d[i], 3)
         fresh.update(st)
+    for clip, bones in LAYER_NUDGE.get(TROOP, {}).items():   # stance and reaction layers alike, before the life pass
+        for b, d in bones.items():
+            ch = fresh[clip]["bones"][b]["rotation"]
+            for v in (ch.values() if isinstance(ch, dict) else [ch]):
+                v = v["vector"] if isinstance(v, dict) else v
+                for i in range(3):
+                    v[i] = round(v[i] + d[i], 3)
     doc = json.loads(path.read_text(encoding="utf-8"))
     A = doc["animations"]
     for k, v in fresh.items():

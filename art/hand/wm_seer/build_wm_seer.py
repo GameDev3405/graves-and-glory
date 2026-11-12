@@ -278,10 +278,12 @@ def bones():
     B.append(Bone("hem_fringe", "root", stages=[3], boxes=[Box((-4.5, 19.5, -2.5), (9, 1, 5), lashing(OCHRE, 3), dil=0.35)]))
     B.append(Bone("chest_skull", "body", stages=[3], boxes=[
         Box((-1.5, -8.5, -4.2), (3, 3, 2), wm_skull("scs")), Box((-3.5, -9, -3.6), (1, 3, 1), wm_tusk()), Box((2.5, -9, -3.6), (1, 3, 1), wm_tusk())]))
+    # the shoulder tusks sit 2 px down into the pad, toward the shoulder pivot (animation fix round 1, 2026-11-12: standing
+    # on the pad's top they grazed the head whenever the arm rolled the pad in, 2.3-2.9 px in twelve clips)
     for side, x0 in (("right", -3.5), ("left", -1.5)):
         B.append(Bone(f"{side}_shoulder_tusks", f"{side}_shoulder", stages=[3], boxes=[
-            Box((x0 + 0.5, -6, -0.5), (1, 3, 1), wm_tusk()), Box((x0 + 3.5, -5, -0.5), (1, 2, 1), wm_tusk()),
-            Box((x0 + 2, -5, 1.5), (1, 2, 1), wm_tusk())]))
+            Box((x0 + 0.5, -4, -0.5), (1, 3, 1), wm_tusk()), Box((x0 + 3.5, -3, -0.5), (1, 2, 1), wm_tusk()),
+            Box((x0 + 2, -3, 1.5), (1, 2, 1), wm_tusk())]))
     return B
 
 def sash_cloth(T, M):
