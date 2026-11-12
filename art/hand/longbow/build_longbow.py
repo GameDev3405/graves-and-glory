@@ -197,8 +197,11 @@ def bones():
             Box((-4, -12, -2), (8, 12, 4), ("jerkin", g), dil=0.3, sheet="cloth")]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -3, -2), (8, 2, 4), per_tier(A.belt), dil=0.45)]))
     B.append(Bone("pouch", "body", boxes=[Box((1.5, -1.5, -3.3), (2, 3, 1), per_tier(A.pouch))]))
-    # the tall quiver, behind the right hip, the arrows' fletching above the belt
-    B.append(Bone("tall_quiver", "body", (-2.5, -3, 2.4), rot=(12, 0, 8), boxes=[
+    # the tall quiver, behind the right hip, the arrows' fletching above the belt. Its mouth leans out over the STRING
+    # shoulder (roll -8; was 8, 2026-11-12 bow batch review): since the GeckoLib geo writes a bow troop's quiver roll as
+    # the hand model has it (troop_rig, 6935d38f), roll 8 tipped the mouth toward the bow shoulder, behind the head, and
+    # the right hand's pluck dragged the arrow across the back of the head (forearm 2.3 px into the face).
+    B.append(Bone("tall_quiver", "body", (-2.5, -3, 2.4), rot=(12, 0, -8), boxes=[
         Box((-1.5, -6, 0), (3, 13, 3), per_tier(A.quiver)), Box((-1, -10, 0.5), (2, 4, 2), A.fletching)]))
     for side in ("right", "left"):
         inner = 3 if side == "right" else 0

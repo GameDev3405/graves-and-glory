@@ -60,3 +60,19 @@ The longbow needs two overrides, because its tall stave hits the floor otherwise
   - The stave grazes the floor by 1.8 px in the medium hit from the right (see the probe).
 - **Harness.** geo-knight suite with `GRAVES_GEO_CHECK_TROOP=longbow`: 22 `[p1] p1-` lines, 0 `=false`.
 - Video: `longbow_v2feel`.
+
+## Batch review 2026-11-11
+
+Bow-family batch review on `anim/review-bow`. Timing unchanged: `ATTACK_TICKS` 32, `FULL_AT` 16.5, `IMPACT` 22; both attacks keep `full` 0.825 and `impact` 1.1.
+
+- **Rows before -> after** (`work/review/longbow.{before,after}.json`): clips with a FAIL 14 -> 7, FAIL rows 30 -> 11, WARN rows 34 -> 40. Every added WARN is a former FAIL (no PASS became a WARN).
+- **Quiver side (named check).** Since 6935d38f the hand file rolled `tall_quiver` +8, so it leaned to the bow side, the opposite of the archer's quiver. Fixed at the source: `art/hand/longbow/build_longbow.py` `rot=(12, 0, -8)`; `out/` geo, rig and previews re-rigged and the geo copied to the resources. It now leans over the string shoulder. Not done: the legacy hand install, so `models/troop/longbow.json` still holds `[12, 0, 8]` (the GeckoLib geo is what the troop renders).
+- **Changed clips (25, spliced; every other clip byte-identical to HEAD).**
+  - `attack_direct`, `attack_volley` (+legs): Kort's archer r3 shot, fitted to the long stave and tall quiver (`direct_shot.FIT["longbow"]`): bow canted -30 deg at the nock and raised 20 deg so the lower limb clears the ground (floor 2.04 -> 0.9), uncanted by full draw; the pluck grabs the fletching's outer, front, top corner of the deep quiver (shoulder 162 deg -> pass); quiver roll -8. The fist no longer goes through the face (3.72 -> pass) and the 130 deg loose pop is gone.
+  - Aim stances: from the r3 full-draw frame, chest takes 85% of the pitch.
+  - Hits and `hit_block`: knight legs, gear swings (`tall_quiver`, `long_feather`, skirts, pouch) soft and low-passed.
+- **Knockback "face into tall_quiver" (named check).** `hit_knockback` is merged by `reactions.py` (common module, not editable here). The quiver fix took it from 2.16 to 1.95 at t3, still over 1.9. Its bow under the ground 2.93 at t5.25 is in the same module.
+- **Stances (named check).** Hold and wall: bow upright, string hand raised (can read as a salute, pre-existing). Ward: bow held across, borderline for a bowman. Brace and fallback fine. None is a sword or shield pose. Not re-authored.
+- **Remaining FAIL rows.** Common modules: `hit_pulled`, `stun_upper`, `stun_out_upper`, `hit_knockback` (floor, still gear, face into quiver), `charge_run_upper`. Gait: `run_upper` skirt into jack 1.98 at t2. Builder: `hit_medium_right` bow under the ground 1.62 at t3.75 (pre-existing, second fix round not spent on it).
+- **Proposed exemptions.** longbow, `run_upper`/`charge_run_upper`, `armour_clip`, 1.98, skirt into jack (cloth layers). longbow, `hit_knockback`, `armour_clip`, 1.95, face into tall_quiver at t3 (the knockback tumble throws the head back into the quiver top; fix belongs in `reactions.py`).
+- **Tests.** Scorecard exit 0 (35 clips, 0 fail). Unit tests OK (see ARCHER-REVIEW batch section). Booth config valid.
