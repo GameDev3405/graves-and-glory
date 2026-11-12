@@ -1,0 +1,25 @@
+note Rivergate house sampler
+mc time set 3000
+mc execute as @a at @s run forceload add -16 -16 95 95
+mc execute as @a at @s run place template ggmaps:rg/hs_0 -5 198 -5
+wait 10
+mc execute as @a at @s run place template ggmaps:rg/hs_1 43 198 -5
+wait 10
+mc execute as @a at @s run place template ggmaps:rg/hs_2 -5 198 43
+wait 10
+mc execute as @a at @s run place template ggmaps:rg/hs_3 43 198 43
+wait 10
+shot f-row0-a 16 201 27 16 205 11
+shot f-row0-b 54 201 27 54 205 11
+shot f-row0-angle -4 202 24 14 205 11
+shot f-corner 14 201 57 14 204 43
+shot f-inn 44 201 58.5 44 204 46
+shot f-guild 68 201 58.5 68 204 46
+shot f-ware 18 201 85 18 204 70
+shot i-s1a-ground 3 201 8 3 201 1
+shot i-s1a-upper 4 205.6 9 2 205 2
+shot i-shop 38 201 3 38 201 10
+shot i-inn 37 201 33 50 201 38
+shot i-ware 2 201 67 12 201 62
+shot i-arch 10 201 47 10 201 30
+shot c-all 40 240 110 40 200 30
