@@ -79,7 +79,7 @@ class RecruitmentScreen extends ArmyScreen {
         if(c==null){recruit.active=false;disband.active=false;}
     }
     @Override public void tick(){if(tab==1)page.tick();else{barracks.tick();update();}}
-    @Override public boolean mouseClicked(double x,double y,int b){return super.mouseClicked(x/uiScale,y/uiScale,b);}
+    @Override public boolean mouseClicked(double x,double y,int b){boolean r=super.mouseClicked(x/uiScale,y/uiScale,b);if(tab==0)setFocused(null);return r;}
     @Override public boolean mouseReleased(double x,double y,int b){return super.mouseReleased(x/uiScale,y/uiScale,b);}
     @Override public boolean mouseScrolled(double x,double y,double amount){if(tab==1&&page.scroll(amount>0?-1:1))return true;if(tab==0&&barracks.scroll(amount>0?-1:1))return true;return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
     /** The Armoury key switches to the Armoury page (from the barracks) or closes the screen (from the Armoury); Page Up and Down scroll the Armoury's troop rows. */
@@ -88,7 +88,7 @@ class RecruitmentScreen extends ArmyScreen {
         if(tab==1&&(key==GLFW.GLFW_KEY_PAGE_UP||key==GLFW.GLFW_KEY_PAGE_DOWN)&&page.scroll(key==GLFW.GLFW_KEY_PAGE_UP?-1:1))return true;
         if(tab==0){ // Enter recruits the picked troop (the key its plate shows); Up and Down pick the row above or below; Page Up and Down scroll the roll
             if((key==GLFW.GLFW_KEY_ENTER||key==GLFW.GLFW_KEY_KP_ENTER)&&recruit!=null&&recruit.active&&!(getFocused() instanceof ButtonWidget f&&f!=recruit&&f.isFocused()&&client.getNavigationType().isKeyboard())){recruit.onPress();return true;}
-            if(key==GLFW.GLFW_KEY_UP||key==GLFW.GLFW_KEY_DOWN){barracks.step(key==GLFW.GLFW_KEY_UP?-1:1);return true;}
+            if(key==GLFW.GLFW_KEY_UP||key==GLFW.GLFW_KEY_DOWN){barracks.step(key==GLFW.GLFW_KEY_UP?-1:1);setFocused(null);return true;}
             if((key==GLFW.GLFW_KEY_PAGE_UP||key==GLFW.GLFW_KEY_PAGE_DOWN)&&barracks.scroll(key==GLFW.GLFW_KEY_PAGE_UP?-1:1))return true;
         }
         return super.keyPressed(key,scan,mods);
