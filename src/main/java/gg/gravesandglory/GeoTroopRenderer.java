@@ -30,23 +30,18 @@ import java.util.Set;
  * Draws a rebuilt troop through GeckoLib (unit animation rebuild, docs/anim-rebuild/PLAN.md); TroopRenderer hands it the troops it
  * covers (handles). The rig is one model for every tier, face and side: the per-bone rules in troop_rig/&lt;troop&gt;.json (written by
  * art/anim/&lt;troop&gt;/build_rig.py) choose which bones show for the troop's armour tier, weapon tier, face and shield, and the texture
- * is the tier's sheet in the side's cloth. -Dgravesandglory.geoTroops=false draws the old model instead; =all also draws the PREVIEW troops.
+ * is the tier's sheet in the side's cloth. -Dgravesandglory.geoTroops=false draws the old model instead; =all also draws the PREVIEW troops (GeoTroops).
  */
 final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRenderer<E, GeoTroop> {
     private static final String MOD = "gravesandglory";
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("gravesandglory/geo");
-    static final boolean ENABLED = !"false".equals(System.getProperty("gravesandglory.geoTroops"));
-    /** The troops drawn this way: those Kort approved through the review booth (docs/anim-rebuild/REVIEW-BOOTH.md). Every other troop
-     *  keeps the old model and clips until its batch is approved; then it moves from PREVIEW to here. */
-    private static final Set<String> APPROVED = Set.of("knight");
-    /** Rebuilt troops not yet approved: drawn this way only with -Dgravesandglory.geoTroops=all (lane testing). */
-    private static final Set<String> PREVIEW = Set.of("sentinel", "revenant", "tc_raider", "archer", "longbow", "wm_hunter", "bonebow", "stalker", "ic_arbalist", "wm_tusk", "tc_tideguard", "tc_admiral", "ic_hearthguard", "ic_breaker", "gl_marshal", "tc_harpooner", "mage", "hexer", "tc_mist", "wm_seer", "wm_hound", "gb_hollowking");
-    private static final boolean ALL = "all".equals(System.getProperty("gravesandglory.geoTroops"));
+    /** The approved and preview sets and the geoTroops flag live in GeoTroops (server-loadable: the bolt origin and the sweep follow them too). */
+    static final boolean ENABLED = GeoTroops.ENABLED;
     /** Sides with a painted sheet; any other side draws in linen. */
     private static final Set<String> SIDES = Set.of("gold", "violet", "crimson", "teal", "company", "linen");
 
     /** Whether this troop draws through GeckoLib. */
-    static boolean handles(TroopModels.Look l) { return ENABLED && l != null && (APPROVED.contains(l.troop().id()) || ALL && PREVIEW.contains(l.troop().id())); }
+    static boolean handles(TroopModels.Look l) { return l != null && GeoTroops.drawn(l.troop().id()); }
 
     /** One bone's show rule: armour or weapon stages (empty for always), face variants (empty for every face), and whether it is the shield's. */
     private record Rule(String bone, Set<Integer> stages, Set<Integer> variants, boolean weapon, boolean shield, int frame) {}

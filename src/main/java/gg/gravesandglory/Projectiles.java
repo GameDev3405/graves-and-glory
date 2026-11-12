@@ -249,17 +249,19 @@ public final class Projectiles {
     /**
      * Caster v2 tip origin (Kort, 2026-11), cosmetic only: where a caster's drawn shot (a bolt, a mend) starts, the tip of its prop on its release frame.
      * The troop's cast_tip resource (art/anim/caster/build_caster_anims.py tip_json, copied by export.py) holds that tip in its body frame (blocks: x to
-     * its left, y up from its feet, z forward); here it is turned by the body yaw and set on the feet. A troop with no cast_tip keeps its eyes. Only the
+     * its left, y up from its feet, z forward); here it is turned by the body yaw and set on the feet. A troop with no cast_tip, or drawn on the old model
+     * (GeoTroops.castTip: no prop there), keeps its eyes. Only the
      * visual's start moves: the flight's ticks, the arc, the damage, the targeting and the cooldowns are still worked out from the eyes, as before.
      */
     static Vec3d castFrom(GravesAndGlory.Unit u){
-        double[] o=TIPS.computeIfAbsent(u.spec.id(),Projectiles::castTip);
+        double[] o=GeoTroops.castTip(u.spec.id())?TIPS.computeIfAbsent(u.spec.id(),Projectiles::castTip):NO_TIP; // the old model holds no prop there: the eyes
         if(o.length<3)return u.mob.getEyePos();
         double yaw=Math.toRadians(u.mob.getBodyYaw()),s=Math.sin(yaw),c=Math.cos(yaw);
         Vec3d from=u.mob.getPos().add(o[0]*c-o[2]*s,o[1],o[0]*s+o[2]*c); // left (cos, 0, sin), forward (-sin, 0, cos)
         if(TIP_LOGS.getAndIncrement()<4)TIP_LOG.info("cast tip {}: from {} eye {} body yaw {}",u.spec.id(),from,u.mob.getEyePos(),u.mob.getBodyYaw());
         return from;
     }
+    private static final double[] NO_TIP={};
     private static final java.util.Map<String,double[]> TIPS=new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.concurrent.atomic.AtomicInteger TIP_LOGS=new java.util.concurrent.atomic.AtomicInteger();
     private static final org.slf4j.Logger TIP_LOG=org.slf4j.LoggerFactory.getLogger("gravesandglory/cast-tip");

@@ -33,7 +33,7 @@ there, and `booth.py decide` turns his verdict into the lane's next step.
    - `resubmit`: the lane tip moved after the batch was built. Build again.
    - `wait`: Kort has not sent a review of this round. Do nothing.
    - `invalid`: stop and tell Kort; do not act on the verdict.
-8. **Reach `main` only through `tools/land.py`, never push.** A troop joins `GeoTroopRenderer.APPROVED` in the lane
+8. **Reach `main` only through `tools/land.py`, never push.** A troop joins `GeoTroops.APPROVED` in the lane
    whose batch Kort approves, so the landing switches that troop to GeckoLib.
 
 ## Notes

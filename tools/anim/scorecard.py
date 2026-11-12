@@ -66,7 +66,7 @@ REPO = os.path.dirname(os.path.dirname(HERE))
 LIMITS_PATH = os.path.join(HERE, "scorecard_limits.json")
 APPROVED_PATH = os.path.join(HERE, "scorecard_approved.json")
 ASSETS = "src/main/resources/assets/gravesandglory"
-RENDERER = "src/main/java/gg/gravesandglory/GeoTroopRenderer.java"
+RENDERER = "src/main/java/gg/gravesandglory/GeoTroops.java"  # the APPROVED and PREVIEW sets (GeoTroopRenderer reads them)
 DESIGN = "sheets/design.json"
 KNIGHT = "knight"
 

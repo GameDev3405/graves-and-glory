@@ -26,7 +26,7 @@ checklist; it points back here.
 ## Which pipeline is live (check first)
 
 ```
-grep -n "APPROVED =\|PREVIEW =" src/main/java/gg/gravesandglory/GeoTroopRenderer.java
+grep -n "APPROVED =\|PREVIEW =" src/main/java/gg/gravesandglory/GeoTroops.java
 ```
 - **GeckoLib (current work).** Python builders in `art/anim/` write `art/anim/<troop>/out/`; export copies them into
   `src/main/resources/assets/gravesandglory/{geo,animations,troop_rig}/`. `APPROVED` troops (only `knight` on
@@ -176,5 +176,5 @@ there, and `booth.py decide` turns his verdict into the lane's next step.
    - `resubmit`: the lane tip moved after the batch was built. Build again.
    - `wait`: Kort has not sent a review of this round. Do nothing.
    - `invalid`: stop and tell Kort; do not act on the verdict.
-8. **Reach `main` only through `tools/land.py`, never push.** A troop joins `GeoTroopRenderer.APPROVED` in the lane
+8. **Reach `main` only through `tools/land.py`, never push.** A troop joins `GeoTroops.APPROVED` in the lane
    whose batch Kort approves, so the landing switches that troop to GeckoLib.

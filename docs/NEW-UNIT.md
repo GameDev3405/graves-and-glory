@@ -118,7 +118,7 @@ Read `.claude/skills/troop-animation/SKILL.md`, `references/pipeline.md` and `re
 **5a. Register the troop** (no generator; copy `<peer>`'s entry everywhere it appears: `git grep -nw <peer> -- art/anim src/main/java`):
 - `art/anim/common/troop_rig.py` `TROOPS`: `"<tid>": ("<tid>", "build_<tid>", "TROOP", "<weapon module>", "<weapon id>", <rotation>[, "bow"|"crossbow"|"thrower"])`.
 - `art/anim/common/stances.py`: the gear group string of `<peer>` (`"onehand": "revenant tc_raider gb_hollowking"`, `"focus": ...`).
-- `src/main/java/gg/gravesandglory/GeoTroopRenderer.java` `PREVIEW` (to `APPROVED` only on the booth verdict).
+- `src/main/java/gg/gravesandglory/GeoTroops.java` `PREVIEW` (to `APPROVED` only on the booth verdict).
 - **Sword and shield troops** (knight builder, `GG_ANIM_TROOP`) have no family table; pick as `<peer>` a troop with the same weapon and shield setup, run `grep -n <peer> art/anim/knight/build_anims.py` and add `<tid>` beside it at every hit (shield troops also sit in `SHIELD` and further lists); the sword spots are `CU` (cutlass follow-through), `if V2 and not SHIELD and TROOP in (...)`, `SLASH_FIT`, the `("low_cut", "overhead") if V2 and TROOP in (...)` clip list, `EDGE_SIGN`, `D3_TROOPS`.
 - **Other families** have a per-troop table in their builder: `BOW_TROOPS` (`art/anim/archer/build_bow_anims.py`), `CAST_TROOPS` (`caster/build_caster_anims.py`), `XBOW_TROOPS` (`crossbow/build_crossbow_anims.py`), `SPEAR_TROOPS` (`spear/build_spear_anims.py`), `THROW_TROOPS` (`thrower/build_thrower_anims.py`); the greataxe builder runs through the spear builder (`SPEAR_TROOPS`); the axe builder (`axe/build_axe_anims.py`) has no table: grep it for `<peer>`. Each also imports the knight builder, so check it for `<peer>` too.
 
@@ -155,7 +155,7 @@ python tools/anim/booth.py build --config art/anim/<family>/booth.<tid>.json --t
 ```
 Publish per SKILL.md step 4 (Artifact upload and ArtifactData writes). A worker without those tools stops here and reports the batch folder; its lead uploads. The inbox shows the batch to Kort automatically while `work/booth/<batch>/db/batch.json` has no `verdict.json`: no `- kort:` line. After Kort reviews, save the verdict to `work/booth/<batch>/verdict.json` and run `python tools/anim/booth.py decide --batch-dir work/booth/<batch>`: `land` (target main: move `<tid>` from `PREVIEW` to `APPROVED`, then stage 7 with the printed lane), `fix` (the listed fix list, review again, next round with `--batch`), `resubmit`, `wait`, `invalid` (stop, tell your lead).
 
-**Done when** the scorecard is as above, the harness passed, the Sonnet review says SHIP, and `decide` prints `land`. **Commit** the registrations, `art/anim/<tid>/out/`, the exported assets (`geo/troop/`, `animations/troop/`, `troop_rig/`, `textures/entity/troop/<tid>_geo/`), `GeoTroopRenderer.java`, the review md and the booth config.
+**Done when** the scorecard is as above, the harness passed, the Sonnet review says SHIP, and `decide` prints `land`. **Commit** the registrations, `art/anim/<tid>/out/`, the exported assets (`geo/troop/`, `animations/troop/`, `troop_rig/`, `textures/entity/troop/<tid>_geo/`), `GeoTroops.java`, the review md and the booth config.
 **Common failures.** A weapon pointing the wrong way (Kort rule 1); a clip keying a bone its controller does not own; `impact` differing from `attackVariants.impactTicks`; another troop's `out/` changed (shared knight builder); a speed check failing on a loaded machine (rerun once, record both).
 
 ## 6. Sound

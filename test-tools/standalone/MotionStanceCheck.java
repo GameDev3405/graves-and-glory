@@ -21,7 +21,7 @@ import static gg.gravesandglory.MotionEngineCheck.*;
 /**
  * The MotionEngine's stance rulings (animation rework design section 6.2) through its frame API: no pops through stance
  * flicker, the planted-feet hand-off into an attack, the stance keys for Hold and Run, the server's attack variant and the aim
- * fallback, and the old model's rise timing (riseAt, riseFall). Fixtures come from MotionEngineCheck. Never shipped.
+ * fallback, the old model's rise timing (riseAt, riseFall) and its cast release against the bolt. Fixtures come from MotionEngineCheck. Never shipped.
  */
 public final class MotionStanceCheck {
     public static void main(String[] args) {
@@ -34,6 +34,7 @@ public final class MotionStanceCheck {
         run("variant", () -> variant(fam));
         run("aim fallback", () -> aimFallback(seeds));
         run("rise timing", MotionStanceCheck::rise);
+        run("cast release", MotionStanceCheck::castRelease);
         if (failed > 0) {
             System.out.println("MotionStanceCheck: " + failed + " checks FAILED");
             System.exit(1);
@@ -88,6 +89,41 @@ public final class MotionStanceCheck {
         return out.toString();
     }
 
+
+    /**
+     * Gap 3: on the old model a hexer's or mist caller's cast releases on the tick its bolt leaves. The server announces the cast a beat ahead
+     * (Projectiles.drawAhead: start = beat + 10 - impactTicks) and sends the same event when the bolt leaves (Projectiles.loose: start = now -
+     * impactTicks); the engine keeps the first copy and plays caster_cast in real time up to its impact marker, whatever the unit's tempo. So the
+     * clip's impact (the release) lands on the bolt's tick; heard late, it still does, from mid-clip.
+     */
+    static String castRelease() {
+        Clip cast;
+        try { cast = Clip.parse(Files.readString(Path.of("src/main/resources/assets/gravesandglory/clips/biped/caster/caster_cast.json"))); }
+        catch (Exception e) { throw new AssertionError("caster_cast.json: " + e); }
+        int impactTicks = Arrays.stream(Spec.ATTACKVARIANTS).filter(r -> r.id().equals("caster_cast")).findFirst().orElseThrow().impactTicks();
+        check(cast.impact() == impactTicks, "caster_cast's impact marker (" + cast.impact() + " ticks) is the sheet's impactTicks (" + impactTicks + ")");
+        var fam = new MotionEngine.Family("caster", stances(), List.of(cast), Map.of(), Map.of());
+        double worst = 0;
+        for (boolean announced : new boolean[]{true, false}) for (MotionMath.Seed seed : seeds(20, 7300)) {
+            Drive d = new Drive(seed);
+            var state = new MotionEngine.State();
+            Pose out = new Pose();
+            long bolt = d.tick() + 40; // the world tick the bolt leaves (Abilities.attack: Projectiles.bolt, then loose)
+            double releaseAt = Double.NaN;
+            for (int f = 0; f < 60 * 3; f++) {
+                long tick = d.tick();
+                if (announced && tick >= bolt - 10 && d.attack == null) d.attack = new MotionInput.Attack(0, bolt - 10 + 10 - impactTicks); // drawAhead, a beat (10) ahead
+                if (tick >= bolt) d.attack = new MotionInput.Attack(0, bolt - impactTicks); // loose: equal to the announced one
+                MotionEngine.pose(d.in(), state, fam, out);
+                for (var tr : state.tracks) if (tr.kind == MotionEngine.ATTACK && Double.isNaN(releaseAt) && tr.time(d.time) >= tr.impact) releaseAt = d.time * Clip.TICKS;
+                d.step(1 / 60.0);
+            }
+            check(!Double.isNaN(releaseAt), (announced ? "announced" : "unannounced") + " cast: the clip reached its release");
+            worst = Math.max(worst, Math.abs(releaseAt - bolt));
+            check(Math.abs(releaseAt - bolt) <= 20 / 60.0 + 1e-9, (announced ? "announced" : "unannounced") + " cast, tempo " + seed.tempo() + ": release at tick " + releaseAt + ", bolt at " + bolt);
+        }
+        return "release within " + String.format("%.3f", worst) + " ticks of the bolt (60 fps frames), tempo 0.9 to 1.1, announced or not";
+    }
 
     /** A guard unit whose enemyNear flips at 20, 10 and 5 Hz for 5 s stays under the pop bar and settles to the guard. */
     static String flicker(MotionMath.Seed[] seeds) {

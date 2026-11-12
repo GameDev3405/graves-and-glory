@@ -1,6 +1,6 @@
 # Legacy clip pipeline (troops not yet on GeckoLib)
 
-Still live on 2026-11-09: the game draws every troop outside `GeoTroopRenderer.APPROVED` with these clips, and
+Still live on 2026-11-09: the game draws every troop outside `GeoTroops.APPROVED` with these clips, and
 `python tools/verify.py fast` runs `python tools/clips.py --verify`. Do not extend it. Use it only for a fix Kort asks
 for on a troop's old model; rebuilt troops are improved through their GeckoLib builder. `docs/ANIMATION-EDITING.md`
 is the user guide and wins over this file.
