@@ -1244,7 +1244,7 @@ final class HoldLineChecks {
                     arcFireAim = Projectiles.aim(arcTarget.mob); arcAim = arcFireAim;
                     arcMarched = false;
                     if (ARC_CASES[arcIndex].kind().equals("moving")) { // the lead is for a troop walking a path: the dummy has one north, and last tick's step of ARC_WALK along it (the pin's teleport leaves none)
-                        var m = arcTarget.mob; arcMarched = m.getNavigation().startMovingTo(arcHome.x, arcHome.y, arcHome.z + 30, 1.0);
+                        var m = arcTarget.mob; for (int far : new int[]{12, 8, 30}) if (!arcMarched) arcMarched = m.getNavigation().startMovingTo(arcHome.x, arcHome.y, arcHome.z + far, 1.0); // a path within its follow range (30 found none)
                         m.prevX = m.getX(); m.prevZ = m.getZ() - ARC_WALK;
                     }
                     Projectiles.fire(b, arcShooter, arcTarget.mob, Abilities.visual(arcShooter), 2f);
@@ -2517,7 +2517,9 @@ final class HoldLineChecks {
             double miss = end == null ? 1e9 : end.distanceTo(to);
             float hurt = arcHealth - arcTarget.mob.getHealth();
             boolean timed = age == wantTicks && queued == wantTicks && (cd.arcTravelScale() != 1 || wantTicks == travel);
-            boolean landed = hurt > 0 && timed && (bolt ? arcShot.visual() == null && arcPath.isEmpty() : miss <= 0.3 && arcPath.size() == age);
+            // since 9ac2d05b a scattered arrow may legally miss: the dummy must be hurt only when the aim point fell on it (its box, 0.3 grown)
+            boolean onDummy = arcShot.aimPoint() == null || arcTarget.mob.getBoundingBox().expand(0.3).contains(to);
+            boolean landed = (hurt > 0 || !onDummy) && timed && (bolt ? arcShot.visual() == null && arcPath.isEmpty() : miss <= 0.3 && arcPath.size() == age);
             // R26: with the dummy still, every tick's place is on the curve from + (to - from) k/T, lifted by arcHeight(k/T, the shot's peak)
             double offCurve = 0, n = Math.max(1, arcShot.ticks());
             if (!moving) for (int k = 1; k <= arcPath.size(); k++) offCurve = Math.max(offCurve, arcPath.get(k - 1).distanceTo(from.lerp(to, k / n).add(0, BattleMath.arcHeight(k / n, arcShot.peak()), 0)));
@@ -2535,13 +2537,18 @@ final class HoldLineChecks {
             int inBlock = 0; for (var q : arcPath) if (solid(b, (int) Math.floor(q.x), (int) Math.floor(q.y), (int) Math.floor(q.z))) inBlock++;
             String shape; boolean shaped;
             if (bolt) {shaped = arcShot.peak() == 0 && arcShot.visual() == null; shape = "a particle bolt, no arrow, peak " + fmt(arcShot.peak()) + " (want none)";}
-            else if (kind.equals("short")) {double tol = Math.max(0.1 * wantPeak, 0.15); shaped = wantTicks <= 3 && Math.abs(peak - wantPeak) <= tol; shape = "peak " + fmt(peak) + " at tick " + peakAt + " of " + wantTicks + " (want the sheet's " + fmt(wantPeak) + " +/- " + fmt(tol) + ", in 3 ticks at most)";}
+            else if (kind.equals("short")) {double tol = Math.max(0.1 * wantPeak, 0.15); int most = (int) Math.ceil(5.5 / cd.arrowSpeed()); shaped = wantTicks <= most && Math.abs(peak - wantPeak) <= tol; shape = "peak " + fmt(peak) + " at tick " + peakAt + " of " + wantTicks + " (want the sheet's " + fmt(wantPeak) + " +/- " + fmt(tol) + ", in " + most + " ticks at most: about 5 blocks at the sheet's arrow speed, 1.0 a tick since 18abf916)";}
             else if (kind.equals("roof")) { // N2: an arc, capped by the roof: the roof's underside over the line's middle, less the margin (the shape there is 1)
                 double cap = arcRoofY - from.lerp(aimed, .5).y - Projectiles.COVER_MARGIN;
                 shaped = Math.abs(arcShot.peak() - cap) <= 0.02 && peak > 0 && peak <= cap + 0.02 && peak <= 2.5 && inBlock == 0;
                 shape = "under the roof, peak " + fmt(peak) + " at tick " + peakAt + ", the shot's own " + fmt(arcShot.peak()) + " of the open sky's " + fmt(wantPeak) + " (want the roof's cap " + fmt(cap) + " +/- 0.02, over 0 and 2.5 at most), " + inBlock + " ticks inside a block (want none)";
             }
-            else if (moving) {double walked = Math.sqrt(GravesAndGlory.Battle.horizontalDistance(arcFireAim, arcAim)); shaped = walked >= ARC_WALK * (wantTicks - 2) && miss <= 0.05; shape = "at a dummy walking a path at the loose (" + arcMarched + ") that walked " + fmt(walked) + " sideways in its flight (want " + fmt(ARC_WALK * (wantTicks - 2)) + " or more), peak " + fmt(peak) + ", the arrow led it onto its landing place (N6: want 0.05 at most of the led aim point)";}
+            else if (moving) { // N6: the aim point is the dummy's landing place (led by its walk), scattered: within 3 sigma of where the dummy is when the arrow lands
+                double walked = Math.sqrt(GravesAndGlory.Battle.horizontalDistance(arcFireAim, arcAim)), sigma = BattleMath.arrowSigma(cd.arrowSpreadBase(), cd.arrowSpreadPerBlock(), dist);
+                Vec3d now = Projectiles.aim(arcTarget.mob); double lead = Math.hypot(to.x - now.x, to.z - now.z), still = Math.hypot(to.x - arcFireAim.x, to.z - arcFireAim.z);
+                shaped = arcMarched && walked >= ARC_WALK * (wantTicks - 2) && miss <= 0.05 && lead <= 3 * sigma + 0.5;
+                shape = "at a dummy walking a path at the loose (" + arcMarched + ", want true) that walked " + fmt(walked) + " sideways in its flight (want " + fmt(ARC_WALK * (wantTicks - 2)) + " or more), peak " + fmt(peak)
+                    + ", the arrow " + fmt(miss) + " from its aim point (want 0.05), the aim point " + fmt(lead) + " from the dummy at the landing (want 3 sigma + 0.5 = " + fmt(3 * sigma + 0.5) + " at most; " + fmt(still) + " from where it stood at the loose)";}
             else if (id.equals("archer")) {bowPeak = peak; shaped = Math.abs(peak - 5.5) <= 0.15; shape = "peak " + fmt(peak) + " over the straight line at tick " + peakAt + " (want 5.5 +/- 0.15; the sheet's " + fmt(wantPeak) + ")";}
             else if (scale > 0) {double ratio = peak / BattleMath.arcPeak(dist, cd.volleyPeakPerBlock(), cd.volleyPeakMax(), 1), tol = id.equals("ic_ballista") ? 0.05 : 0.02; shaped = bowPeak > 0.5 && Math.abs(ratio - scale) <= tol; shape = "peak " + fmt(peak) + " at tick " + peakAt + ", " + String.format(Locale.ROOT, "%.3f", ratio) + " of a bow's at this shot's own distance (want " + fmt(scale) + " +/- " + fmt(tol) + ")";}
             else {shaped = Math.abs(peak) <= 0.05 && arcShot.peak() == 0; shape = "peak " + fmt(peak) + " (want a straight flight, within 0.05 of the line)";}

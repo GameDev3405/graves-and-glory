@@ -89,7 +89,7 @@ final class GeoGaps {
     boolean stepBash(MinecraftClient c, int k) {
         if (run >= 3) { GeoTroopRenderer.PROBE = null; return true; }
         int rk = k - runStart;
-        if (rk == 1) { armed = false; if (GeoTroopRenderer.PROBE == null) installProbe(c); foot.setLength(0); pose.setLength(0); Phase1Checks.server(c, b -> setupBash(b, run)); }
+        if (rk == 1) { armed = false; installProbe(c); /* its own probe every run, even over GeoDraws' chain from an earlier suite */ foot.setLength(0); pose.setLength(0); Phase1Checks.server(c, b -> setupBash(b, run)); }
         if (rk == H) Phase1Checks.server(c, this::strike);
         String ang = GeoKnightChecks.CAP_ANG[run];
         var e = c.world == null ? null : c.world.getEntityById(victimId);

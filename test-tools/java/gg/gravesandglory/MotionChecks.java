@@ -994,7 +994,7 @@ public final class MotionChecks {
             }
         }
         void judgeLateGeo() {
-            boolean pass = lateWhy.isEmpty() && forgetAt > impactTicks + 10 && backAt >= 0 && backAt <= 5 && maxDiff <= 2 && gRate1 && maxQueue == 1 && compared >= 1 && dupSent
+            boolean pass = lateWhy.isEmpty() && forgetAt > impactTicks + 10 && backAt >= 0 && backAt <= 5 && maxDiff <= 2 && gRate1 && maxQueue == 1 && compared >= 2 && dupSent
                 && probeTracks == 0 && probeWait >= 10;
             report("mo-late-join", pass, String.format(Locale.ROOT, "GeckoLib knight (AttackController, the world clock): its clip %s (%.0f ticks, impact marker %.0f, variant impactTicks %d) forgotten and caught up %.0f ticks in, where the old impactTicks + 10 window had closed at tick %d: back %s (want 5 or less, before the clip ends), shown on %d frames read, largest gap between its clip time and the world clock's %.2f ticks (want 2 or less), rate 1 throughout %b; queued at most %d after a repeated catch-up %b (want 1); forgotten again %s: %d frames showed the ended swing over %d ticks (want 0 over 10), the catch-up queued it %d times%s",
                 gClip, gLen, gImpact, impactTicks, forgetAt, impactTicks + 10, backAt < 0 ? "never" : "after " + backAt + " ticks", compared, maxDiff, gRate1, maxQueue, dupSent,
