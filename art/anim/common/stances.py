@@ -304,9 +304,14 @@ RALLY_LAG = {}
 RALLY_UP = {"tc_harpooner": dict(right_arm=2.0, right_forearm=1.5)}
 
 
+# per troop overrides of its gear's RALLY row (Kort's rule 6: the order in the troop's own manner)
+#   tc_raider: the cutlass brandished out to the side, the chest turned and dropped behind it
+RALLY_OWN = {"tc_raider": dict(lift=112, keep=0.35, fore=-34, out=-24, chest=(-3, -6))}
+
+
 def rally_pose(tr, e, c, t=None):
     """The ready pose with the rally at arm envelope e and chest envelope c (0..1.07)."""
-    cfg = RALLY[tr.gear]
+    cfg = {**RALLY[tr.gear], **RALLY_OWN.get(tr.tid, {})}
     P = copy_pose(tr.ready)
     if tr.tid in RALLY_POSE:
         off = "left" if cfg["arm"] == "right" else "right"
@@ -380,12 +385,26 @@ XH = [30, -15, 10]      # xbow hold: right arm lift, right arm tuck, left arm ou
 HOLD_FIT = {"wm_hunter": {"right_forearm": (0.0, -8.0, 0.0)}}
 
 
+def _hold_raider(P):
+    """Crouched side-on, the cutlass cocked high over the sword shoulder to cut, the free hand out low fending."""
+    chest(P, torso_x=4, torso_y=10, head_x=-6, head_y=-10, off="left")
+    lift_arm(P, "right", 48, keep=0.35)
+    P["right_forearm"][0][0] -= 18
+    lift_arm(P, "left", 16, keep=0.0)
+    P["left_arm"][0][2] -= 10
+
+
+HOLD_OWN = {"tc_raider": _hold_raider}
+
+
 def hold_pose(tr, phase):
     """Weight low and centred, the weapon up and pointed at the threat; phase 0..1 round the 48 tick breath."""
     P = copy_pose(tr.ready)
     g = tr.gear
     br = math.sin(2 * math.pi * phase)
-    if g in ("onehand",):
+    if tr.tid in HOLD_OWN:
+        HOLD_OWN[tr.tid](P)
+    elif g in ("onehand",):
         chest(P, torso_x=2, head_x=-3, off="left")
         lift_arm(P, "right", 12, keep=0.55)
         P["right_forearm"][0][0] -= 8
@@ -480,11 +499,16 @@ def fallback_fit(tr, base):
     base[hand][0] = from_mat((to_mat(base[arm][0]) @ to_mat(base[fore][0])).T @ world)
 
 
-# per troop: the backward walk's (amplitude about the mean, extra hips drop px, hips yaw deg toward the shield side). The
-# hearthguard (Kort's rule 6, 2026-11-10) gives ground short-stepped, shield side leading; every other troop keeps (0.7, 0, 0).
-# Its extra 0.6 px hips drop is gone (batch review 2026-11-11): the walk is not re-solved here, so the drop pushed the boot 1.33 px
-# under the ground at tick 0 (focus check floor FAIL); without it the floor row is the family's 0.73 WARN.
-FALLBACK_LEGS = {"ic_hearthguard": (0.55, 0.0, 7.0)}
+# per troop backward step: per bone amplitude (default 0.7 of walk_legs) and a hips (rot, pos) offset over the cycle
+#   ic_hearthguard (Kort's rule 6, 2026-11-10): gives ground short-stepped (0.55), shield side leading (hips yaw 7 deg toward the
+#     shield side). Its extra 0.6 px hips drop is gone (batch review 2026-11-11): the walk is not re-solved here, so the drop pushed
+#     the boot 1.33 px under the ground at tick 0 (focus check floor FAIL); without it the floor row is the family's 0.73 WARN.
+#   tc_raider: a quick low backward shuffle, knees bent, steps a little wider
+FALLBACK_LEGS = {
+    "ic_hearthguard": dict(amp={}, base=0.55, hips=lambda ph: ((0.0, 7.0, 0.0), (0.0, 0.0, 0.0))),
+    "tc_raider": dict(amp={}, base=0.85,
+                      hips=lambda ph: ((3.0, 8.0, 2.0 * math.sin(ph)), (0.4 * math.sin(ph), -1.0, 0.0))),
+}
 
 
 def build_fallback(tr):
@@ -536,8 +560,7 @@ def build_fallback(tr):
 
     up_clip = bake(frames_of(N, up, loop=True), N, True)
 
-    # legs: walk_legs reversed in time, amplitude 0.7 about its mean
-    amp, drop, yaw = FALLBACK_LEGS.get(tr.tid, (0.7, 0.0, 0.0))
+    # legs: walk_legs reversed in time, amplitude 0.7 about its mean (per troop: FALLBACK_LEGS)
     rots = {}
     for b in walk["bones"]:
         pr = {"rotation": [], "position": []}
@@ -548,19 +571,23 @@ def build_fallback(tr):
             mean = np.mean([np.interp(np.linspace(0, ts[-1], 64, endpoint=False), ts, vs[:, i]) for i in range(3)], axis=1)
             rots[(b, chan)] = (ts, vs, mean)
 
+    own = FALLBACK_LEGS.get(tr.tid)
+
     def legs(t):
         out = {}
         for (b, chan), (ts, vs, mean) in rots.items():
             tt = (N - t) / TPS % L if t > 0 else 0.0
             v = np.array([np.interp(tt, ts, vs[:, i]) for i in range(3)])
-            v = mean + amp * (v - mean)
+            v = mean + (own["amp"].get(b, own["base"]) if own else 0.7) * (v - mean)
             r, q = out.get(b, (None, None))
             out[b] = (v, q) if chan == "rotation" else (r, v)
         for b, (r, q) in list(out.items()):
             if b == "hips":
-                q = (q if q is not None else np.zeros(3)) + np.array([0, -0.5 + drop if drop else -0.5, 0.0])
-                r = r if r is not None else np.zeros(3)
-                out[b] = (r + np.array([0.0, yaw, 0.0]) if yaw else r, q)
+                q = (q if q is not None else np.zeros(3)) + np.array([0, -0.5, 0.0])
+                if own:
+                    hr, hq = own["hips"](2 * math.pi * t / N)
+                    r, q = (r if r is not None else np.zeros(3)) + np.array(hr), q + np.array(hq)
+                out[b] = (r if r is not None else np.zeros(3), q)
             if r is None:
                 out[b] = (np.zeros(3), q)
         return out

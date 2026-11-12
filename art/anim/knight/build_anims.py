@@ -1758,7 +1758,149 @@ def stance_clips():
         legs["wall"] = dict(legs["wall"], hips=(r, (px, py + 1.25, pz)))
     out.update({"stance_%s_legs" % k: stance_legs(v, STANCE_LIFE.get(k, 1.0), k == "ready", hang=ALIVE and k == "wall")
                 for k, v in legs.items()})
+    if TROOP in OWN:
+        out = own_stance_clips(out)
     return out
+
+
+# ------------------------------------------------------------------------------------------------
+# Own stance footing, stance character and idle (Kort's rule 6, 2026-11-10: every clip suits this unit and its weapon) for the
+# shieldless one-hand troops. Keyed per troop; every other troop builds exactly as before. Only the stance and idle clips
+# change: attacks, hits and deaths still start from READY_HIPS / READY_FEET and the shared idle (idle_start), so they do not
+# drift. Each foot target stays within about 1 px of the ready footing so an attack still blends in without a skid.
+#   tc_raider (Drowned Raider, cutlass): sea legs. Wide and low, toes out, the hips rolling side to side as on a deck,
+#     chest turned side-on behind the cutlass, chin up.
+# ------------------------------------------------------------------------------------------------
+
+OWN = ("tc_raider",)
+OWN_LEGS = {
+    "tc_raider": {
+        "ready": {"hips": ((1.0, 12.0, 0.0), (0.0, -1.9, 0.2)), "right": (-4.3, 2.0, 2.2), "left": (4.1, 2.0, -1.6), "yaw": (-22.0, 16.0)},
+        "brace": {"hips": ((3.0, 16.0, 0.0), (0.0, -2.8, 0.5)), "right": (-4.7, 2.0, 3.0), "left": (4.5, 2.0, -2.4), "yaw": (-24.0, 18.0)},
+        "wall": {"hips": ((5.0, 20.0, 0.0), (0.0, -3.8, 0.7)), "right": (-4.8, 2.0, 4.0), "left": (4.4, 2.0, -3.4), "yaw": (-26.0, 18.0)},
+    },
+}
+# The legs' own life, added to the stance hips each sample (u = 0..1 round the loop, so it closes): (rot, pos) offsets.
+OWN_HIPS_LIFE = {
+    # the deck roll: the hips rock from foot to foot and dip as they cross
+    "tc_raider": lambda u: ((0.0, 1.2 * math.sin(2 * math.pi * u), 2.6 * math.sin(2 * math.pi * u)),
+                            (0.45 * math.sin(2 * math.pi * u), -0.15 * abs(math.cos(2 * math.pi * u)), 0.0)),
+}
+# The upper body's own character over every stance pose: fixed offsets (torso, head, left arm, left forearm) and a life
+# function of u giving (torso, head) offsets.
+OWN_UPPER = {
+    "tc_raider": {"torso": (-2.0, 8.0, 0.0), "head": (-4.0, -8.0, 0.0), "left_arm": (0.0, 0.0, -4.0), "left_forearm": 0.0,
+                  # the chest counter-rolls the deck roll so the head stays level-ish
+                  "life": lambda u: ((0.0, -0.8 * math.sin(2 * math.pi * u), -1.8 * math.sin(2 * math.pi * u)),
+                                     (0.0, 0.0, 1.2 * math.sin(2 * math.pi * u)))},
+}
+
+
+def _own_upper(clip):
+    """A baked stance upper clip with the troop's OWN_UPPER character added (re-sampled, re-baked; the loop still closes)."""
+    cfg = OWN_UPPER[TROOP]
+    n = STANCE_TICKS * SUB
+    out = []
+    for i in range(n + 1):
+        u = (i % n) / n
+        t = u * STANCE_TICKS / TPS
+        f = {}
+        for b, ch in clip["bones"].items():
+            r = curve_at(ch["rotation"], t) if "rotation" in ch else (0.0, 0.0, 0.0)
+            p = curve_at(ch["position"], t) if "position" in ch else None
+            f[b] = (r, p)
+        lt, lh = cfg["life"](u)
+        for b, add in (("torso", np.add(cfg["torso"], lt)), ("head", np.add(cfg["head"], lh)), ("left_arm", cfg["left_arm"]),
+                       ("left_forearm", (cfg["left_forearm"] * -1.0, 0.0, 0.0))):
+            if b in f:
+                f[b] = (tuple(np.add(f[b][0], add)), f[b][1])
+        out.append(f)
+    return bake(out, STANCE_TICKS)
+
+
+def curve_at(ch, t):
+    """Linear sample of one baked channel ({time: [x, y, z]}) at t seconds."""
+    ks = sorted((float(k), v) for k, v in ch.items())
+    ts = [k for k, _ in ks]
+    return tuple(float(np.interp(t, ts, [v[c] for _, v in ks])) for c in range(3))
+
+
+def own_stance_legs(spec):
+    life = OWN_HIPS_LIFE[TROOP]
+    n = STANCE_TICKS * SUB
+    out, guesses = [], {}
+    a_br, _, _ = feel.stance_amps(STANCE_LIFE.get("ready", 1.0), True)
+    for i in range(n + 1):
+        u = (i % n) / n
+        br = a_br * math.sin(2 * math.pi * u)
+        (rx, ry, rz), (px, py, pz) = spec["hips"]
+        (lx, ly, lz), (qx, qy, qz) = life(u)
+        hips = ((rx + lx, ry + ly, rz + lz), (px + qx, py + qy - 0.1 * br, pz + qz))
+        pose = {"hips": hips}
+        f = {"hips": hips}
+        for side in ("right", "left"):
+            pose[side + "_leg"] = ((0, -hips[0][1], 0), (0, 0, 0))
+            yaw = spec["yaw"][0 if side == "right" else 1]
+            lr, sr, fr = leg_pose(pose, side, spec[side], 0.0, foot_yaw=yaw, guess=guesses.get(side))
+            guesses[side] = (lr[0], lr[2], sr[0])
+            f[side + "_leg"], f[side + "_shin"], f[side + "_foot"] = (lr, None), (sr, None), (fr, None)
+        out.append(f)
+    return bake(out, STANCE_TICKS)
+
+
+def own_stance_clips(out):
+    for k in STANCE_UPPER:
+        out["stance_%s_upper" % k] = _own_upper(out["stance_%s_upper" % k])
+    for k, spec in OWN_LEGS[TROOP].items():
+        out["stance_%s_legs" % k] = own_stance_legs(spec)
+    return out
+
+
+# The troop's own idle (at ease, out of a fight): feet (ankle targets), foot yaw, hips (rot, pos), and the upper pose; the life
+# is the same per-troop life (the raider's deck roll) at the idle's slower 60 tick loop.
+OWN_IDLE = {
+    "tc_raider": {"right": (-3.7, 2.0, 0.8), "left": (3.5, 2.0, -0.6), "yaw": (-16.0, 14.0), "hips": ((0.0, 6.0, 0.0), (0.0, -1.0, 0.0)),
+                  "torso": (-1.0, 6.0, 0.0), "head": (-5.0, -6.0, 0.0),
+                  # the cutlass carried low and forward, the free fist set on the hip
+                  "right_arm": (-12.0, 0.0, 6.0), "right_forearm": -30.0, "right_hand": (52.0, 0.0, 0.0),
+                  "left_arm": (4.0, 0.0, -24.0), "left_forearm": -62.0},
+}
+
+
+def own_idle_clips():
+    c = OWN_IDLE[TROOP]
+    life = OWN_HIPS_LIFE[TROOP]
+    ulife = OWN_UPPER[TROOP]["life"]
+    n = IDLE_TICKS * SUB
+    legs, upper, guesses = [], [], {}
+    for i in range(n + 1):
+        u = (i % n) / n
+        br = math.sin(2 * math.pi * u)
+        (lx, ly, lz), (qx, qy, qz) = life(u)
+        (rx, ry, rz), (px, py, pz) = c["hips"]
+        hips = ((rx + lx, ry + ly, rz + lz), (px + qx, py + qy - 0.08 * br, pz + qz))
+        pose, out = {"hips": hips}, {"hips": hips}
+        for side in ("right", "left"):
+            pose[side + "_leg"] = ((0, -hips[0][1], 0), (0, 0, 0))
+            lr, sr, fr = leg_pose(pose, side, c[side], 0.0, foot_yaw=c["yaw"][0 if side == "right" else 1], guess=guesses.get(side))
+            guesses[side] = (lr[0], lr[2], sr[0])
+            out[side + "_leg"], out[side + "_shin"], out[side + "_foot"] = (lr, None), (sr, None), (fr, None)
+        legs.append(out)
+        lt, lh = ulife(u)
+        sw = math.sin(2 * math.pi * u - 0.6)       # the arms trail the hips' sway
+        tor = tuple(np.add(c["torso"], lt) + np.array([0.5 * br, 0.0, -0.5 * lz]))
+        upper.append({
+            "torso": (tor, None),
+            "head": (tuple(np.add(c["head"], lh) + np.array([-0.3 * br, 0.0, 0.0])), None),
+            "right_arm": ((c["right_arm"][0] - 1.2 * sw, c["right_arm"][1], c["right_arm"][2] + 0.6 * sw), None),
+            "right_forearm": ((c["right_forearm"], 0.0, 0.0), None),
+            "right_hand": (c["right_hand"], None),
+            "left_arm": ((c["left_arm"][0] + 1.6 * sw, c["left_arm"][1], c["left_arm"][2] - 0.8 * sw), None),
+            "left_forearm": ((c["left_forearm"] - 1.0 * br, 0.0, 0.0), None),
+            "left_hand": (FREE_WRIST, None),
+            "cape": ((1.0 + 0.6 * br, 0.0, 0.0), None),
+        })
+    return bake(legs, IDLE_TICKS), bake(upper, IDLE_TICKS)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -2544,7 +2686,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
-    idle_legs, idle_upper = idle_clips()
+    idle_legs, idle_upper = own_idle_clips() if TROOP in OWN else idle_clips()   # the falls keep idle_start's shared idle
     anims = {"walk_legs": gait_legs(WALK), "walk_upper": gait_upper(WALK, WALK_CARRY),
              "run_legs": gait_legs(RUN), "run_upper": gait_upper(RUN, RUN_CARRY),
              "idle_legs": idle_legs, "idle_upper": idle_upper, **attack_clips(), **stance_clips(), **hit_clips(),
