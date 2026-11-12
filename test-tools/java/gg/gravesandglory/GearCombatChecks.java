@@ -157,6 +157,15 @@ final class GearCombatChecks implements Phase1Checks.Suite {
         Phase1Checks.report("p1-gear-combat-sweep", pass, fam + ": target lost " + tl + ", the foe " + f.sweepRadius() * 0.5 + " blocks off lost " + il + (same ? " (want " + tl * f.sweepShare() + ")" : " (another troop type)") + ", the foe " + (f.sweepRadius() + 1.5) + " blocks off lost " + ol);
     }
 
+    /** C02-F1: seating a squad (round setup) restarts its commander's heavy_hand swing count, so a count from the last round never carries in. */
+    static void swingReset(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s) {
+        GearCombat.swings.put(p.getUuid(), 2);
+        GearCombat.seat(s, b.campaign.profile(p.getUuid()));
+        Integer left = GearCombat.swings.get(p.getUuid());
+        Phase1Checks.report("p1-gear-combat-swing-reset", left == null, "after two swings the squad was seated again: swing count " + left + " (want none, so the next sweep is swing 1)");
+        GearCombat.swings.remove(p.getUuid());
+    }
+
     /** A banner's command aura: a troop just inside commandRadius gains troopFactor, one just outside nothing, and the radius beats the plain one. */
     static void banner(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s) {
         String fam = familyWhere(f -> f.auraMult() > 1);
@@ -306,7 +315,7 @@ final class GearCombatChecks implements Phase1Checks.Suite {
             case 5 -> { // p1-gear-combat-sweep, -banner, -staff and -bow: one server tick each, nothing moves between placing and measuring
                 if (tick - stageAt == 1) Phase1Checks.server(c, b -> {
                     var p = sp(b, player); var s = b.squads.get(player);
-                    sweep(b, p, s); banner(b, p, s); staff(b, p, s); bow(b, p, s);
+                    sweep(b, p, s); banner(b, p, s); staff(b, p, s); bow(b, p, s); swingReset(b, p, s);
                     ok = true;
                 });
                 if (ok) { ok = false; next(tick, 6); }

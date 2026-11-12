@@ -51,8 +51,9 @@ public final class GearCombat {
     /** A human seat's Loadout: what its owner wears, with the starter fallback. */
     static GearStats.Loadout loadout(Profile p) { return GearStats.of(wearing(p)); }
 
-    /** Seats a squad's gear: its Loadout and its relic slots. A bot seat fights with no gear until part (e). */
+    /** Seats a squad's gear: its Loadout and its relic slots, and restarts its commander's heavy_hand swing count (C02-F1). A bot seat fights with no gear until part (e). */
     static void seat(GravesAndGlory.Squad s, Profile p) {
+        if (s.owner != null) swings.remove(s.owner);
         s.gear = s.bot || p == null ? GearStats.empty() : loadout(p);
         s.relics = s.gear.relics().toArray(new String[0]);
     }
