@@ -160,3 +160,13 @@ check plays them on the bind pose.
   (reactions.py, stances.py, charge.py), as before this review.
 - Rule 6: hold (stances.py, gear `staff`/`focus`) holds the caster's focus forward; brace, wall, ward and shield_up are this
   builder's caster poses. The cast's `impact` stays tick 10, the release key (the bolt leaves).
+
+### Fix round 1 (2026-11-12, from work/reviewer/CASTER-sonnet-review.md; lead: no exemption for the bells)
+
+- The grip opened: `KEY(..., lsw=)` (new, default 0.05 so every other clip is unchanged) is how firmly the left fist holds
+  its shaft point. Cast and mend raise: the left fist held 7.5 px up the shaft (`MAGE_LS`, lsw 1; it drifted back to 5.5)
+  and the right fist 1.5 px lower (`MAGE_DROP`); the forearm left the bell (2.1 / 2.07 at t8.5-9). shield_up: the right fist
+  3.5 px lower and 0.5 out, the left 9.5 px up, the staff slanted 20 deg left so the left fist rises beside the cowl; the
+  head 8 up and 8 right (`CLIP_NUDGE`): the bells (2.31 at t18.5) and the cowl clear.
+- Changed clips: attack_cast, mend_sunweaver, stance_shield_up_upper, and the three aim layers (stances.py cuts them from
+  attack_cast). Focus 6 FAIL rows -> 0; scorecard 35 clips, 0 failing. Renders `work/review/frames/r1/mage_all.jpg`.

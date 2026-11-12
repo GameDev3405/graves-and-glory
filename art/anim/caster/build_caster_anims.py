@@ -153,7 +153,7 @@ def reach(pose, target, prior, warm=None, w=0.02):
 LGRIP = tuple(map(float, _PIV["left_hand"]))
 
 
-def reach_left(pose, ls, prior, warm=None, w=0.02):
+def reach_left(pose, ls, prior, warm=None, w=0.02, lsw=0.05):
     """The left arm (x, y, z), forearm x and the shaft point s (px from the grip) putting the left fist on the focus's axis,
     nearest the prior arm and ls; s stays 3.5 px clear of the right fist on ls's side, inside the shaft."""
     prior = np.asarray(prior[:4], float)
@@ -161,7 +161,7 @@ def reach_left(pose, ls, prior, warm=None, w=0.02):
 
     def f(x):
         p = K.point(K.world(_arm("left", pose, x), "left_hand"), LGRIP)
-        return np.concatenate([4.0 * (p - wpoint(pose, S(x[4]))), w * (x[:4] - prior), [0.05 * (x[4] - ls)]])
+        return np.concatenate([4.0 * (p - wpoint(pose, S(x[4]))), w * (x[:4] - prior), [lsw * (x[4] - ls)]])
 
     x0 = np.r_[prior, min(hi, max(lo, ls))] if warm is None else warm
     x = gn(f, x0, clamp=lambda x: np.r_[x[:3], min(-2.0, max(-150.0, x[3])), min(hi, max(lo, x[4]))])
@@ -349,13 +349,13 @@ RP = (-150.0, 0.0, 30.0, -90.0)
 LP = (-55.0, 0.0, -12.0, -35.0)
 
 
-def KEY(torso, gaze, R, d, u=SIDE, rp=RP, lp=LP, q=0.0, Lq=QGRIP, lh=0.0, ls=0.0):
+def KEY(torso, gaze, R, d, u=SIDE, rp=RP, lp=LP, q=0.0, Lq=QGRIP, lh=0.0, ls=0.0, lsw=0.05):
     """lh: how far the left hand is on the focus (0 the free arm at lp, 1 the left fist solved onto the shaft); ls: the shaft
-    point (px from the grip along a) the left fist prefers."""
+    point (px from the grip along a) the left fist prefers; lsw: how hard it holds to ls (fix round 1: the mage's grip)."""
     d, u = frame(d, u)
     return {"torso": tuple(map(float, torso)), "head": tuple(map(float, gaze)), "R": tuple(map(float, R)), "d": tuple(d),
             "u": tuple(u), "rp": tuple(map(float, rp)), "lp": tuple(map(float, lp)), "q": (float(q),), "Lq": tuple(map(float, Lq)),
-            "lh": (float(lh),), "ls": (float(ls),)}
+            "lh": (float(lh),), "ls": (float(ls),), "lsw": (float(lsw),)}
 
 
 def nudge(k, **kw):
@@ -375,6 +375,12 @@ ATTACK_TICKS = 36
 IMPACT = 10         # caster_cast impactTicks: the spell leaves
 
 
+# Fix round 1 (2026-11-12): the cast's and the mend's two-handed raise: the right fist 1.5 px lower and the left fist held
+# firmly 7.5 px up the shaft (it drifted back to 5.5, where the left bell closed over the right forearm, t8.5-9)
+MAGE_LS = 7.5
+MAGE_DROP = 1.5
+
+
 def mage_set():
     """The Sunweaver, caster style v2 (docs/anim-rebuild/CASTER-V2-DESIGN.md: the staff heal). The guard: upright, the 35 px
     sun staff held upright before the lead shoulder, gripped 40% up its shaft, the free hand relaxed at the hip. The heal: the hips
@@ -392,10 +398,10 @@ def mage_set():
     # chest to the left, the only place both 8 px arms reach the shaft one over the other, clear of the cowl)
     # (batch review 2026-11-11: the left fist 5.5 px up the shaft, not 4.5: at 4.5 the left bell sleeve closed over the right
     # forearm as the light was held)
-    gather = KEY((-3, 6, 0), (-4, -8, 0), (2.0, -2.5, 6.8), unit((0.35, 0.9, 0.2)), u=FWD, rp=(-80, 0, 10, -40),
-                 lp=(-60, 0, -15, -50), lh=0.6, ls=5.5)
-    up = KEY((-6, 4, 0), (-10, -16, 0), (2.4, -0.5, 7.0), unit((0.45, 0.85, 0.2)), u=FWD, rp=(-110, 0, 10, -40),
-             lp=(-90, 0, -20, -50), lh=1, ls=5.5)
+    gather = KEY((-3, 6, 0), (-4, -8, 0), (2.0, -2.5 - MAGE_DROP, 6.8), unit((0.35, 0.9, 0.2)), u=FWD, rp=(-80, 0, 10, -40),
+                 lp=(-60, 0, -15, -50), lh=0.6, ls=MAGE_LS, lsw=1.0)
+    up = KEY((-6, 4, 0), (-10, -16, 0), (2.4, -0.5 - MAGE_DROP, 7.0), unit((0.45, 0.85, 0.2)), u=FWD, rp=(-110, 0, 10, -40),
+             lp=(-90, 0, -20, -50), lh=1, ls=MAGE_LS, lsw=1.0)
     # the light is held: a tremor, the arch deepening a little
     held = nudge(up, torso=(-1, 1, 0), head=(-2, 0, 0), R=(0.0, 0.2, 0.0))
     held2 = nudge(up, torso=(-2, 2, 0), head=(-1, 0, 0), R=(0.1, 0.3, 0.1), d=unit((0.48, 0.83, 0.24)))
@@ -441,8 +447,10 @@ def mage_set():
         # at the belly it read as the guard at 16 blocks)
         # (batch review 2026-11-11: the staff tipped 12 deg toward the foe and the fists 5.5 px apart, the left bell sat
         # on the face and on the right bell)
-        "shield_up": KEY((-2, 4, 0), (-6, 0, 0), (1.5, 1.2, 7.5), aim(76, -4), u=FWD, rp=(-120, 0, 10, -30),
-                         lp=(-120, 0, -10, -30), lh=1, ls=5.5),
+        # (fix round 1, 2026-11-12: the bells still met, 2.31 at t18.5: the right fist 3.5 px lower and 0.5 out, the left
+        # 9.5 px up the shaft, the staff slanted 20 deg to the left so the left fist rises beside the cowl, not over the right)
+        "shield_up": KEY((-2, 4, 0), (-6, 0, 0), (1.0, -2.3, 8.0), aim(76, 20), u=FWD, rp=(-120, 0, 10, -30),
+                         lp=(-120, 0, -10, -30), lh=1, ls=9.5, lsw=1.0),
     }
     # the walk carries the staff higher in the fist (upper arm forward, forearm near level), so the longer butt clears the ground
     carry = {"walk": 75.0, "run": 35.0, "u": FWD, "R": (-30.0, 0.0, 6.0), "RF": -75.0}
@@ -680,7 +688,7 @@ class Solver:
         self.lwarm = None
         self.lworst = 0.0
 
-    def pose(self, legs, torso, head, R, d, u, rp, lp, q=0.0, Lq=QGRIP, extra=None, w=0.02, lh=0.0, ls=0.0):
+    def pose(self, legs, torso, head, R, d, u, rp, lp, q=0.0, Lq=QGRIP, extra=None, w=0.02, lh=0.0, ls=0.0, lsw=0.05):
         s = {"torso": (tuple(torso), None), "head": (tuple(head), None)}
         if extra:
             s.update(extra)
@@ -696,7 +704,7 @@ class Solver:
         s["right_hand"] = (hold_wrist(pose, d, u), None)
         if lh > 1e-4:   # the left fist on the shaft (both-handed focus): solved, then blended in from the free arm by lh
             pose = fk_pose(s, legs)
-            x, e = reach_left(pose, ls, lp, self.lwarm)
+            x, e = reach_left(pose, ls, lp, self.lwarm, lsw=lsw)
             self.lwarm = x
             if lh >= 0.999:
                 self.lworst = max(self.lworst, e)
@@ -709,11 +717,11 @@ class Solver:
 
 
 def sample(keys, legs_at, sol, t, extra=None, w=0.02):
-    v = {n: interp(keys, t, n) for n in ("torso", "head", "R", "d", "u", "rp", "lp", "q", "Lq", "lh", "ls")}
+    v = {n: interp(keys, t, n) for n in ("torso", "head", "R", "d", "u", "rp", "lp", "q", "Lq", "lh", "ls", "lsw")}
     d, u = frame(v["d"], v["u"])
     head = head_local(v["head"], v["torso"], legs_at["hips"][0])
     return sol.pose(legs_at, v["torso"], head, v["R"], d, u, v["rp"], v["lp"], max(0.0, min(1.0, v["q"][0])), v["Lq"], extra, w,
-                    max(0.0, min(1.0, v["lh"][0])), v["ls"][0])
+                    max(0.0, min(1.0, v["lh"][0])), v["ls"][0], v["lsw"][0])
 
 
 def gear(samples, legs=None):
@@ -800,10 +808,10 @@ def mend_sunweaver():
     breath = nudge(g, torso=(-1, -2, 0), head=(-2, -2, 0), R=(0.2, 0.3, 0.0), d=aim(85, -16))
     # both hands on the shaft, the left above the right (as the cast's raise), the staff slanting up across the chest
     # (batch review 2026-11-11: the fists out of the cowl and the vestment, the left 5.5 px up the shaft, clear of the right)
-    gather = KEY((-3, 5, 0), (-6, -6, 0), (2.3, -2.3, 6.9), unit((0.35, 0.9, 0.2)), u=FWD, rp=(-80, 0, 10, -40),
-                 lp=(-60, 0, -15, -50), lh=0.7, ls=5.5)
-    up = KEY((-7, 2, 0), (-18, -4, 0), (2.9, 0.0, 6.6), unit((0.45, 0.86, 0.2)), u=FWD, rp=(-110, 0, 10, -40),
-             lp=(-95, 0, -20, -50), lh=1, ls=5.5)
+    gather = KEY((-3, 5, 0), (-6, -6, 0), (2.3, -2.3 - MAGE_DROP, 6.9), unit((0.35, 0.9, 0.2)), u=FWD, rp=(-80, 0, 10, -40),
+                 lp=(-60, 0, -15, -50), lh=0.7, ls=MAGE_LS, lsw=1.0)
+    up = KEY((-7, 2, 0), (-18, -4, 0), (2.9, 0.0 - MAGE_DROP, 6.6), unit((0.45, 0.86, 0.2)), u=FWD, rp=(-110, 0, 10, -40),
+             lp=(-95, 0, -20, -50), lh=1, ls=MAGE_LS, lsw=1.0)
     peak = nudge(up, torso=(-1, 0, 0), head=(-3, 0, 0), R=(0.0, 0.3, 0.0))
     # the arms open: the right fist out to the right, the staff leaning out with it; the left arm raised wide, open
     opened = KEY((-9, 0, 0), (-20, 0, 0), (-4.2, 1.2, 5.6), unit((-0.5, 0.85, 0.0)), u=FWD, rp=(-100, 0, 30, -20),
@@ -1388,6 +1396,8 @@ CLIP_NUDGE = {
     "tc_mist": {"stance_brace_upper": [("left_arm", (25, 0, 0)) + ALL, ("right_arm", (20, 0, 0)) + ALL],
                 "stance_shield_up_upper": [("left_arm", (20, 0, 0)) + ALL, ("right_arm", (12, 0, 5)) + ALL],
                 "mist": [("right_arm", (0, 0, 10), 5, 16, 3), ("head", (15, 0, 0), 8, 18, 3)]},
+    # mage shield_up: with the staff slanted the cowl met the left bell (2.2): the head tips 8 up and turns 8 to the right
+    "mage": {"stance_shield_up_upper": [("head", (-8, 8, 0)) + ALL]},
 }
 
 
@@ -1598,7 +1608,7 @@ def stance_upper(k, life, legs_spec, ticks=K.STANCE_TICKS, ready=False):
         dd = np.array(k["d"]) + np.array([0.0, 0.006 * br + 0.01 * wl, 0.0])
         lp = np.array(k["lp"]) + np.array([-0.8 * wl, 0.0, 0.0, -1.2 * wl])
         d, uu = frame(dd, k["u"])
-        s = sol.pose(legs, torso, head, R, d, uu, k["rp"], lp, lh=k["lh"][0], ls=k["ls"][0])
+        s = sol.pose(legs, torso, head, R, d, uu, k["rp"], lp, lh=k["lh"][0], ls=k["ls"][0], lsw=k["lsw"][0])
         out.append(s)
     out = gear(out)
     out[-1] = out[0]
