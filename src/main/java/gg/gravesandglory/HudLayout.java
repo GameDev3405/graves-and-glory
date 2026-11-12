@@ -67,7 +67,7 @@ public final class HudLayout {
     /** The part drawPart is drawing now, or null. */
     static String drawingPart;
     /** A corner handle's size, GUI px. */
-    public static final int HANDLE = 7;
+    public static final int HANDLE = 9;
 
     public static Path file() { return FabricLoader.getInstance().getConfigDir().resolve("gravesandglory").resolve("hud-layout.json"); }
 
@@ -313,13 +313,17 @@ public final class HudLayout {
             // the corner handle (the corner facing the screen's centre): a drag there resizes the part
             int[] hb = handleBox(part, sw, sh);
             if (hb != null) {
-                boolean on = part.equals(resizing) || mouse != null && mouse[0] >= hb[0] && mouse[0] < hb[0] + hb[2] && mouse[1] >= hb[1] && mouse[1] < hb[1] + hb[3];
+                boolean on = part.equals(resizing) || mouse != null && onHandle(hb, mouse[0], mouse[1]);
                 drawHandle(g, hb, on);
                 lastHandles.put(part, hb);
                 if (part.equals(resizing)) sizeLabel(g, font, hb, drawnScale(part), sw, sh);
             }
         }
     }
+
+    /** The sizes a handle drag clings to, and how near (as a size) it must come. */
+    static final double[] MAGNETS = {1, 1.5, 2};
+    static final double MAGNET = 0.04;
 
     /** The handles drawn last frame in edit mode, part to its box (GUI px), for the checks. */
     public static final Map<String, int[]> lastHandles = new LinkedHashMap<>();
@@ -334,7 +338,16 @@ public final class HudLayout {
     /** The n x n square inside the corner of box b {x, y, w, h} that faces the centre of a sw x sh screen. */
     public static int[] corner(int[] b, int sw, int sh, int n) {
         boolean right = b[0] + b[2] / 2.0 < sw / 2.0, down = b[1] + b[3] / 2.0 < sh / 2.0;
-        return new int[]{right ? b[0] + b[2] - n : b[0], down ? b[1] + b[3] - n : b[1], n, n};
+        n = Math.max(5, Math.min(n, Math.min(b[2], b[3]) / 3)); // never larger than a third of a small part
+        int x = right ? b[0] + b[2] : b[0] - n, y = down ? b[1] + b[3] : b[1] - n; // just outside the corner: it covers none of the part
+        return new int[]{Math.max(0, Math.min(sw - n, x)), Math.max(0, Math.min(sh - n, y)), n, n};
+    }
+
+    /** A press or hover on handle h (GUI px): the square grown to at least 11 px, easy to hit at GUI Scale 1 when drawn small. */
+    public static boolean onHandle(int[] h, double x, double y) {
+        if (h == null) return false;
+        int p = Math.max(1, (11 - h[2] + 1) / 2);
+        return x >= h[0] - p && x < h[0] + h[2] + p && y >= h[1] - p && y < h[1] + h[3] + p;
     }
 
     /** A corner handle: a brass square with a dark core and a light diagonal, brighter under the cursor or while dragged. */
@@ -418,11 +431,13 @@ public final class HudLayout {
                 if (drawn(part) != (pass == 0)) continue;
                 int[] h = handleBox(part, sw, sh), b = boxes.get(part);
                 double[] u = base.get(part);
-                if (h == null || b == null || u == null || gx < h[0] || gx >= h[0] + h[2] || gy < h[1] || gy >= h[1] + h[3]) continue;
+                if (h == null || b == null || u == null || !onHandle(h, gx, gy)) continue;
                 int[] gb = guiBox(part);
                 handX = h[0] > gb[0] + gb[2] / 2.0 ? 1 : -1; handY = h[1] > gb[1] + gb[3] / 2.0 ? 1 : -1;
                 fixX = handX > 0 ? b[0] : b[0] + b[2]; fixY = handY > 0 ? b[1] : b[1] + b[3];
                 baseW = u[0]; baseH = u[1];
+                double[] p0 = toSpace(part, gx, gy); // where on the handle it was taken, from the corner it moves: no jump on the first move
+                grabX = p0[0] - (handX > 0 ? b[0] + b[2] : b[0]); grabY = p0[1] - (handY > 0 ? b[1] + b[3] : b[1]);
                 resizing = part; dragging = null;
                 return true;
             }
@@ -434,12 +449,14 @@ public final class HudLayout {
     public static double resizeScale(double px, double py, double fx, double fy, int hx, int hy, double bw, double bh, int W, int H, int margin) {
         double dw = (px - fx) * hx, dh = (py - fy) * hy;
         double s = (dw * bw + dh * bh) / Math.max(1, bw * bw + bh * bh);
+        for (double m : MAGNETS) if (Math.abs(s - m) < MAGNET) s = m; // 100%, 150% and 200% hold the handle a little
         return Math.min(PanelLayout.snapScale(s), Math.max(PanelLayout.MIN_SCALE, fit(bw, bh, W, H, margin)));
     }
 
     /** The cursor moved during a resize (GUI px): the part takes the size, its held corner kept, clamped on screen. */
     static void resizeTo(double gx, double gy) {
         double[] p = toSpace(resizing, gx, gy);
+        p[0] -= grabX; p[1] -= grabY;
         int[] wh = space(resizing);
         double s = resizeScale(p[0], p[1], fixX, fixY, handX, handY, baseW, baseH, wh[0], wh[1], MARGIN);
         int w = (int) Math.round(baseW * s), h = (int) Math.round(baseH * s);
@@ -504,7 +521,8 @@ public final class HudLayout {
                 if (!o.has("h") || !o.has("v") || !o.has("x") || !o.has("y")) continue;
                 String h = o.get("h").getAsString(), v = o.get("v").getAsString();
                 double x = o.get("x").getAsDouble(), y = o.get("y").getAsDouble();
-                double sc = o.has("s") ? o.get("s").getAsDouble() : 1; // a layout saved before sizes: its own size
+                double sc = 1; // a layout saved before sizes, or a size that cannot be read: its own size, the place kept
+                try { if (o.has("s")) sc = o.get("s").getAsDouble(); } catch (RuntimeException bad) { sc = 1; }
                 if (!validH(h) || !validV(v) || !Double.isFinite(x) || !Double.isFinite(y)) continue;
                 places.put(part.getKey(), new Place(h, v, clamp(x, -1, 1), clamp(y, -1, 1), Double.isFinite(sc) ? PanelLayout.snapScale(sc) : 1)); // place() clamps it on screen besides
             }

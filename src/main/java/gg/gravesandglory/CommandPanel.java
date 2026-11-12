@@ -199,6 +199,11 @@ public final class CommandPanel {
     static double ps = 1;
     /** The size the panel was drawn at last frame (its scale, smaller where the screen has no room). */
     public static double panelScale() { return ps; }
+    /** The largest the panel may be drawn on a sw x sh GUI: on screen, at most 55% of its width, and room left above or below it for
+     *  the edit toolbar, so at 854 it cannot swallow the screen. */
+    static double cap(double w, double h, int sw, int sh) {
+        return Math.min(HudLayout.fit(w, h, sw, sh, PanelLayout.MARGIN), Math.min(sw * 0.55 / Math.max(1, w), (sh - 2.0 * PanelLayout.MARGIN - 30) / Math.max(1, h)));
+    }
     static int pax, pay, baseW = 1, baseH = 1, rsx, rsy;
     /** A body x or y where it shows this frame (placement, slide and size), GUI px. */
     static double sX(double x) { return pax + ox + ps * (x - pax); }
@@ -272,7 +277,7 @@ public final class CommandPanel {
         var win = MinecraftClient.getInstance().getWindow();
         double k = UiCanvas.hudK() / win.getScaleFactor(); // GUI px per HUD canvas px
         // the player's size (its corner handle in edit mode), never larger than the screen; scaled around the bounds' top left
-        ps = Math.min(PanelLayout.scale, HudLayout.fit(ubw, ubh, sw, sh, PanelLayout.MARGIN)); pax = bx0; pay = by0; baseW = ubw; baseH = ubh;
+        ps = Math.min(PanelLayout.scale, cap(ubw, ubh, sw, sh)); pax = bx0; pay = by0; baseW = ubw; baseH = ubh;
         int bw = (int) Math.round(ubw * ps), bh = (int) Math.round(ubh * ps);
         double[] at = PanelLayout.place(bw, bh, sw, sh, k, vanillaHud(sw, sh));
         int sx = at == null ? 0 : (int) Math.round(at[0]) - bx0, sy = at == null ? 0 : (int) Math.round(at[1]) - by0;
@@ -542,9 +547,10 @@ public final class CommandPanel {
         if (inside(RESET, x, y)) { PanelLayout.reset(); HudLayout.reset(); return; } // Reset restores the panel and every HUD part
         if (inside(DONE, x, y)) { leaveEdit(c); return; }
         if (inside(TOOLBAR, x, y)) return;
-        if (handle != null && rest != null && x >= handle[0] && x < handle[0] + handle[2] && y >= handle[1] && y < handle[1] + handle[3]) { // the panel's corner handle: a resize, the opposite corner held
+        if (rest != null && HudLayout.onHandle(handle, x, y)) { // the panel's corner handle: a resize, the opposite corner held
             handX = handle[0] > rest[0] + rest[2] / 2.0 ? 1 : -1; handY = handle[1] > rest[1] + rest[3] / 2.0 ? 1 : -1;
             fixX = handX > 0 ? rest[0] : rest[0] + rest[2]; fixY = handY > 0 ? rest[1] : rest[1] + rest[3];
+            grabX = x - (handX > 0 ? rest[0] + rest[2] : rest[0]); grabY = y - (handY > 0 ? rest[1] + rest[3] : rest[1]);
             resizing = true; return;
         }
         if (HudLayout.pressHandle(x, y)) return; // a HUD part's corner handle
@@ -558,7 +564,8 @@ public final class CommandPanel {
         if (!editing) return;
         if (sliding) slideTo(x);
         else if (resizing && rest != null) {
-            double sc = HudLayout.resizeScale(x, y, fixX, fixY, handX, handY, baseW, baseH, rest[4], rest[5], PanelLayout.MARGIN);
+            double room = Math.max(PanelLayout.MIN_SCALE, Math.floor(cap(baseW, baseH, rest[4], rest[5]) / PanelLayout.SCALE_STEP + 1e-9) * PanelLayout.SCALE_STEP);
+            double sc = Math.min(room, HudLayout.resizeScale(x - grabX, y - grabY, fixX, fixY, handX, handY, baseW, baseH, rest[4], rest[5], PanelLayout.MARGIN));
             int w = (int) Math.round(baseW * sc), h = (int) Math.round(baseH * sc);
             PanelLayout.scale = sc;
             PanelLayout.moveTo(handX > 0 ? fixX : fixX - w, handY > 0 ? fixY : fixY - h, w, h, rest[4], rest[5], restK);
@@ -578,6 +585,11 @@ public final class CommandPanel {
     static final int WOOD = 0xff3b2818, WOOD_HOVER = 0xff5a3d24, BRASS = 0xffb08d3c, BRASS_LIGHT = 0xffe0bf6a;
 
     /** Whether a GUI px rect meets any battle HUD part's box (HudLayout) this frame. */
+    static boolean coversDrawnPart(int x, int y, int w, int h) {
+        for (String p : HudLayout.PARTS) { int[] o = HudLayout.guiBox(p); if (o != null && HudLayout.drawn(p) && meets(x, y, w, h, o)) return true; }
+        return false;
+    }
+    static int[] union(int[] a, int[] c) { int x0 = Math.min(a[0], c[0]), y0 = Math.min(a[1], c[1]); return new int[]{x0, y0, Math.max(a[0] + a[2], c[0] + c[2]) - x0, Math.max(a[1] + a[3], c[1] + c[3]) - y0}; }
     static boolean coversHudPart(int x, int y, int w, int h) {
         for (String p : HudLayout.PARTS) { int[] o = HudLayout.guiBox(p); if (o != null && meets(x, y, w, h, o)) return true; }
         return false;
@@ -595,12 +607,20 @@ public final class CommandPanel {
         lastDrawn.add(new int[]{EDGE, x0, y0, x1 - x0, y1 - y0});
         // the corner handle (the corner facing the screen's centre): a drag there resizes the panel
         handle = HudLayout.corner(b, sw, sh, HudLayout.HANDLE);
-        boolean onHandle = resizing || mouse != null && mouse[0] >= handle[0] && mouse[0] < handle[0] + handle[2] && mouse[1] >= handle[1] && mouse[1] < handle[1] + handle[3];
+        boolean onHandle = resizing || mouse != null && HudLayout.onHandle(handle, mouse[0], mouse[1]);
         HudLayout.drawHandle(g, handle, onHandle);
         if (resizing) HudLayout.sizeLabel(g, font, handle, ps, sw, sh);
 
         String cap = I18n.translate(PanelLayout.hidden ? "gui.gravesandglory.panel_edit.caption_hidden" : "gui.gravesandglory.panel_edit.caption");
-        int capW = font.getWidth(cap) + 8, capH = 12;
+        // wider than the panel: two lines, split at the space nearest the middle
+        List<String> capLines = new ArrayList<>(List.of(cap));
+        if (font.getWidth(cap) + 8 > Math.max(b[2], 140) && cap.indexOf(' ') > 0) {
+            int mid = cap.length() / 2, cut = -1;
+            for (int i = 0; i < cap.length(); i++) if (cap.charAt(i) == ' ' && (cut < 0 || Math.abs(i - mid) < Math.abs(cut - mid))) cut = i;
+            capLines = List.of(cap.substring(0, cut), cap.substring(cut + 1));
+        }
+        int capW = 0; for (String l : capLines) capW = Math.max(capW, font.getWidth(l) + 8);
+        int capH = 2 + 10 * capLines.size();
         String opl = I18n.translate("gui.gravesandglory.panel_edit.opacity"), pct = Math.round(PanelLayout.opacity * 100) + "%";
         String hideL = I18n.translate(PanelLayout.hidden ? "gui.gravesandglory.panel_edit.show" : "gui.gravesandglory.panel_edit.hide");
         String resetL = I18n.translate("gui.gravesandglory.panel_edit.reset"), doneL = I18n.translate("gui.gravesandglory.panel_edit.done");
@@ -609,29 +629,53 @@ public final class CommandPanel {
         int resetW = font.getWidth(resetL) + 10, doneW = font.getWidth(doneL) + 10;
         int tw = pad + font.getWidth(opl) + gap + 3 + track + 3 + gap + pctW + gap * 2 + hideW + gap + resetW + gap + doneW + pad;
 
-        // the caption above the panel (below it at the top edge); the toolbar under the panel, or above it when there is no room below
-        boolean capAbove = b[1] - 2 - capH >= 0;
-        int capY = capAbove ? b[1] - 2 - capH : b[1] + b[3] + 2;
-        int belowTop = (capAbove ? b[1] + b[3] : capY + capH) + 3;
-        int capX = Math.max(1, Math.min(sw - 1 - capW, b[0]));
-        int[] vh = vanillaHud(sw, sh);
+        int[] vh = vanillaHudWide(sw, sh); // the hotbar, the offhand slot and the bars above
+        // the caption above the panel (below it at the top edge), slid along or up a little off any drawn HUD part, the hotbar and the handle
+        int capX = Math.max(1, Math.min(sw - 1 - capW, b[0])), capY = b[1] - 2 - capH >= 0 ? b[1] - 2 - capH : b[1] + b[3] + 2;
+        {
+            List<int[]> capSpots = new ArrayList<>();
+            int rx = Math.max(1, Math.min(sw - 1 - capW, b[0] + b[2] - capW));
+            for (int k = 0; k <= 3; k++) { int y = b[1] - 2 - capH - 6 * k; capSpots.add(new int[]{capX, y}); capSpots.add(new int[]{rx, y}); }
+            capSpots.add(new int[]{capX, b[1] + b[3] + 2}); capSpots.add(new int[]{rx, b[1] + b[3] + 2});
+            for (int y : new int[]{b[1], b[1] + b[3] - capH}) { capSpots.add(new int[]{b[0] - 2 - capW, y}); capSpots.add(new int[]{b[0] + b[2] + 2, y}); } // beside the panel, at its top or foot
+            for (int[] o : capSpots) {
+                if (o[0] < 0 || o[0] + capW > sw || o[1] < 0 || o[1] + capH > sh) continue;
+                if (meets(o[0], o[1], capW, capH, vh) || meets(o[0], o[1], capW, capH, b) || handle != null && meets(o[0], o[1], capW, capH, handle) || coversDrawnPart(o[0], o[1], capW, capH)) continue;
+                capX = o[0]; capY = o[1]; break;
+            }
+        }
+        boolean capAbove = capY < b[1];
+        // the toolbar under the panel, or above it, or beside it; clear of the panel, its handle, the caption and the hotbar
+        int[] pb = handle == null ? b : union(b, handle);
+        int belowTop = Math.max(pb[1] + pb[3], capAbove ? 0 : capY + capH) + 3, aboveTop = Math.min(pb[1], capAbove ? capY : pb[1]) - 3 - th;
         int ax = Math.max(2, Math.min(sw - 2 - tw, b[0])), sy = Math.max(2, Math.min(sh - 2 - th, b[1]));
-        List<int[]> spots = new ArrayList<>(List.of(new int[]{ax, belowTop}, new int[]{ax, (capAbove ? capY : b[1]) - 3 - th}, new int[]{b[0] - 3 - tw, sy}, new int[]{b[0] + b[2] + 3, sy}));
+        List<int[]> spots = new ArrayList<>(List.of(new int[]{ax, belowTop}, new int[]{ax, aboveTop}, new int[]{pb[0] - 3 - tw, sy}, new int[]{pb[0] + pb[2] + 3, sy}));
+        // slid along those four sides, still attached to the panel
+        for (int x = 2; x + tw <= sw - 2; x += 8) { spots.add(new int[]{x, belowTop}); spots.add(new int[]{x, aboveTop}); }
+        for (int y = 2; y + th <= sh - 2; y += 6) { spots.add(new int[]{pb[0] - 3 - tw, y}); spots.add(new int[]{pb[0] + pb[2] + 3, y}); }
         // where those all meet a battle HUD part: down the screen beside the panel, in the middle and at the right edge
-        for (int y = 2; y + th <= sh - 2; y += 6) for (int x : new int[]{b[0] + b[2] + 3, (sw - tw) / 2, sw - 2 - tw}) spots.add(new int[]{x, y});
+        for (int y = 2; y + th <= sh - 2; y += 6) for (int x : new int[]{pb[0] + pb[2] + 3, (sw - tw) / 2, sw - 2 - tw}) spots.add(new int[]{x, y});
         int tx = ax, ty = Math.max(2, Math.min(sh - 2 - th, belowTop)), fx = 0, fy = 0;
         boolean fallback = false;
         for (int[] o : spots) {
             if (o[0] < 2 || o[1] < 2 || o[0] + tw > sw - 2 || o[1] + th > sh - 2) continue;
-            if (meets(o[0], o[1], tw, th, vh) || meets(o[0], o[1], tw, th, b) || meets(o[0], o[1], tw, th, new int[]{capX, capY, capW, capH})) continue;
+            if (meets(o[0], o[1], tw, th, vh) || meets(o[0], o[1], tw, th, pb) || meets(o[0], o[1], tw, th, new int[]{capX, capY, capW, capH})) continue;
             if (!fallback) { fallback = true; fx = o[0]; fy = o[1]; }
             if (coversHudPart(o[0], o[1], tw, th)) continue; // a spot clear of the battle HUD's parts too, when there is one
             tx = o[0]; ty = o[1]; fallback = false; break;
         }
         if (fallback) { tx = fx; ty = fy; }
+        else if (meets(tx, ty, tw, th, vh) || meets(tx, ty, tw, th, pb) || ty < 2 || ty + th > sh - 2) { // no spot clear of both: the least of the panel covered, never the hotbar
+            long best = Long.MAX_VALUE;
+            for (int y = 2; y + th <= sh - 2; y += 3) for (int x = 2; x + tw <= sw - 2; x += 4) {
+                if (meets(x, y, tw, th, vh)) continue;
+                long over = (long) Math.max(0, Math.min(x + tw, pb[0] + pb[2]) - Math.max(x, pb[0])) * Math.max(0, Math.min(y + th, pb[1] + pb[3]) - Math.max(y, pb[1]));
+                if (over < best) { best = over; tx = x; ty = y; }
+            }
+        }
 
         g.fill(capX, capY, capX + capW, capY + capH, 0xb3000000);
-        g.drawText(font, cap, capX + 4, capY + 2, 0xff000000 | GOLD, true);
+        for (int i = 0; i < capLines.size(); i++) g.drawText(font, capLines.get(i), capX + 4, capY + 2 + 10 * i, 0xff000000 | GOLD, true);
         chrome(CAPTION, capX, capY, capW, capH);
 
         RenderSystem.setShaderColor(1, 1, 1, 1);

@@ -219,7 +219,7 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
             double fx = right ? b[0] : b[0] + b[2], fy = down ? b[1] : b[1] + b[3], cx = right ? b[0] + b[2] : b[0], cy = down ? b[1] + b[3] : b[1];
             double s0 = part == null ? CommandPanel.panelScale() : HudLayout.drawnScale(part);
             hfrom = new double[]{h[0] + h[2] / 2.0, h[1] + h[3] / 2.0};
-            hto = new double[]{fx + (cx - fx) * want / s0, fy + (cy - fy) * want / s0};
+            hto = new double[]{fx + (cx - fx) * want / s0 + (hfrom[0] - cx), fy + (cy - fy) * want / s0 + (hfrom[1] - cy)}; // the handle sits outside the corner: it keeps its offset
             PanelSuite.cursorGui(c, hfrom[0], hfrom[1]);
             mouse(c, GLFW.GLFW_PRESS);
             boolean took = part == null ? CommandPanel.resizing() : part.equals(HudLayout.resizing());
@@ -295,12 +295,14 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
             List<String> missing = new ArrayList<>();
             for (String p : HudLayout.PARTS) if (HudLayout.guiBox(p) != null && !HudLayout.lastHandles.containsKey(p)) missing.add(p);
             if (CommandPanel.handle == null) missing.add("panel");
-            CommandUiChecks.report("cu-hud-handles", CommandPanel.editing() && missing.isEmpty(), "edit mode: a corner handle on every part and the panel" + (missing.isEmpty() ? " " + HudLayout.lastHandles.keySet() + " + panel " + box(CommandPanel.handle) : "; MISSING " + missing));
+            for (var e : HudLayout.lastHandles.entrySet()) { int[] b = HudLayout.guiBox(e.getKey()), h = e.getValue(); if (b != null && meets(h, b)) missing.add(e.getKey() + " handle " + box(h) + " covers its part " + box(b)); if (h[2] > 9) missing.add(e.getKey() + " handle " + h[2] + " px"); }
+            if (CommandPanel.handle != null && CommandPanel.bounds != null && meets(CommandPanel.handle, CommandPanel.bounds)) missing.add("panel handle covers the panel");
+            CommandUiChecks.report("cu-hud-handles", CommandPanel.editing() && missing.isEmpty(), "edit mode: a corner handle outside every part and the panel, covering none" + (missing.isEmpty() ? " " + HudLayout.lastHandles.keySet() + " + panel " + box(CommandPanel.handle) : "; MISSING " + missing));
             shot(c, "hud-handles-1920.png");
         }
         // grow, shrink, the clamps, and a resize at the screen's edge
-        if (tick >= 330 && tick <= 337) handleDrag(c, tick, 330, "gold", 1.5);
-        if (tick >= 340 && tick <= 347) handleDrag(c, tick, 340, "objectives", 0.7);
+        if (tick >= 330 && tick <= 337) handleDrag(c, tick, 330, "gold", 1.53); // 153% asked: the 150% magnet holds it
+        if (tick >= 340 && tick <= 347) handleDrag(c, tick, 340, "objectives", 0.8);
         if (tick >= 350 && tick <= 357) handleDrag(c, tick, 350, "column", 1.25);
         if (tick >= 360 && tick <= 367) handleDrag(c, tick, 360, "houses", 4);
         if (tick >= 370 && tick <= 377) handleDrag(c, tick, 370, "score", 0.1);
@@ -309,10 +311,10 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
         if (tick >= 400 && tick <= 407) handleDrag(c, tick, 400, null, 1.8);
         if (tick == 410) {
             double gold = HudLayout.scale("gold"), obj = HudLayout.scale("objectives"), col = HudLayout.scale("column");
-            boolean grow = near(gold, 1.5) && near(col, 1.25), shrink = near(obj, 0.7), label = labels.contains("gold 140%") || labels.stream().anyMatch(l -> l.startsWith("gold ") && l.endsWith("%")); label &= labels.stream().anyMatch(l -> l.startsWith("panel ") && l.endsWith("%"));
+            boolean grow = gold == 1.5 && near(col, 1.25), shrink = near(obj, 0.8), label = labels.contains("gold 140%") || labels.stream().anyMatch(l -> l.startsWith("gold ") && l.endsWith("%")); label &= labels.stream().anyMatch(l -> l.startsWith("panel ") && l.endsWith("%"));
             boolean on = allOnScreen(c, "resized-1920");
             CommandUiChecks.report("cu-hud-size", grow && shrink && label && on && sizeBad.length() == 0 && HudLayout.resizing() == null,
-                "handles dragged: gold " + gold + " (want 1.5), column " + col + " (want 1.25), objectives " + obj + " (want 0.7); the size shown while dragging " + labels + "; boxes " + boxes() + (fails.isEmpty() ? "; all on screen" : "; " + fails) + (sizeBad.length() == 0 ? "" : "; " + sizeBad));
+                "handles dragged: gold " + gold + " (153% asked, want the 150% magnet), column " + col + " (want 1.25), objectives " + obj + " (want 0.8); the size shown while dragging " + labels + "; boxes " + boxes() + (fails.isEmpty() ? "; all on screen" : "; " + fails) + (sizeBad.length() == 0 ? "" : "; " + sizeBad));
             fails.clear();
             double houses = HudLayout.scale("houses"), score = HudLayout.scale("score");
             CommandUiChecks.report("cu-hud-size-clamp", houses <= PanelLayout.MAX_SCALE && near(houses, PanelLayout.MAX_SCALE) && near(score, PanelLayout.MIN_SCALE),
@@ -331,7 +333,7 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
         if (tick == 414) {
             String f = file(), pf; try { pf = Files.readString(PanelLayout.file(), StandardCharsets.UTF_8).replaceAll("\\s+", " "); } catch (Exception e) { pf = "(no file)"; }
             sized = places(); panelSized = PanelLayout.scale;
-            boolean ok = !CommandPanel.editing() && HudLayout.saves == savesBefore + 1 && f.contains("\"s\": 1.5") && f.contains("\"s\": 0.7") && pf.contains("\"scale\": 1.8");
+            boolean ok = !CommandPanel.editing() && HudLayout.saves == savesBefore + 1 && f.contains("\"s\": 1.5") && f.contains("\"s\": 0.8") && pf.contains("\"scale\": 1.8");
             CommandUiChecks.report("cu-hud-size-save", ok, "Done: sizes " + sizes() + "; hud-layout.json " + f + "; command-panel.json " + pf);
         }
         if (tick == 418) shot(c, "hud-resized-1920.png");
@@ -350,10 +352,10 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
             fails.clear();
         }
         // the panel's targets at 60%
-        if (tick == 470) PanelLayout.scale = 0.6;
-        if (tick >= 474 && tick <= 498) clickTick(c, tick - 474, "60%");
+        if (tick == 470) PanelLayout.scale = PanelLayout.MIN_SCALE;
+        if (tick >= 474 && tick <= 498) clickTick(c, tick - 474, "70%");
         if (tick == 500) {
-            CommandUiChecks.report("cu-hud-size-clicks", clickOk, "the panel at 180% and 60% (a resized column): " + clicks);
+            CommandUiChecks.report("cu-hud-size-clicks", clickOk, "the panel at 180% and its 70% minimum (a resized column): " + clicks);
             PanelLayout.scale = panelSized;
         }
         // the resized layout at 854 and 2560: in play and in edit mode
@@ -376,7 +378,19 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
             CommandUiChecks.report("cu-hud-size-tags", tagBad.length() == 0, "the name chips on the resized layout at 1920, 854 and 2560: " + (tagBad.length() == 0 ? "clear of each other, every part, the panel and the vanilla HUD" : tagBad));
             CommandUiChecks.report("cu-hud-size-screens", fails.isEmpty(), "the resized layout at 854 and 2560: " + (fails.isEmpty() ? "every part and the panel on screen" : fails));
         }
-        if (tick == 612) CommandUiChecks.finish(c);
+        if (tick == 612) {
+            try {
+                String id = c.player.getUuid().toString();
+                Files.writeString(HudLayout.file(), "{\"version\":1,\"profiles\":{\"" + id + "\":{\"gold\":{\"h\":\"left\",\"v\":\"top\",\"x\":0.1,\"y\":0.1,\"s\":\"huge\"},"
+                    + "\"objectives\":{\"h\":\"right\",\"v\":\"top\",\"x\":0.05,\"y\":0.05,\"s\":{\"bad\":1}},\"column\":{\"h\":\"left\",\"v\":\"bottom\",\"x\":0.02,\"y\":0.02,\"s\":1.5}}}}", StandardCharsets.UTF_8);
+            } catch (Exception e) { sizeBad.append("could not write the corrupted file: " + e + "; "); }
+            HudLayout.forget(); HudLayout.reset(); HudLayout.ensureLoaded(c);
+            var pl = places();
+            boolean ok = pl.size() == 3 && pl.get("gold") != null && pl.get("gold").s() == 1 && pl.get("objectives") != null && pl.get("objectives").s() == 1 && pl.get("column") != null && pl.get("column").s() == 1.5 && sizeBad.length() == 0;
+            CommandUiChecks.report("cu-hud-size-corrupt", ok, "a file with gold's size \"huge\" and objectives' an object: places " + pl + (sizeBad.length() == 0 ? "" : "; " + sizeBad));
+            HudLayout.reset(); HudLayout.save(c);
+        }
+        if (tick == 616) CommandUiChecks.finish(c);
     }
 
     static String boxes() { StringBuilder b = new StringBuilder(); for (var e : HudLayout.boxes().entrySet()) b.append(e.getKey()).append(box(e.getValue())).append(' '); return b.toString().trim(); }
@@ -388,6 +402,12 @@ public final class HudMoveSuite implements CommandUiChecks.Suite {
     void tagsClear(String size) {
         if (!CommandPanel.editing() || HudLayout.lastTags.isEmpty()) { tagBad.append(size + ": no tags drawn; "); return; }
         tagsSeen++;
+        int[] tr = PanelSuite.rect(CommandPanel.TOOLBAR), tb = tr == null ? null : Arrays.copyOfRange(tr, 1, 5), vw = CommandPanel.vanillaHudWide(c().getWindow().getScaledWidth(), c().getWindow().getScaledHeight());
+        if (tb != null) {
+            if (tb[0] < 0 || tb[1] < 0 || tb[0] + tb[2] > c().getWindow().getScaledWidth() || tb[1] + tb[3] > c().getWindow().getScaledHeight()) tagBad.append(size + ": the toolbar " + box(tb) + " off screen; ");
+            if (meets(tb, vw)) tagBad.append(size + ": the toolbar " + box(tb) + " covers the vanilla HUD " + box(vw) + "; ");
+            if (CommandPanel.bounds != null && meets(tb, CommandPanel.bounds)) tagBad.append(size + ": the toolbar " + box(tb) + " covers the panel " + box(CommandPanel.bounds) + "; ");
+        }
         var tags = new ArrayList<>(HudLayout.lastTags.entrySet());
         for (int i = 0; i < tags.size(); i++) {
             int[] a = tags.get(i).getValue();

@@ -36,8 +36,8 @@ public final class PanelLayout {
     public static boolean hidden;
     /** The panel's size (1 = as laid out), set by its corner handle in edit mode; the HUD parts keep theirs in HudLayout. */
     public static double scale = 1;
-    /** The sizes a corner handle allows (text still reads at half size), in 5% steps. */
-    public static final double MIN_SCALE = 0.5, MAX_SCALE = 2, SCALE_STEP = 0.05;
+    /** The sizes a corner handle allows, in 5% steps: every part and the panel carry text, which stops reading below 70%. */
+    public static final double MIN_SCALE = 0.7, MAX_SCALE = 2, SCALE_STEP = 0.05;
 
     /** The profile key the settings in memory came from (null: read the file again before use); probes for the checks. */
     static String loadedFor;
@@ -50,7 +50,7 @@ public final class PanelLayout {
     /** The defaults: the left edge, fully opaque, shown. */
     public static void reset() { anchor = DEFAULT; offX = offY = 0; opacity = 1f; hidden = false; scale = 1; }
 
-    /** A size snapped to 5% steps within 50% to 200%. */
+    /** A size snapped to 5% steps within 70% to 200%. */
     public static double snapScale(double v) {
         if (!Double.isFinite(v)) return 1;
         double s = Math.round(v / SCALE_STEP) * SCALE_STEP;
@@ -84,7 +84,8 @@ public final class PanelLayout {
             double x = o.has("x") ? o.get("x").getAsDouble() : 0, y = o.has("y") ? o.get("y").getAsDouble() : 0;
             double op = o.has("opacity") ? o.get("opacity").getAsDouble() : 1;
             boolean hide = o.has("hidden") && o.get("hidden").getAsBoolean();
-            double sc = o.has("scale") ? o.get("scale").getAsDouble() : 1; // a file from before sizes: its own size
+            double sc = 1; // a file from before sizes, or a size that cannot be read: its own size
+            try { if (o.has("scale")) sc = o.get("scale").getAsDouble(); } catch (RuntimeException bad) { sc = 1; }
             if (!validAnchor(a) || !Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(op)) return;
             anchor = a; offX = Math.max(0, x); offY = Math.max(0, y); opacity = snapOpacity(op); hidden = hide; scale = snapScale(sc);
         } catch (Exception ex) {
