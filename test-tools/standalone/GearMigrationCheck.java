@@ -46,9 +46,9 @@ public final class GearMigrationCheck {
             Files.write(file, v3Bytes);
             Profile p = load(file);
             check(p.schema == Profile.SCHEMA, "schema is current, got " + p.schema);
-            check(p.gold == 950 && p.commander.equals("marshal"), "gold and commander are unchanged");
-            check(before.battlesWon.equals(Set.of("march-1")) && p.battlesWon.isEmpty(), "battlesWon: the gear step keeps it; the chapter 1 reset (schema 6) then empties the march-era win: " + p.battlesWon);
-            check(p.owned.keySet().equals(before.owned.keySet()) && p.banner.equals(before.banner), "owned troops and banner are unchanged");
+            check(p.gold == null && p.troopWrits == 9 && p.gearShards == 50 && p.commander.equals("marshal"), "950 gold is 9 troop writs and 50 gear shards; the commander is unchanged");
+            check(before.battlesWon.equals(Set.of("march-1")) && p.battlesWon.isEmpty(), "battlesWon: the gear step keeps it; the chapter 1 reset (schema 6 step) then empties the march-era win: " + p.battlesWon);
+            check(p.owned.keySet().equals(before.owned.keySet()) && new TreeMap<>(p.table().values().stream().collect(java.util.stream.Collectors.groupingBy(t -> t, java.util.stream.Collectors.counting()))).equals(new TreeMap<>(before.banner.stream().filter(t -> !t.equals("empty") && !t.equals("^")).collect(java.util.stream.Collectors.groupingBy(t -> t, java.util.stream.Collectors.counting())))), "owned troops are unchanged and the banner troops moved onto the war table: " + p.table());
             check(p.gear.size() == 5, "a marshal gets 5 starter pieces, got " + p.gear.size());
             check(items(p).equals(new TreeSet<>(List.of("commander_helm", "commander_chest", "commander_legs", "commander_boots", "war_banner"))), "the commander set and the banner: " + items(p));
             check(p.equipped.size() == 5 && p.equipped.containsKey("main") && !p.equipped.containsKey("off"), "all 5 pieces are worn");
@@ -144,28 +144,28 @@ public final class GearMigrationCheck {
             check(f.gear.size() == 6 && f.relics.equals(Set.of("stand_fast")) && f.relicSlots.get(0).equals("stand_fast"), "a fresh champion has the 6 bruiser pieces and stand_fast");
             check(f.schema == Profile.SCHEMA && f.gearPower == 6, "fresh is the current schema with gear power 6");
 
-            // newer-save: a schema-7 file (newer than Profile.SCHEMA) survives a load and a save attempt byte for byte, and the profile is read-only for the session
-            String future = "{\"schema\": 7, \"gold\": 123, \"futureField\": {\"a\": [1, 2, 3]}}";
+            // newer-save: a schema-8 file (newer than Profile.SCHEMA) survives a load and a save attempt byte for byte, and the profile is read-only for the session
+            String future = "{\"schema\": 8, \"gold\": 123, \"futureField\": {\"a\": [1, 2, 3]}}";
             Path newer = root.resolve("future.json");
             Files.writeString(newer, future);
             byte[] futureBytes = Files.readAllBytes(newer);
             Profile fut = load(newer);
-            check(fut.readOnly && fut.schema == 7, "a schema-7 profile loads read-only and keeps schema 7, got " + fut.schema);
+            check(fut.readOnly && fut.schema == 8, "a schema-8 profile loads read-only and keeps schema 8, got " + fut.schema);
             check(!JSON.toJson(fut).contains("readOnly"), "the read-only flag is never saved");
             // C01-F2: a JSON snapshot restored the way Campaign rolls back (claim, roll, payout) stays read-only, so a later save cannot overwrite the newer file
             Profile copy = Profile.restored(JSON.fromJson(JSON.toJson(fut), Profile.class));
-            check(copy.readOnly && copy.schema == 7, "a restored schema-7 snapshot stays read-only and keeps schema 7, got readOnly=" + copy.readOnly + " schema=" + copy.schema);
+            check(copy.readOnly && copy.schema == 8, "a restored schema-8 snapshot stays read-only and keeps schema 8, got readOnly=" + copy.readOnly + " schema=" + copy.schema);
             fut.gold = 999;
             ProfileMigration.saveProfile(fut, newer, JSON.toJson(fut));
-            check(Arrays.equals(Files.readAllBytes(newer), futureBytes), "the save attempt leaves the schema-7 file byte for byte");
+            check(Arrays.equals(Files.readAllBytes(newer), futureBytes), "the save attempt leaves the schema-8 file byte for byte");
             check(!Files.exists(root.resolve("future.json.bak")) && !Files.exists(root.resolve("future.json.tmp")) && !Files.exists(root.resolve("future.v3.json")), "no backup or temp file appears beside it");
             Path normal = root.resolve("normal.json");
             Profile ok = new Profile();
             ok.sanitize();
             check(!ok.readOnly && ok.schema == Profile.SCHEMA, "a current profile is not read-only");
-            ok.gold = 77;
+            ok.gearShards = 77;
             ProfileMigration.saveProfile(ok, normal, JSON.toJson(ok));
-            check(JSON.fromJson(Files.readString(normal), Profile.class).gold == 77, "a current profile saves");
+            check(JSON.fromJson(Files.readString(normal), Profile.class).gearShards == 77, "a current profile saves");
 
             // import: the gear fields reset, the inventory back to the starting size
             Profile imp = new Profile();

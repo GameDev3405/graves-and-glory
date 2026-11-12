@@ -6,7 +6,7 @@ import java.util.random.RandomGenerator;
 /**
  * The blacksmith's rules (spec 2026-11-03-commander-gear-design): rolls with pity, duplicates, breakdown, repair, inventory expansion and
  * match wear. Pure and server-authoritative: each method checks, then changes the profile, and a refusal changes nothing. Every number comes
- * from the forge and gearRarities sheets. Gold is Profile.gold; Forge marks are Profile.forgeMarks.
+ * from the forge and gearRarities sheets. Repairs and rows cost Profile.gearShards; Forge marks are Profile.forgeMarks.
  */
 final class Forge {
     private Forge() {}
@@ -136,23 +136,23 @@ final class Forge {
         if (piece == null) return "You do not own that piece.";
         if (piece.durability >= Gear.forge().maxDurability()) return "It needs no repair.";
         int cost = repairCost(piece);
-        if (p.gold < cost) return "Repair costs " + cost + " gold.";
-        p.gold -= cost;
+        if (p.gearShards < cost) return "Repair costs " + cost + " gear shards.";
+        p.gearShards -= cost;
         piece.durability = Gear.forge().maxDurability();
         return "";
     }
-    /** Repairs every damaged piece when the gold covers the total; otherwise refuses naming the total, changing nothing. */
+    /** Repairs every damaged piece when the gear shards cover the total; otherwise refuses naming the total, changing nothing. */
     static String repairAll(Profile p) {
         int total = 0;
         for (Gear.Piece g : p.gear) total += repairCost(g);
         if (total == 0) return "It needs no repair.";
-        if (p.gold < total) return "Repairing everything costs " + total + " gold.";
-        p.gold -= total;
+        if (p.gearShards < total) return "Repairing everything costs " + total + " gear shards.";
+        p.gearShards -= total;
         for (Gear.Piece g : p.gear) g.durability = Gear.forge().maxDurability();
         return "";
     }
 
-    /** Gold for the next inventory row: rowGold + rowGoldStep per row already added. */
+    /** Gear shards for the next inventory row: rowGold + rowGoldStep per row already added. */
     static int expandCost(Profile p) {
         var f = Gear.forge();
         return f.rowGold() + f.rowGoldStep() * ((p.inventorySize - f.startSlots()) / f.rowSlots());
@@ -161,8 +161,8 @@ final class Forge {
         var f = Gear.forge();
         if (p.inventorySize >= f.maxSlots()) return "Your inventory is as large as it gets.";
         int cost = expandCost(p);
-        if (p.gold < cost) return "Another row costs " + cost + " gold.";
-        p.gold -= cost;
+        if (p.gearShards < cost) return "Another row costs " + cost + " gear shards.";
+        p.gearShards -= cost;
         p.inventorySize = Math.min(f.maxSlots(), p.inventorySize + f.rowSlots());
         return "";
     }

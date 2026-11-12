@@ -21,7 +21,7 @@ public final class ForgeCheck {
     static Profile rich(int marks) {
         Profile p = new Profile();
         p.forgeMarks = marks;
-        p.gold = 5000;
+        p.gearShards = 5000;
         return p;
     }
 
@@ -147,31 +147,31 @@ public final class ForgeCheck {
 
         // repair
         Profile rep = rich(0);
-        rep.gold = 46;
+        rep.gearShards = 46;
         rep.gear.add(piece(1, "bruiser_helm", "epic", 50, 30));
         rep.gear.add(piece(2, "bruiser_chest", "epic", 50, 100));
         check(Forge.repairCost(rep.gear.get(0)) == 46 && Forge.repairCost(rep.gear.get(1)) == 0, "an epic at 30 costs ceil(65 x 70 / 100) = 46");
-        rep.gold = 45;
-        check(Forge.repairAll(rep).equals("Repairing everything costs 46 gold.") && rep.gold == 45 && rep.gear.get(0).durability == 30, "repairAll one gold short changes nothing");
-        check(Forge.repair(rep, 1).equals("Repair costs 46 gold.") && rep.gear.get(0).durability == 30, "repair one gold short is refused");
+        rep.gearShards = 45;
+        check(Forge.repairAll(rep).equals("Repairing everything costs 46 gear shards.") && rep.gearShards == 45 && rep.gear.get(0).durability == 30, "repairAll one shard short changes nothing");
+        check(Forge.repair(rep, 1).equals("Repair costs 46 gear shards.") && rep.gear.get(0).durability == 30, "repair one shard short is refused");
         check(Forge.repair(rep, 2).equals("It needs no repair.") && Forge.repair(rep, 9).equals("You do not own that piece."), "a full or unowned piece is refused");
-        rep.gold = 46;
-        check(Forge.repairAll(rep).isEmpty() && rep.gold == 0 && rep.gear.get(0).durability == 100, "repairAll with enough gold repairs and charges the total");
+        rep.gearShards = 46;
+        check(Forge.repairAll(rep).isEmpty() && rep.gearShards == 0 && rep.gear.get(0).durability == 100, "repairAll with enough gear shards repairs and charges the total");
         check(Forge.repairAll(rep).equals("It needs no repair."), "repairAll with nothing damaged is refused");
         rep.gear.get(0).durability = 30;
-        rep.gold = 100;
-        check(Forge.repair(rep, 1).isEmpty() && rep.gold == 54 && rep.gear.get(0).durability == 100, "repair charges and restores");
+        rep.gearShards = 100;
+        check(Forge.repair(rep, 1).isEmpty() && rep.gearShards == 54 && rep.gear.get(0).durability == 100, "repair charges and restores");
 
         // expand
         Profile ex = rich(0);
-        ex.gold = 1250;
+        ex.gearShards = 1250;
         check(Forge.expandCost(ex) == 500, "the first row costs 500");
-        check(Forge.expand(ex).isEmpty() && ex.inventorySize == 70 && ex.gold == 750 && Forge.expandCost(ex) == 750, "then 750");
-        check(Forge.expand(ex).isEmpty() && ex.inventorySize == 80 && ex.gold == 0, "a row adds 10 slots");
-        check(Forge.expand(ex).equals("Another row costs 1000 gold.") && ex.inventorySize == 80, "short gold is refused");
+        check(Forge.expand(ex).isEmpty() && ex.inventorySize == 70 && ex.gearShards == 750 && Forge.expandCost(ex) == 750, "then 750");
+        check(Forge.expand(ex).isEmpty() && ex.inventorySize == 80 && ex.gearShards == 0, "a row adds 10 slots");
+        check(Forge.expand(ex).equals("Another row costs 1000 gear shards.") && ex.inventorySize == 80, "short gear shards is refused");
         ex.inventorySize = 120;
-        ex.gold = 100000;
-        check(Forge.expand(ex).equals("Your inventory is as large as it gets.") && ex.inventorySize == 120 && ex.gold == 100000, "at 120 it is refused");
+        ex.gearShards = 100000;
+        check(Forge.expand(ex).equals("Your inventory is as large as it gets.") && ex.inventorySize == 120 && ex.gearShards == 100000, "at 120 it is refused");
 
         // wear
         Profile w = rich(0);

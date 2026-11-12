@@ -1,0 +1,148 @@
+{
+  "schema": 6,
+  "gold": 300,
+  "matches": 14,
+  "wins": 8,
+  "tutorialDone": true,
+  "commander": "marshal",
+  "banner": [
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "knight",
+    "archer",
+    "archer",
+    "archer",
+    "archer",
+    "archer",
+    "archer",
+    "archer",
+    "archer"
+  ],
+  "bannerColour": "gold",
+  "owned": {
+    "knight": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "archer": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "revenant": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "bonebow": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "wm_hound": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "wm_hunter": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "ic_hearthguard": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "ic_arbalist": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "tc_raider": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    },
+    "tc_harpooner": {
+      "copies": 1,
+      "stars": 1,
+      "kills": 0,
+      "survived": 0,
+      "mastery": 0,
+      "variant": "base"
+    }
+  },
+  "shards": {
+    "gilded": 0,
+    "graveborn": 2,
+    "wildmoot": 0,
+    "ironclad": 1,
+    "tidecallers": 0
+  },
+  "renown": {},
+  "pity": {},
+  "writs": 0,
+  "progression": {
+    "schema": 1,
+    "xp": 0,
+    "totalBattles": 0,
+    "totalWins": 0,
+    "weeklyBattles": 0,
+    "day": "",
+    "week": "",
+    "title": "Recruit",
+    "rerolled": false,
+    "dailyBattles": 0,
+    "dailyCaptures": 0,
+    "dailyOrders": 0,
+    "claims": [],
+    "titles": [
+      "Recruit"
+    ],
+    "matchGrants": []
+  },
+  "campaignCleared": 0,
+  "battlesWon": [],
+  "bonusClaimed": [],
+  "writChapters": [],
+  "cosmetics": [],
+  "customGroups": []
+}

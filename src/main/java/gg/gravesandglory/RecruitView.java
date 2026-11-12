@@ -49,11 +49,11 @@ final class RecruitView {
         return n;
     }
 
-    /** The gold a letter costs (Enlist). */
-    static int cost() { return Spec.RECRUITMENT[0].rollCost(); }
+    /** The troop writs a letter costs (Enlist). */
+    static int cost() { return Profile.ROLL_WRITS; }
 
-    /** The gold a chosen buy costs (the letter's Buy tag on a Common or a Rare). */
-    static int chooseCost() { return Spec.RECRUITMENT[0].chosenCost(); }
+    /** The troop writs a chosen buy costs (the letter's Buy tag on a Common or a Rare). */
+    static int chooseCost() { return Profile.CHOSEN_WRITS; }
 
     /** The action the opened letter offers for a troop of the roll (a Buy, a Star, a Pact or shards), as RecruitPages.action gives it
      *  for the commander's collection, or null when it offers none (an Epic not yet found: it comes from letters only; a troop at full stars). */

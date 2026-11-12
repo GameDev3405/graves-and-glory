@@ -77,8 +77,16 @@ public final class ProfileMigrationCheck {
     }
     static Profile parseV2(String text) {
         var p = new Profile();
-        p.schema = number(text, "schema"); p.gold = number(text, "gold"); p.campaignCleared = number(text, "campaignCleared"); p.writs = number(text, "writs");
-        if (text.contains("\"banner\"")) p.banner = items(text, "banner", new ArrayList<>());
+        p.schema = number(text, "schema"); p.campaignCleared = number(text, "campaignCleared");
+        if (p.schema >= 7) { // the schema 7 fields; the legacy ones are null, as Gson leaves them in a file that never wrote them
+            p.gold = null; p.writs = null; p.banner = null;
+            p.troopWrits = number(text, "troopWrits"); p.writGold = number(text, "writGold"); p.gearShards = number(text, "gearShards"); p.pacts = number(text, "pacts"); p.activeBanner = number(text, "activeBanner");
+            p.banners = new ArrayList<>();
+            for (String b : field(text, "banners").split(";")) if (!b.isEmpty()) { String[] f = b.split("[|]", -1); p.banners.add(new Profile.Banner(f[0], f[1])); }
+        } else {
+            p.gold = number(text, "gold"); p.writs = number(text, "writs");
+            if (text.contains("\"banner\"")) p.banner = items(text, "banner", new ArrayList<>());
+        }
         p.writChapters = new LinkedHashSet<>();
         for (String c : items(text, "writChapters", new ArrayList<>())) p.writChapters.add(Integer.parseInt(c));
         p.battlesWon = text.contains("\"battlesWon\"") ? items(text, "battlesWon", new LinkedHashSet<>()) : null; // a schema-2 file has no such key: Gson leaves it null
@@ -87,8 +95,11 @@ public final class ProfileMigrationCheck {
         return p;
     }
     static String write(Profile p) {
-        String text = "{\"schema\":" + p.schema + ",\"gold\":" + p.gold + ",\"banner\":\"" + String.join(",", p.banner) + "\",\"campaignCleared\":" + p.campaignCleared + ",\"writs\":" + p.writs
-            + ",\"writChapters\":\"" + String.join(",", p.writChapters.stream().map(String::valueOf).toList()) + "\"";
+        String text = "{\"schema\":" + p.schema;
+        if (p.schema >= 7) text += ",\"troopWrits\":" + p.troopWrits + ",\"writGold\":" + p.writGold + ",\"gearShards\":" + p.gearShards + ",\"pacts\":" + p.pacts + ",\"activeBanner\":" + p.activeBanner
+            + ",\"banners\":\"" + String.join(";", p.banners.stream().map(b -> b.name + "|" + b.cells).toList()) + "\"";
+        else text += ",\"gold\":" + p.gold + ",\"banner\":\"" + String.join(",", p.banner) + "\",\"writs\":" + p.writs;
+        text += ",\"campaignCleared\":" + p.campaignCleared + ",\"writChapters\":\"" + String.join(",", p.writChapters.stream().map(String::valueOf).toList()) + "\"";
         if (p.schema >= 3) text += ",\"battlesWon\":\"" + String.join(",", p.battlesWon) + "\",\"bonusClaimed\":\"" + String.join(",", p.bonusClaimed) + "\"";
         if (p.schema >= 5) text += ",\"customGroups\":\"" + String.join(";", p.customGroups.stream().map(g -> g.number() + "|" + g.name() + "|" + String.join("+", g.troopIds())).toList()) + "\"";
         return text + "}";
@@ -109,6 +120,147 @@ public final class ProfileMigrationCheck {
         Set<String> ids = new LinkedHashSet<>();
         for (int i = 1; i <= n; i++) ids.add("oath-" + i); // v2toV3 rebuilds battlesWon from the current sheet's rows
         return ids;
+    }
+
+    // Schema 7 (army rework Task 2): the v6 fixtures go through the real Gson loaders and the real sheet catalog.
+    static final com.google.gson.Gson GSON = new com.google.gson.Gson();
+    static Profile fixture(String name) throws IOException {
+        return GSON.fromJson(Files.readString(Paths.get("test-tools/resources/fixtures/profile-v6-" + name + ".json")), Profile.class);
+    }
+    static long count(Map<Integer, String> table, String id) { return table.values().stream().filter(id::equals).count(); }
+    static String problem(Profile p) { return RosterMath.validTable(p.table(), RosterMath.Catalog.fromSpec(), p.owned.keySet(), RosterMath.fieldableHouses()); }
+
+    /** The starter banner's 12 Squires and 8 Archers move onto the war table block (entry i to column 2 + i % 5, row i / 5), whole, with no notice. */
+    static void v6StarterMoves() throws IOException {
+        var p = fixture("starter");
+        check(p.schema == 6 && p.banner.size() == 20 && p.gold == 300, "v6StarterMoves: the fixture is a schema 6 file with a 20-entry banner");
+        p.sanitize();
+        check(p.schema == 7 && p.banner == null && p.gold == null && p.writs == null, "v6StarterMoves: schema 7, the legacy fields nulled");
+        check(p.banners.size() == 1 && p.activeBanner == 0 && p.banners.get(0).name.equals("Banner I") && p.notice == null, "v6StarterMoves: one banner, named Banner I, no notice");
+        var t = p.table();
+        check(t.size() == 20 && count(t, "knight") == 12 && count(t, "archer") == 8, "v6StarterMoves: all 20 troops are on the table: " + t);
+        boolean placed = true;
+        for (int i = 0; i < 20; i++) placed &= (i < 12 ? "knight" : "archer").equals(t.get(WarGrid.index(2 + i % 5, i / 5)));
+        check(placed && problem(p) == null, "v6StarterMoves: entry i sits on (2 + i % 5, i / 5) and the table passes the validator: " + problem(p));
+        check(p.line().size() == WarGrid.cells() && WarGrid.sparse(p.line()).equals(t), "v6StarterMoves: line() is the dense 54-entry form of the table");
+    }
+
+    /** An Epic's ^ pair and a Legendary's ^^^ run leave the table: each troop lands once, on its first entry, and no marker survives. */
+    static void v6WideDropsMarkers() throws IOException {
+        var p = fixture("wide");
+        check(p.banner.stream().filter("^"::equals).count() == 5, "v6WideDropsMarkers: the fixture holds two Epic markers and a Legendary run of three");
+        p.sanitize();
+        var t = p.table();
+        check(t.size() == 15 && count(t, "knight") == 8 && count(t, "mage") == 2 && count(t, "gl_marshal") == 1 && count(t, "archer") == 4, "v6WideDropsMarkers: 15 troops, each wide one once: " + t);
+        check(!t.containsValue("^") && !p.line().contains("^") && "mage".equals(t.get(WarGrid.index(5, 1))) && "mage".equals(t.get(WarGrid.index(2, 2))) && "gl_marshal".equals(t.get(WarGrid.index(4, 2))), "v6WideDropsMarkers: no marker anywhere; the wide troops sit on their first entry's cell");
+        check(p.notice == null && problem(p) == null, "v6WideDropsMarkers: it fits the allowance, so no notice: " + problem(p));
+    }
+
+    /** A banner over the allowance loses troops from the back until it fits, never all of them, and the player is told once. */
+    static void v6OverTrims() throws IOException {
+        var p = fixture("over");
+        var cat = RosterMath.Catalog.fromSpec();
+        int line = 0;
+        for (String id : p.banner) if (!id.equals("^")) line += cat.cost(id);
+        check(line > RosterMath.allowance(), "v6OverTrims: the fixture's banner costs " + line + ", over the allowance " + RosterMath.allowance());
+        p.sanitize();
+        var t = p.table();
+        check(t.size() == 12 && count(t, "longbow") == 1 && count(t, "sentinel") == 8 && count(t, "mage") == 2 && count(t, "gl_marshal") == 1, "v6OverTrims: the 3 highest cells (longbows at the back) went: " + t);
+        check(problem(p) == null && WarGrid.cost(t, cat) <= RosterMath.allowance(), "v6OverTrims: what is left passes the validator: " + problem(p));
+        check(p.notice != null && p.notice.contains("3 troops were") && p.notice.contains("war table"), "v6OverTrims: the one-time notice names the trim: " + p.notice);
+        String note = p.notice;
+        p.sanitize();
+        check(p.notice.equals(note) && p.table().equals(t), "v6OverTrims: sanitizing again changes nothing");
+    }
+
+    /** gold 1234 and 2 writs: 12 troop writs and 34 gear shards (the rest of the gold), the 2 old writs become Pacts. */
+    static void v6GoldSplit() throws IOException {
+        var p = fixture("gold");
+        p.sanitize();
+        check(p.troopWrits == 12 && p.gearShards == 34 && p.writGold == 0 && p.pacts == 2, "v6GoldSplit: 1234 gold is 12 troop writs and 34 gear shards, 2 Pacts: " + p.troopWrits + "/" + p.gearShards + "/" + p.pacts);
+        check(p.gold == null && p.writs == null, "v6GoldSplit: gold and writs are null afterwards");
+        var small = fixture("gold");
+        small.gold = 99; small.writs = null;
+        small.sanitize();
+        check(small.troopWrits == 0 && small.gearShards == 99 && small.pacts == 0, "v6GoldSplit: 99 gold is no writ and 99 shards; no writs is no Pact");
+        var neg = fixture("gold");
+        neg.gold = -50;
+        neg.sanitize();
+        check(neg.troopWrits == 0 && neg.gearShards == 0, "v6GoldSplit: negative gold counts as 0");
+        var pay = new Profile();
+        pay.writGold = 60;
+        pay.payGold(250);
+        check(pay.troopWrits == 3 && pay.writGold == 10 && pay.gearShards == 250, "payGold: 60 + 250 gold is 3 writs with 10 over, and 250 shards");
+    }
+
+    /** A schema 1 file chains through every step to schema 7: refunds 600 gold, which is 10 writs and 20 shards, and the 18-troop line sits on the table. */
+    static void v1ChainsToV7() {
+        var p = toV2(v1());
+        p.sanitize(cat, CLASSES, SIDES, HOUSES);
+        check(p.schema == 7 && p.gold == null && p.banner == null && p.writs == null, "v1ChainsToV7: schema 7, legacy fields nulled");
+        check(p.troopWrits == 10 && p.gearShards == 20 && p.pacts == 0, "v1ChainsToV7: v1 gold 420 plus the 600 refund is 10 writs and 20 shards: " + p.troopWrits + "/" + p.gearShards);
+        check(p.banners.size() == 1 && p.table().size() == 18 && p.notice == null && p.owned.keySet().equals(COMMONS), "v1ChainsToV7: the 18 troops of the v1 line are on the war table, whole");
+    }
+
+    /** A banner that no longer fits is trimmed from the back, never wiped: 30 Squires cost 660 against 640. */
+    static void sanitizeTrimsNotWipes() {
+        var p = new Profile();
+        var cells = new TreeMap<Integer, String>();
+        for (int i = 0; i < 30; i++) cells.put(i, "knight");
+        cells.put(40, "mage"); // not owned: dropped, the rest kept
+        p.banners = new ArrayList<>(List.of(new Profile.Banner("Wide", WarGrid.format(cells)), new Profile.Banner("Empty", "")));
+        p.sanitize();
+        var t = p.banners.get(0).cells;
+        var kept = WarGrid.parse(t);
+        check(kept.size() == 29 && kept.firstKey() == 0 && kept.lastKey() == 28 && count(kept, "knight") == 29, "sanitizeTrimsNotWipes: 29 of 30 Squires stay (the unowned cell went first): " + t);
+        check(p.banners.get(1).cells.isEmpty() && p.banners.size() == 2 && p.banners.get(1).name.equals("Empty"), "sanitizeTrimsNotWipes: an empty banner stays empty and named");
+        check(p.notice != null && p.notice.contains("2 troops were") && problem(p) == null, "sanitizeTrimsNotWipes: the notice counts what was taken off (the unowned cell and the 30th): " + p.notice);
+        var old = new Profile();
+        old.banners = new ArrayList<>(List.of(new Profile.Banner("Kept", "0:knight")));
+        old.notice = "earlier";
+        old.sanitize();
+        check(old.notice.equals("earlier") && old.table().size() == 1, "sanitizeTrimsNotWipes: an unread notice is not overwritten");
+    }
+
+    /** Names clean and cut to 16, a blank one is Banner N; banners past the limit go and activeBanner clamps. */
+    static void bannerNamesClamp() {
+        var p = new Profile();
+        p.banners = new ArrayList<>();
+        p.banners.add(new Profile.Banner("  A very long banner name indeed  ", "0:knight"));
+        p.banners.add(new Profile.Banner("Bad\u0007\nName", "0:archer"));
+        p.banners.add(new Profile.Banner(null, "0:knight"));
+        p.banners.add(null);
+        p.banners.add(new Profile.Banner("   ", ""));
+        for (int i = 0; i < 6; i++) p.banners.add(new Profile.Banner("Extra " + i, "0:knight"));
+        p.activeBanner = 99;
+        p.sanitize();
+        check(p.banners.size() == RosterMath.maxBanners() && p.banners.size() == 5, "bannerNamesClamp: five banners at most: " + p.banners.size());
+        check(p.banners.get(0).name.equals("A very long bann") && p.banners.get(0).name.length() == Profile.MAX_BANNER_NAME, "bannerNamesClamp: a long name is cut to 16 characters: " + p.banners.get(0).name);
+        check(p.banners.get(1).name.equals("BadName") && p.banners.get(2).name.equals("Banner 3") && p.banners.get(3).name.equals("Banner 4"), "bannerNamesClamp: control characters go; a null or blank name is Banner N");
+        check(p.activeBanner == 4 && p.table().isEmpty() == p.banners.get(4).cells.isEmpty(), "bannerNamesClamp: activeBanner 99 clamps to the last banner");
+        var none = new Profile();
+        none.banners = new ArrayList<>();
+        none.activeBanner = -3;
+        none.sanitize();
+        check(none.banners.size() == 1 && none.activeBanner == 0 && none.table().equals(Profile.starterTable()), "bannerNamesClamp: no banner at all becomes the starter banner");
+        var set = new Profile();
+        try { set.setTable(5, new TreeMap<>()); check(false, "setTable: a banner index past the list throws"); } catch (IllegalArgumentException expected) { checks++; }
+        set.setTable(0, new TreeMap<>(Map.of(4, "archer")));
+        check(WarGrid.format(set.table()).equals("4:archer") && set.banners.get(0).name.equals("Banner I"), "setTable: replaces the cells of a banner and keeps its name");
+    }
+
+    /** The legacy gold, writs and banner are never written again: Gson (no serializeNulls) omits the nulls, and the file reads back the same. */
+    static void legacyFieldsNotWritten() throws IOException {
+        var gson = new com.google.gson.GsonBuilder().setPrettyPrinting().create(); // Campaign.JSON's settings
+        var p = fixture("gold");
+        p.sanitize();
+        var tree = gson.toJsonTree(p).getAsJsonObject();
+        check(!tree.has("gold") && !tree.has("writs") && !tree.has("banner") && !tree.has("notice"), "legacyFieldsNotWritten: no gold, writs, banner or empty notice key: " + tree.keySet());
+        check(tree.get("schema").getAsInt() == 7 && tree.get("troopWrits").getAsInt() == 12 && tree.get("gearShards").getAsInt() == 34 && tree.get("pacts").getAsInt() == 2 && tree.has("writGold") && tree.has("activeBanner") && tree.getAsJsonArray("banners").size() == 1, "legacyFieldsNotWritten: schema 7 and the new keys are written");
+        String text = gson.toJson(p);
+        var back = gson.fromJson(text, Profile.class);
+        back.sanitize();
+        check(gson.toJson(back).equals(text) && back.gold == null && back.writs == null && back.banner == null, "legacyFieldsNotWritten: the file reads back and writes the same bytes, with the purses unchanged");
     }
 
     public static void main(String[] args) throws IOException {
@@ -158,17 +310,18 @@ public final class ProfileMigrationCheck {
         check(moved.xp == 4321 && moved.claims.equals(Set.of("founders:20", "daily:0")) && moved.titles.equals(Set.of("Recruit", "Scout", "Vanguard")) && moved.title.equals("Vanguard"), "mig-progression: xp, claims and titles (Vanguard too) are copied unchanged");
         // profile defaults and the sanitizer
         var blank = new Profile();
-        check(blank.schema == 6 && blank.banner.equals(RosterMath.starterBanner()) && blank.commander.equals("champion") && blank.bannerColour.equals("gold"), "profile-default: schema 6, the starter banner, champion, gold");
+        check(blank.schema == 7 && blank.banners.size() == 1 && blank.activeBanner == 0 && blank.table().equals(Profile.starterTable()) && blank.line().size() == WarGrid.cells() && blank.commander.equals("champion") && blank.bannerColour.equals("gold"), "profile-default: schema 7, one starter banner, champion, gold");
+        check(blank.gold == null && blank.writs == null && blank.banner == null && blank.pacts == 0 && blank.troopWrits == 0 && blank.writGold == 0 && blank.gearShards == 0 && blank.notice == null, "profile-default: the legacy fields are null and the schema 7 purses are empty");
         check(blank.owned.keySet().equals(COMMONS) && new ArrayList<>(blank.owned.keySet()).equals(List.of("knight", "archer", "revenant", "bonebow", "wm_hound", "wm_hunter", "ic_hearthguard", "ic_arbalist", "tc_raider", "tc_harpooner"))
-            && blank.owned.values().stream().allMatch(o -> o.copies == 1 && o.stars == 1) && RosterMath.validBanner(blank.banner, cat, blank.owned.keySet()) == null, "profile-default: one copy of each of the 10 Commons, in sheet order, so the starter banner is valid");
+            && blank.owned.values().stream().allMatch(o -> o.copies == 1 && o.stars == 1) && RosterMath.validTable(blank.table(), cat, blank.owned.keySet(), new HashSet<>(HOUSES)) == null, "profile-default: one copy of each of the 10 Commons, in sheet order, so the starter banner is valid");
         var p = new Profile();
         p.owned.clear();
         p.owned.put("knight", owned(0, 0)); p.owned.put("mage", owned(2, 7)); p.owned.put("oracle", owned(1, 1)); p.owned.put("archer", null);
         p.owned.get("knight").mastery = 9; p.owned.get("mage").mastery = -1;
-        p.banner = new ArrayList<>(line("knight*12,oracle,mage*2"));
+        p.banners = new ArrayList<>(List.of(new Profile.Banner("  ", "0:knight,1:oracle,2:mage,3:mage,99:knight,x")));
         p.commander = "vanguard"; p.bannerColour = "dawn";
         p.shards = new HashMap<>(Map.of("gilded", -5, "bogus", 3)); p.renown = null; p.pity = new HashMap<>();
-        p.gold = -4; p.matches = 3; p.wins = 9; p.progression = null;
+        p.troopWrits = -4; p.gearShards = 2_000_000; p.writGold = 150; p.pacts = -2; p.matches = 3; p.wins = 9; p.progression = null;
         p.sanitize(cat, CLASSES, SIDES, HOUSES);
         check(p.owned.keySet().equals(Set.of("knight", "mage")), "sanitize: unknown ids and empty entries are dropped from owned");
         var knight = p.owned.get("knight");
@@ -176,24 +329,24 @@ public final class ProfileMigrationCheck {
         check(knight.copies == 1 && knight.stars == 1 && mage.stars == 3, "sanitize: stars clamp to 1..3");
         check(Arrays.stream(Profile.Owned.class.getDeclaredFields()).noneMatch(f -> f.getName().equals("stage")) && Arrays.stream(Profile.class.getDeclaredMethods()).noneMatch(m -> m.getName().equals("lastStage")), "profile-no-stage: Owned has no stage field and Profile no lastStage, so a stored stage is never read (Gson ignores the key) and never written (the in-game migration suite round-trips a stage:3 file)");
         check(knight.mastery == 3 && mage.mastery == 0, "sanitize: mastery clamps to 0..3, the last mastery level (9 becomes 3, -1 becomes 0)");
-        check(RosterMath.validBanner(p.banner, cat, p.owned.keySet()) == null && p.banner.equals(line("knight*12,mage,^,mage,^,empty*4")), "sanitize: a banner that fails validBanner is repacked");
+        check(WarGrid.format(p.table()).equals("0:knight,2:mage,3:mage") && p.banners.get(0).name.equals("Banner 1"), "sanitize: a table drops its unknown, unowned and out of range cells and keeps the rest; a blank name becomes Banner 1");
         check(p.commander.equals("champion") && p.bannerColour.equals("gold"), "sanitize: an unknown class maps to champion and an unknown colour to gold");
         check(zeros(p.shards) && zeros(p.renown) && zeros(p.pity), "sanitize: shards, renown and pity hold the five House keys at 0 or more, and nothing else");
-        check(p.gold == 0 && p.wins == 3 && p.progression != null && p.schema == 6, "sanitize: gold and wins clamp; a missing progression is rebuilt");
+        check(p.troopWrits == 0 && p.gearShards == 1_000_000 && p.writGold == 99 && p.pacts == 0 && p.wins == 3 && p.progression != null && p.schema == 7, "sanitize: the purses clamp (writs 0, shards 1000000, writGold 0..99, Pacts 0) and wins clamp; a missing progression is rebuilt");
         var valid = new Profile();
         for (String id : COMMONS) valid.owned.put(id, owned(1, 1));
-        valid.banner = new ArrayList<>(line("revenant*12,bonebow*8"));
+        valid.banners = new ArrayList<>(List.of(new Profile.Banner("Line", "0:revenant,1:bonebow,10:revenant")));
         valid.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(valid.banner.equals(line("revenant*12,bonebow*8")), "sanitize: a valid banner is left alone");
+        check(valid.banners.size() == 1 && valid.banners.get(0).cells.equals("0:revenant,1:bonebow,10:revenant") && valid.banners.get(0).name.equals("Line") && valid.notice == null, "sanitize: a valid banner is left alone, with no notice");
         // schema 3 (plan 2C.3): a fresh save, v2toV3 in memory, the sanitizer and a round trip
         var newSave = new Profile();
         newSave.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(newSave.schema == 6 && newSave.customGroups.isEmpty() && newSave.battlesWon.isEmpty() && newSave.bonusClaimed.isEmpty() && newSave.campaignCleared == 0, "fresh-save: schema 6, no custom group, no battle won, no bonus claimed, campaignCleared 0");
+        check(newSave.schema == 7 && newSave.customGroups.isEmpty() && newSave.battlesWon.isEmpty() && newSave.bonusClaimed.isEmpty() && newSave.campaignCleared == 0, "fresh-save: schema 7, no custom group, no battle won, no bonus claimed, campaignCleared 0");
         var old = parseV2(V2_SAVE.replace("\"campaignCleared\":1", "\"campaignCleared\":6"));
         check(ProfileMigration.v2toV3(old, Spec.CAMPAIGNBATTLES) == old && old.schema == 3 && old.battlesWon.equals(march(6)) && old.bonusClaimed.isEmpty() && old.writs == 1, "v2toV3: in place; campaignCleared 6 gives all six battles, writs kept");
         var unmigrated = parseV2(V2_SAVE);
         unmigrated.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(unmigrated.schema == 6 && unmigrated.battlesWon.isEmpty() && unmigrated.campaignCleared == 0 && unmigrated.writs == 1 && unmigrated.writChapters.isEmpty(), "sanitize: a schema-2 profile that skipped the file upgrade runs v2toV3 first, then the chapter 1 reset (writs kept)");
+        check(unmigrated.schema == 7 && unmigrated.battlesWon.isEmpty() && unmigrated.campaignCleared == 0 && unmigrated.pacts == 1 && unmigrated.writs == null && unmigrated.writChapters.isEmpty(), "sanitize: a schema-2 profile that skipped the file upgrade runs v2toV3 first, then the chapter 1 reset (writs kept)");
         var broken = new Profile();
         broken.battlesWon = new LinkedHashSet<>(List.of("oath-1", "oath-3", "oath-9")); broken.bonusClaimed = new LinkedHashSet<>(List.of("o1_hold_all", "b_bogus")); broken.campaignCleared = 5;
         broken.sanitize(cat, CLASSES, SIDES, HOUSES);
@@ -203,18 +356,18 @@ public final class ProfileMigrationCheck {
         nulls.sanitize(cat, CLASSES, SIDES, HOUSES);
         check(nulls.battlesWon != null && nulls.bonusClaimed != null, "sanitize: missing battlesWon and bonusClaimed are rebuilt empty");
         var saved = new Profile();
-        saved.battlesWon = new LinkedHashSet<>(march(2)); saved.bonusClaimed = new LinkedHashSet<>(List.of("o1_hold_all")); saved.writs = 0; saved.gold = 55;
+        saved.battlesWon = new LinkedHashSet<>(march(2)); saved.bonusClaimed = new LinkedHashSet<>(List.of("o1_hold_all")); saved.pacts = 0; saved.gearShards = 55;
         saved.sanitize(cat, CLASSES, SIDES, HOUSES);
         var loaded = parseV2(write(saved));
         loaded.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(write(loaded).equals(write(saved)) && loaded.battlesWon.equals(march(2)) && loaded.bonusClaimed.equals(Set.of("o1_hold_all")) && loaded.campaignCleared == 2 && loaded.schema == 6, "round-trip: a schema 6 save loads and saves back unchanged (battlesWon, bonusClaimed, campaignCleared 2)");
+        check(write(loaded).equals(write(saved)) && loaded.battlesWon.equals(march(2)) && loaded.bonusClaimed.equals(Set.of("o1_hold_all")) && loaded.campaignCleared == 2 && loaded.schema == 7, "round-trip: a schema 7 save loads and saves back unchanged (battlesWon, bonusClaimed, campaignCleared 2)");
         // schema 5 (command UI custom groups): a schema-4 file loads with no custom group and saves as schema 5; a schema-5 file round-trips
         String v4Save = "{\"schema\":4,\"gold\":66,\"banner\":\"knight,archer\",\"campaignCleared\":2,\"writs\":0,\"writChapters\":\"\",\"battlesWon\":\"march-1,march-2\",\"bonusClaimed\":\"\"}";
         var four = parseV2(v4Save);
         check(four.customGroups == null && four.schema == 4, "v4-fixture: a schema-4 file carries no customGroups key");
         four.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(four.schema == 6 && four.customGroups != null && four.customGroups.isEmpty() && four.gold == 66 && four.battlesWon.isEmpty() && !four.readOnly, "v4toV5: a schema-4 profile loads with customGroups empty, other fields kept, its march wins reset (schema 6), writable");
-        check(write(four).contains("\"schema\":6") && write(four).contains("\"customGroups\":\"\""), "v4toV5: the loaded schema-4 profile saves as schema 6 with an empty customGroups");
+        check(four.schema == 7 && four.customGroups != null && four.customGroups.isEmpty() && four.troopWrits == 0 && four.gearShards == 66 && four.battlesWon.isEmpty() && !four.readOnly, "v4toV5: a schema-4 profile loads with customGroups empty, other fields kept, its march wins reset (schema 7), writable");
+        check(write(four).contains("\"schema\":7") && write(four).contains("\"customGroups\":\"\""), "v4toV5: the loaded schema-4 profile saves as schema 7 with an empty customGroups");
         check(ProfileMigration.v4toV5(parseV2(v4Save)).schema == 5, "v4toV5: sets schema 5");
         // ending polish pass 3: personal bests. An old file has no bests key: it loads with none, the first match sets records quietly, a later one beats them
         var noBests = parseV2(v4Save.replace("\"schema\":4", "\"schema\":6"));
@@ -234,7 +387,7 @@ public final class ProfileMigrationCheck {
         grouped.sanitize(cat, CLASSES, SIDES, HOUSES);
         var reread = parseV2(write(grouped));
         reread.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(reread.schema == 6 && reread.customGroups.equals(grouped.customGroups) && write(reread).equals(write(grouped))
+        check(reread.schema == 7 && reread.customGroups.equals(grouped.customGroups) && write(reread).equals(write(grouped))
             && reread.customGroups.equals(List.of(new Profile.CustomGroup(1, "Line", List.of("knight")), new Profile.CustomGroup(2, "Flank", List.of("archer", "bonebow")))), "v5-round-trip: a schema-5 file with two custom groups loads and saves back unchanged, sorted by number");
         var messy = new Profile();
         messy.customGroups = new ArrayList<>(Arrays.asList(null, new Profile.CustomGroup(1, "  A very long group name  ", Arrays.asList("knight", "knight", "bogus", null)), new Profile.CustomGroup(1, "Dup", List.of()),
@@ -242,9 +395,9 @@ public final class ProfileMigrationCheck {
         messy.sanitize(cat, CLASSES, SIDES, HOUSES);
         check(messy.customGroups.size() == 4 && messy.customGroups.get(0).equals(new Profile.CustomGroup(1, "A very long", List.of("knight"))) && messy.customGroups.get(2).equals(new Profile.CustomGroup(3, "Group 3", List.of()))
             && messy.customGroups.stream().mapToInt(Profile.CustomGroup::number).boxed().toList().equals(List.of(1, 2, 3, 4)), "custom-sanitize: nulls, repeats and numbers outside 1..4 go; names trim to 12 and default to Group n; unknown or repeated troop ids go");
-        var newer = parseV2(v4Save.replace("\"schema\":4", "\"schema\":7"));
+        var newer = parseV2(v4Save.replace("\"schema\":4", "\"schema\":8"));
         newer.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(newer.readOnly && newer.schema == 7, "read-only: a schema-7 profile from a newer build is kept read-only");
+        check(newer.readOnly && newer.schema == 8, "read-only: a schema-8 profile from a newer build is kept read-only");
         // the file upgrade
         Path dir = Files.createTempDirectory("gravesandglory-profile-migration-check-");
         try {
@@ -289,6 +442,7 @@ public final class ProfileMigrationCheck {
         } finally {
             try (Stream<Path> paths = Files.walk(dir)) { paths.sorted(Comparator.reverseOrder()).forEach(path -> path.toFile().delete()); }
         }
+        v6StarterMoves(); v6WideDropsMarkers(); v6OverTrims(); v6GoldSplit(); v1ChainsToV7(); sanitizeTrimsNotWipes(); bannerNamesClamp(); legacyFieldsNotWritten();
         System.out.println("ProfileMigrationCheck: " + checks + " checks passed");
     }
 }

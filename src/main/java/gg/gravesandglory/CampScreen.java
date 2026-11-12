@@ -56,7 +56,7 @@ final class CampScreen extends ArmyScreen {
     /** A station: a page, or page:house (the House ring's tents send recruit:<house>), split on the first colon. */
     static void open(String station){int at=station.indexOf(':');var s=new CampScreen(at<0?station:station.substring(0,at));if(at>=0){s.stationHouse=station.substring(at+1);for(var h:Spec.HOUSES)if(h.id().equals(s.stationHouse))s.house=h.id();}MinecraftClient.getInstance().setScreen(s);}
     /** The House whose six cards the recruit page shows and whose pool a roll draws from; its tab row changes it. It starts on the House the banner leans on. */
-    String house=RosterMath.rollHouse(CampaignClient.profile.banner);
+    String house=RosterMath.rollHouse(CampaignClient.profile.line());
     final List<HouseTab> tabs=new ArrayList<>();
     /** Task 12 (RecruitPages): the troop the troop page shows, the House the contracts and chapter pages claim shards for, and tier 20's Rare. */
     String troop="",claimHouse=house,rare=RecruitPages.rares(house).isEmpty()?"":RecruitPages.rares(house).get(0);
@@ -79,7 +79,7 @@ final class CampScreen extends ArmyScreen {
     UiButton add(UiButton b){return addDrawableChild(b);}
     /** The camp state's key, rebuilt only when a snapshot arrived (CampaignClient.revision) or the running/ready flags moved: tick() asks 20 times a second and the key is a large string. */
     String state(){if(stateRev==CampaignClient.revision&&stateRunning==running&&stateReady==ready)return stateCache;stateRev=CampaignClient.revision;stateRunning=running;stateReady=ready;return stateCache=buildState();}
-    String buildState(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.gold+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
+    String buildState(){return CampaignClient.social.toString()+CampaignClient.progression.toString()+CampaignClient.profile.troopWrits+"/"+CampaignClient.profile.gearShards+CampaignClient.profile.owned.keySet()+CampaignClient.profile.pity+CampaignClient.profile.campaignCleared+CampaignClient.difficulty+running+ready+RecruitPages.stateKey(CampaignClient.profile);}
     /** The widgets of the War Table page shown, by name: home's, the recruit page's or WarTablePages'; none on the old pages. */
     Map<String,UiButton> widgets(){
         if(page.equals("home")&&home!=null)return home.buttons;
@@ -132,9 +132,9 @@ final class CampScreen extends ArmyScreen {
     static String odds(List<Spec.TroopsRow> pool,String rarity,int total){int w=0;for(var t:pool)if(t.rarity().equals(rarity))w+=weight(t);return String.format(java.util.Locale.ROOT,"%.0f",100.0*w/Math.max(1,total))+"%";}
     static String cap(String s){return s.isEmpty()?s:Character.toUpperCase(s.charAt(0))+s.substring(1);}
     /** The camp's header line: the earned title and the gold in hand. */
-    String header(){return CampaignClient.profile.progression.title+"  /  "+CampaignClient.profile.gold+" gold";}
+    String header(){return CampaignClient.profile.progression.title+"  /  "+CampaignClient.profile.troopWrits+" writs / "+CampaignClient.profile.gearShards+" shards";}
     /** The recruit page's roll button: ROLL <HOUSE> / <cost> GOLD for the chosen House. */
-    String rollLabel(){return "ROLL "+RosterMath.houseName(house).toUpperCase(java.util.Locale.ROOT)+" / "+Spec.RECRUITMENT[0].rollCost()+" GOLD";}
+    String rollLabel(){return "ROLL "+RosterMath.houseName(house).toUpperCase(java.util.Locale.ROOT)+" / "+Profile.ROLL_WRITS+" WRIT";}
     /** The pity line under the cards: rolls left until the chosen House's Epic is certain. */
     String pityLine(){return "Epic guaranteed within "+(Spec.RECRUITMENT[0].epicPity()-CampaignClient.profile.pity.getOrDefault(house,0))+" rolls";}
     /** The five House tabs of the recruit page, in House order (empty on other pages). */

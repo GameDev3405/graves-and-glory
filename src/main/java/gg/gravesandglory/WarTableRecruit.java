@@ -229,7 +229,7 @@ final class WarTableRecruit {
 
     static boolean battleFree() { return !GravesAndGloryClient.running || CampaignClient.waiting; }
 
-    boolean canEnlist() { return CampaignClient.profile.gold >= RecruitView.cost() && battleFree(); }
+    boolean canEnlist() { return CampaignClient.profile.troopWrits >= RecruitView.cost() && battleFree(); }
 
     /** Whether a press of the tag is still on its way: the camp has not answered it (its state is as at the press) and PENDING_TICKS have not passed. */
     boolean pending() { return !pendingState.isEmpty() && ticks - pendingAt < PENDING_TICKS && pendingState.equals(screen.state()); }
@@ -634,7 +634,7 @@ final class WarTableRecruit {
         var font = MinecraftClient.getInstance().textRenderer;
         int pity = RecruitView.pityLeft(house);
         rectsDrawn.put("bundle", UiTex.draw(g, "recruit/letter-bundle", ox + BUNDLE_X, oy + BUNDLE_Y));
-        String gold = String.valueOf(CampaignClient.profile.gold);
+        String gold = String.valueOf(CampaignClient.profile.troopWrits);
         int pw = 34 + font.getWidth(gold), px = ox + AXIS - (pw + 1) / 2, py = oy + PURSE_Y; // the pouch and the sum, centred on the axis
         int[] pouch = UiTex.draw(g, "recruit/pouch", px, py);
         g.drawText(font, gold, px + 34, py + 10, DarkUi.IVORY, true);
@@ -677,7 +677,7 @@ final class WarTableRecruit {
     void paintEnlist(DrawContext g, int x, int y, int w, int h, boolean hotIgnored) {
         var font = MinecraftClient.getInstance().textRenderer;
         int cost = RecruitView.cost();
-        boolean short_ = CampaignClient.profile.gold < cost;
+        boolean short_ = CampaignClient.profile.troopWrits < cost;
         String plate = short_ ? "table/btn-iron-240x40" : "table/btn-brass-240x40";
         String label = "Enlist", price = null;
         int ink = short_ ? DarkUi.IVORY : DarkUi.PLATE_INK, priceInk = 0;

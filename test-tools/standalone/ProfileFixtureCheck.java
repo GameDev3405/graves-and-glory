@@ -8,7 +8,7 @@ import java.util.stream.Stream;
 
 /**
  * QA matrix D16: every checked-in v1 profile fixture (fresh, full, invalid, partial, cache) goes through the real Gson loaders that
- * Campaign.readProfile uses, on a copy in a temp folder, and must come out as a valid schema 4 profile. The v1 bytes are kept once as
+ * Campaign.readProfile uses, on a copy in a temp folder, and must come out as a valid current-schema profile. The v1 bytes are kept once as
  * name.v1.json, a second load changes nothing, and the refunded troops (mage, hexer, oracle, wraith) are never owned. Never shipped.
  */
 public final class ProfileFixtureCheck {
@@ -47,23 +47,36 @@ public final class ProfileFixtureCheck {
                 check(p.owned.keySet().containsAll(commons), name + ": owns all 10 Commons");
                 check(Collections.disjoint(p.owned.keySet(), ProfileMigration.REFUNDED), name + ": mage, hexer, oracle and wraith are refunded, never owned");
                 check(p.owned.values().stream().allMatch(o -> o.copies >= 1 && o.stars >= 1), name + ": every owned troop has a copy and a star");
-                check(p.banner != null && p.banner.size() == 20, name + ": banner holds 20 slots: " + p.banner);
+                check(p.banner == null && p.banners.size() == 1 && p.line().size() == WarGrid.cells() && !p.table().isEmpty(), name + ": one banner on the 54-cell war table: " + p.table());
                 check(p.commander != null && Set.of("champion", "warden", "warlock").contains(p.commander), name + ": commander is a v2 class: " + p.commander);
-                check(p.gold >= v1.gold, name + ": gold is at least the v1 gold plus the refunds: " + p.gold + " vs " + v1.gold);
+                check(p.gold == null && p.troopWrits * 100 + p.gearShards >= v1.gold, name + ": gold (now troop writs and gear shards) is at least the v1 gold plus the refunds: " + p.troopWrits + "/" + p.gearShards + " vs " + v1.gold);
                 check(p.battlesWon != null && p.bonusClaimed != null, name + ": battlesWon and bonusClaimed exist");
                 check(Files.isRegularFile(backup) && Arrays.equals(Files.readAllBytes(backup), original), name + ": .v1.json is a byte copy of the fixture");
                 check(Files.readString(file).contains("\"schema\": 4"), name + ": the file on disk is schema 4");
                 byte[] saved = Files.readAllBytes(file);
                 Profile again = load(file);
-                check(again.gold == p.gold && Arrays.equals(Files.readAllBytes(file), saved) && Arrays.equals(Files.readAllBytes(backup), original), name + ": a second load changes nothing");
+                check(again.troopWrits == p.troopWrits && again.gearShards == p.gearShards && again.pacts == p.pacts && Arrays.equals(Files.readAllBytes(file), saved) && Arrays.equals(Files.readAllBytes(backup), original), name + ": a second load changes nothing");
                 try (Stream<Path> s = Files.list(root)) {
                     check(s.noneMatch(x -> x.getFileName().toString().endsWith(".tmp")), name + ": no .tmp left behind");
                 }
             }
+            // the later-schema fixtures: the four v6 files, the v3 veteran and the v2 QA seed load at the current schema with a valid table
+            for (String name : List.of("profile-v6-starter", "profile-v6-wide", "profile-v6-over", "profile-v6-gold", "profile-v3-veteran")) loadsClean(fixtures.resolve(name + ".json"), root, name);
+            loadsClean(Paths.get("test-tools/qa/profile-v2-seed.json"), root, "profile-v2-seed");
         } finally {
             try (Stream<Path> s = Files.walk(root)) { for (Path p : s.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(p); }
         }
         System.out.println("ProfileFixtureCheck: " + checks + " checks passed");
+    }
+
+    static void loadsClean(Path source, Path root, String name) throws Exception {
+        check(Files.isRegularFile(source), "fixture exists: " + source);
+        Path file = root.resolve(name + ".later.json");
+        Files.copy(source, file);
+        Profile p = load(file);
+        check(p.schema == Profile.SCHEMA && !p.readOnly && p.gold == null && p.writs == null && p.banner == null, name + ": loads at the current schema with the legacy fields gone");
+        check(!p.banners.isEmpty() && RosterMath.validTable(p.table(), RosterMath.Catalog.fromSpec(), p.owned.keySet(), RosterMath.fieldableHouses()) == null, name + ": the active table passes the validator: " + RosterMath.validTable(p.table(), RosterMath.Catalog.fromSpec(), p.owned.keySet(), RosterMath.fieldableHouses()));
+        check(p.troopWrits >= 0 && p.gearShards >= 0 && p.pacts >= 0, name + ": purses are not negative");
     }
 
     record V1Probe(int gold) {

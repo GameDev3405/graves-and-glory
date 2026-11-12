@@ -100,7 +100,7 @@ def phase_e():
         b, jok = join("QaLegacy", os.path.join(WORLD, "gravesandglory-profiles", u + ".v1.json"))
         time.sleep(3)
         d = json.load(open(newp, encoding="utf8"))
-        say("E9 join", jok, "| after join: schema", d.get("schema"), "gold", d.get("gold"), "matches", d.get("matches"), "owned", len(d.get("owned", {})),
+        say("E9 join", jok, "| after join: schema", d.get("schema"), "troopWrits", d.get("troopWrits"), "gearShards", d.get("gearShards"), "banners", len(d.get("banners", [])), "matches", d.get("matches"), "owned", len(d.get("owned", {})),
             "files", sorted(os.listdir(os.path.dirname(newp))))
         b.close()
     finally:
@@ -142,8 +142,8 @@ def phase_d():
                 files = sorted(os.path.basename(f).replace(u, "<uuid>") for f in glob.glob(os.path.join(pdir, u + "*")))
                 try:
                     d = json.load(open(main, encoding="utf8"))
-                    info = "battlesWon %s schema %s gold %s matches %s wins %s owned %d commander %s gear %d worn %d relic0 %s" % (
-                        d.get("battlesWon"), d.get("schema"), d.get("gold"), d.get("matches"), d.get("wins"), len(d.get("owned", {})), d.get("commander"),
+                    info = "battlesWon %s schema %s troopWrits %s gearShards %s banners %d matches %s wins %s owned %d commander %s gear %d worn %d relic0 %s" % (
+                        d.get("battlesWon"), d.get("schema"), d.get("troopWrits"), d.get("gearShards"), len(d.get("banners", [])), d.get("matches"), d.get("wins"), len(d.get("owned", {})), d.get("commander"),
                         len(d.get("gear", [])), len(d.get("equipped", {})), (d.get("relicSlots") or [""])[0])
                 except Exception as e:
                     info = "unreadable: %s" % e

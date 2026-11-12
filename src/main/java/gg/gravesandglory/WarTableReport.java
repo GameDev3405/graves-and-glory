@@ -337,7 +337,7 @@ final class WarTableReport {
     void march(DrawContext g, JsonObject r, int x, int y, boolean eligible) {
         var m = r.getAsJsonObject("march");
         String state = m.get("bonusState").getAsString();
-        int pacts = m.get("pacts").getAsInt(), held = m.get("writs").getAsInt();
+        int pacts = m.get("pacts").getAsInt(), held = m.get("pactsHeld").getAsInt();
         if (!state.equals("none") && !state.equals("lost")) {
             String label = switch (state) { case "paid" -> "Bonus kept"; case "claimed" -> "Bonus claimed before"; default -> "Bonus missed"; };
             String value = state.equals("paid") ? "+" + m.get("bonusShards").getAsInt() + " shards, +" + m.get("bonusGold").getAsInt() + " gold" : "";
@@ -513,8 +513,8 @@ final class WarTableReport {
         y += 18;
         y = block(g, "march-next", next == null ? "Every battle of " + name + " is won." : "Next, battle " + MarchMath.number(next, Spec.CAMPAIGNBATTLES) + ": " + next.name() + ".", x, y, TEXT_W, 2, DarkUi.INK_TEXT);
         y = block(g, "march-bonuses", "Bonuses claimed: " + prof.bonusClaimed.size() + " of " + Spec.BONUSOBJECTIVES.length + ".", x, y, TEXT_W, 1, DarkUi.SEPIA);
-        String pact = prof.writs > 0 ? "Pacts held: " + prof.writs + "." : "You hold no Pact. Clear every battle of a campaign chapter to earn one.";
-        block(g, "march-pacts", pact, x, y, TEXT_W, 2, prof.writs > 0 ? DarkUi.INK_TEXT : DarkUi.SEPIA);
+        String pact = prof.pacts > 0 ? "Pacts held: " + prof.pacts + "." : "You hold no Pact. Clear every battle of a campaign chapter to earn one.";
+        block(g, "march-pacts", pact, x, y, TEXT_W, 2, prof.pacts > 0 ? DarkUi.INK_TEXT : DarkUi.SEPIA);
     }
 
     /** One contract: its name on the left, its count and (when it has one) its state on the right; a claimed one in sepia, a ready one in the ink. */

@@ -555,7 +555,7 @@ final class WarTablePages {
      *  seat click applied (BannerDrop.apply, the server's own rule) until the snapshot catches up or PLANNED_MS pass. A click resolves its
      *  seat from this, so rapid clicks before the next snapshot do not all pick the same stale seat. */
     static List<String> line() {
-        var snap = CampaignClient.profile.banner;
+        var snap = CampaignClient.profile.line();
         if (planned != null && (planned.equals(snap) || System.currentTimeMillis() - plannedAt > PLANNED_MS)) planned = null;
         return planned != null ? planned : snap;
     }
@@ -566,13 +566,13 @@ final class WarTablePages {
     static void planSlot(int slot, String id) { planned = BannerDrop.apply(line(), slot, id, dropRules()); plannedAt = System.currentTimeMillis(); }
 
     /** The copies of a troop in the deployment. */
-    static int copies(String troop) { return java.util.Collections.frequency(CampaignClient.profile.banner, troop); }
+    static int copies(String troop) { return java.util.Collections.frequency(CampaignClient.profile.line(), troop); }
     /** The seats a troop takes in the deployment: each copy takes its slot weight (an Epic two, a Legendary four). */
     static int seats(String troop) { return copies(troop) * weight(troop); }
     /** The seats one copy of a troop takes (the troops sheet's slotWeight, at least 1). */
     static int weight(String troop) { return Math.max(1, RosterMath.Catalog.fromSpec().weight(troop)); }
     /** The seats the banner uses: every seat that is not empty, the later halves of wide troops (MARKER) included. */
-    static int used() { int n = 0; for (var id : CampaignClient.profile.banner) if (!id.equals(RosterMath.EMPTY)) n++; return n; }
+    static int used() { int n = 0; for (var id : CampaignClient.profile.line()) if (!id.equals(RosterMath.EMPTY)) n++; return n; }
     /** The seat a wide troop starts in when seat i is one of its later halves, else i itself. */
     static int unitSeat(int i) {
         var line = line();
@@ -613,9 +613,9 @@ final class WarTablePages {
         return RosterMath.MARKER.equals(head) ? EMPTY : head;
     }
     /** The banner the seats show: the one a drop in flight ends on while it has steps to go, else the profile's. */
-    static List<String> shownLine() { return optimistic != null ? optimistic : CampaignClient.profile.banner; }
+    static List<String> shownLine() { return optimistic != null ? optimistic : CampaignClient.profile.line(); }
     /** Integration: the seats the banner fills (not empty, not a marker of a wide troop). */
-    static int filled() { int n = 0; for (var id : CampaignClient.profile.banner) if (!id.equals(RosterMath.EMPTY) && !id.equals(RosterMath.MARKER)) n++; return n; }
+    static int filled() { int n = 0; for (var id : CampaignClient.profile.line()) if (!id.equals(RosterMath.EMPTY) && !id.equals(RosterMath.MARKER)) n++; return n; }
 
     static String troopName(String id) {
         var s = ArmyCards.spec(id);
@@ -764,7 +764,7 @@ final class WarTablePages {
         if (Math.hypot(UiCanvas.toCanvas(x - pressX), UiCanvas.toCanvas(y - pressY)) < DRAG_START) return pressSeat >= 0;
         moved = true;
         if (pressSeat >= 0) { // a seated troop is lifted by any of its seats; an empty seat has nothing to lift
-            var line = CampaignClient.profile.banner;
+            var line = CampaignClient.profile.line();
             if (pressSeat >= line.size() || line.get(pressSeat).equals(EMPTY) || line.get(pressSeat).equals(RosterMath.MARKER) && line.get(BannerDrop.head(line, pressSeat)).equals(EMPTY)) { pressed = false; pressSeat = -1; return true; }
             dragFromRoll = false; dragSeat = BannerDrop.head(line, pressSeat); dragTroop = line.get(dragSeat);
         }
@@ -799,7 +799,7 @@ final class WarTablePages {
 
     /** Judges every seat for the dragged troop against the banner as it is now; false when the banner has nothing to judge. */
     boolean classify() {
-        dragBase = new ArrayList<>(CampaignClient.profile.banner);
+        dragBase = new ArrayList<>(CampaignClient.profile.line());
         if (dragBase.size() < SEATS || dragTroop.isEmpty()) return false;
         var r = dropRules();
         for (int s = 0; s < SEATS; s++) seatPlan[s] = dragFromRoll ? BannerDrop.fromRoll(dragBase, dragTroop, s, r) : BannerDrop.move(dragBase, dragSeat, s, r);
@@ -829,7 +829,7 @@ final class WarTablePages {
 
     /** What dropping the card at a GUI point would do against the banner now: the plan, or null when the point is no target. */
     BannerDrop.Plan planAt(double x, double y) {
-        var line = new ArrayList<>(CampaignClient.profile.banner);
+        var line = new ArrayList<>(CampaignClient.profile.line());
         if (line.size() < SEATS) return null;
         var r = dropRules();
         int s = seatAt(x, y);
@@ -847,7 +847,7 @@ final class WarTablePages {
             fly(false, null);
             return;
         }
-        planned = null; pend = plan; pendBase = new ArrayList<>(CampaignClient.profile.banner); pendStep = 0; pendAt = ticks;
+        planned = null; pend = plan; pendBase = new ArrayList<>(CampaignClient.profile.line()); pendStep = 0; pendAt = ticks;
         optimistic = plan.commands().size() > 1 ? plan.result() : null;
         int s = seatAt(x, y);
         fly(true, s >= 0 ? buttons.get("seat-" + s) : null);
@@ -858,7 +858,7 @@ final class WarTablePages {
      *  its result, or when the server has not answered in PEND_TICKS. */
     void pump() {
         if (pend == null) return;
-        var line = CampaignClient.profile.banner;
+        var line = CampaignClient.profile.line();
         if (pendStep >= pend.commands().size() && line.equals(pend.result()) || ticks - pendAt > PEND_TICKS) { pend = null; optimistic = null; return; }
         if (pendStep >= pend.commands().size()) return;
         var expect = pendStep == 0 ? pendBase : pend.states().get(pendStep - 1);
@@ -868,7 +868,7 @@ final class WarTablePages {
     void dragTick() {
         pump();
         if (!dragging) return;
-        var line = CampaignClient.profile.banner;
+        var line = CampaignClient.profile.line();
         if (!battleFree() || !dragFromRoll && (dragSeat >= line.size() || !line.get(dragSeat).equals(dragTroop))) { cancelDrag(); return; }
         if (!line.equals(dragBase) && !classify()) cancelDrag();
     }
@@ -1290,7 +1290,7 @@ final class WarTablePages {
 
     /** The House the banner leans on (RosterMath.rollHouse), worked out again only when the banner changes. */
     static String bannerHouse() {
-        var banner = CampaignClient.profile.banner;
+        var banner = CampaignClient.profile.line();
         if (!banner.equals(bannerSeen)) { bannerSeen = new ArrayList<>(banner); bannerHouse = RosterMath.rollHouse(banner); }
         return bannerHouse;
     }

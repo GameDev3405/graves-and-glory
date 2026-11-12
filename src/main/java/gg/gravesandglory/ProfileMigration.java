@@ -8,7 +8,7 @@ import java.util.function.Function;
 
 /**
  * The one-time upgrades of a commander profile: schema 1 (Dawn and Dusk, 12 troops) to schema 2 (spec 6.3), and schema 2 to
- * schema 3 (plan 2C.3: the Long March battles won and bonuses paid), schema 3 to 4 (commander gear), schema 4 to 5 (custom groups) and schema 5 to 6 (the chapter 1 campaign reset). Pure: JSON goes through the parse and write functions the
+ * schema 3 (plan 2C.3: the Long March battles won and bonuses paid), schema 3 to 4 (commander gear), schema 4 to 5 (custom groups), schema 5 to 6 (the chapter 1 campaign reset) and schema 6 to 7 (the war table banners, Pacts and the gold split). Pure: JSON goes through the parse and write functions the
  * caller passes, so the standalone ProfileMigrationCheck needs no Gson.
  */
 public final class ProfileMigration {
@@ -58,6 +58,7 @@ public final class ProfileMigration {
     static Profile toV2(V1 v1, RosterMath.Catalog c) {
         Profile p = new Profile();
         p.schema = 2; // the schema-2 image; v2toV3 takes it to 3
+        p.writs = 0; // the legacy Pact count, a field of the old images
         p.gold = v1.gold;
         p.matches = v1.matches;
         p.wins = v1.wins;
@@ -164,6 +165,38 @@ public final class ProfileMigration {
         p.campaignCleared = 0;
         if (p.writChapters != null) p.writChapters.remove(1);
         p.schema = 6;
+        return p;
+    }
+
+    /**
+     * Schema 6 to 7 (war table army rework, design 4.8), in place, and returns the same profile. When the profile still holds its legacy
+     * 20-entry banner, that banner moves onto the war table as the first banner (WarGrid.fromLine: entry i to cell 2 + i % 5, row i / 5;
+     * markers vanish, so an Epic or Legendary lands once, on its first entry). Entries of an unknown or unowned troop are left out, then
+     * troops are taken off the back rows until RosterMath.validTable passes (against every House); when any went, notice says so. The
+     * Pact count (writs) becomes pacts, and the saved gold splits: troopWrits = gold / 100, gearShards = gold % 100. The legacy fields end
+     * null, so Gson never writes them. A profile with no legacy banner keeps the banners it has. Sets schema 7. Forge marks stay as they
+     * are here (the Forge currency task merges them into gear shards).
+     */
+    static Profile v6toV7(Profile p, RosterMath.Catalog c) {
+        if (p.banner != null || p.banners == null || p.banners.isEmpty()) {
+            List<String> line = new ArrayList<>();
+            if (p.banner != null) for (String id : p.banner) line.add(c.known(id) && p.owned.containsKey(id) ? id : RosterMath.EMPTY);
+            Set<String> houses = new LinkedHashSet<>(c.house().values());
+            var moved = WarGrid.fromLine(line, c, t -> RosterMath.validTable(t, c, p.owned.keySet(), houses) == null);
+            SortedMap<Integer, String> table = moved.table();
+            if (p.banner == null) table = Profile.starterTable();
+            p.banners = new ArrayList<>(List.of(new Profile.Banner("Banner I", WarGrid.format(table))));
+            p.activeBanner = 0;
+            if (moved.trimmed() > 0 && p.banner != null) p.notice = "Your banner cost more than the war table allows; " + Profile.trimmedText(moved.trimmed()) + " taken off the back rows.";
+        }
+        int gold = Math.max(0, p.gold == null ? 0 : p.gold);
+        p.pacts += p.writs == null ? 0 : p.writs;
+        p.troopWrits += gold / 100;
+        p.gearShards += gold % 100;
+        p.banner = null;
+        p.gold = null;
+        p.writs = null;
+        p.schema = 7;
         return p;
     }
 

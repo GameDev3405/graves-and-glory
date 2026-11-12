@@ -67,7 +67,7 @@ public final class CommandSelection {
     /** The banner slots holding one of these troop types: a custom group's strength as fielded. */
     private static int bannerCount(Profile profile, List<String> troopIds) {
         int n = 0;
-        if (profile.banner != null && troopIds != null) for (String id : profile.banner) if (troopIds.contains(id)) n++;
+        if (troopIds != null) for (String id : profile.line()) if (troopIds.contains(id)) n++;
         return n;
     }
     private static String label(String id) {

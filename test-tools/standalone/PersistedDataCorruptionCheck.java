@@ -134,16 +134,16 @@ public final class PersistedDataCorruptionCheck {
     static Profile freshProfile() { Profile fresh = new Profile(); fresh.sanitize(); return fresh; }
     static Profile loadProfile(Path file) { return SafeFiles.load(file, PersistedDataCorruptionCheck::readProfile, PersistedDataCorruptionCheck::freshProfile, "Commander profile"); }
     static void sane(Profile p, String what) {
-        check(p != null && p.owned != null && p.banner != null && p.progression != null && p.commander != null, "sanitized profile has no null parts after " + what);
+        check(p != null && p.owned != null && p.banners != null && !p.banners.isEmpty() && p.progression != null && p.commander != null, "sanitized profile has no null parts after " + what);
     }
     static void profiles(Path root) throws IOException {
         Profile fresh = freshProfile();
-        fresh.gold = 123;
+        fresh.gearShards = 123;
         String valid = JSON.toJson(fresh);
         Path dir = Files.createDirectories(root.resolve("profiles"));
         Path good = dir.resolve(UUID.randomUUID() + ".json");
         Files.writeString(good, valid);
-        check(loadProfile(good).gold == 123, "a valid current profile loads untouched");
+        check(loadProfile(good).gearShards == 123, "a valid current profile loads untouched");
         check(names(dir).size() == 1, "reading a current profile writes nothing");
 
         int restored = 0, defaults = 0, read = 0, index = 0;
@@ -159,8 +159,8 @@ public final class PersistedDataCorruptionCheck {
                 try { p = loadProfile(f); } catch (Throwable t) { check(false, "profile: " + e.getKey() + " escaped as " + t); return; }
                 sane(p, e.getKey());
                 if (warnings.isEmpty()) read++; // parsed (a schema-less object is taken for v1 and migrated; its .v1.json keeps the original)
-                else if (withBak) { restored++; check(p.gold == 123, "profile restored from its .bak for " + e.getKey()); }
-                else { defaults++; check(p.gold == fresh().gold && warnings.get(0).contains("using defaults"), "no .bak: a default profile for " + e.getKey()); }
+                else if (withBak) { restored++; check(p.gearShards == 123, "profile restored from its .bak for " + e.getKey()); }
+                else { defaults++; check(p.gearShards == fresh().gearShards && warnings.get(0).contains("using defaults"), "no .bak: a default profile for " + e.getKey()); }
                 check(warnings.size() <= 1, "one warning per fallback: " + warnings);
                 check(kept(d, f, bytes), "no data loss for " + e.getKey() + (withBak ? " (with .bak)" : ""));
                 check(names(d).stream().noneMatch(n -> n.endsWith(".tmp")), "no stray .tmp left for " + e.getKey());

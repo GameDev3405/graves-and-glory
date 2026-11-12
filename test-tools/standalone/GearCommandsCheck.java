@@ -17,7 +17,7 @@ public final class GearCommandsCheck {
         Profile p = new Profile();
         Gear.grantStarter(p);
         p.forgeMarks = 75;
-        p.gold = 500;
+        p.gearShards = 500;
         var rng = new SplittableRandom(5);
 
         String[] bad = {"gear:equip:999999", "forge:breakdown:abc", "gear:relic:7:x", "gear:relic:0", "forge:roll:", "forge:roll:cape", "gear:", "forge:frob", "gear:equip:-1",
@@ -61,9 +61,9 @@ public final class GearCommandsCheck {
         var fix = GearCommands.apply(p, "forge:repair:" + p.gear.get(0).uid, rng);
         check(fix.ok() && fix.notice().startsWith("Repaired for ") && p.gear.get(0).durability == 100, "repair restores durability: " + fix.notice());
         check(GearCommands.apply(p, "forge:repair-all", rng).refusal().equals("It needs no repair."), "repair-all with nothing damaged is refused");
-        p.gold = 500;
+        p.gearShards = 500;
         var big = GearCommands.apply(p, "forge:expand", rng);
-        check(big.ok() && p.inventorySize == 70 && big.notice().equals("Inventory: 70 slots"), "expand with 500 gold gives 70 slots: " + big);
+        check(big.ok() && p.inventorySize == 70 && big.notice().equals("Inventory: 70 slots"), "expand with 500 gear shards gives 70 slots: " + big);
         check(GearCommands.apply(p, "forge:breakdown-duplicates", rng).refusal().equals("You have no duplicates to break down."), "no duplicates is refused");
 
         System.out.println("GearCommandsCheck: " + checks + " checks passed");

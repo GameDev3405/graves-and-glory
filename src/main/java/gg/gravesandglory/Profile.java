@@ -3,7 +3,7 @@ package gg.gravesandglory;
 import java.util.*;
 
 /**
- * A commander's saved collection, schema 6 (spec 6.2, plan 2C.3, commander gear spec, command UI custom groups): the banner, the owned troops with stars and mastery, per
+ * A commander's saved collection, schema 7 (spec 6.2, plan 2C.3, commander gear spec, command UI custom groups, war table army rework): up to five named war table banners, the owned troops with stars and mastery, per
  * House shards, Renown and Epic pity, the Long March battles won and bonuses paid, and the commander's gear, relics and Forge marks. Server-owned JSON, one file per player
  * (Campaign.profile loads it, migrating an older file first). Pure, so the standalone checks compile it.
  */
@@ -16,7 +16,17 @@ public final class Profile {
     static final class Owned { int copies=1, stars=1, kills, survived, mastery; String variant="base"; }
 
     /** The current profile schema; ProfileMigration upgrades older files to it. */
-    static final int SCHEMA = 6;
+    static final int SCHEMA = 7;
+    /** Schema 7: the longest banner name. */
+    static final int MAX_BANNER_NAME = 16;
+    /** Troop writs a recruitment roll costs, and a chosen recruit (the old 100 and 300 gold, at 100 gold a writ). */
+    static final int ROLL_WRITS = 1, CHOSEN_WRITS = 3;
+    /** Schema 7: one saved war table banner: its name and its cells as the compact string WarGrid.format writes. A Gson class, not a record, so an old file missing a field still loads. */
+    static final class Banner {
+        String name, cells;
+        Banner() {}
+        Banner(String name, String cells) { this.name = name; this.cells = cells; }
+    }
     /** Schema 5: the most custom numbered groups a commander keeps, and the longest group name. */
     static final int MAX_CUSTOM_GROUPS = 4, GROUP_NAME_MAX = 12;
     /** One custom numbered group (command UI): its number 1..MAX_CUSTOM_GROUPS, a short name and the troop type ids it orders. */
@@ -24,17 +34,29 @@ public final class Profile {
     int schema = SCHEMA;
     /** Set when the file was saved by a newer build (schema above SCHEMA). Never saved: Gson skips transient fields. Campaign.save then writes nothing. */
     transient boolean readOnly;
-    int gold, matches, wins;
+    int matches, wins;
     boolean tutorialDone;
     String commander = "champion";
-    /** rules.squadSize slots: troop ids, ^ for a slot of the Epic or Legendary before it, and empty. */
-    List<String> banner = RosterMath.starterBanner();
+    /** Schema 7: one to rules.maxBanners saved war table banners, and the index of the one a match takes. */
+    List<Banner> banners = starterBanners();
+    int activeBanner;
+    /** Schema 7: the Legendary Pacts held (named writs before schema 7). */
+    int pacts;
+    /** Schema 7: troop writs (they pay for recruitment rolls and chosen troops), the part of a writ earned so far as 0 to 99 hundredths, and gear shards (they pay for gear and Forge work). */
+    int troopWrits, writGold, gearShards;
+    /** Schema 7: a one-time text for the player (a banner that was trimmed on load). The server clears it once it has been shown; null when there is none. */
+    String notice;
+    /**
+     * Legacy fields of schema 6 and older, read only: ProfileMigration.v6toV7 moves them (the 20-entry banner, the saved gold and the Pact count) and sanitize nulls
+     * them, so Gson (which does not write nulls) never saves them again. Nothing but the migrations reads them.
+     */
+    List<String> banner;
+    Integer gold, writs;
     /** The side row (factions) this commander asks to fly. */
     String bannerColour = "gold";
     /** Owned troop types by id. A new commander owns one copy of each House Common (spec 6.2). */
     Map<String, Owned> owned = commons();
     Map<String, Integer> shards = new LinkedHashMap<>(), renown = new LinkedHashMap<>(), pity = new LinkedHashMap<>();
-    int writs;
     Progression.State progression = new Progression.State();
     /** The Long March: the highest campaignBattles order with it and every lower order won. Since schema 3 it is derived from battlesWon (MarchMath.cleared) on sanitize; the War Table and CampWorld.spawn still read it. */
     int campaignCleared;
@@ -65,7 +87,7 @@ public final class Profile {
 
     /**
      * Repairs a loaded or migrated profile in place. Owned ids the catalog does not know are dropped. Stars clamp to
-     * 1..recruitment.maxStars. A banner that fails validBanner is repacked. An unknown class becomes champion and an unknown
+     * 1..recruitment.maxStars. Banners are repaired by sanitizeBanners, and a profile below schema 7 takes ProfileMigration.v6toV7 first. An unknown class becomes champion and an unknown
      * side colour gold. Shards, renown and pity hold exactly the given Houses, each at 0 or more. A profile still below schema 3 (a
      * schema-2 object from an import or a client copy) takes ProfileMigration.v2toV3 first. battlesWon and bonusClaimed keep only ids a
      * campaignBattles or bonusObjectives row knows, and campaignCleared is derived from battlesWon.
@@ -75,14 +97,12 @@ public final class Profile {
         if (schema < 4) ProfileMigration.v3toV4(this);
         if (schema < 5) ProfileMigration.v4toV5(this);
         if (schema < 6) ProfileMigration.v5toV6(this);
+        boolean toSeven = schema < 7; // v6toV7 runs below, once the owned troops are clean
         if (schema > SCHEMA) readOnly = true; // a save from a newer build: kept as it is, never written by this one
-        else schema = SCHEMA;
         if (progression == null) progression = new Progression.State();
         progression.sanitize();
-        gold = clamp(gold, 0, 1_000_000);
         matches = Math.max(0, matches);
         wins = clamp(wins, 0, matches);
-        writs = Math.max(0, writs);
         if (commander == null || !classIds.contains(commander)) commander = "champion";
         if (bannerColour == null || !sideIds.contains(bannerColour)) bannerColour = "gold";
         if (owned == null) owned = new LinkedHashMap<>();
@@ -97,7 +117,15 @@ public final class Profile {
             o.mastery = clamp(o.mastery, 0, maxMastery);
             if (o.variant == null || o.variant.isBlank()) o.variant = "base";
         }
-        if (RosterMath.validBanner(banner, c, owned.keySet()) != null) banner = RosterMath.repack(banner, c, owned.keySet());
+        if (toSeven) ProfileMigration.v6toV7(this, c);
+        gold = null; // the legacy fields are read by the migration only; null, Gson never writes them
+        writs = null;
+        banner = null;
+        pacts = Math.max(0, pacts);
+        troopWrits = clamp(troopWrits, 0, 1_000_000);
+        gearShards = clamp(gearShards, 0, 1_000_000);
+        writGold = clamp(writGold, 0, 99);
+        sanitizeBanners(c);
         shards = perHouse(shards, houses);
         renown = perHouse(renown, houses);
         pity = perHouse(pity, houses);
@@ -119,6 +147,79 @@ public final class Profile {
         Map<String, Integer> out = new LinkedHashMap<>();
         if (in != null) for (String k : MatchEnding.BEST_KEYS) { Integer v = in.get(k); if (v != null) out.put(k, Math.max(0, v)); }
         return out;
+    }
+    /**
+     * The banner half of sanitize. One to maxBanners banners remain (none becomes the starter banner, extra ones at the back go); a name loses control characters, is
+     * trimmed, cut to MAX_BANNER_NAME and, when blank, becomes "Banner N". Each table drops cells that are out of range, unknown or of an unowned troop, then
+     * loses its highest cells (the back rows) until RosterMath.validTable passes for the fieldable Houses: a banner that no longer fits (a troop sold off, a House
+     * not fieldable, a sheet cost raised) is trimmed, never wiped, and the player gets a one-time notice. activeBanner clamps to the banners that remain.
+     */
+    private void sanitizeBanners(RosterMath.Catalog c) {
+        if (banners == null) banners = new ArrayList<>();
+        banners.removeIf(Objects::isNull);
+        if (banners.isEmpty()) banners = starterBanners();
+        while (banners.size() > RosterMath.maxBanners()) banners.remove(banners.size() - 1);
+        Set<String> fieldable = RosterMath.fieldableHouses();
+        int trimmed = 0;
+        for (int i = 0; i < banners.size(); i++) {
+            Banner b = banners.get(i);
+            b.name = bannerName(b.name, i + 1);
+            SortedMap<Integer, String> table = WarGrid.parse(b.cells);
+            int before = table.size();
+            table.entrySet().removeIf(e -> !WarGrid.inRange(e.getKey()) || !c.known(e.getValue()) || !owned.containsKey(e.getValue()));
+            SortedMap<Integer, String> kept = WarGrid.trim(table, t -> RosterMath.validTable(t, c, owned.keySet(), fieldable) == null);
+            trimmed += before - kept.size();
+            b.cells = WarGrid.format(kept);
+        }
+        if (trimmed > 0 && notice == null) notice = "Your banner no longer fits the war table; " + trimmedText(trimmed) + " taken off the back rows.";
+        activeBanner = clamp(activeBanner, 0, banners.size() - 1);
+    }
+    /** "1 troop was" or "N troops were": the troop count of a banner trim notice. */
+    static String trimmedText(int n) { return n == 1 ? "1 troop was" : n + " troops were"; }
+    /** A banner name without control characters, trimmed and cut to MAX_BANNER_NAME; "Banner N" when nothing is left. */
+    static String bannerName(String name, int number) {
+        String n = name == null ? "" : name.replaceAll("\\p{Cntrl}", "").trim();
+        if (n.length() > MAX_BANNER_NAME) n = n.substring(0, MAX_BANNER_NAME).trim();
+        return n.isEmpty() ? "Banner " + number : n;
+    }
+    /** The banners of a new profile: "Banner I" holding the starter table. */
+    static List<Banner> starterBanners() {
+        List<Banner> out = new ArrayList<>();
+        out.add(new Banner("Banner I", WarGrid.format(starterTable())));
+        return out;
+    }
+    /** The starter table: 12 Order Squires then 8 Order Archers, placed by role (the knights in the front rows, the archers behind them). */
+    static SortedMap<Integer, String> starterTable() {
+        List<String> troops = new ArrayList<>();
+        for (int i = 0; i < 12; i++) troops.add("knight");
+        for (int i = 0; i < 8; i++) troops.add("archer");
+        return WarGrid.place(troops, id -> id.equals("archer") ? 2 : 0);
+    }
+    /** The active banner, clamped to the banners held; null only when there are none (sanitize always leaves one). */
+    private Banner active() {
+        if (banners == null || banners.isEmpty()) return null;
+        return banners.get(clamp(activeBanner, 0, banners.size() - 1));
+    }
+    /** Pays a gold amount of the old economy in the new one: it fills writGold to whole troop writs (100 each) and counts the same number of gear shards. */
+    void payGold(int gold) {
+        if (gold <= 0) return;
+        long w = writGold + (long) gold;
+        troopWrits = (int) Math.min(1_000_000L, troopWrits + w / 100);
+        writGold = (int) (w % 100);
+        gearShards = (int) Math.min(1_000_000L, (long) gearShards + gold);
+    }
+
+    /** The active banner's table: cell index to troop id, sorted by cell. Empty when there is no banner. */
+    SortedMap<Integer, String> table() {
+        Banner b = active();
+        return b == null ? new TreeMap<>() : WarGrid.parse(b.cells);
+    }
+    /** The active banner as the dense list a battle reads: WarGrid.cells() entries, RosterMath.EMPTY where nothing stands. */
+    List<String> line() { return WarGrid.dense(table()); }
+    /** Saves a table as the cells of banner number banner (0-based). It throws IllegalArgumentException for a banner the profile does not hold. */
+    void setTable(int banner, Map<Integer, String> t) {
+        if (banners == null || banner < 0 || banner >= banners.size()) throw new IllegalArgumentException("no banner " + banner);
+        banners.get(banner).cells = WarGrid.format(t);
     }
     /**
      * Repairs custom groups: nulls and repeated or out-of-range numbers go (the first stays), a name is trimmed, clamped to GROUP_NAME_MAX

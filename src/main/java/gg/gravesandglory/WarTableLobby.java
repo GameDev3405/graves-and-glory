@@ -123,7 +123,7 @@ final class WarTableLobby {
     /** Whether the plate reads Stand down: this commander is ready, or the test preview of the map wait shows the plate as a ready player sees it (the room is only built once everyone is ready). */
     static boolean standing() { return myReady() || previewWait >= 0; }
     static boolean myReady() { var m = me(); return m != null && flag(m, "ready"); }
-    static String myHouse() { var m = me(); String h = m == null ? "" : str(m, "house"); return h.isEmpty() ? RosterMath.rollHouse(CampaignClient.profile.banner) : h; }
+    static String myHouse() { var m = me(); String h = m == null ? "" : str(m, "house"); return h.isEmpty() ? RosterMath.rollHouse(CampaignClient.profile.line()) : h; }
     /** The role the viewer fights in: the set he wears most pieces of (GearStats), as the server tells the room. */
     static String myRole() { var m = me(); String r = m == null ? "" : str(m, "role"); return r.isEmpty() ? GearStats.of(CampaignClient.profile).role() : r; }
     /** Units my banner fields under my House pick (the server's count; -1 before it says). */

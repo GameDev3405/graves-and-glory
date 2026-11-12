@@ -34,13 +34,13 @@ final class RecruitPages {
         int shards=p.shards.getOrDefault(t.house(),0),renown=p.renown.getOrDefault(t.house(),0);
         // A tip says what the action does while it can be pressed and why it cannot while it cannot (the War Table writes it under the tag, the old troop page as a tooltip).
         switch(t.rarity()){
-            case "common","rare"->{if(full)return null;int cost=R.chosenCost();boolean ok=p.gold>=cost;
-                return new Action("Buy "+cost,"buy:"+t.id(),ok,!ok?"Need "+cost+" gold. You have "+p.gold+".":o==null?"Joins your collection.":copyLine(o,t));}
+            case "common","rare"->{if(full)return null;int cost=Profile.CHOSEN_WRITS;boolean ok=p.troopWrits>=cost;
+                return new Action("Buy "+cost,"buy:"+t.id(),ok,!ok?"Need "+cost+" writs. You have "+p.troopWrits+".":o==null?"Joins your collection.":copyLine(o,t));}
             case "epic","legendary"->{
                 if(o!=null){if(full)return null;var r=RosterMath.rarityRow(t.rarity());int cost=r==null?0:o.stars<=1?r.shardStar2():r.shardStar3();boolean ok=shards>=cost;
                     return new Action("Star "+(o.stars+1),"star:"+t.id(),ok,ok?"Star "+(o.stars+1)+" for "+cost+" "+house+" shards.":"Need "+cost+" "+house+" shards. You have "+shards+".");}
                 if(t.rarity().equals("epic"))return null;
-                if(p.writs>0)return new Action("Pact","legendary:"+t.house()+":pact",true,"Spend your Pact: "+TroopKnowledge.name(t)+" joins your collection.");
+                if(p.pacts>0)return new Action("Pact","legendary:"+t.house()+":pact",true,"Spend your Pact: "+TroopKnowledge.name(t)+" joins your collection.");
                 boolean ready=renown>=R.renownForLegendary()&&shards>=R.legendaryShards();
                 String tip=ready?TroopKnowledge.name(t)+" joins your collection for "+R.legendaryShards()+" "+house+" shards."
                     :"Needs "+(renown<R.renownForLegendary()?R.renownForLegendary()+" "+house+" Renown (you have "+renown+")":"")+(renown<R.renownForLegendary()&&shards<R.legendaryShards()?" and ":"")+(shards<R.legendaryShards()?R.legendaryShards()+" shards (you have "+shards+")":"")+", or a Pact.";
@@ -284,7 +284,7 @@ final class RecruitPages {
     static TextRenderer font(){return MinecraftClient.getInstance().textRenderer;}
     /** What CampScreen.state adds so its pages rebuild when a buy, a star or an unlock lands: shards, Pacts, Renown and each holding's copies, stars and mastery. */
     static String stateKey(Profile p){
-        StringBuilder sb=new StringBuilder().append(p.shards).append(p.writs).append(p.renown);
+        StringBuilder sb=new StringBuilder().append(p.shards).append(p.pacts).append(p.troopWrits).append(p.renown);
         for(var e:new TreeMap<>(p.owned).entrySet())sb.append(e.getKey()).append(e.getValue().copies).append('/').append(e.getValue().stars).append('/').append(e.getValue().mastery).append(';');
         return sb.toString();
     }

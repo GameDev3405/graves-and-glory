@@ -589,7 +589,7 @@ final class WarTableGear {
         }
 
         g.drawText(font, DarkUi.heading("Blacksmith"), r[0] + 16, r[1] + 14, DarkUi.INK_TEXT, false);
-        var gold = DarkUi.body("Gold " + CampaignClient.profile.gold);
+        var gold = DarkUi.body("Gear shards " + CampaignClient.profile.gearShards);
         g.drawText(font, gold, r[0] + r[2] - 16 - font.getWidth(gold), r[1] + 16, DarkUi.SEPIA, false);
         g.fill(r[0] + 16, r[1] + 28, r[0] + r[2] - 16, r[1] + 29, DarkUi.SEPIA_LINE);
         if (Spec.BLACKSMITHLINES.length > 0) {

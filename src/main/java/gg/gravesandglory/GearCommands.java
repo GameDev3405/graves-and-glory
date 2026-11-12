@@ -117,14 +117,14 @@ final class GearCommands {
                 if (piece == null) return Outcome.refused(INVALID);
                 int cost = Forge.repairCost(piece);
                 String why = Forge.repair(p, uid);
-                return why.isEmpty() ? Outcome.done("Repaired for " + cost + " gold") : Outcome.refused(why);
+                return why.isEmpty() ? Outcome.done("Repaired for " + cost + " gear shards") : Outcome.refused(why);
             }
             case "repair-all": {
                 if (part.length != 2) return Outcome.refused(INVALID);
                 int cost = 0;
                 for (Gear.Piece g : p.gear) cost += Forge.repairCost(g);
                 String why = Forge.repairAll(p);
-                return why.isEmpty() ? Outcome.done("Repaired for " + cost + " gold") : Outcome.refused(why);
+                return why.isEmpty() ? Outcome.done("Repaired for " + cost + " gear shards") : Outcome.refused(why);
             }
             case "expand": {
                 if (part.length != 2) return Outcome.refused(INVALID);
