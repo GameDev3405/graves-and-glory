@@ -25,6 +25,13 @@ Rebuild: `python tools/audio/make_cues.py [cue_id ...]` (numpy and ffmpeg on PAT
 | convoy_checkpoint.ogg | The convoy reaches a checkpoint | Two bell strokes over a low hum, 3.6 s |
 | wave_warning.ogg | Survival warns of the next wave (soul-fire sites glow) | One long cold horn with a flat second voice and a drum, 3.7 s |
 | wave_rise.ogg | The warned wave rises | Swelling drum roll, then a full horn line and big drum, 4.2 s |
+| ending_draw.ogg | Match ends in a draw (results screen) | Held open fifth on two horns, one bell, soft drum, 2.1 s; -22 LUFS |
+| podium_drum.ogg | Podium reveal | Drum roll that swells and quickens, ending on one heavy stroke for the MVP, 4.5 s; -26 LUFS |
+| podium_reveal.ogg | One hit per podium place (three, 1.5 s apart) | Deep drum, brass stab, low bell, 1.5 s; -22 LUFS |
+| reward_tick_1..3.ogg | Coin or tally tick (up to about 15 a second) | A tiny coin on iron, 70 ms, three pitches; no subtitle |
+| reward_total.ogg | The reward total line lands | Heavy drum, iron settle, low bell, coin shimmer, 1.6 s; -24.5 LUFS |
+| level_up.ogg | A progress bar crosses a level or Renown tier | Rising bell run into a bright horn chord, 2.2 s; -22 LUFS |
+| award.ogg | MVP and award chips appear | Two-note horn call over a soft drum, 1.6 s; -22 LUFS |
 
 ## Pixabay cues
 
@@ -154,6 +161,7 @@ These have files, events and an `AudioCues` entry, but no clear game moment, and
 - troop_voices, march_leather: no per-troop voice or footstep system exists; adding one is its own design.
 - siege_ram_swing: no ram unit. gate_chains: the gate's shutting is already gate_shut.
 - banner_flap: no banner idle moment.
+- ending_draw, podium_drum, podium_reveal, reward_tick, reward_total, level_up, award: the match-ending cues (Kort, 2026-11-13, "Sound"); all `Scope.LOCAL`. The `ui/ending-polish` branch plays them by name; once a literal `Cue.NAME` play site lands, remove the name from `OFF` in `test_audio_events.py` and from `unplayed` in `AudioCuesCheck.java`.
 
 ## Still missing
 

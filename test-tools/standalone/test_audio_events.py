@@ -9,10 +9,12 @@ SOURCES = ROOT / "src/main/java/gg/gravesandglory"
 # Cues Kort kept off (no game moment): the only registered events allowed to have no play site.
 OFF = {"troop_voices", "march_leather", "siege_ram_swing", "gate_chains", "banner_flap",
        # Round 2 picks registered with no game moment yet (docs/AUDIO.md, Round 2).
-       "title_music", "capture_rising", "coin_clink", "active_rally", "relic_use_light", "relic_use_lightning", "veteran_levelup", "wagon_wheels"}
+       "title_music", "capture_rising", "coin_clink", "active_rally", "relic_use_light", "relic_use_lightning", "veteran_levelup", "wagon_wheels",
+       # Match-ending cues (ui/ending-polish plays them by name from its own branch): remove each from here when a literal Cue.NAME play site lands.
+       "ending_draw", "podium_drum", "podium_reveal", "reward_tick", "reward_total", "level_up", "award"}
 
 # Events that show no subtitle by design: UI clicks, the countdown tick, streamed music, and the long ambient beds.
-NO_SUBTITLE = {"countdown_tick", "camp_room_tone", "survival_wind"}
+NO_SUBTITLE = {"countdown_tick", "camp_room_tone", "survival_wind", "reward_tick"}
 NO_SUBTITLE_PREFIXES = ("ui_", "music.", "ambience_")
 NO_SUBTITLE_SUFFIXES = ("_music",)
 

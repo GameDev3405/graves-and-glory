@@ -108,5 +108,11 @@
   "subtitles.gravesandglory.relic_use_light": "A radiant relic shines",
   "subtitles.gravesandglory.relic_use_lightning": "A lightning relic crackles",
   "subtitles.gravesandglory.veteran_levelup": "A troop gains a Rank",
-  "subtitles.gravesandglory.wagon_wheels": "Wagon wheels turn"
+  "subtitles.gravesandglory.wagon_wheels": "Wagon wheels turn",
+  "subtitles.gravesandglory.ending_draw": "The battle ends in a draw",
+  "subtitles.gravesandglory.podium_drum": "War drums roll",
+  "subtitles.gravesandglory.podium_reveal": "A drum strikes",
+  "subtitles.gravesandglory.reward_total": "The reward is tallied",
+  "subtitles.gravesandglory.level_up": "A new level is reached",
+  "subtitles.gravesandglory.award": "A horn honours the best"
 }

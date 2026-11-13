@@ -1047,5 +1047,75 @@
         "stream": false
       }
     ]
+  },
+  "ending_draw": {
+    "subtitle": "subtitles.gravesandglory.ending_draw",
+    "sounds": [
+      {
+        "name": "gravesandglory:ending_draw",
+        "stream": false
+      }
+    ]
+  },
+  "podium_drum": {
+    "subtitle": "subtitles.gravesandglory.podium_drum",
+    "sounds": [
+      {
+        "name": "gravesandglory:podium_drum",
+        "stream": false
+      }
+    ]
+  },
+  "podium_reveal": {
+    "subtitle": "subtitles.gravesandglory.podium_reveal",
+    "sounds": [
+      {
+        "name": "gravesandglory:podium_reveal",
+        "stream": false
+      }
+    ]
+  },
+  "reward_total": {
+    "subtitle": "subtitles.gravesandglory.reward_total",
+    "sounds": [
+      {
+        "name": "gravesandglory:reward_total",
+        "stream": false
+      }
+    ]
+  },
+  "level_up": {
+    "subtitle": "subtitles.gravesandglory.level_up",
+    "sounds": [
+      {
+        "name": "gravesandglory:level_up",
+        "stream": false
+      }
+    ]
+  },
+  "award": {
+    "subtitle": "subtitles.gravesandglory.award",
+    "sounds": [
+      {
+        "name": "gravesandglory:award",
+        "stream": false
+      }
+    ]
+  },
+  "reward_tick": {
+    "sounds": [
+      {
+        "name": "gravesandglory:reward_tick_1",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:reward_tick_2",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:reward_tick_3",
+        "stream": false
+      }
+    ]
   }
 }

@@ -65,7 +65,7 @@ public final class AudioCuesCheck {
    code=walk.filter(p->p.toString().endsWith(".java")&&!p.getFileName().toString().equals("AudioCues.java")).map(p->{try{return Files.readString(p);}catch(Exception e){throw new RuntimeException(e);}}).collect(Collectors.joining("\n"));
   }
   // Registered with files and a subtitle but no game moment yet (docs/AUDIO.md, "Registered, not played"): the only cues allowed to have no caller.
-  Set<String> unplayed=Set.of("SIEGE_RAM_SWING","GATE_CHAINS","BANNER_FLAP","MARCH_LEATHER","TROOP_VOICES","TITLE_MUSIC","CAPTURE_RISING","COIN_CLINK","ACTIVE_RALLY","RELIC_USE_LIGHT","RELIC_USE_LIGHTNING","VETERAN_LEVELUP","WAGON_WHEELS");
+  Set<String> unplayed=Set.of("SIEGE_RAM_SWING","GATE_CHAINS","BANNER_FLAP","MARCH_LEATHER","TROOP_VOICES","TITLE_MUSIC","CAPTURE_RISING","COIN_CLINK","ACTIVE_RALLY","RELIC_USE_LIGHT","RELIC_USE_LIGHTNING","VETERAN_LEVELUP","WAGON_WHEELS","ENDING_DRAW","PODIUM_DRUM","PODIUM_REVEAL","REWARD_TICK","REWARD_TOTAL","LEVEL_UP","AWARD");
   // The ambience beds are picked by AudioCues.bed (so the choice is testable without Minecraft) and played by MusicDirector's bed layer.
   Set<AudioCues.Cue> beds=EnumSet.of(AudioCues.Cue.AMBIENCE_WIND,AudioCues.Cue.AMBIENCE_BIRDS,AudioCues.Cue.AMBIENCE_WATER,AudioCues.Cue.AMBIENCE_CROWS,AudioCues.Cue.AMBIENCE_SNOW,AudioCues.Cue.CAMP_ROOM_TONE,AudioCues.Cue.SURVIVAL_WIND);
   for(AudioCues.Cue c:AudioCues.Cue.values()){

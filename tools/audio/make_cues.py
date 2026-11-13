@@ -5,7 +5,7 @@ Usage: python tools/audio/make_cues.py [cue_id ...]      (no arguments rebuilds 
 Tone: medieval and Souls-like: low war horns, deep drums, iron and bell strikes, muted wood thunks, little treble.
 Each cue is normalised to its own peak (CUES); the in-game level is the volume column of AudioCues, so change it there.
 """
-import pathlib, subprocess, sys
+import pathlib, re, subprocess, sys
 import numpy as np
 
 SR = 44100
@@ -167,13 +167,79 @@ def wave_rise(r):      # drums swell, then the whole horn line breaks
     add(b, horn(110, 1.6, r, .08, .8), 1.45, .55); add(b, drum(45, 1.3, r, 1.6), 1.45, 1); return reverb(b, 1.2, .3, r)
 
 
+# ---- match ending (Kort picked "Sound" for the ending polish, 2026-11-13): the same bell, horn and drum voice as VICTORY and DEFEAT ----------------
+
+def ending_draw(r):    # a held open fifth that neither rises nor falls, one bell stroke and a soft drum: neither triumph nor grief (about 2 s)
+    b = np.zeros(int(1.6 * SR))
+    add(b, horn(146.83, 1.5, r, .3, .7, dark=1300), 0, .55); add(b, horn(220, 1.5, r, .35, .7, dark=1300), .04, .4)
+    add(b, bell(293.66, 1.5, r), .05, .45); add(b, drum(62, .6, r, 1.0, .9), 0, .55); return reverb(b, .5, .3, r)
+
+def podium_drum(r):    # a war-drum roll that swells and quickens under the podium reveal, ending on one heavy stroke for the MVP (about 4.5 s)
+    b = np.zeros(int(4.2 * SR)); t, i, roll = 0.0, 0, 3.7
+    while t < roll:
+        k = t / roll
+        add(b, drum(58 + (i % 2) * 7 + 6 * k, .2, r, .8, .8), t, .12 + .62 * k ** 1.3)
+        t += 1 / (6 + 11 * k ** 1.4) + r.uniform(-.004, .004); i += 1
+    n = int(roll * SR); add(b, rumble(roll, r, 90, 60) * np.linspace(0, 1, n) ** 2, 0, .9)
+    add(b, drum(46, .6, r, 1.8), roll + .02, 1.2); add(b, thunk(62, .5, r), roll + .02, .6); add(b, clank(150, .6, r), roll + .02, .35)
+    return reverb(b, .3, .25, r)
+
+def podium_reveal(r):  # one stately hit per podium place: a deep drum, a brass stab and a low bell (plays three times, 1.5 s apart)
+    b = np.zeros(int(1.1 * SR))
+    add(b, drum(55, .7, r, 1.5), 0, 1); add(b, clank(170, .5, r), 0, .3)
+    add(b, horn(146.83, .6, r, .03, .35, dark=1500), .02, .5); add(b, horn(220, .6, r, .03, .35, dark=1500), .02, .3)
+    add(b, bell(196, 1.0, r), .03, .35); return reverb(b, .4, .28, r)
+
+def reward_tick(f):    # a tiny coin on iron, under 80 ms; three pitches so a fast run of them is not a machine gun
+    def build(r):
+        t = tt(.07); x = np.sin(2 * np.pi * f * t) * np.exp(-t / .014) + .5 * np.sin(2 * np.pi * f * 2.76 * t) * np.exp(-t / .007)
+        x += filt(r.standard_normal(len(t)), lo=2500, hi=8000) * np.exp(-t / .002) * .5
+        x += np.sin(2 * np.pi * 330 * t) * np.exp(-t / .012) * .25
+        return x * np.minimum(1, t / .0008)
+    return build
+
+def reward_total(r):   # the total line lands: a heavy drum, an iron settle and a low bell, a little coin shimmer (about 1.5 s)
+    b = np.zeros(int(1.2 * SR))
+    add(b, drum(50, .8, r, 1.4), 0, 1); add(b, thunk(80, .4, r, 1.2), 0, .6); add(b, clank(190, .6, r), .02, .45)
+    add(b, bell(196, 1.2, r), .03, .4)
+    for i in range(6): add(b, clank(r.uniform(2400, 3600), .06, r), .1 + i * .045, r.uniform(.08, .16))
+    return reverb(b, .4, .28, r)
+
+def level_up(r):       # a rising bell run into a bright horn chord: a level or Renown tier is crossed (about 2 s)
+    b = np.zeros(int(1.5 * SR))
+    for i, f in enumerate([587.33, 739.99, 880, 1174.66]): add(b, bell(f, .8, r), i * .09, .5 - .06 * i)
+    add(b, horn(293.66, 1.1, r, .05, .6, dark=2200), .3, .6); add(b, horn(440, 1.1, r, .06, .6, dark=2200), .3, .45)
+    add(b, horn(587.33, 1.0, r, .08, .6, dark=2400), .32, .25); add(b, bell(880, 1.0, r), .32, .35)
+    add(b, drum(73, .5, r), .3, .6); return reverb(b, .7, .3, r)
+
+def award(r):          # a short two-note horn call over a soft drum: the MVP and award chips appear (about 1.3 s)
+    b = np.zeros(int(1.1 * SR))
+    add(b, horn(196, .35, r, .03, .12, dark=1700), 0, .6); add(b, horn(293.66, .8, r, .04, .4, dark=1800), .3, .75)
+    add(b, horn(392, .7, r, .05, .4, dark=1900), .32, .25); add(b, drum(78, .5, r), 0, .55); return reverb(b, .5, .28, r)
+
+
 CUES = {  # id: (builder, peak)
     'ui_confirm': (ui_confirm, .55), 'ui_back': (ui_back, .5), 'ui_deny': (ui_deny, .6), 'countdown_tick': (countdown_tick, .7),
     'defeat': (defeat, .8), 'capture_start': (capture_start, .75), 'capture_won': (capture_won, .8), 'capture_lost': (capture_lost, .8),
     'gate_hit': (gate_hit, .85), 'gate_shut': (gate_shut, .85), 'gate_breach': (gate_breach, .9), 'convoy_roll': (convoy_roll, .6),
     'convoy_stop': (convoy_stop, .7), 'convoy_rollback': (convoy_rollback, .6), 'convoy_checkpoint': (convoy_checkpoint, .75),
     'wave_warning': (wave_warning, .85), 'wave_rise': (wave_rise, .9),
+    'ending_draw': (ending_draw, .8), 'podium_drum': (podium_drum, .85), 'podium_reveal': (podium_reveal, .85),
+    'reward_tick_1': (reward_tick(1900), .6), 'reward_tick_2': (reward_tick(2150), .6), 'reward_tick_3': (reward_tick(1700), .6),
+    'reward_total': (reward_total, .85), 'level_up': (level_up, .8), 'award': (award, .8),
 }
+
+
+# The match-ending cues are levelled by loudness, not just peak, so they sit with the VICTORY and DEFEAT stings (-20 to -21 LUFS) and the other
+# one-shots (about -23). Files under 0.4 s cannot be gated, so reward_tick stays on peak.
+TARGET_LUFS = {'ending_draw': -22, 'podium_drum': -26, 'podium_reveal': -22, 'reward_total': -24.5, 'level_up': -22, 'award': -22}
+
+
+def lufs(x):
+    pcm = (np.clip(x, -1, 1) * 32767).astype('<i2').tobytes()
+    out = subprocess.run(['ffmpeg', '-nostats', '-hide_banner', '-f', 's16le', '-ar', str(SR), '-ac', '1', '-i', '-', '-af', 'ebur128=peak=true', '-f', 'null', '-'],
+                         input=pcm, capture_output=True, check=True).stderr.decode()
+    return float(re.findall(r'I:\s+(-?[\d.]+) LUFS', out)[-1])
 
 
 def finish(x, peak):
@@ -193,5 +259,9 @@ def export(name, x):
 if __name__ == '__main__':
     names = sys.argv[1:] or list(CUES)
     for n in names:
-        build, peak = CUES[n]; x = finish(build(rng(n)), peak); export(n, x)
-        print(f'{n}.ogg  {len(x) / SR:.2f}s  peak {peak}')
+        build, peak = CUES[n]; x = finish(build(rng(n)), peak)
+        if n in TARGET_LUFS:
+            x = x * 10 ** ((TARGET_LUFS[n] - lufs(x)) / 20); peak = float(np.max(np.abs(x)))
+            assert peak < .89, f'{n}: levelling to {TARGET_LUFS[n]} LUFS would peak at {peak:.2f}'
+        export(n, x)
+        print(f'{n}.ogg  {len(x) / SR:.2f}s  peak {peak:.2f}')

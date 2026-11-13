@@ -33,6 +33,14 @@ public final class AudioCues {
         VICTORY("victory", null, .8f, 1f, "players", Scope.OWNER, 0, "Battle ends"),
         // Own synthesised files (tools/audio/make_cues.py); see docs/AUDIO.md.
         DEFEAT("defeat", null, .7f, 1f, "players", Scope.OWNER, 0, "Battle lost"),
+        // Match ending (the results screen, podium and rewards; client side, so Scope.LOCAL). Synthesised by tools/audio/make_cues.py; REWARD_TICK has three pitch variants.
+        ENDING_DRAW("ending_draw", null, .7f, 1f, "players", Scope.LOCAL, 0, "The battle ends in a draw"),
+        PODIUM_DRUM("podium_drum", null, .6f, 1f, "players", Scope.LOCAL, 0, "War drums roll"),
+        PODIUM_REVEAL("podium_reveal", null, .7f, 1f, "players", Scope.LOCAL, 0, "A drum strikes"),
+        REWARD_TICK("reward_tick", null, .3f, 1f, "players", Scope.LOCAL, 0, ""),
+        REWARD_TOTAL("reward_total", null, .6f, 1f, "players", Scope.LOCAL, 0, "The reward is tallied"),
+        LEVEL_UP("level_up", null, .6f, 1f, "players", Scope.LOCAL, 0, "A new level is reached"),
+        AWARD("award", null, .6f, 1f, "players", Scope.LOCAL, 0, "A horn honours the best"),
         CAPTURE_START("capture_start", null, .6f, 1f, "players", Scope.ALL, 200, "A point is contested", 1),
         CAPTURE_WON("capture_won", null, .6f, 1f, "players", Scope.TEAM, 20, "Your side takes a point"),
         CAPTURE_LOST("capture_lost", null, .7f, 1f, "players", Scope.TEAM, 20, "Your side loses a point"),
