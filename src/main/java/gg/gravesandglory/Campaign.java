@@ -628,14 +628,16 @@ public final class Campaign {
             var paid=eligible?RosterMath.prorate(RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),credited),seated,seconds):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
             List<String> titles=eligible?ledger(p,s):List.of();List<Integer> pactChapters=pacts(p);int pacts=pactChapters.size();
-            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"DEFEAT");report.addProperty("line",endingLine);report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("forgeMarks",saved?marks:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pactChapters));
+            boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("forgeMarks",saved?marks:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pactChapters));results.put(id,report);
+            // match ending (2026-11-12 spec): a loss reads DEFEAT, plus the banner line, podium, your groups, rewards rows and what is ready to claim
+            if(winner>=0&&s.team!=winner)report.addProperty("outcome","DEFEAT");report.addProperty("line",endingLine);
             report.add("podium",podium.deepCopy());report.add("you",reportYou(liveSquad(id,s)));report.add("claimable",reportClaimable(p));
             JsonArray rewards=new JsonArray(); // what was saved, one row per paid item in a fixed order; the army rework adds its currencies here
             if(saved){reward(rewards,"Gold",earned,(credited?"victory":practice?"practice":"match complete")+(percent<100?" (pro-rated "+percent+"%)":""));reward(rewards,"Forge marks",marks,credited?"victory":"match complete");reward(rewards,"XP",p.progression.xp-priorXp,"battle progress");
                 for(String h:Profile.houseOrder()){reward(rewards,RosterMath.houseName(h)+" shards",paid.shards().getOrDefault(h,0),"House slots");reward(rewards,RosterMath.houseName(h)+" Renown",paid.renown().getOrDefault(h,0),"House slots");}
                 if(march!=null&&march.bonusPaid()){reward(rewards,RosterMath.houseName(march.bonusHouse())+" shards",march.bonusShards(),"bonus objective");reward(rewards,"Gold",march.bonusGold(),"bonus objective");}
                 reward(rewards,pacts==1?"Pact":"Pacts",pacts,"chapter cleared");for(String t:titles)reward(rewards,"New title: "+t,1,"mastery");}
-            report.add("rewards",rewards);results.put(id,report);
+            report.add("rewards",rewards);
             if(!saved){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
             String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gold":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
             standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(!eligible?" (reward requires 3 minutes of play)":percent<100?" (pro-rated: you were seated for "+percent+"% of the match)":"")+(marks>0?" / +"+marks+" Forge marks":"")+extra);
@@ -655,14 +657,23 @@ public final class Campaign {
         int rows=0;for(UUID id:participants){var r=results.get(id);if(r!=null&&r.has("rewards"))rows=Math.max(rows,r.getAsJsonArray("rewards").size());}
         endingTiming=MatchEnding.timing(Spec.ENDING[0],rows);
         for(var u:b.units){u.mob.setAiDisabled(true);u.mob.getNavigation().stop();u.mob.setTarget(null);u.mob.setNoGravity(true);u.mob.setVelocity(Vec3d.ZERO);u.mob.velocityModified=true;} // a troop in mid-leap hangs where it is (the units are discarded at the end)
+        holdShots();
         deleteProgress();
         PodiumStage.ensure(b.world);
+    }
+    /** Arrows and thrown weapons in flight are noClip visuals the gated-off Projectiles.tick last pushed: stop them where they are. */
+    private void holdShots(){
+        for(var s:b.shots)hold(s.visual());for(var l:b.landed)hold(l.visual());
+    }
+    private static void hold(net.minecraft.entity.Entity e){
+        if(e==null||e.getVelocity().lengthSquared()==0)return;e.setNoGravity(true);e.setVelocity(Vec3d.ZERO);e.velocityModified=true;
     }
     /** One ending tick (Campaign.tick while ending()): the round clock stands still, each online participant follows the later of the clock and his skips,
      *  going to the stage at PODIUM and to camp at DONE; when the clock or every online participant is done, the round is taken down. */
     void endingTick(){
         b.roundStarted++; // the round clock stops
         for(var u:b.units)if(u.mob.getVelocity().lengthSquared()>0){u.mob.setVelocity(Vec3d.ZERO);u.mob.velocityModified=true;} // nothing carries a troop on (a knock, a charge's push)
+        holdShots();
         long elapsed=b.time-endingStart;var clock=MatchEnding.step(elapsed,endingTiming);boolean all=true;
         for(UUID id:new ArrayList<>(participants)){var p=b.server.getPlayerManager().getPlayer(id);if(p==null)continue;
             var st=MatchEnding.playerStep(clock,skipped.get(id));

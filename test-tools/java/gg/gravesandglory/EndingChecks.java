@@ -30,6 +30,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     // per round
     final Map<MobEntity, Vec3d> pos = new HashMap<>(); final Map<MobEntity, Float> hp = new HashMap<>();
     int gold1, xp1; String resultId; boolean froze, podium, stats, rewards, stopped;
+    Entity arrow; Vec3d arrowAt; // an arrow in flight when the match ends (review 2026-11-12: shots must freeze too)
 
     public int limit() { return 30000; }
     public void cleanup(MinecraftClient c) {
@@ -305,6 +306,8 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         var s = b.squads.get(player);
         if (stage == 2) {
             for (var u : b.units) if (u.mob.isAlive()) { pos.put(u.mob, u.mob.getPos()); hp.put(u.mob, u.mob.getHealth()); }
+            var a = new net.minecraft.entity.projectile.ArrowEntity(b.world, p.getX(), p.getY() + 6, p.getZ()); a.noClip = true; a.setNoGravity(true); a.setVelocity(0.6, 0, 0); b.world.spawnEntity(a);
+            Vec3d from = a.getPos(); b.shots.add(new Projectiles.Shot(null, null, null, "arrow", 0, from, b.time, b.time + 10000, a, from)); arrow = a; arrowAt = from;
             c.finish(s.team);
             var pr = c.profile(player); gold1 = pr.gold; xp1 = pr.progression.xp;
             var res = c.results.get(player); resultId = res == null ? "" : res.get("id").getAsString();
@@ -342,7 +345,8 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             if (elapsed >= 40 && !stopped) { stopped = true;
                 double worst = 0; int changed = 0;
                 for (var e : pos.entrySet()) if (!e.getKey().isRemoved()) { worst = Math.max(worst, e.getKey().getPos().distanceTo(e.getValue())); if (e.getKey().getHealth() != hp.get(e.getKey())) changed++; }
-                if (froze) report("ending-freeze", worst <= 0.05 && changed == 0, pos.size() + " troops: worst drift " + String.format(Locale.ROOT, "%.3f", worst) + " blocks after 40 ticks, " + changed + " health changes; forced hits and an order refused");
+                double shotDrift = arrow == null || arrow.isRemoved() ? -1 : arrow.getPos().distanceTo(arrowAt);
+                if (froze) report("ending-freeze", worst <= 0.05 && changed == 0 && shotDrift >= 0 && shotDrift <= 0.05, pos.size() + " troops: worst drift " + String.format(Locale.ROOT, "%.3f", worst) + " blocks after 40 ticks, " + changed + " health changes; arrow in flight drift " + String.format(Locale.ROOT, "%.3f", shotDrift) + "; forced hits and an order refused");
                 var res = c.results.get(player);
                 report("ending-no-double-finish", res != null && res.get("id").getAsString().equals(resultId) && c.profile(player).gold == gold1 && c.ending(), "clock out during RESULT: result id kept=" + (res != null && res.get("id").getAsString().equals(resultId)) + " gold " + gold1 + "->" + c.profile(player).gold);
             }
