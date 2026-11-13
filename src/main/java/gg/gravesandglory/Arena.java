@@ -208,6 +208,29 @@ public final class Arena {
         warnOnce("no yard ground within 48 of "+(int)x+","+(int)z+": the troop stands at its base spawn");
         return new Vec3d(home.x(),home.y(),home.z());
     }
+    /** The cell a troop or a waypoint at column (x, z) stands on, as {x, z, feet y}. The hand-made maps: the column itself on the ground there, as always.
+     *  An engine map: the column when it is walkable ground (EngineMap.walkable: not a roof, wall top, tree crown or closed building top, whose top block is not
+     *  where anyone stands), else the nearest walkable column within FLOOR_RADIUS (ties toward x; none: the column's top block as before). Step 0 of the pathing plan:
+     *  deployment, refill, order targets and walk's waypoints all read this, so nothing is placed or sent to a roof. */
+    public static final int FLOOR_RADIUS=12;
+    public static int[] floor(int x,int z){
+        var e=EngineMaps.current();
+        if(e==null||e.walkable(x,z))return new int[]{x,z,ground(x,z)+1};
+        int bx=0,bz=0;long best=Long.MAX_VALUE;boolean found=false;
+        for(int r=1;r<=FLOOR_RADIUS;r++){
+            if(found&&(long)(r-1)*(r-1)>best)break;
+            for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
+                if(Math.max(Math.abs(dx),Math.abs(dz))!=r)continue;
+                long d=(long)dx*dx+(long)dz*dz;if(d>best)continue;
+                if(!e.walkable(x+dx,z+dz))continue;
+                if(d<best){best=d;bx=x+dx;bz=z+dz;found=true;}}}
+        return found?new int[]{bx,bz,ground(bx,bz)+1}:new int[]{x,z,ground(x,z)+1};
+    }
+    /** The point (x, z) as a standing place: feet on its floor, or on the nearest walkable column's when it lies over a roof or a wall top (floor). Unmoved on the hand-made maps. */
+    public static Vec3d floorAt(double x,double z){
+        int ix=(int)Math.floor(x),iz=(int)Math.floor(z);int[] f=floor(ix,iz);
+        return f[0]==ix&&f[1]==iz?new Vec3d(x,f[2],z):new Vec3d(f[0]+.5,f[2],f[1]+.5);
+    }
     /** The spawn guard for a troop deployed forward at a held point (x, z): walkable ground near the point, dry, no higher than the nearest
      *  point's own ground plus one, not on a pile, with headroom; null when there is none within 48 (the caller deploys it at the barracks).
      *  The hand-made maps: the ground there, as before. */

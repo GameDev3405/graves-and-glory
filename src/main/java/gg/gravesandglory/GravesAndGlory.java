@@ -1015,7 +1015,7 @@ public final class GravesAndGlory implements ModInitializer {
                     int tx=MathHelper.clamp((int)target.x,-Field.halfX()+10,Field.halfX()-10),tz=MathHelper.clamp((int)target.z,-Field.halfZ()+10,Field.halfZ()-10);
                     if(Arena.river(tx,tz)&&Arena.ground(tx,tz)<64){int[] dry=EngineMaps.active()?Arena.dryNear(world,tx,tz,p.getX(),Integer.MAX_VALUE):null; // an engine map's river need not run north-south (new Rivergate): the nearest dry column
                         if(dry!=null){tx=dry[0];tz=dry[1];}else tx=(int)Arena.riverX(tz)+(tx>Arena.riverX(tz)?12:-12);}
-                    s.target=new Vec3d(tx,Arena.ground(tx,tz)+1,tz);
+                    s.target=Arena.floorAt(tx,tz); // an engine map's roof or wall top is not a place to stand (Arena.floor)
                 }else s.target=p.getPos();
                 if(id.equals("charge")||id.equals("retreat")){ // a Charge keeps its run direction and a Retreat turns to Follow me, as a player's tactical order (OrderRules; final review M4)
                     issue(s,"all",id,s.formation,s.target,s.yaw,-1);
@@ -1042,7 +1042,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** River water below the crossings: no order sends a group there (a bridge or a ford is ground at 64 or above). */
         static boolean wet(double x,double z){return Arena.river((int)x,(int)z)&&Arena.ground((int)x,(int)z)<64;}
         /** The point an order to (x, z) sends a group to: the ground there, one block up, whatever height whoever gave it stands at. */
-        static Vec3d groundAt(double x,double z){return new Vec3d(x,Arena.ground((int)x,(int)z)+1,z);}
+        static Vec3d groundAt(double x,double z){return EngineMaps.active()?Arena.floorAt(x,z):new Vec3d(x,Arena.ground((int)x,(int)z)+1,z);}
         /**
          * The one place a group order takes effect, for a player's order (tactical) and the Marshal's Muster alike: each named group (a group id, or "all")
          * stores a fresh Assignment of this order (never shared, since a later formation change edits one group's), and those groups' troops drop their target,
@@ -1180,7 +1180,7 @@ public final class GravesAndGlory implements ModInitializer {
                 Vec3d home=fieldBase(team),back=new Vec3d(home.x-a.x(),0,home.z-a.z());back=back.lengthSquared()<1e-6?Vec3d.ZERO:back.normalize().multiply(Spec.ECONOMY[0].forwardSpawnOffset());
                 x+=back.x;z+=back.z;
             }
-            return new Vec3d(x,Arena.ground((int)Math.floor(x),(int)Math.floor(z))+1,z);
+            return EngineMaps.active()?Arena.floorAt(x,z):new Vec3d(x,Arena.ground((int)Math.floor(x),(int)Math.floor(z))+1,z);
         }
         /** Where a troop trained now appears, and the anchor it deploys at (null: the barracks). Chosen at spawn time, so a point or banner that was lost, contested or approached since the purchase sends the troop home. */
         record Deploy(Vec3d at,Anchor anchor){}

@@ -573,7 +573,7 @@ final class Tactics {
         try{
             var mob=u.mob;
             double[] t=Wedge.target(mob.getX(),mob.getZ(),goal.x,goal.z);
-            int gx=(int)Math.floor(t[0]),gz=(int)Math.floor(t[1]),gy=Arena.ground(gx,gz)+1;
+            int gx=(int)Math.floor(t[0]),gz=(int)Math.floor(t[1]),gy=Arena.floor(gx,gz)[2]; // a floor, not a roof (Arena.floor)
             if(t[0]!=goal.x||t[1]!=goal.z){int[] c=standable(battle,gx,gz);if(c==null)return null;gx=c[0];gy=c[1];gz=c[2];}
             var follow=mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_FOLLOW_RANGE);double was=follow.getBaseValue();
             net.minecraft.entity.ai.pathing.Path path;
@@ -612,7 +612,7 @@ final class Tactics {
         if(u.detour!=null){if(Wedge.over(time,u.detourUntil,mob.getX(),mob.getY(),mob.getZ(),u.detour.x,u.detour.y,u.detour.z,routed.x,routed.z,u.detourFor.x,u.detourFor.z))u.detour=null;else{goal=u.detour;onDetour=true;}}
         boolean wade=Houses.fords(u); // a fording troop's water path penalty is 0, and neither the river snap nor the waypoint search below keeps its waypoints out of the river
         mob.setPathfindingPenalty(PathNodeType.WATER,wade?0f:(float)N.waterPenalty());
-        int gx=(int)Math.floor(goal.x),gz=(int)Math.floor(goal.z),gy=Arena.ground(gx,gz)+1;
+        int gx=(int)Math.floor(goal.x),gz=(int)Math.floor(goal.z),gy=Arena.floor(gx,gz)[2]; // the goal's floor: on an engine map the nearest walkable column's, not a roof's (Arena.floor)
         if(!onDetour&&GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)<N.preciseRange()*N.preciseRange()&&Math.abs(mob.getY()-gy)<1.1&&!(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)&&battle.world.getBlockState(new BlockPos(gx,gy,gz)).isAir()&&battle.world.getBlockState(new BlockPos(gx,gy+1,gz)).isAir()){
             mob.getNavigation().stop();mob.getMoveControl().moveTo(goal.x,gy,goal.z,speed);return;
         }
@@ -644,8 +644,10 @@ final class Tactics {
         }
         // A detour point is a node of a path: it is used as it is (its own height; no move off the river bank, no search for another column, which could land behind the wall it leads round).
         int x=(int)Math.floor(goal.x),z=(int)Math.floor(goal.z),y=onDetour?(int)Math.floor(goal.y):Arena.ground(x,z)+1;
+        if(!onDetour&&EngineMaps.active()){int[] f=Arena.floor(x,z);x=f[0];z=f[1];y=f[2];} // a waypoint stands on a floor, never a roof or wall top (Arena.floor); the hand-made maps are untouched
         if(!onDetour&&!wade&&Arena.river(x,z)&&Arena.ground(x,z)<64){int[] dry=EngineMaps.active()?Arena.dryNear(battle.world,x,z,mob.getX(),Integer.MAX_VALUE):null; // an engine map's river need not run north-south (new Rivergate): the nearest dry column
-            if(dry!=null){x=dry[0];z=dry[1];}else x=(int)Arena.riverX(z)+(x>Arena.riverX(z)?11:-11);y=Arena.ground(x,z)+1;}
+            if(dry!=null){x=dry[0];z=dry[1];}else x=(int)Arena.riverX(z)+(x>Arena.riverX(z)?11:-11);y=Arena.ground(x,z)+1;
+                if(EngineMaps.active()){int[] f=Arena.floor(x,z);x=f[0];z=f[1];y=f[2];}}
         // Keep local waypoints out of tree trunks, flagpoles and walls.
         if(!onDetour&&!(wade&&Arena.river(x,z))&&(!battle.world.getBlockState(new BlockPos(x,y,z)).isAir()||!battle.world.getBlockState(new BlockPos(x,y+1,z)).isAir())){
             boolean found=false;
