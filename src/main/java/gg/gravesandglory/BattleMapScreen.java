@@ -475,6 +475,8 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             outlined(g, name, x - nw / 2, y + DISC + 4, LABEL);
             taken.add(new int[] {x - nw / 2 - 1, y + DISC + 3, nw + 2, 10});
             taken.add(new int[] {x - DISC - 1, y - DISC - 1, 2 * DISC + 3, 2 * DISC + 3});
+            icons.add(new int[] {x - DISC - 1, y - DISC - 1, x + DISC + 2, y + DISC + 2}); // troop icons nudge off the disc
+            icons.add(new int[] {x - nw / 2 - 1, y + DISC + 3, x + nw / 2 + 1, y + DISC + 13}); // and off the name
             var plan = pointPlan(i);
             if (plan != null) pennant(g, x + DISC - 3, y - DISC + 3, plan.job(), ours());
             List<String> tip = new ArrayList<>();
