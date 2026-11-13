@@ -268,8 +268,11 @@ def bones():
     B.append(Bone("coat", "body", boxes=[Box((-4.5, -6, -2.5), (9, 8, 5), {1: coat(), 2: coat(), 3: brass_scales(coat())}, dil=0.05)]))
     B.append(Bone("belt", "body", boxes=[Box((-4, -5, -2), (8, 2, 4), belt(), dil=0.6)]))
     B.append(Bone("beard_braid", "body", boxes=[Box((-1.5, -9, -3.5), (3, 8, 1), braid())]))
-    B.append(Bone("tabard", "body", team=True, boxes=[
-        Box((-3, -6, -2.95), (6, 8, 0), "tabard", sheet="cloth"), Box((-3, -6, 2.95), (6, 8, 0), "tabard", sheet="cloth")]))
+    # The hem ends on the hip line (2026-11-13, was 2 px lower): a thigh raised in a stride, hit or swing no longer cuts
+    # through the panel's foot (focus check armour_clip, leg into tabard). Its hinge moves up with the hem, 2 px above it as
+    # before (rig y 14, was the hip at 12), so the cloth lag swings it as far and the soft pass still finds a hanging piece.
+    B.append(Bone("tabard", "body", (0, -2, 0), team=True, boxes=[
+        Box((-3, -4, -2.95), (6, 6, 0), "tabard", sheet="cloth"), Box((-3, -4, 2.95), (6, 6, 0), "tabard", sheet="cloth")]))
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
         B.append(Bone(f"{side}_pauldron", f"{side}_arm", (c, -2.5, 0), rot=(0, 0, 10 * c), boxes=[
