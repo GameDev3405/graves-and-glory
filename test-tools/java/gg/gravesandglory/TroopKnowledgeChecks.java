@@ -10,7 +10,7 @@ import static gg.gravesandglory.Phase1Checks.*;
  *  has not recruited shows "Unknown troop", a silhouette and no numbers, stars, Ranks or Mastery on the roll, the letter, the Odds note,
  *  the tips and every face of its troop page, at 854x480, 960x540, 1920x1080 and 2560x1440. Never included in releases. */
 final class TroopKnowledgeChecks implements Phase1Checks.Suite {
-    static final int GOLD = 1000;
+    static final int WRITS = 10; // the old 1000 gold, paid in troop writs (army rework)
     static final String H0 = Spec.HOUSES[0].id();
     static final String[] TABS = {"troop", "matchups", "growth", "stats"};
     static final int[][] SIZES = {{854, 480, 2}, {1920, 1080, 2}, {2560, 1440, 0}};
@@ -36,15 +36,15 @@ final class TroopKnowledgeChecks implements Phase1Checks.Suite {
     public void step(MinecraftClient c, int tick) {
         if (tick > 9000 && !finished) { report("p1-know-timeout", false, "stuck in stage " + stage + ": " + bad); end(c); }
         switch (stage) {
-            case 0 -> { // a new commander (the Commons owned) with gold and a Pact, at camp, the window 960x540 GUI 1
+            case 0 -> { // a new commander (the Commons owned) with troop writs and a Pact, at camp, the window 960x540 GUI 1
                 if (tick < 20) return;
                 var w = c.getWindow(); oldW = w.getWidth(); oldH = w.getHeight(); oldGui = c.options.getGuiScale().getValue(); player = c.player.getUuid();
                 c.setScreen(null); window(c, 960, 540, 1); stage = -1;
-                server(c, b -> { if (b.running) b.campaign.returnLobby(); var p = new Profile(); p.gold = GOLD; p.writs = 1; b.campaign.profiles.put(player, p); b.campaign.save(player); stage = 1; });
+                server(c, b -> { if (b.running) b.campaign.returnLobby(); var p = new Profile(); p.troopWrits = WRITS; p.pacts = 1; b.campaign.profiles.put(player, p); b.campaign.save(player); stage = 1; });
             }
             case 1 -> {
                 var p = CampaignClient.profile;
-                if (p.gold != GOLD || GravesAndGloryClient.running) { if (since(tick) > 300) { report("p1-know-unowned", false, "no fresh profile"); end(c); } return; }
+                if (p.troopWrits != WRITS || GravesAndGloryClient.running) { if (since(tick) > 300) { report("p1-know-unowned", false, "no fresh profile"); end(c); } return; }
                 for (var t : Spec.TROOPS) {
                     boolean mine = p.owned.containsKey(t.id());
                     if (!mine) unownedNames.add(t.name());

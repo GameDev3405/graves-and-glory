@@ -30,7 +30,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     int scenario, stage; long at; String savedProfile;
     // per round
     final Map<MobEntity, Vec3d> pos = new HashMap<>(); final Map<MobEntity, Float> hp = new HashMap<>();
-    int gold1, xp1; String resultId; boolean froze, podium, stats, rewards, stopped;
+    String gold1; int xp1; String resultId; boolean froze, podium, stats, rewards, stopped;
     // ending-freeze-push: a player pressed into a frozen troop from the first tick of RESULT (nits 2026-11-13)
     MobEntity pushMob; Vec3d pushAt; int pushTicks, pushPressed, pushSamples; double pushWorst; ServerPlayerEntity pushPlayer; boolean pushHooked; double pushVelSet, pushEndDrift, pushEndVel; final Map<MobEntity,Vec3d> pushAll = new IdentityHashMap<>(); int pushMounted;
     static final int PUSH_TICKS = 46;
@@ -527,6 +527,8 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
 
     static void report(String id, boolean pass, String why) { Phase4Checks.report(id, pass, why); }
     static JsonObject snap(Campaign c, ServerPlayerEntity p) { return JsonParser.parseString(c.snapshot(p)).getAsJsonObject(); }
+    /** What a match pays into, so a second payout shows: troop writs, gear shards and the carried writ gold. */
+    static String purse(Profile p) { return p.troopWrits + "/" + p.gearShards + "/" + p.writGold; }
     static String step(JsonObject snap) { return snap.has("ending") ? snap.getAsJsonObject("ending").get("step").getAsString() : "none"; }
     static void evidence(String name, String text) {
         try { Path dir = net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir().resolve("../evidence"); Files.createDirectories(dir); Files.writeString(dir.resolve(name), text); }
@@ -589,7 +591,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             graphShape(b, c); // pass 3: a score race for the graph's shot (ending-client-graph); ending-timeline reads the real samples of the next round
             finishServer = b.time; finishNanos = System.nanoTime(); finishSerial++;
             c.finish(s.team);
-            var pr = c.profile(player); gold1 = pr.gold; xp1 = pr.progression.xp;
+            var pr = c.profile(player); gold1 = purse(pr); xp1 = pr.progression.xp;
             var res = c.results.get(player); resultId = res == null ? "" : res.get("id").getAsString();
             JsonObject sn = snap(c, p);
             var e = sn.has("ending") ? sn.getAsJsonObject("ending") : new JsonObject();
@@ -633,7 +635,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
                 double shotDrift = arrow == null || arrow.isRemoved() ? -1 : arrow.getPos().distanceTo(arrowAt);
                 if (froze) report("ending-freeze", worst <= 0.05 && changed == 0 && shotDrift >= 0 && shotDrift <= 0.05, pos.size() + " troops: worst drift " + String.format(Locale.ROOT, "%.3f", worst) + " blocks after 40 ticks, " + changed + " health changes; arrow in flight drift " + String.format(Locale.ROOT, "%.3f", shotDrift) + "; forced hits and an order refused");
                 var res = c.results.get(player);
-                report("ending-no-double-finish", res != null && res.get("id").getAsString().equals(resultId) && c.profile(player).gold == gold1 && c.ending(), "clock out during RESULT: result id kept=" + (res != null && res.get("id").getAsString().equals(resultId)) + " gold " + gold1 + "->" + c.profile(player).gold);
+                report("ending-no-double-finish", res != null && res.get("id").getAsString().equals(resultId) && purse(c.profile(player)).equals(gold1) && c.ending(), "clock out during RESULT: result id kept=" + (res != null && res.get("id").getAsString().equals(resultId)) + " gold " + gold1 + "->" + c.profile(player).gold);
             }
             if (elapsed >= c.endingTiming.resultTicks() + 5 && !podium) { podium = true; String st = step(snap(c, p)); double d = toView(p);
                 if (!st.equals("PODIUM") || d > 3) report("ending-steps", false, "at " + elapsed + " step " + st + " view distance " + d);
@@ -646,7 +648,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         long took = b.time - at; var pr = c.profile(player);
         report("ending-steps", podium && stats && rewards && !b.running && b.units.isEmpty() && CampWorld.inCamp(p.getX(), p.getY(), p.getZ()) && took >= total(c) - 2 && took <= total(c) + 5,
             "RESULT, PODIUM (within 3 blocks of the view spot), STATS, REWARDS seen=" + (podium && stats && rewards) + "; back in camp after " + took + " ticks (sequence " + total(c) + "), units " + b.units.size());
-        report("ending-paid-once", pr.gold == gold1 && pr.progression.xp == xp1, "gold " + gold1 + "->" + pr.gold + " xp " + xp1 + "->" + pr.progression.xp);
+        report("ending-paid-once", purse(pr).equals(gold1) && pr.progression.xp == xp1, "writs/gear shards/writ gold " + gold1 + "->" + purse(pr) + " xp " + xp1 + "->" + pr.progression.xp);
         { boolean once = pr.bests.equals(bests0); bestsOk &= once; bestsWhy += "after the ending " + pr.bests + (once ? " (saved once)" : " CHANGED") + "; "; }
         holdAt = -1; hold = true; // the client opens the War Table report (ending-report-you) before the next round starts
         next();
@@ -779,10 +781,10 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             stage = 5;
         }
         if (stage == 5 && elapsed >= c.endingTiming.resultTicks() + c.endingTiming.podiumTicks() + 20) {
-            int gold = c.profile(player).gold;
+            String gold = purse(c.profile(player));
             c.voidMatch(MatchRules.Ending.STOPPED);
-            report("ending-stop", !b.running && !c.ending() && b.units.isEmpty() && c.profile(player).gold == gold && c.results.containsKey(player),
-                "stop during STATS: running=" + b.running + " units=" + b.units.size() + " gold " + gold + "->" + c.profile(player).gold + " report kept=" + c.results.containsKey(player));
+            report("ending-stop", !b.running && !c.ending() && b.units.isEmpty() && purse(c.profile(player)).equals(gold) && c.results.containsKey(player),
+                "stop during STATS: running=" + b.running + " units=" + b.units.size() + " purse " + gold + "->" + purse(c.profile(player)) + " report kept=" + c.results.containsKey(player));
             next();
         }
     }
