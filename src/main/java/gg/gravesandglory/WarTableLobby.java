@@ -615,10 +615,10 @@ final class WarTableLobby {
         int lx = x + NPAD, map = Math.max(0, Math.min(Spec.MAPS.length - 1, num("map", 0)));
         var m = Spec.MAPS[map];
         head(g, "wait-map-head", "Map", null, lx, y + 18, NOTE_TEXT_W);
-        String card = "table/map-" + m.id();
+        String card = mapCard(m.id());
         int cardX = x + (NOTE_W - 139) / 2;
-        rectsDrawn.put("wait-card", UiTex.draw(g, card, cardX, y + WAIT_CARD_Y));
-        texturesDrawn.put("wait-card", card);
+        if (card != null) rectsDrawn.put("wait-card", UiTex.draw(g, card, cardX, y + WAIT_CARD_Y));
+        texturesDrawn.put("wait-card", card == null ? "none" : card);
         textsDrawn.put("wait-card", m.id());
         var nameT = DarkUi.heading(m.name());
         WarTableHome.centred(g, nameT, x + NOTE_W / 2, y + WAIT_CARD_Y + 89, DarkUi.INK_TEXT);
@@ -875,9 +875,9 @@ final class WarTableLobby {
         int map = Math.max(0, Math.min(Spec.MAPS.length - 1, num("map", 0)));
         var m = Spec.MAPS[map];
         int cardX = x + (NOTE_W - 139) / 2;
-        String card = "table/map-" + m.id();
-        rectsDrawn.put("map-card", UiTex.draw(g, card, cardX, y + CARD_Y));
-        texturesDrawn.put("map-card", card);
+        String card = mapCard(m.id());
+        if (card != null) rectsDrawn.put("map-card", UiTex.draw(g, card, cardX, y + CARD_Y));
+        texturesDrawn.put("map-card", card == null ? "none" : card);
         WarTableHome.centred(g, DarkUi.heading(m.name()), x + NOTE_W / 2, y + CARD_Y + 89, DarkUi.INK_TEXT);
         textsDrawn.put("map", m.id());
         line(g, null, DarkUi.body("Seats"), "Seats", lx, y + SIZE_Y + 7, DarkUi.SEPIA);
@@ -917,5 +917,15 @@ final class WarTableLobby {
         for (int i = 0; i < lines.size(); i++) { g.drawText(font, DarkUi.body(lines.get(i)), x, y + NOTICE_Y + NOTICE_STEP * i, ink, false); w = Math.max(w, font.getWidth(DarkUi.body(lines.get(i)))); }
         rectsDrawn.put("notice", new int[]{x, y + NOTICE_Y, w, NOTICE_STEP * (lines.size() - 1) + 9});
         textsDrawn.put("notice", String.join(" ", lines));
+    }
+
+    /** A map's painted card, or the card of the map it was rebuilt from ("kingsfield_cq" borrows "kingsfield"), or null when
+     *  neither is painted yet: a map without a card must never crash the lobby. */
+    static String mapCard(String id) {
+        String card = "table/map-" + id;
+        if (UiTex.has(card)) return card;
+        int cut = id.lastIndexOf('_');
+        String base = cut > 0 ? "table/map-" + id.substring(0, cut) : null;
+        return base != null && UiTex.has(base) ? base : null;
     }
 }
