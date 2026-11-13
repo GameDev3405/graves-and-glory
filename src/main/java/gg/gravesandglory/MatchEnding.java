@@ -77,6 +77,27 @@ public final class MatchEnding {
         return out;
     }
 
+    /** As ranked, with every commander who left the battle (ids in left) after everyone still present, each part in score order (ending polish pass 2):
+     *  a commander who left never takes a podium place or a rank above one who stayed. */
+    public static List<Entry> ranked(List<Entry> entries, int winner, Spec.EndingRow w, Set<String> left) {
+        List<Entry> all = ranked(entries, winner, w), out = new ArrayList<>();
+        for (Entry e : all) if (!left.contains(e.id())) out.add(e);
+        for (Entry e : all) if (left.contains(e.id())) out.add(e);
+        return out;
+    }
+
+    /** One REWARDS bar (ending polish pass 2): label, before and after the match, the bar's floor (the threshold already reached), the next threshold
+     *  and the tier that threshold is (1-based); kind is xp, renown or contract. */
+    public record Progress(String label, String kind, int before, int after, int base, int next, int tier) {
+        public boolean crossed() { return after >= next; }
+    }
+    /** The bar from before toward the first of the ascending thresholds above before, or null when before is at or past the last (nothing left to fill). */
+    public static Progress progress(String label, String kind, int before, int after, int[] thresholds) {
+        for (int i = 0; i < thresholds.length; i++)
+            if (before < thresholds[i]) return new Progress(label, kind, before, Math.max(before, after), i == 0 ? 0 : thresholds[i - 1], thresholds[i], i + 1);
+        return null;
+    }
+
     public static int mvpIndex(List<Entry> entries, int winner, Spec.EndingRow w) {
         if (entries.isEmpty()) return -1;
         return entries.indexOf(ranked(entries, winner, w).get(0));

@@ -28,6 +28,10 @@ final class EndingPanels {
     static final int ROW = 13, TEAM_GAP = 5, KV = 12, REWARD_TALL = 22, REWARD_SHORT = 13, CLAIM_H = 18, COLUMN_ROW = 12;
     /** The share of the rewards step the rows take to appear and count up; the total and the claim strip follow. */
     static final float ROWS_END = .6f;
+    /** Pass 2: a bar's row height, the share of the step one bar takes to fill once its reward row has counted up, and how long a crossing flashes. */
+    static final int BAR_ROW = 14;
+    static final float BAR_FILL = .14f, FLASH = .09f;
+    static final int BAR_TRACK = 0xffd8c79f, BAR_INK = 0xff9b6a1d, BAR_DONE = 0xffc8902a, FLASH_INK = 0xfffff4c8;
 
     // ---- what the last frame drew (the checks read these) ----
     static final Map<String, int[]> rects = new LinkedHashMap<>();
@@ -36,6 +40,10 @@ final class EndingPanels {
     static final Map<String, int[]> areas = new LinkedHashMap<>();
     static final List<String> scoreRows = new ArrayList<>(), groups = new ArrayList<>();
     static int rewardRows, rewardsTotal;
+    /** Pass 2, the REWARDS bars as last drawn: how many, each one's fill (0..1 of its own climb), the thresholds crossed so far and the flash words shown. */
+    static int barsDrawn, barsCrossed;
+    static final List<Float> barFill = new ArrayList<>();
+    static final Set<String> flashes = new LinkedHashSet<>();
     /** Whether the last rewards drawn were the note's two columns (the checks read it). */
     static boolean columns;
     static String total = "", claim = "";
@@ -216,10 +224,15 @@ final class EndingPanels {
             for (int k = 0; k < gr.rows().size(); k++) {
                 if (ry + 10 > bottom) break;
                 var kv = gr.rows().get(k);
-                int vw = width(body(kv.value()));
-                String label = UiMath.trim(kv.label(), in - vw - 6, s -> width(body(s)));
-                put(g, "group-" + i + "-" + k, body(label), gx + 5, ry, SEPIA);
-                right(g, "group-" + i + "-" + k + "-value", body(kv.value()), gx + gw - 5, ry, INK);
+                // pass 2 fit: a label and value too wide together ("Kept alive" and "14 / 22" in a narrow box) narrow the value to the small font first,
+                // then the label, and trim only after that
+                boolean smallValue = width(body(kv.label())) + width(body(kv.value())) + 6 > in;
+                Text value = smallValue ? small(kv.value()) : body(kv.value());
+                int vw = width(value);
+                boolean smallLabel = width(body(kv.label())) + vw + 6 > in;
+                String label = UiMath.trim(kv.label(), in - vw - 6, s -> width(smallLabel ? small(s) : body(s)));
+                put(g, "group-" + i + "-" + k, smallLabel ? small(label) : body(label), gx + 5, ry + (smallLabel ? 1 : 0), SEPIA);
+                right(g, "group-" + i + "-" + k + "-value", value, gx + gw - 5, ry + (smallValue ? 1 : 0), INK);
                 ry += KV;
             }
             if (!gr.foot().isEmpty() && ry + 12 <= bottom) {
@@ -348,7 +361,7 @@ final class EndingPanels {
     static int rewards(DrawContext g, JsonObject r, int x, int y, int w, int h) { return rewards(g, r, x, y, w, h, 1f, false); }
 
     static int rewards(DrawContext g, JsonObject r, int x, int y, int w, int h, float progress, boolean foot) {
-        reset("reward"); rewardRows = 0; total = ""; claim = ""; columns = false;
+        reset("reward"); rewardRows = 0; total = ""; claim = ""; columns = false; barsDrawn = 0; barsCrossed = 0; barFill.clear();
         var rows = rewardsOf(r);
         rewardsTotal = rows.size();
         areas.put("reward", new int[]{x, y, w, h});
@@ -362,7 +375,9 @@ final class EndingPanels {
         }
         String claimLine = foot ? claimText(r) : "";
         boolean full = progress >= 1;
-        int room = h - (foot ? 20 + (claimLine.isEmpty() ? 0 : CLAIM_H + 6) : 0); // the total's double rule and line, and the claim strip
+        List<Bar> bars = foot ? barsOf(r) : List.of();
+        int barsH = bars.isEmpty() ? 0 : bars.size() * BAR_ROW + 6;
+        int room = h - (foot ? 20 + (claimLine.isEmpty() ? 0 : CLAIM_H + 6) : 0) - barsH; // the total's double rule and line, the claim strip and the bars
         int step = rows.size() * REWARD_TALL <= room ? REWARD_TALL : rows.size() * REWARD_SHORT <= room ? REWARD_SHORT : 0;
         if (!foot && progress >= 1) { // the note (ending polish): every row in two compact columns, top to bottom then the second column, when they fit
             int gap = 10, cw = (w - gap) / 2, lines = (rows.size() + 1) / 2;
@@ -412,9 +427,11 @@ final class EndingPanels {
             for (int d = x; d < x + w; d += 4) g.fill(d, ry + step - 3, Math.min(x + w, d + 2), ry + step - 2, waiting ? 0x30b79f73 : 0xffb79f73);
             ry += step;
         }
+        int barTop = Math.max(ry + 2, y + room);
+        if (!bars.isEmpty()) bars(g, bars, rows, x, barTop + 6, w, full ? 1 : progress, slot);
         if (!foot || !full && progress < ROWS_END) return ry;
         // the total, under a double rule
-        int ty = Math.max(ry + 2, y + room);
+        int ty = barTop + barsH;
         g.fill(x, ty, x + w, ty + 1, RULE); g.fill(x, ty + 2, x + w, ty + 3, RULE);
         int tw = put(g, "reward-total-label", heading("Total"), x, ty + 6, BROWN);
         String sum = totalText(rows);
@@ -435,6 +452,68 @@ final class EndingPanels {
             by = cy + CLAIM_H;
         }
         return by;
+    }
+
+    // ---- the progress bars (ending polish pass 2) ----
+    record Bar(String label, String kind, int before, int after, int base, int next, int tier) {
+        boolean crossed() { return after >= next; }
+        /** What a crossing reads: Level up! for XP, Tier N! for Renown, Contract done! for a contract. */
+        String word() { return kind.equals("xp") ? "Level up!" : kind.equals("renown") ? "Tier " + tier + "!" : "Contract done!"; }
+    }
+    static List<Bar> barsOf(JsonObject r) {
+        List<Bar> out = new ArrayList<>();
+        for (JsonElement e : arr(r, "progress")) {
+            if (!e.isJsonObject()) continue;
+            var o = e.getAsJsonObject();
+            if (num(o, "next") <= num(o, "base")) continue;
+            out.add(new Bar(str(o, "label"), str(o, "kind"), num(o, "before"), num(o, "after"), num(o, "base"), num(o, "next"), num(o, "tier")));
+        }
+        return out;
+    }
+    /** The reward row a bar waits for: XP's row, the House's Renown row; -1 (the rows' end) for a contract or a row not found. */
+    static int anchor(Bar b, List<Reward> rows) {
+        String want = b.kind().equals("xp") ? "XP" : b.kind().equals("renown") ? b.label() : null;
+        if (want != null) for (int i = 0; i < rows.size(); i++) if (rows.get(i).label().equals(want)) return i;
+        return -1;
+    }
+    /**
+     * One line per bar: the label, the track with the share already reached, then the climb filling once its reward row has counted up (over BAR_FILL
+     * of the step), and the value right ("612 / 750"). A bar that reaches its threshold fills, flashes for FLASH of the step and then reads its word
+     * (Level up!, Tier N!, Contract done!). Words are recorded under reward-bar- so the rewards' layout check covers them.
+     */
+    static void bars(DrawContext g, List<Bar> bars, List<Reward> rows, int x, int y, int w, float progress, float slot) {
+        int labelW = Math.min(150, w * 3 / 10), valueW = Math.max(width(heading("Contract done!")), width(body("00,000 / 00,000"))) + 4;
+        int tx0 = x + labelW + 8, tx1 = x + w - valueW - 8;
+        g.fill(x, y - 5, x + w, y - 4, RULE);
+        for (int i = 0; i < bars.size(); i++) {
+            var b = bars.get(i);
+            int by = y + i * BAR_ROW, a = anchor(b, rows);
+            float start = a < 0 ? ROWS_END : (a + 1) * slot, f = Math.max(0, Math.min(1, (progress - start) / BAR_FILL)), ease = 1 - (1 - f) * (1 - f);
+            int span = b.next() - b.base();
+            float value = b.before() + (b.after() - b.before()) * ease;
+            float share = Math.max(0, Math.min(1, (value - b.base()) / span)), was = Math.max(0, Math.min(1, (b.before() - b.base()) / (float) span));
+            boolean waiting = progress < start, crossed = b.crossed() && value >= b.next() - .001f;
+            // the moment the eased climb reaches the threshold: ease(f) = k at f = 1 - sqrt(1 - k)
+            float k = (b.next() - b.before()) / (float) Math.max(1, b.after() - b.before());
+            float crossAt = start + BAR_FILL * (float) (1 - Math.sqrt(Math.max(0, 1 - Math.min(1, k))));
+            float flash = crossed ? Math.max(0, 1 - (progress - crossAt) / FLASH) : 0;
+            put(g, "reward-bar-" + i, fit(b.label(), labelW), x, by, waiting ? 0x80000000 | (SEPIA & 0xffffff) : INK);
+            int ty = by + 2, th = 6;
+            g.fill(tx0 - 1, ty - 1, tx1 + 1, ty + th + 1, RULE);
+            g.fill(tx0, ty, tx1, ty + th, BAR_TRACK);
+            int wasX = tx0 + Math.round((tx1 - tx0) * was), nowX = tx0 + Math.round((tx1 - tx0) * share);
+            g.fill(tx0, ty, wasX, ty + th, BROWN);
+            if (nowX > wasX) g.fill(wasX, ty, nowX, ty + th, crossed ? BAR_DONE : BAR_INK);
+            if (flash > 0) {
+                int al = (int) (255 * flash);
+                g.fill(tx0 - 2, ty - 2, tx1 + 2, ty + th + 2, (al << 24) | (FLASH_INK & 0xffffff));
+                flashes.add(b.word());
+            }
+            Text val = crossed ? heading(b.word()) : body(UiMath.thousands(Math.round(value)) + " / " + UiMath.thousands(b.next()));
+            right(g, "reward-bar-" + i + "-value", val, x + w, by + (crossed ? -1 : 0), crossed ? BROWN : waiting ? SEPIA : INK);
+            barFill.add(f); barsDrawn++;
+            if (crossed) barsCrossed++;
+        }
     }
 
     // ---- the checks' view ----

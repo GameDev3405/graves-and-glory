@@ -45,6 +45,31 @@ public final class MatchEndingCheck {
         check(MatchEnding.mvpIndex(withLeft, 0, w, Set.of("gone", "b", "c")) == -1, "everyone left: no MVP");
         check(MatchEnding.mvpIndex(withLeft, 0, w, Set.of("c")) == 0, "a lower commander left: the MVP unchanged");
         check(ids(MatchEnding.podium(MatchEnding.ranked(withLeft, 0, w))).get(0).equals("gone"), "the podium still ranks a commander who left");
+        // Pass 2: a commander who left ranks after everyone present, on the podium and in rank.
+        var leftLast = MatchEnding.ranked(withLeft, 0, w, Set.of("gone"));
+        check(ids(leftLast).equals(List.of("b", "c", "gone")), "left ranks after the present: " + ids(leftLast));
+        check(ids(MatchEnding.podium(leftLast)).get(0).equals(ids(leftLast).get(0)) && withLeft.get(MatchEnding.mvpIndex(withLeft, 0, w, Set.of("gone"))).id().equals(ids(leftLast).get(0)), "the podium's first is the MVP");
+        List<MatchEnding.Entry> eight = new ArrayList<>();
+        for (int i = 0; i < 8; i++) eight.add(e("p" + i, i % 2, i, 10 - i, 0, 0, 0, 0));
+        var gone8 = MatchEnding.ranked(eight, 0, w, Set.of("p0", "p2"));
+        check(ids(gone8).subList(6, 8).equals(List.of("p0", "p2")), "two who left: last, in score order " + ids(gone8));
+        check(!ids(MatchEnding.podium(gone8)).contains("p0") && !ids(MatchEnding.podium(gone8)).contains("p2"), "nobody who left on a podium of eight");
+        check(ids(MatchEnding.ranked(withLeft, 0, w, Set.of("gone", "b", "c"))).equals(ids(MatchEnding.ranked(withLeft, 0, w))), "all left: plain score order");
+        check(ids(MatchEnding.ranked(withLeft, 0, w, Set.of())).equals(ids(MatchEnding.ranked(withLeft, 0, w))), "nobody left: unchanged");
+        var two = MatchEnding.ranked(List.of(e("gone", 0, 0, 50, 0, 0, 0, 0), e("b", 1, 1, 5, 0, 0, 0, 0)), 0, w, Set.of("gone"));
+        check(ids(two).equals(List.of("b", "gone")), "two commanders, the top one left: he takes 2nd");
+        // Pass 2: the REWARDS bars.
+        int[] xp = new int[30]; for (int i = 0; i < 30; i++) xp[i] = 250 * (i + 1);
+        var bar = MatchEnding.progress("XP", "xp", 730, 880, xp);
+        check(bar != null && bar.base() == 500 && bar.next() == 750 && bar.tier() == 3 && bar.crossed(), "xp crossing tier 3: " + bar);
+        bar = MatchEnding.progress("XP", "xp", 760, 860, xp);
+        check(bar != null && bar.base() == 750 && bar.next() == 1000 && bar.tier() == 4 && !bar.crossed(), "xp short of tier 4: " + bar);
+        check(MatchEnding.progress("XP", "xp", 0, 100, xp).base() == 0, "from nothing: floor 0");
+        check(MatchEnding.progress("XP", "xp", 7500, 7650, xp) == null, "past the last threshold: no bar");
+        var renown = MatchEnding.progress("Ironclad Renown", "renown", 7, 9, new int[]{3, 8, 15, 22, 30});
+        check(renown.tier() == 2 && renown.base() == 3 && renown.next() == 8 && renown.crossed(), "renown crossing tier 2: " + renown);
+        check(MatchEnding.progress("c", "contract", 2, 3, new int[]{3}).crossed() && !MatchEnding.progress("c", "contract", 1, 2, new int[]{3}).crossed(), "contract 3 battles");
+        check(MatchEnding.progress("c", "contract", 5, 3, new int[]{6}).after() == 5, "after never below before");
         check(MatchEnding.cue("VICTORY") == AudioCues.Cue.VICTORY, "a cue by name");
         check(MatchEnding.cue("NO_SUCH_CUE_YET") == null, "a missing cue is null, not a throw");
         // Podium.

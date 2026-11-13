@@ -60,8 +60,14 @@ public final class EndingClient {
     static boolean previousHud;
     public static double cameraX, cameraY, cameraZ;
     public static float cameraYaw, cameraPitch;
-    /** The podium shot's vertical field of view and its push-in toward the stage, blocks. */
-    public static final double FOV = 50, PUSH = 3;
+    /** The podium shot's vertical field of view, its dolly toward the stage (blocks) and its yaw drift around the stage (degrees, centred on the view spot's yaw). */
+    public static final double FOV = 50, PUSH = 2, DRIFT = 6;
+    /** The podium reveal (ending polish pass 2), seconds into this client's PODIUM: 3rd place, 2nd, then the MVP; the drum starts at DRUM_AT so its heavy
+     *  stroke (about 3.7 s into the file) lands on the MVP. */
+    static final double[] REVEAL_AT = {4.5, 3.0, 1.5};
+    static final double DRUM_AT = 0.8;
+    /** Every plate and figure shown at once (this client skipped into PODIUM); the slots already revealed (bit per slot) and whether the drum started. */
+    static boolean revealAll; static int revealed; static boolean drummed;
 
     /** One podium figure: the commander (an OtherClientPlayerEntity) or one of his troops, with the podium row it belongs to. */
     record Figure(LivingEntity entity, int slot, boolean commander) {}
@@ -151,7 +157,7 @@ public final class EndingClient {
         if (s != shown) {
             shown = s; stepAt = ticks;
             if (s == MatchEnding.Step.RESULT) EndingSounds.banner(outcome.isEmpty() ? "DRAW" : outcome);
-            if (s == MatchEnding.Step.PODIUM) { buildFigures(c); begin(c); if (plates.stream().anyMatch(Plate::mvp)) EndingSounds.award(); }
+            if (s == MatchEnding.Step.PODIUM) { buildFigures(c); begin(c); revealed = 0; drummed = false; revealAll = skippedTo == MatchEnding.Step.PODIUM; reveal(); }
             else if (s == MatchEnding.Step.STATS || s == MatchEnding.Step.REWARDS) { endCamera(c); if (figures.isEmpty()) buildFigures(c); openStats(c); }
             else if (s == MatchEnding.Step.DONE) leave(c);
         }
@@ -178,6 +184,7 @@ public final class EndingClient {
         sync(c);
         if (camera != null) c.getToastManager().clear();
         for (var f : figures) f.entity().age++; // the figures are never in the world: their own clock runs so troops play their idle and stance clips
+        if (step() == MatchEnding.Step.PODIUM) reveal();
         MatchEnding.Step s = step();
         if ((s == MatchEnding.Step.STATS || s == MatchEnding.Step.REWARDS) && c.currentScreen == null) openStats(c); // a screen something else closed comes back
     }
@@ -226,12 +233,39 @@ public final class EndingClient {
         double t = Math.max(0, Math.min(1, (ticks - stepAt + partial) / len));
         return t * t * (3 - 2 * t);
     }
-    /** Render-frame sampling: the view spot, moved PUSH blocks toward the stage along its look. */
+    /** Render-frame sampling: the view spot, dollied PUSH blocks toward the stage along its look, then swung around the stage's centre (the plinths' middle)
+     *  from -DRIFT/2 to +DRIFT/2 degrees of yaw, turning with it so the stage stays framed. */
     public static void sampleCamera(float partial) {
         double[] v = PodiumLayout.viewSpot();
         double e = push(partial), yaw = Math.toRadians(v[3]);
-        cameraX = v[0] - Math.sin(yaw) * PUSH * e; cameraY = v[1] + .35; cameraZ = v[2] + Math.cos(yaw) * PUSH * e;
-        cameraYaw = (float) v[3]; cameraPitch = (float) v[4] + 4;
+        double x = v[0] - Math.sin(yaw) * PUSH * e, z = v[2] + Math.cos(yaw) * PUSH * e;
+        double[][] pl = PodiumLayout.plinths(); double sx = 0, sz = 0; for (double[] p : pl) { sx += p[0]; sz += p[2]; }
+        double cx = sx / pl.length, cz = sz / pl.length, a = Math.toRadians(DRIFT * (e - .5)), ox = x - cx, oz = z - cz;
+        // the same turn that takes the look at yaw to the look at yaw + a (look = (-sin, cos)), applied to the offset from the stage
+        cameraX = cx + ox * Math.cos(a) - oz * Math.sin(a); cameraY = v[1] + .35; cameraZ = cz + ox * Math.sin(a) + oz * Math.cos(a);
+        cameraYaw = (float) (v[3] + Math.toDegrees(a)); cameraPitch = (float) v[4] + 4;
+    }
+
+    // ---- the podium reveal (ending polish pass 2) ------------------------------------------------------------------------------
+
+    /** Seconds this client has been in PODIUM. */
+    static double podiumSeconds(float partial) { return (ticks - stepAt + partial) / 20.0; }
+    /** Whether the podium slot (0 the MVP's centre step, 1 second, 2 third) is shown now: from its REVEAL_AT, or at once after a skip into PODIUM. */
+    static boolean shownSlot(int slot) {
+        if (step() != MatchEnding.Step.PODIUM || revealAll) return true;
+        return podiumSeconds(0) >= REVEAL_AT[Math.max(0, Math.min(2, slot))];
+    }
+    /** Each tick in PODIUM: the drum at DRUM_AT, then each slot's PODIUM_REVEAL as it appears (the MVP's with AWARD). A slot nobody stands on plays nothing,
+     *  so with fewer than three commanders the reveal still ends on the MVP at 4.5 s. After a skip into PODIUM everything shows at once with one reveal. */
+    static void reveal() {
+        if (!drummed && !revealAll && podiumSeconds(0) >= DRUM_AT) { drummed = true; EndingSounds.play("PODIUM_DRUM"); }
+        boolean any = false, mvp = false;
+        for (int slot = 2; slot >= 0; slot--) {
+            if ((revealed & 1 << slot) != 0 || !shownSlot(slot)) continue;
+            revealed |= 1 << slot;
+            for (var p : plates) if (p.slot() == slot) { any = true; mvp |= slot == 0 || p.mvp(); if (!revealAll) { EndingSounds.play("PODIUM_REVEAL"); if (slot == 0) EndingSounds.award(); } }
+        }
+        if (revealAll && any) { EndingSounds.play("PODIUM_REVEAL"); if (mvp) EndingSounds.award(); }
     }
     /** The night the stage is shown at (client only: ClientWorld's time of day while the podium is up). */
     public static boolean night() { MatchEnding.Step s = step(); return s == MatchEnding.Step.PODIUM || s == MatchEnding.Step.STATS || s == MatchEnding.Step.REWARDS; }
@@ -353,6 +387,7 @@ public final class EndingClient {
         boolean hud = c.options.hudHidden; c.options.hudHidden = true; // no vanilla name tags over the figures: the plates name them
         try {
             for (var f : figures) {
+                if (!shownSlot(f.slot())) continue; // not revealed yet (ending polish pass 2)
                 var e = f.entity();
                 int light = WorldRenderer.getLightmapCoordinates(c.world, BlockPos.ofFloored(e.getX(), e.getY() + 1, e.getZ()));
                 light = LightmapTextureManager.pack(Math.max(13, LightmapTextureManager.getBlockLightCoordinates(light)), LightmapTextureManager.getSkyLightCoordinates(light));
@@ -447,6 +482,7 @@ public final class EndingClient {
         int lineH = 11, pad = 5, ph = pad * 2 + lineH * rows - 2, bottom = h - bar - 6, top = bottom - ph;
         for (int i = 0; i < n; i++) {
             var p = plates.get(i);
+            if (!shownSlot(p.slot())) continue; // not revealed yet (ending polish pass 2)
             Text name = Text.literal(p.name()).setStyle(Style.EMPTY.withFont(DarkUi.TITLE));
             int chip = p.mvp() ? font.getWidth("MVP") + 6 : 0;
             int want = font.getWidth(name) + chip; for (String l : p.lines()) want = Math.max(want, font.getWidth(l)); want += pad * 2 + 4;
@@ -458,7 +494,7 @@ public final class EndingClient {
             int x0 = (int) Math.round(cx[i] - pw / 2.0), x1 = x0 + pw;
             g.fill(x0, top, x1, bottom, PLATE_FILL); g.drawBorder(x0, top, pw, ph, DarkUi.BRASS);
             int inner = pw - pad * 2;
-            int y = top + pad;
+            int y = top + pad + (rows - 1 - p.lines().size()) * lineH / 2; // a plate with fewer lines (no award) has its text centred, not a blank line at the bottom
             // line 1: MVP chip and name
             int nw = font.getWidth(name) + chip; float s1 = Math.min(1f, inner / (float) Math.max(1, nw));
             var mx = g.getMatrices();

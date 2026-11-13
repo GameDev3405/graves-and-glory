@@ -624,6 +624,7 @@ public final class Campaign {
             long seated=seatedTicks(id)/20;boolean eligible=seated>0&&seconds>=Spec.CAMPAIGN[0].minimumRewardSeconds();int percent=MatchRules.sharePercent(seated,seconds);
             boolean won=s.team==winner,credited=won&&MatchRules.majority(seated,seconds);final int team=s.team;boolean botOnly=activeBattle==null&&b.squads.values().stream().filter(o->o.team!=team).allMatch(o->o.bot);
             int earned=eligible?MatchRules.prorate(MatchRules.grossGold(practice,activeBattle!=null,won,credited,Spec.CAMPAIGN[0].completionGold(),Spec.CAMPAIGN[0].practiceGold(),Spec.CAMPAIGN[0].victoryGold()),seated,seconds):0;
+            int priorBattles=p.progression.totalBattles; // ending polish pass 2: the contract bar's before
             int priorXp=p.progression.xp;Progression.reset(p.progression,Progression.today());Progression.match(p.progression,matchId,credited,eligible,percent);p.gold+=earned;int marks=eligible?MatchRules.prorate(MatchRules.forgeMarks(Spec.CAMPAIGN[0].forgeMarks(),credited,botOnly,Spec.CAMPAIGN[0].lossMarksPct(),Spec.CAMPAIGN[0].botOnlyMarksPct()),seated,seconds):0;p.forgeMarks+=marks;if(eligible)Forge.wear(p);if(seated>0)p.matches++;if(credited)p.wins++;MarchMath.Settled march=null;
             if(activeBattle!=null){ // plan 2C.3: the battle won, the cleared count and the bonus, in the same save as the gold
                 march=MarchMath.settle(activeBattle,MarchMath.bonus(activeBattle,Spec.BONUSOBJECTIVES),credited,bonusTracker!=null&&bonusTracker.kept(won,(int)seconds),p.battlesWon,p.bonusClaimed,Profile.houseOrder(),Spec.CAMPAIGNBATTLES);
@@ -643,6 +644,7 @@ public final class Campaign {
                 if(march!=null&&march.bonusPaid()){reward(rewards,RosterMath.houseName(march.bonusHouse())+" shards",march.bonusShards(),"bonus objective");reward(rewards,"Gold",march.bonusGold(),"bonus objective");}
                 reward(rewards,pacts==1?"Pact":"Pacts",pacts,"chapter cleared");for(String t:titles)reward(rewards,"New title: "+t,1,"mastery");}
             report.add("rewards",rewards);
+            if(saved)report.add("progress",reportProgress(p,priorXp,priorBattles,paid)); // ending polish pass 2: the REWARDS bars
             if(!saved){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
             String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gold":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
             standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(!eligible?" (reward requires 3 minutes of play)":percent<100?" (pro-rated: you were seated for "+percent+"% of the match)":"")+(marks>0?" / +"+marks+" Forge marks":"")+extra);
@@ -740,10 +742,10 @@ public final class Campaign {
         endingRanks.clear();var w=Spec.ENDING[0];
         List<GravesAndGlory.Squad> seated=new ArrayList<>();for(var s:b.squads.values())if(s.seated)seated.add(s);
         List<MatchEnding.Entry> entries=new ArrayList<>();for(int i=0;i<seated.size();i++)entries.add(entry(seated.get(i),i));
-        var ranked=MatchEnding.ranked(entries,winner,w);
-        for(int r=0;r<ranked.size();r++)endingRanks.put(seated.get(ranked.get(r).seat()),r+1);
         endingLeft.clear();for(var e:vacated.entrySet())if(b.server.getPlayerManager().getPlayer(e.getKey())==null)for(var s:seated)if(s.owner.equals(e.getValue()))endingLeft.put(s,e.getKey()); // a stand-in's participant offline at finish left the battle
         Set<String> leftIds=new HashSet<>();for(var s:endingLeft.keySet())leftIds.add(s.owner.toString());
+        var ranked=MatchEnding.ranked(entries,winner,w,leftIds); // pass 2: those who left rank after everyone present, on the podium and in rank
+        for(int r=0;r<ranked.size();r++)endingRanks.put(seated.get(ranked.get(r).seat()),r+1);
         int mvp=MatchEnding.mvpIndex(entries,winner,w,leftIds);endingMvp=mvp<0?null:seated.get(mvp);
         endingAwards.clear();endingLines.clear();List<EndingAwards.Line> lines=new ArrayList<>();
         for(int i=0;i<seated.size();i++){var s=seated.get(i);var t=s.stats;var line=new EndingAwards.Line(s.owner.toString(),t.commanderDowns,t.commanderKills,t.captures,t.objectiveSeconds,Math.max(0,t.kills-t.commanderKills),t.kept,t.lost,MatchEnding.score(entries.get(i),w),endingLeft.containsKey(s));lines.add(line);endingLines.put(s,line);}
@@ -775,6 +777,26 @@ public final class Campaign {
         JsonObject obj=new JsonObject();obj.addProperty("captures",t.captures);obj.addProperty("holdSeconds",t.objectiveSeconds);j.add("objectives",obj);
         JsonObject eco=new JsonObject();eco.addProperty("earned",t.goldEarned);eco.addProperty("spent",t.goldSpent);eco.addProperty("trained",t.trained);eco.addProperty("upgrades",t.upgrades);eco.addProperty("orders",t.orders);j.add("economy",eco);
         return j;
+    }
+    /** Ending polish pass 2, the REWARDS bars: {label, kind, before, after, base, next, tier} for XP toward the next chapter tier (Progression.XP_PER_TIER),
+     *  each House's Renown toward its next Renown level (renown sheet points; only Houses that earned Renown), and the battle-count contract this match
+     *  moved (the daily "Complete 3 battles", else the weekly six). A bar already at its last threshold is left out. */
+    static JsonArray reportProgress(Profile p,int priorXp,int priorBattles,RosterMath.Rewards paid){
+        JsonArray rows=new JsonArray();var s=p.progression;
+        int[] xp=new int[Progression.TIERS];for(int i=0;i<xp.length;i++)xp[i]=Progression.XP_PER_TIER*(i+1);
+        progressRow(rows,MatchEnding.progress("XP","xp",priorXp,s.xp,xp));
+        int[] renown=Arrays.stream(Spec.RENOWN).sorted(Comparator.comparingInt(Spec.RenownRow::level)).mapToInt(Spec.RenownRow::points).toArray();
+        for(String h:Profile.houseOrder()){int got=paid.renown().getOrDefault(h,0);if(got<=0)continue;int now=p.renown.getOrDefault(h,0);
+            progressRow(rows,MatchEnding.progress(RosterMath.houseName(h)+" Renown","renown",now-got,now,renown));}
+        int moved=Math.max(0,s.totalBattles-priorBattles);
+        if(moved>0){
+            if(s.dailyBattles-moved<Progression.target(s,1))progressRow(rows,MatchEnding.progress(Progression.contract(s,1),"contract",s.dailyBattles-moved,s.dailyBattles,new int[]{Progression.target(s,1)}));
+            else progressRow(rows,MatchEnding.progress("Weekly: "+Progression.WEEKLY_BATTLES+" battles","contract",s.weeklyBattles-moved,s.weeklyBattles,new int[]{Progression.WEEKLY_BATTLES}));}
+        return rows;
+    }
+    static void progressRow(JsonArray rows,MatchEnding.Progress g){
+        if(g==null)return;JsonObject row=new JsonObject();row.addProperty("label",g.label());row.addProperty("kind",g.kind());row.addProperty("before",g.before());row.addProperty("after",g.after());
+        row.addProperty("base",g.base());row.addProperty("next",g.next());row.addProperty("tier",g.tier());rows.add(row);
     }
     /** Contracts (daily slots and the weekly) and chapter tiers ready to claim now (Progression.claimable). */
     static JsonObject reportClaimable(Profile p){

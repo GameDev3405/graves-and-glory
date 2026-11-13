@@ -77,6 +77,9 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     // ending polish pass 1: the instant begin (finishSerial bumped on the server just before finish), the left participant, the 4v4 STATS hold
     volatile int finishSerial; volatile long finishServer = -1, finishNanos = -1; int seenFinish, finishTick = -1, beginTick = -1; long frames0, beginServer = -1; boolean instantDone;
     volatile UUID ghost; volatile boolean leftHold; boolean leftClientDone, leftPlateSeen; String leftPlates = "";
+    // ending polish pass 2: the reveal (4v4 round, and the skip round's skip into PODIUM), the bars (first round), the progress set-up
+    String revealWhy = ""; boolean revealDone, revealSkipDone, barsMidShot, barsDone; int asked0; String barsMid = "";
+    volatile int xpSet = -1; volatile Map<String, Integer> renownSet = Map.of();
 
     /** The client checks, each tick: the step EndingClient shows and what it drew. Screens at 1280x720 gui 3; the defeat banner and one podium shot at 854x480 gui 2. */
     void client(MinecraftClient c, int tick) {
@@ -143,8 +146,10 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             skipDone = true; pressMenu = false; escStage = 1;
             report("ending-client-skip", st == MatchEnding.Step.PODIUM, "menu key in RESULT: step " + st + " after " + (tick - pressAt) + " ticks");
         }
+        reveal(c, tick, st);
+        bars(c, tick, st);
         // ending-client-plates: the 4v4 podium's three plates never overlap
-        if (podiumThree && st == MatchEnding.Step.PODIUM && !threeDone && podiumAt >= 0 && tick >= podiumAt + 30) {
+        if (podiumThree && st == MatchEnding.Step.PODIUM && !threeDone && podiumAt >= 0 && tick >= podiumAt + 96) { // pass 2: all three are up from 4.5 s
             threeDone = true;
             var r = new ArrayList<>(EndingClient.plateRects); boolean overlap = false;
             for (int i = 0; i < r.size(); i++) for (int j = i + 1; j < r.size(); j++) { int[] a = r.get(i), b = r.get(j); if (a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]) overlap = true; }
@@ -205,6 +210,57 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         if (youStage > 0) reportYou(c, tick);
     }
 
+    /** ending-client-reveal (pass 2): in the 4v4 round's PODIUM nothing shows at 1.0 s, 3rd place at 2.0 s (not the MVP), all three at 5.0 s, with the drum,
+     *  three reveals and the award asked for; in the skip round the menu key's skip into PODIUM shows everything at once. Shots at 2.0 s and 5.0 s. */
+    void reveal(MinecraftClient c, int tick, MatchEnding.Step st) {
+        if (skipDone && !revealSkipDone && st == MatchEnding.Step.PODIUM && pressAt >= 0) {
+            revealSkipDone = true;
+            boolean all = EndingClient.shownSlot(0) && EndingClient.shownSlot(1) && EndingClient.shownSlot(2) && EndingClient.revealAll && EndingClient.podiumSeconds(0) < 1.5;
+            revealWhy += "skip into PODIUM at " + String.format(Locale.ROOT, "%.2f", EndingClient.podiumSeconds(0)) + " s: all shown=" + all + "; ";
+            if (!all) revealWhy += "FAIL; ";
+        }
+        if (!podiumThree || revealDone || st != MatchEnding.Step.PODIUM || podiumAt < 0) return;
+        int k = tick - podiumAt;
+        if (k == 1) asked0 = EndingSounds.asked.size();
+        if (k == 20) {
+            boolean none = !EndingClient.shownSlot(0) && !EndingClient.shownSlot(1) && !EndingClient.shownSlot(2) && EndingClient.plateRects.isEmpty();
+            revealWhy += "1.0 s: hidden=" + none + "; "; if (!none) revealWhy += "FAIL; ";
+        }
+        if (k == 40) {
+            boolean third = EndingClient.shownSlot(2) && !EndingClient.shownSlot(1) && !EndingClient.shownSlot(0) && EndingClient.plateRects.size() == 1;
+            revealWhy += "2.0 s: 3rd only=" + third + " (plates " + EndingClient.plateRects.size() + "); "; if (!third) revealWhy += "FAIL; ";
+            clientShot = "ending-reveal-2s"; shotAt = tick;
+        }
+        if (k == 100) {
+            revealDone = true;
+            boolean all = EndingClient.shownSlot(0) && EndingClient.shownSlot(1) && EndingClient.shownSlot(2) && EndingClient.plateRects.size() == 3;
+            var heard = new ArrayList<>(EndingSounds.asked.subList(Math.min(asked0, EndingSounds.asked.size()), EndingSounds.asked.size()));
+            boolean sounds = heard.indexOf("PODIUM_DRUM") >= 0 && Collections.frequency(heard, "PODIUM_REVEAL") == 3 && heard.contains("AWARD")
+                && heard.indexOf("PODIUM_DRUM") < heard.indexOf("PODIUM_REVEAL") && heard.lastIndexOf("PODIUM_REVEAL") < heard.lastIndexOf("AWARD");
+            revealWhy += "5.0 s: all shown=" + all + " (plates " + EndingClient.plateRects.size() + "); sounds " + heard;
+            boolean ok = all && sounds && revealSkipDone && !revealWhy.contains("FAIL");
+            Phase4Checks.shot(c, "ending-reveal-5s");
+            report("ending-client-reveal", ok, revealWhy + (revealSkipDone ? "" : "; the skip round was not seen"));
+        }
+    }
+    /** ending-client-bars (pass 2, first round): every progress row drawn as a bar, the set-up XP crossing flashes "Level up!" and asks for LEVEL_UP; shots mid-fill and final. */
+    void bars(MinecraftClient c, int tick, MatchEnding.Step st) {
+        if (endings != 1 || barsDone || st != MatchEnding.Step.REWARDS || rewardsAt < 0) return;
+        int k = tick - rewardsAt;
+        if (!barsMidShot && k < 78) for (float f : EndingPanels.barFill) if (f > .25f && f < .75f) {
+            barsMidShot = true; barsMid = "mid-fill shot at +" + k + " ticks, fills " + EndingPanels.barFill; Phase4Checks.shot(c, "ending-bars-mid"); break; }
+        if (k == 106) {
+            barsDone = true;
+            int want = CampaignClient.result.has("progress") ? CampaignClient.result.getAsJsonArray("progress").size() : -1;
+            String lay = EndingPanels.layout("reward");
+            boolean full = EndingPanels.barFill.stream().allMatch(f -> f >= 1f);
+            boolean ok = want > 0 && EndingPanels.barsDrawn == want && full && EndingPanels.barsCrossed >= 1 && EndingPanels.flashes.contains("Level up!") && EndingSounds.asked.contains("LEVEL_UP") && barsMidShot && lay.isEmpty();
+            Phase4Checks.shot(c, "ending-bars-final");
+            report("ending-client-bars", ok, EndingPanels.barsDrawn + " bars of " + want + " progress rows, all full=" + full + ", crossed " + EndingPanels.barsCrossed + ", flashes " + EndingPanels.flashes
+                + ", LEVEL_UP asked=" + EndingSounds.asked.contains("LEVEL_UP") + "; " + (barsMidShot ? barsMid : "no mid-fill frame seen") + (lay.isEmpty() ? ", layout clean" : ", layout: " + lay));
+        }
+    }
+
     /** ending-client-begin-instant: from the tick this client sees the server's finish, the step, the freeze and the banner within 2 ticks, begun by ending_begin. */
     void instant(MinecraftClient c, int tick, MatchEnding.Step st) {
         int fs = finishSerial;
@@ -225,7 +281,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         if (!leftHold || leftClientDone) return;
         if (st == MatchEnding.Step.PODIUM && podiumAt >= 0 && tick == podiumAt + 32) {
             StringBuilder why = new StringBuilder();
-            for (var p : EndingClient.plates) { why.append(p.name()).append(p.left() ? " (left)" : "").append(p.mvp() ? " MVP" : "").append(p.award().isEmpty() ? "" : " " + p.award()).append("; "); if (p.left() && !p.mvp() && p.lines().contains(EndingClient.LEFT)) leftPlateSeen = true; }
+            for (var p : EndingClient.plates) { why.append(p.name()).append(p.left() ? " (left)" : "").append(p.mvp() ? " MVP" : "").append(p.award().isEmpty() ? "" : " " + p.award()).append("; "); if (p.left()) leftPlateSeen = true; }
             leftPlates = why.toString();
         }
         if (st == MatchEnding.Step.STATS && statsAt >= 0 && tick == statsAt + 20) {
@@ -233,7 +289,8 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             boolean row = false; String mvpChip = EndingPanels.rects.containsKey("score-mvp") ? "drawn" : "none";
             for (var e : EndingPanels.texts.entrySet()) if (e.getKey().startsWith("score-") && e.getKey().endsWith("-left") && e.getValue().equals(EndingClient.LEFT)) row = true;
             String lay = EndingPanels.layout("score");
-            report("ending-left-client", leftPlateSeen && row && lay.isEmpty(), "plates: " + leftPlates + " table row reads Left the battle=" + row + ", MVP chip " + mvpChip + (lay.isEmpty() ? "" : ", layout: " + lay));
+            // pass 2: the ghost ranks after the seven present, so no podium plate is his; his table row still reads Left the battle
+            report("ending-left-client", !leftPlateSeen && row && lay.isEmpty(), "plates: " + leftPlates + " a plate of one who left=" + leftPlateSeen + ", table row reads Left the battle=" + row + ", MVP chip " + mvpChip + (lay.isEmpty() ? "" : ", layout: " + lay));
             Phase4Checks.shot(c, "ending-stats-4v4"); later(tick + 3, () -> Phase1Checks.window(c, 854, 480, 2));
             later(tick + 25, () -> { String lay2 = EndingPanels.layout("score") + EndingPanels.layout("troops") + EndingPanels.layout("highlight");
                 report("ending-stats-4v4-small", lay2.isEmpty(), "4v4 STATS at 854x480 gui 2: " + (lay2.isEmpty() ? "layout clean" : lay2)); Phase4Checks.shot(c, "ending-stats-4v4-small"); });
@@ -372,6 +429,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             var a = new net.minecraft.entity.projectile.ArrowEntity(b.world, p.getX(), p.getY() + 6, p.getZ()); a.noClip = true; a.setNoGravity(true); a.setVelocity(0.6, 0, 0); b.world.spawnEntity(a);
             Vec3d from = a.getPos(); b.shots.add(new Projectiles.Shot(null, null, null, "arrow", 0, from, b.time, b.time + 10000, a, from)); arrow = a; arrowAt = from;
             s.stats.kills += 6; // army kills for the Butcher award, so the stats screen's Highlights has a line (ending-client-stats-fill)
+            { var pr0 = c.profile(player); pr0.progression.xp = Progression.XP_PER_TIER * 3 - 30; xpSet = pr0.progression.xp; renownSet = new HashMap<>(pr0.renown); } // pass 2: 30 XP short of tier 3 (ending-progress, ending-client-bars)
             finishServer = b.time; finishNanos = System.nanoTime(); finishSerial++;
             c.finish(s.team);
             var pr = c.profile(player); gold1 = pr.gold; xp1 = pr.progression.xp;
@@ -390,6 +448,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             if (res != null && res.has("rewards")) for (var r : res.getAsJsonArray("rewards")) if (r.getAsJsonObject().get("label").getAsString().equals("Gold") && r.getAsJsonObject().get("amount").getAsInt() > 0) goldRow = true;
             boolean you = res != null && res.has("you") && res.getAsJsonObject("you").has("commander") && res.getAsJsonObject("you").has("economy");
             boolean line = res != null && res.has("line") && res.get("line").getAsString().contains(" · ");
+            progressCheck(c, res);
             report("ending-report", podiumRows && mvpFirst && goldRow && you && line && res.has("claimable"), "podium=" + podiumRows + " mvp rank 1=" + mvpFirst + " gold row=" + goldRow + " you=" + you + " line=" + (res == null ? "" : res.get("line")));
             // the freeze: a forced hit on the commander and on a troop, and an order
             float before = p.getHealth();
@@ -429,6 +488,25 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         report("ending-paid-once", pr.gold == gold1 && pr.progression.xp == xp1, "gold " + gold1 + "->" + pr.gold + " xp " + xp1 + "->" + pr.progression.xp);
         holdAt = -1; hold = true; // the client opens the War Table report (ending-report-you) before the next round starts
         next();
+    }
+
+    /** ending-progress (pass 2): the report's progress rows against the profile before and after the match: XP from the set-up 720 to the saved XP, crossing tier 3
+     *  at 750; each Renown row from the profile's Renown before to after; a contract row one battle on. */
+    void progressCheck(Campaign c, JsonObject res) {
+        var pr = c.profile(player); StringBuilder why = new StringBuilder(); boolean ok = res != null && res.has("progress"), xp = false;
+        if (ok) for (var e : res.getAsJsonArray("progress")) {
+            var o = e.getAsJsonObject(); String kind = o.get("kind").getAsString(), label = o.get("label").getAsString();
+            int before = o.get("before").getAsInt(), after = o.get("after").getAsInt(), next = o.get("next").getAsInt(), base = o.get("base").getAsInt(), tier = o.get("tier").getAsInt();
+            boolean row;
+            if (kind.equals("xp")) { xp = true; row = before == xpSet && after == pr.progression.xp && base == 500 && next == 750 && tier == 3 && after >= next; }
+            else if (kind.equals("renown")) {
+                String house = null; for (String h : Profile.houseOrder()) if ((RosterMath.houseName(h) + " Renown").equals(label)) house = h;
+                row = house != null && before == renownSet.getOrDefault(house, 0) && after == pr.renown.getOrDefault(house, 0) && after > before && before >= base && before < next;
+            } else row = kind.equals("contract") && after == before + 1 && before >= base && before < next;
+            ok &= row;
+            why.append(label).append(' ').append(before).append("->").append(after).append(" of ").append(base).append("..").append(next).append(" tier ").append(tier).append(row ? "" : " WRONG").append("; ");
+        }
+        report("ending-progress", ok && xp, (res == null || !res.has("progress") ? "no progress in the report; " : "") + why + "profile xp " + xpSet + " -> " + pr.progression.xp + (xp ? "" : ", no XP row"));
     }
 
     /** ending-skip: four skips from the client take the lone commander to camp before the clock's DONE. */
@@ -568,9 +646,14 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         for (var e : res.getAsJsonArray("squads")) { var o = e.getAsJsonObject(); if (o.get("mvp").getAsBoolean()) { mvps++; mvpName = o.get("name").getAsString(); } }
         var top = res.getAsJsonArray("podium").get(0).getAsJsonObject();
         boolean leftRow = g != null && g.has("left") && g.get("left").getAsBoolean() && !g.get("mvp").getAsBoolean() && !g.has("award");
-        boolean leftTop = top.has("left") && top.get("left").getAsBoolean() && !top.get("mvp").getAsBoolean();
-        report("ending-left", leftRow && leftTop && mvps == 1, "ghost row " + (g == null ? "missing" : "left=" + g.has("left") + " mvp=" + g.get("mvp") + " award=" + g.has("award") + " name " + g.get("name"))
+        report("ending-left", leftRow && mvps == 1, "ghost row " + (g == null ? "missing" : "left=" + g.has("left") + " mvp=" + g.get("mvp") + " award=" + g.has("award") + " name " + g.get("name"))
             + "; podium 1st " + top.get("name") + " left=" + top.has("left") + " mvp=" + top.get("mvp") + "; " + mvps + " MVP (" + mvpName + ")");
+        // ending-left-rank (pass 2): the ghost had the top score but left, so he ranks last; the podium is three who stayed with the MVP first
+        int n = res.getAsJsonArray("squads").size(), ghostRank = g == null ? -1 : g.get("rank").getAsInt();
+        boolean podiumClean = true; StringBuilder pod = new StringBuilder();
+        for (var e : res.getAsJsonArray("podium")) { var o = e.getAsJsonObject(); podiumClean &= !o.has("left"); pod.append(o.get("rank")).append(' ').append(o.get("name")).append(o.has("left") ? " (left)" : "").append("; "); }
+        boolean mvpTop = top.get("mvp").getAsBoolean() && top.get("rank").getAsInt() == 1;
+        report("ending-left-rank", ghostRank == n && podiumClean && mvpTop, "ghost rank " + ghostRank + " of " + n + "; podium " + pod + "MVP first=" + mvpTop);
     }
 
     // ================= Task 7: the proof suites =================

@@ -28,7 +28,7 @@ final class EndingScreen extends Screen {
     static volatile int scaleDrawn;
     static volatile int[] sheetDrawn = new int[4];
 
-    EndingScreen() { super(Text.literal("Battle report")); }
+    EndingScreen() { super(Text.literal("Battle report")); EndingPanels.flashes.clear(); }
 
     @Override public boolean shouldPause() { return false; }
     @Override public boolean shouldCloseOnEsc() { return false; }
@@ -135,6 +135,9 @@ final class EndingScreen extends Screen {
         // the sounds (EndingSounds): a tick while rows count up, the total's cue once when it lands
         if (EndingPanels.rewardsTotal > 0 && EndingPanels.rewardRows > 0 && p < EndingPanels.ROWS_END) EndingSounds.rewardTick(ticks);
         if (!totalPlayed && !EndingPanels.total.isEmpty()) { totalPlayed = true; EndingSounds.rewardTotal(); }
+        // pass 2: LEVEL_UP once for each bar as it crosses its threshold
+        if (EndingPanels.barsCrossed > crossedPlayed) { crossedPlayed = EndingPanels.barsCrossed; EndingSounds.play("LEVEL_UP"); }
     }
     boolean totalPlayed;
+    int crossedPlayed;
 }
