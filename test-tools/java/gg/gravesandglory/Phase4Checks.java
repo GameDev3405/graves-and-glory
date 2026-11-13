@@ -34,7 +34,7 @@ public final class Phase4Checks implements ClientModInitializer {
     static final Map<String,Supplier<Suite>> SUITES=new LinkedHashMap<>();
     static{SUITES.put("modes",ModesChecks::new);SUITES.put("convoy",ConvoyChecks::new);}
     static{SUITES.put("ending",EndingChecks::new);SUITES.put("ending-modes",EndingChecks.ModesSuite::new);SUITES.put("ending-sync",EndingChecks.SyncSuite::new);}
-    static{SUITES.put("siege-play",SiegePlayChecks::new);SUITES.put("march-modes",MarchModesChecks::new);SUITES.put("march-bonus",MarchBonusChecks::new);SUITES.put("survival",SurvivalChecks::new);SUITES.put("plan-server",PlanServerChecks::new);}
+    static{SUITES.put("siege-play",SiegePlayChecks::new);SUITES.put("march-modes",MarchModesChecks::new);SUITES.put("march-bonus",MarchBonusChecks::new);SUITES.put("survival",SurvivalChecks::new);SUITES.put("plan-server",PlanServerChecks::new);SUITES.put("map-art",MapArtChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed,broken;
     static int tick,front;static boolean started;

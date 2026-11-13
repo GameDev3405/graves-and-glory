@@ -35,6 +35,7 @@ public final class BattleMapClient {
             client.execute(() -> {
                 try { grid = BattleMapGrid.decode(data); }
                 catch (RuntimeException bad) { grid = null; }
+                BattleMapArt.request(grid); // paints both looks off-thread once per map build
             });
         });
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.MAP_STATE, (client, handler, buf, responder) -> {
@@ -95,5 +96,5 @@ public final class BattleMapClient {
     }
 
     /** Forgets the field and state (a new battle, or leaving). */
-    public static void clear() { grid = null; state = null; }
+    public static void clear() { grid = null; state = null; BattleMapArt.clear(); }
 }
