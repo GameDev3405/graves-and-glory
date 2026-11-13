@@ -421,9 +421,39 @@ final class Tactics {
         }
         if(a.order.equals("hold")&&!mob.getNavigation().isIdle())FormationRules.shove(battle,u,a); // a Formation's troops walking into place make room (Task 6's rule)
     }
+    /** Slot cells moved out of water, by cell (dryCells is for the battle in play), and how many beats a troop's slot was moved. */
+    static final Map<Long,Vec3d> DRY=new java.util.concurrent.ConcurrentHashMap<>();static GravesAndGlory.Battle dryOf;static int wetSlots;
+    /** A slot cell in water is not a place to stand (the pond near (-43, 72) on New Kingsfield: a formation's cells fell in it, the troops crowded its shore and stood there until the stall ladder jumped them out): on an engine map with a route field the troop forms on
+     *  the nearest dry floor instead, one of those at the least distance chosen by its slot so that the troops of a wet row do not all take the same cell. Any other slot comes back as it is (the same object: walk compares it by identity). */
+    static Vec3d dryCell(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d slot){
+        var nav=field();if(nav==null)return slot;
+        var w=battle.world;var mob=u.mob;
+        int gx=(int)Math.floor(slot.x),gz=(int)Math.floor(slot.z);
+        int[] f=Arena.floor(w,gx,gz,mob.getX(),mob.getZ());
+        if(!wetAt(w,f[0],f[2],f[1]))return slot;
+        if(dryOf!=battle){DRY.clear();dryOf=battle;}
+        long key=((long)gx*1_000_003L+gz)*8+(u.slot&7);
+        var cached=DRY.get(key);
+        if(cached!=null){wetSlots++;return cached;}
+        java.util.List<int[]> best=new java.util.ArrayList<>();int bestR=-1;
+        for(int r=1;r<=DRY_RADIUS&&(bestR<0||r<=bestR+1);r++)for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
+            if(Math.max(Math.abs(dx),Math.abs(dz))!=r)continue;
+            int cx=gx+dx,cz=gz+dz;int[] c=Arena.floor(w,cx,cz,mob.getX(),mob.getZ());
+            if(c[0]!=cx||c[1]!=cz||!nav.has(cx,cz)||wetAt(w,cx,c[2],cz)||wetAt(w,cx,c[2]-1,cz)||!w.getBlockState(new BlockPos(cx,c[2],cz)).getCollisionShape(w,new BlockPos(cx,c[2],cz)).isEmpty())continue;
+            if(bestR<0)bestR=r;best.add(c);
+        }
+        Vec3d out=slot;
+        if(!best.isEmpty()){var c=best.get(Math.floorMod(u.slot,best.size()));out=new Vec3d(c[0]+.5,c[2],c[1]+.5);}
+        DRY.put(key,out);wetSlots++;
+        return out;
+    }
+    /** How far (columns) a wet slot looks for dry ground. */
+    static final int DRY_RADIUS=10;
+    /** Whether the block at (x, y, z) holds fluid. */
+    static boolean wetAt(net.minecraft.world.World w,int x,int y,int z){return !w.getFluidState(new BlockPos(x,y,z)).isEmpty();}
     /** To its formation slot, and still there facing the order's way once it stands on it: within arrivalTolerance across and, on a post (Assignment.perch), at its height, so that a troop under a tower top is not taken for one on it. */
     static void toSlot(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,GravesAndGlory.Assignment a,long time,double speed){
-        MobEntity mob=u.mob;Vec3d goal=battle.formation(u);u.place=goal;
+        MobEntity mob=u.mob;Vec3d goal=dryCell(battle,u,battle.formation(u));u.place=goal;
         boolean there=GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)<=N.arrivalTolerance()*N.arrivalTolerance()&&(!a.perch||Math.abs(mob.getY()-goal.y)<1.1);
         if(!there){if(!stretch(battle,u,a,time))walk(battle,u,goal,time,speed,a.perch);} // a wall troop's last stretch faces its Hold yaw (stretch)
         else{mob.getNavigation().stop();mob.setYaw(a.yaw);mob.setHeadYaw(a.yaw);mob.setBodyYaw(a.yaw);if(GravesAndGlory.Battle.walls(u,a.order))settle(u,goal,time);}

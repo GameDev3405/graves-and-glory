@@ -211,7 +211,7 @@ final class AiMetrics {
     }
     /** One line per match: the stall ladder's rungs, its jumps with their place labels, and the route field's round. */
     String stallLine(){
-        var st=Tactics.stalls;StringBuilder sb=new StringBuilder("[botsim] stall match "+(match+1)+": jumps="+jumpCount+" "+jumpPlaces+" refusedWatched="+Tactics.jumpsWatched+" noSpot="+Tactics.jumpsNowhere+java.util.Arrays.toString(Tactics.nowhereWhy)+" cost="+String.format(Locale.ROOT,"%.1fms over %d beats, worst rung %.2fms",Tactics.stallNanos/1e6,Tactics.stallCalls,Tactics.stallMaxNanos/1e6)+" queue holds="+Tactics.queueHolds+"/"+Tactics.queueTests+" file waits="+Tactics.fileWaits+"/"+Tactics.fileBeats+" opened="+Tactics.fileOpened+" rungs");
+        var st=Tactics.stalls;StringBuilder sb=new StringBuilder("[botsim] stall match "+(match+1)+": jumps="+jumpCount+" "+jumpPlaces+" refusedWatched="+Tactics.jumpsWatched+" noSpot="+Tactics.jumpsNowhere+java.util.Arrays.toString(Tactics.nowhereWhy)+" cost="+String.format(Locale.ROOT,"%.1fms over %d beats, worst rung %.2fms",Tactics.stallNanos/1e6,Tactics.stallCalls,Tactics.stallMaxNanos/1e6)+" queue holds="+Tactics.queueHolds+"/"+Tactics.queueTests+" file waits="+Tactics.fileWaits+"/"+Tactics.fileBeats+" opened="+Tactics.fileOpened+" wetSlots="+Tactics.wetSlots+" rungs");
         for(int r=1;r<st.length;r++)sb.append(' ').append(Stall.NAMES[r]).append('=').append(st[r]);
         return sb.toString();
     }
