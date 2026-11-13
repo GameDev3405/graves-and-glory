@@ -38,6 +38,8 @@ public final class EngineMap {
  public final List<Point> points=new ArrayList<>();public final List<Spawn> spawns=new ArrayList<>();
  public final List<Route> routes=new ArrayList<>();public final List<Tile> tiles=new ArrayList<>();public final List<Road> roads=new ArrayList<>();
  private final double[] riverX;
+ /** The route field baked from the map's own floors (nav.bin.gz, tools/sectionmap.py nav), or null when the build has none or it is stale: troops then walk as they always did. */
+ public final NavField nav;
 
  private EngineMap(Opener files,JsonObject m,int[] solid,int[] water){
   this.files=files;id=m.get("id").getAsString();sha=m.get("design_sha256").getAsString();
@@ -52,8 +54,19 @@ public final class EngineMap {
   for(JsonElement e:m.getAsJsonArray("tiles")){JsonObject p=e.getAsJsonObject();JsonArray s=p.getAsJsonArray("size");tiles.add(new Tile(p.get("file").getAsString(),p.has("format")?p.get("format").getAsString():"structure",p.get("x").getAsInt()+ox,p.get("z").getAsInt()+oz,s.get(0).getAsInt(),s.get(1).getAsInt(),s.get(2).getAsInt()));}
   for(JsonElement e:m.getAsJsonArray("roads")){JsonObject p=e.getAsJsonObject();List<double[]> path=new ArrayList<>();for(JsonElement q:p.getAsJsonArray("path")){JsonArray a=q.getAsJsonArray();path.add(new double[]{a.get(0).getAsDouble()+ox,a.get(1).getAsDouble()+oz});}roads.add(new Road(p.get("id").getAsString(),path,p.get("width").getAsDouble()));}
   walkable(ox,oz); // the walkable grid is built when the map loads (a few ms), not on the first troop's tick
+  nav=loadNav();
   riverX=new double[depth];
   for(int z=0;z<depth;z++){double sum=0;int n=0;for(int x=0;x<width;x++)if(wetCell(water[z*width+x],solid[z*width+x])){sum+=x+ox;n++;}riverX[z]=n==0?-100000:sum/n;}
+ }
+
+ private NavField loadNav(){
+  List<int[]> seeds=new ArrayList<>();
+  for(Spawn s:spawns)seeds.add(new int[]{(int)Math.floor(s.x()),(int)Math.floor(s.z()),s.y()-1});
+  for(Point p:points)seeds.add(new int[]{(int)Math.floor(p.x()),(int)Math.floor(p.z()),p.y()-1});
+  try(InputStream in=files.open("nav.bin.gz")){
+   NavField n=NavField.read(in,ox,oz,width,depth,floorY,sha,seeds.toArray(new int[0][]));
+   System.out.println("[Graves and Glory] route field of "+id+": "+n.summary());return n;
+  }catch(IOException e){System.out.println("[Graves and Glory] no route field for "+id+": "+e.getMessage());return null;}
  }
 
  /** Reads dir/map.json and its columns.bin; throws IOException with a reason when either is missing or does not fit. */
