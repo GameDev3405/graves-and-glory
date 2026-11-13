@@ -103,8 +103,6 @@ for v in side three_quarter front; do python tools/anim/render_geo.py --geo $A/g
   `art/anim/knight/build_anims.py`, which mirror `sheets/design.json`. Guard constants to start and end on:
   `B.READY_HIPS`, `B.READY_FEET`, `B.GUARD`, `B.FIST_GUARD`. The limits of every check are the `LIMITS` table at
   the top of `tools/anim/focus_check.py`.
-- `art/anim/knight/build_thrust_sonnet_test.py` is a second example that writes only to `work/` (it was the
-  Sonnet-only trial of this skill, 2026-11-11; a clean 6.5/10 clip, not an approved one).
 
 ## Gates (a clip goes forward only when every line is true)
 
