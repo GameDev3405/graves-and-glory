@@ -2322,8 +2322,13 @@ public final class Phase1Checks implements ClientModInitializer {
                         var ms=GravesAndGloryClient.markers;long own=ms.stream().filter(GravesAndGloryClient.Marker::own).count(),ally=ms.size()-own;
                         var ss=GravesAndGloryClient.sightings;long fresh=ss.stream().filter(v->v.age()<20).count(),old=ss.size()-fresh;
                         boolean open=c.currentScreen instanceof BattleMapScreen;
+                        // Revision 2: no look toggle, the real texture or its dimmed fallback; troops as square icons (13 px hit boxes)
+                        var ms2=open?(BattleMapScreen)c.currentScreen:null;
+                        String drawn=ms2==null?"none":ms2.drawnTexture;
+                        long icons=ms2==null?0:ms2.hits.stream().filter(h->(h.kind().equals("own")||h.kind().equals("ally"))&&h.x1()-h.x0()==2*BattleMapScreen.ICON+1&&h.y1()-h.y0()==2*BattleMapScreen.ICON+1).count();
+                        boolean look=List.of("real","fallback","plain").contains(drawn);
                         shot(c,"ui-map");
-                        report("p1-ui-map-glyphs",open&&legend.equals("LMB select or plan / RMB to move / scroll to zoom / drag to pan")&&colours.isEmpty()&&own>0&&ally>0&&fresh>0&&old>0,"legend '"+legend+"' (colour words in it: "+colours+"); the map (open: "+open+", GUI 2) marks "+own+" own troops (dots), "+ally+" allied (rings), "+fresh+" fresh sightings (x) and "+old+" remembered (small x); "+fixture);
+                        report("p1-ui-map-glyphs",open&&look&&icons>0&&legend.equals("LMB select or plan / RMB to move / scroll to zoom / drag to pan")&&colours.isEmpty()&&own>0&&ally>0&&fresh>0&&old>0,"legend '"+legend+"' (colour words in it: "+colours+"); the map (open: "+open+", GUI 2, drew "+drawn+") marks "+own+" own troops, "+ally+" allied ("+icons+" square icons drawn), "+fresh+" fresh sightings and "+old+" remembered; "+fixture);
                         c.setScreen(null);mapMarks=false;window(c,960,540,1);restart(c,2,30);
                     }
                 }

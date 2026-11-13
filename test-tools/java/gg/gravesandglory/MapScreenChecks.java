@@ -10,14 +10,15 @@ import java.util.UUID;
 
 /** p4-map-view and p4-map-plan (battle map Task 6; a Phase4Checks suite, run as GRAVES_PHASE4_CHECKS=map-screen), on map 0 (Rivergate, an
  *  old map) and then New Kingsfield (an engine map), each a skirmish with bot fill.
- *  - view: BattleMapScreen opens at the fit scale; a scroll of +3 at the map's centre zooms and keeps the centre's world point; a 50 px
- *    drag moves the view; T switches the look and the texture drawn; Home fits again; with no grid the screen still draws (fallback).
- *  - plan: a click on point B opens its popup; Attack puts ATTACK on B in battlemap_v1 and a bot says "on it, taking"; a click on an ally
- *    bot's plaque opens its popup; Hold here puts a direct HOLD for that army in battlemap_v1. With the screen closed and the player
+ *  - view: BattleMapScreen opens at the fit scale and draws the real texture (the only look since Revision 2); a scroll of +3 at the map's
+ *    centre zooms and keeps the centre's world point; a 50 px drag moves the view; Home fits again; with no grid the screen still draws
+ *    (fallback). A point's hit target is its disc (the centre hits, the box corner does not).
+ *  - plan: a click on point B's disc opens its popup; Attack puts ATTACK on B in battlemap_v1 and a bot says "on it, taking"; a click on an
+ *    ally bot's square icon (13 px, not a plaque) opens its popup; Hold here puts a direct HOLD for that army in battlemap_v1. With the screen closed and the player
  *    moved 100 blocks from point B and facing it, PlanMarkers drew point B's own world flag (Task 7), and the popup methods
  *    refuse what the server would: no order popup for an aimed bot, only "Ping here" on a point in a mode with no capture points. A plan
  *    only counts when it is in a state sent after the click.
- *  Screenshots (screenshots/p4-ui-map-*-(map)[-1080|-small].png): fit, zoom, real, plan at 960x540 GUI 2, fit and plan at 1920x1080 GUI 3,
+ *  Screenshots (screenshots/p4-ui-map-*-(map)[-1080|-small].png): fit, zoom, plan at 960x540 GUI 2 and at 1920x1080 GUI 3,
  *  fit at 854x480 GUI 2; the world flag from the player's view toward B (p4-ui-plan-flag-(map)). */
 public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
     static final int[] MAPS = {0, 5};
@@ -28,7 +29,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
     String id = "";
     BattleMapScreen screen;
     // the view check's findings
-    boolean fitOpen, zoomUp, zoomKept, dragMoved, toggled, homeFit, noGridOk;
+    boolean fitOpen, realDrawn, discHit, zoomUp, zoomKept, dragMoved, homeFit, noGridOk;
     String viewWhy = "";
     // the plan check's
     boolean pointPopup, planInState, ackHeard, armyPopup, orderInState, flagDrawn, aimedNoPopup, noPointsOk;
@@ -55,7 +56,6 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 if (!ready && waited < 400) return;
                 if (!ready) viewWhy += "not ready after 400 ticks (grid " + (BattleMapClient.grid != null) + ", built " + BattleMapArt.builtMap() + ", state " + (BattleMapClient.state != null) + "); ";
                 Phase1Checks.window(c, 960, 540, 2);
-                BattleMapScreen.setLook(true);
                 next(2, tick);
             }
             case 2 -> { if (waited >= 6) { screen = new BattleMapScreen(null); c.setScreen(screen); next(3, tick); } }
@@ -64,6 +64,11 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 var v = screen.view;
                 fitOpen = c.currentScreen == screen && Math.abs(v.scale() - v.fitScale()) < 1e-9;
                 viewWhy += "opened at scale " + r(v.scale()) + " (fit " + r(v.fitScale()) + "); ";
+                realDrawn = "real".equals(screen.drawnTexture) && screen.drawnId != null && screen.drawnId.equals(BattleMapArt.real());
+                viewWhy += "drew " + screen.drawnTexture + " (the real texture: " + realDrawn + "); ";
+                var b = screen.pointHit(1);
+                discHit = b != null && b.x1() - b.x0() == 2 * BattleMapScreen.DISC + 3 && b.has(b.cx(), b.cy()) && !b.has(b.x0(), b.y0()) && !b.has(b.x1() - 1, b.y1() - 1);
+                viewWhy += "B's hit target " + (b == null ? "none" : (b.x1() - b.x0()) + " px, a disc: " + discHit) + "; ";
                 Phase4Checks.shot(c, "ui-map-fit-" + id);
                 double cx = screen.ax + screen.aw / 2.0, cy = screen.ay + screen.ah / 2.0, wx = v.worldX(cx), wz = v.worldZ(cy), before = v.scale();
                 screen.mouseScrolled(cx, cy, 3);
@@ -83,13 +88,11 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 screen.mouseReleased(cx + 50, cy, 0);
                 dragMoved = Math.abs(v.worldX(cx) - wx) > 1 && screen.popup == null;
                 viewWhy += "a 50 px drag moved the centre " + r(wx - v.worldX(cx)) + " blocks (no popup: " + (screen.popup == null) + "); ";
-                pressLook(screen);
                 next(5, tick);
             }
             case 5 -> {
                 if (waited < 4) return;
-                toggled = !BattleMapScreen.lookParchment() && "real".equals(screen.drawnTexture) && screen.drawnId != null && screen.drawnId.equals(BattleMapArt.real());
-                viewWhy += "T: look parchment=" + BattleMapScreen.lookParchment() + ", drawn " + screen.drawnTexture + "; ";
+                realDrawn &= "real".equals(screen.drawnTexture); // still the real look after a zoom and a pan
                 screen.keyPressed(GLFW.GLFW_KEY_HOME, 0, 0);
                 next(6, tick);
             }
@@ -97,8 +100,6 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 if (waited < 3) return;
                 var v = screen.view;
                 homeFit = Math.abs(v.scale() - v.fitScale()) < 1e-9 && !v.moved();
-                Phase4Checks.shot(c, "ui-map-real-" + id); // the real look at fit
-                pressLook(screen); // back to parchment
                 saved = BattleMapClient.grid;
                 BattleMapClient.grid = null; // a late joiner: the screen draws the fallback
                 next(7, tick);
@@ -108,7 +109,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 noGridOk = c.currentScreen == screen && ("fallback".equals(screen.drawnTexture) || "plain".equals(screen.drawnTexture)) && screen.pointAt(0) != null;
                 viewWhy += "Home: scale " + r(screen.view.scale()) + " (fit " + r(screen.view.fitScale()) + "); with no grid drew " + screen.drawnTexture + " and the points; ";
                 BattleMapClient.grid = saved;
-                Phase4Checks.report("p4-map-view-" + id, fitOpen && zoomUp && zoomKept && dragMoved && toggled && homeFit && noGridOk, viewWhy);
+                Phase4Checks.report("p4-map-view-" + id, fitOpen && realDrawn && discHit && zoomUp && zoomKept && dragMoved && homeFit && noGridOk, viewWhy);
                 next(10, tick);
             }
             // ---- plan
@@ -134,7 +135,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 ackHeard = heard.stream().anyMatch(h -> h.contains("on it, taking"));
                 if (ackHeard || waited > 240) { planWhy += "bot line 'on it, taking' heard: " + ackHeard + " (" + heard.stream().filter(h -> h.contains("bot")).limit(4).toList() + "); "; next(13, tick); }
             }
-            case 13 -> { // an ally bot's plaque, zoomed onto it so no point disc covers it
+            case 13 -> { // an ally bot's icon, zoomed onto it so no point disc covers it
                 var s = BattleMapClient.current();
                 BattleMapClient.Army pick = null;
                 if (s != null) for (var a : s.armies()) if (a.bot() && !a.aimed() && !a.groups().isEmpty() && !a.retreating()) { pick = a; break; }
@@ -147,11 +148,12 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
             }
             case 14 -> {
                 if (waited < 3) return;
-                int[] a = screen.armyAt(ally);
-                if (a == null) { planWhy += "the ally plaque was not drawn; "; next(19, tick); return; }
-                screen.clickAt(a[0], a[1]);
-                armyPopup = screen.popup != null && screen.popup.kind() == 1 && ally.equals(screen.popup.army());
-                planWhy += "click on the plaque: popup " + (screen.popup == null ? "none" : screen.popup.title() + " " + screen.popup.rows()) + "; ";
+                var ah = screen.armyHit(ally);
+                if (ah == null) { planWhy += "the ally icon was not drawn; "; next(19, tick); return; }
+                boolean square = ah.x1() - ah.x0() == 2 * BattleMapScreen.ICON + 1 && ah.y1() - ah.y0() == 2 * BattleMapScreen.ICON + 1;
+                screen.clickAt(ah.cx(), ah.cy());
+                armyPopup = square && screen.popup != null && screen.popup.kind() == 1 && ally.equals(screen.popup.army());
+                planWhy += "click on the " + (ah.x1() - ah.x0()) + "x" + (ah.y1() - ah.y0()) + " ally icon (square: " + square + "): popup " + (screen.popup == null ? "none" : screen.popup.title() + " " + screen.popup.rows()) + "; ";
                 int[] row = screen.popupRow("Hold here");
                 orderClickTime = stateTime();
                 if (row != null) screen.clickAt(row[0], row[1]);
@@ -205,7 +207,9 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 next(20, tick);
             }
             // ---- the big window and the smallest one
-            case 20 -> { if (waited >= 8) { Phase4Checks.shot(c, "ui-map-fit-" + id + "-1080"); int[] p = screen.pointAt(1); if (p != null) screen.clickAt(p[0], p[1]); next(21, tick); } }
+            case 20 -> { if (waited >= 8) { Phase4Checks.shot(c, "ui-map-fit-" + id + "-1080"); screen.mouseScrolled(screen.ax + screen.aw / 2.0, screen.ay + screen.ah / 2.0, 3); next(23, tick); } }
+            case 23 -> { if (waited >= 4) { Phase4Checks.shot(c, "ui-map-zoom-" + id + "-1080"); screen.keyPressed(GLFW.GLFW_KEY_HOME, 0, 0); next(24, tick); } }
+            case 24 -> { if (waited >= 3) { int[] p = screen.pointAt(1); if (p != null) screen.clickAt(p[0], p[1]); next(21, tick); } }
             case 21 -> { if (waited >= 3) { Phase4Checks.shot(c, "ui-map-plan-" + id + "-1080"); screen.popup = null; Phase1Checks.window(c, 854, 480, 2); next(22, tick); } }
             case 22 -> {
                 if (waited < 8) return;
@@ -256,14 +260,8 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
         } finally { CampaignClient.battleMode = mode; screen.popup = null; }
     }
 
-    /** The look key as the player has it bound (T by default, through the chat key). */
-    static void pressLook(BattleMapScreen s) {
-        var k = net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.getBoundKeyOf(BattleMapScreen.lookKey());
-        s.keyPressed(k.getCode(), 0, 0);
-    }
-
     void resetFindings() {
-        fitOpen = zoomUp = zoomKept = dragMoved = toggled = homeFit = noGridOk = false;
+        fitOpen = realDrawn = discHit = zoomUp = zoomKept = dragMoved = homeFit = noGridOk = false;
         pointPopup = planInState = ackHeard = armyPopup = orderInState = flagDrawn = aimedNoPopup = noPointsOk = false;
         planClickTime = orderClickTime = -1;
         viewWhy = ""; planWhy = ""; ally = ""; setter = ""; heard.clear();

@@ -14,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -23,39 +22,36 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-/** The battle map's two textures (client): {@link #real} at one texel per block and {@link #parchment} at {@link BattleMapPaint#S},
- *  both painted by {@link BattleMapPaint} from {@link BattleMapClient#grid}. The real look's colour per palette block is the alpha-weighted
- *  mean of its top-face sprite (baked model, UP quads), tinted through BlockColors with no world (the default grass and foliage tint),
- *  falling back to the block's map colour. Painting runs off the client thread; the textures are registered on it, and the old pair is
- *  freed when a different map or build is asked for. Dev only: -Dgravesandglory.dumpMapArt=<dir> writes both PNGs there. */
+/** The battle map's texture (client): {@link #real} at one texel per block, painted by {@link BattleMapPaint#real} from
+ *  {@link BattleMapClient#grid} and toned down by {@link BattleMapPaint#tone} (Revision 2: the real look only). The colour per palette
+ *  block is the alpha-weighted mean of its top-face sprite (baked model, UP quads), tinted through BlockColors with no world (the default
+ *  grass and foliage tint), falling back to the block's map colour. Painting runs off the client thread; the texture is registered on it,
+ *  and the old one is freed when a different map or build is asked for. Dev only: -Dgravesandglory.dumpMapArt=<dir> writes the PNG there. */
 public final class BattleMapArt {
     private BattleMapArt() {}
     static final Logger LOG = LoggerFactory.getLogger("gravesandglory");
     /** The default water colour (the same as tools/mapforge/colours.py); the water block's colour provider needs a world. */
     static final int WATER_TINT = 0x3F76E4;
 
-    private static Identifier real, parchment;
-    private static NativeImageBackedTexture realTex, parchmentTex;
-    /** The map/build the textures show, and the one being painted (null when none). */
+    private static Identifier real;
+    private static NativeImageBackedTexture realTex;
+    /** The map/build the texture shows, and the one being painted (null when none). */
     private static String builtKey, pendingKey;
     private static int generation;
-    private static MapKinds kinds;
     private static final Map<Identifier, float[]> spriteMeans = new HashMap<>();
 
-    /** The real look's texture, or null until built. */
+    /** The map's texture, or null until built. */
     public static Identifier real() { return real; }
-    /** The parchment look's texture, or null until built. */
-    public static Identifier parchment() { return parchment; }
 
-    /** The map id the built textures show, or null. */
+    /** The map id the built texture shows, or null. */
     public static String builtMap() { return builtKey == null ? null : builtKey.substring(0, builtKey.indexOf('/')); }
-    /** {width, height} of the built real (true) or parchment texture, {0, 0} when none. */
-    public static int[] size(boolean realLook) {
-        var t = realLook ? realTex : parchmentTex;
+    /** {width, height} of the built texture, {0, 0} when none. */
+    public static int[] size() {
+        var t = realTex;
         return t == null || t.getImage() == null ? new int[] {0, 0} : new int[] {t.getImage().getWidth(), t.getImage().getHeight()};
     }
 
-    /** Paints both looks of this grid unless they are built or being built (client thread). A different map or build frees the old pair. */
+    /** Paints this grid unless it is built or being built (client thread). A different map or build frees the old texture. */
     public static void request(BattleMapGrid g) {
         if (g == null) return;
         String key = g.map + "/" + g.build;
@@ -65,32 +61,24 @@ public final class BattleMapArt {
         int gen = ++generation;
         pendingKey = key;
         int[] rgb;
-        MapKinds table;
-        try { rgb = colours(c, g.palette); table = kinds(c); }
+        try { rgb = colours(c, g.palette); }
         catch (RuntimeException e) { LOG.warn("battle map art for {} not built: {}", g.map, e.toString()); pendingKey = null; return; }
         String dump = System.getProperty("gravesandglory.dumpMapArt", "");
         CompletableFuture.supplyAsync(() -> {
             long t0 = System.nanoTime();
-            int[] r = BattleMapPaint.real(g, rgb);
-            long t1 = System.nanoTime();
-            int[] p = BattleMapPaint.parchment(g, table);
-            long t2 = System.nanoTime();
-            NativeImage ri = image(r, g.width, g.depth), pi = image(p, g.width * BattleMapPaint.S, g.depth * BattleMapPaint.S);
-            long t3 = System.nanoTime();
-            LOG.info("battle map art for {} ({}x{} blocks, parchment {}x{}) painted in {} ms: real {} ms, parchment {} ms, images {} ms", g.map, g.width, g.depth,
-                pi.getWidth(), pi.getHeight(), (t3 - t0) / 1_000_000, (t1 - t0) / 1_000_000, (t2 - t1) / 1_000_000, (t3 - t2) / 1_000_000);
+            int[] r = BattleMapPaint.tone(BattleMapPaint.real(g, rgb), BattleMapPaint.SATURATION, BattleMapPaint.BRIGHTNESS);
+            NativeImage ri = image(r, g.width, g.depth);
+            LOG.info("battle map art for {} ({}x{} blocks) painted in {} ms", g.map, g.width, g.depth, (System.nanoTime() - t0) / 1_000_000);
             if (!dump.isBlank()) {
-                try { write(Path.of(dump), g, ri, pi, rgb); }
+                try { write(Path.of(dump), g, ri, rgb); }
                 catch (Exception e) { LOG.warn("battle map art dump to {} failed: {}", dump, e.toString()); }
             }
-            return new NativeImage[] {ri, pi};
-        }).thenAccept(images -> c.execute(() -> {
-            if (gen != generation) { images[0].close(); images[1].close(); return; }
-            realTex = new NativeImageBackedTexture(images[0]);
-            parchmentTex = new NativeImageBackedTexture(images[1]);
-            realTex.setFilter(true, false); parchmentTex.setFilter(true, false); // linear: a nearest sample shimmers the ink lines when the sheet is drawn small or between whole scales
+            return ri;
+        }).thenAccept(image -> c.execute(() -> {
+            if (gen != generation) { image.close(); return; }
+            realTex = new NativeImageBackedTexture(image);
+            realTex.setFilter(true, false); // linear: a nearest sample shimmers when the sheet is drawn small or between whole scales
             real = c.getTextureManager().registerDynamicTexture("gravesandglory_battlemap_real", realTex);
-            parchment = c.getTextureManager().registerDynamicTexture("gravesandglory_battlemap_parchment", parchmentTex);
             builtKey = key;
             pendingKey = null;
         })).exceptionally(e -> {
@@ -100,7 +88,7 @@ public final class BattleMapArt {
         });
     }
 
-    /** Frees both textures and forgets the map (client thread). */
+    /** Frees the texture and forgets the map (client thread). */
     public static void clear() {
         free(MinecraftClient.getInstance());
         generation++;
@@ -109,26 +97,23 @@ public final class BattleMapArt {
 
     private static void free(MinecraftClient c) {
         if (real != null) c.getTextureManager().destroyTexture(real);
-        if (parchment != null) c.getTextureManager().destroyTexture(parchment);
-        real = parchment = null;
-        realTex = parchmentTex = null;
+        real = null;
+        realTex = null;
         builtKey = null;
     }
 
-    /** Writes the built pair as <map>-real.png and <map>-parchment.png in dir (client thread). False when nothing is built yet. */
+    /** Writes the built texture as <map>-real.png in dir (client thread). False when nothing is built yet. */
     public static boolean dump(Path dir) throws java.io.IOException {
-        if (realTex == null || parchmentTex == null || realTex.getImage() == null || parchmentTex.getImage() == null) return false;
+        if (realTex == null || realTex.getImage() == null) return false;
         String map = builtKey.substring(0, builtKey.indexOf('/'));
         Files.createDirectories(dir);
         realTex.getImage().writeTo(dir.resolve(map + "-real.png"));
-        parchmentTex.getImage().writeTo(dir.resolve(map + "-parchment.png"));
         return true;
     }
 
-    private static void write(Path dir, BattleMapGrid g, NativeImage ri, NativeImage pi, int[] rgb) throws java.io.IOException {
+    private static void write(Path dir, BattleMapGrid g, NativeImage ri, int[] rgb) throws java.io.IOException {
         Files.createDirectories(dir);
         ri.writeTo(dir.resolve(g.map + "-real.png"));
-        pi.writeTo(dir.resolve(g.map + "-parchment.png"));
         Files.write(dir.resolve(g.map + "-grid.bin"), g.encode());
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < g.palette.length; i++) sb.append(g.palette[i]).append(' ').append(rgb[i]).append('\n');
@@ -143,16 +128,6 @@ public final class BattleMapArt {
             im.setColor(x, y, (c & 0xff00ff00) | (c >> 16 & 255) | (c & 255) << 16);
         }
         return im;
-    }
-
-    private static MapKinds kinds(MinecraftClient c) {
-        if (kinds == null) {
-            var res = c.getResourceManager().getResource(new Identifier("gravesandglory", "battlemap/kinds.json"))
-                .orElseThrow(() -> new IllegalStateException("battlemap/kinds.json missing"));
-            try (InputStream in = res.getInputStream()) { kinds = MapKinds.parse(new String(in.readAllBytes(), StandardCharsets.UTF_8)); }
-            catch (java.io.IOException e) { throw new IllegalStateException(e); }
-        }
-        return kinds;
     }
 
     // ---------------------------------------------------------------- real-look colours
