@@ -27,6 +27,8 @@ import java.util.stream.IntStream;
  *  Soak aid, off by default: GRAVES_BOTSIM_PROBE=1 in the environment (or -Dgravesandglory.simProbe=true) also writes botsim/probe.csv and prints one "[botsim] probe" line per match:
  *  server tick times over the round, entities and the battle's own collections after the round's cleanup, and heap after a forced GC.
  *  AI quality (2026-11-10, read-only on the game): botsim/ai-metrics.csv (one row per bot army and per team, per match; AiMetrics) and botsim/decisions.csv (one row per bot commander decision, from Campaign.decisionListener); tools/bot_quality.py reads them.
+ *  Battle map proof (plan Task 8): -PsimPlan=TEAM:POINT:JOB sets a point plan at round start (POINT is an index or far, the point farthest from that team's base; JOB is attack, defend or hold), and -PsimOrder=TEAM:BOTINDEX:JOB:X:Z sets a direct order for that team's bot (BOTINDEX counts the team's bots from 0; X and Z are numbers or pN[+-offset], point N's x or z).
+ *  Both run BattleMapNet.check (the packet's own validation) and then set BattlePlan the way BattleMapNet.run does, with a synthetic setter; botsim/plan-sim.csv records what was set, and decisions.csv has the plan columns. tools/plan_sim_check.py judges them.
  *  -PsimOverlayCheck=true also toggles the dev purpose overlay (AiPurposeOverlay) on the running round and asserts its labels and that troop names are untouched, into botsim/overlay-check.txt; it adds entities, so use it on its own run. */
 public final class BotSimulation implements ModInitializer {
     static final int SAMPLE_TICKS=600;
@@ -64,7 +66,7 @@ public final class BotSimulation implements ModInitializer {
     final String[] bannerChoice={null,null},fielded={"",""};
     /** -PsimMode: the battle mode every round plays (default domination; the map list must host it). A mode other than Domination keeps its own clock unless -PsimRoundSeconds is given.
      *  Under siege, botsim/siege.csv gets one row per bot army and group every SIEGE_TICKS: where the group stands and what it was told, for the stage plan's report. */
-    String simMode;boolean roundSecondsGiven;Path siegeCsv,convoyCsv,dominationCsv;
+    String simMode,simPlan,simOrder;boolean roundSecondsGiven;Path siegeCsv,convoyCsv,dominationCsv;
     /** Lobby ticks waited since the arena was ready (or the last round ended); a round starts at LOBBY_TICKS, the shipped ready-pad countdown. */
     int lobbyTicks;static final int LOBBY_TICKS=200;
     static final int SIEGE_TICKS=100;
@@ -79,6 +81,7 @@ public final class BotSimulation implements ModInitializer {
         simMode=System.getProperty("gravesandglory.simMode",Modes.DOMINATION).trim();roundSecondsGiven=System.getProperty("gravesandglory.simRoundSeconds")!=null;
         if(!Modes.registered(simMode))throw new IllegalArgumentException("[botsim] simMode must be a registered mode, got '"+simMode+"'");
         for(int m:maps)if(!Modes.hosts(simMode,m))throw new IllegalArgumentException("[botsim] map "+m+" does not host "+simMode);
+        simPlan=System.getProperty("gravesandglory.simPlan");simOrder=System.getProperty("gravesandglory.simOrder");
         size=number("simSize",System.getProperty("gravesandglory.simSize","3"));roundSeconds=number("simRoundSeconds",System.getProperty("gravesandglory.simRoundSeconds","300"));
         kit=System.getProperty("gravesandglory.simKit","native").trim();
         if(!kit.equals("native")&&Arrays.stream(Spec.HOUSES).noneMatch(h->h.id().equals(kit)&&h.fieldable()))throw new IllegalArgumentException("[botsim] simKit must be native or a fieldable House ("+Arrays.stream(Spec.HOUSES).filter(h->h.fieldable()).map(h->h.id()).collect(java.util.stream.Collectors.joining(", "))+"), got '"+kit+"'");
@@ -122,6 +125,44 @@ public final class BotSimulation implements ModInitializer {
         try{return Integer.parseInt(value.trim());}catch(NumberFormatException e){throw new IllegalArgumentException("[botsim] "+name+" must be a whole number, got '"+value+"'");}
     }
 
+
+    /** -PsimPlan and -PsimOrder: the battle map's plan for the round, set right after the armies are fielded. BattleMapNet.apply wants a ServerPlayerEntity, so this calls the two steps it ends in:
+     *  BattleMapNet.check (private, by reflection; it needs only the asker's squad) and BattlePlan.setPoint or setOrder, exactly as BattleMapNet.run does, with a synthetic setter. */
+    void applyPlans(GravesAndGlory.Battle b){
+        if(simPlan==null&&simOrder==null)return;
+        try{
+            var check=BattleMapNet.class.getDeclaredMethod("check",GravesAndGlory.Battle.class,GravesAndGlory.Squad.class,int.class,int.class,String.class,int.class,double.class,double.class);check.setAccessible(true);
+            String setter=UUID.nameUUIDFromBytes("botsim-plan".getBytes(StandardCharsets.UTF_8)).toString();long sec=(b.time-b.roundStarted)/20;
+            StringBuilder rows=new StringBuilder();
+            if(simPlan!=null){String[] f=simPlan.split(":");if(f.length!=3)throw new IllegalArgumentException("[botsim] simPlan must be TEAM:POINT:JOB");
+                int team=number("simPlan",f[0]);var me=seat(b,team);int point=f[1].trim().equalsIgnoreCase("far")?farthest(b,team):number("simPlan",f[1]);var job=job(f[2]);
+                String why=(String)check.invoke(null,b,me,0,point,"",job.ordinal(),0.0,0.0);if(why!=null)throw new IllegalStateException("[botsim] simPlan refused: "+why);
+                b.plan.setPoint(team,point,job,setter,b.time);
+                rows.append(String.join(",",String.valueOf(match+1),"point",String.valueOf(team),"","",job.name(),String.valueOf(point),String.format(Locale.ROOT,"%.1f",b.points.get(point).spec.x()),String.format(Locale.ROOT,"%.1f",b.points.get(point).spec.z()),String.valueOf(sec))).append('\n');
+                System.out.println("[botsim] plan: team "+team+" "+job+" point "+point);}
+            if(simOrder!=null){String[] f=simOrder.split(":");if(f.length!=5)throw new IllegalArgumentException("[botsim] simOrder must be TEAM:BOTINDEX:JOB:X:Z");
+                int team=number("simOrder",f[0]),n=number("simOrder",f[1]);var job=job(f[2]);double x=coord(b,f[3],true),z=coord(b,f[4],false);
+                var bots=armies.stream().filter(s->s.team==team).toList();if(n<0||n>=bots.size())throw new IllegalArgumentException("[botsim] simOrder: team "+team+" has "+bots.size()+" bots");
+                var bot=bots.get(n);String army=bot.owner.toString();
+                String why=(String)check.invoke(null,b,seat(b,team),1,-1,army,job.ordinal(),x,z);if(why!=null)throw new IllegalStateException("[botsim] simOrder refused: "+why);
+                b.plan.setOrder(team,army,job,-1,x,z,setter,b.time);
+                rows.append(String.join(",",String.valueOf(match+1),"order",String.valueOf(team),String.valueOf(armies.indexOf(bot)),String.valueOf(n),job.name(),"-1",String.format(Locale.ROOT,"%.1f",x),String.format(Locale.ROOT,"%.1f",z),String.valueOf(sec))).append('\n');
+                System.out.println("[botsim] order: team "+team+" bot "+n+" (army "+armies.indexOf(bot)+") "+job+" at "+x+", "+z);}
+            Path f=results.resolveSibling("plan-sim.csv");if(!Files.exists(f))Files.writeString(f,"match,kind,team,army,botIndex,job,point,x,z,second\n",StandardCharsets.UTF_8);append(f,rows.toString());
+        }catch(ReflectiveOperationException e){throw new IllegalStateException(e);}catch(IOException e){throw new UncheckedIOException(e);}
+    }
+    static BattlePlan.Job job(String v){try{return BattlePlan.Job.valueOf(v.trim().toUpperCase(Locale.ROOT));}catch(IllegalArgumentException e){throw new IllegalArgumentException("[botsim] job must be attack, defend or hold, got '"+v+"'");}}
+    /** Any seated squad of the team: BattleMapNet.check reads only its team. */
+    static GravesAndGlory.Squad seat(GravesAndGlory.Battle b,int team){return b.squads.values().stream().filter(s->s.team==team&&s.seated).findFirst().orElseThrow(()->new IllegalStateException("[botsim] no seat on team "+team));}
+    /** The index of the capture point farthest from the team's field base. */
+    static int farthest(GravesAndGlory.Battle b,int team){var base=b.fieldBase(team);int best=0;double d=-1;
+        for(int i=0;i<b.points.size();i++){double e=Math.hypot(b.points.get(i).spec.x()-base.x,b.points.get(i).spec.z()-base.z);if(e>d){d=e;best=i;}}return best;}
+    /** A coordinate: a number, or pN or pN+offset or pN-offset (point N's x or z). */
+    static double coord(GravesAndGlory.Battle b,String v,boolean xAxis){v=v.trim();
+        if(v.startsWith("p")){var m=java.util.regex.Pattern.compile("p(\\d+)([+-][0-9.]+)?").matcher(v);if(!m.matches())throw new IllegalArgumentException("[botsim] bad coordinate '"+v+"'");
+            var pt=b.points.get(Integer.parseInt(m.group(1)));return(xAxis?pt.spec.x():pt.spec.z())+(m.group(2)==null?0:Double.parseDouble(m.group(2)));}
+        return Double.parseDouble(v);}
+
     void tick(MinecraftServer server){
         var b=GravesAndGlory.battle;if(done)return;
         if(b==null){if(++waited==200){System.out.println("[botsim] no battle on this world (level-name must be Graves and Glory); stopping");done=true;server.stop(false);}return;}
@@ -148,6 +189,7 @@ public final class BotSimulation implements ModInitializer {
         long t0=System.nanoTime();b.startRound();startRoundNs=System.nanoTime()-t0;if(roundSecondsGiven||simMode.equals(Modes.DOMINATION))b.roundSeconds=roundSeconds; // after startRound, which sets the row's clock
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}
         t0=System.nanoTime();field(b);fieldNs=System.nanoTime()-t0;spawnGround(b);seen.clear();resetStats();ledger.reset(b.time);metrics.reset(armies,match,simMode);wallStart=System.currentTimeMillis();
+        applyPlans(b);
         score300[0]=score300[1]=-1;startedAt=b.roundStarted;tallies[0]=tallies[1]=null;shareLevel2[0]=shareLevel2[1]=-1;
         playing=true;if(probe)probeStart();
     }

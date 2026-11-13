@@ -23,7 +23,7 @@ import java.util.*;
 final class AiMetrics {
     static final String[] COLUMNS={"match","map","mode","scope","id","team","banner","troopSeconds","idleShare","holdIdleShare","fightShare","objectiveShare","idleMaxGroupS","blindPicks","picks","trickleAlone","trickleTotal","trickleIndex",
         "wastedCasts","casts","stuck30","retreats","commanderSwitches","decisions","troopSwitches","unspentGold","tickMeanMs","tickP99Ms"};
-    static final String[] DECISION_COLUMNS={"match","second","army","team","tier","order","formation","targetName","targetX","targetZ","living","full","retreatTest","retreating","scores","charge","lane"};
+    static final String[] DECISION_COLUMNS={"match","second","army","team","tier","order","formation","targetName","targetX","targetZ","living","full","retreatTest","retreating","scores","charge","lane","planJob","planPoint","planDirect","owners"};
     static final String[] SEATS={"dawn","dusk"};
 
     static final class Acc {
@@ -223,8 +223,12 @@ final class AiMetrics {
             charge=String.format(Locale.ROOT,"nearestSeen=%s;near=%d;enemies=%d;ratio=%.2f;distance=%.0f;timed=%b;couldCharge=%b",nearest==Double.MAX_VALUE?"none":String.format(Locale.ROOT,"%.0f",nearest),near,enemies,tier.chargeRatio(),tier.chargeDistance(),timed,couldCharge);
         }
         String retreatTest=String.format(Locale.ROOT,"living%d<=full%d*%.2f:%b;rally>=%.2f:%b",living,full,tier.retreatShare(),living<=full*tier.retreatShare(),tier.rallyShare(),living>=full*tier.rallyShare());
+        // The battle map's plan this decision followed (BattleMapNet.jobFor, a pure query; a retreating army has none), and who owned each point after it.
+        var plan=retreating?null:BattleMapNet.jobFor(b,s);
+        String planJob=plan==null?"":plan.job().name(),planPoint=plan==null?"":String.valueOf(plan.point()),planDirect=plan==null?"":String.valueOf(plan.direct());
+        StringBuilder own=new StringBuilder();for(var pt:b.points){if(own.length()>0)own.append(';');own.append(pt.owner);}String owners=own.toString();
         decisionRows.append(String.join(",",String.valueOf(match+1),String.valueOf((b.time-b.roundStarted)/20),String.valueOf(i),SEATS[s.team],tier.id(),s.order,s.formation,targetName.replace(',',':'),
-            s.target==null?"":String.format(Locale.ROOT,"%.1f",s.target.x),s.target==null?"":String.format(Locale.ROOT,"%.1f",s.target.z),String.valueOf(living),String.valueOf(full),retreatTest,String.valueOf(retreating),scores.toString(),charge,lane.toString())).append('\n');
+            s.target==null?"":String.format(Locale.ROOT,"%.1f",s.target.x),s.target==null?"":String.format(Locale.ROOT,"%.1f",s.target.z),String.valueOf(living),String.valueOf(full),retreatTest,String.valueOf(retreating),scores.toString(),charge,lane.toString(),planJob,planPoint,planDirect,owners)).append('\n');
         ownNanos+=System.nanoTime()-t0;
     }
 
