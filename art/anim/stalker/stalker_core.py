@@ -287,11 +287,111 @@ def part(samples, bones):
 
 
 def upper_of(samples):
-    return part(samples, UPPER + CLOTH + ("draw",))
+    return part(samples, UPPER + CLOTH + SOFT + ("draw",))
 
 
 def legs_of(samples):
-    return part(samples, LEGS)
+    return part(samples, LEGS + GEAR)
+
+
+# ------------------------------------------------------------------------------------------------
+# Review pass (2026-11-13). Neither runs on the two shots (Kort approved them as they are).
+#   gear_follow  the boot (<side>_foot_gear) hangs off the shin, so with the foot turned flat under a leaning shin its toe
+#                sank 1.7 px into the floor in every standing clip. It now takes the foot's turn about the foot's own
+#                pivot, the knight builder's boot_follow for this rig's name.
+#   soften       the hood's fur, the hip wraps and the shoulder plates swing (fullbody.soft_motion) in hits and the stun;
+#                the mantle and the pelt keep this file's own cloth.
+# ------------------------------------------------------------------------------------------------
+
+GEAR = ("right_foot_gear", "left_foot_gear")
+SOFT = ("fur_cowl", "wrap_tails", "right_pauldron", "left_pauldron")
+
+
+def _gear_pos(side, rot, pos=None):
+    M = K.MODEL
+    gear, foot = side + "_foot_gear", side + "_foot"
+    r = M.bones[foot].rot + np.radians([-rot[0], -rot[1], rot[2]])
+    R = (rg._Rz(r[2]) @ rg._Ry(r[1]) @ rg._Rx(r[0]))[:3, :3]
+    d = (np.eye(3) - R) @ (M.bones[foot].pivot - M.bones[gear].pivot)
+    p0 = pos or (0.0, 0.0, 0.0)
+    return (float(p0[0] - d[0]), float(p0[1] + d[1]), float(p0[2] + d[2]))
+
+
+def gear_follow(samples):
+    for s in samples:
+        for side in ("left", "right"):
+            if side + "_foot" in s and side + "_foot_gear" in K.MODEL.bones:
+                rot, pos = s[side + "_foot"]
+                s[side + "_foot_gear"] = (tuple(rot), _gear_pos(side, rot, pos))
+    return samples
+
+
+def gear_delta(frames, base):
+    """The boot's keys in an additive legs clip: the game adds the clip onto the stance, so the boot's offset is solved
+    for the stance's foot turned by the clip's foot delta (base: the stance pose under the hit), not taken from the hit's
+    own reference pose."""
+    for f in frames:
+        for side in ("left", "right"):
+            foot, gear = side + "_foot", side + "_foot_gear"
+            if foot not in f or foot not in base:
+                continue
+            rf = add(base[foot][0], f[foot][0])
+            p = _gear_pos(side, rf, base[foot][1])
+            b0 = _gear_pos(side, base[foot][0], base[foot][1])
+            f[gear] = (tuple(f[foot][0]), tuple(a - c for a, c in zip(p, b0)))
+    return frames
+
+
+def soften(samples, seam=None, tune=None):
+    """fullbody.soft_motion over full-body samples (in place) for the hood fur, the hip wraps and the shoulder plates,
+    low-passed as the bow family's fix layer does. seam: a loop's first sample index (the stun's tick 4); the gap between
+    it and the last sample is spread over the loop so it closes."""
+    sys.path.insert(0, str(HERE.parent / "common"))
+    import fullbody as FB
+    parts = {n: c for n, c in FB.soft_parts_for().items() if not set(c["bones"]) & set(CLOTH)}
+    for n, over in (tune or {}).items():
+        if n in parts:
+            parts[n].update(over)
+    up = part(samples, UPPER)
+    lg = part(samples, LEGS)
+    up2, lg2 = FB.soft_motion(up, lg, parts=parts)
+    got = {}
+    for u, l in zip(up2, lg2):
+        for src in (u, l):
+            for b in SOFT:
+                if b in src:
+                    got.setdefault(b, []).append(np.array(src[b][0], float))
+    for b, rots in got.items():
+        rots = np.array(rots)
+        for _ in range(2):
+            pad = np.vstack([rots[:1], rots[:1], rots, rots[-1:], rots[-1:]])
+            sm = (pad[:-4] + 2 * pad[1:-3] + 3 * pad[2:-2] + 2 * pad[3:-1] + pad[4:]) / 9.0
+            sm[0], sm[-1] = rots[0], rots[-1]
+            rots = sm
+        if seam is not None:
+            n = len(rots) - 1
+            gap = rots[seam] - rots[n]
+            for i in range(seam, n + 1):
+                rots[i] = rots[i] + gap * (i - seam) / float(n - seam)
+        for s, r in zip(samples, rots):
+            s[b] = (tuple(float(v) for v in r), None)
+    return samples
+
+
+def close_end(frames, ticks=3.0):
+    """An additive clip ends exactly on zero: whatever it still holds at its end is taken out over its last ticks."""
+    n = len(frames) - 1
+    w0 = n - int(ticks * SUB)
+    last = frames[-1]
+    for i, f in enumerate(frames):
+        if i <= w0:
+            continue
+        k = K.smooth((i - w0) / float(n - w0))
+        for b, (rot, pos) in f.items():
+            lr, lp = last[b]
+            f[b] = (tuple(a - k * c for a, c in zip(rot, lr)),
+                    None if pos is None else tuple(a - k * c for a, c in zip(pos, lp)))
+    return frames
 
 
 def delta(samples, ref, bones):
@@ -300,10 +400,10 @@ def delta(samples, ref, bones):
     for s in samples:
         f = {}
         for b in bones:
-            if b not in s or b not in ref:
+            if b not in s or (b not in ref and b not in SOFT):
                 continue
-            rot = tuple(wrap(a - c) for a, c in zip(s[b][0], ref[b][0]))
-            pos = tuple(a - c for a, c in zip(s[b][1], ref[b][1])) if b == "hips" else None
+            rot = tuple(wrap(a - c) for a, c in zip(s[b][0], ref[b][0] if b in ref else Z3))
+            pos = tuple(a - c for a, c in zip(s[b][1], ref[b][1])) if b == "hips" or b in GEAR else None
             f[b] = (rot, pos)
         out.append(f)
     return out

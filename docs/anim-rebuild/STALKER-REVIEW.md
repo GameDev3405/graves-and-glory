@@ -99,3 +99,36 @@ The stalker as chosen (642f0027) replayed onto `anim/review-bow` at 8b2682cb so 
   121 -> 100, and hold / charge pen_weapon read 1.74 / 3.21 (were 1.62 / 2.94) on the corrected bow cubes (clips identical).
 - **Focus check.** 101 FAIL, 72 WARN, the same as the 642f0027 clips scored on today's geo; only death WARN values move.
 - **Timing.** Every clip length and marker identical to 642f0027.
+
+## Review pass (2026-11-13, branch anim/stalker-on-bow)
+
+One review pass, like the other four bows. The two shots and every clip's timing are untouched (attack_volley,
+attack_direct and their legs are byte-identical to 0c165ab1; animation_length, loop and timeline match on all 57 clips).
+
+What changed (builder only, nothing shared):
+- The boots (`<side>_foot_gear`, children of the shin) now turn with the foot about the foot's pivot (the knight's
+  boot_follow). They sank 1.7 px into the floor in every standing clip. In additive hit legs the boot offset is solved
+  against the ready stance's foot.
+- The hood fur, hip wraps and shoulder plates swing in the hits and the stun (fullbody.soft_motion, low-passed); the
+  stun shake-off gets a lagging shoulder-plate jump. Hits end exactly on zero.
+- Grip and aim nudges: idle and carry grip out of the hips, aims turn 20 deg more in the hips and the half-draw hand sits
+  1.6 px out from the cowl, ward / shield_up / fallback hands forward, a rally swing key, run tuck and string-hand hint,
+  hit_block grip, knockback hips drop 2 px so the planted knee stays bent (the -9 deg shin clamp was sinking the foot).
+- Tried and put back: brace chest yaw 46 (made scorecard pen_limb fail), wall grip out (bow into greave), charge yaw 50
+  (forearm into breastplate), stun grip out, hit bow pushed out.
+
+Rows: focus FAIL 101 -> 50 (WARN 72 -> 72, no row got worse), clips with a FAIL 31 -> 24. Fixed: floor 29, settle 11,
+secondary_life 9, armour 1, weapon 1. Scorecard 18 -> 17 failing clips (24 -> 22 rows; the aim clip and fallback
+pen_weapon pass now). Scorecard cannot exit 0 while the approved shots fail it.
+
+Still open (two attempts each, then recorded; no exemption added):
+- Shots (approved, not touched): volley limb 2.99, floor 1.71, armour 4.32, secondary_life, elbow 175, head_turn 126;
+  direct floor 1.72, armour 4.0, whole_body 1.53, secondary_life, elbow 167, shoulder 139, head_turn 99.8, jitter 63.7.
+- The string forearm crossing the chest into the fur collar (`knee_mantle`) and breastplate: stance_ready limb 2.74 /
+  armour 2.63, wall, ward, shield_up, fallback, run, and every hit at 2.78-2.80 (inherited from the stance, 0.16-0.18
+  above it). The left arm cannot reach further out; a model change (collar or breastplate) is the likely fix.
+- Aims: the anchor at the jaw is inside the fur cowl (armour 3.1-3.7, limb 2.0-2.6) and head_turn 96-128: model
+  geometry and the shared shot anchor.
+- brace / charge head into right_pauldron 2.8-2.9; charge bow into breastplate 2.01; run bow into greave 1.65;
+  stun bow into hips 1.96; stun_out bow 1.78 and end rows inherited from stance_ready; walk armour 1.91; rally 2.35.
+- Scorecard not attempted: death_left/right and hit_medium_left weapon speed, stun loop_vel, run torso, fallback legs.

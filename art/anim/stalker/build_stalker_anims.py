@@ -66,8 +66,10 @@ def both(*mods):
     return mod
 
 
-def emit(out, name, samples, ticks, loop, legs=True, cloth_kw=None, upper_name=None, legs_name=None):
+def emit(out, name, samples, ticks, loop, legs=True, cloth_kw=None, upper_name=None, legs_name=None, review=True):
     cloth(samples, loop=loop is True, **(cloth_kw or {}))
+    if review:              # the review pass (2026-11-13): never on the two approved shots
+        C.gear_follow(samples)
     FULL[name] = samples
     out[upper_name or name] = K.bake(upper_of(samples), ticks, loop=loop)
     if legs:
@@ -193,7 +195,7 @@ def shot(volley):
 def attack_clips(out):
     for name in ("volley", "direct"):
         samples, yaw, err = shot(name == "volley")
-        emit(out, "attack_" + name, samples, ATTACK_TICKS, False)
+        emit(out, "attack_" + name, samples, ATTACK_TICKS, False, review=False)
         out["attack_" + name]["timeline"] = {K.fmt_t(FULL_AT / TPS): "full", K.fmt_t(IMPACT / TPS): "impact"}
         print("  attack_%s: aim yaw %.1f, anchor miss %.3f px" % (name, yaw, err))
 
@@ -219,8 +221,13 @@ def idle_mod(t, g):
     g["bow"] = add(g["bow"], (0.8 * sin(t, 30.0, 0.2), 0.12 * look[0], 1.5 * w))
 
 
+# Review pass (2026-11-13): the bow forearm lay in the left front mantle panel (2.1 px) all through the idle, so the idle
+# carries the bow a little further out from the body. The deaths still start from the idle's first pose as it was.
+WATCH_IDLE = G(WATCH, grip=(6.4, 17.0, -5.4))
+
+
 def idle_clips(out):
-    samples = run([(0, WATCH), (IDLE_TICKS, WATCH)], IDLE_TICKS, mod=idle_mod, loop=True, report="idle")
+    samples = run([(0, WATCH_IDLE), (IDLE_TICKS, WATCH_IDLE)], IDLE_TICKS, mod=idle_mod, loop=True, report="idle")
     emit(out, "idle", samples, IDLE_TICKS, True, upper_name="idle_upper", legs_name="idle_legs")
 
 
@@ -300,28 +307,32 @@ STANCE_TICKS = 40
 FEET_WALL = {"right": ((-2.7, 2.0, -1.7), -18.0), "left": ((2.4, 2.0, 1.9), 6.0)}
 FEET_BRACE = {"right": ((-3.7, 2.0, -4.2), -50.0), "left": ((2.6, 2.0, 4.0), 6.0)}
 FEET_HOLD = {"right": ((-3.0, 2.0, -2.3), -30.0), "left": ((2.3, 2.0, 2.5), 4.0)}
-PRE_ANCHOR = (ANCHOR[0], ANCHOR[1], ANCHOR[2] - 2.7)     # half draw: the string hand a hand's width short of the ear
+PRE_ANCHOR = (ANCHOR[0] - 1.6, ANCHOR[1], ANCHOR[2] - 2.7)   # half draw: the string hand a hand's width short of the ear and
+#                                                              out from the cowl (review pass 2026-11-13; was ANCHOR[0])
 
 BRACE = body(READY, 52, 15, look=(0, 2), hips_r=(3, 12, 0), hips_p=(0.1, -3.6, 0.2), grip=(6.6, 18.6, -5.2),
              bow=(2, 6, -40), draw=2.0, rhint=(-45.0, -10.0, 16.0, -100.0))
 WALL = body(READY, 20, 4, look=(0, 5), hips_r=(0, 4, 0), hips_p=(0.0, -1.5, 0.0), grip=(3.4, 20.6, -7.0), bow=(0, 0, 2),
             lhint=(-50.0, 20.0, -4.0, -60.0))
-WARD = body(WATCH, 34, -9, look=(4, 9), grip=(4.6, 21.2, -6.0), bow=(4, 2, -86), lhint=(-70.0, 10.0, -10.0, -30.0),
+WARD = body(WATCH, 34, -9, look=(4, 9), grip=(4.6, 21.6, -7.0), bow=(4, 2, -86), lhint=(-70.0, 10.0, -10.0, -30.0),
             rh=(-3, 15, -5), rhint=RH, string=1.0, draw=1.0)
 SHIELD_UP = body(WATCH, 40, 27, look=(0, 16), grip=(4.0, 26.6, -6.6), bow=(4, 10, -88), lhint=(-150.0, 0.0, -20.0, -60.0),
-                 rh=(-2.6, 20.6, -5.6), rhint=(-45.0, 0.0, -8.0, -125.0), string=0.0, draw=0.0)
+                 rh=(-2.6, 20.6, -6.6), rhint=(-45.0, 0.0, -8.0, -125.0), string=0.0, draw=0.0)
 HOLD = body(WATCH, 26, 1, look=(0, 0), hips_r=(0, 6, 0), hips_p=(0.0, -0.8, 0.0), grip=(8.4, 18.0, -4.4), bow=(2, 0, 4),
             lhint=(-25.0, 0.0, -12.0, -50.0), rh=(-5.8, 14.4, -1.6), rhint=(-8.0, 0.0, 14.0, -50.0))
 REST = body(WATCH, 14, -3, look=(6, 3), grip=(7.2, 15.4, -1.4), bow=(-66, 16, -8), lhint=(-4.0, 0.0, -10.0, -24.0),
             rh=(-4.3, 15.2, -2.7), rhint=(-8.0, 0.0, 16.0, -70.0), string=0.0, draw=0.0)
-FALLBACK = body(WATCH, 44, -7, look=(0, 3), hips_r=(0, 0, 0), grip=(5.4, 20.2, -5.6), bow=(-4, 0, -30), draw=1.0, string=1.0,
+FALLBACK = body(WATCH, 44, -7, look=(0, 3), hips_r=(0, 0, 0), grip=(5.4, 20.4, -6.6), bow=(-4, 0, -30), draw=1.0, string=1.0,
                 rh=(-3, 15, -5), rhint=RH,
                 lhint=(-60.0, 0.0, -10.0, -40.0))
 
 
+AIM_HIPS = 20.0      # review pass 2026-11-13: degrees of the aim's turn the hips take from the chest (head_turn was 111-130)
+
+
 def aim_pose(elev):
     lean, nod = {0.0: (1.0, 0.0), 45.0: (-15.0, -12.0), -30.0: (12.0, 9.0)}[elev]
-    g, err = anchor_solve(G(WATCH, torso=(lean, 78, 0), head=(-lean * 0.55 + nod, -94, 0), bow=(elev, 0, -6), draw=2.0, string=1.0,
+    g, err = anchor_solve(G(WATCH, hips_r=(0, 8 + AIM_HIPS, 0), torso=(lean, 78 - AIM_HIPS, 0), head=(-lean * 0.55 + nod, -94 + AIM_HIPS, 0), bow=(elev, 0, -6), draw=2.0, string=1.0,
                             rhint=(-70.0, -30.0, 20.0, -130.0)), elev, draw=2.0, anchor=PRE_ANCHOR)
     print("  aim %+.0f: anchor miss %.3f px" % (elev, err))
     return g
@@ -355,7 +366,9 @@ def stance_clips(out, only=None):
                   lhint=(-175.0, 0.0, -8.0, -6.0), rh=(-5.6, 18.4, -3.6), rhint=(-30.0, 0.0, 10.0, -110.0), string=0.0, draw=0.0)
         dip = body(WATCH, 24, 7, look=(0, 4), hips_p=(0.0, -2.4, 0.2), grip=(6.4, 16.4, -4.6), bow=(-14, 8, -72),
                    string=0.0, draw=0.0)
-        keys = [(0, WATCH), (3.0, dip), (10.0, G(up, grip=(6.4, 31.2, -1.0), hips_p=(0.0, -1.0, 0.0))),
+        swing = body(WATCH, 22, 2, look=(0, -4), hips_p=(0.0, -1.9, 0.1), grip=(6.6, 23.0, -7.0), bow=(-4, 4, -36),
+                     string=0.0, draw=0.0)       # review pass 2026-11-13: on the way up the bow passes out in front
+        keys = [(0, WATCH), (3.0, dip), (6.2, swing), (10.0, G(up, grip=(6.4, 31.2, -1.0), hips_p=(0.0, -1.0, 0.0))),
                 (12.5, G(up, grip=(6.4, 30.0, -1.4), hips_p=(0.0, -1.6, 0.0))), (15.0, up), (20, up)]
 
         def mod(t, g):
@@ -384,8 +397,8 @@ RUN = K.Gait("run", ticks=7, speed=0.26, duty=0.37, heel=6, toe_off=34, front=4.
              bob=0.75, bob_phase=0.19, sway=0.2, yaw=7.0, roll=1.4, pitch_hips=5.0, lane=2.0)
 BACK = K.Gait("back", ticks=8, speed=0.12, duty=0.62, heel=8, toe_off=10, front=3.4, lift=1.5, lift_peak=0.5, hip_drop=1.4,
               bob=0.3, bob_phase=0.06, sway=0.25, yaw=3.0, roll=0.8, pitch_hips=-2.0, lane=2.2)
-CARRY = G(WATCH, grip=(6.0, 17.2, -4.6), bow=(-10, 10, -76))
-TUCK = G(WATCH, grip=(6.6, 17.8, -4.4), bow=(-26, 18, -60))
+CARRY = G(WATCH, grip=(6.4, 17.2, -5.4), bow=(-10, 10, -76))
+TUCK = G(WATCH, grip=(6.6, 17.8, -4.4), bow=(-16, 18, -60))
 
 
 def walk_goal(u, hr):
@@ -399,7 +412,7 @@ def run_goal(u, hr):
     c, s2 = math.cos(TAU * u), math.sin(2 * TAU * (u - 0.08))
     return body(TUCK, 26 + 6.0 * c, 19 + 1.5 * s2, look=(0, -3), hips_r=hr,
                 grip=add(TUCK["grip"], (0, 0.5 * s2, 0.2 * c)), bow=add(TUCK["bow"], (3.0 * s2, 0, 4.0 * c)),
-                rh=(-6.4, 16.4, -2.2 + 3.0 * c), rhint=(-10.0, 0.0, 10.0, -85.0))
+                rh=(-6.4, 16.0, -2.2 + 3.0 * c), rhint=(-10.0, 0.0, 14.0, -60.0))
 
 
 def charge_goal(u, hr):
@@ -449,6 +462,9 @@ def gait_clips(out, only=None):
 # ------------------------------------------------------------------------------------------------
 
 READY_YAW, READY_LEAN = 44.0, 9.0
+# How far the bow is drawn in toward the chest a degree of the blow (review pass 2026-11-13: pushing it out instead did not
+# keep the string forearm out of the fur collar; kept as it was).
+HIT_GRIP_Z = 0.04
 PUSH = {"front": (0.0, -1.0), "back": (0.0, 1.0), "right": (1.0, 0.0), "left": (-1.0, 0.0)}
 TWIST = {"front": -0.8, "back": 0.5, "right": 0.5, "left": -0.5}          # how the blow turns the shoulders, per degree of lean
 BOW_KICK = {"front": (18, 4, 22), "back": (-24, -4, -10), "right": (4, 13, -8), "left": (3, -8, 11)}
@@ -464,7 +480,7 @@ def struck(d, amt, head=0.0, drop=0.0, kick=1.0, **over):
     kw = dict(hips_r=add(READY["hips_r"], (0.25 * amt * pz, 0.3 * TWIST[d] * amt, 0.25 * amt * px * ROLL_SIGN)),
               hips_p=add(READY["hips_p"], (0.075 * amt * px, -drop, -0.075 * amt * pz)),      # hips position: +z is BACK
               bow=add(READY["bow"], tuple(k * v for v in BOW_KICK[d])),
-              grip=add(READY["grip"], (0.0, 0.05 * abs(amt), 0.04 * abs(amt))))
+              grip=add(READY["grip"], (0.0, 0.05 * abs(amt), HIT_GRIP_Z * abs(amt))))
     kw.update(over)
     return body(READY, READY_YAW + TWIST[d] * amt, READY_LEAN + amt * pz, amt * px * ROLL_SIGN,
                 look=(-0.3 * TWIST[d] * amt * (head - 1), 4 + 0.9 * amt * pz * (head - 0.35), 0.9 * amt * px * ROLL_SIGN * (head - 0.35)),
@@ -473,13 +489,20 @@ def struck(d, amt, head=0.0, drop=0.0, kick=1.0, **over):
 
 def additive(out, name, samples, ticks, ref):
     cloth(samples)
+    C.gear_follow(samples)
+    C.soften(samples)
     FULL[name] = samples
-    out[name] = K.bake(delta(samples, ref, C.UPPER + C.CLOTH), ticks, loop=False)
+    out[name] = K.bake(C.close_end(delta(samples, ref, C.UPPER + C.CLOTH + C.SOFT)), ticks, loop=False)
     legs = delta(samples, ref, C.LEGS)
     for f in legs:
         for b in ("right_shin", "left_shin"):
             f[b] = ((max(-9.0, f[b][0][0]),) + tuple(f[b][0][1:]), f[b][1])
-    out[name + "_legs"] = K.bake(legs, ticks, loop=False)
+    if "base" not in STANCE_BASE:
+        STANCE_BASE["base"] = C.static(READY)          # the stance the game adds a hit onto
+    out[name + "_legs"] = K.bake(C.close_end(C.gear_delta(legs, STANCE_BASE["base"])), ticks, loop=False)
+
+
+STANCE_BASE = {}
 
 
 def stepped(d, t0, t1, back0, back1, reach, lift=1.2):
@@ -493,7 +516,7 @@ READY_B = body(READY, READY_YAW, READY_LEAN, look=(0, 4))       # the ready pose
 
 
 def hit_ref():
-    return cloth([dict(C.static(READY_B)) for _ in range(40)])[-1]
+    return C.gear_follow(cloth([dict(C.static(READY_B)) for _ in range(40)]))[-1]
 
 
 def hit_clips(out, only=None):
@@ -514,14 +537,14 @@ def hit_clips(out, only=None):
         gr = lambda *o: add(READY["grip"], o)
         hp = lambda *o: add(READY["hips_p"], o)
         keys = [(0, R0), (2.2, body(READY, 40, 4, look=(0, 12), hips_p=hp(0, -0.6, 0), grip=gr(-0.8, 2.2, -0.9), **bar)),
-                (4.0, body(READY, 38, -5, look=(0, 14), hips_p=hp(0, -1.0, 0.9), grip=gr(-0.8, 1.9, -0.2), **bar)),
+                (4.0, body(READY, 38, -5, look=(0, 14), hips_p=hp(0, -1.0, 0.9), grip=gr(-0.8, 1.9, -1.0), **bar)),
                 (6.2, body(READY, 45, 12, look=(0, 6), hips_p=hp(0, -0.5, -0.5), grip=gr(-0.7, 2.0, -1.4), **bar)), (9, R0)]
         additive(out, "hit_block", run(keys, 9, report="hit_block"), 9, ref)
     if only in (None, "hit_knockback"):
         # thrown: the chest goes over backwards, the string hand is torn off the string and both arms fly; two stumbling steps
         # catch him low, and he gathers the bow back in as he comes up over the lead leg again
         air = struck("front", 32, head=0.0, drop=0.3, kick=1.1, grip=(7.8, 20.4, -3.8), rh=(-7.4, 18.6, -3.2),
-                     rhint=(-40.0, 0.0, 40.0, -60.0), lhint=(-60.0, 0.0, -30.0, -35.0), hips_p=add(READY["hips_p"], (0, -0.3, 3.3)))
+                     rhint=(-40.0, 0.0, 40.0, -60.0), lhint=(-60.0, 0.0, -30.0, -35.0), hips_p=add(READY["hips_p"], (0, -2.0, 2.8)))
         low = struck("front", 20, head=1.7, drop=2.2, kick=0.8, grip=(7.6, 18.8, -4.0), rh=(-7.2, 16.0, -3.2),
                      rhint=(-30.0, 0.0, 36.0, -60.0), hips_p=add(READY["hips_p"], (0, -2.2, 3.0)))
         up = struck("front", -6, head=1.0, drop=0.9, kick=0.5)
@@ -566,6 +589,8 @@ def stun_clips(out, only=None):
     samples = run(lambda t: daze((t - 4.0) / 20.0) if t >= 4 else daze(0.0, math.sin(math.pi * t / 4.0) ** 2 * (1.0 - t / 8.0)), 24, report="stun")
     cloth(samples)
     samples[24 * SUB] = samples[4 * SUB]
+    C.gear_follow(samples)
+    C.soften(samples, seam=4 * SUB, tune={"fur_cowl": {"gain": 0.6}})
     FULL["stun"] = samples
     out["stun_upper"] = K.bake(upper_of(samples), 24, loop=True)
     out["stun_legs"] = K.bake(legs_of(samples), 24, loop=True)
@@ -575,10 +600,13 @@ def stun_clips(out, only=None):
         env = math.sin(math.pi * e)
         hs = 17.0 * math.sin(TAU * 1.5 * e) * (1 - e) * min(1.0, 6 * e)
         shr = math.sin(math.pi * min(1.0, e / 0.6)) ** 2
+        lag = math.sin(math.pi * min(1.0, max(0.0, e - 0.12) / 0.6)) ** 2 * (1.0 - e) ** 0.5
         shake.append({"head": ((-7.0 * env, hs, 0.0), None), "torso": ((-6.0 * env, -0.25 * hs, 0.0), None),
                       "right_arm": ((0.0, 0.0, 7.0 * shr), None), "left_arm": ((0.0, 0.0, -7.0 * shr), None),
                       "right_forearm": ((-9.0 * shr, 0.0, 0.0), None), "left_forearm": ((-9.0 * shr, 0.0, 0.0), None),
-                      "pelt_tail": ((4.0 * env, 0.0, -0.4 * hs), None)})
+                      "pelt_tail": ((4.0 * env, 0.0, -0.4 * hs), None),
+                      # the shoulder plates jump a beat behind the shrug and settle (review pass 2026-11-13; they hung still)
+                      "right_pauldron": ((0.0, 0.0, 6.0 * lag), None), "left_pauldron": ((0.0, 0.0, -6.0 * lag), None)})
     out["stun_out_upper"] = K.bake(shake, 6, loop=False)
     base = hit_ref()        # shown over the ready pose he comes back to
     FULL["stun_out"] = [{b: (add(base[b][0], s[b][0]) if b in s else base[b][0], base[b][1]) for b in base} for s in shake]
@@ -709,9 +737,7 @@ def smooth_hand(clip):
 
 
 def death_clips(out, only=None):
-    if "idle" not in FULL:
-        idle_clips({})
-    first = FULL["idle"][0]
+    first = run([(0, WATCH), (IDLE_TICKS, WATCH)], IDLE_TICKS, mod=idle_mod, loop=True)[0]     # the idle as it was
     start = {b: (tuple(float(v) for v in first[b][0]), tuple(first[b][1]) if first[b][1] is not None else None)
              for b in K.DEATH_BONES if b in first}
     start = {b: (tuple(float(v) for v in K.decompose_zyx(B._rot(r))), pos) for b, (r, pos) in start.items()}   # one Euler form
