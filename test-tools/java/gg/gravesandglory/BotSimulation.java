@@ -138,7 +138,7 @@ public final class BotSimulation implements ModInitializer {
                 int team=number("simPlan",f[0]);var me=seat(b,team);int point=f[1].trim().equalsIgnoreCase("far")?farthest(b,team):number("simPlan",f[1]);var job=job(f[2]);
                 String why=(String)check.invoke(null,b,me,0,point,"",job.ordinal(),0.0,0.0);if(why!=null)throw new IllegalStateException("[botsim] simPlan refused: "+why);
                 b.plan.setPoint(team,point,job,setter,b.time);
-                rows.append(String.join(",",String.valueOf(match+1),"point",String.valueOf(team),"","",job.name(),String.valueOf(point),String.format(Locale.ROOT,"%.1f",b.points.get(point).spec.x()),String.format(Locale.ROOT,"%.1f",b.points.get(point).spec.z()),String.valueOf(sec))).append('\n');
+                rows.append(String.join(",",String.valueOf(match+1),"point",String.valueOf(team),"","",job.name(),String.valueOf(point),String.valueOf(b.points.get(point).spec.x()),String.valueOf(b.points.get(point).spec.z()),String.valueOf(sec))).append('\n');
                 System.out.println("[botsim] plan: team "+team+" "+job+" point "+point);}
             if(simOrder!=null){String[] f=simOrder.split(":");if(f.length!=5)throw new IllegalArgumentException("[botsim] simOrder must be TEAM:BOTINDEX:JOB:X:Z");
                 int team=number("simOrder",f[0]),n=number("simOrder",f[1]);var job=job(f[2]);double x=coord(b,f[3],true),z=coord(b,f[4],false);
