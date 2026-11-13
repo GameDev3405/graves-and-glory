@@ -15,6 +15,15 @@ Kort: "i only want this map ... the other one doesnt look good"; the points and 
 - **Order lines** are drawn only for selected own groups and for whatever is hovered.
 - Enemies (triangles), fights (crossed swords), pings and the "you" arrow stay, drawn in the same outlined style.
 
+**Revision 2 follow-up (Kort, 2026-11-13, AskUserQuestion):**
+- The look is approved.
+- The top bar labels the scores, so the player sees which side is theirs ("Your team") and which is the "Enemy".
+- The bottom section is simplified, because Kort found it "dull and messy hard to read".
+- Ally icons must be clearly unlike your own at 960 wide.
+- Counts stay off the "you" arrow.
+- Call 11 (refusing orders for mode-steered bots) is accepted.
+- Landing goes ahead after these fixes; the New Kingsfield pathing stall stays with the AI lead.
+
 ## 1. Goal
 
 1. The player sees at a glance where the troops are, how the field is laid out and where the points of interest are.
