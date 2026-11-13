@@ -37,7 +37,7 @@ final class AiMetrics {
     static final class UnitMem {LivingEntity target;long abilityAt,secondAt;Vec3d spell;boolean spellHit;
         LivingEntity apSeen,apTarget;long apStart;double apD0;int apTicks,apCrawl;final Vec3d[] trail=new Vec3d[3];final boolean[] trailIdle=new boolean[3];
         /** no-progress stretch (stuckRead): the last 11 seconds' distances to the spot, how many were read, the running stretch in seconds, the good seconds since it was last stuck, the army's index */
-        final double[] dist=new double[WINDOW+1];int reads,run,grace,army;}
+        final double[] dist=new double[WINDOW+1],route=new double[WINDOW+1];int reads,run,grace,army;}
     // ---- troop metrics (fixes of 2026-11-11: Attack creep, archer homing, pacing at spawn), botsim/troop-metrics.csv, one row per team per match ----
     //  - arrows: archer shots (Projectiles.ARROWS_*) fired, struck their target, lost (target gone before landing), by range bin at the loose; hit rate = hit / (fired - lost).
     //  - approach: a melee troop of a bot army on Attack or Charge picks an enemy more than its reach + 2 away; timed until it stands within reach + 0.5 of it
@@ -49,7 +49,7 @@ final class AiMetrics {
     static final int WINDOW=10;static final double WINDOW_BLOCKS=2;static final int GRACE=2;
     static final double SPAWN_RADIUS=40;static final int TRAIL_SECONDS=2;static final long OPENING_TICKS=400; // spawnReversalsOpening: those in the round's first 20 s
     static final class TeamAcc {final long[][] arrows0=new long[3][];final List<Double> apSeconds=new ArrayList<>();double apDist;long apTicks,apCrawl;int reversals,reversalsOpening,yawFlips;}
-    TeamAcc[] teams={new TeamAcc(),new TeamAcc()};final StringBuilder pacingRows=new StringBuilder(),blindRows=new StringBuilder(),stuckRows=new StringBuilder();Path pacingCsv,blindCsv,stuckCsv;final Map<GravesAndGlory.Squad,Float> lastYaw=new IdentityHashMap<>();Path troopCsv;
+    TeamAcc[] teams={new TeamAcc(),new TeamAcc()};final StringBuilder pacingRows=new StringBuilder(),blindRows=new StringBuilder(),stuckRows=new StringBuilder(),stuck10Rows=new StringBuilder();Path pacingCsv,blindCsv,stuckCsv,stuck10Csv;final Map<GravesAndGlory.Squad,Float> lastYaw=new IdentityHashMap<>();Path troopCsv;
     static long[] row(long[][] counter,int team){return counter[team].clone();}
 
     final AiState state=new AiState();
@@ -67,6 +67,7 @@ final class AiMetrics {
         BotSimulation.append(decisionsCsv,String.join(",",DECISION_COLUMNS)+"\n");
         troopCsv=dir.resolve("troop-metrics.csv");BotSimulation.append(troopCsv,String.join(",",TROOP_COLUMNS)+"\n");
         blindCsv=dir.resolve("blind.csv");BotSimulation.append(blindCsv,"match,second,team,group,ranged,order,kind,distance,cacheAge,speed\n"); // one row per blind pick: what was picked, and how old its sight cache (Tactics.sees) was
+        stuck10Csv=dir.resolve("stuck10.csv");BotSimulation.append(stuck10Csv,"match,second,team,army,group,ranged,order,state,x,z,spotX,spotZ,spotDistance,hasTarget,targetDistance,navIdle,stuckTicks,location,routeClosed\n"); // one row per no-progress stretch, when its first 10 s are spent
         stuckCsv=dir.resolve("stuck.csv");BotSimulation.append(stuckCsv,"match,second,team,army,group,ranged,order,state,x,z,spotX,spotZ,spotDistance,hasTarget,targetDistance,navIdle,stuckTicks,location\n"); // one row per troop counted in stuck30
         pacingCsv=dir.resolve("pacing.csv");BotSimulation.append(pacingCsv,"match,second,team,army,group,slot,x0,z0,x1,z1,x2,z2,order,formation,targetX,targetZ,yaw,muster,retreating,entity\n"); // one row per spawnReversals event
     }
@@ -118,9 +119,10 @@ final class AiMetrics {
     }
 
     /** A troop counted in stuck30 (stuck.csv): where it stands, its spot and order, its target and whether its navigation has given up. */
-    void stuck(GravesAndGlory.Battle b,GravesAndGlory.Unit u,AiState.Read r,int army){
+    void stuck(GravesAndGlory.Battle b,GravesAndGlory.Unit u,AiState.Read r,int army){stuck(b,u,r,army,stuckRows);}
+    void stuck(GravesAndGlory.Battle b,GravesAndGlory.Unit u,AiState.Read r,int army,StringBuilder rows){
         var t=u.lockedTarget;Vec3d spot=r.spot;
-        stuckRows.append(String.format(Locale.ROOT,"%d,%d,%s,%d,%s,%b,%s,%s,%.1f,%.1f,%.1f,%.1f,%.1f,%b,%.1f,%b,%d,%s%n",match+1,(b.time-b.roundStarted)/20,SEATS[u.squad.team],army,u.spec.group(),u.spec.ranged(),r.order,r.state,
+        rows.append(String.format(Locale.ROOT,"%d,%d,%s,%d,%s,%b,%s,%s,%.1f,%.1f,%.1f,%.1f,%.1f,%b,%.1f,%b,%d,%s%n",match+1,(b.time-b.roundStarted)/20,SEATS[u.squad.team],army,u.spec.group(),u.spec.ranged(),r.order,r.state,
             u.mob.getX(),u.mob.getZ(),spot==null?Double.NaN:spot.x,spot==null?Double.NaN:spot.z,r.spotDistance,t!=null&&t.isAlive(),t!=null&&t.isAlive()?Math.sqrt(u.mob.squaredDistanceTo(t)):-1,u.mob.getNavigation().isIdle(),u.stuckTicks,location(u.mob.getX(),u.mob.getZ())));
     }
 
@@ -175,15 +177,17 @@ final class AiMetrics {
     void stuckRead(GravesAndGlory.Battle b,GravesAndGlory.Unit u,AiState.Read r,int army,Acc a){
         var m=mem.computeIfAbsent(u,k->new UnitMem());m.army=army;
         if(r.fighting||r.atSpot||r.arrived){endStretch(m,a);m.reads=0;return;}
-        m.dist[m.reads%(WINDOW+1)]=r.spotDistance;m.reads++;
+        m.dist[m.reads%(WINDOW+1)]=r.spotDistance;m.route[m.reads%(WINDOW+1)]=routeTo(u,r);m.reads++;
         if(m.reads<=WINDOW)return;
         boolean stuck=m.dist[(m.reads-1-WINDOW)%(WINDOW+1)]-m.dist[(m.reads-1)%(WINDOW+1)]<WINDOW_BLOCKS;
         if(stuck){
-            if(m.run==0){m.run=WINDOW;a.stuck10++;}else m.run++;
+            if(m.run==0){m.run=WINDOW;a.stuck10++;stuck(b,u,r,army,stuck10Rows);int cut=stuck10Rows.length();while(cut>0&&(stuck10Rows.charAt(cut-1)==(char)10||stuck10Rows.charAt(cut-1)==(char)13))cut--;stuck10Rows.setLength(cut);double r0=m.route[(m.reads-1-WINDOW)%(WINDOW+1)],r1=m.route[(m.reads-1)%(WINDOW+1)];stuck10Rows.append(String.format(Locale.ROOT,",%.1f",r0<0||r1<0?Double.NaN:r0-r1)).append(System.lineSeparator());}else m.run++;
             m.grace=0;
             if(m.run==30){a.stuck30++;stuck(b,u,r,army);}
         }else if(m.run>0&&++m.grace>GRACE)endStretch(m,a);
     }
+    /** The route field's distance from the troop to its spot, in blocks, or -1 (no field, a spot the field does not know): a detour round a wall closes it where the straight distance does not. Diagnostic only (stuck10.csv routeClosed). */
+    static double routeTo(GravesAndGlory.Unit u,AiState.Read r){var n=Tactics.field();if(n==null||r.spot==null)return -1;return n.distance(u.mob.getX(),u.mob.getY(),u.mob.getZ(),r.spot.x,r.spot.y,r.spot.z);}
     void endStretch(UnitMem m,Acc a){
         if(m.run>=10)a.stuck10Sec+=m.run;if(m.run>=30)a.stuck30Sec+=m.run;if(m.run>=60)a.stuck60Sec+=m.run;
         m.run=0;m.grace=0;
@@ -283,6 +287,7 @@ final class AiMetrics {
                 .append(',').append(sum<=0?"":String.format(Locale.ROOT,"%.2f",ta.apDist/sum)).append(',').append(ta.apTicks==0?"":String.format(Locale.ROOT,"%.3f",ta.apCrawl/(double)ta.apTicks))
                 .append(',').append(ta.reversals).append(',').append(ta.reversalsOpening).append(',').append(ta.yawFlips).append('\n');}
         BotSimulation.append(troopCsv,troops.toString());
+        if(stuck10Rows.length()>0){BotSimulation.append(stuck10Csv,stuck10Rows.toString());stuck10Rows.setLength(0);}
         if(stuckRows.length()>0){BotSimulation.append(stuckCsv,stuckRows.toString());stuckRows.setLength(0);}
         if(blindRows.length()>0){BotSimulation.append(blindCsv,blindRows.toString());blindRows.setLength(0);}
         if(pacingRows.length()>0){BotSimulation.append(pacingCsv,pacingRows.toString());pacingRows.setLength(0);}
