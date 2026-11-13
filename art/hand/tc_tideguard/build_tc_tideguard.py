@@ -224,8 +224,10 @@ def bones():
     for side, x in (("right", -1.9), ("left", 1.9)):   # jointed: the knee 6 px down the leg
         B += limb(f"{side}_leg", "root", (x, 12, 0), (-2, 0, -2), leg_painter(), f"{side}_shin", KNEE)
     B.append(Bone("belt", "body", boxes=[Box((-4, -4, -2), (8, 2, 4), belt(), dil=0.5)]))
+    # the tabard's two panels hang 2 px below the hips (was 5): a thigh stepping under a longer hem cleared one leg into the
+    # other at every pose change (armour_clip 1.92-1.93, model fix 2026-11-13); its top rises 1 px to keep it 7 rows long
     B.append(Bone("tabard", "body", team=True, boxes=[
-        Box((-3.5, -4, -2.95), (7, 9, 0), "tabard", sheet="cloth"), Box((-3.5, -4, 2.95), (7, 9, 0), "tabard", sheet="cloth")]))
+        Box((-3.5, -5, -2.95), (7, 7, 0), "tabard", sheet="cloth"), Box((-3.5, -5, 2.95), (7, 7, 0), "tabard", sheet="cloth")]))
     B.append(Bone("shell", "body", (0, -8, 3.2), rot=(8, 0, 0), boxes=[Box((-2.5, -2.5, 0), (5, 5, 1), shell()), Box((-1.5, -3.5, 0.2), (3, 1, 1), shell())]))
     for side in ("right", "left"):
         c = -1 if side == "right" else 1
