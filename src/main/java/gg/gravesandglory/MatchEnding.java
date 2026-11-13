@@ -156,4 +156,110 @@ public final class MatchEnding {
     public static String ratio(int kills, int deaths) {
         return String.format(Locale.ROOT, "%.1f", deaths <= 0 ? (double) kills : (double) kills / deaths);
     }
+
+    // ---- ending polish pass 3: the score timeline ----
+
+    /**
+     * The score graph's samples (spec 5): each team's mode score at every interval seconds of battle time, at most MAX samples. A sample that
+     * falls due while nothing samples (the round clock moved, a long tick) takes the value at hand, so the count always follows the battle's
+     * length: floor(seconds / interval) while it runs, ceil(seconds / interval) at the end, whose last sample is the final score. When a sample
+     * is due past MAX, every second sample is dropped and the interval doubles.
+     */
+    public static final class Timeline {
+        public static final int MAX = 240, START = 5;
+        public int interval = START;
+        public final List<int[]> samples = new ArrayList<>();
+        public void clear() { samples.clear(); interval = START; }
+        /** Samples now at seconds of battle time; last (the finish) takes the partial interval too and puts now in the last sample. */
+        public void sample(long seconds, int[] now, boolean last) {
+            for (;;) {
+                long due = last ? (seconds + interval - 1) / interval : seconds / interval;
+                if (samples.size() >= due) break;
+                if (samples.size() >= MAX) { halve(); continue; }
+                samples.add(now.clone());
+            }
+            if (last && !samples.isEmpty()) samples.set(samples.size() - 1, now.clone());
+        }
+        void halve() {
+            List<int[]> kept = new ArrayList<>();
+            for (int i = 1; i < samples.size(); i += 2) kept.add(samples.get(i));
+            samples.clear(); samples.addAll(kept); interval *= 2;
+        }
+        /** One team's row of samples. */
+        public int[] row(int team) { int[] out = new int[samples.size()]; for (int i = 0; i < out.length; i++) out[i] = team < samples.get(i).length ? samples.get(i)[team] : 0; return out; }
+    }
+
+    /** The compact form of a timeline row for the report (it travels in the camp snapshot, which has a size limit): each value as its change from
+     *  the one before (from 0) in one character of DELTAS when it is -30 to 31, else "~" and the value in base 36 closed by ".". */
+    static final String DELTAS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    public static String encodeRow(int[] values) {
+        StringBuilder out = new StringBuilder();
+        int prev = 0;
+        for (int v : values) {
+            int d = v - prev;
+            if (d >= -30 && d <= 31) out.append(DELTAS.charAt(d + 30));
+            else out.append('~').append(Integer.toString(v, 36)).append('.');
+            prev = v;
+        }
+        return out.toString();
+    }
+    /** encodeRow read back; null for text that is not one. */
+    public static int[] decodeRow(String text) {
+        if (text == null) return null;
+        List<Integer> out = new ArrayList<>();
+        int prev = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '~') {
+                int end = text.indexOf('.', i);
+                if (end < 0) return null;
+                try { prev = Integer.parseInt(text.substring(i + 1, end), 36); } catch (NumberFormatException e) { return null; }
+                i = end;
+            } else {
+                int d = DELTAS.indexOf(c);
+                if (d < 0) return null;
+                prev += d - 30;
+            }
+            out.add(prev);
+        }
+        return out.stream().mapToInt(Integer::intValue).toArray();
+    }
+
+    // ---- ending polish pass 3: personal bests ----
+
+    /** The profile's bests keys in the order the report lists them, and their labels. */
+    public static final List<String> BEST_KEYS = List.of("kills", "armyKills", "score", "keptPct", "captures", "commanderDowns");
+    static final List<String> BEST_LABELS = List.of("Kills", "Army kills", "Score", "Kept alive", "Captures", "Commanders downed");
+    public record Best(String key, String label, int value, int previous) {}
+    /**
+     * This match's values against the records (both by BEST_KEYS; a value absent from values is not played): a value above an earlier record is
+     * a best, listed with that record; a key with no record yet takes the value quietly. records is updated in place (a higher value, or the
+     * first). Returns the bests in BEST_KEYS order.
+     */
+    public static List<Best> bests(Map<String, Integer> records, Map<String, Integer> values) {
+        List<Best> out = new ArrayList<>();
+        for (int i = 0; i < BEST_KEYS.size(); i++) {
+            String k = BEST_KEYS.get(i);
+            Integer v = values.get(k);
+            if (v == null) continue;
+            Integer was = records.get(k);
+            if (was != null && v > was) out.add(new Best(k, BEST_LABELS.get(i), v, was));
+            if (was == null || v > was) records.put(k, v);
+        }
+        return out;
+    }
+    /** The words of one best on REWARDS: "New best: 14 kills (was 11)", "New best: a score of 812 (was 640)", "New best: 90% kept alive (was 75%)". */
+    public static String bestText(String key, int value, int previous) {
+        String v = String.valueOf(value), p = String.valueOf(previous);
+        String what = switch (key) {
+            case "kills" -> v + (value == 1 ? " kill" : " kills");
+            case "armyKills" -> v + (value == 1 ? " army kill" : " army kills");
+            case "score" -> "a score of " + v;
+            case "keptPct" -> v + "% kept alive";
+            case "captures" -> v + (value == 1 ? " capture" : " captures");
+            case "commanderDowns" -> v + (value == 1 ? " commander downed" : " commanders downed");
+            default -> v + " " + key;
+        };
+        return "New best: " + what + " (was " + p + (key.equals("keptPct") ? "%" : "") + ")";
+    }
 }

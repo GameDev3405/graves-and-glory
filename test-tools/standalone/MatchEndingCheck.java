@@ -108,6 +108,33 @@ public final class MatchEndingCheck {
         check(MatchEnding.headline(e("a", 0, 0, 1, 0, 200, 1, 9), w) == MatchEnding.Headline.OBJECTIVE, "headline objective");
         check(MatchEnding.headline(e("a", 0, 0, 0, 0, 0, 5, 0), w) == MatchEnding.Headline.KEPT, "headline kept");
         check(MatchEnding.headline(e("a", 0, 0, 0, 0, 0, 0, 0), w) == MatchEnding.Headline.KILLS, "headline tie: enum order");
+        // Pass 3: the timeline.
+        var tl = new MatchEnding.Timeline();
+        for (int s = 0; s <= 12; s++) tl.sample(s, new int[]{s, 100 - s}, false);
+        check(tl.samples.size() == 2 && tl.row(0)[0] == 5 && tl.row(0)[1] == 10 && tl.row(1)[1] == 90, "timeline: a sample at 5 s and 10 s");
+        tl.sample(13, new int[]{13, 87}, true);
+        check(tl.samples.size() == 3 && tl.row(0)[2] == 13 && tl.row(1)[2] == 87, "timeline: the finish adds the partial interval with the final score");
+        var exact = new MatchEnding.Timeline();
+        exact.sample(10, new int[]{1, 1}, false); exact.sample(10, new int[]{2, 3}, true);
+        check(exact.samples.size() == 2 && exact.row(0)[1] == 2 && exact.row(1)[1] == 3, "timeline: a finish on an interval puts the final score in the last sample");
+        var jump = new MatchEnding.Timeline();
+        jump.sample(3, new int[]{0, 0}, false); jump.sample(181, new int[]{4, 2}, false);
+        check(jump.samples.size() == 36, "timeline: a clock jump catches up (181 s gives 36 samples)");
+        var lng = new MatchEnding.Timeline();
+        for (int s = 0; s <= 1500; s++) lng.sample(s, new int[]{s, s / 2}, false);
+        check(lng.samples.size() <= MatchEnding.Timeline.MAX && lng.interval == 10 && lng.samples.size() == 150 && lng.row(0)[0] == 10 && lng.row(0)[149] == 1500, "timeline: past 240 samples the interval doubles (1500 s: 150 samples of 10 s)");
+        int[] row = {0, 3, 7, 7, 120, 119, 64, 300, 299, 0};
+        String enc = MatchEnding.encodeRow(row);
+        check(Arrays.equals(MatchEnding.decodeRow(enc), row) && MatchEnding.encodeRow(new int[]{1, 2, 3}).length() == 3, "timeline row: encodes and decodes (" + enc + ")");
+        check(MatchEnding.decodeRow("~zz") == null && MatchEnding.decodeRow("!") == null && MatchEnding.decodeRow("").length == 0, "timeline row: bad text is refused");
+        // Pass 3: personal bests.
+        Map<String, Integer> rec = new LinkedHashMap<>();
+        check(MatchEnding.bests(rec, Map.of("kills", 11, "score", 400)).isEmpty() && rec.equals(Map.of("kills", 11, "score", 400)), "bests: the first match sets records quietly");
+        var better = MatchEnding.bests(rec, Map.of("kills", 14, "score", 300, "captures", 2));
+        check(better.size() == 1 && better.get(0).equals(new MatchEnding.Best("kills", "Kills", 14, 11)) && rec.equals(Map.of("kills", 14, "score", 400, "captures", 2)), "bests: a higher value beats its record; a lower one does not; a new key is quiet");
+        check(MatchEnding.bests(rec, Map.of("kills", 14)).isEmpty(), "bests: an equal value is no best");
+        check(MatchEnding.bestText("kills", 14, 11).equals("New best: 14 kills (was 11)") && MatchEnding.bestText("keptPct", 90, 75).equals("New best: 90% kept alive (was 75%)")
+            && MatchEnding.bestText("score", 812, 640).equals("New best: a score of 812 (was 640)") && MatchEnding.bestText("captures", 1, 0).equals("New best: 1 capture (was 0)"), "bests: the REWARDS words");
         System.out.println("MatchEndingCheck: " + checks + " checks passed");
     }
 }

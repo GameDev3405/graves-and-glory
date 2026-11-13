@@ -44,7 +44,36 @@ final class EndingScreen extends Screen {
             if (client != null) EndingClient.skip(client);
             return true;
         }
+        if (GravesAndGloryClient.playAgain != null && GravesAndGloryClient.playAgain.matchesKey(key, scan) && client != null && EndingClient.playAgainShown()) { EndingClient.playAgain(client); return true; } // pass 3: Play again
         return super.keyPressed(key, scan, mods);
+    }
+
+    /** Pass 3: a click on Play again (its box in sheet pixels, againDrawn, mapped through the sheet's last scale and place). */
+    @Override public boolean mouseClicked(double mx, double my, int button) {
+        if (button == 0 && client != null && overAgain(mx, my)) { EndingClient.playAgain(client); return true; }
+        return super.mouseClicked(mx, my, button);
+    }
+    boolean overAgain(double mx, double my) {
+        int[] a = againDrawn, sh = sheetDrawn; int s = Math.max(1, scaleDrawn);
+        if (a == null || !EndingClient.playAgainShown()) return false;
+        double x = (UiCanvas.toCanvas(mx) - sh[0]) / s, y = (UiCanvas.toCanvas(my) - sh[1]) / s;
+        return x >= a[0] && x < a[0] + a[2] && y >= a[1] && y < a[1] + a[3];
+    }
+    /** Pass 3, harness: Play again's box in sheet pixels as last drawn (null when not drawn). */
+    static volatile int[] againDrawn;
+    static final String AGAIN = "Play again";
+    /** The player's own Play again key in brackets ([P] by default; rebindable in Controls). */
+    static String againKey() { return "[" + (GravesAndGloryClient.playAgain == null ? "P" : GravesAndGloryClient.playAgain.getBoundKeyLocalizedText().getString()) + "]"; }
+    /** Play again under the sheet's right edge, beside the hint: a dark plate with the brass rim, lit while the mouse is over it. */
+    void againButton(DrawContext g, boolean hot) {
+        var font = textRenderer;
+        Text label = DarkUi.body(AGAIN), key = DarkUi.small(againKey());
+        int bw = font.getWidth(label) + font.getWidth(key) + 16, bh = 14, bx = W - bw, by = H + FRAME + 3;
+        g.fill(bx - 1, by - 1, bx + bw + 1, by + bh + 1, DarkUi.BRASS);
+        g.fill(bx, by, bx + bw, by + bh, hot ? 0xff57432f : EndingPanels.CLAIM_FILL);
+        g.drawText(font, label, bx + 6, by + 3, EndingPanels.CLAIM_INK, false);
+        g.drawText(font, key, bx + bw - 6 - font.getWidth(key), by + 4, EndingPanels.CLAIM_TEXT, false);
+        againDrawn = new int[]{bx, by, bw, bh};
     }
 
     boolean rewardsFace() { return EndingClient.step() == MatchEnding.Step.REWARDS; }
@@ -74,6 +103,7 @@ final class EndingScreen extends Screen {
             boolean rewards = rewardsFace();
             if (rewards) rewardsSheet(g, r, delta); else statsSheet(g, r);
             drawn = rewards ? "rewards" : "stats";
+            if (EndingClient.playAgainShown()) againButton(g, overAgain(mouseX, mouseY)); else againDrawn = null; // pass 3
             m.pop();
             String hint = HintText.expand("{key:menu} or Escape to skip", GravesAndGloryClient::hint);
             var font = textRenderer;
@@ -114,7 +144,7 @@ final class EndingScreen extends Screen {
 
     /** Under the four groups (ending polish): "Your army" (the report's You page table) on the left and "Highlights" (the awards) on the right, when there is room for a row. */
     void fill(DrawContext g, JsonObject r, int x, int y, int w, int h) {
-        EndingPanels.reset("fillhead"); EndingPanels.reset("troops"); EndingPanels.reset("highlight");
+        EndingPanels.reset("fillhead"); EndingPanels.reset("troops"); EndingPanels.reset("highlight"); EndingPanels.reset("graph"); EndingPanels.graphSamples = 0;
         if (h < 30 || EndingPanels.obj(r, "you") == null) return;
         int gap = 18, half = (w - gap) / 2, hx = x + half + gap;
         EndingPanels.put(g, "fillhead-army", DarkUi.heading("Your army"), x, y, EndingPanels.BROWN);
@@ -122,7 +152,8 @@ final class EndingScreen extends Screen {
         g.fill(x, y + 11, x + half, y + 12, EndingPanels.RULE); g.fill(hx, y + 11, hx + half, y + 12, EndingPanels.RULE);
         EndingPanels.areas.put("fillhead", new int[]{x, y, w, 12});
         EndingPanels.troops(g, r, x, y + 15, half, h - 15);
-        EndingPanels.highlights(g, r, hx, y + 17, half, h - 17);
+        int hy = EndingPanels.highlights(g, r, hx, y + 17, half, h - 17);
+        EndingPanels.graph(g, r, hx, hy + 4, half, y + h - (hy + 4)); // pass 3: the score graph under the highlights, when it has room
     }
 
     void rewardsSheet(DrawContext g, JsonObject r, float partial) {

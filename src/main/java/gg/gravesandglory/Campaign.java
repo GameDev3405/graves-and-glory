@@ -35,6 +35,9 @@ public final class Campaign {
      *  left the battle (offline at finish), and the MVP (the best ranked army whose commander did not leave). */
     final Map<GravesAndGlory.Squad,EndingAwards.Award> endingAwards=new IdentityHashMap<>();final Map<GravesAndGlory.Squad,EndingAwards.Line> endingLines=new IdentityHashMap<>();
     final Map<GravesAndGlory.Squad,UUID> endingLeft=new IdentityHashMap<>();GravesAndGlory.Squad endingMvp;
+    /** Ending polish pass 3: each team's mode score every few seconds of this round (the STATS graph), and the participants who pressed Play again
+     *  (each is marked Ready in his room through social:ready as soon as the room is idle: at once, or when returnLobby ends the room's match). */
+    final MatchEnding.Timeline timeline=new MatchEnding.Timeline();final Set<UUID> playAgain=new HashSet<>();
     boolean ending(){return endingStart>=0;}
     /** The harness keeps the old instant return (test-tools/isolated-checks.gradle sets it from GRAVES_INSTANT_ENDING); absent, the sequence plays. */
     static boolean instantEnding(){return Boolean.getBoolean("gravesandglory.instantEnding");}
@@ -214,7 +217,7 @@ public final class Campaign {
         if(battleModeBeforeRoom!=null){battleMode=battleModeBeforeRoom;battleModeBeforeRoom=null;} // the room's mode ends with its round
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
         boolean wasEnding=ending();endingStart=-1;skipped.clear();endingStaged.clear();endingDone.clear();endingRanks.clear();endingAwards.clear();endingLines.clear();endingLeft.clear();endingMvp=null;if(wasEnding)PodiumStage.release(b.world);
-        b.running=false;introUntil=0;social.finish();activeRoom="";roundTier="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);b.clearIntel();
+        b.running=false;introUntil=0;social.finish();readyAgain();activeRoom="";roundTier="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);b.clearIntel();
         Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearCorpses();b.clearSides();b.clearProgression();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();botGuard.clear();musterFirstAt.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();deleteProgress();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}closeParty();
@@ -363,6 +366,7 @@ public final class Campaign {
         for(var s:b.squads.values())if(s.seated)s.banner=banner(s);
         chooseSides();
         serial++;matchId=UUID.randomUUID().toString();introUntil=b.time+120;headline="";
+        timeline.clear();playAgain.clear(); // pass 3: a new round's graph
     }
     /** A troop row by id, or null for empty, ^ or an unknown id. */
     static Spec.TroopsRow troop(String id){for(var t:Spec.TROOPS)if(t.id().equals(id))return t;return null;}
@@ -615,6 +619,7 @@ public final class Campaign {
         if(ending())return; // a timeout or a second win condition during the ending never settles again
         lastWinner=winner;
         long seconds=(b.time-b.roundStarted)/20;
+        timeline.sample(seconds,timelineNow(),true); // pass 3: the graph's last sample is the final score
         for(var sq:b.squads.values())if(sq.seated)sq.stats.kept=(int)b.fielded(sq).count(); // each army's living non-temporary troops at the end
         JsonArray podium=rankArmies(winner);endingLine=scoreLine(seconds);
         if(!instantEnding())sendBegin(winner); // the instant freeze goes out before the saves below, so the banner does not wait on the disk
@@ -634,6 +639,7 @@ public final class Campaign {
             var paid=eligible?RosterMath.prorate(RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),credited),seated,seconds):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
             List<String> titles=eligible?ledger(p,s):List.of();List<Integer> pactChapters=pacts(p);int pacts=pactChapters.size();
+            List<MatchEnding.Best> bests=eligible?MatchEnding.bests(p.bests,bestValues(liveSquad(id,s))):List.of(); // pass 3: personal bests, in the same save as the rewards
             boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("forgeMarks",saved?marks:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pactChapters));results.put(id,report);
             // match ending (2026-11-12 spec): a loss reads DEFEAT, plus the banner line, podium, your groups, rewards rows and what is ready to claim
             if(winner>=0&&s.team!=winner)report.addProperty("outcome","DEFEAT");report.addProperty("line",endingLine);
@@ -645,6 +651,7 @@ public final class Campaign {
                 reward(rewards,pacts==1?"Pact":"Pacts",pacts,"chapter cleared");for(String t:titles)reward(rewards,"New title: "+t,1,"mastery");}
             report.add("rewards",rewards);
             if(saved)report.add("progress",reportProgress(p,priorXp,priorBattles,paid)); // ending polish pass 2: the REWARDS bars
+            report.add("timeline",reportTimeline());if(saved)report.add("bests",reportBests(bests)); // pass 3: the STATS graph and the REWARDS bests
             if(!saved){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
             String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gold":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
             standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+earned+" collection gold"+(!eligible?" (reward requires 3 minutes of play)":percent<100?" (pro-rated: you were seated for "+percent+"% of the match)":"")+(marks>0?" / +"+marks+" Forge marks":"")+extra);
@@ -763,6 +770,40 @@ public final class Campaign {
             awardFields(row,s);
             rows.add(row);}
         return rows;
+    }
+    /** Pass 3: each team's number now in the mode's own ledger (BattleMode.ledger: Domination's scores, Siege's stages and strength, Convoy's road and stops, Survival's wave and dead). */
+    int[] timelineNow(){int[] l=b.mode.ledger(b);return new int[]{l.length>0?l[0]:0,l.length>1?l[1]:0};}
+    /** Pass 3, the report's timeline: {interval, label, teams: [row 0, row 1]}, each row in MatchEnding.encodeRow's compact form (the report rides the size-limited camp
+     *  snapshot); a mode without points adds each row's max and format, since its two numbers are not one scale. */
+    JsonObject reportTimeline(){
+        JsonObject j=new JsonObject();var m=b.mode;boolean points=m.capturesPoints(b);var es=m.ledgerEntries(b);
+        j.addProperty("interval",timeline.interval);j.addProperty("label",points?"Score":es.size()>=2?es.get(0).label()+" / "+es.get(1).label():m.name());
+        JsonArray teams=new JsonArray();for(int t=0;t<2;t++)teams.add(MatchEnding.encodeRow(timeline.row(t)));j.add("teams",teams);
+        if(!points){int[] mx=m.max(b);String[] f=m.formats();JsonArray max=new JsonArray(),format=new JsonArray();
+            for(int t=0;t<2;t++){max.add(t<mx.length?mx[t]:0);format.add(t<f.length?f[t]:"plain");}j.add("max",max);j.add("format",format);}
+        return j;
+    }
+    /** Pass 3: this match's values for the personal bests (MatchEnding.BEST_KEYS); kept alive is a percent of the army fielded, left out when none was. */
+    Map<String,Integer> bestValues(GravesAndGlory.Squad s){
+        var t=s.stats;Map<String,Integer> v=new LinkedHashMap<>();
+        v.put("kills",t.commanderKills);v.put("armyKills",Math.max(0,t.kills-t.commanderKills));v.put("score",MatchEnding.score(entry(s,0),Spec.ENDING[0]));
+        if(t.kept+t.lost>0)v.put("keptPct",Math.round(100f*t.kept/(t.kept+t.lost)));
+        v.put("captures",t.captures);v.put("commanderDowns",t.commanderDowns);return v;
+    }
+    static JsonArray reportBests(List<MatchEnding.Best> bests){
+        JsonArray rows=new JsonArray();for(var x:bests){JsonObject row=new JsonObject();row.addProperty("key",x.key());row.addProperty("label",x.label());row.addProperty("value",x.value());row.addProperty("previous",x.previous());rows.add(row);}return rows;
+    }
+    /** Pass 3, Play again on REWARDS (ending:again): in a room, this participant's sequence ends now and he is marked Ready (readyAgain); outside a room nothing happens. */
+    void playAgain(ServerPlayerEntity p){
+        UUID id=p.getUuid();if(!ending()||!participants.contains(id)||social.room(id)==null)return;
+        skipped.put(id,MatchEnding.Step.DONE);playAgain.add(id);readyAgain();
+    }
+    /** Each Play again waiting on an idle room: the room's own ready command (social:ready) for him unless he is ready already; then he is forgotten. A room still playing waits for returnLobby. */
+    void readyAgain(){
+        for(UUID id:new ArrayList<>(playAgain)){var room=social.room(id);var p=b.server.getPlayerManager().getPlayer(id);
+            if(room==null||p==null){playAgain.remove(id);continue;}
+            if(room.playing)continue;
+            playAgain.remove(id);if(!room.ready.contains(id))socialCommand(p,"social:ready");}
     }
     /** The report's own block for one commander (the stats screen's four groups): commander, army (with each troop type fielded), objectives, economy. */
     JsonObject reportYou(GravesAndGlory.Squad s){
@@ -932,6 +973,7 @@ public final class Campaign {
         // Unseated lobby players wait in the hall while a match runs.
         if(b.time%20==0)for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(leash&&(s==null||!s.seated)&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))toLobby(p);}
         if(ending()){endingTick();return;}
+        timeline.sample((b.time-b.roundStarted)/20,timelineNow(),false); // pass 3: the STATS graph, every interval of battle time
         if(b.time<introUntil){for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(s!=null&&s.seated&&p.squaredDistanceTo(b.fieldBase(s.team))>2)b.toBase(p,s.team);}return;}
         boolean economy=b.time%100==0;
         for(var s:b.squads.values())if(s.bot){
@@ -1252,7 +1294,7 @@ public final class Campaign {
     /** The banner a commander fields: his battle banner while he is seated in a running battle, else his profile banner. */
     JsonArray bannerJson(UUID id){var s=b.squads.get(id);List<String> shown=b.running&&s!=null&&s.seated?s.banner:profile(id).banner;JsonArray out=new JsonArray();for(String entry:shown)out.add(entry);return out;}
     /** The client's copy of a profile: match ids stay on the server. They only stop one match paying twice, and 256 of them (94 characters a match across both copies) would outgrow SNAPSHOT_LIMIT. */
-    static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();var s=j.getAsJsonObject(Profile.PROGRESSION);if(s!=null)s.remove(Progression.State.MATCH_GRANTS);j.remove(Profile.GEAR);return j;} // the gear list travels on gear_v1 (GearWire), never in the camp snapshot
+    static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();var s=j.getAsJsonObject(Profile.PROGRESSION);if(s!=null)s.remove(Progression.State.MATCH_GRANTS);j.remove(Profile.GEAR);j.remove("bests");return j;} // the gear list travels on gear_v1 (GearWire), never in the camp snapshot
     static JsonObject forClient(Progression.State s){JsonObject j=JSON.toJsonTree(s).getAsJsonObject();j.remove(Progression.State.MATCH_GRANTS);return j;}
     /** The snapshot as sent: pretty when it fits SNAPSHOT_LIMIT, else compact, else compact without the battle report, else "{}" (the client then keeps its last camp state). Each shortened form is logged the first time a commander is sent it. */
     String fitted(JsonObject j,UUID id){

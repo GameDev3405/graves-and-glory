@@ -59,6 +59,9 @@ public final class Profile {
     int inventorySize = Spec.FORGE[0].startSlots();
     /** Schema 5: custom numbered groups, stored with the Armoury loadout; orders sent to custom:<number> reach these troop types. */
     List<CustomGroup> customGroups = new ArrayList<>();
+    /** Ending polish pass 3: personal bests by MatchEnding.BEST_KEYS (kills, armyKills, score, keptPct, captures, commanderDowns). A file without the key loads with
+     *  none (no schema change); a key with no record yet is set quietly by the next eligible match. Kept off the camp snapshot (Campaign.forClient). */
+    Map<String, Integer> bests = new LinkedHashMap<>();
 
     /**
      * Repairs a loaded or migrated profile in place. Owned ids the catalog does not know are dropped. Stars clamp to
@@ -109,6 +112,13 @@ public final class Profile {
         campaignCleared = MarchMath.cleared(battlesWon, Spec.CAMPAIGNBATTLES);
         sanitizeGear();
         customGroups = customGroups(customGroups, c);
+        bests = bests(bests);
+    }
+    /** Personal bests repaired: only MatchEnding.BEST_KEYS, each at 0 or more, in that order; null becomes empty. */
+    static Map<String, Integer> bests(Map<String, Integer> in) {
+        Map<String, Integer> out = new LinkedHashMap<>();
+        if (in != null) for (String k : MatchEnding.BEST_KEYS) { Integer v = in.get(k); if (v != null) out.put(k, Math.max(0, v)); }
+        return out;
     }
     /**
      * Repairs custom groups: nulls and repeated or out-of-range numbers go (the first stays), a name is trimmed, clamped to GROUP_NAME_MAX

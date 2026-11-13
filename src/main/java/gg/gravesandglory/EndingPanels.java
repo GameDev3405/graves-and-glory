@@ -305,6 +305,100 @@ final class EndingPanels {
         return mine.size() > 3 ? new ArrayList<>(mine.subList(0, 3)) : mine;
     }
 
+    // ---- the score graph (ending polish pass 3) ----
+    /** The graph's shortest and tallest plot, and the shortest match that has one (seconds). */
+    static final int GRAPH_MIN_PLOT = 22, GRAPH_MAX_PLOT = 56, GRAPH_MIN_SECONDS = 15;
+    /** What the last graph drew (the checks read them): its samples per row (0 when none was drawn) and each row's final value as written. */
+    static int graphSamples;
+    static final List<String> graphFinals = new ArrayList<>();
+    /** A team's line colour (its side's colour) and the darker ink its final value is written in on parchment. */
+    static int teamColour(int team) { var f = DarkUi.side(team); return f == null ? SEPIA : 0xff000000 | f.color(); }
+    static int teamInk(int team) {
+        int c = teamColour(team), r = (c >> 16) & 255, gr = (c >> 8) & 255, b = c & 255;
+        return 0xff000000 | (r * 3 / 5) << 16 | (gr * 3 / 5) << 8 | (b * 3 / 5);
+    }
+    /**
+     * The report's timeline as a small two-line chart in the teams' colours (spec 5): the label, then each team's line from the first sample to the
+     * last across the plot, its final value at the right edge. Points modes share one scale (the higher row's top); a mode without points scales each
+     * line to its own max. Nothing when the match was shorter than GRAPH_MIN_SECONDS, there are fewer than two samples or h has no room for a plot.
+     * Returns the y under it (y when nothing was drawn).
+     */
+    static int graph(DrawContext g, JsonObject r, int x, int y, int w, int h) {
+        reset("graph"); graphSamples = 0; graphFinals.clear();
+        var tl = obj(r, "timeline");
+        if (tl == null || num(r, "seconds") < GRAPH_MIN_SECONDS) return y;
+        var teams = arr(tl, "teams");
+        if (teams.size() < 2) return y;
+        int[][] rows = new int[2][];
+        for (int t = 0; t < 2; t++) {
+            try { rows[t] = MatchEnding.decodeRow(teams.get(t).getAsString()); } catch (RuntimeException e) { rows[t] = null; }
+            if (rows[t] == null) return y;
+        }
+        int n = Math.min(rows[0].length, rows[1].length);
+        int plotH = Math.min(GRAPH_MAX_PLOT, h - 14);
+        if (n < 2 || plotH < GRAPH_MIN_PLOT) return y;
+        var max = arr(tl, "max"); var format = arr(tl, "format");
+        boolean own = max.size() >= 2;
+        String[] finals = new String[2]; int[] top = new int[2];
+        int shared = 1; for (int t = 0; t < 2; t++) for (int i = 0; i < n; i++) shared = Math.max(shared, rows[t][i]);
+        for (int t = 0; t < 2; t++) {
+            int mine = 1; for (int i = 0; i < n; i++) mine = Math.max(mine, rows[t][i]);
+            top[t] = own ? Math.max(mine, max.get(t).getAsInt()) : shared;
+            boolean pct = format.size() > t && "percent".equals(format.get(t).getAsString());
+            finals[t] = UiMath.thousands(rows[t][n - 1]) + (pct ? "%" : "");
+        }
+        areas.put("graph", new int[]{x, y, w, 13 + plotH + 1});
+        put(g, "graph-label", fit(str(tl, "label").isEmpty() ? "Score" : str(tl, "label"), w), x, y, SEPIA);
+        int gutter = Math.max(width(small(finals[0])), width(small(finals[1]))) + 6;
+        int px0 = x + 1, px1 = x + w - gutter, py0 = y + 13, py1 = py0 + plotH - 1;
+        g.fill(x, py0, x + 1, py1 + 1, RULE); g.fill(x, py1, px1, py1 + 1, RULE); // the axes
+        int half = py0 + (py1 - py0) / 2;
+        for (int d = x + 2; d < px1; d += 4) g.fill(d, half, Math.min(px1, d + 2), half + 1, 0x60b79f73); // a faint dashed half line
+        int[] endY = new int[2];
+        int span = px1 - 1 - px0, lift = plotH - 3;
+        for (int t = 1; t >= 0; t--) { // team 0 last, so it draws on top where they cross
+            int colour = teamColour(t);
+            int prevX = px0, prevY = py1 - 1 - Math.round(lift * rows[t][0] / (float) top[t]);
+            for (int i = 1; i < n; i++) {
+                int cx = px0 + Math.round(span * i / (float) (n - 1)), cy = py1 - 1 - Math.round(lift * rows[t][i] / (float) top[t]);
+                for (int col = prevX; col < cx; col++) { // one column at a time, filled between its two neighbouring heights so the line has no gaps
+                    int ya = Math.round(prevY + (cy - prevY) * (col - prevX) / (float) (cx - prevX));
+                    int yb = Math.round(prevY + (cy - prevY) * (col + 1 - prevX) / (float) (cx - prevX));
+                    g.fill(col, Math.min(ya, yb) - 1, col + 1, Math.max(ya, yb) + 1, colour);
+                }
+                prevX = cx; prevY = cy;
+            }
+            g.fill(prevX, prevY - 1, prevX + 1, prevY + 1, colour);
+            endY[t] = prevY;
+        }
+        // the final values right of the plot, beside each line's end, kept 9 apart and inside the plot's height
+        int lo = py0 - 2, hi = py1 - 7;
+        int ya = Math.max(lo, Math.min(hi, endY[0] - 4)), yb = Math.max(lo, Math.min(hi, endY[1] - 4));
+        if (Math.abs(ya - yb) < 9) {
+            boolean firstUp = ya < yb || ya == yb && rows[0][n - 1] >= rows[1][n - 1];
+            int upper = Math.max(lo, Math.min(hi - 9, Math.min(ya, yb)));
+            if (firstUp) { ya = upper; yb = upper + 9; } else { yb = upper; ya = upper + 9; }
+        }
+        int[] ty = {ya, yb};
+        for (int t = 0; t < 2; t++) { put(g, "graph-final-" + t, small(finals[t]), px1 + 4, ty[t], teamInk(t)); graphFinals.add(finals[t]); }
+        graphSamples = n;
+        return py1 + 2;
+    }
+
+    // ---- personal bests (ending polish pass 3) ----
+    /** The report's bests as REWARDS words ("New best: 14 kills (was 11)"), at most 3, in the report's order. */
+    static List<String> bestsOf(JsonObject r) {
+        List<String> out = new ArrayList<>();
+        for (JsonElement e : arr(r, "bests")) {
+            if (!e.isJsonObject() || out.size() >= 3) continue;
+            var o = e.getAsJsonObject();
+            out.add(MatchEnding.bestText(str(o, "key"), num(o, "value"), num(o, "previous")));
+        }
+        return out;
+    }
+    /** The bests as last drawn on REWARDS (the checks read them). */
+    static final List<String> bestsShown = new ArrayList<>();
+
     // ---- the rewards ----
     record Reward(String label, int amount, String reason) {}
     static List<Reward> rewardsOf(JsonObject r) {
@@ -361,7 +455,7 @@ final class EndingPanels {
     static int rewards(DrawContext g, JsonObject r, int x, int y, int w, int h) { return rewards(g, r, x, y, w, h, 1f, false); }
 
     static int rewards(DrawContext g, JsonObject r, int x, int y, int w, int h, float progress, boolean foot) {
-        reset("reward"); rewardRows = 0; total = ""; claim = ""; columns = false; barsDrawn = 0; barsCrossed = 0; barFill.clear();
+        reset("reward"); rewardRows = 0; total = ""; claim = ""; columns = false; barsDrawn = 0; barsCrossed = 0; barFill.clear(); bestsShown.clear();
         var rows = rewardsOf(r);
         rewardsTotal = rows.size();
         areas.put("reward", new int[]{x, y, w, h});
@@ -377,7 +471,9 @@ final class EndingPanels {
         boolean full = progress >= 1;
         List<Bar> bars = foot ? barsOf(r) : List.of();
         int barsH = bars.isEmpty() ? 0 : bars.size() * BAR_ROW + 6;
-        int room = h - (foot ? 20 + (claimLine.isEmpty() ? 0 : CLAIM_H + 6) : 0) - barsH; // the total's double rule and line, the claim strip and the bars
+        List<String> bests = foot ? bestsOf(r) : List.of(); // pass 3: the bests, in the gap above the bars
+        int bestsH = bests.isEmpty() ? 0 : bests.size() * KV + 4;
+        int room = h - (foot ? 20 + (claimLine.isEmpty() ? 0 : CLAIM_H + 6) : 0) - barsH - bestsH; // the total's double rule and line, the claim strip, the bars and the bests
         int step = rows.size() * REWARD_TALL <= room ? REWARD_TALL : rows.size() * REWARD_SHORT <= room ? REWARD_SHORT : 0;
         if (!foot && progress >= 1) { // the note (ending polish): every row in two compact columns, top to bottom then the second column, when they fit
             int gap = 10, cw = (w - gap) / 2, lines = (rows.size() + 1) / 2;
@@ -427,7 +523,9 @@ final class EndingPanels {
             for (int d = x; d < x + w; d += 4) g.fill(d, ry + step - 3, Math.min(x + w, d + 2), ry + step - 2, waiting ? 0x30b79f73 : 0xffb79f73);
             ry += step;
         }
-        int barTop = Math.max(ry + 2, y + room);
+        int barTop = Math.max(ry + 2, y + room) + bestsH;
+        if (!bests.isEmpty() && (full || progress >= ROWS_END)) // pass 3: the bests, once the rows have counted up
+            for (int i = 0; i < bests.size(); i++) { put(g, "reward-best-" + i, fit(bests.get(i), w), x, barTop - bestsH + 2 + i * KV, BROWN); bestsShown.add(bests.get(i)); }
         if (!bars.isEmpty()) bars(g, bars, rows, x, barTop + 6, w, full ? 1 : progress, slot);
         if (!foot || !full && progress < ROWS_END) return ry;
         // the total, under a double rule

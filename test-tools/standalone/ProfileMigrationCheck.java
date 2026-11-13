@@ -216,6 +216,19 @@ public final class ProfileMigrationCheck {
         check(four.schema == 6 && four.customGroups != null && four.customGroups.isEmpty() && four.gold == 66 && four.battlesWon.isEmpty() && !four.readOnly, "v4toV5: a schema-4 profile loads with customGroups empty, other fields kept, its march wins reset (schema 6), writable");
         check(write(four).contains("\"schema\":6") && write(four).contains("\"customGroups\":\"\""), "v4toV5: the loaded schema-4 profile saves as schema 6 with an empty customGroups");
         check(ProfileMigration.v4toV5(parseV2(v4Save)).schema == 5, "v4toV5: sets schema 5");
+        // ending polish pass 3: personal bests. An old file has no bests key: it loads with none, the first match sets records quietly, a later one beats them
+        var noBests = parseV2(v4Save.replace("\"schema\":4", "\"schema\":6"));
+        noBests.sanitize(cat, CLASSES, SIDES, HOUSES);
+        check(noBests.bests != null && noBests.bests.isEmpty() && !noBests.readOnly && noBests.schema == 6 && noBests.gold == 66, "bests-old-file: a schema-6 profile saved before bests loads with none, writable, other fields kept");
+        check(MatchEnding.bests(noBests.bests, Map.of("kills", 11, "armyKills", 40)).isEmpty() && noBests.bests.equals(Map.of("kills", 11, "armyKills", 40)), "bests-old-file: its first match sets records quietly");
+        check(MatchEnding.bests(noBests.bests, Map.of("kills", 14, "armyKills", 30)).equals(List.of(new MatchEnding.Best("kills", "Kills", 14, 11))) && noBests.bests.get("kills") == 14, "bests-old-file: a later better match reports and keeps the beaten value");
+        var nullBests = new Profile();
+        nullBests.bests = null;
+        nullBests.sanitize(cat, CLASSES, SIDES, HOUSES);
+        var oddBests = new Profile();
+        oddBests.bests = new LinkedHashMap<>(Map.of("score", -4, "bogus", 9, "captures", 3));
+        oddBests.sanitize(cat, CLASSES, SIDES, HOUSES);
+        check(nullBests.bests != null && nullBests.bests.isEmpty() && oddBests.bests.equals(Map.of("score", 0, "captures", 3)) && new ArrayList<>(oddBests.bests.keySet()).equals(List.of("score", "captures")), "bests-sanitize: null becomes empty; unknown keys go, values clamp to 0, in key order");
         var grouped = new Profile();
         grouped.customGroups = new ArrayList<>(List.of(new Profile.CustomGroup(2, "Flank", List.of("archer", "bonebow")), new Profile.CustomGroup(1, "Line", List.of("knight"))));
         grouped.sanitize(cat, CLASSES, SIDES, HOUSES);

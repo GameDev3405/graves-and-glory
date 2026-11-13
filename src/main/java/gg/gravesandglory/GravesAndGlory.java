@@ -955,6 +955,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(cmd.startsWith("social:")){campaign.socialCommand(p,cmd);return;}
             if(cmd.startsWith("progress:")){campaign.progressCommand(p,cmd);return;}
             if(cmd.equals("ending:skip")){campaign.skipEnding(p);return;} // before the respawn gate: a commander waiting to respawn skips too
+            if(cmd.equals("ending:again")){campaign.playAgain(p);return;} // ending polish pass 3: Play again on REWARDS (a room's member: DONE now, then Ready)
             Squad s=squads.get(p.getUuid());if(s==null||!ready||respawns.containsKey(s.owner))return;
             if(campaign.handle(p,cmd))return;
             if(running&&!s.seated)return;

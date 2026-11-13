@@ -151,6 +151,20 @@ public final class EndingClient {
         sync(c);
     }
 
+    /** Ending polish pass 3: Play again is offered on REWARDS to a member of a room (the snapshot's social block names one). */
+    static boolean playAgainShown() { return step() == MatchEnding.Step.REWARDS && WarTableLobby.inRoom(); }
+    /** Play again (the REWARDS button or P): this player is done at once and the server marks him Ready in his room (ending:again); the room's
+     *  all-ready countdown does the rest. Nothing outside a room. */
+    static void playAgain(MinecraftClient c) {
+        if (!playAgainShown()) return;
+        GravesAndGloryClient.send("ending:again");
+        UiSounds.toggled(true);
+        skippedTo = MatchEnding.Step.DONE; playAgainSent++;
+        sync(c);
+    }
+    /** Harness only: how many Play again presses were sent. */
+    static volatile int playAgainSent;
+
     /** Puts the client in the shown step: the podium camera and figures on entering PODIUM, the camera off from STATS on. */
     static void sync(MinecraftClient c) {
         MatchEnding.Step s = step();

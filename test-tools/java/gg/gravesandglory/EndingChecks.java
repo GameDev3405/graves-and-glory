@@ -80,6 +80,10 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     // ending polish pass 2: the reveal (4v4 round, and the skip round's skip into PODIUM), the bars (first round), the progress set-up
     String revealWhy = ""; boolean revealDone, revealSkipDone, barsMidShot, barsDone; int asked0; String barsMid = "";
     volatile int xpSet = -1; volatile Map<String, Integer> renownSet = Map.of();
+    // ending polish pass 3: the bests across rounds 0 to 2, the graph (first round), Play again (round 5, a room match)
+    Map<String, Integer> bests0 = Map.of(); String bestsWhy = ""; boolean bestsOk = true;
+    String graphNormal = ""; volatile boolean againRound; volatile boolean againClientDone; volatile String againClientWhy = "";
+    int againRewardsAt = -1, againPressAt = -1, againEndAt = -1; String bestsNormal = ""; boolean againDone; String againServerWhy = "";
 
     /** The client checks, each tick: the step EndingClient shows and what it drew. Screens at 1280x720 gui 3; the defeat banner and one podium shot at 854x480 gui 2. */
     void client(MinecraftClient c, int tick) {
@@ -148,6 +152,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         }
         reveal(c, tick, st);
         bars(c, tick, st);
+        againClient(c, tick, st);
         // ending-client-plates: the 4v4 podium's three plates never overlap
         if (podiumThree && st == MatchEnding.Step.PODIUM && !threeDone && podiumAt >= 0 && tick >= podiumAt + 96) { // pass 2: all three are up from 4.5 s
             threeDone = true;
@@ -166,11 +171,12 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             report("ending-client-hand", EndingClient.handsHidden > hands0 + 5, (EndingClient.handsHidden - hands0) + " frames drew no hand in 20 ticks of RESULT");
         // ending-client-stats: the screen in STATS, every commander row and the four groups, fitted at 1280x720 gui 3 and at 854x480 gui 2 (427x240)
         if (endings == 1 && st == MatchEnding.Step.STATS && statsAt >= 0 && !statsDone) {
-            if (tick == statsAt + 20) { statsNormal = statsState(c); fillNormal = fillState(); Phase4Checks.shot(c, "ending-stats"); later(tick + 3, () -> Phase1Checks.window(c, 854, 480, 2)); }
+            if (tick == statsAt + 20) { statsNormal = statsState(c); fillNormal = fillState(); graphNormal = graphState(); Phase4Checks.shot(c, "ending-stats"); later(tick + 3, () -> Phase1Checks.window(c, 854, 480, 2)); }
             if (tick == statsAt + 50) {
                 statsDone = true; String small = statsState(c);
                 report("ending-client-stats", statsNormal.startsWith("ok") && small.startsWith("ok"), "1280x720 gui 3: " + statsNormal + " | 854x480 gui 2: " + small);
-                String fillSmall = fillState();
+                String fillSmall = fillState(), graphSmall = graphState();
+                report("ending-client-graph", graphNormal.startsWith("ok") && graphSmall.startsWith("ok"), "1280x720 gui 3: " + graphNormal + " | 854x480 gui 2: " + graphSmall + " (shots ending-stats, ending-stats-small)");
                 report("ending-client-stats-fill", fillNormal.startsWith("ok") && fillSmall.startsWith("ok"), "1280x720 gui 3: " + fillNormal + " | 854x480 gui 2: " + fillSmall + " (shots ending-stats, ending-stats-small)");
                 Phase4Checks.shot(c, "ending-stats-small"); later(tick + 3, () -> Phase1Checks.window(c, 1280, 720, 3));
             }
@@ -371,6 +377,133 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         return (ok ? "ok" : "FAIL") + " face " + WarTableReport.texts().get("face") + ", groups " + EndingPanels.groups + " (k " + UiCanvas.k() + ")" + (lay.isEmpty() ? "" : ", groups: " + lay) + (troops.isEmpty() ? "" : ", troops: " + troops);
     }
 
+    // ---- ending polish pass 3 ----
+    /** The first round's graph: a score race written into the round's timeline (the fixture's clock jump leaves the real samples flat), the field's scores set to its last values so the finish's own last sample continues it. */
+    void graphShape(GravesAndGlory.Battle b, Campaign c) {
+        long seconds = (b.time - b.roundStarted) / 20; int n = (int) (seconds / c.timeline.interval);
+        c.timeline.clear();
+        int a = 0, d = 0;
+        for (int i = 1; i <= n; i++) { a += i < n / 3 ? 1 + i % 3 : 4 + i % 2; d += i < n / 2 ? 3 : i % 4 == 0 ? 2 : 1; c.timeline.samples.add(new int[]{a, d}); }
+        b.scores[0] = a + 4; b.scores[1] = d + 1;
+    }
+    /** ending-timeline: the report's samples follow the battle's length (ceil(seconds / interval)), both teams' rows present and readable. */
+    void timelineCheck(JsonObject res) {
+        var tl = res == null || !res.has("timeline") ? null : res.getAsJsonObject("timeline");
+        if (tl == null) { report("ending-timeline", false, "no timeline in the report"); return; }
+        int interval = tl.get("interval").getAsInt(), seconds = res.get("seconds").getAsInt(); var teams = tl.getAsJsonArray("teams");
+        int[] r0 = teams.size() > 0 ? MatchEnding.decodeRow(teams.get(0).getAsString()) : null, r1 = teams.size() > 1 ? MatchEnding.decodeRow(teams.get(1).getAsString()) : null;
+        int want = (seconds + interval - 1) / interval;
+        boolean ok = teams.size() == 2 && r0 != null && r1 != null && r0.length == want && r1.length == want && want > 0;
+        report("ending-timeline", ok, seconds + " s at " + interval + " s: " + want + " samples wanted, rows " + (r0 == null ? "unreadable" : r0.length) + " and " + (r1 == null ? "unreadable" : r1.length)
+            + " (label " + tl.get("label") + ", last " + (r0 == null || r0.length == 0 ? "-" : r0[r0.length - 1]) + " / " + (r1 == null || r1.length == 0 ? "-" : r1[r1.length - 1]) + ", " + Campaign.JSON.toJson(tl).length() + " characters)");
+    }
+    /** ending-bests, the second match (more army kills than the first): each best beats the first match's record and is saved, in memory and on disk. */
+    void betterBests(Campaign c) {
+        var res = c.results.get(player); var pr = c.profile(player);
+        var rows = res != null && res.has("bests") ? res.getAsJsonArray("bests") : new com.google.gson.JsonArray();
+        boolean army = false, all = rows.size() > 0; StringBuilder why = new StringBuilder();
+        Map<String, Integer> disk = Map.of();
+        try { var j = JsonParser.parseString(Files.readString(c.directory.resolve(player + ".json"))).getAsJsonObject(); var m = new LinkedHashMap<String, Integer>(); if (j.has("bests")) for (var e : j.getAsJsonObject("bests").entrySet()) m.put(e.getKey(), e.getValue().getAsInt()); disk = m; }
+        catch (Exception e) { why.append("profile file unreadable: ").append(e).append("; "); all = false; }
+        for (var e : rows) {
+            var o = e.getAsJsonObject(); String k = o.get("key").getAsString(); int v = o.get("value").getAsInt(), was = o.get("previous").getAsInt();
+            boolean row = was == bests0.getOrDefault(k, -1) && v > was && pr.bests.getOrDefault(k, -1) == v && disk.getOrDefault(k, -1) == v && !o.get("label").getAsString().isEmpty();
+            if (k.equals("armyKills")) army = true;
+            all &= row; why.append(MatchEnding.bestText(k, v, was)).append(row ? "" : " WRONG").append("; ");
+        }
+        bestsOk &= all && army;
+        bestsWhy += "better match: " + why + (army ? "" : "no army kills best; ") + "saved " + pr.bests + "; ";
+    }
+    /** The graph as last drawn on STATS: samples, both final values, every word inside its box. */
+    String graphState() {
+        var tl = CampaignClient.result.has("timeline") ? CampaignClient.result.getAsJsonObject("timeline") : null;
+        int want = tl == null ? -1 : MatchEnding.decodeRow(tl.getAsJsonArray("teams").get(0).getAsString()).length;
+        String lay = EndingPanels.layout("graph");
+        boolean ok = EndingPanels.graphSamples >= 2 && EndingPanels.graphSamples == want && EndingPanels.graphFinals.size() == 2 && lay.isEmpty();
+        return (ok ? "ok" : "FAIL") + " samples " + EndingPanels.graphSamples + " of " + want + ", finals " + EndingPanels.graphFinals + (lay.isEmpty() ? "" : ", layout: " + lay);
+    }
+    /** The bests and Play again on REWARDS: the report's bests drawn, every reward word inside its box, the button drawn under the sheet inside the window. */
+    String bestsState(MinecraftClient c) {
+        int want = CampaignClient.result.has("bests") ? Math.min(3, CampaignClient.result.getAsJsonArray("bests").size()) : -1;
+        String lay = EndingPanels.layout("reward");
+        int[] a = EndingScreen.againDrawn, sh = EndingScreen.sheetDrawn; int s = EndingScreen.scaleDrawn;
+        boolean button = a != null && sh[1] + (a[1] + a[3]) * s <= UiCanvas.height() && sh[0] + (a[0] + a[2]) * s <= UiCanvas.width();
+        boolean ok = c.currentScreen instanceof EndingScreen && "rewards".equals(EndingScreen.drawn) && want > 0 && EndingPanels.bestsShown.size() == want && lay.isEmpty() && button;
+        return (ok ? "ok" : "FAIL") + " bests " + EndingPanels.bestsShown + " of " + want + ", Play again " + (a == null ? "not drawn" : Arrays.toString(a) + " at scale " + s + (button ? "" : " OUTSIDE the window")) + (lay.isEmpty() ? "" : ", layout: " + lay);
+    }
+
+    /** ending-play-again (round 5): a room match; the client skips to REWARDS, checks the bests and presses P; DONE lands in the war council with him Ready. */
+    void again(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p) {
+        if (stage == 0) {
+            if (b.running) { c.returnLobby(); return; }
+            if (!b.ready) return;
+            c.notices.remove(player); c.closeParty();
+            c.handle(p, "social:lobby"); c.handle(p, "social:ready"); c.handle(p, "social:start");
+            stage = 1; at = b.time; return;
+        }
+        if (stage == 1) {
+            if (b.time - at > 2400) { report("ending-play-again", false, "no room match within 2400 ticks; notice=" + c.notices.getOrDefault(player, "")); c.handle(p, "social:exit"); next(); return; }
+            if (!b.running || b.time < c.introUntil + 20) return;
+            p.changeGameMode(GameMode.ADVENTURE); p.setHealth(p.getMaxHealth());
+            b.roundStarted = b.time - 181 * 20; c.joinedAt.put(player, b.roundStarted);
+            c.profile(player).bests = new LinkedHashMap<>(Map.of("armyKills", 1, "score", 1)); b.squads.get(player).stats.kills += 14; // two bests on REWARDS (ending-client-bests)
+            stage = 2; return;
+        }
+        if (stage == 2) {
+            var room = c.social.room(player);
+            againServerWhy = "room " + (room == null ? "none" : room.code + " playing=" + room.playing) + "; ";
+            c.finish(b.squads.get(player).team);
+            againRound = true; skips = 3; // the client skips RESULT, PODIUM and STATS
+            stage = 3; at = b.time; return;
+        }
+        if (stage == 3) {
+            if (b.running && b.time - at < total(c) + 200) return;
+            var room = c.social.room(player);
+            boolean ready = room != null && !room.playing && room.ready.contains(player);
+            againServerWhy += "round down after " + (b.time - at) + " ticks (running=" + b.running + "), room " + (room == null ? "none" : room.code) + " ready=" + ready + " countdown " + (room == null ? -1 : room.countdown) + "; ";
+            if (!ready) againServerWhy += "NOT READY; ";
+            stage = 4; at = b.time; return;
+        }
+        if (!againClientDone && b.time - at < 400) return;
+        boolean ok = !againServerWhy.contains("NOT READY") && againClientDone && againClientWhy.startsWith("ok") && !b.running;
+        report("ending-play-again", ok, againServerWhy + "client: " + (againClientDone ? againClientWhy : "never finished"));
+        var room = c.social.room(player);
+        if (b.running) c.returnLobby();
+        if (room != null && room.ready.contains(player)) c.handle(p, "social:ready"); // stand down, so the countdown does not start another match
+        c.handle(p, "social:exit");
+        next();
+    }
+    /** The client half of round 5: on REWARDS the bests and the button at both sizes (ending-client-bests), then P; then where DONE lands. */
+    void againClient(MinecraftClient c, int tick, MatchEnding.Step st) {
+        if (!againRound || againDone) return;
+        if (st == MatchEnding.Step.REWARDS && againRewardsAt < 0) againRewardsAt = tick;
+        if (againRewardsAt < 0) return;
+        int k = tick - againRewardsAt;
+        if (againPressAt < 0) {
+            if (k == 80) { bestsNormal = bestsState(c); Phase4Checks.shot(c, "ending-bests"); later(tick + 3, () -> Phase1Checks.window(c, 854, 480, 2)); }
+            if (k == 100) {
+                String small = bestsState(c);
+                report("ending-client-bests", bestsNormal.startsWith("ok") && small.startsWith("ok"), "1280x720 gui 3: " + bestsNormal + " | 854x480 gui 2: " + small + " (shots ending-bests, ending-bests-small)");
+                Phase4Checks.shot(c, "ending-bests-small"); later(tick + 3, () -> Phase1Checks.window(c, 1280, 720, 3));
+            }
+            if (k == 110) {
+                againPressAt = tick;
+                boolean pressed = c.currentScreen instanceof EndingScreen sc && sc.keyPressed(GLFW.GLFW_KEY_P, 0, 0);
+                againClientWhy = "P on REWARDS handled=" + pressed + " (sent " + EndingClient.playAgainSent + "); ";
+            }
+            return;
+        }
+        if (st == null && againEndAt < 0) againEndAt = tick;
+        boolean lobby = c.currentScreen instanceof CampScreen s && s.page.equals("lobby"), ready = WarTableLobby.myReady();
+        if (againEndAt >= 0 && (lobby && ready && tick - againEndAt >= 10 || tick - againEndAt > 120) || tick - againPressAt > 400) {
+            againDone = true;
+            boolean ok = againClientWhy.contains("handled=true") && againEndAt >= 0 && lobby && ready;
+            againClientWhy = (ok ? "ok " : "FAIL ") + againClientWhy + "ending left the client " + (againEndAt < 0 ? "never" : (againEndAt - againPressAt) + " ticks after P") + ", then " + where(c) + ", Ready=" + ready + " (room " + CampaignClient.social.get("room") + ")";
+            Phase4Checks.shot(c, "ending-play-again-lobby");
+            againClientDone = true;
+        }
+    }
+
     static void report(String id, boolean pass, String why) { Phase4Checks.report(id, pass, why); }
     static JsonObject snap(Campaign c, ServerPlayerEntity p) { return JsonParser.parseString(c.snapshot(p)).getAsJsonObject(); }
     static String step(JsonObject snap) { return snap.has("ending") ? snap.getAsJsonObject("ending").get("step").getAsString() : "none"; }
@@ -380,7 +513,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     }
     static double toView(ServerPlayerEntity p) { double[] v = PodiumLayout.viewSpot(); return Math.sqrt(p.getEyePos().squaredDistanceTo(v[0], v[1], v[2])); }
     static int total(Campaign c) { var t = c.endingTiming; return t.resultTicks() + t.podiumTicks() + t.statsTicks() + t.rewardsTicks(); }
-    void next() { scenario++; stage = 0; pos.clear(); hp.clear(); froze = podium = stats = rewards = stopped = false; if (scenario > 4) done = true; }
+    void next() { scenario++; stage = 0; pos.clear(); hp.clear(); froze = podium = stats = rewards = stopped = false; if (scenario > 5) done = true; }
 
     /** Starts practice (or the 4v4 for the size check) once the lobby is quiet; true when the round is past its intro and the fixture is set. */
     boolean started(GravesAndGlory.Battle b, ServerPlayerEntity p, boolean big) {
@@ -416,6 +549,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             case 2 -> defeat(b, c, p);
             case 3 -> draw(b, c, p);
             case 4 -> size(b, c, p);
+            case 5 -> again(b, c, p);
             default -> done = true;
         }
     }
@@ -430,6 +564,8 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             Vec3d from = a.getPos(); b.shots.add(new Projectiles.Shot(null, null, null, "arrow", 0, from, b.time, b.time + 10000, a, from)); arrow = a; arrowAt = from;
             s.stats.kills += 6; // army kills for the Butcher award, so the stats screen's Highlights has a line (ending-client-stats-fill)
             { var pr0 = c.profile(player); pr0.progression.xp = Progression.XP_PER_TIER * 3 - 30; xpSet = pr0.progression.xp; renownSet = new HashMap<>(pr0.renown); } // pass 2: 30 XP short of tier 3 (ending-progress, ending-client-bars)
+            c.profile(player).bests.clear(); // pass 3: the first match with bests (ending-bests)
+            graphShape(b, c); // pass 3: a score race for the graph's shot (ending-client-graph); ending-timeline reads the real samples of the next round
             finishServer = b.time; finishNanos = System.nanoTime(); finishSerial++;
             c.finish(s.team);
             var pr = c.profile(player); gold1 = pr.gold; xp1 = pr.progression.xp;
@@ -449,6 +585,9 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             boolean you = res != null && res.has("you") && res.getAsJsonObject("you").has("commander") && res.getAsJsonObject("you").has("economy");
             boolean line = res != null && res.has("line") && res.get("line").getAsString().contains(" · ");
             progressCheck(c, res);
+            { boolean none = res != null && res.has("bests") && res.getAsJsonArray("bests").isEmpty(); bests0 = new LinkedHashMap<>(c.profile(player).bests);
+              boolean set = bests0.containsKey("armyKills") && bests0.containsKey("score");
+              bestsOk &= none && set; bestsWhy += "first match: bests " + (res == null ? "none" : res.get("bests")) + ", records set quietly " + bests0 + (none && set ? "" : " WRONG") + "; "; }
             report("ending-report", podiumRows && mvpFirst && goldRow && you && line && res.has("claimable"), "podium=" + podiumRows + " mvp rank 1=" + mvpFirst + " gold row=" + goldRow + " you=" + you + " line=" + (res == null ? "" : res.get("line")));
             // the freeze: a forced hit on the commander and on a troop, and an order
             float before = p.getHealth();
@@ -486,6 +625,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         report("ending-steps", podium && stats && rewards && !b.running && b.units.isEmpty() && CampWorld.inCamp(p.getX(), p.getY(), p.getZ()) && took >= total(c) - 2 && took <= total(c) + 5,
             "RESULT, PODIUM (within 3 blocks of the view spot), STATS, REWARDS seen=" + (podium && stats && rewards) + "; back in camp after " + took + " ticks (sequence " + total(c) + "), units " + b.units.size());
         report("ending-paid-once", pr.gold == gold1 && pr.progression.xp == xp1, "gold " + gold1 + "->" + pr.gold + " xp " + xp1 + "->" + pr.progression.xp);
+        { boolean once = pr.bests.equals(bests0); bestsOk &= once; bestsWhy += "after the ending " + pr.bests + (once ? " (saved once)" : " CHANGED") + "; "; }
         holdAt = -1; hold = true; // the client opens the War Table report (ending-report-you) before the next round starts
         next();
     }
@@ -513,7 +653,10 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     void skip(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p) {
         if (stage < 2) { started(b, p, false); return; }
         if (stage == 2) { // a room is open (ending-client-room: DONE lands on its war council); the client presses the menu key, then Escape three times
-            c.handle(p, "social:lobby"); c.finish(b.squads.get(player).team); pressMenu = true; stage = 3; at = b.time; return; }
+            c.handle(p, "social:lobby");
+            b.squads.get(player).stats.kills += 50; // pass 3: a better match than the first (ending-bests)
+            c.finish(b.squads.get(player).team); pressMenu = true; stage = 3; at = b.time;
+            betterBests(c); timelineCheck(c.results.get(player)); return; }
         long took = b.time - at;
         if (stage == 3) {
             if (b.running) { if (took > total(c) + 40) { report("ending-skip", false, "still running after " + took + " ticks"); c.returnLobby(); stage = 4; at = b.time; } return; }
@@ -529,8 +672,11 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     void defeat(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p) {
         if (stage < 2) { started(b, p, false); return; }
         if (stage == 2) {
+            var high = new LinkedHashMap<String, Integer>(); for (String k : MatchEnding.BEST_KEYS) high.put(k, 99999); c.profile(player).bests = new LinkedHashMap<>(high); // pass 3: records this match cannot beat
             c.finish(1 - b.squads.get(player).team);
             var sn = snap(c, p); var res = c.results.get(player);
+            { boolean none = res != null && res.has("bests") && res.getAsJsonArray("bests").isEmpty() && c.profile(player).bests.equals(high); bestsOk &= none;
+              report("ending-bests", bestsOk, bestsWhy + "worse match: bests " + (res == null ? "none" : res.get("bests")) + ", records kept=" + c.profile(player).bests.equals(high) + (none ? "" : " WRONG")); }
             String out = sn.has("ending") ? sn.getAsJsonObject("ending").get("outcome").getAsString() : "none";
             report("ending-defeat", out.equals("DEFEAT") && res != null && res.get("outcome").getAsString().equals("DEFEAT"), "snapshot " + out + ", report " + (res == null ? "none" : res.get("outcome")));
             stage = 3; at = b.time; return;
@@ -587,12 +733,16 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         if (stage < 2) { started(b, p, true); return; }
         if (stage == 3) { sizeHold(b, c); return; }
         var spread = awardSpread(b, c);
+        { var zero = new LinkedHashMap<String, Integer>(); for (String k : MatchEnding.BEST_KEYS) zero.put(k, 0); c.profile(player).bests = zero; } // pass 3: bests in the measured report
         c.finish(b.squads.get(player).team);
         awardsReport(c, spread);
         String raw = Campaign.JSON.toJson(c.results.get(player)), sent = c.snapshot(p);
         var sn = JsonParser.parseString(sent).getAsJsonObject();
         boolean whole = sn.has("result") && sn.getAsJsonObject("result").has("podium") && sn.getAsJsonObject("result").getAsJsonArray("squads").size() == 8 && sn.has("ending");
-        report("ending-snapshot-size", sent.length() <= Campaign.SNAPSHOT_LIMIT && whole, "4v4: snapshot " + sent.length() + " of " + Campaign.SNAPSHOT_LIMIT + " characters with the report (" + raw.length() + " pretty) and ending=" + whole + " (" + b.squads.size() + " squads)");
+        var rs = c.results.get(player); String tlText = rs != null && rs.has("timeline") ? Campaign.JSON.toJson(rs.get("timeline")) : "", bText = rs != null && rs.has("bests") ? Campaign.JSON.toJson(rs.get("bests")) : "";
+        boolean pretty = !sent.equals(Campaign.WIRE.toJson(JsonParser.parseString(sent)));
+        report("ending-snapshot-size", sent.length() <= Campaign.SNAPSHOT_LIMIT && whole, "4v4: snapshot " + sent.length() + " of " + Campaign.SNAPSHOT_LIMIT + " characters with the report (" + raw.length() + " pretty) and ending=" + whole + " (" + b.squads.size() + " squads)"
+            + "; sent " + (pretty ? "pretty" : "compact") + "; pass 3: timeline " + tlText.length() + " characters pretty, bests " + bText.length() + " (" + (rs != null && rs.has("bests") ? rs.getAsJsonArray("bests").size() : 0) + " rows)");
         evidence("ending-report-4v4.json", raw);
         podiumThree = true; stage = 3; at = b.time;
     }
