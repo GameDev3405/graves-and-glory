@@ -204,7 +204,7 @@ final class StanceController extends AnimationController<GeoTroop> {
             double clipTime = k.equals("stance_rally_upper") && !Double.isNaN(rallyStart)
                     ? Math.min(Math.max(0, now - rallyStart), clip.length()) : isStun(k) && !Double.isNaN(stunStart)
                     ? stunTime(now - stunStart, clip.length()) : k.equals(CHARGE)
-                    ? gait.phase * clip.length() : now % clip.length();   // the charge arms swing in step with the run legs, which the stride clock drives
+                    ? gait.phase * clip.length() : gait.standingTime(now, clip.length());   // the charge arms swing in step with the run legs, which the stride clock drives; the rest loop on the world clock, each troop at its own point in the loop
             accumulate(clip, clipTime, bones, (float) w);
         }
         ramps.values().removeIf(v -> v <= 0);

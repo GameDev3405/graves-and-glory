@@ -25,7 +25,7 @@ final class GeoTroop implements GeoReplacedEntity {
     static final int BLEND = 4;
     /**
      * Setting off, ticks (polish batch 1, foot slide): the legs blend the idle pose into the moving clip over a tick and a half, since the planted feet are
-     * carried with the body for as long as they blend; the arms take longer. Stopping is unchanged: GeckoLib's transition into idle, at {@link #BLEND}.
+     * carried with the body for as long as they blend; the arms take longer. Stopping takes {@link #BLEND} ticks, blended by GaitController into the idle loop where it is running.
      */
     static final double LEGS_START_BLEND = 1.5, UPPER_START_BLEND = 4;
     private static final RawAnimation[] LEGS = loops("legs"), UPPER = loops("upper");

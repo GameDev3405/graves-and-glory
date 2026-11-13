@@ -14,8 +14,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A GeckoLib controller whose walk and run loops are driven by ground distance, not time (see {@link Gait}). Every other clip
- * (idle, transitions, later attacks) keeps GeckoLib's normal clock.
+ * A GeckoLib controller whose walk and run loops are driven by ground distance, not time (see {@link Gait}). The idle loop runs on
+ * a free clock at each troop's own point in the loop ({@link Gait#standingTime}), so troops standing together do not breathe as one.
  * <p>
  * GeckoLib transitions always blend into a clip's first frame. The {@code owner} (the legs layer) therefore restarts the shared
  * phase at 0 the moment its transition into a gait clip ends, so the blend lands exactly where the stride clock starts and nothing
@@ -24,7 +24,8 @@ import java.util.Map;
  * Setting off from a standstill is handled apart from GeckoLib's transition, which blends over several ticks toward the clip's first frame while the body already
  * travels (the planted feet are carried with it: about 3.5 px a tick for ~4 ticks). The clip instead starts at once on the phase whose legs sit nearest the idle pose
  * ({@link #matchPhase}), and this controller blends the idle pose it was holding into the moving clip itself, over {@code startBlend} ticks, with the clip already
- * running on the stride clock. Stopping keeps GeckoLib's transition into idle.
+ * running on the stride clock. Stopping is blended by hand the same way, straight over GeckoLib's transition length: its transition would land on the idle loop's
+ * first frame, and the loop is already running somewhere else.
  */
 final class GaitController extends AnimationController<GeoTroop> {
     /** Reference speed of each gait clip (blocks per tick) as built by art/anim/knight/build_anims.py; the clip name is its key prefix. */
@@ -40,7 +41,9 @@ final class GaitController extends AnimationController<GeoTroop> {
     /** What this controller last wrote to the bones its clip keys (rotation xyz, position xyz), and the idle pose being blended out of while a start blend runs. */
     private final Map<String, float[]> out = new HashMap<>();
     private Map<String, float[]> from;
-    private double fromAt;
+    private double fromAt, fromLength;
+    /** Whether the blend out of {@link #from} is eased (setting off) or straight (stopping, as GeckoLib's own transition was). */
+    private boolean fromEased;
     private Gait.Mode lastMode = Gait.Mode.IDLE;
     /** A walk-to-run (or back) switch: no timed blend, and the stride clock keeps its phase, so the feet stay on the stride clock instead of skating through the blend. */
     private boolean keepPhase;
@@ -68,14 +71,24 @@ final class GaitController extends AnimationController<GeoTroop> {
         else if (m != lastMode && m != Gait.Mode.IDLE && !out.isEmpty()) {
             // setting off from a standstill: straight into the moving clip on the phase that matches the idle pose, blended by hand
             transitionLength = 0; keepPhase = true;
-            from = copy(out); fromAt = seekTime;
+            from = copy(out); fromAt = seekTime; fromLength = startBlend; fromEased = true;
             if (owner) gait.phase = matchPhase(model, bones, m == Gait.Mode.RUN ? "run_legs" : "walk_legs");
         }
+        else if (m != lastMode && m == Gait.Mode.IDLE && !out.isEmpty()) {
+            // stopping: the idle loop is already running at this troop's own point in it (Gait.standingTime), so GeckoLib's transition, which lands on the loop's
+            // first frame, would cut to that point when it ends; the pose held is blended into the running loop by hand instead, over the same ticks
+            transitionLength = 0; keepPhase = true;
+            from = copy(out); fromAt = seekTime; fromLength = blend; fromEased = false;
+        }
+        else if (out.isEmpty()) { transitionLength = 0; keepPhase = true; }   // first drawn: straight into its loop, no blend out of the bind pose
         else if (!keepPhase) transitionLength = blend;
         lastMode = m;
         super.process(model, state, bones, snapshots, seekTime, crashWhenCantFindBone);
         if (keepPhase && !shouldResetTick && getAnimationState() == State.RUNNING) keepPhase = false;
-        if (from != null) blendFrom(bones, AttackController.smooth((seekTime - fromAt) / startBlend), seekTime - fromAt >= startBlend);
+        if (from != null) {
+            double k = fromLength <= 0 ? 1 : Math.min(1, Math.max(0, (seekTime - fromAt) / fromLength));
+            blendFrom(bones, fromEased ? AttackController.smooth(k) : k, k >= 1);
+        }
         capture(bones);
         if (owner) {
             double ref = getAnimationState() == State.RUNNING ? playingRef() : 0;
@@ -104,7 +117,7 @@ final class GaitController extends AnimationController<GeoTroop> {
         return c;
     }
 
-    /** Lerps each bone from the idle pose it held at the start toward what the moving clip wrote this frame, by {@code w}; done once the blend has run its length. */
+    /** Lerps each bone from the pose it held at the start (setting off: the idle pose; stopping: the stride) toward what the clip wrote this frame, by {@code w}; done once the blend has run its length. */
     private void blendFrom(Map<String, CoreGeoBone> bones, double w, boolean done) {
         float k = (float) w;
         for (Map.Entry<String, float[]> en : from.entrySet()) {
@@ -156,8 +169,18 @@ final class GaitController extends AnimationController<GeoTroop> {
         return at;
     }
 
+    /** Whether the idle loop is the clip playing. */
+    private boolean idling() {
+        return currentAnimation != null && currentAnimation.animation().name().startsWith("idle_");
+    }
+
     @Override
     protected double adjustTick(double tick) {
+        if (getAnimationState() == State.RUNNING && idling()) {
+            // The idle loop runs on a free clock at this troop's own point in the loop (Gait.standingTime), never from its first frame: a rank does not breathe as one.
+            if (shouldResetTick) { super.adjustTick(tick); keepPhase = false; }
+            return gait.standingTime(tick, currentAnimation.animation().length());
+        }
         double ref = playingRef();
         if (ref <= 0 || getAnimationState() != State.RUNNING) return super.adjustTick(tick);
         if (shouldResetTick) {

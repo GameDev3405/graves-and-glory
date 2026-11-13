@@ -55,6 +55,12 @@ final class Gait {
     Mode mode = Mode.IDLE;
     /** Ground distance one loop of the clip being played covers, blocks; 0 while no gait clip plays (the phase then holds). */
     double stride;
+    /**
+     * Where in its standing loops (the idle and the stance poses) this troop is, as a share of a loop, 0..1: from its UUID, the seed the old renderer offsets its idle
+     * by, so a rank of troops does not breathe as one. 0 until the troop is first drawn.
+     */
+    double idlePhase;
+    private boolean seeded;
     private double last = Double.NaN, lastRx = Double.NaN, lastRz = Double.NaN, movedAt = Double.NaN;
     /** Each drawn troop's clock, for the in-game checks (test-tools GeoKnightChecks); weak, so unloaded troops drop out. */
     static final Map<Entity, Gait> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
@@ -67,6 +73,11 @@ final class Gait {
      * the stride clock is walked along.
      */
     void update(Entity e, double time, double partial) {
+        if (!seeded) {
+            java.util.UUID id = e.getUuid();
+            idlePhase = MotionMath.seed(id.getMostSignificantBits(), id.getLeastSignificantBits()).phase() / MotionMath.TAU;
+            seeded = true;
+        }
         if (time == last) return;
         if (Double.isNaN(last)) LIVE.put(e, this);
         // First sight, or back in view after not being drawn: the old averages describe another moment, so start from now.
@@ -105,4 +116,12 @@ final class Gait {
     }
 
     static double wrap(double p) { return p - Math.floor(p); }
+
+    /**
+     * The time (ticks) into a standing loop {@code length} ticks long at clock time {@code now}: the clock runs free, never restarted, and each troop sits
+     * {@link #idlePhase} of a loop ahead of it. A loop entered late therefore starts mid-cycle, so whatever shows it blends into it rather than cutting to its first frame.
+     */
+    double standingTime(double now, double length) {
+        return length <= 0 ? 0 : wrap(now / length + idlePhase) * length;
+    }
 }
