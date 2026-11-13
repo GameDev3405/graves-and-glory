@@ -28,6 +28,34 @@
    "metric": "ang_speed_weapon",
    "value": 170.04,
    "reason": "Kort, 2026-11-11: exemption for the Hollow King's rise, whose spec has the limbs snap back into place in about 3 ticks (the knight-derived speed limits do not fit that one clip). Moved here 2026-11-14 from the lane's scorecard_exemptions.json (43f19f5a), which this file replaces; value is the clip as Kort approved the lane on 2026-11-14."
+  },
+  {
+   "troop": "stalker",
+   "clip": "attack_volley",
+   "metric": "ang_speed_torso",
+   "value": 76.15,
+   "reason": "Kort approved both stalker shots exactly as they are (chose this stalker 2026-11-11; 2026-11-13 'One review pass': both shots stay exactly as approved, only the other clips are cleared)"
+  },
+  {
+   "troop": "stalker",
+   "clip": "attack_volley",
+   "metric": "pen_limb",
+   "value": 3.73,
+   "reason": "Kort approved both stalker shots exactly as they are (chose this stalker 2026-11-11; 2026-11-13 'One review pass': both shots stay exactly as approved, only the other clips are cleared)"
+  },
+  {
+   "troop": "stalker",
+   "clip": "attack_direct",
+   "metric": "ang_speed_arms",
+   "value": 163.85,
+   "reason": "Kort approved both stalker shots exactly as they are (chose this stalker 2026-11-11; 2026-11-13 'One review pass': both shots stay exactly as approved, only the other clips are cleared)"
+  },
+  {
+   "troop": "stalker",
+   "clip": "attack_direct",
+   "metric": "pen_limb",
+   "value": 3.99,
+   "reason": "Kort approved both stalker shots exactly as they are (chose this stalker 2026-11-11; 2026-11-13 'One review pass': both shots stay exactly as approved, only the other clips are cleared)"
   }
  ]
 }
