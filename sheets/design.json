@@ -3115,6 +3115,15 @@
       "fieldHalfX": 270,
       "fieldHalfZ": 190,
       "source": "kingsfield_cq"
+    },
+    {
+      "id": "rivergate_ey",
+      "name": "New Rivergate",
+      "theme": "river",
+      "description": "The Eyot (test): three points A to C on the mill bank, the market island and the shrine bank, over two bridges and two causeways.",
+      "fieldHalfX": 270,
+      "fieldHalfZ": 190,
+      "source": "rivergate_ey"
     }
   ],
   "gearRarities": [

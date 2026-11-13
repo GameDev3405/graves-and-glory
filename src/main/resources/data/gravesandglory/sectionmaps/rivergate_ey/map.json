@@ -1,0 +1,696 @@
+{
+ "baseY": 64,
+ "columns": "columns.bin.gz",
+ "depth": 384,
+ "design_sha256": "2d96377042f70ac45f89a867cb609088046e2254dc28b0b69213fb36a78f5b1d",
+ "field": {
+  "halfX": 270,
+  "halfZ": 190
+ },
+ "floorY": 56,
+ "format": 1,
+ "id": "rivergate_ey",
+ "origin": [
+  -288,
+  -192
+ ],
+ "points": [
+  {
+   "id": "A",
+   "name": "Mill Bank",
+   "radius": 17,
+   "x": 288,
+   "y": 65,
+   "z": 101
+  },
+  {
+   "id": "B",
+   "name": "Market Eyot",
+   "radius": 17,
+   "x": 288,
+   "y": 65,
+   "z": 192
+  },
+  {
+   "id": "C",
+   "name": "Shrine Bank",
+   "radius": 17,
+   "x": 288,
+   "y": 65,
+   "z": 283
+  }
+ ],
+ "roads": [],
+ "routes": [
+  {
+   "point": "Mill Bank",
+   "spawn": "dawn",
+   "straight": 233.47,
+   "walk": 306
+  },
+  {
+   "point": "Market Eyot",
+   "spawn": "dawn",
+   "straight": 215.0,
+   "walk": 331
+  },
+  {
+   "point": "Shrine Bank",
+   "spawn": "dawn",
+   "straight": 233.47,
+   "walk": 306
+  },
+  {
+   "point": "Mill Bank",
+   "spawn": "dusk",
+   "straight": 233.47,
+   "walk": 306
+  },
+  {
+   "point": "Market Eyot",
+   "spawn": "dusk",
+   "straight": 215.0,
+   "walk": 331
+  },
+  {
+   "point": "Shrine Bank",
+   "spawn": "dusk",
+   "straight": 233.47,
+   "walk": 306
+  }
+ ],
+ "routesBy": "floors",
+ "spawns": [
+  {
+   "id": "dawn",
+   "team": "dawn",
+   "x": 73,
+   "y": 65,
+   "z": 192
+  },
+  {
+   "id": "dusk",
+   "team": "dusk",
+   "x": 503,
+   "y": 65,
+   "z": 192
+  }
+ ],
+ "tiles": [
+  {
+   "file": "rg_a1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 0,
+   "z": 0
+  },
+  {
+   "file": "rg_b1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 64,
+   "z": 0
+  },
+  {
+   "file": "rg_c1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 128,
+   "z": 0
+  },
+  {
+   "file": "rg_d1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 192,
+   "z": 0
+  },
+  {
+   "file": "rg_e1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 256,
+   "z": 0
+  },
+  {
+   "file": "rg_f1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 320,
+   "z": 0
+  },
+  {
+   "file": "rg_g1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 384,
+   "z": 0
+  },
+  {
+   "file": "rg_h1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 448,
+   "z": 0
+  },
+  {
+   "file": "rg_i1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 512,
+   "z": 0
+  },
+  {
+   "file": "rg_a2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 0,
+   "z": 64
+  },
+  {
+   "file": "rg_b2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 64,
+   "z": 64
+  },
+  {
+   "file": "rg_c2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 128,
+   "z": 64
+  },
+  {
+   "file": "rg_d2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 192,
+   "z": 64
+  },
+  {
+   "file": "rg_e2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 256,
+   "z": 64
+  },
+  {
+   "file": "rg_f2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 320,
+   "z": 64
+  },
+  {
+   "file": "rg_g2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 384,
+   "z": 64
+  },
+  {
+   "file": "rg_h2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 448,
+   "z": 64
+  },
+  {
+   "file": "rg_i2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 512,
+   "z": 64
+  },
+  {
+   "file": "rg_a3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 0,
+   "z": 128
+  },
+  {
+   "file": "rg_b3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 64,
+   "z": 128
+  },
+  {
+   "file": "rg_c3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 128,
+   "z": 128
+  },
+  {
+   "file": "rg_d3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 192,
+   "z": 128
+  },
+  {
+   "file": "rg_e3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 256,
+   "z": 128
+  },
+  {
+   "file": "rg_f3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 320,
+   "z": 128
+  },
+  {
+   "file": "rg_g3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 384,
+   "z": 128
+  },
+  {
+   "file": "rg_h3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 448,
+   "z": 128
+  },
+  {
+   "file": "rg_i3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 512,
+   "z": 128
+  },
+  {
+   "file": "rg_a4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 0,
+   "z": 192
+  },
+  {
+   "file": "rg_b4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 64,
+   "z": 192
+  },
+  {
+   "file": "rg_c4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 128,
+   "z": 192
+  },
+  {
+   "file": "rg_d4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 192,
+   "z": 192
+  },
+  {
+   "file": "rg_e4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 256,
+   "z": 192
+  },
+  {
+   "file": "rg_f4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 320,
+   "z": 192
+  },
+  {
+   "file": "rg_g4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 384,
+   "z": 192
+  },
+  {
+   "file": "rg_h4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 448,
+   "z": 192
+  },
+  {
+   "file": "rg_i4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 512,
+   "z": 192
+  },
+  {
+   "file": "rg_a5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 0,
+   "z": 256
+  },
+  {
+   "file": "rg_b5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 64,
+   "z": 256
+  },
+  {
+   "file": "rg_c5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 128,
+   "z": 256
+  },
+  {
+   "file": "rg_d5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 192,
+   "z": 256
+  },
+  {
+   "file": "rg_e5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 256,
+   "z": 256
+  },
+  {
+   "file": "rg_f5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 320,
+   "z": 256
+  },
+  {
+   "file": "rg_g5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 384,
+   "z": 256
+  },
+  {
+   "file": "rg_h5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 448,
+   "z": 256
+  },
+  {
+   "file": "rg_i5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 512,
+   "z": 256
+  },
+  {
+   "file": "rg_a6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 0,
+   "z": 320
+  },
+  {
+   "file": "rg_b6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 64,
+   "z": 320
+  },
+  {
+   "file": "rg_c6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 128,
+   "z": 320
+  },
+  {
+   "file": "rg_d6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 192,
+   "z": 320
+  },
+  {
+   "file": "rg_e6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 256,
+   "z": 320
+  },
+  {
+   "file": "rg_f6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 320,
+   "z": 320
+  },
+  {
+   "file": "rg_g6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 384,
+   "z": 320
+  },
+  {
+   "file": "rg_h6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 448,
+   "z": 320
+  },
+  {
+   "file": "rg_i6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    38,
+    64
+   ],
+   "x": 512,
+   "z": 320
+  }
+ ],
+ "width": 576
+}
