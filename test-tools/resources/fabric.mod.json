@@ -34,6 +34,7 @@
       "gg.gravesandglory.SelfTestHost",
       "gg.gravesandglory.CampRedesignChecks",
       "gg.gravesandglory.CampNetworkChecks",
+      "gg.gravesandglory.EndingJoin",
       "gg.gravesandglory.Phase3Checks",
       "gg.gravesandglory.RankNetworkChecks",
       "gg.gravesandglory.Phase1Checks",

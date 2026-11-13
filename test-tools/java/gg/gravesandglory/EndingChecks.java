@@ -453,4 +453,329 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         c.returnLobby();
         next();
     }
+
+    // ================= Task 7: the proof suites =================
+
+    /**
+     * Suite ending-modes (GRAVES_PHASE4_CHECKS=ending-modes, run with GRAVES_INSTANT_ENDING=false). One room round per mode as the lobby starts it
+     * (social: commands): Domination (map 0), Siege (1), Convoy (2), Survival (3), 200 ticks of play, then ended as a win, a loss and a draw (Survival: win and loss).
+     * Each ending: RESULT, PODIUM, STATS, REWARDS, DONE in order on the server and on the client, the freeze (a forced hit and the troops' drift), the report's outcome and line,
+     * and a screenshot of RESULT and of PODIUM. Wins run the real clock; losses and draws are skipped on from the server so the matrix stays short.
+     * The "natural" round lowers Domination's win target through SheetOverride so the mode ends the round itself. The first win is also filmed: a frame every 5 client ticks.
+     */
+    static final class ModesSuite implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
+        record Round(String mode, int map, String result) { String tag() { return mode + "-" + result; } }
+        static final List<Round> ROUNDS = List.of(
+            new Round("domination", 0, "win"), new Round("domination", 0, "loss"), new Round("domination", 0, "draw"), new Round("domination", 0, "natural"),
+            new Round("siege", 1, "win"), new Round("siege", 1, "loss"), new Round("siege", 1, "draw"),
+            new Round("convoy", 2, "win"), new Round("convoy", 2, "loss"), new Round("convoy", 2, "draw"),
+            new Round("survival", 3, "win"), new Round("survival", 3, "loss"));
+        static final List<String> ORDER = List.of("RESULT", "PODIUM", "STATS", "REWARDS", "DONE");
+        volatile UUID player; volatile boolean done, inRound; volatile int serial, endedSerial = -1; volatile String tag = "", expect = "";
+        int idx, stage, team; long at, startedAt, finishAt, stepSince; String savedProfile, startSaid = "";
+        int savedTarget = -1; boolean fixture, froze, checkedFreeze; float hpBefore;
+        final Map<MobEntity, Vec3d> pos = new HashMap<>();
+        final List<String> seq = new ArrayList<>(), marks = new ArrayList<>(); String lastStep = "";
+        final com.google.gson.JsonArray rounds = new com.google.gson.JsonArray();
+        // client side
+        int cSerial, resultAt = -1, podiumAt = -1, clipN, waitEnd; MatchEnding.Step lastSt; boolean cReported;
+        final List<String> cSeq = new ArrayList<>();
+
+        public int limit() { return 30000; }
+        void restoreSheet() {
+            if (savedTarget < 0) return;
+            try { SheetOverride.apply("modes", "domination", "winTarget", Integer.toString(savedTarget)); } catch (Exception e) { report("ending-modes-restore", false, e.toString()); }
+            savedTarget = -1;
+        }
+        public void cleanup(MinecraftClient c) {
+            Phase4Checks.server(c, b -> {
+                restoreSheet();
+                if (b.running) b.campaign.returnLobby();
+                if (player != null) { var pl = b.server.getPlayerManager().getPlayer(player); if (pl != null) b.campaign.handle(pl, "social:exit"); }
+                if (savedProfile != null && player != null) { b.campaign.profiles.put(player, Campaign.JSON.fromJson(savedProfile, Profile.class)); b.campaign.save(player); }
+            });
+        }
+
+        // ---- the client half: steps seen, banner, screenshots, the clip ----
+        public void step(MinecraftClient c, int tick) {
+            if (tick == 20) { c.setScreen(null); player = c.player.getUuid(); Phase1Checks.window(c, 1280, 720, 3); }
+            var st = EndingClient.step();
+            if (st != null) c.options.hudHidden = false;
+            if (inRound && st == null && c.currentScreen instanceof CampScreen) c.setScreen(null);
+            int ser = serial; String t = tag;
+            if (ser != cSerial) { cSerial = ser; cSeq.clear(); resultAt = podiumAt = -1; cReported = false; waitEnd = 0; lastSt = null; }
+            if (st != lastSt) {
+                if (st == null) { if (!cSeq.isEmpty() && !cSeq.get(cSeq.size() - 1).equals("DONE")) cSeq.add("DONE"); }
+                else { cSeq.add(st.name()); if (st == MatchEnding.Step.RESULT) resultAt = tick; if (st == MatchEnding.Step.PODIUM) podiumAt = tick; }
+                lastSt = st;
+            }
+            if (ser > 0) {
+                if (st == MatchEnding.Step.RESULT && tick == resultAt + 16) {
+                    String o = EndingClient.outcome;
+                    report("ending-modes-" + t + "-client-banner", o.equals(expect) && EndingClient.bannerFrames > 0 && EndingClient.bannerDrawn.equals(o), "client outcome " + o + " (expected " + expect + "), banner word drawn '" + EndingClient.bannerDrawn + "', line '" + EndingClient.line + "'");
+                }
+                if (st == MatchEnding.Step.RESULT && tick == resultAt + 18) Phase4Checks.shot(c, "ending-modes-" + t + "-result");
+                if (st == MatchEnding.Step.PODIUM && tick == podiumAt + 36) Phase4Checks.shot(c, "ending-modes-" + t + "-podium");
+                if (t.equals("domination-win") && st != null && tick % 5 == 0) Phase4Checks.shot(c, String.format("ending-clip-%04d", clipN++));
+                if (!cReported && !cSeq.isEmpty() && (cSeq.get(cSeq.size() - 1).equals("DONE") || (endedSerial == ser && ++waitEnd > 40))) {
+                    cReported = true;
+                    report("ending-modes-" + t + "-client-steps", cSeq.equals(ORDER), "client saw " + cSeq);
+                }
+            }
+            if (done) Phase4Checks.finish(c, "ending-modes");
+        }
+
+        // ---- the server half ----
+        public void serverTick(GravesAndGlory.Battle b) {
+            if (player == null || done) return;
+            var p = b.server.getPlayerManager().getPlayer(player); if (p == null) return;
+            var c = b.campaign;
+            if (idx >= ROUNDS.size()) { evidence("ending-modes.json", Campaign.JSON.toJson(rounds)); done = true; return; }
+            Round r = ROUNDS.get(idx);
+            switch (stage) {
+                case 0 -> begin(b, c, p, r);
+                case 1 -> waitStart(b, c, p, r);
+                case 2 -> run(b, c, p, r);
+                case 3 -> watch(b, c, p, r);
+                default -> after(b, c, p, r);
+            }
+        }
+        void nextRound(Campaign c, ServerPlayerEntity p) { restoreSheet(); inRound = false; idx++; stage = 0; pos.clear(); fixture = froze = checkedFreeze = false; c.handle(p, "social:exit"); }
+
+        void begin(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p, Round r) {
+            if (b.running) { c.returnLobby(); return; }
+            if (!b.ready) return;
+            if (savedProfile == null) savedProfile = Campaign.JSON.toJson(c.profile(player));
+            c.notices.remove(player); c.handle(p, "social:exit"); tag = r.tag();
+            if (r.result().equals("natural")) { // Domination ends itself: two scores win, a score every scoreInterval ticks for the side that holds a point
+                savedTarget = Modes.row("domination").winTarget();
+                try { SheetOverride.apply("modes", "domination", "winTarget", "2"); } catch (Exception e) { report("ending-modes-" + r.tag() + "-override", false, e.toString()); }
+            }
+            StringBuilder said = new StringBuilder();
+            for (String cmd : List.of("social:room", "social:map:" + r.map(), "social:mode:" + r.mode(), "social:ready", "social:start")) { c.notices.remove(player); c.handle(p, cmd); said.append(cmd).append(" -> ").append(c.notices.getOrDefault(player, "")).append("; "); }
+            startSaid = said.toString(); stage = 1; at = b.time;
+        }
+        void waitStart(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p, Round r) {
+            if (b.time - at > 3000) { report("ending-modes-" + r.tag() + "-start", false, "no round within 3000 ticks: " + startSaid + " notice=" + c.notices.getOrDefault(player, "")); if (b.running) c.returnLobby(); nextRound(c, p); return; }
+            if (!b.running || b.time < c.introUntil + 20) return;
+            var sq = b.squads.get(player);
+            boolean ok = b.mode.id().equals(r.mode()) && c.map == r.map() && sq != null && sq.seated;
+            report("ending-modes-" + r.tag() + "-start", ok, "mode " + b.mode.id() + " (wanted " + r.mode() + ") on map " + c.map + " (wanted " + r.map() + "), " + b.points.size() + " points, " + b.squads.size() + " squads; " + startSaid);
+            if (sq == null) { c.returnLobby(); nextRound(c, p); return; }
+            p.changeGameMode(GameMode.ADVENTURE); p.setHealth(p.getMaxHealth());
+            team = sq.team; startedAt = b.time; inRound = true; stage = 2;
+            if (r.result().equals("natural")) { expect = "VICTORY"; serial++; endedSerial = -1; }
+        }
+        void run(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p, Round r) {
+            if (!b.running) { report("ending-modes-" + r.tag() + "-ran", false, "the round stopped by itself"); nextRound(c, p); return; }
+            if (r.result().equals("natural")) {
+                if (!fixture) { b.roundStarted = b.time - 181 * 20; c.joinedAt.put(player, b.roundStarted); fixture = true; }
+                if (!c.ending()) {
+                    var a = b.points.get(0); a.owner = team; a.challenger = -1; a.progress = 0; a.contested = false; a.ownedSince = b.time - 1_000_000L;
+                    if (b.time - startedAt > 2400) { report("ending-modes-" + r.tag() + "-ran", false, "no natural end in 2400 ticks, scores " + Arrays.toString(b.scores)); c.returnLobby(); nextRound(c, p); }
+                    return;
+                }
+                report("ending-modes-" + r.tag() + "-ran", b.scores[team] >= 2 && c.endingWinner == team, "Domination ended itself after " + (b.time - startedAt) + " ticks, scores " + Arrays.toString(b.scores) + " (target lowered to 2 by SheetOverride), winner " + c.endingWinner);
+                for (var u : b.units) if (u.mob.isAlive()) pos.put(u.mob, u.mob.getPos());
+                hpBefore = p.getHealth();
+                afterFinish(b, c, p, r, c.endingStart, "VICTORY"); return;
+            }
+            if (c.ending()) { report("ending-modes-" + r.tag() + "-ran", false, "the round ended by itself during the 200 ticks"); nextRound(c, p); return; }
+            if (b.time - startedAt < 200) return;
+            report("ending-modes-" + r.tag() + "-ran", true, "ran " + (b.time - startedAt) + " ticks, " + b.units.size() + " troops");
+            b.roundStarted = b.time - 181 * 20; c.joinedAt.put(player, b.roundStarted); // the elapsed-time fixture: rewards need 3 minutes
+            for (var u : b.units) if (u.mob.isAlive()) pos.put(u.mob, u.mob.getPos());
+            hpBefore = p.getHealth();
+            int winner = r.result().equals("win") ? team : r.result().equals("loss") ? 1 - team : -1;
+            expect = r.result().equals("win") ? "VICTORY" : r.result().equals("loss") ? "DEFEAT" : "DRAW";
+            serial++; endedSerial = -1;
+            c.finish(winner);
+            afterFinish(b, c, p, r, b.time, expect);
+        }
+        /** The ending has begun at start: the begins and report checks, a forced hit, then the watch. */
+        void afterFinish(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p, Round r, long start, String want) {
+            finishAt = start; seq.clear(); marks.clear(); lastStep = ""; stepSince = b.time;
+            var res = c.results.get(player); var e = c.endingJson(player);
+            String line = res != null && res.has("line") ? res.get("line").getAsString() : "";
+            String map = Spec.MAPS[r.map()].name();
+            boolean lineOk = !line.isEmpty() && line.contains(" · " + map + " · ") && line.matches(".* · \\d+:\\d\\d") && e != null && line.equals(e.get("line").getAsString());
+            boolean begun = c.ending() && b.running && e != null && e.get("step").getAsString().equals("RESULT") && e.get("outcome").getAsString().equals(want) && res != null && res.get("outcome").getAsString().equals(want);
+            report("ending-modes-" + r.tag() + "-begins", begun, "ending=" + c.ending() + " running=" + b.running + " snapshot " + (e == null ? "none" : e.get("step") + "/" + e.get("outcome")) + ", report " + (res == null ? "none" : res.get("outcome")) + " (wanted " + want + ")");
+            report("ending-modes-" + r.tag() + "-line", lineOk, "line '" + line + "' (map " + map + ")");
+            // the freeze: a forced hit on the commander and on an enemy troop
+            var enemy = b.units.stream().filter(u -> u.squad.team != team && u.mob.isAlive()).findFirst().orElse(null);
+            if (enemy != null) { p.damage(b.world.getDamageSources().mobAttack(enemy.mob), 6); enemy.mob.damage(b.world.getDamageSources().playerAttack(p), 6); }
+            froze = p.getHealth() == hpBefore;
+            JsonObject j = new JsonObject();
+            j.addProperty("tag", r.tag()); j.addProperty("mode", b.mode.id()); j.addProperty("map", map); j.addProperty("points", b.points.size()); j.addProperty("outcome", want); j.addProperty("line", line); j.addProperty("timing", total(c));
+            rounds.add(j); stage = 3;
+        }
+        void watch(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p, Round r) {
+            long elapsed = b.time - finishAt;
+            var e = c.endingJson(player);
+            String st = e != null ? e.get("step").getAsString() : c.ending() ? "" : "DONE";
+            if (!st.isEmpty() && !st.equals(lastStep)) { seq.add(st); marks.add(st + "@" + elapsed); lastStep = st; stepSince = b.time; }
+            if (!checkedFreeze && elapsed >= 25 && c.ending()) {
+                checkedFreeze = true; double worst = 0;
+                for (var en : pos.entrySet()) if (!en.getKey().isRemoved()) worst = Math.max(worst, en.getKey().getPos().distanceTo(en.getValue()));
+                report("ending-modes-" + r.tag() + "-freeze", froze && worst <= 0.05, pos.size() + " troops: worst drift " + String.format(Locale.ROOT, "%.3f", worst) + " blocks after " + elapsed + " ticks, commander health " + hpBefore + " -> " + p.getHealth() + " after a forced hit");
+            }
+            boolean skipRound = r.result().equals("loss") || r.result().equals("draw");
+            if (c.ending()) {
+                long since = b.time - stepSince;
+                if (skipRound && ((st.equals("RESULT") && since >= 30) || (st.equals("PODIUM") && since >= 50) || (st.equals("STATS") && since >= 30) || (st.equals("REWARDS") && since >= 30))) c.skipEnding(p);
+                if (elapsed > total(c) + 200) { report("ending-modes-" + r.tag() + "-steps", false, "still ending " + elapsed + " ticks in, seen " + marks); c.returnLobby(); endedSerial = serial; nextRound(c, p); }
+                return;
+            }
+            boolean inCamp = CampWorld.inCamp(p.getX(), p.getY(), p.getZ());
+            boolean timed = skipRound || (elapsed >= total(c) - 2 && elapsed <= total(c) + 5);
+            report("ending-modes-" + r.tag() + "-steps", seq.equals(ORDER) && !b.running && b.units.isEmpty() && inCamp && timed,
+                "server steps " + marks + "; back in camp=" + inCamp + " after " + elapsed + " ticks (clock " + total(c) + (skipRound ? ", skipped on" : ", unskipped") + "), units " + b.units.size());
+            endedSerial = serial; stage = 4; at = b.time;
+        }
+        void after(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p, Round r) {
+            if (b.time - at < 40) return; // the client reports its own steps and the room page first
+            nextRound(c, p);
+        }
+    }
+
+    /**
+     * Suite ending-sync (GRAVES_PHASE4_CHECKS=ending-sync, GRAVES_INSTANT_ENDING=false): the host and a second local client (EndingJoin, a second JVM cloned from this
+     * client's launch) in one room. Both clients log each step change with the world tick and a wall clock; the host checks both reach RESULT, PODIUM and STATS within
+     * 10 ticks, that the visitor, who skips on from STATS, is back in the room (War Table lobby page) while the host is still in STATS, and that the host's own sequence is unchanged.
+     */
+    static final class SyncSuite implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
+        volatile UUID host; volatile boolean done; UUID visitor;
+        Path dir; Process joiner; int stage; long at, finishAt, visDoneAt = -1; String lastHost = "", lastVis = "", hostAtVisDone = ""; boolean visRoom, visCamp;
+        final List<String> hostSeq = new ArrayList<>(), visSeq = new ArrayList<>(); String savedProfile;
+        final List<String> hostLog = Collections.synchronizedList(new ArrayList<>()); MatchEnding.Step lastSt;
+
+        public int limit() { return 30000; }
+        public void cleanup(MinecraftClient c) {
+            try { if (dir != null) Files.writeString(dir.resolve("done.txt"), "done"); } catch (Exception ignored) {}
+            if (joiner != null && joiner.isAlive()) try { joiner.waitFor(45, java.util.concurrent.TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
+            if (joiner != null && joiner.isAlive()) { report("ending-sync-joiner-exit", false, "the second client did not stop within 45 s of done.txt; stopping our own child process"); joiner.destroy(); }
+            Phase4Checks.server(c, b -> {
+                if (b.running) b.campaign.returnLobby();
+                if (host != null) { var hp = b.server.getPlayerManager().getPlayer(host); if (hp != null) b.campaign.handle(hp, "social:exit"); }
+                if (savedProfile != null && host != null) { b.campaign.profiles.put(host, Campaign.JSON.fromJson(savedProfile, Profile.class)); b.campaign.save(host); }
+            });
+        }
+        public void step(MinecraftClient c, int tick) {
+            if (tick == 20) { c.setScreen(null); host = c.player.getUuid(); }
+            var st = EndingClient.step();
+            if (st != null) c.options.hudHidden = false;
+            if (st != lastSt && c.world != null) { hostLog.add((st == null ? "END" : st.name()) + " " + c.world.getTime() + " " + System.currentTimeMillis()); lastSt = st; }
+            if (done) Phase4Checks.finish(c, "ending-sync");
+        }
+        public void serverTick(GravesAndGlory.Battle b) {
+            if (host == null || done) return;
+            var p = b.server.getPlayerManager().getPlayer(host); if (p == null) return;
+            try { tick(b, b.campaign, p); } catch (Exception e) { report("ending-sync-exception", false, e.toString()); e.printStackTrace(); done = true; }
+        }
+        void fail(String id, String why) { report(id, false, why); done = true; }
+        void tick(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p) throws Exception {
+            switch (stage) {
+                case 0 -> { // open to LAN and start the second client
+                    if (b.running) { c.returnLobby(); return; }
+                    if (!b.ready) return;
+                    savedProfile = Campaign.JSON.toJson(c.profile(host));
+                    dir = Path.of(System.getProperty("gravesandglory.runtime")).toAbsolutePath().getParent().resolve("join");
+                    if (Files.exists(dir)) try (var s = Files.list(dir)) { for (Path f : (Iterable<Path>) s::iterator) if (Files.isRegularFile(f)) Files.delete(f); }
+                    Files.createDirectories(dir.resolve("run")); Files.createDirectories(dir.resolve("runtime"));
+                    int port; try (var socket = new java.net.ServerSocket(0)) { port = socket.getLocalPort(); }
+                    boolean lan = b.server.openToLan(GameMode.ADVENTURE, false, port);
+                    report("ending-sync-lan", lan, "integrated server open to LAN on " + port);
+                    if (!lan) { done = true; return; }
+                    Files.writeString(dir.resolve("address.txt"), "127.0.0.1:" + port);
+                    joiner = EndingJoin.spawn(dir);
+                    report("ending-sync-spawn", joiner != null && joiner.isAlive(), "second client: " + EndingJoin.how);
+                    if (joiner == null) { done = true; return; }
+                    stage = 1; at = b.time;
+                }
+                case 1 -> { // wait for the visitor, open the room, publish its code
+                    for (var o : b.server.getPlayerManager().getPlayerList()) if (!o.getUuid().equals(host)) visitor = o.getUuid();
+                    if (visitor == null) { if (b.time - at > 9000) fail("ending-sync-joined", "the second client never connected within 9000 ticks (alive=" + joiner.isAlive() + ")"); return; }
+                    report("ending-sync-joined", true, "second client connected as " + b.server.getPlayerManager().getPlayer(visitor).getGameProfile().getName() + " after " + (b.time - at) + " ticks");
+                    c.notices.remove(host); c.handle(p, "social:room");
+                    var room = c.social.room(host);
+                    if (room == null) { fail("ending-sync-room", "no room: " + c.notices.getOrDefault(host, "")); return; }
+                    Files.writeString(dir.resolve("code.txt"), room.code); stage = 2; at = b.time;
+                }
+                case 2 -> { // the visitor joins and readies; then the host readies and starts
+                    var room = c.social.room(host);
+                    if (b.time - at > 2400) { fail("ending-sync-room", "the visitor did not join and ready within 2400 ticks: members " + (room == null ? "none" : room.members.size()) + ", ready " + (room == null ? "none" : room.ready.size())); return; }
+                    if (room == null || !room.members.contains(visitor) || !room.ready.contains(visitor)) return;
+                    String said = "";
+                    for (String cmd : List.of("social:ready", "social:start")) { c.notices.remove(host); c.handle(p, cmd); said += cmd + " -> " + c.notices.getOrDefault(host, "") + "; "; }
+                    report("ending-sync-room", true, "two commanders in room " + room.code + ", teams " + room.teams + "; " + said); stage = 3; at = b.time;
+                }
+                case 3 -> { // the round runs a little, then the host ends it as a win
+                    if (b.time - at > 3000) { fail("ending-sync-start", "the room round did not start in 3000 ticks"); return; }
+                    if (!b.running || b.time < c.introUntil + 20) return;
+                    var vs = b.squads.get(visitor); var hs = b.squads.get(host);
+                    report("ending-sync-start", hs != null && vs != null && hs.seated && vs.seated, "both seated: host team " + (hs == null ? "?" : hs.team) + ", visitor team " + (vs == null ? "?" : vs.team));
+                    if (hs == null || vs == null) { done = true; return; }
+                    p.changeGameMode(GameMode.ADVENTURE); p.setHealth(p.getMaxHealth());
+                    at = b.time; stage = 4;
+                }
+                case 4 -> {
+                    if (b.time - at < 100) return;
+                    b.roundStarted = b.time - 181 * 20; c.joinedAt.put(host, b.roundStarted); c.joinedAt.put(visitor, b.roundStarted);
+                    c.finish(b.squads.get(host).team); finishAt = b.time;
+                    report("ending-sync-begins", c.ending() && c.endingJson(host) != null && c.endingJson(visitor) != null, "both in RESULT: host " + c.endingJson(host) + " visitor " + c.endingJson(visitor));
+                    stage = 5;
+                }
+                case 5 -> watch(b, c, p);
+                default -> after(b, c, p);
+            }
+        }
+        void watch(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p) {
+            long elapsed = b.time - finishAt;
+            var he = c.endingJson(host); var ve = c.endingJson(visitor);
+            String hs = he != null ? he.get("step").getAsString() : c.ending() ? "" : "DONE", vs = ve != null ? ve.get("step").getAsString() : (c.ending() && !c.endingDone.contains(visitor)) ? "" : "DONE";
+            if (!hs.isEmpty() && !hs.equals(lastHost)) { hostSeq.add(hs + "@" + elapsed); lastHost = hs; }
+            if (!vs.isEmpty() && !vs.equals(lastVis)) { visSeq.add(vs + "@" + elapsed); lastVis = vs; }
+            if (visDoneAt < 0 && vs.equals("DONE")) {
+                visDoneAt = elapsed; hostAtVisDone = hs;
+                var v = b.server.getPlayerManager().getPlayer(visitor);
+                var room = c.social.room(visitor);
+                visRoom = room != null && room.members.contains(visitor);
+                visCamp = v != null && CampWorld.inCamp(v.getX(), v.getY(), v.getZ());
+            }
+            if (c.ending()) { if (elapsed > total(c) + 200) { fail("ending-sync-host-steps", "still ending " + elapsed + " ticks in: host " + hostSeq + " visitor " + visSeq); c.returnLobby(); } return; }
+            List<String> hostNames = new ArrayList<>(); for (String s : hostSeq) hostNames.add(s.substring(0, s.indexOf('@')));
+            List<String> visNames = new ArrayList<>(); for (String s : visSeq) visNames.add(s.substring(0, s.indexOf('@')));
+            report("ending-sync-host-steps", hostNames.equals(ModesSuite.ORDER) && elapsed >= total(c) - 2 && elapsed <= total(c) + 5, "host " + hostSeq + "; round over " + elapsed + " ticks after the finish (clock " + total(c) + ")");
+            report("ending-sync-visitor-steps", visNames.equals(ModesSuite.ORDER), "visitor " + visSeq + " (skipped on from STATS)");
+            report("ending-sync-visitor-early", visDoneAt >= 0 && hostAtVisDone.equals("STATS"), "the visitor reached DONE at +" + visDoneAt + " ticks while the host was in '" + hostAtVisDone + "'");
+            report("ending-sync-visitor-room", visRoom && visCamp, "at the visitor's DONE: still in the room=" + visRoom + ", in camp=" + visCamp);
+            stage = 6; at = b.time;
+        }
+        void after(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p) throws Exception {
+            boolean haveLobby = Files.exists(dir.resolve("join-lobby.txt")), haveSteps = Files.exists(dir.resolve("join-steps.txt"));
+            if (!(haveLobby && haveSteps) && b.time - at < 400) return;
+            List<String> join = haveSteps ? Files.readAllLines(dir.resolve("join-steps.txt")) : List.of();
+            String lobby = haveLobby ? Files.readString(dir.resolve("join-lobby.txt")).trim() : "";
+            Map<String, long[]> h = parse(new ArrayList<>(hostLog)), v = parse(join);
+            StringBuilder why = new StringBuilder(); boolean ok = true;
+            for (String s : List.of("RESULT", "PODIUM", "STATS")) {
+                long[] a = h.get(s), z = v.get(s);
+                if (a == null || z == null) { ok = false; why.append(s).append(": host ").append(a == null ? "missing" : a[0]).append(" visitor ").append(z == null ? "missing" : z[0]).append("; "); continue; }
+                long dt = Math.abs(a[0] - z[0]); ok &= dt <= 10;
+                why.append(s).append(": host tick ").append(a[0]).append(" visitor tick ").append(z[0]).append(" (").append(dt).append(" ticks, ").append(Math.abs(a[1] - z[1])).append(" ms apart); ");
+            }
+            long[] vr = v.get("REWARDS"), hr = h.get("REWARDS");
+            why.append("REWARDS: host ").append(hr == null ? "missing" : hr[0]).append(" visitor ").append(vr == null ? "missing" : vr[0]).append(" (visitor skipped on, not compared); ");
+            report("ending-sync-sync", ok, why.toString());
+            report("ending-sync-visitor-lobby", lobby.contains("CampScreen lobby"), "visitor client after DONE: " + lobby);
+            evidence("ending-sync-host-log.txt", String.join("\n", hostLog)); evidence("ending-sync-join-log.txt", String.join("\n", join) + "\n" + lobby);
+            c.handle(p, "social:exit"); done = true;
+        }
+        static Map<String, long[]> parse(List<String> lines) {
+            Map<String, long[]> m = new LinkedHashMap<>();
+            for (String l : lines) { String[] f = l.trim().split(" "); if (f.length >= 3 && !m.containsKey(f[0])) try { m.put(f[0], new long[]{Long.parseLong(f[1]), Long.parseLong(f[2])}); } catch (NumberFormatException ignored) {} }
+            return m;
+        }
+    }
 }
