@@ -87,13 +87,13 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 toggled = !BattleMapScreen.lookParchment() && "real".equals(screen.drawnTexture) && screen.drawnId != null && screen.drawnId.equals(BattleMapArt.real());
                 viewWhy += "T: look parchment=" + BattleMapScreen.lookParchment() + ", drawn " + screen.drawnTexture + "; ";
                 screen.keyPressed(GLFW.GLFW_KEY_HOME, 0, 0);
-                Phase4Checks.shot(c, "ui-map-real-" + id);
                 next(6, tick);
             }
             case 6 -> {
                 if (waited < 3) return;
                 var v = screen.view;
                 homeFit = Math.abs(v.scale() - v.fitScale()) < 1e-9 && !v.moved();
+                Phase4Checks.shot(c, "ui-map-real-" + id); // the real look at fit
                 pressLook(screen); // back to parchment
                 saved = BattleMapClient.grid;
                 BattleMapClient.grid = null; // a late joiner: the screen draws the fallback

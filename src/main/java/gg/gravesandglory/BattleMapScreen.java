@@ -45,6 +45,8 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     String drawnTexture = "none";
     Identifier drawnId;
     final List<Hit> hits = new ArrayList<>();
+    /** Boxes the frame's labels already cover: a new label moves to the nearest free row (declutter). */
+    final List<int[]> taken = new ArrayList<>();
     // press state for the click-or-drag rule
     private double pressX, pressY, lastX, lastY;
     private int pressButton = -1;
@@ -238,8 +240,8 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         int w = textRenderer.getWidth(p.title()) + 12;
         for (String r : p.rows()) w = Math.max(w, textRenderer.getWidth(r) + 16);
         int h = ROW + 3 + p.rows().size() * ROW + 2;
-        int x = p.x() + 10, y = p.y() - 8;
-        if (x + w > ax + aw - 2) x = p.x() - 10 - w;
+        int x = p.x() + 14, y = p.y() + 8 - h; // above the anchor's right, clear of a point's name plate below it
+        if (x + w > ax + aw - 2) x = p.x() - 14 - w;
         x = Math.max(ax + 2, x);
         y = Math.max(ay + 2, Math.min(y, ay + ah - h - 2));
         return new Popup(p.kind(), p.point(), p.army(), p.title(), p.rows(), p.active(), p.wx(), p.wz(), x, y, w);
@@ -307,6 +309,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     @Override public void render(DrawContext g, int mx, int my, float delta) {
         view.layout(ax, ay, aw, ah); // re-clamps when the window changed under a live screen
         hits.clear();
+        taken.clear();
         g.fill(0, 0, width, height, TABLE);
         g.enableScissor(ax, ay, ax + aw, ay + ah);
         try {
@@ -358,12 +361,35 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         g.drawBorder(x0 - 1, y0 - 1, x1 - x0 + 2, y1 - y0 + 2, DarkUi.BRASS);
     }
 
+    /** The y for a w x h label wanted at (x, y): y itself when free, else the nearest free row a step up or down (three each way), else y.
+     *  The box chosen is taken. */
+    int free(int x, int y, int w, int h) {
+        int step = h + 1;
+        for (int k = 0; k <= 6; k++) {
+            int ty = y + (k == 0 ? 0 : (k % 2 == 1 ? -1 : 1) * ((k + 1) / 2) * step);
+            boolean clear = true;
+            for (int[] t : taken) if (x < t[0] + t[2] && x + w > t[0] && ty < t[1] + t[3] && ty + h > t[1]) { clear = false; break; }
+            if (clear) { taken.add(new int[] {x, ty, w, h}); return ty; }
+        }
+        taken.add(new int[] {x, y, w, h});
+        return y;
+    }
+
+    /** A 1 px leader from an anchor to a label moved off it. */
+    static void leader(DrawContext g, int x, int y, int px, int py, int w, int h, int color) {
+        int ly = py > y ? py : py + h;
+        if (Math.abs(ly - y) > 2) line(g, x, y, Math.max(px, Math.min(px + w - 1, x)), ly, color, 1, 1);
+    }
+
+    static String trimName(String n) { return n.length() <= 16 ? n : n.substring(0, 15) + "."; }
+
     int sx(double wx) { return (int) Math.round(view.screenX(wx)); }
     int sy(double wz) { return (int) Math.round(view.screenY(wz)); }
 
     void drawPoints(DrawContext g) {
         var pts = Spec.POINTS;
         int mine = GravesAndGloryClient.team;
+        for (var p : pts) { int x = sx(p.x() + .5), y = sy(p.z() + .5); taken.add(new int[] {x - 8, y - 8, 17, 17}); }
         for (int i = 0; i < pts.length; i++) {
             var p = pts[i];
             int x = sx(p.x() + .5), y = sy(p.z() + .5);
@@ -384,8 +410,9 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             g.drawText(textRenderer, id, x - textRenderer.getWidth(id) / 2 + 1, y - 3, INK, false);
             String name = p.name();
             int nw = textRenderer.getWidth(name);
-            g.fill(x - nw / 2 - 2, y + 10, x + nw / 2 + 3, y + 20, PLATE);
-            g.drawText(textRenderer, name, x - nw / 2 + 1, y + 11, DarkUi.IVORY, false);
+            int ny = free(x - nw / 2 - 2, y + 10, nw + 5, 10);
+            g.fill(x - nw / 2 - 2, ny, x + nw / 2 + 3, ny + 10, PLATE);
+            g.drawText(textRenderer, name, x - nw / 2 + 1, ny + 1, DarkUi.IVORY, false);
             var plan = pointPlan(i);
             if (plan != null) flag(g, x, y - 8, plan.job(), true);
             List<String> tip = new ArrayList<>();
@@ -437,10 +464,12 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             else { ex = n > 0 ? sx(tx / n) : x; ey = n > 0 ? sy(tz / n) : y; }
             if (Math.hypot(ex - x, ey - y) > 10) {
                 line(g, x, y, ex, ey, 0xddeee9df, 1, 3);
-                if (a.job() >= 0) glyph(g, jobGlyph(a.job()), ex - 3, ey - 3, DarkUi.IVORY, INK);
+                if (a.job() >= 0 && a.point() < 0) glyph(g, jobGlyph(a.job()), ex - 3, ey - 3, DarkUi.IVORY, INK); // a point's own flag shows its plan
             }
-            String label = a.name() + (a.bot() ? " (bot)" : "") + " " + count(a);
-            int w = textRenderer.getWidth(label) + 6, px = x - w / 2, py = y - 16;
+            boolean named = a.name().contains(" bot "); // "normal bot 2" says bot already (spec call 12)
+            String label = trimName(a.name()) + (a.bot() && !named ? " (bot)" : "") + ": " + count(a);
+            int w = textRenderer.getWidth(label) + 6, px = x - w / 2, py = free(px, y - 16, w, 11);
+            leader(g, x, y, px, py, w, 11, 0xbbeee9df);
             g.fill(px, py, px + w, py + 11, 0x99120c08);
             g.drawBorder(px, py, w, 11, DarkUi.IVORY);
             g.drawText(textRenderer, label, px + 3, py + 2, DarkUi.IVORY, false);
@@ -459,6 +488,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
 
     void drawOwn(DrawContext g) {
         for (var gr : CommandMode.groups) {
+            if (gr.count() <= 0) continue; // a group with nobody left has no place on the map
             int x = sx(gr.cx()), y = sy(gr.cz()), tx = sx(gr.x()), ty = sy(gr.z());
             boolean selected = CommandSelection.isSelected(gr.id());
             if (Math.hypot(tx - x, ty - y) > 10) {
@@ -466,7 +496,8 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
                 glyph(g, orderGlyph(gr.order()), tx - 3, ty - 3, selected ? DarkUi.GOLD : DarkUi.IVORY, INK);
             }
             String label = groupShort(gr.id()) + " " + gr.count();
-            int w = textRenderer.getWidth(label) + 6, px = x - w / 2, py = y - 6;
+            int w = textRenderer.getWidth(label) + 6, px = x - w / 2, py = free(px, y - 6, w, 14);
+            leader(g, x, y, px, py, w, 14, DarkUi.BRASS);
             g.fill(px, py, px + w, py + 11, 0xf0241810);
             g.drawBorder(px, py, w, 11, selected ? DarkUi.BRASS_HI : BRASS_LO);
             if (selected) g.drawBorder(px - 1, py - 1, w + 2, 13, DarkUi.GOLD);
