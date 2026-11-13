@@ -3654,10 +3654,11 @@ public final class Phase1Checks implements ClientModInitializer {
         }
         /** The hero letter's tier when the track starts at first (the page's own rule, UiMath.heroTier then the next title tier). */
         static int heroAt(int first){return WarTablePages.titleFrom(UiMath.heroTier(first,WarTablePages.shown(),Progression.TIERS,WarTablePages.EVERY));}
-        /** A Roll plaque's two lines hold the words of the tier's reward (Progression.reward) and nothing else: "30 gold" reads "Gold / 30"; the article and the word House are left out. */
+        /** A Roll plaque's two lines hold the words of the tier's reward (Progression.reward) and nothing else: "30 gear shards" reads "Gear / 30"; the article and the word House are left out. */
         static boolean plaqueIs(int tier,String plaque){
             if(plaque==null)return false;Set<String> want=new TreeSet<>(),got=new TreeSet<>();
-            for(String w:Progression.reward(tier).toLowerCase(Locale.ROOT).split(" "))if(!Set.of("a","an","house").contains(w))want.add(w);
+            String reward=Progression.reward(tier).toLowerCase(Locale.ROOT);
+            for(String w:reward.split(" "))if(!Set.of("a","an","house").contains(w)&&!(w.equals("shards")&&reward.contains("gear")))want.add(w); // "30 gear shards" reads "Gear / 30"
             for(String w:plaque.toLowerCase(Locale.ROOT).split("[ /]+"))if(!w.isEmpty())got.add(w);
             return want.equals(got);
         }
@@ -3687,12 +3688,12 @@ public final class Phase1Checks implements ClientModInitializer {
                     boolean centred=first!=null&&last!=null&&Math.abs((first[0]+last[0]+last[2])/2-(o[0]+480))<=2;
                     boolean chosen=house.equals(text("house-chosen"));
                     var g0=grant(pr,"daily:0","daily:0");var g1=grant(pr,"daily:1","daily:1");var g2=grant(pr,"daily:2","daily:2");var gw=grant(pr,"weekly","weekly:"+house);
-                    boolean words=(g0.gold()+" gold and "+g0.xp()+" XP").equals(text("reward-0"))&&(g1.gold()+" gold and "+g1.xp()+" XP").equals(text("reward-1"))&&(g2.gold()+" gold and "+g2.xp()+" XP").equals(text("reward-2"))
-                        &&(gw.gold()+" gold, "+gw.xp()+" XP and "+gw.shards()+" "+houseName+" shards").equals(text("reward-weekly"))&&text("shards-0")==null&&text("shards-1")==null&&text("shards-2")==null;
+                    boolean words=(g0.gold()+" gear shards and "+g0.xp()+" XP").equals(text("reward-0"))&&(g1.gold()+" gear shards and "+g1.xp()+" XP").equals(text("reward-1"))&&(g2.gold()+" gear shards and "+g2.xp()+" XP").equals(text("reward-2"))
+                        &&(gw.gold()+" gear shards, "+gw.xp()+" XP and "+gw.shards()+" "+houseName+" shards").equals(text("reward-weekly"))&&text("shards-0")==null&&text("shards-1")==null&&text("shards-2")==null&&(Progression.writs(gw.gold()/100).equals(text("shards-weekly")==null?null:text("shards-weekly").substring(2)));
                     ok&=placed&&fresh&&chips&&centred&&chosen&&words;why+="; notes "+str(rect("note-0"))+", "+str(rect("note-1"))+", "+str(rect("note-2"))+", weekly "+str(rect("weekly"))+", Reroll "+str(box(c,"reroll"))+(placed?"":" WRONG")
                         +"; the third contract \""+text("contract-2")+"\", Reroll "+(fresh?"taking a press":"WRONG: dull (\""+text("reroll-hint")+"\")")
                         +"; the House row "+row+"centred on the page="+centred+(chips&&centred?"":" WRONG")+", the banner's House "+house+" chosen (the drawn word \""+text("house-chosen")+"\")"+(chosen?"":" WRONG")
-                        +"; the rewards \""+text("reward-0")+"\", \""+text("reward-1")+"\", \""+text("reward-2")+"\" and the weekly's \""+text("reward-weekly")+"\" are Progression.claim's own words, no shards line yet"+(words?"":" WRONG");
+                        +"; the rewards \""+text("reward-0")+"\", \""+text("reward-1")+"\", \""+text("reward-2")+"\" and the weekly's \""+text("reward-weekly")+"\" are Progression.claim's own words (gear shards, never gold), the weekly's whole writ on its own line \""+text("shards-weekly")+"\", no shards line on the dailies"+(words?"":" WRONG");
                     serial=CampaignClient.noticeSerial;before=text("contract-2");landedAt=-1;click(c,box(c,"reroll"));next(tick);}
                 case 1->{boolean changed=!Objects.equals(before,text("contract-2")),noticed=CampaignClient.noticeSerial!=serial,landed=noticed&&(changed||refused(CampaignClient.notice));
                     if(landed&&landedAt<0)landedAt=tick;String n=text("notice");
@@ -3702,7 +3703,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     else if(!landed&&k>100){ok=false;why+="; Reroll sent "+lastSent()+": no change and no refusal 100 ticks on (the third contract \""+text("contract-2")+"\", the notice \""+CampaignClient.notice+"\") WRONG";landedAt=-1;next(tick);}}
                 case 2->{window(c,1920,1080,2,true);goldBefore=CampaignClient.profile.gearShards;writsBefore=CampaignClient.profile.troopWrits;writGoldBefore=CampaignClient.profile.writGold;xpBefore=pr.xp;shardsBefore=CampaignClient.profile.shards.getOrDefault(house,0);landedAt=-1; // one battle today, six this week
                     gA=grant(pr,"daily:0","daily:0");gW=grant(pr,"weekly","weekly:"+house);
-                    server(c,b->{var s=b.campaign.profile(player).progression;Progression.reset(s,Progression.today());s.dailyBattles=1;s.weeklyBattles=Progression.WEEKLY_BATTLES;b.campaign.save(player);});next(tick);}
+                    server(c,b->{b.campaign.profile(player).writGold=0;var s=b.campaign.profile(player).progression;Progression.reset(s,Progression.today());s.dailyBattles=1;s.weeklyBattles=Progression.WEEKLY_BATTLES;b.campaign.save(player);});next(tick);}
                 case 3->{if(k==18)UiRecruitChecks.park(c);boolean landed=pr.dailyBattles==1&&pr.weeklyBattles==Progression.WEEKLY_BATTLES;if(landed&&landedAt<0)landedAt=tick;
                     boolean drawn="Claim".equals(text("claim-0"))&&"Claim".equals(text("claim-weekly"));
                     if(landed&&k>=20&&(drawn||tick>=landedAt+20)){ // judged once a frame has drawn both Claims
@@ -3721,24 +3722,24 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 4->{boolean landed=pr.claims.contains("daily:0");if(landed&&landedAt<0)landedAt=tick;String want=gA.message();
                     boolean drawn="table/stamp-hollow".equals(tex("stamp-0"))&&"Claimed".equals(text("progress-0"))&&want.equals(text("notice"));
                     if(landed&&k>=8&&(drawn||tick>=landedAt+20)){
-                        boolean pass="progress:daily:0".equals(lastSent())&&drawn&&box(c,"claim-0")==null&&in(rect("stamp-0"),rect("note-0"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gearShards==goldBefore+gA.gold()&&pr.xp==xpBefore+gA.xp();
+                        boolean pass="progress:daily:0".equals(lastSent())&&drawn&&box(c,"claim-0")==null&&in(rect("stamp-0"),rect("note-0"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gearShards==goldBefore+gA.gold()&&CampaignClient.profile.troopWrits==writsBefore+gA.gold()/100&&pr.xp==xpBefore+gA.xp();
                         ok&=pass;why+="; Claim on note 0 sent "+lastSent()+": claims "+pr.claims+", the note reads \""+text("progress-0")+"\", stamped "+tex("stamp-0")+" at "+str(rect("stamp-0"))+", Claim "+(box(c,"claim-0")==null?"gone":"still shown")
-                            +", the notice line \""+text("notice")+"\", gold "+goldBefore+" to "+CampaignClient.profile.gearShards+", XP "+xpBefore+" to "+pr.xp+(pass?"":" WRONG");
+                            +", the notice line \""+text("notice")+"\", gear shards "+goldBefore+" to "+CampaignClient.profile.gearShards+", writs "+writsBefore+" to "+CampaignClient.profile.troopWrits+", XP "+xpBefore+" to "+pr.xp+(pass?"":" WRONG");
                         landedAt=-1;click(c,box(c,"claim-weekly"));next(tick);}
                     else if(!landed&&k>100){ok=false;why+="; Claim on note 0 sent "+lastSent()+": the claim never landed (claims "+pr.claims+", the notice \""+CampaignClient.notice+"\") WRONG";sub=6;subAt=tick;}}
                 case 5->{boolean landed=pr.claims.contains("weekly");if(landed&&landedAt<0)landedAt=tick;String want=gW.message();
                     boolean drawn="table/stamp-hollow".equals(tex("stamp-weekly"))&&"Claimed".equals(text("progress-weekly"))&&want.equals(text("notice"));
                     if(landed&&k>=3&&(drawn||tick>=landedAt+20)){
-                        boolean pass=("progress:weekly:"+house).equals(lastSent())&&drawn&&box(c,"claim-weekly")==null&&in(rect("stamp-weekly"),rect("weekly"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gearShards==goldBefore+gA.gold()+gW.gold()&&pr.xp==xpBefore+gA.xp()+gW.xp()
+                        boolean pass=("progress:weekly:"+house).equals(lastSent())&&drawn&&box(c,"claim-weekly")==null&&in(rect("stamp-weekly"),rect("weekly"))&&want.equals(CampaignClient.notice)&&CampaignClient.profile.gearShards==goldBefore+gA.gold()+gW.gold()&&CampaignClient.profile.troopWrits==writsBefore+(gA.gold()+gW.gold())/100&&pr.xp==xpBefore+gA.xp()+gW.xp()
                             &&CampaignClient.profile.shards.getOrDefault(house,0)==shardsBefore+gW.shards()&&box(c,"house-"+house)!=null;
                         ok&=pass;why+="; Claim on the weekly sent "+lastSent()+": the note reads \""+text("progress-weekly")+"\", stamped "+tex("stamp-weekly")+" at "+str(rect("stamp-weekly"))+", Claim "+(box(c,"claim-weekly")==null?"gone":"still shown")
-                            +", the notice line \""+text("notice")+"\", gold "+CampaignClient.profile.gearShards+", XP "+pr.xp+", "+houseName0()+" shards "+shardsBefore+" to "+CampaignClient.profile.shards.getOrDefault(house,0)+" (want +"+gW.shards()+")"+(pass?"":" WRONG");
+                            +", the notice line \""+text("notice")+"\", gear shards "+CampaignClient.profile.gearShards+", writs "+CampaignClient.profile.troopWrits+", XP "+pr.xp+", "+houseName0()+" shards "+shardsBefore+" to "+CampaignClient.profile.shards.getOrDefault(house,0)+" (want +"+gW.shards()+")"+(pass?"":" WRONG");
                         shot(c,"ui-page-contracts-claimed");landedAt=-1;next(tick);}
                     else if(!landed&&k>100){ok=false;why+="; Claim on the weekly sent "+lastSent()+": the claim never landed (claims "+pr.claims+", the notice \""+CampaignClient.notice+"\") WRONG";next(tick);}}
                 case 6->{int g0=goldBefore,w0=writsBefore,wg0=writGoldBefore,x0=xpBefore,s0=shardsBefore;String h0=house; // put back: no claims, no battles, the XP, the reward gold (gear shards and the writ purse) and the shards as they were
                     server(c,b->{var pp=b.campaign.profile(player);var s=pp.progression;s.claims.remove("daily:0");s.claims.remove("weekly");s.dailyBattles=0;s.weeklyBattles=0;s.xp=x0;pp.gearShards=g0;pp.troopWrits=w0;pp.writGold=wg0;if(s0<=0)pp.shards.remove(h0);else pp.shards.put(h0,s0);b.campaign.save(player);});next(tick);}
                 case 7->{boolean back=!pr.claims.contains("daily:0")&&!pr.claims.contains("weekly")&&pr.dailyBattles==0&&pr.weeklyBattles==0&&pr.xp==xpBefore&&CampaignClient.profile.gearShards==goldBefore&&CampaignClient.profile.shards.getOrDefault(house,0)==shardsBefore;
-                    if(back&&(text("notice")==null||k>=200)){why+="; put back: no claims, XP "+pr.xp+", gold "+CampaignClient.profile.gearShards;stage=4;} // the claims' notice faded, for the grading shot
+                    if(back&&(text("notice")==null||k>=200)){why+="; put back: no claims, XP "+pr.xp+", gear shards "+CampaignClient.profile.gearShards;stage=4;} // the claims' notice faded, for the grading shot
                     else if(!back&&k>100){ok=false;why+="; not put back: claims "+pr.claims+", XP "+pr.xp+", gold "+CampaignClient.profile.gearShards+" WRONG";stage=4;}}
                 default->stage=4;
             }

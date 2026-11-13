@@ -1287,7 +1287,7 @@ final class WarTablePages {
         return Progression.claim(s, arg == null ? key : key + ":" + arg);
     }
 
-    /** A grant as words: "30 gold and 75 XP", "150 gold, 300 XP and 10 Ironclad shards" (shards only when asked for; houseName null leaves the House out). */
+    /** A grant as words: "30 gear shards and 75 XP", "150 gear shards, 300 XP and 10 Ironclad shards" (the whole writs of 100 or more are their own line on the note and in the claim notice) (shards only when asked for; houseName null leaves the House out). */
     static String words(Progression.Grant g, boolean shards, String houseName) {
         List<String> parts = new ArrayList<>();
         if (g.gold() > 0) parts.add(g.gold() + " gear shards");
@@ -1328,7 +1328,7 @@ final class WarTablePages {
     static String[] rewardPlaque(int t) {
         String[] w = Progression.reward(t).split(" ");
         String l1, l2;
-        if (w[0].matches("\\d+")) { l1 = Progression.cap(w[w.length - 1]); l2 = w[0]; }
+        if (w[0].matches("\\d+")) { l1 = Progression.cap(w.length > 2 && w[1].equals("gear") ? w[1] : w[w.length - 1]); l2 = w[0]; } // "30 gear shards" is Gear, 30; "10 House shards" is Shards, 10
         else { int i = w[0].equals("a") || w[0].equals("an") ? 1 : 0; l1 = w[i]; l2 = w.length > i + 1 ? w[w.length - 1] : ""; }
         String icon = Progression.GOLD_TIERS.contains(t) ? "chapter/ic-coins" : Progression.SHARD_TIERS.contains(t) ? "chapter/ic-shards"
             : t == Progression.RARE_TIER ? "recruit/wax-star" : "pennant_pattern".equals(Progression.COSMETIC_TIERS.get(t)) ? "chapter/ic-pennant"
@@ -1473,7 +1473,8 @@ final class WarTablePages {
         text(g, "reroll-hint", DarkUi.body(hint), hint, ox + REROLL_X + 96, oy + REROLL_Y + 6, DarkUi.MUTED);
         int weekly = Progression.WEEKLY_BATTLES;
         boolean weeklyDone = p.claims.contains("weekly");
-        note(g, "weekly", "table/note-weekly", ox + WEEKLY_X, oy + WEEKLY_Y, 292, "Complete " + weekly + " battles this week", words(payOf("weekly", house), true, weeklyDone ? null : houseName), "", false,
+        note(g, "weekly", "table/note-weekly", ox + WEEKLY_X, oy + WEEKLY_Y, 292, "Complete " + weekly + " battles this week", words(payOf("weekly", house), true, weeklyDone ? null : houseName),
+            weeklyDone || payOf("weekly", house).gold() < 100 ? "" : "+ " + Progression.writs(payOf("weekly", house).gold() / 100), false,
             Math.min(p.weeklyBattles, weekly), weekly, weeklyDone, "weekly", "progress-weekly", "table/stamp-hollow", "stamp-weekly");
         String reset = "Daily contracts reset at 00:00 UTC, the weekly on Monday";
         WarTableHome.centred(g, DarkUi.body(reset), ox + 480, oy + RESET_Y, DarkUi.MUTED);

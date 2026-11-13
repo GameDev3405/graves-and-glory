@@ -109,11 +109,13 @@ final class Progression {
     static Grant pay(State s,String stored,int gold,int xp,int shards,String house,String troop,String cosmetic){
         s.claims.add(stored);s.xp=Math.min(1_000_000,s.xp+xp);
         List<String> parts=new ArrayList<>();
-        if(gold>0)parts.add("+"+gold+" gear shards");if(xp>0)parts.add("+"+xp+" XP");if(shards>0)parts.add("+"+shards+" "+RosterMath.houseName(house)+" shards");
+        if(gold>0)parts.add("+"+gold+" gear shards");if(gold>=100)parts.add("+"+writs(gold/100));if(xp>0)parts.add("+"+xp+" XP");if(shards>0)parts.add("+"+shards+" "+RosterMath.houseName(house)+" shards");
         if(troop!=null)parts.add(troop(troop).name());if(cosmetic!=null)parts.add("the "+cosmetic.replace('_',' ')+" cosmetic");
         for(int i=0;i<TITLE_TIERS.length;i++)if(stored.equals(SEASON+":"+TITLE_TIERS[i]))parts.add("the title "+TITLES[i]);
         return new Grant(gold,xp,shards,shards>0?house:null,troop,cosmetic,"Claimed reward: "+String.join(" / ",parts));
     }
+    /** "1 troop writ", "2 troop writs": the whole writs a reward of old-gold pays (Profile.payGold pays one per 100; a fraction is carried and said nowhere). */
+    static String writs(int n){return n+" troop writ"+(n==1?"":"s");}
     /** What a Founders tier gives, for the chapter page. */
     static String reward(int tier){
         if(GOLD_TIERS.contains(tier))return TIER_GOLD+" gear shards";

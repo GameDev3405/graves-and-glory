@@ -1385,7 +1385,8 @@ public final class Campaign {
         else {var reward=Progression.claim(p.progression,action);
             // A claim that grants a troop (the Founders Rare) waits for the match to end, as roll and buy do: a copy taken mid-battle would raise the stars of a fielded troop.
             var seat=b.squads.get(id);if(reward.troop()!=null&&b.running&&seat!=null&&seat.seated){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));notice(id,"Claim tier "+Progression.RARE_TIER+"'s Rare after the battle: active battle choices are locked until the match ends.");return true;}
-            p.payGold(reward.gold());result=reward.message();
+            int writs0=p.troopWrits;p.payGold(reward.gold());result=reward.message();
+            int tipped=p.troopWrits-writs0-reward.gold()/100;if(tipped>0)result+=" / +"+Progression.writs(tipped); // the carried purse tipped over: say the writ it paid
             if(reward.shards()>0&&reward.house()!=null)p.shards.merge(reward.house(),reward.shards(),Integer::sum); // a contract's or a Founders tier's shards, to the House the claim named
             var troop=reward.troop()==null?null:troop(reward.troop());if(troop!=null)result+=". "+receive(p,troop); // the Founders Rare: a new troop, a copy, or past full stars its shards
             if(reward.cosmetic()!=null)p.cosmetics.add(reward.cosmetic());}
