@@ -2314,16 +2314,16 @@ public final class Phase1Checks implements ClientModInitializer {
                         stage=17;}
                 }
                 case 17->{window(c,960,540,2);mapMarks=true;seen=tick;stage=18;}
-                case 18->{if(tick>=seen+20){c.setScreen(new GravesAndGloryClient.MapScreen(null));seen=tick;stage=19;}}
+                case 18->{if(tick>=seen+20){c.setScreen(new BattleMapScreen(null));seen=tick;stage=19;}}
                 case 19->{ // p1-ui-map-glyphs
                     if(tick>=seen+5){
-                        String legend=GravesAndGloryClient.MapScreen.legend(),lower=" "+legend.toLowerCase(Locale.ROOT)+" ";
+                        String legend=BattleMapScreen.legend(),lower=" "+legend.toLowerCase(Locale.ROOT)+" ";
                         List<String> colours=COLOURS.stream().filter(word->java.util.regex.Pattern.compile("[^a-z]"+word+"[^a-z]").matcher(lower).find()).toList();
                         var ms=GravesAndGloryClient.markers;long own=ms.stream().filter(GravesAndGloryClient.Marker::own).count(),ally=ms.size()-own;
                         var ss=GravesAndGloryClient.sightings;long fresh=ss.stream().filter(v->v.age()<20).count(),old=ss.size()-fresh;
-                        boolean open=c.currentScreen instanceof GravesAndGloryClient.MapScreen;
+                        boolean open=c.currentScreen instanceof BattleMapScreen;
                         shot(c,"ui-map");
-                        report("p1-ui-map-glyphs",open&&legend.equals("LMB a group to select / RMB to move")&&colours.isEmpty()&&own>0&&ally>0&&fresh>0&&old>0,"legend '"+legend+"' (colour words in it: "+colours+"); the map (open: "+open+", GUI 2) marks "+own+" own troops (dots), "+ally+" allied (rings), "+fresh+" fresh sightings (x) and "+old+" remembered (small x); "+fixture);
+                        report("p1-ui-map-glyphs",open&&legend.equals("LMB select or plan / RMB to move / scroll to zoom / drag to pan")&&colours.isEmpty()&&own>0&&ally>0&&fresh>0&&old>0,"legend '"+legend+"' (colour words in it: "+colours+"); the map (open: "+open+", GUI 2) marks "+own+" own troops (dots), "+ally+" allied (rings), "+fresh+" fresh sightings (x) and "+old+" remembered (small x); "+fixture);
                         c.setScreen(null);mapMarks=false;window(c,960,540,1);restart(c,2,30);
                     }
                 }
@@ -2425,7 +2425,7 @@ public final class Phase1Checks implements ClientModInitializer {
         void end(MinecraftClient c){
             finished=true;mapMarks=false;want=0;CommandMode.cancel();CommandMode.selected="all";defaults();
             if(GravesAndGloryClient.hints!=null)net.minecraft.client.option.KeyBinding.setKeyPressed(hintsKey(),false);
-            if(c.currentScreen instanceof GravesAndGloryClient.MapScreen)c.setScreen(null);
+            if(c.currentScreen instanceof BattleMapScreen)c.setScreen(null);
             if(oldW>0)window(c,oldW,oldH,oldGui);stage=99;
         }
     }

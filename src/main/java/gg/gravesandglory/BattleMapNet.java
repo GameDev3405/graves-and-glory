@@ -229,6 +229,7 @@ final class BattleMapNet {
             buf.writeString(nameOf(b, s), 32);
             buf.writeBoolean(s.bot);
             buf.writeBoolean(b.campaign.botRetreating.contains(s.owner));
+            buf.writeBoolean(s.bot && modeOwns(b, s)); // aimed: the mode sets this bot's goal, so the map offers it no order (call 11)
             buf.writeInt(e.getValue().size());
             for (var g : e.getValue().entrySet()) {
                 var members = g.getValue();

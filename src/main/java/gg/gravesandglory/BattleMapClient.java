@@ -15,8 +15,9 @@ public final class BattleMapClient {
 
     /** One group of an army: where it stands, how many, its mean health 0..1, its standing order and goal, and whether it is in a fight. */
     public record Group(String group, double x, double z, int count, double health, String order, double targetX, double targetZ, boolean fighting) {}
-    /** One allied army. job is the plan's job ordinal (-1 none), point its capture point (-1 none), direct true for a direct order. */
-    public record Army(String id, String name, boolean bot, boolean retreating, List<Group> groups, int job, int point, double planX, double planZ, boolean direct) {}
+    /** One allied army. aimed: a bot whose goal the mode sets (Siege's stage, Convoy's wagon, Survival's shrine), so it takes no order (spec call 11).
+     *  job is the plan's job ordinal (-1 none), point its capture point (-1 none), direct true for a direct order. */
+    public record Army(String id, String name, boolean bot, boolean retreating, boolean aimed, List<Group> groups, int job, int point, double planX, double planZ, boolean direct) {}
     public record PointPlan(int point, int job, String setter) {}
     public record Order(String army, int job, int point, double x, double z, String setter) {}
     public record State(long time, List<Army> armies, List<PointPlan> points, List<Order> orders) {}
@@ -54,7 +55,7 @@ public final class BattleMapClient {
         List<Army> armies = new ArrayList<>();
         for (int i = 0; i < na; i++) {
             String id = buf.readString(36), name = buf.readString(32);
-            boolean bot = buf.readBoolean(), retreating = buf.readBoolean();
+            boolean bot = buf.readBoolean(), retreating = buf.readBoolean(), aimed = buf.readBoolean();
             int ng = buf.readInt();
             List<Group> groups = new ArrayList<>();
             for (int g = 0; g < ng; g++) {
@@ -68,7 +69,7 @@ public final class BattleMapClient {
             }
             int job = buf.readByte(), point = buf.readInt();
             double px = buf.readFloat(), pz = buf.readFloat();
-            armies.add(new Army(id, name, bot, retreating, groups, job, point, px, pz, buf.readBoolean()));
+            armies.add(new Army(id, name, bot, retreating, aimed, groups, job, point, px, pz, buf.readBoolean()));
         }
         int np = buf.readInt();
         List<PointPlan> points = new ArrayList<>();
