@@ -6,7 +6,7 @@
 
 The lead is confirmed but is the smaller part. Engine maps have no route data, yet New Kingsfield has no river, so missing bridges are not why troops jam there. Three causes stack: (A) troops are placed on roofs and wall tops, (B) the pathfinder cannot see past a wall, and each grange's inner gate is sealed, (C) the stuck recovery mostly fails. Recommendation: standing-surface fix, a route field baked from the map's own floors, and a stall ladder inside `Tactics.walk`.
 
-**Ownership and order.** Cause A and step 0 (standing surface) are in scope here, owned by the pathing session (this branch). They extend `Arena.standing` from rivergate-wire.md (head 3acf7101, not on main), which guards deploy only and walks column tops, so it still cannot see a floor under a roof. The sealed-gate question (cause B) goes to the maps lead, who owns Kingsfield's blocks. Merge order: army/war-table, then rivergate-wire, then pathing steps 0-2, then step 3; each rebases over the one before.
+**Ownership and order.** Cause A and step 0 (standing surface) are in scope here, owned by the pathing session (this branch). They extend `Arena.standing` from rivergate-wire.md (head 3acf7101, not on main), which guards deploy only and walks column tops, so it still cannot see a floor under a roof. Kort answered the sealed-gate question (2026-11-13, answer 1): the grange inner gates on New Kingsfield are shut on purpose, so routes use the side doors and nothing here opens them; the maps lead keeps the blocks. Merge order: army/war-table, then rivergate-wire, then pathing steps 0-2, then step 3; each rebases over the one before.
 
 ## 1. Root causes and baseline
 
@@ -49,7 +49,7 @@ Data-side prototype (`tools/pathing_scan.py`, test-only): `route dawn C` gives t
 
 ## 3. Stuck detector with recovery (bots and players)
 
-Every order ends in `Tactics.walk` (via `toSlot`, enemy chase, `backOff`), so one detector there covers both. Replace `:621-641` with a rolling window: walking, and over 3 s neither 1.5 blocks moved nor 1 block of route-field distance gained, means stalled (jitter no longer resets it; a troop whose neighbour ahead on the route is moving is queueing, not stalled). Ladder: 3 s drop the cached path and take the next field point; 6 s sidestep toward the open side the field gives; 10 s the existing wide detour, started from the field point; 15 s regroup (slot repair, section 4); 30 s with no player within 24 blocks, snap to the nearest standable cell on the field path. Counters per rung for the harness. Player squads get the same ladder; the snap is skipped while a player watches. The 30 s snap is pending Kort's answer (question 2); without it the ladder ends at the 15 s regroup and repeats the detour.
+Every order ends in `Tactics.walk` (via `toSlot`, enemy chase, `backOff`), so one detector there covers both. Replace `:621-641` with a rolling window: walking, and over 3 s neither 1.5 blocks moved nor 1 block of route-field distance gained, means stalled (jitter no longer resets it; a troop whose neighbour ahead on the route is moving is queueing, not stalled). Ladder: 3 s drop the cached path and take the next field point; 6 s sidestep toward the open side the field gives; 10 s the existing wide detour, started from the field point; 15 s regroup (slot repair, section 4); 30 s with no player within 24 blocks, snap to the nearest standable cell on the field path. Counters per rung for the harness. Player squads get the same ladder; the snap is skipped while a player watches. Kort approved the 30 s snap (2026-11-13, answer 2): a troop stuck 30 s may jump free when no player can see it; while a player sees it the ladder ends at the 15 s regroup and repeats the detour.
 
 ## 4. Walls and arches narrower than a formation
 
@@ -64,15 +64,15 @@ Measured (kf-probe, shared machine, so pessimistic): server tick mean 15.7 and 1
 | Step | Size |
 |---|---|
 | 0a. Add the no-progress metric to `AiMetrics` (`stuck10`: `noMoveTicks >= 200` counted once per stretch, plus a share-of-troop-time column and a location label in `stuck.csv`), read it in `bot_quality.py`, re-measure the baseline with it | S |
-| 0b. Standing surface from the floors for deploy, refill and waypoints, extending rivergate-wire's `Arena.standing`; ask the maps lead about the sealed gates | S |
+| 0b. Standing surface from the floors for deploy, refill and waypoints, extending rivergate-wire's `Arena.standing`; the sealed inner gates stay shut by Kort's decision, routes use the side doors | S |
 | 1. `nav.bin.gz` in `sectionmap.py`; pure-Java `NavField` with a standalone check; `route` reads it | M |
 | 2. Stall detector and ladder in `walk`, counters | M |
 | 3. Slot repair, file-through and the no-cell case (after war-table lands) | M |
 
 Proof, mean of two sims on New Kingsfield: no-progress 30 s share 39% to 2% or less; `stuck10` share 44% to 6% or less; no stretch over 60 s; `stuck30` 170 to 0, which is the existing gate (`bot_quality.py:136`, `st == 0`; the earlier "4 or less" is withdrawn, and if a few legitimate stalls remain Kort decides whether to relax the gate); idle share under 5%; longest idle under 20 s; objective share 70% or more; tick mean within +0.5 ms and p99 within +2 ms of baseline on the three-run rule in section 5. Controls: Rivergate and old Kingsfield do not regress. Player squads (the sim has bot squads only): a unit test of the stall detector (a fake walker that stands still, one that jitters, one queued behind a mover: ladder rungs, the snap, its skip near a player) and a scripted player-squad order through the inner gate and the 3-wide door, run once per fix round. In game: Kort's repro (squad ordered through the inner gate), a fresh troop on a roof, a squad filing through the 3-wide door, screenshots.
 
-Risks: nav stale after a map edit (key it to `design_sha256`); Siege walls gates for the round (rebuild that field once); one shared field funnels everyone into one lane; the snap is visible; sealing may be intended.
+Risks: nav stale after a map edit (key it to `design_sha256`); Siege walls gates for the round (rebuild that field once); one shared field funnels everyone into one lane, here the side doors, since the sealed gates are intended; the snap is visible, so it runs only unseen.
 
 Army/war-table: its `Tactics` change is the two lines above plus `formation` and `deploy` in `GravesAndGlory`; land it first, then rebase and re-measure, since 40-troop banners will jam more.
 
-Questions for Kort: (1) Are the grange inner gates meant to be sealed? (2) May a troop stuck 30 s snap out unseen, or must it only walk? (3) Do Rivergate's quay corners belong in this work?
+Decisions (Kort, 2026-11-13): (1) the grange inner gates are shut on purpose, routes use the side doors; (2) a troop stuck 30 s may jump free when no player can see it; (3) Rivergate's quay-corner stalls are in scope; (4) build with Sonnet workers and an Opus review per step.
