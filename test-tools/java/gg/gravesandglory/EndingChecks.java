@@ -866,12 +866,13 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         out.get("flag").stats.captures = 2;
         out.get("hold").stats.objectiveSeconds = 90;
         out.get("butch").stats.kills = 12;
-        out.get("wall").stats.lost = 0;
+        out.get("wall").stats.lost = 0; // stays a bot: bots never win an award, so he wins no Iron Wall for keeping every troop
+        for (var k : List.of("king", "duel", "flag", "hold", "butch")) out.get(k).bot = false; // the award winners are players (only a player wins an award)
         UUID id = g.owner; ghost = id; g.bot = false; c.participants.add(id); b.leave(id); // drops like a commander who disconnected: his seat goes to a stand-in bot
         leftHold = true;
         return out;
     }
-    /** ending-awards: each role's row carries its award (Iron Wall only when the wall army kept 10 or more); ending-left: the ghost's row and podium plate say he left, no award, no MVP. */
+    /** ending-awards: each role's row carries its award (the wall army is a bot, so no Iron Wall even with every troop kept); ending-left: the ghost's row and podium plate say he left, no award, no MVP. */
     void awardsReport(Campaign c, Map<String, GravesAndGlory.Squad> spread) {
         var res = c.results.get(player);
         if (spread.isEmpty() || res == null) { report("ending-left", false, "no set-up or no report"); return; }
@@ -879,17 +880,15 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         for (var e : res.getAsJsonArray("squads")) { var o = e.getAsJsonObject(); for (var r : spread.entrySet()) if (o.get("uuid").getAsString().equals(r.getValue().owner.toString())) rows.put(r.getKey(), o); }
         Map<String, String> want = new LinkedHashMap<>(Map.of("king", "Kingslayer", "duel", "Duelist", "flag", "Banner Breaker", "hold", "Holdfast", "butch", "Butcher"));
         var wall = rows.get("wall"); int wallKept = wall == null ? -1 : wall.get("kept").getAsInt();
-        if (wallKept >= 10) want.put("wall", "Iron Wall");
         StringBuilder why = new StringBuilder(); boolean ok = rows.size() == spread.size();
         for (var e : spread.keySet()) {
             var o = rows.get(e); String got = o == null ? "(no row)" : o.has("award") ? o.get("award").getAsString() : "none";
-            String expect = want.getOrDefault(e, e.equals("ghost") || e.equals("wall") ? "none" : "?");
-            if (e.equals("wall") && wallKept < 10) expect = got; // Iron Wall needs 10 fielded; with fewer it is not checked
+            String expect = want.getOrDefault(e, e.equals("ghost") || e.equals("wall") ? "none" : "?"); // the wall is a bot: none even when it kept 10 or more
             if (!got.equals(expect)) ok = false;
             why.append(e).append('=').append(got).append(o != null && o.has("awardText") ? " (" + o.get("awardText").getAsString() + ")" : "").append("; ");
         }
         int awarded = 0; for (var e : res.getAsJsonArray("squads")) if (e.getAsJsonObject().has("award")) awarded++;
-        report("ending-awards", ok, why + "wall kept " + wallKept + (wallKept < 10 ? " (Iron Wall unchecked)" : "") + ", " + awarded + " awards in the report");
+        report("ending-awards", ok, why + "bot wall kept " + wallKept + " (no Iron Wall for a bot), " + awarded + " awards in the report");
         var g = rows.get("ghost"); int mvps = 0; String mvpName = "";
         for (var e : res.getAsJsonArray("squads")) { var o = e.getAsJsonObject(); if (o.get("mvp").getAsBoolean()) { mvps++; mvpName = o.get("name").getAsString(); } }
         var top = res.getAsJsonArray("podium").get(0).getAsJsonObject();
