@@ -491,7 +491,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             taken.add(new int[] {x - nw / 2 - 1, y + DISC + 3, nw + 2, 10});
             taken.add(new int[] {x - DISC - 1, y - DISC - 1, 2 * DISC + 3, 2 * DISC + 3});
             icons.add(new int[] {x - DISC - 1, y - DISC - 1, x + DISC + 2, y + DISC + 2}); // troop icons nudge off the disc
-            icons.add(new int[] {x - nw / 2 - 1, y + DISC + 3, x + nw / 2 + 1, y + DISC + 13}); // and off the name
+            icons.add(new int[] {x - nw / 2 - 3, y + DISC + 3, x + nw / 2 + 3, y + DISC + 13}); // and off the name, with a gap
             var plan = pointPlan(i);
             if (plan != null) pennant(g, x + DISC - 3, y - DISC + 3, plan.job(), ours());
             List<String> tip = new ArrayList<>();
@@ -573,14 +573,22 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         }
     }
 
-    /** Where a troop icon goes: its own spot, or the nearest step off the icons and counts already drawn (up, down, then aside, then
-     *  further), else its own spot anyway. The box is the icon with its count label (labelW px) beside it. */
+    /** Grid steps {column, row} out to 4 each way, nearest first (rows count a little less than columns, so a crowd stacks up and down). */
+    static final int[][] STEPS;
+    static {
+        List<int[]> s = new ArrayList<>();
+        for (int i = -4; i <= 4; i++) for (int j = -4; j <= 4; j++) s.add(new int[] {i, j});
+        s.sort(java.util.Comparator.comparingDouble((int[] v) -> Math.hypot(v[0] * 1.6, v[1])).thenComparingInt(v -> Math.abs(v[0])).thenComparingInt(v -> v[1] < 0 ? 0 : 1));
+        STEPS = s.toArray(new int[0][]);
+    }
+
+    /** Where a troop icon goes: its own spot, or the nearest grid step off the icons and counts already drawn (and the you arrow), else
+     *  its own spot anyway. The box is the icon with its count label (labelW px) beside it. */
     int[] nudge(int x, int y, int labelW) {
         int l = ICON + 1, r = ICON + 5 + labelW, t = ICON + 1, b = ICON + 2, dy = 2 * ICON + 3, dx = l + r + 2;
-        int[][] tries = {{0, 0}, {0, -dy}, {0, dy}, {dx, 0}, {-dx, 0}, {0, -2 * dy}, {0, 2 * dy}, {dx, -dy}, {dx, dy}, {-dx, -dy}, {-dx, dy}, {dx, -2 * dy}, {dx, 2 * dy}, {0, -3 * dy}, {0, 3 * dy}};
         int[] at = {x, y};
-        for (int[] tr : tries) {
-            int cx = x + tr[0], cy = y + tr[1];
+        for (int[] st : STEPS) {
+            int cx = x + st[0] * dx, cy = y + st[1] * dy;
             boolean clear = true;
             for (int[] o : icons) if (cx - l < o[2] && cx + r > o[0] && cy - t < o[3] && cy + b > o[1]) { clear = false; break; }
             if (clear) { at = new int[] {cx, cy}; break; }
@@ -731,7 +739,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
                 case 2 -> allyIcon(g, cx, my, SHIELD, col);
                 case 3 -> glyph(g, TRI, cx - 3, my - 4, DarkUi.MAP_ENEMY, INK);
                 case 4 -> glyph(g, SWORDS, cx - 3, my - 3, DarkUi.WARN, INK);
-                default -> pennant(g, cx - 8, ry + rh - 1, 0, col);
+                default -> pennant(g, cx - 8, my + 10, 0, col); // the cloth beside the word, the pole into the panel's foot
             }
             g.drawText(textRenderer, KEY_WORDS[i], tx, my - 3, DarkUi.IVORY, false);
             if (i == 1) oursMark(g, tx + textRenderer.getWidth(KEY_WORDS[i]) + 3, my - 3);
