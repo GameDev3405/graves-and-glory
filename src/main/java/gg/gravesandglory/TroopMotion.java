@@ -181,7 +181,7 @@ public final class TroopMotion {
     }
     /** Render time in seconds on the world clock the motion events' ticks are on: (world ticks + partial tick) / 20. */
     static double time(Entity e,float age){
-        long world=e.getWorld()==null||Portrait.posed(e)?e.age:EndingClient.worldTime(e.getWorld()); // a framed portrait runs on its own clock (Portrait.phase)
+        long world=e.getWorld()==null||Portrait.posed(e)||EndingClient.figure(e)?e.age:EndingClient.worldTime(e.getWorld()); // a framed portrait runs on its own clock (Portrait.phase)
         return (world+(double)(age-e.age))/20.0;
     }
     /** The stance a troop shows now: none while it dies (carry B12), rally while its order's acknowledgement lasts (OrderFeedback), else what the server sent. */

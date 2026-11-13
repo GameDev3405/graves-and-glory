@@ -82,6 +82,19 @@ public final class MatchEnding {
         return entries.indexOf(ranked(entries, winner, w).get(0));
     }
 
+    /** The MVP among commanders still in the battle: the first ranked entry whose id is not in left (ids of commanders who left the battle);
+     *  -1 when every one left. Indexes the original list, as mvpIndex. */
+    public static int mvpIndex(List<Entry> entries, int winner, Spec.EndingRow w, Set<String> left) {
+        for (Entry e : ranked(entries, winner, w)) if (!left.contains(e.id())) return entries.indexOf(e);
+        return -1;
+    }
+
+    /** An AudioCues cue by its enum name, or null when no such cue exists (yet): never throws, unlike Cue.valueOf. */
+    public static AudioCues.Cue cue(String name) {
+        for (AudioCues.Cue c : AudioCues.Cue.values()) if (c.name().equals(name)) return c;
+        return null;
+    }
+
     public static List<Entry> podium(List<Entry> ranked) {
         return new ArrayList<>(ranked.subList(0, Math.min(3, ranked.size())));
     }

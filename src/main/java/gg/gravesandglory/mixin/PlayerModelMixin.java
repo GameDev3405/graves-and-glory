@@ -14,5 +14,6 @@ public class PlayerModelMixin {
     private void gravesandglory$clips(LivingEntity entity, float limbAngle, float limbDistance, float age, float headYaw, float headPitch, CallbackInfo ci) {
         CommanderClips.pose((PlayerEntityModel<?>) (Object) this, entity, age);
         CommanderGearFeature.cover((PlayerEntityModel<?>) (Object) this, entity, age);
+        gg.gravesandglory.EndingClient.posePlayer((PlayerEntityModel<?>) (Object) this, entity, age); // the podium poses (ending polish)
     }
 }

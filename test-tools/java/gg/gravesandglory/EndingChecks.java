@@ -37,6 +37,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         Phase4Checks.server(c, b -> {
             if (b.running) b.campaign.returnLobby();
             if (savedProfile != null && player != null) { b.campaign.profiles.put(player, Campaign.JSON.fromJson(savedProfile, Profile.class)); b.campaign.save(player); }
+            if (ghost != null) { b.campaign.profiles.remove(ghost); try { Files.deleteIfExists(b.campaign.directory.resolve(ghost + ".json")); } catch (Exception e) { report("ending-left-cleanup", false, e.toString()); } }
         });
     }
     public void step(MinecraftClient c, int tick) {
@@ -64,7 +65,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     volatile boolean hold, roomChecked; volatile long holdAt = -1;
     int endings, statsAt = -1, rewardsAt = -1, endedAt = -1, escStage, escAt, youStage, youAt;
     boolean statsDone, rewardsDone, menuSeen, rewardsMid;
-    String statsNormal = "", rewardsSmall = "", roomHome = "", escWhy = "", youNormal = "", youVia = "";
+    String fillNormal = "", rewardsNormalRows = "", statsNormal = "", rewardsSmall = "", roomHome = "", escWhy = "", youNormal = "", youVia = "";
     long hands0;
     final TreeMap<Integer, List<Runnable>> later = new TreeMap<>();
     void later(int tick, Runnable r) { later.computeIfAbsent(tick, k -> new ArrayList<>()).add(r); }
@@ -73,6 +74,9 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     static int rewardsSize() { return CampaignClient.result.has("rewards") ? CampaignClient.result.getAsJsonArray("rewards").size() : -1; }
     static String where(MinecraftClient c) { return c.currentScreen instanceof CampScreen s ? "CampScreen " + s.page : c.currentScreen == null ? "no screen" : c.currentScreen.getClass().getSimpleName(); }
     Entity watched; double clock0; int age0; Vec3d pos0;
+    // ending polish pass 1: the instant begin (finishSerial bumped on the server just before finish), the left participant, the 4v4 STATS hold
+    volatile int finishSerial; volatile long finishServer = -1, finishNanos = -1; int seenFinish, finishTick = -1, beginTick = -1; long frames0, beginServer = -1; boolean instantDone;
+    volatile UUID ghost; volatile boolean leftHold; boolean leftClientDone, leftPlateSeen; String leftPlates = "";
 
     /** The client checks, each tick: the step EndingClient shows and what it drew. Screens at 1280x720 gui 3; the defeat banner and one podium shot at 854x480 gui 2. */
     void client(MinecraftClient c, int tick) {
@@ -128,6 +132,8 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             }
             if (tick == podiumAt + 70) { clientShot = "ending-podium-small"; shotAt = tick; restoreAt = tick + 3; podiumDone = true; }
         }
+        instant(c, tick, st);
+        leftClient(c, tick, st);
         var due = later.headMap(tick, true);
         if (!due.isEmpty()) { var run = new ArrayList<Runnable>(); for (var l : due.values()) run.addAll(l); due.clear(); for (var r : run) r.run(); }
         task6(c, tick, st);
@@ -155,10 +161,12 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             report("ending-client-hand", EndingClient.handsHidden > hands0 + 5, (EndingClient.handsHidden - hands0) + " frames drew no hand in 20 ticks of RESULT");
         // ending-client-stats: the screen in STATS, every commander row and the four groups, fitted at 1280x720 gui 3 and at 854x480 gui 2 (427x240)
         if (endings == 1 && st == MatchEnding.Step.STATS && statsAt >= 0 && !statsDone) {
-            if (tick == statsAt + 20) { statsNormal = statsState(c); Phase4Checks.shot(c, "ending-stats"); later(tick + 3, () -> Phase1Checks.window(c, 854, 480, 2)); }
+            if (tick == statsAt + 20) { statsNormal = statsState(c); fillNormal = fillState(); Phase4Checks.shot(c, "ending-stats"); later(tick + 3, () -> Phase1Checks.window(c, 854, 480, 2)); }
             if (tick == statsAt + 50) {
                 statsDone = true; String small = statsState(c);
                 report("ending-client-stats", statsNormal.startsWith("ok") && small.startsWith("ok"), "1280x720 gui 3: " + statsNormal + " | 854x480 gui 2: " + small);
+                String fillSmall = fillState();
+                report("ending-client-stats-fill", fillNormal.startsWith("ok") && fillSmall.startsWith("ok"), "1280x720 gui 3: " + fillNormal + " | 854x480 gui 2: " + fillSmall + " (shots ending-stats, ending-stats-small)");
                 Phase4Checks.shot(c, "ending-stats-small"); later(tick + 3, () -> Phase1Checks.window(c, 1280, 720, 3));
             }
         }
@@ -197,6 +205,49 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         if (youStage > 0) reportYou(c, tick);
     }
 
+    /** ending-client-begin-instant: from the tick this client sees the server's finish, the step, the freeze and the banner within 2 ticks, begun by ending_begin. */
+    void instant(MinecraftClient c, int tick, MatchEnding.Step st) {
+        int fs = finishSerial;
+        if (fs != seenFinish) { seenFinish = fs; finishTick = tick; beginTick = -1; frames0 = EndingClient.bannerFrames; }
+        if (finishTick < 0 || instantDone) return;
+        if (st != null && beginTick < 0) { beginTick = tick; var bt = GravesAndGlory.battle; beginServer = bt == null ? -1 : bt.time; }
+        if (beginTick >= 0 && tick >= beginTick + 2 || tick > finishTick + 40) {
+            instantDone = true;
+            // measured in wall time against 2 ticks (100 ms): under the shared machine's load the server and client each run ticks in catch-up bursts, so tick counts overstate it
+            double beginMs = (EndingClient.beganNanos - finishNanos) / 1e6, bannerMs = (EndingClient.bannerNanos - finishNanos) / 1e6;
+            boolean ok = beginTick >= 0 && EndingClient.bannerNanos > 0 && beginMs <= 100 && bannerMs <= 100 && "packet".equals(EndingClient.beganBy) && EndingClient.frozen() && EndingClient.freezeTime >= 0 && EndingClient.bannerFrames > frames0;
+            report("ending-client-begin-instant", ok, String.format(Locale.ROOT, "sent %.1f ms, begun %.1f ms and banner first drawn %.1f ms after finish (limit 100 ms = 2 ticks); ", (Campaign.beginSentNanos - finishNanos) / 1e6, beginMs, bannerMs) + (beginServer - finishServer) + " server ticks; finish seen at client tick " + finishTick + ", step " + (beginTick < 0 ? "never" : "at +" + (beginTick - finishTick)) + " begun by " + EndingClient.beganBy
+                + ", frozen=" + EndingClient.frozen() + ", banner frames " + (EndingClient.bannerFrames - frames0) + " by +" + (tick - finishTick) + " ticks");
+        }
+    }
+    /** ending-left (client half, the 4v4 round): the plate reads "Left the battle" in PODIUM, the commanders table does in STATS. */
+    void leftClient(MinecraftClient c, int tick, MatchEnding.Step st) {
+        if (!leftHold || leftClientDone) return;
+        if (st == MatchEnding.Step.PODIUM && podiumAt >= 0 && tick == podiumAt + 32) {
+            StringBuilder why = new StringBuilder();
+            for (var p : EndingClient.plates) { why.append(p.name()).append(p.left() ? " (left)" : "").append(p.mvp() ? " MVP" : "").append(p.award().isEmpty() ? "" : " " + p.award()).append("; "); if (p.left() && !p.mvp() && p.lines().contains(EndingClient.LEFT)) leftPlateSeen = true; }
+            leftPlates = why.toString();
+        }
+        if (st == MatchEnding.Step.STATS && statsAt >= 0 && tick == statsAt + 20) {
+            leftClientDone = true;
+            boolean row = false; String mvpChip = EndingPanels.rects.containsKey("score-mvp") ? "drawn" : "none";
+            for (var e : EndingPanels.texts.entrySet()) if (e.getKey().startsWith("score-") && e.getKey().endsWith("-left") && e.getValue().equals(EndingClient.LEFT)) row = true;
+            String lay = EndingPanels.layout("score");
+            report("ending-left-client", leftPlateSeen && row && lay.isEmpty(), "plates: " + leftPlates + " table row reads Left the battle=" + row + ", MVP chip " + mvpChip + (lay.isEmpty() ? "" : ", layout: " + lay));
+            Phase4Checks.shot(c, "ending-stats-4v4"); later(tick + 3, () -> Phase1Checks.window(c, 854, 480, 2));
+            later(tick + 25, () -> { String lay2 = EndingPanels.layout("score") + EndingPanels.layout("troops") + EndingPanels.layout("highlight");
+                report("ending-stats-4v4-small", lay2.isEmpty(), "4v4 STATS at 854x480 gui 2: " + (lay2.isEmpty() ? "layout clean" : lay2)); Phase4Checks.shot(c, "ending-stats-4v4-small"); });
+            later(tick + 28, () -> Phase1Checks.window(c, 1280, 720, 3));
+        }
+    }
+    /** The stats fill: Your army and Highlights drawn under the groups, every word inside its box. */
+    String fillState() {
+        boolean drawn = EndingPanels.areas.containsKey("troops") && EndingPanels.areas.containsKey("highlight") && EndingPanels.texts.containsKey("fillhead-army") && EndingPanels.texts.containsKey("fillhead-high");
+        String lay = EndingPanels.layout("troops") + EndingPanels.layout("highlight") + EndingPanels.layout("fillhead");
+        List<String> high = new ArrayList<>(); for (var e : EndingPanels.texts.entrySet()) if (e.getKey().startsWith("highlight-")) high.add(e.getValue());
+        int rows = 0; for (var k : EndingPanels.texts.keySet()) if (k.matches("troops-\\d+")) rows++;
+        return (drawn && lay.isEmpty() && rows > 0 && !high.isEmpty() ? "ok" : "FAIL") + " army rows " + rows + ", highlights " + high + (lay.isEmpty() ? "" : ", layout: " + lay);
+    }
     String statsState(MinecraftClient c) {
         boolean open = c.currentScreen instanceof EndingScreen && "stats".equals(EndingScreen.drawn);
         String score = EndingPanels.layout("score"), group = EndingPanels.layout("group");
@@ -229,11 +280,13 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             if (tab == null) { report("ending-report-you", false, "the report did not open (" + where(c) + ", " + youVia + ")"); hold = false; youStage = 0; return; }
             WarTableRecruit.press(tab); youStage = 3; youAt = tick; return;
         }
-        if (youStage == 3 && k >= 10) { youNormal = youState(); Phase4Checks.shot(c, "ending-report-you"); later(tick + 3, () -> Phase1Checks.window(c, 854, 480, 2)); youStage = 4; youAt = tick; return; }
+        if (youStage == 3 && k >= 10) { youNormal = youState(); rewardsNormalRows = rowsState(); Phase4Checks.shot(c, "ending-report-you"); Phase4Checks.shot(c, "ending-report-rewards-rows"); later(tick + 3, () -> Phase1Checks.window(c, 854, 480, 2)); youStage = 4; youAt = tick; return; }
         if (youStage == 4 && k >= 30) {
             String small = youState();
             report("ending-report-you", youNormal.startsWith("ok") && small.startsWith("ok"), youVia + "; 1280x720 gui 3: " + youNormal + " | 854x480 gui 2: " + small);
-            Phase4Checks.shot(c, "ending-report-you-small");
+            String rowsSmall = rowsState();
+            report("ending-report-rewards-rows", rewardsNormalRows.startsWith("ok") && rowsSmall.startsWith("ok"), "1280x720 gui 3: " + rewardsNormalRows + " | 854x480 gui 2: " + rowsSmall);
+            Phase4Checks.shot(c, "ending-report-you-small"); Phase4Checks.shot(c, "ending-report-rewards-rows-small");
             var tab = c.currentScreen instanceof CampScreen s && s.report != null ? s.report.button("tab-battle") : null;
             if (tab != null) WarTableRecruit.press(tab);
             youStage = 5; youAt = tick; return;
@@ -246,6 +299,14 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             youStage = 6; youAt = tick; return;
         }
         if (youStage == 6 && k >= 25) { Phase4Checks.shot(c, "ending-report-battle"); c.setScreen(null); youStage = 0; hold = false; }
+    }
+    /** The War Table note's rewards: every row in the two columns (or, with more rows than fit, the wrapped total), every word inside the box. */
+    String rowsState() {
+        String lay = EndingPanels.layout("reward");
+        int n = rewardsSize(), cells = 0; for (var k : EndingPanels.texts.keySet()) if (k.matches("reward-\\d+")) cells++;
+        boolean ok = lay.isEmpty() && n > 0 && (EndingPanels.columns ? cells == n : (n + 1) / 2 * EndingPanels.COLUMN_ROW > 52 && !EndingPanels.total.isEmpty());
+        List<String> words = new ArrayList<>(); for (var e : EndingPanels.texts.entrySet()) if (e.getKey().startsWith("reward-")) words.add(e.getValue());
+        return (ok ? "ok" : "FAIL") + (EndingPanels.columns ? " columns, " + cells + " of " + n + " rows" : " total '" + EndingPanels.total + "' for " + n + " rows") + " " + words + (lay.isEmpty() ? "" : ", layout: " + lay);
     }
     String youState() {
         String lay = EndingPanels.layout("group"), troops = EndingPanels.layout("troops");
@@ -310,6 +371,8 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             for (var u : b.units) if (u.mob.isAlive()) { pos.put(u.mob, u.mob.getPos()); hp.put(u.mob, u.mob.getHealth()); }
             var a = new net.minecraft.entity.projectile.ArrowEntity(b.world, p.getX(), p.getY() + 6, p.getZ()); a.noClip = true; a.setNoGravity(true); a.setVelocity(0.6, 0, 0); b.world.spawnEntity(a);
             Vec3d from = a.getPos(); b.shots.add(new Projectiles.Shot(null, null, null, "arrow", 0, from, b.time, b.time + 10000, a, from)); arrow = a; arrowAt = from;
+            s.stats.kills += 6; // army kills for the Butcher award, so the stats screen's Highlights has a line (ending-client-stats-fill)
+            finishServer = b.time; finishNanos = System.nanoTime(); finishSerial++;
             c.finish(s.team);
             var pr = c.profile(player); gold1 = pr.gold; xp1 = pr.progression.xp;
             var res = c.results.get(player); resultId = res == null ? "" : res.get("id").getAsString();
@@ -445,7 +508,9 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     void size(GravesAndGlory.Battle b, Campaign c, ServerPlayerEntity p) {
         if (stage < 2) { started(b, p, true); return; }
         if (stage == 3) { sizeHold(b, c); return; }
+        var spread = awardSpread(b, c);
         c.finish(b.squads.get(player).team);
+        awardsReport(c, spread);
         String raw = Campaign.JSON.toJson(c.results.get(player)), sent = c.snapshot(p);
         var sn = JsonParser.parseString(sent).getAsJsonObject();
         boolean whole = sn.has("result") && sn.getAsJsonObject("result").has("podium") && sn.getAsJsonObject("result").getAsJsonArray("squads").size() == 8 && sn.has("ending");
@@ -453,11 +518,59 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         evidence("ending-report-4v4.json", raw);
         podiumThree = true; stage = 3; at = b.time;
     }
-    /** The 4v4 ending held into PODIUM for the client's three plates (ending-client-plates), then torn down. */
+    /** The 4v4 ending held into STATS for the client's three plates (ending-client-plates) and the left participant's row (ending-left-client), then torn down. */
     void sizeHold(GravesAndGlory.Battle b, Campaign c) {
-        if (c.ending() && b.time - at < c.endingTiming.resultTicks() + 80) return;
-        c.returnLobby();
+        if (c.ending() && b.time - at < c.endingTiming.resultTicks() + c.endingTiming.podiumTicks() + 60) return;
+        c.returnLobby(); leftHold = false;
         next();
+    }
+
+    /** ending-awards / ending-left set-up on the 4v4: every army's stats zeroed, then one bot seat made a participant who dropped (b.leave: offline at finish, his seat
+     *  held by a stand-in) with the top score, and a spread over six more bots, each leading one award. Returns the squads by role: ghost, king, duel, flag, hold, butch, wall. */
+    Map<String, GravesAndGlory.Squad> awardSpread(GravesAndGlory.Battle b, Campaign c) {
+        Map<String, GravesAndGlory.Squad> out = new LinkedHashMap<>();
+        List<GravesAndGlory.Squad> bots = new ArrayList<>();
+        for (var q : b.squads.values()) if (q.seated) { var t = q.stats; t.kills = t.commanderKills = t.commanderDowns = t.captures = t.objectiveSeconds = 0; t.lost = 1000; t.troopKills.clear(); if (q.bot) bots.add(q); }
+        if (bots.size() < 7) { report("ending-awards", false, "the 4v4 has " + bots.size() + " bots, 7 wanted"); return out; }
+        String[] roles = {"ghost", "king", "duel", "flag", "hold", "butch", "wall"};
+        for (int i = 0; i < roles.length; i++) out.put(roles[i], bots.get(i));
+        var g = out.get("ghost"); g.stats.kills = 99; g.stats.commanderDowns = 5; // the top score and two awards' worth, but he left the battle
+        out.get("king").stats.commanderDowns = 2;
+        out.get("duel").stats.commanderKills = 3; out.get("duel").stats.kills = 3;
+        out.get("flag").stats.captures = 2;
+        out.get("hold").stats.objectiveSeconds = 90;
+        out.get("butch").stats.kills = 12;
+        out.get("wall").stats.lost = 0;
+        UUID id = g.owner; ghost = id; g.bot = false; c.participants.add(id); b.leave(id); // drops like a commander who disconnected: his seat goes to a stand-in bot
+        leftHold = true;
+        return out;
+    }
+    /** ending-awards: each role's row carries its award (Iron Wall only when the wall army kept 10 or more); ending-left: the ghost's row and podium plate say he left, no award, no MVP. */
+    void awardsReport(Campaign c, Map<String, GravesAndGlory.Squad> spread) {
+        var res = c.results.get(player);
+        if (spread.isEmpty() || res == null) { report("ending-left", false, "no set-up or no report"); return; }
+        Map<String, JsonObject> rows = new HashMap<>();
+        for (var e : res.getAsJsonArray("squads")) { var o = e.getAsJsonObject(); for (var r : spread.entrySet()) if (o.get("uuid").getAsString().equals(r.getValue().owner.toString())) rows.put(r.getKey(), o); }
+        Map<String, String> want = new LinkedHashMap<>(Map.of("king", "Kingslayer", "duel", "Duelist", "flag", "Banner Breaker", "hold", "Holdfast", "butch", "Butcher"));
+        var wall = rows.get("wall"); int wallKept = wall == null ? -1 : wall.get("kept").getAsInt();
+        if (wallKept >= 10) want.put("wall", "Iron Wall");
+        StringBuilder why = new StringBuilder(); boolean ok = rows.size() == spread.size();
+        for (var e : spread.keySet()) {
+            var o = rows.get(e); String got = o == null ? "(no row)" : o.has("award") ? o.get("award").getAsString() : "none";
+            String expect = want.getOrDefault(e, e.equals("ghost") || e.equals("wall") ? "none" : "?");
+            if (e.equals("wall") && wallKept < 10) expect = got; // Iron Wall needs 10 fielded; with fewer it is not checked
+            if (!got.equals(expect)) ok = false;
+            why.append(e).append('=').append(got).append(o != null && o.has("awardText") ? " (" + o.get("awardText").getAsString() + ")" : "").append("; ");
+        }
+        int awarded = 0; for (var e : res.getAsJsonArray("squads")) if (e.getAsJsonObject().has("award")) awarded++;
+        report("ending-awards", ok, why + "wall kept " + wallKept + (wallKept < 10 ? " (Iron Wall unchecked)" : "") + ", " + awarded + " awards in the report");
+        var g = rows.get("ghost"); int mvps = 0; String mvpName = "";
+        for (var e : res.getAsJsonArray("squads")) { var o = e.getAsJsonObject(); if (o.get("mvp").getAsBoolean()) { mvps++; mvpName = o.get("name").getAsString(); } }
+        var top = res.getAsJsonArray("podium").get(0).getAsJsonObject();
+        boolean leftRow = g != null && g.has("left") && g.get("left").getAsBoolean() && !g.get("mvp").getAsBoolean() && !g.has("award");
+        boolean leftTop = top.has("left") && top.get("left").getAsBoolean() && !top.get("mvp").getAsBoolean();
+        report("ending-left", leftRow && leftTop && mvps == 1, "ghost row " + (g == null ? "missing" : "left=" + g.has("left") + " mvp=" + g.get("mvp") + " award=" + g.has("award") + " name " + g.get("name"))
+            + "; podium 1st " + top.get("name") + " left=" + top.has("left") + " mvp=" + top.get("mvp") + "; " + mvps + " MVP (" + mvpName + ")");
     }
 
     // ================= Task 7: the proof suites =================

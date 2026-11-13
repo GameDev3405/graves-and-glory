@@ -31,6 +31,10 @@ public final class Campaign {
     final Map<UUID,MatchEnding.Step> skipped=new HashMap<>();final Set<UUID> endingStaged=new HashSet<>(),endingDone=new HashSet<>();
     /** Each seated army's 1-based match rank, set by finish for the report rows. */
     final Map<GravesAndGlory.Squad,Integer> endingRanks=new IdentityHashMap<>();
+    /** Ending polish pass 1, set by rankArmies at finish: each seated army's award (EndingAwards) and its line, the participant a stand-in seat belongs to when he
+     *  left the battle (offline at finish), and the MVP (the best ranked army whose commander did not leave). */
+    final Map<GravesAndGlory.Squad,EndingAwards.Award> endingAwards=new IdentityHashMap<>();final Map<GravesAndGlory.Squad,EndingAwards.Line> endingLines=new IdentityHashMap<>();
+    final Map<GravesAndGlory.Squad,UUID> endingLeft=new IdentityHashMap<>();GravesAndGlory.Squad endingMvp;
     boolean ending(){return endingStart>=0;}
     /** The harness keeps the old instant return (test-tools/isolated-checks.gradle sets it from GRAVES_INSTANT_ENDING); absent, the sequence plays. */
     static boolean instantEnding(){return Boolean.getBoolean("gravesandglory.instantEnding");}
@@ -209,7 +213,7 @@ public final class Campaign {
         if(b.mode.teardown(b))Modes.unmark(b);else System.err.println("[Graves and Glory] The round's teardown left "+b.saves.size()+" saved piece(s); the mode marker is kept.");
         if(battleModeBeforeRoom!=null){battleMode=battleModeBeforeRoom;battleModeBeforeRoom=null;} // the room's mode ends with its round
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
-        boolean wasEnding=ending();endingStart=-1;skipped.clear();endingStaged.clear();endingDone.clear();endingRanks.clear();if(wasEnding)PodiumStage.release(b.world);
+        boolean wasEnding=ending();endingStart=-1;skipped.clear();endingStaged.clear();endingDone.clear();endingRanks.clear();endingAwards.clear();endingLines.clear();endingLeft.clear();endingMvp=null;if(wasEnding)PodiumStage.release(b.world);
         b.running=false;introUntil=0;social.finish();activeRoom="";roundTier="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);b.clearIntel();
         Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearCorpses();b.clearSides();b.clearProgression();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();botGuard.clear();musterFirstAt.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();deleteProgress();
@@ -613,6 +617,7 @@ public final class Campaign {
         long seconds=(b.time-b.roundStarted)/20;
         for(var sq:b.squads.values())if(sq.seated)sq.stats.kept=(int)b.fielded(sq).count(); // each army's living non-temporary troops at the end
         JsonArray podium=rankArmies(winner);endingLine=scoreLine(seconds);
+        if(!instantEnding())sendBegin(winner); // the instant freeze goes out before the saves below, so the banner does not wait on the disk
         for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)s=absentSeat.get(id);if(s==null)continue;Profile p=profile(id);String before=JSON.toJson(p);
             // Pay is pro-rated by the share of the match he was seated (Kort 2026-11-02): a commander who dropped and did not return, or came back late, gets that share of the gold, XP, shards and Renown;
             // one seated the whole match is paid in full. The win, the cleared battle and the bonus count only when he was seated for at least half of it.
@@ -644,6 +649,7 @@ public final class Campaign {
         }
         b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
         Audio.reset(); // the round is over: cues still waiting for their moment (a blow's contact frame, a queued rise) are dropped so nothing plays over the sting
+        if(instantEnding()||participants.stream().noneMatch(id->b.server.getPlayerManager().getPlayer(id)!=null)) // with the ending sequence the client plays the sting with its banner (EndingSounds)
         for(var p:b.server.getPlayerManager().getPlayerList())if(participants.contains(p.getUuid())){var sq=b.squads.get(p.getUuid());Audio.ending(p,winner,sq==null?-1:sq.team);} // each participant, to his own connection: the victory sting, the defeat sting for the losing side (AudioCues)
         boolean watched=participants.stream().anyMatch(id->b.server.getPlayerManager().getPlayer(id)!=null);
         if(instantEnding()||!watched)returnLobby();else beginEnding(winner); // nobody online to see it (a bot simulation, every participant dropped): straight back, as before
@@ -661,6 +667,17 @@ public final class Campaign {
         deleteProgress();
         PodiumStage.ensure(b.world);
     }
+    /** The instant freeze: each online participant's client shows the banner on this packet, not with the next snapshot. */
+    void sendBegin(int winner){
+        for(UUID id:participants){var p=b.server.getPlayerManager().getPlayer(id);if(p==null)continue;
+            var sq=b.squads.get(id);if(sq==null||!sq.seated)sq=absentSeat.get(id);int team=sq==null?-1:sq.team;
+            if(!net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(p,GravesAndGlory.ENDING_BEGIN))continue;
+            var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeString(winner<0?"DRAW":team==winner?"VICTORY":"DEFEAT",16);packet.writeString(endingLine,512);
+            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,GravesAndGlory.ENDING_BEGIN,packet);}
+        beginSentNanos=System.nanoTime();
+    }
+    /** Harness only: System.nanoTime when the last ending_begin packets went out. */
+    static volatile long beginSentNanos=-1;
     /** Arrows and thrown weapons in flight are noClip visuals the gated-off Projectiles.tick last pushed: stop them where they are. */
     private void holdShots(){
         for(var s:b.shots)hold(s.visual());for(var l:b.landed)hold(l.visual());
@@ -725,6 +742,12 @@ public final class Campaign {
         List<MatchEnding.Entry> entries=new ArrayList<>();for(int i=0;i<seated.size();i++)entries.add(entry(seated.get(i),i));
         var ranked=MatchEnding.ranked(entries,winner,w);
         for(int r=0;r<ranked.size();r++)endingRanks.put(seated.get(ranked.get(r).seat()),r+1);
+        endingLeft.clear();for(var e:vacated.entrySet())if(b.server.getPlayerManager().getPlayer(e.getKey())==null)for(var s:seated)if(s.owner.equals(e.getValue()))endingLeft.put(s,e.getKey()); // a stand-in's participant offline at finish left the battle
+        Set<String> leftIds=new HashSet<>();for(var s:endingLeft.keySet())leftIds.add(s.owner.toString());
+        int mvp=MatchEnding.mvpIndex(entries,winner,w,leftIds);endingMvp=mvp<0?null:seated.get(mvp);
+        endingAwards.clear();endingLines.clear();List<EndingAwards.Line> lines=new ArrayList<>();
+        for(int i=0;i<seated.size();i++){var s=seated.get(i);var t=s.stats;var line=new EndingAwards.Line(s.owner.toString(),t.commanderDowns,t.commanderKills,t.captures,t.objectiveSeconds,Math.max(0,t.kills-t.commanderKills),t.kept,t.lost,MatchEnding.score(entries.get(i),w),endingLeft.containsKey(s));lines.add(line);endingLines.put(s,line);}
+        var won=EndingAwards.awards(lines);for(var s:seated){var a=won.get(s.owner.toString());if(a!=null)endingAwards.put(s,a);}
         JsonArray rows=new JsonArray();
         for(var e:MatchEnding.podium(ranked)){var s=seated.get(e.seat());JsonObject row=new JsonObject();
             row.addProperty("rank",endingRanks.get(s));row.addProperty("name",s.bot?s.tier+" bot":name(s.owner));row.addProperty("uuid",s.owner.toString());row.addProperty("bot",s.bot);row.addProperty("team",s.team);
@@ -735,6 +758,7 @@ public final class Campaign {
             row.add("gear",gear);
             JsonArray troops=new JsonArray();List<String> order=new ArrayList<>();for(String id:s.banner)if(troop(id)!=null&&!order.contains(id))order.add(id);
             for(String id:MatchEnding.squadTroops(s.stats.troopKills,order,3))troops.add(id);row.add("troops",troops);
+            awardFields(row,s);
             rows.add(row);}
         return rows;
     }
@@ -836,8 +860,16 @@ public final class Campaign {
             row.addProperty("kills",s.stats.kills);row.addProperty("lost",s.stats.lost);row.addProperty("gold",s.stats.goldEarned);row.addProperty("objective",s.stats.objectiveSeconds);
             int rank=endingRanks.getOrDefault(s,0);row.addProperty("uuid",s.owner.toString());row.addProperty("house",squadHouse(s));row.addProperty("score",MatchEnding.score(entry(s,0),Spec.ENDING[0]));
             row.addProperty("ck",s.stats.commanderKills);row.addProperty("cd",s.stats.deaths);row.addProperty("downs",s.stats.commanderDowns);row.addProperty("kept",s.stats.kept);row.addProperty("mvp",rank==1);row.addProperty("rank",rank);rows.add(row);
+            awardFields(row,s);
         }
         return rows;
+    }
+    /** Ending polish pass 1, on a squads row or a podium row: the MVP (the best ranked army whose commander stayed), its award title and detail, and for a
+     *  stand-in seat whose commander left the battle, left and his name. */
+    void awardFields(JsonObject row,GravesAndGlory.Squad s){
+        row.addProperty("mvp",s==endingMvp);
+        var a=endingAwards.get(s);var line=endingLines.get(s);if(a!=null&&line!=null){row.addProperty("award",a.title);row.addProperty("awardText",EndingAwards.detail(a,line));}
+        UUID gone=endingLeft.get(s);if(gone!=null){row.addProperty("left",true);row.addProperty("name",name(gone));row.addProperty("bot",false);}
     }
     /** Seconds each team held each point this round: one entry per battle point, so five on Kingsfield. */
     JsonArray reportPoints(){

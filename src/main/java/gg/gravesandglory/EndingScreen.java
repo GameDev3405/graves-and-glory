@@ -108,7 +108,21 @@ final class EndingScreen extends Screen {
         if (!map(r).isEmpty()) line = line.replace(" · " + map(r), ""); // the title names the map already ("score · map · length")
         head(g, map(r).isEmpty() ? "Battle report" : "Battle of " + map(r), (mode + (line.isEmpty() ? "" : " · " + line)).toUpperCase(Locale.ROOT));
         int y = EndingPanels.scoreboard(g, r, x, PAD_TOP + 22, w);
-        EndingPanels.groups(g, r, x, y + 8, w, H - PAD_BOTTOM - (y + 8));
+        y = EndingPanels.groups(g, r, x, y + 8, w, H - PAD_BOTTOM - (y + 8));
+        fill(g, r, x, y + 10, w, H - PAD_BOTTOM - (y + 10));
+    }
+
+    /** Under the four groups (ending polish): "Your army" (the report's You page table) on the left and "Highlights" (the awards) on the right, when there is room for a row. */
+    void fill(DrawContext g, JsonObject r, int x, int y, int w, int h) {
+        EndingPanels.reset("fillhead"); EndingPanels.reset("troops"); EndingPanels.reset("highlight");
+        if (h < 30 || EndingPanels.obj(r, "you") == null) return;
+        int gap = 18, half = (w - gap) / 2, hx = x + half + gap;
+        EndingPanels.put(g, "fillhead-army", DarkUi.heading("Your army"), x, y, EndingPanels.BROWN);
+        EndingPanels.put(g, "fillhead-high", DarkUi.heading("Highlights"), hx, y, EndingPanels.BROWN);
+        g.fill(x, y + 11, x + half, y + 12, EndingPanels.RULE); g.fill(hx, y + 11, hx + half, y + 12, EndingPanels.RULE);
+        EndingPanels.areas.put("fillhead", new int[]{x, y, w, 12});
+        EndingPanels.troops(g, r, x, y + 15, half, h - 15);
+        EndingPanels.highlights(g, r, hx, y + 17, half, h - 17);
     }
 
     void rewardsSheet(DrawContext g, JsonObject r, float partial) {
@@ -116,6 +130,11 @@ final class EndingScreen extends Screen {
         String outcome = EndingPanels.str(r, "outcome");
         head(g, "Spoils of war", (outcome + (map(r).isEmpty() ? "" : " · " + map(r))).toUpperCase(Locale.ROOT));
         int top = PAD_TOP + 24;
-        EndingPanels.rewards(g, r, x, top, w, H - PAD_BOTTOM - top, progress(partial));
+        float p = progress(partial);
+        EndingPanels.rewards(g, r, x, top, w, H - PAD_BOTTOM - top, p);
+        // the sounds (EndingSounds): a tick while rows count up, the total's cue once when it lands
+        if (EndingPanels.rewardsTotal > 0 && EndingPanels.rewardRows > 0 && p < EndingPanels.ROWS_END) EndingSounds.rewardTick(ticks);
+        if (!totalPlayed && !EndingPanels.total.isEmpty()) { totalPlayed = true; EndingSounds.rewardTotal(); }
     }
+    boolean totalPlayed;
 }

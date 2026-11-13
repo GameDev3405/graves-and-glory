@@ -108,6 +108,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.GEAR,(client,handler,buf,responder)->{String text=buf.readString(GearWire.LIMIT);client.execute(()->CampaignClient.gear=GearWire.decode(text));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.CAMP,(client,handler,buf,responder)->{String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new CampScreen("home"))));
+        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.ENDING_BEGIN,(client,handler,buf,responder)->{String outcome=buf.readString(16),line=buf.readString(512);client.execute(()->EndingClient.beginEnding(client,outcome,line));});
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new CampScreen("home"))));
         // The motion events (Task 6): a troop's stance (stance_v2), its swings (attack_v1) and the blows on it (hit_v1), kept in MotionEvents.Client for the
         // motion engine. A stance a player gets on START_TRACKING comes before the entity's spawn packet (Fabric calls the event first), so a stance is

@@ -23,9 +23,9 @@ final class EndingPanels {
 
     /** Parchment inks: the report's ink and sepia, the mockup's brown for headings and amounts, the amount still counting, a row's highlight and a box's rule. */
     static final int INK = DarkUi.INK_TEXT, SEPIA = DarkUi.SEPIA, BROWN = 0xff5a3b17, COUNTING = 0xff9b6a1d, YOU_FILL = 0x80f4e7c4, BOX = 0xffa88a5c,
-        RULE = 0xff8a6a3f, CLAIM_FILL = 0xff3a2c21, CLAIM_INK = 0xffe8c26a, CLAIM_TEXT = 0xffe9dcbf, MVP_FILL = 0xffe8c26a;
+        RULE = 0xff8a6a3f, CLAIM_FILL = 0xff3a2c21, CLAIM_INK = 0xffe8c26a, CLAIM_TEXT = 0xffe9dcbf, MVP_FILL = 0xffe8c26a, AWARD_FILL = 0xffd9c497;
     /** The commanders table's row step and the gap where the team changes; a group's key-value step; a reward row with and without its reason line. */
-    static final int ROW = 13, TEAM_GAP = 5, KV = 12, REWARD_TALL = 22, REWARD_SHORT = 13, CLAIM_H = 18;
+    static final int ROW = 13, TEAM_GAP = 5, KV = 12, REWARD_TALL = 22, REWARD_SHORT = 13, CLAIM_H = 18, COLUMN_ROW = 12;
     /** The share of the rewards step the rows take to appear and count up; the total and the claim strip follow. */
     static final float ROWS_END = .6f;
 
@@ -36,6 +36,8 @@ final class EndingPanels {
     static final Map<String, int[]> areas = new LinkedHashMap<>();
     static final List<String> scoreRows = new ArrayList<>(), groups = new ArrayList<>();
     static int rewardRows, rewardsTotal;
+    /** Whether the last rewards drawn were the note's two columns (the checks read it). */
+    static boolean columns;
     static String total = "", claim = "";
 
     static TextRenderer font() { return MinecraftClient.getInstance().textRenderer; }
@@ -124,10 +126,22 @@ final class EndingPanels {
                 nx += cw + 4;
             }
             String name = EndingClient.display(str(row, "name"));
-            String shown = UiMath.trim(name, nameRight - nx, s -> font.getWidth(s));
+            // the award chip, or "Left the battle", after the name (ending polish): it gives way to the name when the room is short
+            boolean gone = row.has("left") && row.get("left").getAsBoolean();
+            String tag = gone ? EndingClient.LEFT : str(row, "award");
+            int room = nameRight - nx, nameW = Math.min(font.getWidth(name), Math.max(30, room / 2));
+            if (!tag.isEmpty()) tag = UiMath.trim(tag, room - nameW - 10, s -> width(small(s)));
+            if (tag.equals("...")) tag = "";
+            int tagW = tag.isEmpty() ? 0 : width(small(tag)) + 4 + 4;
+            String shown = UiMath.trim(name, room - tagW, s -> font.getWidth(s));
             g.drawText(font, shown, nx, ry + 1, ink, false); // a commander's name is a player's: Minecraft's face, as the party's seats are
             record("score-" + i, shown, nx, ry, font.getWidth(shown), 10);
             scoreRows.add(shown);
+            if (!tag.isEmpty()) {
+                int tx = nx + font.getWidth(shown) + 4, tw = width(small(tag));
+                if (gone) put(g, "score-" + i + "-left", small(tag), tx, ry + 1, DarkUi.ROUT_TEXT);
+                else { g.fill(tx, ry, tx + tw + 4, ry + 9, AWARD_FILL); put(g, "score-" + i + "-award", small(tag), tx + 2, ry + 1, INK); rects.put("score-" + i + "-award", new int[]{tx, ry, tw + 4, 9}); }
+            }
             int ck = num(row, "ck"), army = Math.max(0, num(row, "kills") - ck);
             String[] cells = {UiMath.thousands(score(row)), row.has("cd") ? MatchEnding.kd(ck, num(row, "cd")) : "-", String.valueOf(army), String.valueOf(num(row, "lost")), clock(num(row, "objective"))};
             for (int c = 0; c < cells.length; c++) right(g, "score-" + i + "-" + c, body(cells[c]), right[c], ry, ink);
@@ -235,7 +249,7 @@ final class EndingPanels {
         for (int c = 0; c < heads.length; c++) right(g, "troops-head-" + c, small(heads[c]), right[c], y + 1, SEPIA);
         g.fill(x, y + 11, x + w, y + 12, DarkUi.SEPIA_LINE);
         int ry = y + 15, room = (y + h - ry) / KV;
-        int shownRows = rows.size() <= room ? rows.size() : Math.max(0, room - 1);
+        int shownRows = rows.size() <= room ? rows.size() : room >= 2 ? room - 1 : Math.max(0, room); // one row's room shows the best troop, not just "and N more"
         for (int i = 0; i < shownRows; i++) {
             var t = rows.get(i);
             String name = UiMath.trim(troopName(str(t, "id")), right[0] - width(small(heads[0])) - 8 - x, s -> width(body(s)));
@@ -244,8 +258,38 @@ final class EndingPanels {
             for (int c = 0; c < v.length; c++) right(g, "troops-" + i + "-" + c, body(String.valueOf(v[c])), right[c], ry, SEPIA);
             ry += KV;
         }
-        if (shownRows < rows.size()) { put(g, "troops-more", body("and " + (rows.size() - shownRows) + " more"), x, ry, SEPIA); ry += KV; }
+        if (shownRows < rows.size() && ry + 10 <= y + h) { put(g, "troops-more", body("and " + (rows.size() - shownRows) + " more"), x, ry, SEPIA); ry += KV; }
         return ry;
+    }
+
+    /** Highlights (ending polish): the awards earned this match, the viewer's first, then in award order; up to three lines, each "Award: Name, detail"
+     *  fitted to w. "No awards this battle." when none. Returns the y under it. */
+    static int highlights(DrawContext g, JsonObject r, int x, int y, int w, int h) {
+        reset("highlight");
+        areas.put("highlight", new int[]{x, y, w, h});
+        List<String> lines = highlightLines(r);
+        if (lines.isEmpty()) { put(g, "highlight-none", body("No awards this battle."), x, y, SEPIA); return y + 13; }
+        int ry = y;
+        for (int i = 0; i < lines.size() && i < 3 && ry + 10 <= y + h; i++) {
+            Text t = fit(lines.get(i), w);
+            put(g, "highlight-" + i, t, x, ry, i == 0 && lines.get(i).startsWith("You") ? INK : SEPIA);
+            ry += KV;
+        }
+        return ry;
+    }
+    /** The highlight lines in order: the viewer's award first ("You: Kingslayer, 2 commanders downed"), then the others' in award order. */
+    static List<String> highlightLines(JsonObject r) {
+        List<String> mine = new ArrayList<>(), others = new ArrayList<>();
+        for (var a : EndingAwards.Award.values())
+            for (var e : arr(r, "squads")) {
+                var o = e.getAsJsonObject();
+                if (!a.title.equals(str(o, "award"))) continue;
+                String detail = str(o, "awardText");
+                if (o.has("you") && o.get("you").getAsBoolean()) mine.add("You: " + a.title + (detail.isEmpty() ? "" : ", " + detail));
+                else others.add(a.title + ": " + EndingClient.display(str(o, "name")) + (detail.isEmpty() ? "" : ", " + detail));
+            }
+        mine.addAll(others);
+        return mine.size() > 3 ? new ArrayList<>(mine.subList(0, 3)) : mine;
     }
 
     // ---- the rewards ----
@@ -304,7 +348,7 @@ final class EndingPanels {
     static int rewards(DrawContext g, JsonObject r, int x, int y, int w, int h) { return rewards(g, r, x, y, w, h, 1f, false); }
 
     static int rewards(DrawContext g, JsonObject r, int x, int y, int w, int h, float progress, boolean foot) {
-        reset("reward"); rewardRows = 0; total = ""; claim = "";
+        reset("reward"); rewardRows = 0; total = ""; claim = ""; columns = false;
         var rows = rewardsOf(r);
         rewardsTotal = rows.size();
         areas.put("reward", new int[]{x, y, w, h});
@@ -320,6 +364,21 @@ final class EndingPanels {
         boolean full = progress >= 1;
         int room = h - (foot ? 20 + (claimLine.isEmpty() ? 0 : CLAIM_H + 6) : 0); // the total's double rule and line, and the claim strip
         int step = rows.size() * REWARD_TALL <= room ? REWARD_TALL : rows.size() * REWARD_SHORT <= room ? REWARD_SHORT : 0;
+        if (!foot && progress >= 1) { // the note (ending polish): every row in two compact columns, top to bottom then the second column, when they fit
+            int gap = 10, cw = (w - gap) / 2, lines = (rows.size() + 1) / 2;
+            if (lines * COLUMN_ROW <= h) {
+                for (int i = 0; i < rows.size(); i++) {
+                    var w0 = rows.get(i);
+                    int cx = x + (i / lines) * (cw + gap), cy = y + (i % lines) * COLUMN_ROW;
+                    String amount = amountText(w0, w0.amount());
+                    int aw = amount.isEmpty() ? 0 : width(body(amount)) + 4;
+                    put(g, "reward-" + i, small(UiMath.trim(w0.label(), cw - aw, s -> width(small(s)))), cx, cy + 1, INK);
+                    if (!amount.isEmpty()) right(g, "reward-" + i + "-amount", body(amount), cx + cw, cy, BROWN);
+                }
+                rewardRows = rows.size(); total = totalText(rows); columns = true;
+                return y + lines * COLUMN_ROW;
+            }
+        }
         if (step == 0) { // the note: the total alone, wrapped to the lines it has
             String all = totalText(rows);
             int yy = y;

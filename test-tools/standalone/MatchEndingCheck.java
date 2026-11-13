@@ -38,6 +38,15 @@ public final class MatchEndingCheck {
         check(MatchEnding.mvpIndex(List.of(), 0, w) == -1, "no entries, no mvp");
         check(MatchEnding.mvpIndex(List.of(e("a", 0, 0, 0, 0, 0, 0, 0), e("b", 1, 1, 0, 0, 0, 0, 0)), 0, w) == 0, "a 0-score match still crowns the first ranked");
         check(MatchEnding.mvpIndex(List.of(e("a", 0, 0, 1, 0, 0, 0, 0), e("b", 1, 1, 5, 0, 0, 0, 0)), 0, w) == 1, "mvp indexes the original list");
+        // Left the battle: no MVP for a commander who left; the podium still ranks him.
+        List<MatchEnding.Entry> withLeft = List.of(e("gone", 0, 0, 50, 0, 0, 0, 0), e("b", 1, 1, 5, 0, 0, 0, 0), e("c", 0, 2, 3, 0, 0, 0, 0));
+        check(MatchEnding.mvpIndex(withLeft, 0, w, Set.of("gone")) == 1, "the top scorer left: the next ranked is MVP");
+        check(MatchEnding.mvpIndex(withLeft, 0, w, Set.of()) == 0, "nobody left: the top scorer");
+        check(MatchEnding.mvpIndex(withLeft, 0, w, Set.of("gone", "b", "c")) == -1, "everyone left: no MVP");
+        check(MatchEnding.mvpIndex(withLeft, 0, w, Set.of("c")) == 0, "a lower commander left: the MVP unchanged");
+        check(ids(MatchEnding.podium(MatchEnding.ranked(withLeft, 0, w))).get(0).equals("gone"), "the podium still ranks a commander who left");
+        check(MatchEnding.cue("VICTORY") == AudioCues.Cue.VICTORY, "a cue by name");
+        check(MatchEnding.cue("NO_SUCH_CUE_YET") == null, "a missing cue is null, not a throw");
         // Podium.
         for (int[] c : new int[][]{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {8, 3}}) {
             List<MatchEnding.Entry> l = new ArrayList<>();

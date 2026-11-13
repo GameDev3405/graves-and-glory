@@ -67,7 +67,12 @@ public final class EndingClient {
     record Figure(LivingEntity entity, int slot, boolean commander) {}
     static final List<Figure> figures = new ArrayList<>();
     /** The podium rows the figures were built from: rank, name, score, headline, house, team. */
-    record Plate(int slot, String name, String stats, String origin, boolean mvp) {}
+    record Plate(int slot, String name, String stats, String origin, boolean mvp, String award, boolean left) {
+        Plate(int slot, String name, String stats, String origin, boolean mvp) { this(slot, name, stats, origin, mvp, "", false); }
+        /** The plate's lines under the name: the stats, the award (if any), then where he is from or that he left the battle. */
+        List<String> lines() { List<String> l = new ArrayList<>(); l.add(stats); if (!award.isEmpty()) l.add(award); l.add(left ? LEFT : origin); return l; }
+    }
+    static final String LEFT = "Left the battle";
     static final List<Plate> plates = new ArrayList<>();
     /** Harness only: the plate rectangles last drawn (x0, y0, x1, y1), the banner word last drawn and the frames that drew it. */
     static final List<int[]> plateRects = new ArrayList<>();
@@ -75,6 +80,12 @@ public final class EndingClient {
     static volatile long bannerFrames;
     /** Harness only: the frames the first-person hand was not drawn because the ending runs (EndingViewMixin). */
     public static volatile long handsHidden;
+    /** Harness only: how this client's ending began ("packet" for ending_begin, "snapshot" for the camp snapshot) and the client tick it began on. */
+    static volatile String beganBy = ""; static volatile long beganAt = -1;
+    /** Harness only: System.nanoTime when this ending began here, and when its banner was first drawn (-1 before). */
+    static volatile long beganNanos = -1, bannerNanos = -1;
+    /** Each podium figure's pose this frame by entity id (posePlayer): the rank's pose name, for the checks. */
+    static final java.util.Map<Integer, String> poses = new java.util.HashMap<>();
 
     // ---- state -------------------------------------------------------------------------------------------------------------------
 
@@ -99,7 +110,7 @@ public final class EndingClient {
         if (ending != null && ending.has("step")) {
             MatchEnding.Step next;
             try { next = MatchEnding.Step.valueOf(ending.get("step").getAsString()); } catch (RuntimeException e) { return Change.NONE; }
-            if (serverStep == null) { skippedTo = null; freezeTime = c.world == null ? -1 : c.world.getTime(); }
+            if (serverStep == null) { skippedTo = null; freezeTime = c.world == null ? -1 : c.world.getTime(); beganBy = "snapshot"; beganAt = ticks; beganNanos = System.nanoTime(); bannerNanos = -1; }
             serverStep = next; resultId = reportId; doneEarly = false;
             left = ending.has("left") ? ending.get("left").getAsInt() : 0; total = ending.has("total") ? ending.get("total").getAsInt() : 0;
             outcome = ending.has("outcome") ? ending.get("outcome").getAsString() : "";
@@ -113,6 +124,16 @@ public final class EndingClient {
         if (!same) return Change.NONE;
         doneEarly = running;
         return Change.DONE;
+    }
+
+    /** ending_begin (the server's word on the tick the match ends): the freeze and the RESULT banner start now; the next snapshot only confirms them. */
+    static void beginEnding(MinecraftClient c, String outcomeWord, String scoreLine) {
+        if (serverStep != null || c.player == null || c.world == null) return;
+        skippedTo = null; freezeTime = c.world.getTime(); beganBy = "packet"; beganAt = ticks; beganNanos = System.nanoTime(); bannerNanos = -1;
+        serverStep = MatchEnding.Step.RESULT; doneEarly = false;
+        total = left = Spec.ENDING[0].resultSeconds() * 20;
+        outcome = outcomeWord; line = scoreLine;
+        sync(c);
     }
 
     /** Sends one skip: this player alone moves to the next step at once (the server's answer follows within half a second). */
@@ -129,7 +150,8 @@ public final class EndingClient {
         MatchEnding.Step s = step();
         if (s != shown) {
             shown = s; stepAt = ticks;
-            if (s == MatchEnding.Step.PODIUM) { buildFigures(c); begin(c); }
+            if (s == MatchEnding.Step.RESULT) EndingSounds.banner(outcome.isEmpty() ? "DRAW" : outcome);
+            if (s == MatchEnding.Step.PODIUM) { buildFigures(c); begin(c); if (plates.stream().anyMatch(Plate::mvp)) EndingSounds.award(); }
             else if (s == MatchEnding.Step.STATS || s == MatchEnding.Step.REWARDS) { endCamera(c); if (figures.isEmpty()) buildFigures(c); openStats(c); }
             else if (s == MatchEnding.Step.DONE) leave(c);
         }
@@ -155,6 +177,7 @@ public final class EndingClient {
         if (c.player == null || c.world == null) { stop(c); return; }
         sync(c);
         if (camera != null) c.getToastManager().clear();
+        for (var f : figures) f.entity().age++; // the figures are never in the world: their own clock runs so troops play their idle and stance clips
         MatchEnding.Step s = step();
         if ((s == MatchEnding.Step.STATS || s == MatchEnding.Step.REWARDS) && c.currentScreen == null) openStats(c); // a screen something else closed comes back
     }
@@ -176,9 +199,13 @@ public final class EndingClient {
         return e instanceof ProjectileEntity || e instanceof MobEntity m && TroopModels.troopOf(m) != null;
     }
     /** GeckoLib's tick for a frozen troop: constant (GeoModel adds the frame's partial tick to it). */
-    static double geoTick(Entity e) { return frozen() ? e.age + 1 - MinecraftClient.getInstance().getTickDelta() : e.age; }
+    static double geoTick(Entity e) { return still(e) ? e.age + 1 - MinecraftClient.getInstance().getTickDelta() : e.age; }
+    /** A podium figure (ids -7100 down to -7111, never in the world). */
+    public static boolean figure(Entity e) { int id = e.getId(); return id <= -7100 && id > -7112; }
+    /** Whether this entity's animation stands still: frozen, and not a podium figure (the figures play their clips through the ending). */
+    public static boolean still(Entity e) { return frozen() && !figure(e); }
     /** Harness only: the clock a troop's clips read now (seconds), as TroopRenderer would draw it this frame. */
-    static double clock(Entity e) { return TroopMotion.time(e, e.age + (frozen() ? 1f : MinecraftClient.getInstance().getTickDelta())); }
+    static double clock(Entity e) { return TroopMotion.time(e, e.age + (still(e) ? 1f : MinecraftClient.getInstance().getTickDelta())); }
 
     // ---- the podium camera ---------------------------------------------------------------------------------------------------------
 
@@ -283,13 +310,15 @@ public final class EndingClient {
             String headline = r.has("headline") ? r.get("headline").getAsString().toUpperCase(Locale.ROOT) : "";
             int score = r.has("score") ? r.get("score").getAsInt() : 0;
             String sideName = faction == null ? "" : faction.name();
+            boolean mvp = r.has("mvp") ? r.get("mvp").getAsBoolean() : rank == 1, gone = r.has("left") && r.get("left").getAsBoolean();
+            String award = r.has("award") ? r.get("award").getAsString().toUpperCase(Locale.ROOT) : "";
             plates.add(new Plate(slot, display(name), score + (headline.isEmpty() ? "" : " · " + headline),
-                house.isEmpty() ? sideName : sideName.isEmpty() ? house : house + " · " + sideName, rank == 1));
+                house.isEmpty() ? sideName : sideName.isEmpty() ? house : house + " · " + sideName, mvp, award, gone));
         }
     }
     static void clearFigures() {
         for (var f : figures) { TroopMotion.forget(f.entity().getId()); MotionEvents.Client.forget(f.entity().getId()); }
-        figures.clear(); plates.clear(); plateRects.clear();
+        figures.clear(); plates.clear(); plateRects.clear(); poses.clear();
     }
     /** Stands e at x,y,z facing the view spot, with every previous-frame value the same (a statue under any partial tick). */
     static void place(LivingEntity e, double x, double y, double z, double[] view) {
@@ -376,6 +405,7 @@ public final class EndingClient {
         g.drawText(font, t, -tw / 2, -5, ink, false);
         mx.pop();
         int y = (int) (top + 5 * scale + 6 * scale);
+        if (bannerNanos < 0) bannerNanos = System.nanoTime();
         if (in < 1) { bannerFrames++; bannerDrawn = word; return; }
         // the brass rule: fading out at both ends
         int rw = (int) (w * .40f), x0 = w / 2 - rw / 2;
@@ -413,12 +443,13 @@ public final class EndingClient {
         int n = plates.size(); if (n == 0) return;
         double[] cx = new double[n];
         for (int i = 0; i < n; i++) { var p = plates.get(i); double[] at = pl[p.slot()]; double[] s = project(at[0], at[1], at[2] + 1.5, w, h, partial); cx[i] = s == null ? w / 2.0 : s[0]; }
-        int lineH = 11, pad = 5, ph = pad * 2 + lineH * 3 - 2, bottom = h - bar - 6, top = bottom - ph;
+        int rows = 1; for (var p : plates) rows = Math.max(rows, 1 + p.lines().size());
+        int lineH = 11, pad = 5, ph = pad * 2 + lineH * rows - 2, bottom = h - bar - 6, top = bottom - ph;
         for (int i = 0; i < n; i++) {
             var p = plates.get(i);
             Text name = Text.literal(p.name()).setStyle(Style.EMPTY.withFont(DarkUi.TITLE));
             int chip = p.mvp() ? font.getWidth("MVP") + 6 : 0;
-            int want = Math.max(Math.max(font.getWidth(name) + chip, font.getWidth(p.stats())), font.getWidth(p.origin())) + pad * 2 + 4;
+            int want = font.getWidth(name) + chip; for (String l : p.lines()) want = Math.max(want, font.getWidth(l)); want += pad * 2 + 4;
             // the room to the nearest neighbour's centre, split evenly, less a gap
             double room = w - 8;
             for (int j = 0; j < n; j++) if (j != i) room = Math.min(room, Math.abs(cx[j] - cx[i]) - 6);
@@ -436,7 +467,8 @@ public final class EndingClient {
             g.drawText(font, name, chip, 0, DarkUi.PAPER, false);
             mx.pop(); y += lineH;
             fitted(g, p.stats(), cx[i], y, inner, VICTORY_INK); y += lineH;
-            fitted(g, p.origin(), cx[i], y, inner, 0xffcdbf9f);
+            if (!p.award().isEmpty()) { fitted(g, p.award(), cx[i], y, inner, LINE_INK); y += lineH; }
+            fitted(g, p.left() ? LEFT : p.origin(), cx[i], y, inner, p.left() ? DarkUi.ALARM_TEXT : 0xffcdbf9f);
             plateRects.add(new int[]{x0, top, x1, bottom});
         }
     }
@@ -445,5 +477,29 @@ public final class EndingClient {
         int tw = font.getWidth(text); float s = Math.min(1f, inner / (float) Math.max(1, tw));
         var mx = g.getMatrices(); mx.push(); mx.translate((float) cx - tw * s / 2f, y, 0); mx.scale(s, s, 1);
         g.drawText(font, text, 0, 0, ink, false); mx.pop();
+    }
+
+    // ---- the podium poses (ending polish spec 1) -------------------------------------------------------------------------------
+
+    /** After vanilla and the commander clips pose a podium commander (PlayerModelMixin): rank 1 raises his weapon arm high and lifts his chin, ranks 2 and 3
+     *  hold the weapon arm across the chest, any other stands as he is. Only arm and head angles on the existing model; the sleeves and hat follow. */
+    public static void posePlayer(net.minecraft.client.render.entity.model.PlayerEntityModel<?> m, LivingEntity e, float age) {
+        if (figures.isEmpty() || !figure(e) || !(e instanceof Statue)) return;
+        int slot = -1; for (var f : figures) if (f.entity() == e) slot = f.slot();
+        if (slot < 0) return;
+        boolean right = e.getMainArm() == net.minecraft.util.Arm.RIGHT;
+        var arm = right ? m.rightArm : m.leftArm; float side = right ? 1 : -1;
+        float breathe = (float) Math.sin(age * 0.08) * 0.03f;
+        if (slot == 0) {
+            arm.pitch = (float) Math.toRadians(-168) + breathe; arm.yaw = 0; arm.roll = side * (float) Math.toRadians(-8);
+            m.head.pitch = (float) Math.toRadians(-14); m.head.yaw = 0;
+            poses.put(e.getId(), "raised");
+        } else if (slot <= 2) {
+            arm.pitch = (float) Math.toRadians(-58) + breathe; arm.yaw = side * (float) Math.toRadians(-38); arm.roll = side * (float) Math.toRadians(14);
+            m.head.pitch = (float) Math.toRadians(4);
+            poses.put(e.getId(), "chest");
+        } else { poses.put(e.getId(), "stand"); return; }
+        m.hat.copyTransform(m.head);
+        m.rightSleeve.copyTransform(m.rightArm); m.leftSleeve.copyTransform(m.leftArm);
     }
 }

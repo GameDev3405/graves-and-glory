@@ -49,6 +49,8 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier STATE = new Identifier("gravesandglory", "state_v10");
     public static final Identifier OPEN_BARRACKS = new Identifier("gravesandglory", "barracks_v1");
     public static final Identifier PARTY = new Identifier("gravesandglory", "party_v1");
+    /** Server to client when the match ending begins (Campaign.beginEnding): the outcome word and the score line, so the client freezes and shows the banner on that tick. */
+    public static final Identifier ENDING_BEGIN = new Identifier("gravesandglory", "ending_begin_v1");
     /** A troop's stance, server to client: stance_v2 (MotionEvents.STANCE), which retired stance_v1. */
     public static final Identifier STANCE = MotionEvents.STANCE;
     /** S2C battle event feed lines (FeedEvents): kind, the event's team, text. */
