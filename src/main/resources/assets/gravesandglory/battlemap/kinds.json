@@ -1,0 +1,20 @@
+{
+ "format": "gg-battlemap-kinds/1",
+ "about": "Battle map (parchment look): top block of a column -> kind. Rules are tried in order, first match wins; a rule matches by exact id, by id suffix or by id prefix (namespace included). 'flat' is the kind used when the column does not stand 'raise' or more blocks above the local terrain (a stair at ground level is paving, not a roof). Unmatched blocks use 'default'. stonework is carved pale stone at ground level (statues, reliefs) drawn as a pale ink-outlined shape.",
+ "default": "ground",
+ "raise": 3,
+ "kinds": ["ground", "water", "road", "crops", "rock", "foliage", "stonework", "building"],
+ "rules": [
+  {"kind": "water", "ids": ["minecraft:water", "minecraft:bubble_column", "minecraft:seagrass", "minecraft:kelp", "minecraft:lily_pad", "minecraft:ice"]},
+  {"kind": "foliage", "suffix": ["_leaves", "_wart_block"], "ids": ["minecraft:azalea", "minecraft:flowering_azalea", "minecraft:mangrove_roots"]},
+  {"kind": "crops", "ids": ["minecraft:farmland", "minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroots", "minecraft:melon", "minecraft:pumpkin", "minecraft:sugar_cane"]},
+  {"kind": "building", "flat": "crops", "ids": ["minecraft:hay_block"]},
+  {"kind": "road", "ids": ["minecraft:dirt_path", "minecraft:rail", "minecraft:packed_mud", "minecraft:mud"]},
+  {"kind": "building", "flat": "road", "ids": ["minecraft:cobblestone", "minecraft:mossy_cobblestone", "minecraft:stone_bricks", "minecraft:mossy_stone_bricks", "minecraft:cracked_stone_bricks", "minecraft:chiseled_stone_bricks", "minecraft:smooth_stone", "minecraft:polished_andesite", "minecraft:cobbled_deepslate", "minecraft:bricks", "minecraft:mud_bricks", "minecraft:deepslate_bricks", "minecraft:deepslate_tiles"]},
+  {"kind": "building", "flat": "road", "suffix": ["_stairs", "_slab", "_planks", "_bricks", "_tiles", "_log", "_wood", "_wool", "_terracotta", "_concrete", "_fence", "_wall", "_trapdoor", "_door"], "prefix": ["minecraft:stripped_"]},
+  {"kind": "building", "flat": "ground", "ids": ["minecraft:barrel", "minecraft:carved_pumpkin", "minecraft:cauldron", "minecraft:water_cauldron", "minecraft:target", "minecraft:campfire", "minecraft:grindstone", "minecraft:fletching_table", "minecraft:smoker", "minecraft:furnace", "minecraft:crafting_table", "minecraft:chest", "minecraft:bookshelf"]},
+  {"kind": "stonework", "ids": ["minecraft:calcite", "minecraft:diorite", "minecraft:polished_diorite", "minecraft:quartz_block", "minecraft:smooth_quartz"]},
+  {"kind": "rock", "ids": ["minecraft:stone", "minecraft:gravel", "minecraft:andesite", "minecraft:granite", "minecraft:tuff", "minecraft:deepslate", "minecraft:cobbled_deepslate", "minecraft:basalt", "minecraft:smooth_basalt", "minecraft:dripstone_block", "minecraft:netherrack", "minecraft:blackstone"]},
+  {"kind": "ground", "ids": ["minecraft:grass_block", "minecraft:dirt", "minecraft:coarse_dirt", "minecraft:rooted_dirt", "minecraft:podzol", "minecraft:moss_block", "minecraft:mycelium", "minecraft:sand", "minecraft:snow_block", "minecraft:clay"]}
+ ]
+}
