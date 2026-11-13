@@ -232,3 +232,15 @@ replays the in-place changes the step made to its arguments. The cache lives in 
   hit_knockback, hit_medium_front.
 - Renders: `work/render/r2_*`, near and game16, front, side and three_quarter, with the rig and tier 3. Hits are added
   onto the ready stance. There is also a top view of the jab over t2-9.
+
+### After the re-review (2026-11-13)
+
+- Sonnet high re-review of fix round 2: SHIP WITH MINORS, 8/10 (was 7). Report: `work/reviewer/IC_BREAKER-sonnet-review-r2.md`.
+- The fixed-crest exemption is back on hit_medium_front and added for stun_upper and stun_out_upper (Kort 2026-11-11: a fixed
+  crest is still; every other hanging piece in those clips now moves). This replaces the "6 FAIL rows in 4 clips" above.
+- The three rows fix round 2 could not clear are recorded debt in `tools/anim/focus_exemptions.json`, each judged by the
+  reviewer as not visible at 16 blocks: jab helm into left_spikes (3.52, t7.5), jab haft on the left forearm (1.64,
+  t2.75), stun_out axe on the right leg (1.79, t5). The fix for each is a re-keyed clip or a shorter spike, not a late offset.
+- Focus check: 0 FAIL rows. This was the troop's last fix round.
+- In game: `work/ingame-check/ic_breaker-review4`, 23 lines, 0 false. A first run (`review3`) ran beside a booth build and
+  failed two lag-sensitive rows (march-run-side, attack-sync-walk).
