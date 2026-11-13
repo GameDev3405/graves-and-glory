@@ -191,6 +191,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         });
         HudRenderCallback.EVENT.register(GravesAndGloryClient::renderHud);
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(CommandMode::renderWorld);
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(PlanMarkers::render); // the plan flags over planned points (battle map spec 5.4)
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(EndingClient::renderFigures); // the match ending's podium figures
         ChargeCamera.register(); // the overhead charge camera: its option, its toggle binding and the ground arrow
         OrderOutlines.register(); // formation outlines, pulses and the rally pose; registered after the tick handler above so it reads the aim that handler left

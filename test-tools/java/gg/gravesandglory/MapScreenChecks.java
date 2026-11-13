@@ -13,9 +13,10 @@ import java.util.UUID;
  *  - view: BattleMapScreen opens at the fit scale; a scroll of +3 at the map's centre zooms and keeps the centre's world point; a 50 px
  *    drag moves the view; T switches the look and the texture drawn; Home fits again; with no grid the screen still draws (fallback).
  *  - plan: a click on point B opens its popup; Attack puts ATTACK on B in battlemap_v1 and a bot says "on it, taking"; a click on an ally
- *    bot's plaque opens its popup; Hold here puts a direct HOLD for that army in battlemap_v1.
+ *    bot's plaque opens its popup; Hold here puts a direct HOLD for that army in battlemap_v1. With the screen closed and the player
+ *    moved 100 blocks from point B and facing it, PlanMarkers drew at least one world flag (Task 7).
  *  Screenshots (screenshots/p4-ui-map-*-(map)[-1080|-small].png): fit, zoom, real, plan at 960x540 GUI 2, fit and plan at 1920x1080 GUI 3,
- *  fit at 854x480 GUI 2. */
+ *  fit at 854x480 GUI 2; the world flag from the player's view toward B (p4-ui-plan-flag-(map)). */
 public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
     static final int[] MAPS = {0, 5};
     volatile UUID player;
@@ -28,7 +29,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
     boolean fitOpen, zoomUp, zoomKept, dragMoved, toggled, homeFit, noGridOk;
     String viewWhy = "";
     // the plan check's
-    boolean pointPopup, planInState, ackHeard, armyPopup, orderInState;
+    boolean pointPopup, planInState, ackHeard, armyPopup, orderInState, flagDrawn;
     String planWhy = "", ally = "", setter = "";
     final List<String> heard = new ArrayList<>();
     int winW, winH, winGui;
@@ -166,11 +167,34 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 if (p != null) screen.clickAt(p[0], p[1]);
                 next(17, tick);
             }
-            case 17 -> { if (waited >= 3) { Phase4Checks.shot(c, "ui-map-plan-" + id); next(19, tick); } }
+            case 17 -> { if (waited >= 3) { Phase4Checks.shot(c, "ui-map-plan-" + id); screen.popup = null; c.setScreen(null); next(18, tick); } }
+            case 18 -> { // the world flag: the screen closed, the player 100 blocks from B and facing its flag
+                if (waited < 2) return;
+                var b = Spec.POINTS[1];
+                double fx = b.x() + .5, fz = b.z() + .5, fy = PlanMarkers.ground(b, fx, fz) + PlanMarkers.POINT_LIFT + 2;
+                if (waited == 2) {
+                    double ox = c.player.getX() - fx, oz = c.player.getZ() - fz, ol = Math.max(1e-3, Math.hypot(ox, oz));
+                    double tx = fx + ox / ol * 100, tz = fz + oz / ol * 100;
+                    UUID who = player;
+                    Phase4Checks.server(c, battle -> { var p = battle.server.getPlayerManager().getPlayer(who); if (p != null) p.teleport(p.getServerWorld(), tx, Arena.ground((int) Math.floor(tx), (int) Math.floor(tz)) + 1, tz, p.getYaw(), 0); });
+                    return;
+                }
+                var eye = c.player.getEyePos();
+                double dx = fx - eye.x, dy = fy - eye.y, dz = fz - eye.z, h = Math.hypot(dx, dz);
+                float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)), pitch = (float) -Math.toDegrees(Math.atan2(dy, h));
+                c.player.setYaw(yaw); c.player.setPitch(pitch); c.player.prevYaw = yaw; c.player.prevPitch = pitch; c.player.setHeadYaw(yaw); c.player.prevHeadYaw = yaw;
+                if (waited < 22) return;
+                flagDrawn = PlanMarkers.drawn() >= 1;
+                planWhy += "screen closed, facing B from " + Math.round(Math.hypot(h, dy)) + " blocks: PlanMarkers drew " + PlanMarkers.drawn() + " flags; ";
+                Phase4Checks.shot(c, "ui-plan-flag-" + id);
+                c.setScreen(screen);
+                next(19, tick);
+            }
             case 19 -> {
                 boolean pointsPlanned = CampaignClient.showsPoints();
-                Phase4Checks.report("p4-map-plan-" + id, pointPopup && (!pointsPlanned || planInState && ackHeard) && armyPopup && orderInState, planWhy);
+                Phase4Checks.report("p4-map-plan-" + id, pointPopup && (!pointsPlanned || planInState && ackHeard) && armyPopup && orderInState && flagDrawn, planWhy);
                 screen.popup = null;
+                if (c.currentScreen != screen) c.setScreen(screen);
                 Phase1Checks.window(c, 1920, 1080, 3, true);
                 next(20, tick);
             }
@@ -202,7 +226,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
 
     void resetFindings() {
         fitOpen = zoomUp = zoomKept = dragMoved = toggled = homeFit = noGridOk = false;
-        pointPopup = planInState = ackHeard = armyPopup = orderInState = false;
+        pointPopup = planInState = ackHeard = armyPopup = orderInState = flagDrawn = false;
         viewWhy = ""; planWhy = ""; ally = ""; setter = ""; heard.clear();
     }
 
