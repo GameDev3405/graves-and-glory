@@ -105,6 +105,8 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             }
             if (tick == resultAt + 24) {
                 frozenDone = true;
+                { boolean opened = CommandPanel.enterEdit(c); boolean editing = CommandPanel.editing(); if (editing) CommandPanel.leaveEdit(c); // the movable HUD's edit mode stays shut while the ending draws its own HUD (UI lead, 2026-11-12)
+                  report("ending-hud-edit", !opened && !editing && !CommandPanel.hudShown(c), "edit mode during RESULT: opened=" + opened + ", editing=" + editing + ", battle HUD shown=" + CommandPanel.hudShown(c)); }
                 if (watched == null) report("ending-client-frozen", false, "no troop in the client world during RESULT");
                 else {
                     double clock1 = EndingClient.clock(watched);

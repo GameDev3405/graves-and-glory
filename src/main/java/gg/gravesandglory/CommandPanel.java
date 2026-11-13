@@ -122,7 +122,7 @@ public final class CommandPanel {
     /** Whether the battle HUD, and so the panel, is on screen: in battle, no Screen, the HUD not hidden by F1, a cinematic or a diagnostics run. */
     public static boolean hudShown(MinecraftClient c) {
         return c.currentScreen == null && c.player != null && GravesAndGloryClient.battleActive()
-            && !c.options.hudHidden && !CampaignClient.cinematic() && !(Diagnostics.active() && Diagnostics.hideHud());
+            && !c.options.hudHidden && !CampaignClient.cinematic() && !EndingClient.hudActive() && !(Diagnostics.active() && Diagnostics.hideHud()); // the match ending draws its own HUD
     }
 
     /**
@@ -527,7 +527,7 @@ public final class CommandPanel {
 
     /** Every client tick: edit mode ends (saving) when the battle does. */
     static void editTick(MinecraftClient c) {
-        if (editing && (c.player == null || !GravesAndGloryClient.battleActive())) leaveEdit(c);
+        if (editing && (c.player == null || !GravesAndGloryClient.battleActive() || EndingClient.hudActive())) leaveEdit(c); // the match ending also ends it, saving
     }
 
     /** A disconnect: edit mode is left (saved) and the arrangement is read from the file again on the next join. */
