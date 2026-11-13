@@ -212,6 +212,7 @@ def main(settings_path, sections_dir, out_dir):
                 'columns': 'columns.bin.gz', 'field': st['field'], 'tiles': tiles, 'points': points, 'spawns': spawns,
                 'roads': [], 'routes': routes, 'routesBy': 'floors', 'design_sha256': digest.hexdigest()}
     (out / 'map.json').write_bytes((json.dumps(manifest, sort_keys=True, indent=1) + '\n').encode('utf-8'))
+    write_nav(out / NAV, floors, w, d, floor, manifest['design_sha256'])
     for p in points:
         print(f"point {p['id']} {p['name']}: y {p['y']}")
     for s in spawns:
