@@ -347,7 +347,7 @@ final class WarTableReport {
         }
         if (pacts > 0) y = row(g, "march-pact", pacts == 1 ? "A Pact earned" : pacts + " Pacts earned", "held " + held, x, y, DarkUi.INK_TEXT);
         else if (held > 0) y = row(g, "march-pact", "Pacts held", String.valueOf(held), x, y, DarkUi.SEPIA);
-        if (!eligible) line(g, "rewards-note", "No gold: under 3 minutes.", x, y + 1, DarkUi.SEPIA);
+        if (!eligible) line(g, "rewards-note", "No rewards: under 3 minutes.", x, y + 1, DarkUi.SEPIA);
     }
 
     /** One label and value row of the note (the label trimmed to leave the value its room); returns the y under it. */

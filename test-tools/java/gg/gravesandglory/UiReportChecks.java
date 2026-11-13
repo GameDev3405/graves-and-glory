@@ -178,7 +178,7 @@ final class UiReportChecks implements Suite {
                 note("p1-ui-report-esc",home,"Esc from the report lands on "+(c.currentScreen instanceof CampScreen s?s.page:String.valueOf(c.currentScreen)));
                 size=1;msub=0;window(c,SIZES[1][0],SIZES[1][1],0,true);stage=9;subAt=tick;
             }
-            case 9->{ // plan 2C.5: a Long March report: bonus kept and a Pact earned, bonus missed, a loss, under the gold floor
+            case 9->{ // plan 2C.5: a Long March report: bonus kept and a Pact earned, bonus missed, a loss, under the 3-minute floor
                 var j=synth(Modes.DOMINATION,3,3,false,0,2,3,msub!=4);
                 if(msub==3)j.addProperty("eligible",false);
                 if(msub==2)j.addProperty("outcome","DEFEAT");
@@ -191,10 +191,10 @@ final class UiReportChecks implements Suite {
                 var t=WarTableReport.texts();String tag2=SIZES[size][0]+"x"+SIZES[size][1];String lay=layout(c);
                 String bonus=t.get("march-bonus"),pact=t.get("march-pact"),value=t.get("march-bonus-value");
                 boolean pass=switch(msub){
-                    case 0->"Bonus kept".equals(bonus)&&value!=null&&value.startsWith("+5 ")&&value.contains("+40 gold")&&"A Pact earned".equals(pact)&&t.get("story-after")!=null&&t.get("story-end")!=null;
+                    case 0->"Bonus kept".equals(bonus)&&value!=null&&value.startsWith("+5 ")&&value.contains("+40 gear shards")&&"A Pact earned".equals(pact)&&t.get("story-after")!=null&&t.get("story-end")!=null;
                     case 1->"Bonus missed".equals(bonus)&&value==null&&pact==null&&t.get("story-after")!=null&&t.get("story-end")==null;
                     case 2->bonus==null&&pact==null&&t.get("story-after")==null&&t.get("story-end")==null;
-                    case 3->"No gold: under 3 minutes.".equals(t.get("rewards-note"));
+                    case 3->"No rewards: under 3 minutes.".equals(t.get("rewards-note"));
                     default->t.get("rewards").contains("not saved");};
                 note("p1-ui-report-march-"+msub+"-"+tag2,pass&&lay.isEmpty(),"march case "+msub+" at "+tag2+": bonus "+bonus+" / "+value+", pact "+pact+", after line "+(t.get("story-after")!=null)+", chapter end "+(t.get("story-end")!=null)+", note "+t.get("rewards-note")+(lay.isEmpty()?", layout clean":", layout: "+lay));
                 if(msub==0){shot(c,"report-pact-"+tag2);}
