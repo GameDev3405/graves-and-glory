@@ -177,3 +177,38 @@ Still open (two or more attempts each; model parts named where only geometry cle
   z +-3.8). Bracers are about 4.6 px wide.
 - Hits armour 1.98-2.36: fur_cowl into pelt_tail or pauldrons, mantle_front_r into right_bracer (cloth parts).
 - rally armour 2.34, scorecard pen_weapon 1.614; stun bow into left_greave 1.9.
+
+## Model fix 2026-11-13 (cowl and right pauldron)
+
+Kort chose "Fix in the model". Hand builder only (`art/hand/stalker/build_stalker.py`); GeckoLib geo, previews and the
+old-format model rebuilt; no box size or UV changed (atlas and all 18 tier/colour textures unchanged). Clips unchanged
+(byte-identical to 468d2900, all 57).
+
+Part changes (geo px; -x is the troop's right, +z the back):
+- fur_cowl main box: origin z -5 -> -4.5 and inflate 0.3 -> 0 (lies flat; sides and crown 0.3 in, lip 0.8 back off the
+  drawn bow, back face 0.2 further back). Lappets: 1 px higher (geo y 21..28 -> 22..29), x and size unchanged.
+- right_pauldron plate and both spikes: 1.5 px in and 1 px down (plate origin x -9.4 -> -7.9, y 23.7 -> 22.7).
+- Left pauldron, crest, mantle, pelt_tail, bracers and bow unchanged.
+
+The prescribed moves did not work as written, so the fix differs: the cowl rows come from the main cowl box, not the
+lappets (moving the lappets 1.5 px in raised knockback to 2.67 and brace to 3.0), and the pauldron 1 px out raised brace
+to 3.14 and charge_run to 3.68; in plus down cleared it. A thinner pauldron inflate also scored worse (armour_clip
+subtracts the rest overlap). Knee mantle collar: four 0.5 px tests (forward, back, in, out) cleared no row and forward
+added a FAIL (brace mantle_front_r into right_greave 1.91), so the mantle is unchanged.
+
+Rows (committed clips on the new model):
+- Scorecard: 2 -> 0 failing rows (charge_run pen_weapon 2.728, rally pen_weapon 1.614 both clear); shots still print
+  APPROVED with the same values.
+- Focus: FAIL rows 19 -> 17, clips with a FAIL 15 -> 13, WARN 85 -> 87, exempt 14 -> 14. brace 2.64 -> 1.83 and aim
+  1.94 -> 1.89 move FAIL -> WARN. No pass turned FAIL. Lower but still FAIL: charge_run 2.86 -> 2.50 (now knee_mantle
+  into right_bracer), aim_up 3.31 -> 3.01, aim_down 3.08 -> 2.78 (cowl into right_bracer at the jaw anchor; clearing
+  needs the cowl about 1.1-1.4 px narrower), hit_medium_back 2.28 -> 2.10, hit_pulled 2.36 -> 2.28, hit_knockback
+  2.31 -> 2.19, rally 2.34 -> 2.24 (left_pauldron into wrap), hit_medium_right 2.12 -> 2.01, hit_block 2.06 -> 2.01.
+  Unchanged: walk 1.91, run 2.05, hit_medium_front 1.98 (mantle collar). hit_light_back WARN 1.76 -> 1.78.
+- Shot exempt rows lower: volley 4.32 -> 4.02, direct 4.00 -> 3.44.
+
+Clip builder: `stalker_core.soften` measures fur_cowl (and wrap_tails) from the geo, and the deaths' ground fit solves
+on the model's lowest points. A rebuild on the new model changes 16 clips (timing equal everywhere): 12 hits and
+stun_upper (cowl and wrap_tails spring keys) and the 4 deaths (left_hand up to 92 deg, death_right root up to 10.8 px).
+The committed clips are kept, as in the bonebow fix: the death changes are unreviewed motion and the shots and clip
+timing stay as approved. A future clip rebuild will pick these up and needs its own review.

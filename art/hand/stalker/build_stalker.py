@@ -348,12 +348,16 @@ def bones():
     B = [Bone("root", "")]
     B.append(Bone("body", "root", (0, 12, 0), [Box((-4.5, -12, -2), (9, 12, 4), body)], rot=(LEAN, 0, 0)))
     B.append(Bone("head", "body", (0, -12, 0), [Box((-4, -8, -3), (8, 8, 8), skull)], rot=(-LEAN // 2, 0, 0)))
-    # the fur cowl: opening 6 wide with the skull set two px back, a crest of fur along the crown, a lappet either side
+    # the fur cowl: opening 6 wide with the skull set two px back, a crest of fur along the crown, a lappet either side.
+    # Model fix 2026-11-13 (Kort: fix the cowl in the model): the cowl lies flat (no 0.3 px puff) and sits 0.5 px further
+    # back, so its sides and crown come in 0.3 px off the bracers and plates, its lip 0.8 px off the drawn bow (the skull
+    # now sits 1.5 px inside the opening) and its back face 0.2 px further back; the lappets hang 1 px higher (their foot
+    # was the part that met the string bracer). Was (-5,-9,-5) dil 0.3; lappets at y -4.
     B.append(Bone("fur_cowl", "head", tag="helm", boxes=[
-        Box((-5, -9, -5), (10, 10, 10), cowl, dil=0.3),
+        Box((-5, -9, -4.5), (10, 10, 10), cowl),
         Box((-1, -11, -3), (2, 2, 8), crest, dil=0.2),
-        Box((-6.5, -4, -3), (1, 7, 5), lappet, dil=0.2),
-        Box((5.5, -4, -3), (1, 7, 5), lappet, dil=0.2)]))
+        Box((-6.5, -5, -3), (1, 7, 5), lappet, dil=0.2),
+        Box((5.5, -5, -3), (1, 7, 5), lappet, dil=0.2)]))
     for side, x, paint in (("right", -5.5, arm_draw), ("left", 5.5, arm_bow)):   # jointed: the elbow at mid-arm, the hand 4 px under it
         B += limb(f"{side}_arm", "body", (x, -11, 0), (-1, -2, -1), paint, f"{side}_forearm", (0, 4, 0), size=(2, 12, 2), rot=(-LEAN, 0, 0))
         B.append(Bone(f"{side}_hand", f"{side}_forearm", (0, 4, 0)))
@@ -381,10 +385,13 @@ def bones():
     P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
     TN = per_tier(lambda t: gb_spike(F, 4, 3), (2, 3))
     B.append(Bone("breastplate", "body", stages=[2, 3], boxes=[Box((-3.5, -12, -2.7), (7, 4, 5.4), P2("bpl"), dil=0.75)]))
-    for side, sx, rz in (("right", -1, 12), ("left", 1, -12)):
+    # Model fix 2026-11-13 (Kort): the string-side plate sits 1 px lower and 1.5 px in (dx, dy below), clear of the head
+    # where it drops in brace and charge_run; the bow-side plate is unchanged.
+    for side, sx, rz, dx, dy in (("right", -1, 12, 1.5, 1.0), ("left", 1, -12, 0.0, 0.0)):
         B.append(Bone(f"{side}_pauldron", f"{side}_arm", (sx * 1.2, -0.3, 0), rot=(0, 0, rz), stages=[2, 3], boxes=[
-            Box((-2.7, -3.4, -3.2), (5.4, 3, 6.4), P2("pd" + side), dil=0.9),
-            Box((-0.5 + sx * 1.5, -7.6, -0.5), (1, 4.4, 1), TN), Box((-0.5 + sx * 0.2, -6.4, 1.6), (1, 3.4, 1), TN)]))
+            Box((-2.7 + dx, -3.4 + dy, -3.2), (5.4, 3, 6.4), P2("pd" + side), dil=0.9),
+            Box((-0.5 + sx * 1.5 + dx, -7.6 + dy, -0.5), (1, 4.4, 1), TN),
+            Box((-0.5 + sx * 0.2 + dx, -6.4 + dy, 1.6), (1, 3.4, 1), TN)]))
         B.append(Bone(f"{side}_bracer", f"{side}_forearm", stages=[2, 3], boxes=[Box((-1.8, 0.5, -1.8), (3.6, 3.5, 3.6), P2("br" + side, 0.18), dil=0.5)]))
         B.append(Bone(f"{side}_greave", f"{side}_shin", stages=[2, 3], boxes=[Box((-1.7, -1.8, -1.7), (3.4, 3, 3.4), P2("gv" + side), dil=0.5)]))
     B.append(Bone("belt_plate", "body", stages=[2, 3], boxes=[Box((-2, -4.4, -2.7), (4, 2.6, 0.8), P2("bt"), dil=0.5)]))
