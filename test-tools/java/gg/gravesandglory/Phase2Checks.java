@@ -6267,12 +6267,13 @@ public final class Phase2Checks implements ClientModInitializer {
         static final Set<String> COMMONS=Set.of("knight","archer","revenant","bonebow","wm_hound","wm_hunter","ic_hearthguard","ic_arbalist","tc_raider","tc_harpooner");
         static final int REFUND=Spec.ECONOMY[0].refundGold();
         /** What a case's profile must read as: gold, class, extra owned troops over the 10 Commons, banner, matches, wins, Phase 1 campaignCleared, tutorial flag. */
+        /** cleared is 0 for every case: schema 6 (M1) resets the march-era progress, so the fixtures' campaignCleared of 1 ends 0. */
         record Want(int gold,String commander,Set<String> extra,String banner,int matches,int wins,int cleared,boolean tutorial){}
         static final Map<String,Want> WANT=Map.of(
             "fresh",new Want(420+2*REFUND,"champion",Set.of(),"knight*12,archer*6,empty*2",0,0,0,false),
-            "full",new Want(1500+4*REFUND,"warlock",Set.of("sentinel","longbow","reaper","stalker"),"sentinel*4,longbow*4,knight*10,empty*2",31,17,1,true),
-            "invalid",new Want(90+2*REFUND,"warden",Set.of(),"revenant*12,bonebow*6,empty*2",3,1,1,true),
-            "invalid-both",new Want(90+2*REFUND,"warden",Set.of(),"knight*12,archer*8",3,1,1,true));
+            "full",new Want(1500+4*REFUND,"warlock",Set.of("sentinel","longbow","reaper","stalker"),"sentinel*4,longbow*4,knight*10,empty*2",31,17,0,true),
+            "invalid",new Want(90+2*REFUND,"warden",Set.of(),"revenant*12,bonebow*6,empty*2",3,1,0,true),
+            "invalid-both",new Want(90+2*REFUND,"warden",Set.of(),"knight*12,archer*8",3,1,0,true));
         static UUID caseId(String c){return UUID.nameUUIDFromBytes(("gg-migration-suite-"+c).getBytes(java.nio.charset.StandardCharsets.UTF_8));}
         /** The fixture's bytes; "invalid-both" is the invalid fixture with its Dusk line emptied too. */
         static byte[] bytes(String c)throws IOException{
@@ -6351,8 +6352,8 @@ public final class Phase2Checks implements ClientModInitializer {
                 }else{
                     Files.deleteIfExists(v1);Files.deleteIfExists(camp.directory.resolve(id+".json.bak"));Files.write(file,fx);camp.profiles.remove(id);
                     var pr=camp.profile(id);
-                    String bad=wrong(c,pr);boolean kept=Files.exists(v1)&&Arrays.equals(Files.readAllBytes(v1),fx),v2=Files.readString(file).contains("\"schema\": "+Profile.SCHEMA);
-                    if(!kept)bad+="the .v1.json is not a byte copy of the fixture; ";if(!v2)bad+="the file is not rewritten as the current schema; ";
+                    String bad=wrong(c,pr);boolean kept=Files.exists(v1)&&Arrays.equals(Files.readAllBytes(v1),fx),v2=schemaOf(Files.readString(file))==4; // the file upgrade stops at schema 4 (ProfileMigration.upgradeFile); schema 5 to 7 are in-memory steps that reach the disk with the next save, as p2-migrate-live checks
+                    if(!kept)bad+="the .v1.json is not a byte copy of the fixture; ";if(!v2)bad+="the file is not rewritten off v1 as schema 4; ";
                     if(!bad.isEmpty())loaded.append(c).append(": ").append(bad);
                     // in-process restart: the profile dropped from memory and read again
                     byte[] main=Files.readAllBytes(file);long mtime=Files.getLastModifiedTime(file).toMillis();
@@ -6377,7 +6378,7 @@ public final class Phase2Checks implements ClientModInitializer {
             var got=camp.profile(player);Set<String> owned=new HashSet<>(COMMONS);owned.add("sentinel");
             if(!got.owned.keySet().equals(owned))bad.append("owned ").append(new TreeSet<>(got.owned.keySet())).append(" (want the 10 Commons and sentinel); ");
             if(migGold(got)!=900+3*REFUND)bad.append("gold (troop writs x 100 + gear shards) ").append(migGold(got)).append(" (want ").append(900+3*REFUND).append(": 900 + mage, hexer and oracle refunded); ");
-            if(!got.commander.equals("warden")||!got.line().equals(banner("knight*12,archer*6,sentinel*2"))||got.schema!=Profile.SCHEMA||got.matches!=12||got.wins!=7||got.campaignCleared!=1||!got.tutorialDone||got.progression.xp!=777)bad.append("class/banner/schema/matches/wins/cleared/tutorial/xp: ").append(got.commander).append(" ").append(String.join(",",got.line())).append(" ").append(got.schema).append(" ").append(got.matches).append(" ").append(got.wins).append(" ").append(got.campaignCleared).append("; ");
+            if(!got.commander.equals("warden")||!got.line().equals(banner("knight*12,archer*6,sentinel*2"))||got.schema!=Profile.SCHEMA||got.matches!=12||got.wins!=7||got.campaignCleared!=0||!got.tutorialDone||got.progression.xp!=777)bad.append("class/banner/schema/matches/wins/cleared/tutorial/xp: ").append(got.commander).append(" ").append(String.join(",",got.line())).append(" ").append(got.schema).append(" ").append(got.matches).append(" ").append(got.wins).append(" ").append(got.campaignCleared).append("; ");
             boolean saved=Files.exists(file)&&Files.readString(file).contains("\"schema\": "+Profile.SCHEMA)&&savedGold(JsonParser.parseString(Files.readString(file)).getAsJsonObject())==900+3*REFUND;
             if(!saved)bad.append("the import was not saved as a current-schema file; ");
             if(camp.importAllowed.contains(player)||!camp.collectionsReady.contains(player))bad.append("the permission was not used up or the collection is not ready; ");

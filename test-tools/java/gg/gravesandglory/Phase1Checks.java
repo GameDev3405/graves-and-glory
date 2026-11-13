@@ -1317,14 +1317,14 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(mark==null){report("p1-report-late-kill",false,"no living Dusk infantry to shoot");next(b,7);break;}
                     mark.mob.setHealth(1);double x=mark.mob.getX()-12,z=mark.mob.getZ();
                     archer=b.spawn(own,troop("archer"),30,new Vec3d(x,top(b,x,z),z));freeze(archer);
-                    Projectiles.fire(b,archer,mark.mob,"arrow",(float)(archer.spec.damage()*b.campaign.damage(archer)));arrow=b.shots.get(b.shots.size()-1);
+                    Projectiles.fire(b,archer,mark.mob,"arrow",(float)(20*archer.spec.damage()*b.campaign.damage(archer))); /* x20: the mark may be a front-rank Shield wall knight whose raised shield stops 75% of an arrow (FormationRules.arrowBlock); the check is about the credit, not the damage */arrow=b.shots.get(b.shots.size()-1);
                     archer.mob.kill();killsBefore=own.stats.kills;
                     System.out.println("[p1] report late shot: fired at tick "+arrow.fired()+", lands at "+arrow.lands()+", archer dead="+!archer.mob.isAlive()+", army kills "+killsBefore);
                     next(b,6);
                 }
                 case 6->{if(b.time>arrow.lands()){
                     boolean gone=!archer.mob.isAlive()&&!b.units.contains(archer);
-                    report("p1-report-late-kill",!mark.mob.isAlive()&&gone&&own.stats.kills==killsBefore+1,"arrow loosed at tick "+arrow.fired()+" by an archer killed the same tick (out of the battle at landing="+gone+"), landed at "+arrow.lands()+": target alive="+mark.mob.isAlive()+", last hit by the commander's army="+(mark.lastHitBy==own)+"; the army's kills "+killsBefore+" -> "+own.stats.kills);
+                    report("p1-report-late-kill",!mark.mob.isAlive()&&gone&&own.stats.kills==killsBefore+1,"arrow loosed at tick "+arrow.fired()+" by an archer killed the same tick (out of the battle at landing="+gone+"), landed at "+arrow.lands()+": target alive="+mark.mob.isAlive()+", last hit by the commander's army="+(mark.lastHitBy==own)+"; the army's kills "+killsBefore+" -> "+own.stats.kills+"; the mark "+mark.spec.id()+" health "+mark.mob.getHealth()+" tags "+mark.tags+" raised="+mark.mob.isUsingItem()+" formation "+b.assignment(mark).formation+", last hit "+gg.gravesandglory.Combat.LAST.peekLast());
                     staleKill(b);next(b,7);
                 }}
                 case 7->{ // the round ends: the commander's report as the server keeps it for his client
