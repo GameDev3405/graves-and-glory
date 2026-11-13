@@ -427,7 +427,7 @@ public final class ProfileMigrationCheck {
         // ending polish pass 3: personal bests. An old file has no bests key: it loads with none, the first match sets records quietly, a later one beats them
         var noBests = parseV2(v4Save.replace("\"schema\":4", "\"schema\":6"));
         noBests.sanitize(cat, CLASSES, SIDES, HOUSES);
-        check(noBests.bests != null && noBests.bests.isEmpty() && !noBests.readOnly && noBests.schema == 6 && noBests.gold == 66, "bests-old-file: a schema-6 profile saved before bests loads with none, writable, other fields kept");
+        check(noBests.bests != null && noBests.bests.isEmpty() && !noBests.readOnly && noBests.schema == 7 && noBests.gearShards == 66, "bests-old-file: a schema-6 profile saved before bests loads with none, writable, other fields kept (schema 7, gold now gear shards)");
         check(MatchEnding.bests(noBests.bests, Map.of("kills", 11, "armyKills", 40)).isEmpty() && noBests.bests.equals(Map.of("kills", 11, "armyKills", 40)), "bests-old-file: its first match sets records quietly");
         check(MatchEnding.bests(noBests.bests, Map.of("kills", 14, "armyKills", 30)).equals(List.of(new MatchEnding.Best("kills", "Kills", 14, 11))) && noBests.bests.get("kills") == 14, "bests-old-file: a later better match reports and keeps the beaten value");
         var nullBests = new Profile();
