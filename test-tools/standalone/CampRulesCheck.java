@@ -53,7 +53,7 @@ public final class CampRulesCheck {
   check(Progression.claim(s,"founders:31").gold()==0,"Unreleased tiers cannot claim");
   Progression.State said=new Progression.State();Progression.reset(said,day);said.xp=5*Progression.XP_PER_TIER;said.weeklyBattles=Progression.WEEKLY_BATTLES;
   String tierSaid=Progression.claim(said,"founders:1").message(),titleSaid=Progression.claim(said,"founders:5").message(),weeklySaid=Progression.claim(said,"weekly:gilded").message(); // integration: Phase 2's chapter and its House-named weekly
-  check(tierSaid.matches("Claimed reward: [+][0-9]+ gold")&&!tierSaid.contains("+0")&&titleSaid.startsWith("Claimed reward: ")&&titleSaid.contains("Scout")&&!titleSaid.contains("gold")&&!titleSaid.contains("XP")&&weeklySaid.startsWith("Claimed reward: +150 gold / +300 XP")&&!weeklySaid.contains("+0"),"A claim's notice names only what it grants: no +0 XP on a tier, no +0 gold on a title (UI Task 8b)");
+  check(tierSaid.matches("Claimed reward: [+][0-9]+ gear shards")&&!tierSaid.contains("+0")&&titleSaid.startsWith("Claimed reward: ")&&titleSaid.contains("Scout")&&!titleSaid.contains("gear shards")&&!titleSaid.contains("XP")&&weeklySaid.startsWith("Claimed reward: +150 gear shards / +300 XP")&&!weeklySaid.contains("+0"),"A claim's notice names only what it grants: no +0 XP on a tier, no +0 gear shards on a title (UI Task 8b)");
   // the room gate's truth table, row by row {in a party, leads it, may make or join a room}: the same rows UiMathCheck pins for the
   // client's copy (UiMath.roomOpen, which dulls the Friends page's room tags), so a change to either side fails its own check (8b review Minor 5)
   boolean[][] roomRows={{false,false,true},{true,true,true},{true,false,false}};

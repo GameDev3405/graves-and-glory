@@ -283,6 +283,41 @@ public final class ProfileMigrationCheck {
         check(gson.toJson(back).equals(text) && back.gold == null && back.writs == null && back.banner == null, "legacyFieldsNotWritten: the file reads back and writes the same bytes, with the purses unchanged");
     }
 
+    /** Saved Forge marks add 1:1 to gear shards (gold 1234 and marks 50 end at 12 writs and 84 shards), the marks key is never written, and a schema 7 file that still has marks folds them once. */
+    static void marksFoldIntoShards() throws IOException {
+        var gson = new com.google.gson.GsonBuilder().setPrettyPrinting().create();
+        var p = fixture("gold");
+        p.forgeMarks = 50;
+        p.sanitize();
+        check(p.troopWrits == 12 && p.gearShards == 84 && p.forgeMarks == null, "marksFoldIntoShards: 1234 gold and 50 marks are 12 writs and 84 gear shards: " + p.troopWrits + "/" + p.gearShards);
+        check(!gson.toJsonTree(p).getAsJsonObject().has("forgeMarks"), "marksFoldIntoShards: no forgeMarks key in the Gson output");
+        p.sanitize();
+        check(p.gearShards == 84, "marksFoldIntoShards: sanitizing again adds nothing");
+        var seven = new Profile();
+        seven.gearShards = 10; seven.forgeMarks = 25; // a schema 7 file from an earlier build of this branch
+        seven.sanitize();
+        check(seven.gearShards == 35 && seven.forgeMarks == null, "marksFoldIntoShards: a schema 7 profile with marks folds them once: " + seven.gearShards);
+        seven.sanitize();
+        check(seven.gearShards == 35, "marksFoldIntoShards: and only once");
+        var big = new Profile();
+        big.gearShards = 900_000; big.forgeMarks = 900_000;
+        big.sanitize();
+        check(big.gearShards == 1_000_000, "marksFoldIntoShards: the folded total stays within 1,000,000");
+    }
+
+    /** Writs keep the part of a writ earned so far: 80 then 40 gold-equivalents make 1 writ and leave 20 in writGold. */
+    static void writsCarryRemainder() {
+        var p = new Profile();
+        RosterMath.payWrits(p, 80);
+        check(p.troopWrits == 0 && p.writGold == 80, "writsCarryRemainder: 80 is no writ yet");
+        RosterMath.payWrits(p, 40);
+        check(p.troopWrits == 1 && p.writGold == 20 && p.gearShards == 0, "writsCarryRemainder: then 40 makes 1 writ with 20 over, and payWrits pays no shards: " + p.troopWrits + "/" + p.writGold);
+        RosterMath.payWrits(p, 0); RosterMath.payWrits(p, -30);
+        check(p.troopWrits == 1 && p.writGold == 20, "writsCarryRemainder: nothing or less pays nothing");
+        RosterMath.payWrits(p, 1280);
+        check(p.troopWrits == 14 && p.writGold == 0, "writsCarryRemainder: 1280 more with the 20 carried is 13 writs, 14 in all");
+    }
+
     public static void main(String[] args) throws IOException {
         // mig-fresh: the v1 defaults
         var fresh = toV2(v1());
@@ -462,7 +497,7 @@ public final class ProfileMigrationCheck {
         } finally {
             try (Stream<Path> paths = Files.walk(dir)) { paths.sorted(Comparator.reverseOrder()).forEach(path -> path.toFile().delete()); }
         }
-        v6StarterMoves(); v6WideDropsMarkers(); v6OverTrims(); v6GoldSplit(); v1ChainsToV7(); sanitizeTrimsNotWipes(); bannerNamesClamp(); reviewFixups(); legacyFieldsNotWritten();
+        v6StarterMoves(); v6WideDropsMarkers(); v6OverTrims(); v6GoldSplit(); v1ChainsToV7(); sanitizeTrimsNotWipes(); bannerNamesClamp(); reviewFixups(); legacyFieldsNotWritten(); marksFoldIntoShards(); writsCarryRemainder();
         System.out.println("ProfileMigrationCheck: " + checks + " checks passed");
     }
 }

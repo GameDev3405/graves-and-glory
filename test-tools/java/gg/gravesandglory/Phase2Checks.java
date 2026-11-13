@@ -5735,8 +5735,8 @@ public final class Phase2Checks implements ClientModInitializer {
                         report("p2-troop-card",cardFaceOk&&page&&notes&&counters,cardWhy+"; the Matchups face: page="+page+", beats \""+ttext("beats")+"\" (want \""+(n==null?"":n.beats())+"\"), beaten by \""+ttext("beaten-by")+"\" (want \""+(n==null?"":n.beatenBy())+"\")="+notes+"; glyphs and counter lines drawn "+drawn+" (want "+rows.stream().map(r->new WarTableTroop.CounterDraw(r.id(),ArmyCards.favours(r),ArmyCards.counterText(r))).toList()+" from troopNotes)="+counters+"; picture p2-chase-troop-matchups.png");
                         cardPhase=0;cs=11;wait=0;buyPhase=0;}}
                 case 11->{if(!(c.currentScreen instanceof CampScreen s))return;wait++; // a chosen buy from the troop sheet shows its result on the letter, and leaving the page ends it
-                    if(buyPhase==0){if(wait<2)return;var buy=button(s,"Buy 300",0);buyN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();CampaignClient.revealUntil=0;CampaignClient.revealHeldAt=-1;RecruitPages.rollOn=null;RecruitPages.seenRoll=null;
-                        if(buy==null||!buy.active){report("p2-roll-card-troop",false,"no active Buy 300 on the Templar's troop sheet");layout(c);server(c,b->stage=104);cs=4;wait=0;return;}
+                    if(buyPhase==0){if(wait<2)return;var buy=button(s,"Buy 3",0);buyN=CampaignClient.lastRoll==null?-1:CampaignClient.lastRoll.n();CampaignClient.revealUntil=0;CampaignClient.revealHeldAt=-1;RecruitPages.rollOn=null;RecruitPages.seenRoll=null;
+                        if(buy==null||!buy.active){report("p2-roll-card-troop",false,"no active Buy 3 on the Templar's troop sheet");layout(c);server(c,b->stage=104);cs=4;wait=0;return;}
                         buy.onPress();buyPhase=1;return;}
                     var r=CampaignClient.lastRoll;
                     if(buyPhase==1){if(r!=null&&r.n()!=buyN&&r.troop().equals("sentinel")&&CampaignClient.rollShowing()){CampaignClient.revealHeldAt=600;buyPhase=2;buySeenAt=wait;}
@@ -5744,7 +5744,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     if(buyPhase==2){if(wait-buySeenAt<5)return;String want=r==null?"":RecruitPages.outcome(r,p);
                         boolean lit=r!=null&&r.duplicate()&&"2".equals(ttext("letter-stars"))&&flat(want).equals(flat(ttext("letter-outcome")))&&!WarTableTroop.rects().containsKey("broken");
                         boolean noCard=!"troop".equals(RecruitPages.rollOn)&&RecruitPages.seenRoll==null;
-                        onTroop=lit&&noCard;buyWhy="Buy 300 on the Templar's sheet: lastRoll "+r+"; the letter shows stars \""+ttext("letter-stars")+"\" and \""+ttext("letter-outcome")+"\" (RecruitPages.outcome says \""+want+"\"), no broken seal="+lit+"; no roll card over the sheet (rollOn "+RecruitPages.rollOn+", seenRoll "+RecruitPages.seenRoll+")="+noCard;
+                        onTroop=lit&&noCard;buyWhy="Buy 3 on the Templar's sheet: lastRoll "+r+"; the letter shows stars \""+ttext("letter-stars")+"\" and \""+ttext("letter-outcome")+"\" (RecruitPages.outcome says \""+want+"\"), no broken seal="+lit+"; no roll card over the sheet (rollOn "+RecruitPages.rollOn+", seenRoll "+RecruitPages.seenRoll+")="+noCard;
                         s.page("recruit");buyPhase=3;return;}
                     boolean stale=CampaignClient.rollShowing();CampaignClient.revealHeldAt=-1;
                     report("p2-roll-card-troop",onTroop&&!stale,buyWhy+"; after the page went back to recruitment the reveal still shows="+stale+" (want false: leaving the page ends it)");

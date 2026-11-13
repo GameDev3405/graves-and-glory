@@ -43,7 +43,7 @@ final class WarTableGear {
     CampaignClient.ForgeRoll revealing;
     long revealAt;
     int seenRoll;
-    /** The forge marks the last tick saw (-1: no view yet), so a rise plays the earned sting. */
+    /** The gear shards the last tick saw (-1: no view yet), so a rise plays the earned sting. */
     int lastMarks = -1;
     /** How long the reveal card stays, and how long its rarity border takes to fade in. */
     static final long REVEAL_MS = 1500, FADE_MS = 400;
@@ -142,7 +142,7 @@ final class WarTableGear {
         add("expand", new UiButton(bx, r[1] + 234, bw, 24, Text.literal("Add a row"), b -> screen.action("forge:expand"), (g, x, y, ww, hh, hot) -> service(g, "expand", expandLabel(), x, y, ww, hh, hot)));
     }
 
-    String dupesLabel() { return "Break down all duplicates (+" + GearView.duplicatesValue(view()) + " marks)"; }
+    String dupesLabel() { return "Break down all duplicates (+" + GearView.duplicatesValue(view()) + " gear shards)"; }
     String expandLabel() {
         GearWire.View v = view();
         if (v == null) return "Add a row";
@@ -220,8 +220,8 @@ final class WarTableGear {
             seenRoll = last.n();
             if (tab.equals("forge")) { revealing = last; revealAt = System.currentTimeMillis(); UiSounds.play(rarityCue(last.rarity())); }
         }
-        // Forge marks earned (the count rose since the last tick; the first sight of the view only records it).
-        int marks = v == null ? -1 : v.forgeMarks();
+        // Gear shards earned (the count rose since the last tick; the first sight of the view only records it).
+        int marks = v == null ? -1 : v.gearShards();
         if (lastMarks >= 0 && marks > lastMarks) UiSounds.play(AudioCues.Cue.FORGE_MARKS);
         lastMarks = marks;
         if (revealing != null && revealHeldAt < 0 && revealElapsed() >= REVEAL_MS) revealing = null;
@@ -560,19 +560,19 @@ final class WarTableGear {
         var font = font();
         int[] l = left(), r = right();
         g.drawText(font, DarkUi.heading("Forge"), l[0] + 16, l[1] + 14, DarkUi.INK_TEXT, false);
-        var marks = DarkUi.body("Forge marks " + v.forgeMarks());
+        var marks = DarkUi.body("Gear shards " + v.gearShards());
         int mx = l[0] + l[2] - 16 - font.getWidth(marks);
         g.drawText(font, marks, mx, l[1] + 16, DarkUi.SEPIA, false);
         rectsDrawn.put("marks", new int[]{mx, l[1] + 16, font.getWidth(marks), 12});
         g.fill(l[0] + 16, l[1] + 28, l[0] + l[2] - 16, l[1] + 29, DarkUi.SEPIA_LINE);
         int cost = Forge.rollCost(forgeSlot);
-        g.drawText(font, DarkUi.heading("A roll costs " + cost + " Forge marks"), l[0] + 16, l[1] + 112, DarkUi.INK_TEXT, false);
+        g.drawText(font, DarkUi.heading("A roll costs " + cost + " gear shards"), l[0] + 16, l[1] + 112, DarkUi.INK_TEXT, false);
         if (!forgeSlot.equals("relic")) {
             int left = Math.max(0, Gear.forge().pity() - v.pity()) + 1; // the roll made at the threshold is the guaranteed one
             var pity = DarkUi.body("Epic or better within " + left + (left == 1 ? " roll" : " rolls"));
             g.drawText(font, pity, l[0] + 16, l[1] + 132, DarkUi.SEPIA, false);
             rectsDrawn.put("pity", new int[]{l[0] + 16, l[1] + 132, font.getWidth(pity), 12});
-        } else WarTablePages.lines(g, "A relic you already own comes back as marks.", l[0] + 16, l[1] + 132, l[2] - 32, 1, DarkUi.SEPIA);
+        } else WarTablePages.lines(g, "A relic you already own comes back as gear shards.", l[0] + 16, l[1] + 132, l[2] - 32, 1, DarkUi.SEPIA);
         String refusal = GearView.rollRefusal(v, forgeSlot);
         if (!refusal.isEmpty()) {
             WarTablePages.lines(g, refusal, l[0] + 16, l[1] + 208, l[2] - 32, 2, DarkUi.ROUT_TEXT);
@@ -602,7 +602,7 @@ final class WarTableGear {
             g.fill(box[0], box[1], box[0] + box[2], box[1] + box[3], fade(DarkUi.ALARM_TEXT, 0x30));
             Profile copy = GearView.asProfile(v);
             int before = copy.gear.size(), got = Forge.breakdownDuplicates(copy), n = before - copy.gear.size();
-            WarTablePages.lines(g, "Break down " + n + (n == 1 ? " duplicate" : " duplicates") + " for " + got + " Forge marks? Worn pieces and your best copy of each stay.", box[0] + 6, box[1] + 8, box[2] - 12, 3, DarkUi.ROUT_TEXT);
+            WarTablePages.lines(g, "Break down " + n + (n == 1 ? " duplicate" : " duplicates") + " for " + got + " gear shards? Worn pieces and your best copy of each stay.", box[0] + 6, box[1] + 8, box[2] - 12, 3, DarkUi.ROUT_TEXT);
             rectsDrawn.put("dupes-confirm", box);
         }
         int sy = r[1] + r[3] - 40;
@@ -614,7 +614,7 @@ final class WarTableGear {
     }
 
     /** The roll's card over the page for REVEAL_MS: the rarity border fading in, then the name, the rarity, and Duplicate or the
-     *  marks refunded. */
+     *  gear shards refunded. */
     void reveal(DrawContext g) {
         var f = revealing;
         var font = font();
@@ -638,7 +638,7 @@ final class WarTableGear {
             String kind = relic ? "Relic" : (r == null ? f.rarity() : r.name()) + (item == null ? "" : " " + GearView.SLOT_WORDS.getOrDefault(item.slot(), item.slot()));
             var kt = DarkUi.body(kind);
             g.drawText(font, kt, x + (w - font.getWidth(kt)) / 2, y + 50, DarkUi.IVORY, false);
-            String tail = f.refund() > 0 ? "+" + f.refund() + " Forge marks refunded" : f.duplicate() ? "Duplicate" : "New";
+            String tail = f.refund() > 0 ? "+" + f.refund() + " gear shards refunded" : f.duplicate() ? "Duplicate" : "New";
             var tt = DarkUi.body(tail);
             g.drawText(font, tt, x + (w - font.getWidth(tt)) / 2, y + 74, f.duplicate() || f.refund() > 0 ? DarkUi.BRASS : DarkUi.DAWN, false);
             var sk = DarkUi.small("Click to skip");

@@ -16,8 +16,7 @@ public final class GearCommandsCheck {
     public static void main(String[] args) {
         Profile p = new Profile();
         Gear.grantStarter(p);
-        p.forgeMarks = 75;
-        p.gearShards = 500;
+        p.gearShards = 75;
         var rng = new SplittableRandom(5);
 
         String[] bad = {"gear:equip:999999", "forge:breakdown:abc", "gear:relic:7:x", "gear:relic:0", "forge:roll:", "forge:roll:cape", "gear:", "forge:frob", "gear:equip:-1",
@@ -35,11 +34,11 @@ public final class GearCommandsCheck {
         // roll then equip
         var roll = GearCommands.apply(p, "forge:roll:helm", rng);
         check(roll.ok() && roll.notice().startsWith("Rolled: ") && roll.rolled() != null && roll.rolled().piece() != null, "a helm roll with 75 marks succeeds: " + roll);
-        check(p.forgeMarks == 0, "the roll cost 75 marks");
+        check(p.gearShards == 0, "the roll cost 75 marks");
         int uid = roll.rolled().piece().uid;
         var eq = GearCommands.apply(p, "gear:equip:" + uid, rng);
         check(eq.ok() && eq.notice().startsWith("Equipped: ") && p.equipped.get("helm") == uid, "equipping the rolled helm works: " + eq);
-        check(GearCommands.apply(p, "forge:roll:helm", rng).refusal().equals("A roll costs 75 Forge marks."), "a roll with no marks says the price");
+        check(GearCommands.apply(p, "forge:roll:helm", rng).refusal().equals("A roll costs 75 gear shards."), "a roll with no marks says the price");
 
         // breakdown refusal of a worn piece
         int boots = p.equipped.get("boots");
@@ -48,15 +47,16 @@ public final class GearCommandsCheck {
         check(worn.refusal().equals("Unequip it first.") && before.equals(JSON.toJson(p)), "a worn piece cannot be broken down: " + worn.refusal());
         var spare = GearCommands.apply(p, "gear:unequip:helm", rng);
         check(spare.ok() && !p.equipped.containsKey("helm"), "unequip empties the slot");
-        int marks = p.forgeMarks;
+        int marks = p.gearShards;
         var gone = GearCommands.apply(p, "forge:breakdown:" + uid, rng);
-        check(gone.ok() && gone.notice().startsWith("+") && gone.notice().endsWith(" Forge marks") && p.forgeMarks > marks && Gear.piece(p, uid) == null, "the unworn helm breaks down for marks: " + gone.notice());
+        check(gone.ok() && gone.notice().startsWith("+") && gone.notice().endsWith(" gear shards") && p.gearShards > marks && Gear.piece(p, uid) == null, "the unworn helm breaks down for marks: " + gone.notice());
 
         // relic, repair, expand
         p.relics.add(Spec.RELICS[0].id());
         var relic = GearCommands.apply(p, "gear:relic:1:" + Spec.RELICS[0].id(), rng);
         check(relic.ok() && p.relicSlots.get(1).equals(Spec.RELICS[0].id()), "an owned relic goes into a slot: " + relic);
         check(GearCommands.apply(p, "gear:relic:1:-", rng).ok() && p.relicSlots.get(1).isEmpty(), "- empties a relic slot");
+        p.gearShards += 500; // gear shards pay for the repair and the row below
         p.gear.get(0).durability = 40;
         var fix = GearCommands.apply(p, "forge:repair:" + p.gear.get(0).uid, rng);
         check(fix.ok() && fix.notice().startsWith("Repaired for ") && p.gear.get(0).durability == 100, "repair restores durability: " + fix.notice());

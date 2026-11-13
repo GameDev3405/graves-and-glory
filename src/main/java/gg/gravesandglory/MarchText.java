@@ -8,13 +8,13 @@ package gg.gravesandglory;
 final class MarchText {
     private MarchText() {}
 
-    /** What a bonus pays, with the House named: "+5 Gilded shards, +40 gold". */
+    /** What a bonus pays, with the House named: "+5 Gilded shards, +40 gear shards". */
     static String reward(Spec.BonusObjectivesRow bonus, Spec.CampaignBattlesRow row) {
-        return "+" + bonus.shards() + " " + RosterMath.houseName(row.house()) + " shards, +" + bonus.gold() + " gold";
+        return "+" + bonus.shards() + " " + RosterMath.houseName(row.house()) + " shards, +" + bonus.gold() + " gear shards";
     }
 
-    /** What a bonus pays in the card's narrow line: "+5 shards, +40 gold". */
+    /** What a bonus pays in the card's narrow line: "+5 shards, +40 gear shards". */
     static String rewardShort(Spec.BonusObjectivesRow bonus) {
-        return "+" + bonus.shards() + " shards, +" + bonus.gold() + " gold";
+        return "+" + bonus.shards() + " shards, +" + bonus.gold() + " gear shards";
     }
 }

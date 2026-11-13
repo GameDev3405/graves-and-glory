@@ -152,7 +152,7 @@ Server cues play through `Audio.at` (a small random pitch spread, a per-key cool
 | banner_drag | WarTablePages, when a Banner page press becomes a drag |
 | equip, break_down, repair_hammer, blacksmith_roll | WarTableGear actions (the Roll button no longer plays the UI confirm) |
 | rarity_common ... rarity_epic | WarTableGear, the forge reveal card (Legendary takes the epic sting) |
-| forge_marks | WarTableGear, when the forge marks count rises |
+| forge_marks | WarTableGear, when the gear shards count rises |
 
 ## Registered, not played
 

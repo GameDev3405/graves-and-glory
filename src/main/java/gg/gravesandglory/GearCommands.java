@@ -91,7 +91,7 @@ final class GearCommands {
                 if (!r.refusal().isEmpty()) return Outcome.refused(r.refusal());
                 String line;
                 if (r.relic() != null) {
-                    line = "Rolled: " + Gear.relic(r.relic()).name() + " (Relic)" + (r.duplicate() ? " - already owned, +" + r.refund() + " Forge marks" : "");
+                    line = "Rolled: " + Gear.relic(r.relic()).name() + " (Relic)" + (r.duplicate() ? " - already owned, +" + r.refund() + " gear shards" : "");
                 } else {
                     line = "Rolled: " + Gear.item(r.piece().item).name() + " (" + Gear.rarity(r.piece().rarity).name() + ")" + (r.duplicate() ? " - duplicate" : "");
                 }
@@ -103,13 +103,13 @@ final class GearCommands {
                 if (piece == null) return Outcome.refused(INVALID);
                 int value = Forge.breakdownValue(piece);
                 String why = Forge.breakdown(p, uid);
-                return why.isEmpty() ? Outcome.done("+" + value + " Forge marks") : Outcome.refused(why);
+                return why.isEmpty() ? Outcome.done("+" + value + " gear shards") : Outcome.refused(why);
             }
             case "breakdown-duplicates": {
                 if (part.length != 2) return Outcome.refused(INVALID);
                 int before = p.gear.size();
                 int gained = Forge.breakdownDuplicates(p);
-                return p.gear.size() == before ? Outcome.refused("You have no duplicates to break down.") : Outcome.done("+" + gained + " Forge marks");
+                return p.gear.size() == before ? Outcome.refused("You have no duplicates to break down.") : Outcome.done("+" + gained + " gear shards");
             }
             case "repair": {
                 int uid = uid(part);

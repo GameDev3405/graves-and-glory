@@ -6,7 +6,7 @@ import java.util.random.RandomGenerator;
 /**
  * The blacksmith's rules (spec 2026-11-03-commander-gear-design): rolls with pity, duplicates, breakdown, repair, inventory expansion and
  * match wear. Pure and server-authoritative: each method checks, then changes the profile, and a refusal changes nothing. Every number comes
- * from the forge and gearRarities sheets. Repairs and rows cost Profile.gearShards; Forge marks are Profile.forgeMarks.
+ * from the forge and gearRarities sheets. Repairs, rows and rolls cost Profile.gearShards; Gear rolls and breakdowns use the same gear shards (the old Forge marks merged into them).
  */
 final class Forge {
     private Forge() {}
@@ -16,15 +16,15 @@ final class Forge {
         static Rolled refused(String why) { return new Rolled(why, null, null, false, 0); }
     }
 
-    /** Forge marks one roll of this slot costs: rollMarks, or rollMarks x relicRollPct (rounded) for a relic. */
+    /** Gear shards one roll of this slot costs: rollMarks, or rollMarks x relicRollPct (rounded) for a relic. */
     static int rollCost(String slot) {
         var f = Gear.forge();
         return "relic".equals(slot) ? (int) Math.round(f.rollMarks() * f.relicRollPct()) : f.rollMarks();
     }
 
     /**
-     * Rolls one piece or relic. Refuses an unknown slot, short marks, a full inventory (not for a relic) and a relic roll with every relic
-     * owned. A relic is drawn uniformly in sheet order; an owned one is a duplicate and refunds floor(cost x relicDuplicatePct) marks.
+     * Rolls one piece or relic. Refuses an unknown slot, short gear shards, a full inventory (not for a relic) and a relic roll with every relic
+     * owned. A relic is drawn uniformly in sheet order; an owned one is a duplicate and refunds floor(cost x relicDuplicatePct) gear shards.
      * Armour and weapons draw an item of the slot (weapon = main or off), a rarity by rollWeight (only epic and legendary once gearPity
      * has reached the pity count), a quality 0 to 100 and full durability. gearPity resets on an epic or better, else rises; a relic roll leaves it.
      */
@@ -32,23 +32,23 @@ final class Forge {
         var f = Gear.forge();
         if (slot == null || !Gear.ROLL_SLOTS.contains(slot)) return Rolled.refused("No such forge slot.");
         int cost = rollCost(slot);
-        if (p.forgeMarks < cost) return Rolled.refused("A roll costs " + cost + " Forge marks.");
+        if (p.gearShards < cost) return Rolled.refused("A roll costs " + cost + " gear shards.");
         if ("relic".equals(slot)) {
             if (Arrays.stream(Spec.RELICS).allMatch(r -> p.relics.contains(r.id()))) return Rolled.refused("You own every relic.");
-            p.forgeMarks -= cost;
+            p.gearShards -= cost;
             String id = Spec.RELICS[rng.nextInt(Spec.RELICS.length)].id();
             boolean dupe = p.relics.contains(id);
             int refund = 0;
             if (dupe) {
                 refund = (int) Math.floor(cost * f.relicDuplicatePct() + 1e-9);
-                p.forgeMarks += refund;
+                p.gearShards += refund;
             } else {
                 p.relics.add(id);
             }
             return new Rolled("", null, id, dupe, refund);
         }
         if (p.gear.size() >= p.inventorySize) return Rolled.refused("Your inventory is full. Break down or expand first.");
-        p.forgeMarks -= cost;
+        p.gearShards -= cost;
         List<Spec.GearItemsRow> pool = new ArrayList<>();
         for (var it : Spec.GEARITEMS) {
             boolean match = "weapon".equals(slot) ? it.slot().equals("main") || it.slot().equals("off") : it.slot().equals(slot);
@@ -87,18 +87,18 @@ final class Forge {
         return r == null ? 0 : (int) Math.floor(Gear.forge().rollMarks() * r.breakdownPct() + 1e-9);
     }
     private static boolean worn(Profile p, int uid) { return p.equipped.containsValue(uid); }
-    /** Breaks one unworn piece down for marks. */
+    /** Breaks one unworn piece down for gear shards. */
     static String breakdown(Profile p, int uid) {
         Gear.Piece piece = Gear.piece(p, uid);
         if (piece == null) return "You do not own that piece.";
         if (worn(p, uid)) return "Unequip it first.";
-        p.forgeMarks += breakdownValue(piece);
+        p.gearShards += breakdownValue(piece);
         p.gear.remove(piece);
         return "";
     }
     /**
      * Breaks down every duplicate, keeping one piece per (item, rarity): the worn one if any, else the highest quality, then the highest
-     * durability, then the oldest uid. Returns the marks gained.
+     * durability, then the oldest uid. Returns the gear shards gained.
      */
     static int breakdownDuplicates(Profile p) {
         Map<String, List<Gear.Piece>> groups = new LinkedHashMap<>();
@@ -120,11 +120,11 @@ final class Forge {
                 p.gear.remove(g);
             }
         }
-        p.forgeMarks += gained;
+        p.gearShards += gained;
         return gained;
     }
 
-    /** Gold to repair a piece to full: ceil(repairGold x missing durability / max). */
+    /** Gear shards to repair a piece to full: ceil(repairGold x missing durability / max). */
     static int repairCost(Gear.Piece piece) {
         var r = Gear.rarity(piece.rarity);
         int max = Gear.forge().maxDurability();

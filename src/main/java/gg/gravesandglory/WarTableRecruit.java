@@ -605,7 +605,7 @@ final class WarTableRecruit {
         rectsDrawn.put("sheet", new int[]{x, y, w, h});
     }
 
-    /** The letter's action tag (the widget "choose"): a vellum tag with the action's label (RecruitPages.Action.label: "Buy 300",
+    /** The letter's action tag (the widget "choose"): a vellum tag with the action's label (RecruitPages.Action.label: "Buy 3",
      *  "Star 2", "Pact", "50 shards"), the coin before a Buy; sepia, and no press, while it cannot be pressed. */
     void paintChoose(DrawContext g, int x, int y, int w, int h, boolean hotIgnored) {
         var font = MinecraftClient.getInstance().textRenderer;

@@ -65,6 +65,15 @@ public final class MatchRules {
         return (int) Math.floor(base * (won ? 1.0 : lossPct) * (botOnly ? botOnlyPct : 1.0) + 1e-9);
     }
 
+    /**
+     * Whether the star bonus of a commander's owned troops counts in a battle mode (war table army design, match rule starsCount). Every mode
+     * counts it today; nothing sets it to false yet, and Campaign.progression gives 1 (no bonus) the day a mode does.
+     */
+    public static boolean starsCount(String mode) { return true; }
+
+    /** The multiplier a troop fights at: the star bonus when starsCount holds, else 1. */
+    public static double starsMultiplier(boolean starsCount, double starBonus) { return starsCount ? starBonus : 1.0; }
+
     /** The share of the match a player was seated, as a whole percent from 0 to 100 (rounded down). */
     public static int sharePercent(long seated, long total) { return total <= 0 || seated <= 0 ? 0 : (int) (100L * Math.min(seated, total) / total); }
 

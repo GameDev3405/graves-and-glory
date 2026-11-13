@@ -92,7 +92,7 @@ final class Gear {
     }
 
     /**
-     * An imported collection brings no gear, marks, pity or extra inventory: all of it resets and the profile gets the fresh starter set.
+     * An imported collection brings no gear, gear shards, pity or extra inventory: all of it resets and the profile gets the fresh starter set.
      * Used by Campaign.importProfile after the portable copy is sanitized.
      */
     static void resetForImport(Profile p) {
@@ -100,7 +100,7 @@ final class Gear {
         p.equipped.clear();
         p.relics.clear();
         p.relicSlots = new ArrayList<>(List.of("", "", ""));
-        p.forgeMarks = 0;
+        p.gearShards = 0;
         p.gearPity = 0;
         p.nextGearUid = 1;
         p.inventorySize = forge().startSlots();

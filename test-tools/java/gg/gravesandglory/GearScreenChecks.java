@@ -76,7 +76,7 @@ final class GearScreenChecks implements Phase1Checks.Suite {
     /** The commander the screen checks run on: 500 marks, a spare Common helm, an Epic helm and a Common chest. Server thread. */
     void grant(GravesAndGlory.Battle b) {
         var pr = b.campaign.profile(player);
-        pr.forgeMarks = 500;
+        pr.gearShards = 500;
         pr.gear.removeIf(g -> g.uid >= 900000);
         pr.gear.add(new Gear.Piece(HELM, firstItem("helm"), rarity(0), 50, 100));
         pr.gear.add(new Gear.Piece(EPIC, firstItem("helm"), rarity(3), 50, 100));
@@ -133,8 +133,8 @@ final class GearScreenChecks implements Phase1Checks.Suite {
                     window(c, 1920, 1080, 0, true);
                     at = tick; return;
                 }
-                if (ready && g != null && g.forgeMarks() == 500 && GearView.piece(g, EPIC) != null) next(tick, 1);
-                else if (k > 200) { report("p1-gear-ui-open", false, "the grant never reached the client: " + (g == null ? "no gear view" : g.forgeMarks() + " marks")); end(c); }
+                if (ready && g != null && g.gearShards() == 500 && GearView.piece(g, EPIC) != null) next(tick, 1);
+                else if (k > 200) { report("p1-gear-ui-open", false, "the grant never reached the client: " + (g == null ? "no gear view" : g.gearShards() + " marks")); end(c); }
             }
             case 1 -> { // p1-gear-ui-open: the key opens the page in camp, the key again closes it
                 if (k == 0) { c.setScreen(null); gearKeyPress(); }
@@ -210,9 +210,9 @@ final class GearScreenChecks implements Phase1Checks.Suite {
             case 6 -> { // p1-gear-ui-roll: Roll twice 100 ms apart on helm: one roll, one reveal
                 var a = arsenal(c);
                 if (a == null) { report("p1-gear-ui-roll", false, "the page is not open"); next(tick, 7); return; }
-                if (k == 0) { server(c, b -> { b.campaign.profile(player).forgeMarks = 200; b.campaign.save(player); var p = b.server.getPlayerManager().getPlayer(player); if (p != null) b.campaign.syncGear(p); }); press(c, "page-forge"); }
+                if (k == 0) { server(c, b -> { b.campaign.profile(player).gearShards = 200; b.campaign.save(player); var p = b.server.getPlayerManager().getPlayer(player); if (p != null) b.campaign.syncGear(p); }); press(c, "page-forge"); }
                 if (k == 30) {
-                    count0 = g == null ? -1 : g.pieces().size(); marks0 = g == null ? -1 : g.forgeMarks(); rollCost = Forge.rollCost("helm");
+                    count0 = g == null ? -1 : g.pieces().size(); marks0 = g == null ? -1 : g.gearShards(); rollCost = Forge.rollCost("helm");
                     a = arsenal(c); if (a != null) a.forgeSlot = "helm";
                     note = "marks " + marks0 + ", pieces " + count0;
                     press(c, "roll");
@@ -226,7 +226,7 @@ final class GearScreenChecks implements Phase1Checks.Suite {
                 if (revealK > 0 && k == revealK + 3) shot(c, "gear-1080-reveal");
                 if (k == 150) {
                     WarTableGear.revealHeldAt = -1;
-                    int n = g == null ? -1 : g.pieces().size(), m = g == null ? -1 : g.forgeMarks();
+                    int n = g == null ? -1 : g.pieces().size(), m = g == null ? -1 : g.gearShards();
                     boolean once = n == count0 + 1 && m == marks0 - rollCost;
                     var f = CampaignClient.forgeRoll;
                     report("p1-gear-ui-roll", note.contains("reveal at") && once, note + "; after 150 ticks pieces " + n + " (wanted " + (count0 + 1) + "), marks " + m + " (wanted " + (marks0 - rollCost) + "), forge roll " + f);

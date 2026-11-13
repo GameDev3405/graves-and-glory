@@ -3,9 +3,9 @@ package gg.gravesandglory;
 import java.util.*;
 
 /**
- * The compact gear sync (gear_v1, server to client): one string with the Forge marks, inventory size, pity, gear power, the six worn uids,
+ * The compact gear sync (gear_v1, server to client): one string with the gear shards (the old Forge marks merged into them), inventory size, pity, gear power, the six worn uids,
  * the unlocked relics, the three relic slots and every piece. The camp snapshot stays under its client limit because the gear list is
- * stripped from it (Campaign.forClient). Format: g1|marks|size|pity|power|e0,e1,e2,e3,e4,e5|relic,relic|s0,s1,s2|uid.item.r.q.d;uid.item.r.q.d
+ * stripped from it (Campaign.forClient). Format: g1|gearShards|size|pity|power|e0,e1,e2,e3,e4,e5|relic,relic|s0,s1,s2|uid.item.r.q.d;uid.item.r.q.d
  * with the worn uids in Gear.SLOTS order (0 is empty), r the rarity's sheet position, and an empty list an empty field. Pure, so the standalone
  * checks compile it.
  */
@@ -16,10 +16,10 @@ final class GearWire {
     private static final String TAG = "g1";
 
     /** What a client holds of its commander's gear: a decoded gear_v1 string. */
-    record View(int forgeMarks, int inventorySize, int pity, int power, Map<String, Integer> equipped, List<String> relics, List<String> relicSlots, List<Gear.Piece> pieces) {}
+    record View(int gearShards, int inventorySize, int pity, int power, Map<String, Integer> equipped, List<String> relics, List<String> relicSlots, List<Gear.Piece> pieces) {}
 
     static String encode(Profile p) {
-        StringBuilder sb = new StringBuilder(TAG).append('|').append(p.forgeMarks).append('|').append(p.inventorySize).append('|').append(p.gearPity).append('|').append(p.gearPower).append('|');
+        StringBuilder sb = new StringBuilder(TAG).append('|').append(p.gearShards).append('|').append(p.inventorySize).append('|').append(p.gearPity).append('|').append(p.gearPower).append('|');
         for (int i = 0; i < Gear.SLOTS.size(); i++) sb.append(i == 0 ? "" : ",").append(p.equipped.getOrDefault(Gear.SLOTS.get(i), 0));
         sb.append('|').append(String.join(",", p.relics)).append('|').append(String.join(",", p.relicSlots)).append('|');
         boolean first = true;

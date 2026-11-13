@@ -322,6 +322,17 @@ public final class RosterMath {
         if (won && largest != null) earn(shards, largest, amounts.victoryShards());
         return new Rewards(shards, renown);
     }
+    /**
+     * Pays an amount of the old gold in troop writs: (writGold + goldEquivalent) / 100 whole writs go to troopWrits (capped at 1,000,000)
+     * and the remainder stays in writGold (0 to 99) for the next payout, so 80 then 40 makes 1 writ and leaves 20. Nothing or less pays nothing.
+     * Gear shards are not touched here (Profile.payGold pays them beside this).
+     */
+    public static void payWrits(Profile p, int goldEquivalent) {
+        if (goldEquivalent <= 0) return;
+        long total = Math.max(0, p.writGold) + (long) goldEquivalent;
+        p.troopWrits = (int) Math.min(1_000_000L, (long) p.troopWrits + total / 100);
+        p.writGold = (int) (total % 100);
+    }
     /** A match's rewards for a player seated only part of it: every shard and Renown count pro-rated (MatchRules.prorate, rounded down), a count that falls to 0 dropped. */
     public static Rewards prorate(Rewards full, long seated, long total) {
         return new Rewards(prorate(full.shards(), seated, total), prorate(full.renown(), seated, total));

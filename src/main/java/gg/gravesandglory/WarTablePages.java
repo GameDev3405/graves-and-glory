@@ -1355,7 +1355,7 @@ final class WarTablePages {
     /** A grant as words: "30 gold and 75 XP", "150 gold, 300 XP and 10 Ironclad shards" (shards only when asked for; houseName null leaves the House out). */
     static String words(Progression.Grant g, boolean shards, String houseName) {
         List<String> parts = new ArrayList<>();
-        if (g.gold() > 0) parts.add(g.gold() + " gold");
+        if (g.gold() > 0) parts.add(g.gold() + " gear shards");
         if (g.xp() > 0) parts.add(g.xp() + " XP");
         if (shards && g.shards() > 0) parts.add(g.shards() + " " + (houseName == null ? "" : houseName + " ") + "shards");
         return switch (parts.size()) {

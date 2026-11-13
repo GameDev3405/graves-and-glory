@@ -21,7 +21,7 @@ public final class GearWireCheck {
         for (int i = 0; i < pieces; i++) p.gear.add(new Gear.Piece(100000 + i, longest, "legendary", 100, 100));
         for (var r : Spec.RELICS) p.relics.add(r.id());
         p.relicSlots = new ArrayList<>(List.of(Spec.RELICS[0].id(), Spec.RELICS[1].id(), Spec.RELICS[2].id()));
-        p.forgeMarks = 1_000_000;
+        p.gearShards = 1_000_000;
         p.inventorySize = 120;
         p.gearPity = 10;
         p.gearPower = 99;
@@ -35,7 +35,7 @@ public final class GearWireCheck {
         p.gear.add(new Gear.Piece(p.nextGearUid++, "greatsword", "epic", 77, 40));
         p.gear.add(new Gear.Piece(p.nextGearUid++, "crossbow", "legendary", 0, 0));
         p.gear.add(new Gear.Piece(p.nextGearUid++, "kite_shield", "uncommon", 100, 100));
-        p.forgeMarks = 1234;
+        p.gearShards = 1234;
         p.gearPity = 4;
         p.inventorySize = 70;
         Forge.wear(p);
@@ -43,7 +43,7 @@ public final class GearWireCheck {
         check(text.startsWith("g1|1234|70|4|"), "the header carries marks, size and pity: " + text);
         var v = GearWire.decode(text);
         check(v != null, "the string decodes");
-        check(v.forgeMarks() == 1234 && v.inventorySize() == 70 && v.pity() == 4 && v.power() == p.gearPower, "marks, size, pity and power round trip");
+        check(v.gearShards() == 1234 && v.inventorySize() == 70 && v.pity() == 4 && v.power() == p.gearPower, "marks, size, pity and power round trip");
         check(v.equipped().equals(p.equipped) && v.relics().equals(new ArrayList<>(p.relics)) && v.relicSlots().equals(p.relicSlots), "equipped, relics and relic slots round trip: " + v.relicSlots());
         check(v.pieces().size() == p.gear.size(), "every piece comes back");
         for (int i = 0; i < p.gear.size(); i++) {

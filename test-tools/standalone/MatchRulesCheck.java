@@ -60,10 +60,10 @@ public final class MatchRulesCheck {
         check(MatchRules.prorate(full, droppedSeated, total) == full / 4, "a player who dropped at 25% is paid 25%, got " + MatchRules.prorate(full, droppedSeated, total));
         check(MatchRules.prorate(2, droppedSeated, total) == 0 && MatchRules.prorate(100, droppedSeated, total) == 25, "pro-rated counts round down");
         check(MatchRules.prorate(0, droppedSeated, total) == 0 && MatchRules.prorate(full, 0, total) == 0 && MatchRules.prorate(full, 50, 0) == 0, "nothing seated, nothing owed or no match length pays nothing");
-        check(MatchRules.forgeMarks(100, true, false, 0.5, 0.5) == 100 && MatchRules.forgeMarks(100, false, false, 0.5, 0.5) == 50, "a win pays full Forge marks and a loss pays the loss share");
+        check(MatchRules.forgeMarks(100, true, false, 0.5, 0.5) == 100 && MatchRules.forgeMarks(100, false, false, 0.5, 0.5) == 50, "a win pays full gear shards (old Forge marks) and a loss pays the loss share");
         check(MatchRules.forgeMarks(100, true, true, 0.5, 0.5) == 50 && MatchRules.forgeMarks(100, false, true, 0.5, 0.5) == 25, "a bot-only match pays half, a lost one a quarter");
         check(MatchRules.forgeMarks(0, true, false, 0.5, 0.5) == 0 && MatchRules.forgeMarks(75, false, true, 0.5, 0.5) == 18, "no base pays nothing and 75 x 0.25 rounds down to 18");
-        check(MatchRules.prorate(MatchRules.forgeMarks(100, true, false, 0.5, 0.5), 90, 180) == 50, "Forge marks are pro-rated by the time seated");
+        check(MatchRules.prorate(MatchRules.forgeMarks(100, true, false, 0.5, 0.5), 90, 180) == 50, "gear shards are pro-rated by the time seated");
         long lateSeated = MatchRules.seatedTicks(end, round0, round0 + total * 10, 0, -1) / 20; // seated for the last half
         check(lateSeated == total / 2 && MatchRules.prorate(full, lateSeated, total) == full / 2, "a late joiner is paid for the time he was seated");
         long backSeated = MatchRules.seatedTicks(end, round0, round0, total * 5, -1) / 20; // away for a quarter of the match, back for the rest
@@ -129,8 +129,14 @@ public final class MatchRulesCheck {
         check(body(campaign, "void returnLobby()").contains("deleteProgress()"), "a clean end or stop deletes the checkpoint");
         String finish = body(campaign, "void finish(int winner)");
         check(finish.contains("if(!b.running)return;"), "finish settles only a running match (a restarted server has none)");
-        check(finish.contains("MatchRules.forgeMarks(Spec.CAMPAIGN[0].forgeMarks(),credited,botOnly,Spec.CAMPAIGN[0].lossMarksPct(),Spec.CAMPAIGN[0].botOnlyMarksPct())") && finish.contains("p.forgeMarks+=marks") && finish.contains("if(eligible)Forge.wear(p)") && finish.indexOf("Forge.wear(p)") < finish.indexOf("boolean saved=save(id)"), "finish pays pro-rated Forge marks and wears the gear before the save, so a failed save undoes both");
-        check(finish.contains("report.addProperty(\"forgeMarks\",saved?marks:0)"), "the match report names the marks paid");
+        check(finish.contains("MatchRules.forgeMarks(Spec.CAMPAIGN[0].forgeMarks(),credited,botOnly,Spec.CAMPAIGN[0].lossMarksPct(),Spec.CAMPAIGN[0].botOnlyMarksPct())") && finish.contains("p.gearShards=Math.min(1_000_000,p.gearShards+marks)") && finish.contains("if(eligible)Forge.wear(p)") && finish.indexOf("Forge.wear(p)") < finish.indexOf("boolean saved=save(id)"), "finish pays pro-rated gear shards (the old Forge marks) and wears the gear before the save, so a failed save undoes both");
+        check(finish.contains("report.addProperty(\"writs\",saved?p.troopWrits-writs0:0)") && finish.contains("report.addProperty(\"gearShards\",saved?p.gearShards-shards0:0)"), "the match report carries the writs and gear shards earned as plain numbers");
+
+        // starsCount (war table army design): every mode counts stars today; a mode that switched them off would make Campaign.progression give 1.
+        check(MatchRules.starsCount("domination") && MatchRules.starsCount("siege") && MatchRules.starsCount("survival"), "starsCount is true by default");
+        check(MatchRules.starsMultiplier(false, 1.12) == 1.0 && MatchRules.starsMultiplier(true, 1.12) == 1.12, "starsOffGivesOne: stars off gives 1, stars on keeps the bonus");
+        String progression = body(campaign, "double progression(GravesAndGlory.Squad s,Spec.TroopsRow t)");
+        check(progression.contains("MatchRules.starsMultiplier(MatchRules.starsCount(battleMode),"), "starsOffGivesOne: Campaign.progression reads the starsCount rule");
 
         // Wiring: leave starts the wait, the bot brain skips a waiting army, and the owner's rejoin hands command back.
         String leave = body(game, "void leave(UUID owner)");

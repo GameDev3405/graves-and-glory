@@ -11,7 +11,7 @@ public final class GearViewCheck {
     }
     static boolean near(double a, double b) { return Math.abs(a - b) < 1e-9; }
     static GearWire.View view(Profile p) {
-        return new GearWire.View(p.forgeMarks, p.inventorySize, p.gearPity, p.gearPower, new LinkedHashMap<>(p.equipped), new ArrayList<>(p.relics), new ArrayList<>(p.relicSlots), p.gear);
+        return new GearWire.View(p.gearShards, p.inventorySize, p.gearPity, p.gearPower, new LinkedHashMap<>(p.equipped), new ArrayList<>(p.relics), new ArrayList<>(p.relicSlots), p.gear);
     }
     static Profile starter() {
         Profile p = new Profile();
@@ -127,10 +127,10 @@ public final class GearViewCheck {
         check(GearView.scrollClamp(20, 120, 6) == 9, "clamped to the last page");
 
         Profile poor = starter();
-        poor.forgeMarks = Forge.rollCost("helm") - 1;
+        poor.gearShards = Forge.rollCost("helm") - 1;
         check(!GearView.rollRefusal(view(poor), "helm").isEmpty(), "short marks refused");
         Profile full = starter();
-        full.forgeMarks = 10000;
+        full.gearShards = 10000;
         while (full.gear.size() < 130) add(full, helmId, rarity(0), 50, 100);
         full.inventorySize = 120;
         check(!GearView.rollRefusal(view(full), "helm").isEmpty(), "a full inventory refuses helm");

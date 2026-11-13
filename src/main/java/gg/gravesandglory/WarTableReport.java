@@ -61,6 +61,8 @@ final class WarTableReport {
     static Map<String, int[]> rects() { return rects; }
     /** Words drawn, keyed as rects are, plus face (the face shown), mode (the mode's id), and the widgets' labels (contracts, chapter, go). */
     static Map<String, String> texts() { return texts; }
+    /** A whole-number field of the match report (writs and gearShards earned this match), 0 when the report has none. */
+    static int count(JsonObject r, String key) { return r.has(key) ? r.get(key).getAsInt() : 0; }
     static Map<String, Integer> colors() { return colors; }
     /** The texture each part was drawn from: table, note, sheet and the tabs. */
     static Map<String, String> textures() { return textures; }
@@ -322,7 +324,7 @@ final class WarTableReport {
             EndingPanels.rewards(g, r, lx, wy, NOTE_TEXT_W, TAGS_Y - REWARDS_Y - 18);
             textsDrawn.put("rewards", EndingPanels.total);
         } else if (saved) {
-            line(g, "rewards", "+" + r.get("gold").getAsInt() + " gold   +" + r.get("xp").getAsInt() + " chapter XP", lx, wy, DarkUi.INK_TEXT);
+            line(g, "rewards", "+" + count(r, "writs") + " writs   +" + count(r, "gearShards") + " gear shards   +" + r.get("xp").getAsInt() + " chapter XP", lx, wy, DarkUi.INK_TEXT);
             if (r.has("march")) march(g, r, lx, wy + STEP + 2, r.get("eligible").getAsBoolean());
             else block(g, "rewards-note", r.get("eligible").getAsBoolean() ? "Rewards saved. Contract and tier rewards are claimed separately." : "No match rewards: play at least 3 minutes to qualify.", lx, wy + STEP + 2, NOTE_TEXT_W, 3, DarkUi.SEPIA);
         } else {
@@ -340,7 +342,7 @@ final class WarTableReport {
         int pacts = m.get("pacts").getAsInt(), held = m.get("pactsHeld").getAsInt();
         if (!state.equals("none") && !state.equals("lost")) {
             String label = switch (state) { case "paid" -> "Bonus kept"; case "claimed" -> "Bonus claimed before"; default -> "Bonus missed"; };
-            String value = state.equals("paid") ? "+" + m.get("bonusShards").getAsInt() + " shards, +" + m.get("bonusGold").getAsInt() + " gold" : "";
+            String value = state.equals("paid") ? "+" + m.get("bonusShards").getAsInt() + " shards, +" + m.get("bonusGold").getAsInt() + " gear shards" : "";
             y = row(g, "march-bonus", label, value, x, y, state.equals("paid") ? DarkUi.INK_TEXT : DarkUi.SEPIA);
         }
         if (pacts > 0) y = row(g, "march-pact", pacts == 1 ? "A Pact earned" : pacts + " Pacts earned", "held " + held, x, y, DarkUi.INK_TEXT);

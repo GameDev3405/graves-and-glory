@@ -5,6 +5,10 @@ Never shipped; balance passes rerun it after editing the sheet.
   python tools/economy_model.py             run economyModel.runs players, print the tables, assert the spec 4.9 figures
   python tools/economy_model.py --seed N    the same with another seed (the asserts are the seeded run's; another seed may miss)
 
+Prices are troop writs (war table army design: recruitment.rollCost 1, chosenCost 3, rarities.chosenPrice in writs) and the
+income rows are the old gold, which a match still pays as gold / 100 writs, so the model counts in gold-equivalents (a writ is
+WRIT_GOLD = 100) and every figure below keeps its meaning.
+
 The policy (spec 4.9): for each House in turn the player rolls that House (recruitment.rollCost a roll) until its Epic drops,
 the Epic forced on roll recruitment.epicPity, and then buys each Rare of it still missing for recruitment.chosenCost (a new
 commander owns every Common already, houses design 6.2). Draws follow rarities.rollWeight per troop; Legendaries are never in a pool (the Pact and Renown give
@@ -20,6 +24,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 TOLERANCE = 0.03
+WRIT_GOLD = 100   # one troop writ stands for 100 of the old gold: the sheet prices are in writs, the model counts in gold-equivalents
 EXPECTED = {'house mean': 2920, 'five-House mean': 14700, 'P10': 11000, 'median': 14800, 'P90': 18200}
 TARGET_MEDIAN_HOURS, HOURS_BAND = 29, 0.12   # plan 5.4: a 29 hour median to a full roster, within 12 percent (25.5 to 32.5 hours)
 TARGET_HOURS = (TARGET_MEDIAN_HOURS * (1 - HOURS_BAND), TARGET_MEDIAN_HOURS * (1 + HOURS_BAND))
@@ -48,8 +53,8 @@ def chapter_gold(data, chapter=1):
 
 
 def chapter_rare_value(data):
-    """The tier-20 reward Rare is worth one chosen buy of a Rare (rarities.rare.chosenPrice)."""
-    return next(r['chosenPrice'] for r in data['rarities'] if r['id'] == 'rare')
+    """The tier-20 reward Rare is worth one chosen buy of a Rare (rarities.rare.chosenPrice, in writs), as gold-equivalents."""
+    return next(r['chosenPrice'] for r in data['rarities'] if r['id'] == 'rare') * WRIT_GOLD
 
 
 def pools(data):
@@ -90,18 +95,16 @@ def percentile(sorted_values, p):
     return sorted_values[k]
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument('--seed', type=int, default=4909)
-    args = ap.parse_args()
-    data = sheets()
+def simulate(data, seed):
+    """The seeded run: returns (got, per_hour, offsets, hours) where got holds the five-House figures in gold-equivalents,
+    per_hour the income per play hour, offsets the one-off chapter gold and tier-20 Rare, and hours the hours to a full
+    roster for each of P10, median, mean and P90 (keyed as in EXPECTED)."""
     m = data['economyModel'][0]
     rec = data['recruitment'][0]
-    roll_cost, pity = rec['rollCost'], rec['epicPity']
-    chosen = rec['chosenCost']
+    roll_cost, pity = rec['rollCost'] * WRIT_GOLD, rec['epicPity']
+    chosen = rec['chosenCost'] * WRIT_GOLD
     houses = pools(data)
-    rng = random.Random(args.seed)
-
+    rng = random.Random(seed)
     runs, per_house = [], []
     for _ in range(m['runs']):
         gold = 0
@@ -113,14 +116,26 @@ def main():
     runs.sort()
     got = {'house mean': sum(per_house) / len(per_house), 'five-House mean': sum(runs) / len(runs),
            'P10': percentile(runs, 10), 'median': percentile(runs, 50), 'P90': percentile(runs, 90)}
-
     match_income = m['matchesPerHour'] * (m['matchGold'] + m['winRate'] * m['winGold'])
     daily_income = m['dailyGold'] / m['hoursPerPlayDay']
     weekly_income = m['weeklyGold'] / (m['hoursPerPlayDay'] * m['playDaysPerWeek'])
-    per_hour = match_income + daily_income + weekly_income
+    per_hour = {'matches': match_income, 'daily': daily_income, 'weekly': weekly_income, 'total': match_income + daily_income + weekly_income}
     base_gold, bonus_gold = chapter_gold(data)
-    chapter = base_gold + bonus_gold
-    rare_value = chapter_rare_value(data)
+    offsets = {'chapter': base_gold + bonus_gold, 'wins': base_gold, 'bonuses': bonus_gold, 'rare': chapter_rare_value(data)}
+    total_offsets = offsets['chapter'] + offsets['rare']
+    hours = {key: (got[key] - total_offsets) / per_hour['total'] for key in ('P10', 'median', 'five-House mean', 'P90')}
+    return got, per_hour, offsets, hours, houses, (roll_cost, chosen, pity)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--seed', type=int, default=4909)
+    args = ap.parse_args()
+    data = sheets()
+    m = data['economyModel'][0]
+    got, income, off, hours, houses, (roll_cost, chosen, pity) = simulate(data, args.seed)
+    match_income, daily_income, weekly_income, per_hour = income['matches'], income['daily'], income['weekly'], income['total']
+    base_gold, bonus_gold, chapter, rare_value = off['wins'], off['bonuses'], off['chapter'], off['rare']
     offsets = chapter + rare_value
 
     print('Economy model (houses design 4.9): %d runs, seed %d, %d Houses, roll %d gold, chosen buy %d gold, Epic pity %d'
@@ -134,10 +149,8 @@ def main():
     print()
     print('| Player | Gold needed | Hours |')
     print('|---|---|---|')
-    hours = {}
     for label, key in (('Lucky (10th percentile)', 'P10'), ('Median', 'median'), ('Mean', 'five-House mean'), ('Unlucky (90th percentile)', 'P90')):
         need = got[key] - offsets
-        hours[key] = need / per_hour
         print('| %s | %s | %d |' % (label, format(int(round(need / 100.0)) * 100, ','), round(hours[key])))
     print()
     print('| Hour | What just happened | Next goal on screen |')

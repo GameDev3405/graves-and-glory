@@ -124,12 +124,11 @@ public final class ProfileMigration {
     }
 
     /**
-     * Schema 3 to 4 (commander gear spec), in place, and returns the same profile: forgeMarks and gearPity start at 0, inventorySize at the
+     * Schema 3 to 4 (commander gear spec), in place, and returns the same profile: gearPity starts at 0 (Forge marks no longer exist: schema 7 keeps that currency as gear shards), inventorySize at the
      * Forge's start size, and the starter set of the commander's role is granted once (only when the profile holds no gear yet, so a
      * second run adds nothing). Every schema-3 field is kept as it is; the class refund is 0. Sets schema 4.
      */
     static Profile v3toV4(Profile p) {
-        p.forgeMarks = 0;
         p.gearPity = 0;
         p.inventorySize = Spec.FORGE[0].startSlots();
         if (p.gear == null) p.gear = new ArrayList<>();
@@ -174,8 +173,8 @@ public final class ProfileMigration {
      * markers vanish, so an Epic or Legendary lands once, on its first entry). Entries of an unknown or unowned troop are left out, then
      * troops are taken off the back rows until RosterMath.validTable passes (against every House); when any went, notice says so. The
      * Pact count (writs) becomes pacts, and the saved gold splits: troopWrits = gold / 100, gearShards = gold % 100. The legacy fields end
-     * null, so Gson never writes them. A profile with no legacy banner keeps the banners it has. Sets schema 7. Forge marks stay as they
-     * are here (the Forge currency task merges them into gear shards).
+     * null, so Gson never writes them. A profile with no legacy banner keeps the banners it has. Saved Forge marks add 1:1 to gearShards
+     * and are dropped (gold 1234 and marks 50 end at 12 writs and 84 gear shards). Sets schema 7.
      */
     static Profile v6toV7(Profile p, RosterMath.Catalog c) {
         if (p.banner != null || p.banners == null || p.banners.isEmpty()) {
@@ -193,6 +192,7 @@ public final class ProfileMigration {
         p.pacts += p.writs == null ? 0 : p.writs;
         p.troopWrits += gold / 100;
         p.gearShards += gold % 100;
+        p.foldForgeMarks();
         p.banner = null;
         p.gold = null;
         p.writs = null;

@@ -4,7 +4,7 @@ import java.util.*;
 
 /**
  * A commander's saved collection, schema 7 (spec 6.2, plan 2C.3, commander gear spec, command UI custom groups, war table army rework): up to five named war table banners, the owned troops with stars and mastery, per
- * House shards, Renown and Epic pity, the Long March battles won and bonuses paid, and the commander's gear, relics and Forge marks. Server-owned JSON, one file per player
+ * House shards, Renown and Epic pity, the Long March battles won and bonuses paid, and the commander's gear, relics and gear shards. Server-owned JSON, one file per player
  * (Campaign.profile loads it, migrating an older file first). Pure, so the standalone checks compile it.
  */
 public final class Profile {
@@ -19,8 +19,8 @@ public final class Profile {
     static final int SCHEMA = 7;
     /** Schema 7: the longest banner name. */
     static final int MAX_BANNER_NAME = 16;
-    /** Troop writs a recruitment roll costs, and a chosen recruit (the old 100 and 300 gold, at 100 gold a writ). */
-    static final int ROLL_WRITS = 1, CHOSEN_WRITS = 3;
+    /** Troop writs a recruitment roll costs, and a chosen recruit: recruitment.rollCost and chosenCost, in writs (the old 100 and 300 gold, at 100 gold a writ). */
+    static final int ROLL_WRITS = Spec.RECRUITMENT[0].rollCost(), CHOSEN_WRITS = Spec.RECRUITMENT[0].chosenCost();
     /** Schema 7: one saved war table banner: its name and its cells as the compact string WarGrid.format writes. A Gson class, not a record, so an old file missing a field still loads. */
     static final class Banner {
         String name, cells;
@@ -76,8 +76,10 @@ public final class Profile {
     int nextGearUid = 1;
     /** Cached Gear.power of the worn pieces, for matchmaking and bot scaling. */
     int gearPower = 0;
-    /** Schema 4: Forge marks (the blacksmith's currency), the rolls since the last Epic or better, and the inventory capacity in pieces. */
-    int forgeMarks, gearPity;
+    /** Schema 4: the rolls since the last Epic or better, and the inventory capacity in pieces. */
+    int gearPity;
+    /** Legacy (schema 4 to 6): Forge marks. They merge into gearShards on load and end null, so Gson never writes them. */
+    Integer forgeMarks;
     int inventorySize = Spec.FORGE[0].startSlots();
     /** Schema 5: custom numbered groups, stored with the Armoury loadout; orders sent to custom:<number> reach these troop types. */
     List<CustomGroup> customGroups = new ArrayList<>();
@@ -118,6 +120,7 @@ public final class Profile {
             if (o.variant == null || o.variant.isBlank()) o.variant = "base";
         }
         if (toSeven) ProfileMigration.v6toV7(this, c);
+        foldForgeMarks(); // a schema 7 file from an earlier build of this branch may still carry them
         gold = null; // the legacy fields are read by the migration only; null, Gson never writes them
         writs = null;
         banner = null;
@@ -201,17 +204,21 @@ public final class Profile {
         for (int i = 0; i < 8; i++) troops.add("archer");
         return WarGrid.place(troops, id -> id.equals("archer") ? 2 : 0);
     }
+    /** Folds legacy Forge marks into gear shards 1:1 (the marks clamp to 0..1,000,000 first) and drops them; a profile without marks is unchanged, so a second call adds nothing. */
+    void foldForgeMarks() {
+        if (forgeMarks == null) return;
+        gearShards = clamp(gearShards, 0, 1_000_000) + clamp(forgeMarks, 0, 1_000_000);
+        forgeMarks = null;
+    }
     /** The active banner, clamped to the banners held; null only when there are none (sanitize always leaves one). */
     private Banner active() {
         if (banners == null || banners.isEmpty()) return null;
         return banners.get(clamp(activeBanner, 0, banners.size() - 1));
     }
-    /** Pays a gold amount of the old economy in the new one: it fills writGold to whole troop writs (100 each) and counts the same number of gear shards. */
+    /** Pays a gold amount of the old economy in the new one: troop writs by RosterMath.payWrits (100 to a writ, the rest carried in writGold) and the same number of gear shards. */
     void payGold(int gold) {
         if (gold <= 0) return;
-        long w = writGold + (long) gold;
-        troopWrits = (int) Math.min(1_000_000L, troopWrits + w / 100);
-        writGold = (int) (w % 100);
+        RosterMath.payWrits(this, gold);
         gearShards = (int) Math.min(1_000_000L, (long) gearShards + gold);
     }
 
@@ -273,7 +280,6 @@ public final class Profile {
             top = Math.max(top, g.uid);
         }
         nextGearUid = Math.max(Math.max(1, nextGearUid), top + 1);
-        forgeMarks = clamp(forgeMarks, 0, 1_000_000);
         gearPity = clamp(gearPity, 0, f.pity());
         int size = clamp(inventorySize, f.startSlots(), f.maxSlots());
         inventorySize = Math.max(f.startSlots(), f.startSlots() + (size - f.startSlots()) / f.rowSlots() * f.rowSlots());

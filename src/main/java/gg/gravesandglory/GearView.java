@@ -230,10 +230,10 @@ final class GearView {
         return Math.max(0, Math.min(offsetRows, rows(count) - visibleRows));
     }
 
-    /** A throwaway Profile holding the view's gear fields, for Forge previews. Gold is not in the view and stays 0. */
+    /** A throwaway Profile holding the view's gear fields, for Forge previews. Troop writs are not in the view and stay 0. */
     static Profile asProfile(GearWire.View v) {
         Profile p = new Profile();
-        p.forgeMarks = v.forgeMarks();
+        p.gearShards = v.gearShards();
         p.inventorySize = v.inventorySize();
         p.gearPity = v.pity();
         p.gearPower = v.power();
@@ -264,7 +264,7 @@ final class GearView {
     static String rollRefusal(GearWire.View v, String slot) {
         if (v == null) return "Loading your gear…";
         int cost = Forge.rollCost(slot);
-        if (v.forgeMarks() < cost) return "A roll costs " + cost + " Forge marks.";
+        if (v.gearShards() < cost) return "A roll costs " + cost + " gear shards.";
         if ("relic".equals(slot)) {
             if (Arrays.stream(Spec.RELICS).allMatch(r -> v.relics().contains(r.id()))) return "You own every relic.";
             return "";

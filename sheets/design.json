@@ -10335,7 +10335,7 @@
     {
       "id": "common",
       "rollWeight": 43,
-      "chosenPrice": 300,
+      "chosenPrice": 3,
       "slotWeight": 1,
       "starPct2": 0.06,
       "starPct3": 0.12,
@@ -10351,7 +10351,7 @@
     {
       "id": "rare",
       "rollWeight": 6,
-      "chosenPrice": 300,
+      "chosenPrice": 3,
       "slotWeight": 1,
       "starPct2": 0.06,
       "starPct3": 0.12,
@@ -10695,8 +10695,8 @@
   "recruitment": [
     {
       "id": "houses",
-      "rollCost": 100,
-      "chosenCost": 300,
+      "rollCost": 1,
+      "chosenCost": 3,
       "epicPity": 40,
       "legendaryShards": 50,
       "renownForLegendary": 30,

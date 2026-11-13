@@ -39,8 +39,19 @@ class EconomyModelSheetTest(unittest.TestCase):
         edited = copy.deepcopy(self.data)
         for r in edited['rarities']:
             if r['id'] == 'rare':
-                r['chosenPrice'] = 450
-        self.assertEqual(em.chapter_rare_value(edited), 450)
+                r['chosenPrice'] = 4
+        self.assertEqual(em.chapter_rare_value(edited), 4 * em.WRIT_GOLD)   # the sheet price is in writs; the model counts gold-equivalents
+
+    def test_prices_are_in_writs(self):
+        rec = self.data['recruitment'][0]
+        self.assertEqual((rec['rollCost'], rec['chosenCost']), (1, 3))
+        self.assertTrue(all(r['chosenPrice'] in (0, 3) for r in self.data['rarities']))
+
+    def test_time_to_first_epic_unchanged_by_the_writ_prices(self):
+        # Before the war table army rework the sheet priced a roll at 100 gold and a chosen buy at 300; the seeded run's median hours were 27.27.
+        # The new prices are the same numbers in writs (100 gold each), so the median must stay within 1 percent.
+        _, _, _, hours, _, _ = em.simulate(self.data, 4909)
+        self.assertAlmostEqual(hours['median'], 27.27, delta=0.01 * 27.27)
 
     def test_band_is_29_hours_within_12_percent(self):
         self.assertAlmostEqual(em.TARGET_HOURS[0], 25.52)

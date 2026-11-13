@@ -113,7 +113,7 @@ public final class AudioCues {
         BREAK_DOWN("break_down", null, .5f, 1f, "master", Scope.LOCAL, 6, "Gear is broken down"),
         BLACKSMITH_ROLL("blacksmith_roll", null, .5f, 1f, "master", Scope.LOCAL, 10, "The forge rolls"),
         REPAIR_HAMMER("repair_hammer", null, .5f, 1f, "master", Scope.LOCAL, 10, "Gear is repaired"),
-        FORGE_MARKS("forge_marks", null, .5f, 1f, "master", Scope.LOCAL, 6, "Forge marks are earned"),
+        FORGE_MARKS("forge_marks", null, .5f, 1f, "master", Scope.LOCAL, 6, "Gear shards are earned"),
         RARITY_COMMON("rarity_common", null, .5f, 1f, "master", Scope.LOCAL, 10, "A common find"),
         RARITY_UNCOMMON("rarity_uncommon", null, .5f, 1f, "master", Scope.LOCAL, 10, "An uncommon find"),
         RARITY_RARE("rarity_rare", null, .55f, 1f, "master", Scope.LOCAL, 10, "A rare find"),

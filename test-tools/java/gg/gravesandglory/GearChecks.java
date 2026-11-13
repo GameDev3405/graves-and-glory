@@ -51,7 +51,7 @@ final class GearChecks implements Phase1Checks.Suite {
                 if (ok || tick - stageAt > 100) {
                     Phase1Checks.report("p1-gear-sync", ok, g == null ? "no gear_v1 packet within 100 ticks" : g.equipped().size() + " equipped, relic slot 0 '" + g.relicSlots().get(0) + "', " + g.pieces().size() + " pieces");
                     if (ok) {
-                        Phase1Checks.server(c, b -> { var pr = b.campaign.profile(player); pr.forgeMarks = 200; b.campaign.save(player); });
+                        Phase1Checks.server(c, b -> { var pr = b.campaign.profile(player); pr.gearShards = 200; b.campaign.save(player); });
                         next(tick, 2);
                     } else {
                         Phase1Checks.finish(c, "gear");
@@ -61,35 +61,35 @@ final class GearChecks implements Phase1Checks.Suite {
             }
             case 2 -> { // wait for the 200 marks to reach the client, then roll a helm
                 var g = CampaignClient.gear;
-                if (g != null && g.forgeMarks() == 200) {
+                if (g != null && g.gearShards() == 200) {
                     piecesBefore = g.pieces().size();
                     GravesAndGloryClient.send("forge:roll:helm");
                     next(tick, 3);
                 } else if (tick - stageAt > 100) {
-                    Phase1Checks.report("p1-gear-roll", false, "the client never saw 200 Forge marks (has " + (g == null ? "no gear" : g.forgeMarks()) + ")");
+                    Phase1Checks.report("p1-gear-roll", false, "the client never saw 200 gear shards (has " + (g == null ? "no gear" : g.gearShards()) + ")");
                     next(tick, 5);
                 }
             }
             case 3 -> { // p1-gear-roll
                 var g = CampaignClient.gear;
-                boolean grew = g != null && g.pieces().size() == piecesBefore + 1 && g.forgeMarks() == 125;
+                boolean grew = g != null && g.pieces().size() == piecesBefore + 1 && g.gearShards() == 125;
                 if (grew && !diskDone) {
                     diskDone = true;
                     int want = piecesBefore + 1;
                     Phase1Checks.server(c, b -> {
                         try {
                             var onDisk = Campaign.JSON.fromJson(java.nio.file.Files.readString(b.campaign.directory.resolve(player + ".json")), Profile.class);
-                            diskOk = onDisk.forgeMarks == 125 && onDisk.gear.size() == want;
-                            diskWhy = "file has " + onDisk.forgeMarks + " marks and " + onDisk.gear.size() + " pieces, wanted 125 and " + want;
+                            diskOk = onDisk.gearShards == 125 && onDisk.gear.size() == want;
+                            diskWhy = "file has " + onDisk.gearShards + " marks and " + onDisk.gear.size() + " pieces, wanted 125 and " + want;
                         } catch (Exception e) { diskWhy = e.toString(); }
                     });
                 }
                 if (grew && diskDone && !diskWhy.isEmpty()) {
-                    Phase1Checks.report("p1-gear-roll", diskOk, "client pieces " + piecesBefore + " -> " + g.pieces().size() + ", marks " + g.forgeMarks() + "; " + diskWhy);
+                    Phase1Checks.report("p1-gear-roll", diskOk, "client pieces " + piecesBefore + " -> " + g.pieces().size() + ", marks " + g.gearShards() + "; " + diskWhy);
                     Phase1Checks.server(c, b -> serverBefore = Campaign.JSON.toJson(b.campaign.profile(player)));
                     next(tick, 4);
                 } else if (tick - stageAt > 100) {
-                    Phase1Checks.report("p1-gear-roll", false, "within 100 ticks the client saw " + (g == null ? "no gear" : g.pieces().size() + " pieces (wanted " + (piecesBefore + 1) + "), marks " + g.forgeMarks() + " (wanted 125)"));
+                    Phase1Checks.report("p1-gear-roll", false, "within 100 ticks the client saw " + (g == null ? "no gear" : g.pieces().size() + " pieces (wanted " + (piecesBefore + 1) + "), marks " + g.gearShards() + " (wanted 125)"));
                     next(tick, 5);
                 }
             }

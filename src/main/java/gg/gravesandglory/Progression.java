@@ -109,14 +109,14 @@ final class Progression {
     static Grant pay(State s,String stored,int gold,int xp,int shards,String house,String troop,String cosmetic){
         s.claims.add(stored);s.xp=Math.min(1_000_000,s.xp+xp);
         List<String> parts=new ArrayList<>();
-        if(gold>0)parts.add("+"+gold+" gold");if(xp>0)parts.add("+"+xp+" XP");if(shards>0)parts.add("+"+shards+" "+RosterMath.houseName(house)+" shards");
+        if(gold>0)parts.add("+"+gold+" gear shards");if(xp>0)parts.add("+"+xp+" XP");if(shards>0)parts.add("+"+shards+" "+RosterMath.houseName(house)+" shards");
         if(troop!=null)parts.add(troop(troop).name());if(cosmetic!=null)parts.add("the "+cosmetic.replace('_',' ')+" cosmetic");
         for(int i=0;i<TITLE_TIERS.length;i++)if(stored.equals(SEASON+":"+TITLE_TIERS[i]))parts.add("the title "+TITLES[i]);
         return new Grant(gold,xp,shards,shards>0?house:null,troop,cosmetic,"Claimed reward: "+String.join(" / ",parts));
     }
     /** What a Founders tier gives, for the chapter page. */
     static String reward(int tier){
-        if(GOLD_TIERS.contains(tier))return TIER_GOLD+" gold";
+        if(GOLD_TIERS.contains(tier))return TIER_GOLD+" gear shards";
         if(SHARD_TIERS.contains(tier))return TIER_SHARDS+" House shards";
         if(tier==RARE_TIER)return "a Rare troop";
         if(COSMETIC_TIERS.containsKey(tier))return cap(COSMETIC_TIERS.get(tier).replace('_',' '));

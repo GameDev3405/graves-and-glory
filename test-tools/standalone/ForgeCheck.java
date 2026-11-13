@@ -20,8 +20,7 @@ public final class ForgeCheck {
     }
     static Profile rich(int marks) {
         Profile p = new Profile();
-        p.forgeMarks = marks;
-        p.gearShards = 5000;
+        p.gearShards = marks;
         return p;
     }
 
@@ -34,7 +33,7 @@ public final class ForgeCheck {
         for (int i = 0; i < n; i++) {
             d.gear.clear();
             d.gearPity = 0;
-            d.forgeMarks = 75;
+            d.gearShards = 75;
             var r = Forge.roll(d, "helm", rng);
             check(r.refusal().isEmpty() && r.piece() != null && Gear.item(r.piece().item).slot().equals("helm"), "a helm roll gives a helm");
             byRarity.merge(r.piece().rarity, 1, Integer::sum);
@@ -70,15 +69,15 @@ public final class ForgeCheck {
         Profile cost = rich(113);
         cost.relics.add(Spec.RELICS[0].id());
         var cr = Forge.roll(cost, "relic", new Zero()); // the first relic, already owned: a duplicate
-        check(cr.refusal().isEmpty() && cr.duplicate() && cr.refund() == 56 && cost.forgeMarks == 56, "a duplicate relic refunds 56 of 113: " + cr);
+        check(cr.refusal().isEmpty() && cr.duplicate() && cr.refund() == 56 && cost.gearShards == 56, "a duplicate relic refunds 56 of 113: " + cr);
 
         // double request
         Profile two = rich(100);
         int before = two.gear.size();
         var first = Forge.roll(two, "helm", new SplittableRandom(3));
         var second = Forge.roll(two, "helm", new SplittableRandom(3));
-        check(first.refusal().isEmpty() && !second.refusal().isEmpty() && two.forgeMarks == 25 && two.gear.size() == before + 1, "the second roll is refused: " + second.refusal() + " marks " + two.forgeMarks);
-        check(second.refusal().equals("A roll costs 75 Forge marks.") && second.piece() == null && second.refund() == 0 && !second.duplicate(), "a refusal carries nothing else");
+        check(first.refusal().isEmpty() && !second.refusal().isEmpty() && two.gearShards == 25 && two.gear.size() == before + 1, "the second roll is refused: " + second.refusal() + " marks " + two.gearShards);
+        check(second.refusal().equals("A roll costs 75 gear shards.") && second.piece() == null && second.refund() == 0 && !second.duplicate(), "a refusal carries nothing else");
         check(Forge.roll(two, "cape", rng).refusal().equals("No such forge slot.") && Forge.roll(two, null, rng).refusal().equals("No such forge slot."), "an unknown slot is refused");
 
         // full
@@ -87,7 +86,7 @@ public final class ForgeCheck {
         full.nextGearUid = 131;
         full.inventorySize = 120;
         var fr = Forge.roll(full, "helm", rng);
-        check(fr.refusal().equals("Your inventory is full. Break down or expand first.") && full.forgeMarks == 1000 && full.gear.size() == 130, "a full inventory refuses a helm roll and keeps the marks");
+        check(fr.refusal().equals("Your inventory is full. Break down or expand first.") && full.gearShards == 1000 && full.gear.size() == 130, "a full inventory refuses a helm roll and keeps the marks");
         check(Forge.roll(full, "relic", rng).refusal().isEmpty(), "a relic roll is allowed when full");
 
         // relic duplicate until dash comes up
@@ -96,20 +95,20 @@ public final class ForgeCheck {
         var rr = new SplittableRandom(7);
         boolean sawDupe = false, gotDash = false;
         for (int i = 0; i < 400 && !gotDash; i++) {
-            int marks = rel.forgeMarks;
+            int marks = rel.gearShards;
             var r = Forge.roll(rel, "relic", rr);
             if (r.duplicate()) {
                 sawDupe = true;
-                check(r.refund() == 56 && rel.forgeMarks == marks - 113 + 56, "a duplicate relic costs 57 net");
+                check(r.refund() == 56 && rel.gearShards == marks - 113 + 56, "a duplicate relic costs 57 net");
             } else {
-                check(r.relic().equals("dash") && rel.relics.contains("dash") && rel.forgeMarks == marks - 113, "the first new relic is dash and costs 113");
+                check(r.relic().equals("dash") && rel.relics.contains("dash") && rel.gearShards == marks - 113, "the first new relic is dash and costs 113");
                 gotDash = true;
             }
         }
         check(sawDupe && gotDash, "draws repeat owned relics until dash");
-        int left = rel.forgeMarks;
+        int left = rel.gearShards;
         var none = Forge.roll(rel, "relic", rr);
-        check(none.refusal().equals("You own every relic.") && rel.forgeMarks == left, "all relics owned is refused and keeps the marks");
+        check(none.refusal().equals("You own every relic.") && rel.gearShards == left, "all relics owned is refused and keeps the marks");
 
         // breakdown
         Profile b = rich(0);
@@ -117,9 +116,9 @@ public final class ForgeCheck {
         b.gear.add(piece(2, "bruiser_chest", "common", 50, 100));
         b.equipped.put("chest", 2);
         check(Forge.breakdownValue(b.gear.get(0)) == 37 && Forge.breakdownValue(b.gear.get(1)) == 15, "rare gives 37, common 15");
-        check(Forge.breakdown(b, 2).equals("Unequip it first.") && b.gear.size() == 2 && b.forgeMarks == 0, "an equipped piece is refused");
-        check(Forge.breakdown(b, 99).equals("You do not own that piece.") && b.forgeMarks == 0, "an unowned uid is refused");
-        check(Forge.breakdown(b, 1).isEmpty() && b.forgeMarks == 37 && b.gear.size() == 1 && Gear.piece(b, 1) == null, "a rare piece returns 37");
+        check(Forge.breakdown(b, 2).equals("Unequip it first.") && b.gear.size() == 2 && b.gearShards == 0, "an equipped piece is refused");
+        check(Forge.breakdown(b, 99).equals("You do not own that piece.") && b.gearShards == 0, "an unowned uid is refused");
+        check(Forge.breakdown(b, 1).isEmpty() && b.gearShards == 37 && b.gear.size() == 1 && Gear.piece(b, 1) == null, "a rare piece returns 37");
 
         // dupes
         Profile u = rich(0);
@@ -135,7 +134,7 @@ public final class ForgeCheck {
         u.equipped.put("helm", 1);
         check(Forge.duplicate(u, u.gear.get(0)) && !Forge.duplicate(u, u.gear.get(3)), "duplicate() finds another piece of the same item and rarity");
         int gained = Forge.breakdownDuplicates(u);
-        check(gained == 2 * 52 + 15 && u.forgeMarks == gained, "dupes pay 2 x 52 + 15: " + gained);
+        check(gained == 2 * 52 + 15 && u.gearShards == gained, "dupes pay 2 x 52 + 15: " + gained);
         check(Gear.piece(u, 1) != null && Gear.piece(u, 8) != null && Gear.piece(u, 2) == null && Gear.piece(u, 3) == null && Gear.piece(u, 9) == null && u.gear.size() == 6, "the worn helm and the oldest greatsword stay");
         check(Forge.breakdownDuplicates(u) == 0, "a second pass finds nothing");
         Profile q = rich(0);

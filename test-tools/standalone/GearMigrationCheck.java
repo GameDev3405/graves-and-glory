@@ -53,7 +53,7 @@ public final class GearMigrationCheck {
             check(items(p).equals(new TreeSet<>(List.of("commander_helm", "commander_chest", "commander_legs", "commander_boots", "war_banner"))), "the commander set and the banner: " + items(p));
             check(p.equipped.size() == 5 && p.equipped.containsKey("main") && !p.equipped.containsKey("off"), "all 5 pieces are worn");
             check(p.relics.equals(Set.of("rally_horn")) && p.relicSlots.equals(List.of("rally_horn", "", "")), "rally_horn in slot 0");
-            check(p.forgeMarks == 0 && p.gearPity == 0 && p.inventorySize == Spec.FORGE[0].startSlots(), "no marks, no pity, the starting inventory");
+            check(p.gearShards == 50 && p.gearPity == 0 && p.inventorySize == Spec.FORGE[0].startSlots(), "the old gold remainder is the only shards, no pity, the starting inventory");
             check(p.gearPower == 5, "gear power is 5, got " + p.gearPower);
             check(Files.isRegularFile(backup) && Arrays.equals(Files.readAllBytes(backup), v3Bytes), ".v3.json is a byte copy of the fixture");
             check(Files.readString(file).contains("\"schema\": 4"), "the file on disk is schema 4");
@@ -102,7 +102,7 @@ public final class GearMigrationCheck {
             s.relics.addAll(List.of("dash", "nope"));
             s.relicSlots = new ArrayList<>(List.of("dash", "dash"));
             s.inventorySize = 77;
-            s.forgeMarks = -5;
+            s.gearShards = -5;
             s.gearPity = 99;
             s.sanitize();
             check(s.gear.size() == 2, "the unknown item, repeated uid, null and unknown rarity are dropped: " + s.gear.size());
@@ -112,7 +112,7 @@ public final class GearMigrationCheck {
             check(s.relics.equals(Set.of("dash")), "unknown relics are dropped");
             check(s.relicSlots.equals(List.of("dash", "", "")), "relicSlots is exactly 3 with no repeats: " + s.relicSlots);
             check(s.inventorySize == 70, "77 rounds down to 70, got " + s.inventorySize);
-            check(s.forgeMarks == 0 && s.gearPity == Spec.FORGE[0].pity(), "marks and pity clamp");
+            check(s.gearShards == 0 && s.gearPity == Spec.FORGE[0].pity(), "marks and pity clamp");
             check(s.nextGearUid >= 5, "next uid is past the highest, got " + s.nextGearUid);
             check(s.gearPower == Gear.power(s) && s.gearPower == 1, "gear power is recomputed: " + s.gearPower);
             s.inventorySize = 500;
@@ -171,12 +171,12 @@ public final class GearMigrationCheck {
             Profile imp = new Profile();
             imp.sanitize();
             imp.inventorySize = 120;
-            imp.forgeMarks = 500;
+            imp.gearShards = 500;
             imp.gearPity = 9;
             for (int i = 1; i <= 30; i++) imp.gear.add(piece(i, "bruiser_helm", 50, 100));
             imp.nextGearUid = 31;
             Gear.resetForImport(imp);
-            check(imp.inventorySize == Spec.FORGE[0].startSlots() && imp.forgeMarks == 0 && imp.gearPity == 0, "an import resets the inventory size, marks and pity");
+            check(imp.inventorySize == Spec.FORGE[0].startSlots() && imp.gearShards == 0 && imp.gearPity == 0, "an import resets the inventory size, marks and pity");
             check(imp.gear.size() == 6 && imp.equipped.size() == 6 && imp.nextGearUid == 7 && imp.relics.size() == 1, "an import gets a fresh starter set only");
         } finally {
             try (Stream<Path> w = Files.walk(root)) { for (Path x : w.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(x); }
