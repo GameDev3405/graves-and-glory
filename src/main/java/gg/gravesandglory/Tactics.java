@@ -622,7 +622,10 @@ final class Tactics {
     /** How long a regroup walk may take before it is dropped, in ticks. */
     static final long REGROUP_TICKS=200;
     /** The stall clock's beat for this troop: its distance to the destination by the route field already held (never a build), and the rung to carry out (Stall.NONE for most beats). */
+    /** GRAVES_NO_STALL=1 leaves the ladder out (the control of the tick-cost runs). */
+    static final boolean STALL=System.getenv("GRAVES_NO_STALL")==null;
     static int stallRung(GravesAndGlory.Unit u,Vec3d destination,long time){
+        if(!STALL)return Stall.NONE;
         var nav=field();var mob=u.mob;
         double d=nav==null?Double.NaN:nav.cachedDistance(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z);
         int rung=Stall.step(u.stall,time,mob.getX(),mob.getZ(),destination.x,destination.z,d);
