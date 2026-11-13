@@ -222,7 +222,7 @@ public final class Arena {
         int ix=(int)Math.floor(x),iz=(int)Math.floor(z);var pos=new BlockPos.Mutable();
         java.util.function.BiPredicate<Integer,Integer> headroom=w==null?null:(cx,cz)->{int g=e.solid(cx,cz);
             for(int y=g+1;y<=g+2;y++)if(!w.getBlockState(pos.set(cx,y,cz)).getCollisionShape(w,pos).isEmpty())return false;return true;};
-        if(e.stands(ix,iz,maxGround)&&(home==null||e.nearHome(home,ix,iz))&&(headroom==null||headroom.test(ix,iz)))return new Vec3d(x,e.solid(ix,iz)+1,z);
+        if(e.stands(ix,iz,maxGround)&&(home==null||e.nearHome(home,ix,iz))&&(headroom==null||headroom.test(ix,iz))){double[] q=e.inside(x,z,EngineMap.BODY,maxGround,headroom);return new Vec3d(q[0],e.solid(ix,iz)+1,q[1]);} // off the wall post on the edge of the cell
         int[] c=e.footing(ix,iz,homeX,48,maxGround,home,headroom);
         return c==null?null:new Vec3d(c[0]+.5,e.solid(c[0],c[1])+1,c[1]+.5);
     }

@@ -111,6 +111,23 @@ public final class EngineMap {
   int low=g;for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++)low=Math.min(low,solid(x+dx,z+dz));
   return g-low<=1;
  }
+ /** Half the width a troop's body takes on its spot, with a hair to spare (a 0.6-wide troop): inside keeps it this far off a bad neighbour. */
+ public static final double BODY=0.31;
+ /** The spot (x, z), pulled inside its own cell so a body of half width h does not reach into a neighbouring cell (the eight round it) that
+  *  does not stand (stands with maxGround, and also when given): a wall post, a fence, a pile or water on the edge of the cell. A troop placed on
+  *  the line between a yard cell and a pool wall overlaps the wall's post and is pushed out of it, over the wall into the pool. Moves it 0.5 at
+  *  most, inside the cell; a spot clear of every bad neighbour is kept. {x, z}. */
+ public double[] inside(double x,double z,double h,int maxGround,java.util.function.BiPredicate<Integer,Integer> also){
+  int ix=(int)Math.floor(x),iz=(int)Math.floor(z);double fx=x-ix,fz=z-iz;
+  java.util.function.BiPredicate<Integer,Integer> ok=(dx,dz)->stands(ix+dx,iz+dz,maxGround)&&(also==null||also.test(ix+dx,iz+dz));
+  if(!ok.test(-1,0))fx=Math.max(fx,h);if(!ok.test(1,0))fx=Math.min(fx,1-h);
+  if(!ok.test(0,-1))fz=Math.max(fz,h);if(!ok.test(0,1))fz=Math.min(fz,1-h);
+  for(int dx=-1;dx<=1;dx+=2)for(int dz=-1;dz<=1;dz+=2){ // a bad corner cell: off it along whichever axis is the shorter way
+   double nx=dx<0?h-fx:fx-(1-h),nz=dz<0?h-fz:fz-(1-h);
+   if(nx<=0||nz<=0||ok.test(dx,dz))continue;
+   if(nx<=nz)fx-=dx*nx;else fz-=dz*nz;}
+  return new double[]{ix+fx,iz+fz};
+ }
  /** Where a troop placed at cell (x, z) stands: the cell itself when stands(x, z, maxGround) holds, in home's yard when home is given
   *  (nearHome), and also holds when given; else the nearest such cell within radius by straight distance, ties to the one nearest towardX
   *  (the troop's own base). Null when there is none. also is the caller's extra test (Arena.standing: two free blocks of headroom in the world). */
