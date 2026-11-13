@@ -4,6 +4,17 @@ Owner decisions: Kort, 2026-11-13 (`status/DECISIONS-2026-11-09.md`, "2026-11-13
 
 **Approved by Kort, 2026-11-13** (AskUserQuestion, "Yes, build it"), after the review page https://claude.ai/artifact/TifyovtbuX8f1MMvsegwbq with both looks rendered from New Kingsfield's real blocks by `tools/battlemap_preview.py`.
 
+## 0. Revision 2 (Kort, 2026-11-13, after in-game screenshots; AskUserQuestion)
+
+Kort: "i only want this map ... the other one doesnt look good"; the points and icons clutter, so the map cannot be read at a glance. Approved mockup: `work/map-declutter-mockup.png`. This replaces the conflicting parts of sections 2-4 and 6:
+- **Real look only.** The parchment look, the toggle, the T key and the look option are removed.
+- **Terrain toned down** (desaturated and darkened) so the markers stand out.
+- **Points:** large discs filled with the owner's colour (neutral light grey) with a dark rim and a big letter. The capture ring is in the challenger's colour. The name sits under the disc as outlined text, with no box. The plan flag is a small pennant on the disc.
+- **Troops:** a small square icon per group at its real position, showing the troop type glyph (shield for infantry, bow for ranged, and so on) and a count beside it. Own groups are filled; allies are outlined, with the same glyph. No text plaques and no leader lines. Selected groups get a light edge.
+- **Allies:** icon only. The name, count and job show on hover.
+- **Order lines** are drawn only for selected own groups and for whatever is hovered.
+- Enemies (triangles), fights (crossed swords), pings and the "you" arrow stay, drawn in the same outlined style.
+
 ## 1. Goal
 
 1. The player sees at a glance where the troops are, how the field is laid out and where the points of interest are.
