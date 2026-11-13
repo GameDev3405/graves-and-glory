@@ -217,6 +217,21 @@ class Graded(unittest.TestCase):
         self.assertEqual(self.weapon_gone("archer", "attack_direct", (0.0, 10.0, 16.0, 22.0)), [False] * 4)
 
 
+class Decal(unittest.TestCase):
+    def test_a_flat_face_painted_on_the_shield_is_not_a_hard_part(self):
+        # The cloth face is a flat 12 x 18 sheet on a shield that tapers to a point: its lower corners are empty texels
+        # outside the shield. Judged as a box they read "under the ground" on a planted shield (sentinel, gl_marshal,
+        # ic_hearthguard stun, 2026-11-13). The shield's own boxes carry the checks.
+        P = fc.Parts(RIG)
+        bones = RIG.model.cube_bone
+        face = [i for i, b in enumerate(bones) if b.startswith("shield_face")]
+        body = [i for i, b in enumerate(bones) if b == "shield"]
+        self.assertTrue(face and body)
+        self.assertTrue(all(P.soft[i] for i in face))
+        self.assertFalse(any(P.soft[i] for i in body))
+        self.assertFalse(set(face) & set(P.hard()))
+
+
 class FitPairs(unittest.TestCase):
     """The row armour_clip names one pair; fit_pairs lists them all (round 2: a pauldron 1.88 px in the helm was hidden
     behind an arm 1.88 px in the torso)."""

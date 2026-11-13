@@ -54,6 +54,9 @@ aimed: go to that tick in the builder, do not nudge the whole clip. The limits a
 - **A weapon the game hides is not judged** (2026-11-12, harpooner). On ticks where the clip keys the `draw` bone onto a
   draw frame with no cubes (the fist after the harpoon left), the weapon rows and `floor` skip the weapon. A bow's pull
   frames have cubes, so a bow is always judged. Do not exempt such a row; if it still fires, the weapon is drawn there.
+- **A flat sheet on a held prop is paint, not a part** (2026-11-13). The shield's cloth face is a 12 x 18 rectangle on a
+  shield that tapers to a point; its empty lower corners read as `floor` and `prop_in_body` rows. The shield's own boxes
+  carry those checks.
 - **Pieces of one limb are not judged against each other** in `armour_clip` (elbow and knee gear overlap by design).
 - **A clip does not own the clipping its stance starts with.** If the first frame of an action clip is already over
   the warn limit and the clip never gets more than 0.15 px worse than that, the row is a WARN that says "the stance

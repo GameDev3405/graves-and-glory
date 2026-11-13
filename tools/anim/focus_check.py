@@ -221,7 +221,7 @@ class Parts:
         self.rig = rig
         m = rig.model
         self.part, self.soft = [], []
-        for b in m.cube_bone:
+        for ci, b in enumerate(m.cube_bone):
             n, soft, part = b, False, None
             while n is not None:
                 if n in rig.weapon:
@@ -236,8 +236,11 @@ class Parts:
                 if _tok(n) & SOFT:
                     soft = True
                 n = rig.full.bones[n].parent
+            # A flat sheet on a held prop is paint, not a part: the shield's cloth face is a 12 x 18 rectangle on a shield that
+            # tapers to a point, so its lower corners are empty texels outside the shield. The prop's own boxes carry the checks.
+            decal = part == "prop" and float(np.min(np.abs(m.cube_list[ci].size))) == 0.0
             self.part.append(part)
-            self.soft.append(soft or part is None)
+            self.soft.append(soft or decal or part is None)
         self.lat = [sc.lattice(c) for c in m.cube_list]
         self.holder = {}        # "weapon"/"prop" -> side of the hand that holds it
         for kind, bones in (("weapon", rig.weapon), ("prop", rig.props)):
