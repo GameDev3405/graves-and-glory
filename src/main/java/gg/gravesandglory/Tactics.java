@@ -616,7 +616,7 @@ final class Tactics {
     }
     // ---- the stall ladder (Stall; engine-map pathing plan step 2): walk asks once per beat of every walking troop, a player's squad's and a bot's, and carries out the rung it is given.
     /** Counters of the ladder (the bot sim prints them): rungs carried out by kind (Stall.NAMES), jumps refused because a player watched, and jumps with nowhere to put the troop. */
-    static final int[] stalls=new int[Stall.NAMES.length],nowhereWhy=new int[3];static int jumpsWatched,jumpsNowhere,stallCalls;static long stallNanos,stallMaxNanos; // the clock's own time (stallRung), and the time of the rungs that search (regroupPoint, jumpFree): the ladder's cost, read by the bot sim
+    static final int[] stalls=new int[Stall.NAMES.length],nowhereWhy=new int[5];static int jumpsWatched,jumpsNowhere,stallCalls;static long stallNanos,stallMaxNanos; // the clock's own time (stallRung), and the time of the rungs that search (regroupPoint, jumpFree): the ladder's cost, read by the bot sim
     /** A test hook: told of every jump free, the troop and where it was put from (the bot sim logs them with their place). */
     static java.util.function.BiConsumer<GravesAndGlory.Unit,Vec3d> jumpListener;
     /** How long a regroup walk may take before it is dropped, in ticks. */
@@ -629,8 +629,9 @@ final class Tactics {
         long t0=System.nanoTime();
         var nav=field();var mob=u.mob;
         double d=nav==null?Double.NaN:nav.cachedDistance(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z);
-        int rung=Stall.step(u.stall,time,mob.getX(),mob.getZ(),destination.x,destination.z,d);
-        if(rung!=Stall.NONE)stalls[rung]++;
+        boolean off=nav!=null&&Double.isNaN(d)&&(!nav.onField(mob.getX(),mob.getY(),mob.getZ())||mob.isTouchingWater()); // off the field (in water, on a wall top): the clock runs fast and wide (Stall.OFF_SPEED)
+        int rung=Stall.step(u.stall,time,mob.getX(),mob.getZ(),destination.x,destination.z,destination.y-mob.getY(),d,off);
+        if(rung!=Stall.NONE&&rung!=Stall.JUMP)stalls[rung]++; // a jump is counted when it is made (jumpTry)
         stallNanos+=System.nanoTime()-t0;stallCalls++;
         return rung;
     }
@@ -654,37 +655,60 @@ final class Tactics {
         }
         return best;
     }
-    /** Whether a player watches the troop or the spot it would be put on: a player of this world within the server's view distance that sees the troop (LivingEntity.canSee, as the squads' sight does) or has a clear line to the spot. */
+    /** Cameras a player has out that the server cannot see, by player: {x, y, z, server tick of the message} (the overhead Charge camera, sent by the client every 10 ticks while it is up: camera_v1). */
+    static final java.util.Map<java.util.UUID,double[]> cameras=new java.util.concurrent.ConcurrentHashMap<>();
+    /** A camera message is a viewer for this many ticks after it arrives (the client sends every 10). */
+    static final long CAMERA_FRESH=30;
+    static void camera(net.minecraft.server.network.ServerPlayerEntity p,double x,double y,double z,long tick){
+        if(Double.isFinite(x)&&Double.isFinite(y)&&Double.isFinite(z)&&Math.abs(x)<30000&&Math.abs(z)<30000)cameras.put(p.getUuid(),new double[]{x,y,z,tick});
+    }
+    /** Whether a player watches the troop or the spot it would be put on (Stall.watched): any player of the troop's world who is not a spectator, within 24 blocks of either (the player, or the overhead camera it has out), or with a clear visual line
+     *  (no block in the way, no fluid test) to the feet or the head of either, within the server's view distance (beyond it the chunks are not sent). */
     static boolean watched(GravesAndGlory.Battle battle,MobEntity mob,Vec3d to){
-        var players=battle.server.getPlayerManager().getPlayerList();if(players.isEmpty())return false;
-        double range=battle.server.getPlayerManager().getViewDistance()*16.0;
-        Vec3d spot=to.add(0,1,0);
-        return Stall.watched(players.size(),i->{var p=players.get(i);return p.getWorld()==mob.getWorld()&&p.squaredDistanceTo(mob)<=range*range&&p.canSee(mob);},
-            i->{var p=players.get(i);return p.getWorld()==mob.getWorld()&&p.squaredDistanceTo(spot)<=range*range
-                &&p.getWorld().raycast(new net.minecraft.world.RaycastContext(p.getEyePos(),spot,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,p)).getType()==net.minecraft.util.hit.HitResult.Type.MISS;});
+        var server=battle.server;var players=server.getPlayerManager().getPlayerList();if(players.isEmpty())return false;
+        double range=server.getPlayerManager().getViewDistance()*16.0;long now=server.getTicks();var world=mob.getWorld();
+        var viewers=new java.util.ArrayList<Stall.Viewer>();
+        for(var p:players){
+            viewers.add(viewer(p,world,p.getEyePos(),range));
+            var c=cameras.get(p.getUuid());if(c!=null&&now-(long)c[3]<=CAMERA_FRESH)viewers.add(viewer(p,world,new Vec3d(c[0],c[1],c[2]),range));
+        }
+        return Stall.watched(viewers,mob.getX(),mob.getY(),mob.getZ(),to.x,to.y,to.z);
+    }
+    private static Stall.Viewer viewer(net.minecraft.server.network.ServerPlayerEntity p,net.minecraft.world.World world,Vec3d eye,double range){
+        return new Stall.Viewer(){
+            public boolean live(){return !p.isSpectator()&&p.getWorld()==world;}
+            public double dist(double x,double y,double z){return eye.distanceTo(new Vec3d(x,y,z));}
+            public boolean line(double x,double y,double z){Vec3d t=new Vec3d(x,y,z);return eye.squaredDistanceTo(t)<=range*range
+                &&world.raycast(new net.minecraft.world.RaycastContext(eye,t,net.minecraft.world.RaycastContext.ShapeType.VISUAL,net.minecraft.world.RaycastContext.FluidHandling.NONE,p)).getType()==net.minecraft.util.hit.HitResult.Type.MISS;}
+        };
     }
     /** Where a troop stalled for 30 s is put: on a map with a route field the field's rescue point (NavField.rescue: a way ahead on the route, or the nearest floor from which its goal can be reached), else a standable cell six blocks toward the goal. Null: none. */
     static Vec3d jumpSpot(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time){
         var mob=u.mob;var nav=field();
-        if(nav!=null){var wp=nav.rescue(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z,time);return wp==null?null:new Vec3d(wp.x(),wp.y(),wp.z());}
-        Vec3d dir=destination.subtract(mob.getPos()).multiply(1,0,1);if(dir.lengthSquared()<1e-6)return null;dir=dir.normalize().multiply(6);
-        int[] c=standable(battle,(int)Math.floor(mob.getX()+dir.x),(int)Math.floor(mob.getZ()+dir.z));
-        return c==null?null:new Vec3d(c[0]+.5,c[1],c[2]+.5);
+        if(nav==null)return null; // no route field (an old map): nothing knows where a floor with a way on is, so no jump (step 3 adds the queue test)
+        var wp=nav.rescue(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z,time);return wp==null?null:new Vec3d(wp.x(),wp.y(),wp.z());
     }
     /** The last rung: the troop is put on its jump spot, unless a player watches it or the spot, or the spot is not free for its body. True when it was moved. */
     static boolean jumpFree(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time){
         long t0=System.nanoTime();try{return jumpTry(battle,u,destination,time);}finally{long d=System.nanoTime()-t0;stallNanos+=d;stallMaxNanos=Math.max(stallMaxNanos,d);}
     }
+    /** Whether a living enemy troop stands within ENEMY_NEAR blocks of a spot: a jump never lands a troop beside one. */
+    static final double ENEMY_NEAR=8;
+    static boolean enemyNear(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d spot){
+        for(var v:battle.units)if(v.squad.team!=u.squad.team&&v.mob.isAlive()&&v.mob.squaredDistanceTo(spot)<=ENEMY_NEAR*ENEMY_NEAR)return true;
+        return false;
+    }
     private static boolean jumpTry(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time){
         var mob=u.mob;Vec3d to=jumpSpot(battle,u,destination,time);
-        if(to==null||to.squaredDistanceTo(mob.getPos())<4||!battle.world.isSpaceEmpty(mob,mob.getBoundingBox().offset(to.x-mob.getX(),to.y-mob.getY(),to.z-mob.getZ()))){
-            jumpsNowhere++;int why=to==null?0:to.squaredDistanceTo(mob.getPos())<4?1:2;nowhereWhy[why]++;
-            if(TRACE_HOPS)System.out.println("[Graves and Glory] no jump spot for slot "+u.slot+" at ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+"): "+new String[]{"no spot","spot too near "+to,"spot not free "+to}[why]);
+        int why=to==null?0:to.squaredDistanceTo(mob.getPos())<4?1:!battle.world.isSpaceEmpty(mob,mob.getBoundingBox().offset(to.x-mob.getX(),to.y-mob.getY(),to.z-mob.getZ()))?2:enemyNear(battle,u,to)?3:!battle.world.getFluidState(BlockPos.ofFloored(to.x,to.y+.1,to.z)).isEmpty()?4:-1;
+        if(why>=0){
+            jumpsNowhere++;nowhereWhy[why]++;
+            if(TRACE_HOPS)System.out.println("[Graves and Glory] no jump spot for slot "+u.slot+" at ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+"): "+new String[]{"no spot","spot too near "+to,"spot not free "+to,"enemy near "+to,"fluid at "+to}[why]);
             return false;}
         if(watched(battle,mob,to)){jumpsWatched++;return false;}
         Vec3d from=mob.getPos();
         mob.getNavigation().stop();mob.refreshPositionAndAngles(to.x,to.y,to.z,mob.getYaw(),0);mob.setVelocity(Vec3d.ZERO);mob.fallDistance=0;
-        u.detour=null;u.stuckTicks=0;u.nextPath=0;u.lastGoal=null;u.lastPosition=mob.getPos();u.stall.live=false;u.stall.jumps++;
+        u.detour=null;u.hopTo=null;u.wedgeRepeats=0;u.stuckTicks=0;u.nextPath=0;u.lastGoal=null;u.lastPosition=mob.getPos();u.stall.live=false;u.stall.jumps++;stalls[Stall.JUMP]++;
         if(jumpListener!=null)jumpListener.accept(u,from);
         return true;
     }
@@ -712,7 +736,10 @@ final class Tactics {
         if(!onDetour&&!onField&&delta.length()>N.waypointDistance())goal=mob.getPos().add(delta.normalize().multiply(N.waypointDistance())); // a detour point is on a whole path: no straight waypoint toward it
         // The stall ladder (Stall): re-path, sidestep, detour, regroup, and after half a minute a jump free when no player watches. The sidestep and the detour are walk's own stuck handling below, asked for by the rung.
         int rung=stallRung(u,destination,time);
-        if(rung==Stall.JUMP){if(jumpFree(battle,u,destination,time))return;rung=Stall.refused(u.stall);stalls[rung]++;}
+        if(rung==Stall.JUMP){ // only a walk to the troop's own slot jumps (not the chase of an enemy, nor a ranged troop's backOff), and only with a route field
+            if(u.place==destination&&field()!=null&&jumpFree(battle,u,destination,time))return;
+            rung=Stall.refused(u.stall);stalls[rung]++;
+        }
         if(rung==Stall.REPATH){mob.getNavigation().stop();u.nextPath=0;u.lastGoal=null;u.detour=null;}
         if(rung==Stall.REGROUP){Vec3d p=regroupPoint(battle,u,destination);if(p!=null){u.detour=p;u.detourFor=routed;u.detourUntil=time+REGROUP_TICKS;goal=p;onDetour=true;}}
         boolean forceSide=rung==Stall.SIDESTEP,forceDetour=rung==Stall.DETOUR;

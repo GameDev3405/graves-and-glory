@@ -1,6 +1,6 @@
 package gg.gravesandglory;
 
-import java.util.function.IntPredicate;
+import java.util.List;
 
 /**
  * The stall ladder (engine-map pathing plan, step 2): what a troop does when it has been walking and getting nowhere. Pure (the clock, the place, the goal and the distance in, a rung out), so that
@@ -25,6 +25,16 @@ final class Stall {
     static final long RETRY = 40;
     /** Blocks of route distance a troop must gain to restart the clock; the patch it must leave on a map with no field; within this many blocks of its goal it has arrived; a goal that moves this far starts again. */
     static final double GAIN = 1.0, PATCH = 5.0, ARRIVED = 2.5, MOVED = 4.0;
+    /** A troop off the field (in water, on a wall top: no floor under it for the route field) drifts about (a swimmer is pushed round), so leaving the patch restarts its clock only at OFF_SPEED blocks a second or more, and its clock runs
+     *  OFF_RATE times as fast: it is put back on a floor sooner. */
+    static final double OFF_SPEED = 1.0;
+    static final int OFF_RATE = 2;
+    /** A troop this far (blocks) under or over its goal has not arrived however near it is on the map: a raised slot (a tower top) over its head. */
+    static final double RAISED = 2.5;
+    /** Blocks within which a player (or the camera a player has out) counts as watching, whatever it can see. */
+    static final double NEAR = 24.0;
+    /** The height of a troop for the sight test, blocks above its feet. */
+    static final double HEAD = 1.8;
     /** A troop not seen walking for more than this many ticks (three beats) was holding or fighting: the clock starts again when it walks on. */
     static final long GAP = 30;
 
@@ -43,19 +53,20 @@ final class Stall {
     }
 
     /**
-     * One beat of a walking troop at (x, z), whose goal is (gx, gz), and whose distance to it by the route field is dist (blocks; NaN or negative when the field has none).
-     * Returns the rung to carry out now, or NONE; at most one rung a beat, in order.
+     * One beat of a walking troop at (x, z), whose goal is (gx, gz), dy blocks above or below it, and whose distance to it by the route field is dist (blocks; NaN or negative when the field has none).
+     * off: the troop is off the field or in water (see OFF_SPEED). Returns the rung to carry out now, or NONE; at most one rung a beat, in order.
      */
-    static int step(State s, long time, double x, double z, double gx, double gz, double dist) {
+    static int step(State s, long time, double x, double z, double gx, double gz, double dy, double dist, boolean off) {
         boolean field = !Double.isNaN(dist) && dist >= 0;
-        if (Math.hypot(gx - x, gz - z) < ARRIVED) { s.live = false; return NONE; }
+        if (Math.hypot(gx - x, gz - z) < ARRIVED && Math.abs(dy) < RAISED) { s.live = false; return NONE; }
         if (!s.live || time - s.seen > GAP || Math.hypot(gx - s.gx, gz - s.gz) > MOVED) start(s, time, x, z, gx, gz, dist, field);
         else if (field && Double.isNaN(s.best)) s.best = dist; // the field knows the way now (the goal was in plain sight before): the clock runs on, it does not start over
         s.field = field;
         s.seen = time;
-        boolean progress = field ? dist < s.best - GAIN : Math.hypot(x - s.ax, z - s.az) > PATCH;
+        double moved = Math.hypot(x - s.ax, z - s.az);
+        boolean progress = field ? dist < s.best - GAIN : moved > PATCH && (!off || moved >= OFF_SPEED * (time - s.since) / 20.0);
         if (progress) start(s, time, x, z, gx, gz, dist, field);
-        long age = time - s.since;
+        long age = (time - s.since) * (off && !field ? OFF_RATE : 1);
         if (s.rung < JUMP) {
             if (age < AT[s.rung + 1]) return NONE;
             s.rung++;
@@ -70,9 +81,20 @@ final class Stall {
     /** The rung a refused jump is answered with: REGROUP, SIDESTEP and DETOUR in turn. */
     static int refused(State s) { return new int[]{REGROUP, SIDESTEP, DETOUR}[s.cycle++ % 3]; }
 
-    /** Whether a viewer watches: viewers numbered 0 to n - 1, one that sees the troop or sees the landing spot (each test already includes the viewer's range). A jump is made only when this is false. */
-    static boolean watched(int viewers, IntPredicate seesTroop, IntPredicate seesSpot) {
-        for (int i = 0; i < viewers; i++) if (seesTroop.test(i) || seesSpot.test(i)) return true;
+    /** One player (or one camera a player has out) as the watched test sees it: live (not a spectator, in the troop's world), its distance to a point, and whether it has a clear line of sight (a block's visual shape, no fluid) to a point within its view range. */
+    interface Viewer {
+        boolean live();
+        double dist(double x, double y, double z);
+        boolean line(double x, double y, double z);
+    }
+
+    /** Whether anyone watches a troop at (tx, ty, tz) put on (sx, sy, sz): a live viewer within NEAR blocks of either, or one with a line to the feet or the head of either. A jump is made only when this is false. Nobody online: not watched. */
+    static boolean watched(List<? extends Viewer> viewers, double tx, double ty, double tz, double sx, double sy, double sz) {
+        for (Viewer v : viewers) {
+            if (!v.live()) continue;
+            if (v.dist(tx, ty, tz) <= NEAR || v.dist(sx, sy, sz) <= NEAR) return true;
+            if (v.line(tx, ty, tz) || v.line(tx, ty + HEAD, tz) || v.line(sx, sy, sz) || v.line(sx, sy + HEAD, sz)) return true;
+        }
         return false;
     }
 }

@@ -16,10 +16,11 @@ public final class StallCheck {
         final Stall.State s = new Stall.State();
         final List<String> log = new ArrayList<>();
         int jumps, refused;
-        double x, z;
+        double x, z, dy;
+        boolean off;
         /** One beat: place (x, z), goal (gx, gz), route distance d (NaN: none), watched or not. Returns the rung done. */
         int beat(long t, double gx, double gz, double d, boolean watched) {
-            int rung = Stall.step(s, t, x, z, gx, gz, d);
+            int rung = Stall.step(s, t, x, z, gx, gz, dy, d, off);
             if (rung == Stall.JUMP) {
                 if (!watched) { jumps++; s.live = false; log.add(t + ":jump"); return rung; }
                 refused++;
@@ -28,6 +29,16 @@ public final class StallCheck {
             if (rung != Stall.NONE) log.add(t + ":" + Stall.NAMES[rung]);
             return rung;
         }
+    }
+
+    /** A fake viewer at x on the troop's row, height y above the troop (the camera): live or not, and a line to the whole row at 100 blocks (or the head height, or the spot's x) when it has one. */
+    static final class V implements Stall.Viewer {
+        final boolean live; final double x, y; final boolean clear;
+        double lineAtY = Double.NaN, lineAtX = Double.NaN;
+        V(boolean live, double x, double y, boolean clear) { this.live = live; this.x = x; this.y = y; this.clear = clear; }
+        public boolean live() { return live; }
+        public double dist(double px, double py, double pz) { return Math.sqrt((px - x) * (px - x) + (py - 64 - y) * (py - 64 - y) + pz * pz); }
+        public boolean line(double px, double py, double pz) { return clear || (!Double.isNaN(lineAtY) && Math.abs(py - lineAtY) < .01) || (!Double.isNaN(lineAtX) && Math.abs(px - lineAtX) < .01); }
     }
 
     public static void main(String[] args) throws Exception {
@@ -100,8 +111,40 @@ public final class StallCheck {
         check(wt.log.stream().noneMatch(e -> e.endsWith(":jump")), "no jump in the log of a watched troop");
         for (long t2 = 3010; t2 <= 3040; t2 += 10) wt.beat(t2, 160, 0, 60, false);
         check(wt.jumps == 1, "it jumps when the viewers look away: " + wt.jumps + " " + wt.s.nextJump + " " + wt.s.live + " " + wt.s.rung);
-        check(Stall.watched(2, i -> false, i -> i == 1) && Stall.watched(2, i -> i == 0, i -> false) && !Stall.watched(2, i -> false, i -> false) && !Stall.watched(0, i -> true, i -> true),
-            "watched: any viewer that sees the troop or the spot; nobody online: not watched");
+
+        // the watched test itself (Stall.watched, the logic Tactics.watched feeds with real players): troop at (0, 64, 0), spot at (100, 64, 0)
+        check(!Stall.watched(List.of(), 0, 64, 0, 100, 64, 0), "nobody online: not watched");
+        check(!Stall.watched(List.of(new V(true, 500, 0, false)), 0, 64, 0, 100, 64, 0), "a player far away with no line does not watch");
+        check(Stall.watched(List.of(new V(true, 20, 0, false)), 0, 64, 0, 100, 64, 0), "a player within 24 blocks of the troop watches, wall or no wall");
+        check(Stall.watched(List.of(new V(true, 110, 0, false)), 0, 64, 0, 100, 64, 0), "a player within 24 blocks of the landing spot watches");
+        check(!Stall.watched(List.of(new V(true, 26, 0, false)), 0, 64, 0, 100, 64, 0), "26 blocks away, behind a wall: not watched");
+        check(Stall.watched(List.of(new V(true, 300, 0, true)), 0, 64, 0, 100, 64, 0), "a clear line from far away (past 128 blocks) watches");
+        check(!Stall.watched(List.of(new V(false, 5, 0, true)), 0, 64, 0, 100, 64, 0), "a spectator or a player in another world (not live) does not watch");
+        V head = new V(true, 300, 0, false); head.lineAtY = 65.8;
+        check(Stall.watched(List.of(head), 0, 64, 0, 100, 64, 0), "a line to the head alone watches");
+        V spotLine = new V(true, 300, 0, false); spotLine.lineAtX = 100;
+        check(Stall.watched(List.of(spotLine), 0, 64, 0, 100, 64, 0), "a line to the landing spot alone watches");
+        // the overhead camera a player has out is a viewer too: the player is far off and blind, the camera (18 blocks up, 10 from the troop) is not
+        V player = new V(true, 400, 0, false), camera = new V(true, 10, 18, false);
+        check(Stall.watched(List.of(player, camera), 0, 64, 0, 100, 64, 0) && !Stall.watched(List.of(player), 0, 64, 0, 100, 64, 0), "the camera counts as an extra viewer");
+
+        // a troop under a raised slot (a tower top) is not arrived: 1 block away on the map, 6 below it
+        var tower = new Walker();
+        tower.x = 100; tower.dy = 6;
+        for (long t2 = 0; t2 <= 650; t2 += 10) tower.beat(t2, 100.5, 0, Double.NaN, false);
+        check(tower.log.size() == 5 && tower.jumps == 1, "a troop under a raised slot is flagged: " + tower.log);
+        // off the field (water, a wall top): the clock runs twice as fast and its patch is wide, so a drifting troop jumps at 15 s, not 30
+        var wet = new Walker();
+        wet.off = true;
+        for (long t2 = 0; t2 <= 650 && wet.jumps == 0; t2 += 10) { wet.x = 100 + t2 / 20.0 * .5; wet.beat(t2, 160, 0, Double.NaN, false); } // drifts half a block a second: 7 blocks in 15 s
+        check(wet.jumps == 1 && wet.log.get(wet.log.size() - 1).equals("300:jump"), "an off-field troop jumps at 15 s: " + wet.log);
+        var dry = new Walker();
+        for (long t2 = 0; t2 <= 650 && dry.jumps == 0; t2 += 10) { dry.x = 100 + t2 / 20.0 * .5; dry.beat(t2, 160, 0, Double.NaN, false); }
+        check(dry.jumps == 0, "the same drift on a floor restarts the clock at the patch edge, no jump at 15 s: " + dry.log);
+        var wade = new Walker(); // a fording troop swimming across at 4 blocks a second never stalls, off the field or not
+        wade.off = true;
+        for (long t2 = 0; t2 <= 1200; t2 += 10) { wade.x = 100 + t2 / 5.0; wade.beat(t2, 1000, 0, Double.NaN, false); }
+        check(wade.log.isEmpty(), "a troop crossing water is not a stall: " + wade.log);
 
         // 7. a wedged troop on a floor grid (NavField): the ladder's clock reads the field, the jump is the field's rescue, and the troop then closes on its goal
         int w0 = 60, d0 = 40;
@@ -148,6 +191,7 @@ public final class StallCheck {
         String block = t.substring(at, end);
         check(!block.contains(".bot") && !block.contains("owner") && !block.contains("PlayerEntity"), "the ladder block makes no bot or player test: it covers every squad");
         check(t.indexOf("int rung=stallRung(") == t.lastIndexOf("int rung=stallRung("), "walk is the only place the ladder runs from");
+        check(block.contains("u.place==destination&&field()!=null&&jumpFree("), "only a walk to the troop's own slot jumps (not the enemy chase, not backOff), and only with a route field");
         System.out.println("StallCheck: " + count + " checks passed");
     }
 }

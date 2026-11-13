@@ -41,6 +41,8 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier PROFILE = new Identifier("gravesandglory", "profile_v1");
     public static final Identifier IMPACT = new Identifier("gravesandglory", "impact_v1");
     public static final Identifier PING = new Identifier("gravesandglory", "ping_v1");
+    /** The overhead Charge camera's position (three doubles), sent by a client every 10 ticks while the camera is up: the server cannot see it, and a troop in its view is watched (Tactics.watched). */
+    public static final Identifier CAMERA = new Identifier("gravesandglory", "camera_v1");
     /** The battle map (BattleMapNet): the field grid once per match (S2C), the allied armies and plans every 20 ticks (S2C), and a player's plan or direct order (C2S). */
     public static final Identifier MAP_GRID = new Identifier("gravesandglory", "battlemap_grid_v1");
     public static final Identifier MAP_STATE = new Identifier("gravesandglory", "battlemap_v1");
@@ -138,6 +140,7 @@ public final class GravesAndGlory implements ModInitializer {
             server.execute(() -> { if(battle!=null) battle.command(player,command); });
         });
         ServerPlayNetworking.registerGlobalReceiver(PROFILE,(server,p,handler,buf,responder)->{String json=buf.readString(32000);server.execute(()->{if(battle!=null)battle.campaign.importProfile(p,json);});});
+        ServerPlayNetworking.registerGlobalReceiver(CAMERA,(server,p,handler,buf,responder)->{double x=buf.readDouble(),y=buf.readDouble(),z=buf.readDouble();server.execute(()->Tactics.camera(p,x,y,z,server.getTicks()));});
         ServerPlayNetworking.registerGlobalReceiver(PING,(server,p,handler,buf,responder)->{String kind=buf.readString(16);double x=buf.readDouble(),z=buf.readDouble();server.execute(()->{if(battle!=null)battle.ping(p,kind,x,z);});});
         ServerPlayNetworking.registerGlobalReceiver(PLAN,(server,p,handler,buf,responder)->{
             int kind=buf.readByte(),point=buf.readInt();String army=buf.readString(36);int job=buf.readByte();double x=buf.readDouble(),z=buf.readDouble();

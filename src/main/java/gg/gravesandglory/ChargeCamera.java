@@ -126,7 +126,7 @@ public final class ChargeCamera {
         }
         var p = c.player;
         if (p == null || c.world == null || !GravesAndGloryClient.battleActive() || p.isDead() || p.isSpectator()) { reset(); return; }
-        if (active) { absorb(); follow(); activeTicks++; }
+        if (active) { absorb(); follow(); activeTicks++; if (activeTicks % EYE_TICKS == 1) sendEye(); }
         if (c.currentScreen != null) { if (active) end(); holdTicks = 0; return; }
         if (lingering) { if (keyEdge(c)) end(); return; }
         boolean aimingCharge = CommandSelection.aiming().equals("charge");
@@ -249,6 +249,18 @@ public final class ChargeCamera {
         else if (len < CURSOR_MIN) { right *= CURSOR_MIN / len; forward *= CURSOR_MIN / len; }
         else if (len > CURSOR_MAX) { right *= CURSOR_MAX / len; forward *= CURSOR_MAX / len; }
         arrow = MathHelper.wrapDegrees(camYaw + (float) Math.toDegrees(Math.atan2(right, forward)));
+    }
+
+    /** Ticks between the camera messages to the server (Tactics.CAMERA_FRESH is three times this). */
+    static final int EYE_TICKS = 10;
+
+    /** Tells the server where the overhead camera is, so that a troop in its view counts as watched (the stall ladder never jumps a troop a player can see). */
+    private static void sendEye() {
+        if (!net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.canSend(GravesAndGlory.CAMERA)) return;
+        double back = LIFT / Math.tan(Math.toRadians(PITCH)), r = Math.toRadians(camYaw);
+        var b = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+        b.writeDouble(cx + Math.sin(r) * back); b.writeDouble(baseY + LIFT); b.writeDouble(cz - Math.cos(r) * back);
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(GravesAndGlory.CAMERA, b);
     }
 
     // ---- the camera (ChargeCameraMixin) ----
