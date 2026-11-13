@@ -109,7 +109,7 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
             foes = enemies(b, false, E, "hold", "revenant", 3, true);
             startDist = flat(C, E); note = "enemy at " + xz(E) + " wet " + OrderIntakeProbeBehaviour.wet(E.x, E.z);
         }
-        if (t == 45) { OrderIntakeProbeBehaviour.order(b, id, "infantry", "attack", "line", 0, 0, face()); issuedAt = now(b); }
+        if (t == 45) { OrderIntakeProbeBehaviour.order(b, id, "infantry", "attack", "block", 0, 0, face()); issuedAt = now(b); }
         if (t > 45) {
             Vec3d c = OrderIntakeProbeBehaviour.centre(inf(b)); if (c != null) best = Math.min(best, flat(c, E));
             if (t == 445) { Snap a = snap(b, "infantry"); pass(startDist - best >= 20, String.format("start %.1f, closest %.1f within 400 ticks (%.1f closer); stored %s; %s", startDist, best, startDist - best, a, note)); next(b); }
@@ -139,7 +139,7 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
 
     // Charge with no enemy: the run at the 1.25 share, the centre within 4 of the end point, then attack (hunt) within 40 ticks of arrival.
     void chargeRun(GravesAndGlory.Battle b, long t) {
-        if (t == 40) { if (!layout(b)) { next(b); return; } OrderIntakeProbeBehaviour.order(b, id, "infantry", "charge", "line", C.x, C.z, face()); issuedAt = now(b); Snap a = snap(b, "infantry"); T = a == null ? null : new Vec3d(a.tx(), 0, a.tz()); note = "stored " + a; if (a == null || !a.order().equals("charge")) { fail("charge not stored: " + a); next(b); return; } }
+        if (t == 40) { if (!layout(b)) { next(b); return; } OrderIntakeProbeBehaviour.order(b, id, "infantry", "charge", "block", C.x, C.z, face()); issuedAt = now(b); Snap a = snap(b, "infantry"); T = a == null ? null : new Vec3d(a.tx(), 0, a.tz()); note = "stored " + a; if (a == null || !a.order().equals("charge")) { fail("charge not stored: " + a); next(b); return; } }
         if (t > 40) {
             Snap a = snap(b, "infantry"); var us = inf(b); Vec3d c = OrderIntakeProbeBehaviour.centre(us);
             if (a.order().equals("charge")) for (var u : us) if (OrderIntakeProbeBehaviour.walking(u)) bestShare = Math.max(bestShare, OrderIntakeProbeBehaviour.speedShare(u));
@@ -156,7 +156,7 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
     // An enemy 15 blocks ahead: on the first landed blow the infantry's Charge has turned into attack (hunt); chargedAt kept.
     void chargeImpact(GravesAndGlory.Battle b, long t) {
         if (t == 40) { if (!layout(b)) { next(b); return; } E = C.add(side * 15, 0, 0); foes = enemies(b, false, E, "hold", "revenant", 3, true); }
-        if (t == 45) { OrderIntakeProbeBehaviour.order(b, id, "infantry", "charge", "line", C.x, C.z, face()); issuedAt = now(b); strikes0 = OrderIntakeProbeBehaviour.strikesLanded(); chargedAt0 = OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry"); note = "charge stored " + snap(b, "infantry") + ", chargedAt " + OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry"); }
+        if (t == 45) { OrderIntakeProbeBehaviour.order(b, id, "infantry", "charge", "block", C.x, C.z, face()); issuedAt = now(b); strikes0 = OrderIntakeProbeBehaviour.strikesLanded(); chargedAt0 = OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry"); note = "charge stored " + snap(b, "infantry") + ", chargedAt " + OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry"); }
         if (t > 45 && OrderIntakeProbeBehaviour.strikesLanded() > strikes0) {
             Snap a = snap(b, "infantry");
             long kept = OrderIntakeProbeBehaviour.chargedAt(b, id, "infantry");
@@ -168,7 +168,7 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
     // A ranged group under Charge with enemies in its path never comes within 3 blocks of one and shoots at least once.
     void chargeArchers(GravesAndGlory.Battle b, long t) {
         if (t == 40) { if (!layout(b)) { next(b); return; } E = R.add(side * 26, 0, 0); foes = enemies(b, false, E, "hold", "revenant", 3, true); countAttacks(rng(b)); }
-        if (t == 45) { OrderIntakeProbeBehaviour.order(b, id, "ranged", "charge", "line", R.x, R.z, face()); issuedAt = now(b); note = "stored " + snap(b, "ranged"); }
+        if (t == 45) { OrderIntakeProbeBehaviour.order(b, id, "ranged", "charge", "block", R.x, R.z, face()); issuedAt = now(b); note = "stored " + snap(b, "ranged"); }
         if (t > 45) {
             var us = rng(b); shots += countAttacks(us);
             for (var u : us) for (var f : foes) if (OrderIntakeProbeBehaviour.mob(f).isAlive()) best = Math.min(best, OrderIntakeProbeBehaviour.mob(u).distanceTo(OrderIntakeProbeBehaviour.mob(f)));
@@ -182,7 +182,7 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
         if (t == 40) { if (!layout(b)) { next(b); return; } E = C.add(side * 5, 0, 0); foes = enemies(b, false, E, "hold", "revenant", 4, false); }
         if (t == 100) {
             Vec3d back = C.add(-side * 3, 0, zs * 22); OrderIntakeProbeBehaviour.teleport(b, id, back.x, back.z);
-            OrderIntakeProbeBehaviour.order(b, id, "infantry", "retreat", "line", 0, 0, face()); issuedAt = now(b); note = "stored " + snap(b, "infantry");
+            OrderIntakeProbeBehaviour.order(b, id, "infantry", "retreat", "block", 0, 0, face()); issuedAt = now(b); note = "stored " + snap(b, "infantry");
         }
         if (t > 100) {
             Snap a = snap(b, "infantry"); var us = inf(b);
@@ -207,7 +207,7 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
     // The commander moves during the Retreat (it follows him), then is struck down: the troops stop at his death spot, not at the spectator's.
     void retreatRespawning(GravesAndGlory.Battle b, long t) {
         if (t == 40) { if (!layout(b)) { next(b); return; } D1 = C.add(-side * 6, 0, zs * 8); D = C.add(-side * 6, 0, zs * 24); OrderIntakeProbeBehaviour.teleport(b, id, D1.x, D1.z); }
-        if (t == 50) { OrderIntakeProbeBehaviour.order(b, id, "infantry", "retreat", "line", 0, 0, face()); issuedAt = now(b); note = "stored " + snap(b, "infantry"); }
+        if (t == 50) { OrderIntakeProbeBehaviour.order(b, id, "infantry", "retreat", "block", 0, 0, face()); issuedAt = now(b); note = "stored " + snap(b, "infantry"); }
         if (t == 60) OrderIntakeProbeBehaviour.teleport(b, id, D.x, D.z);
         if (t == 110) {
             var p = b.server.getPlayerManager().getPlayer(id); D = p.getPos();
@@ -224,7 +224,7 @@ public final class OrderBehaviourSuite implements CommandUiChecks.Suite {
 
     // Formation (hold + line): ranged shoot an enemy in reach, melee stay within arriveRadius (4) of their slots while an enemy stands 8 blocks off.
     void formationHold(GravesAndGlory.Battle b, long t) {
-        if (t == 40) { if (!layout(b)) { next(b); return; } OrderIntakeProbeBehaviour.order(b, id, "all", "hold", "line", C.x, C.z, face()); note = "stored " + snap(b, "infantry"); }
+        if (t == 40) { if (!layout(b)) { next(b); return; } OrderIntakeProbeBehaviour.order(b, id, "all", "hold", "block", C.x, C.z, face()); note = "stored " + snap(b, "infantry"); }
         if (t == 180) {
             double front = -Double.MAX_VALUE; for (var u : inf(b)) front = Math.max(front, side * OrderIntakeProbeBehaviour.slot(b, u).x);
             E = new Vec3d(side * front + side * 8, C.y, C.z); // 8 blocks ahead of the front melee slot

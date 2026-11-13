@@ -199,15 +199,15 @@ public final class FeedbackSuite implements CommandUiChecks.Suite {
         if (r == 100) evaluateLit();
         // the other orders, 40 ticks apart, each with a clean throttle
         order(c, r, 110, "charge", "charge", () -> OrderIntakeProbe.send("infantry", "charge", "wedge", cx, cz, -90f), true, 1, 0, 0, 1, 0);
-        order(c, r, 150, "retreat", "retreat", () -> OrderIntakeProbe.send("infantry", "retreat", "line", 0, 0, 0), false, 0, 1, 0, 0, 0);
-        order(c, r, 190, "attack", "attack", () -> OrderIntakeProbe.send("infantry", "attack", "line", 0, 0, 0), false, 0, 0, 0, 0, 1);
+        order(c, r, 150, "retreat", "retreat", () -> OrderIntakeProbe.send("infantry", "retreat", "block", 0, 0, 0), false, 0, 1, 0, 0, 0);
+        order(c, r, 190, "attack", "attack", () -> OrderIntakeProbe.send("infantry", "attack", "block", 0, 0, 0), false, 0, 0, 0, 0, 1);
         if (r == 226) CommandUiChecks.server(c, b -> { var p = b.server.getPlayerManager().getPlayer(id); double yw = Math.toRadians(p.getYaw());
             FeedbackProbe.bring(b, id, "infantry", p.getX() - Math.sin(yw) * 5 - 2, p.getZ() + Math.cos(yw) * 5, p.getY()); });
-        order(c, r, 230, "follow", "follow", () -> OrderIntakeProbe.send("infantry", "follow", "line", 0, 0, 0), false, 0, 0, 0, 0, 1);
+        order(c, r, 230, "follow", "follow", () -> OrderIntakeProbe.send("infantry", "follow", "block", 0, 0, 0), false, 0, 0, 0, 0, 1);
         order(c, r, 270, "formation", "formation", () -> OrderIntakeProbe.send("infantry", "formation", "wedge", 0, 0, 0), false, 0, 0, 1, 0, 0);
-        order(c, r, 310, "multi-charge", "charge", () -> OrderIntakeProbe.sendMany("charge", "line", 0f,
+        order(c, r, 310, "multi-charge", "charge", () -> OrderIntakeProbe.sendMany("charge", "block", 0f,
             List.of(new OrderIntakeProbe.At("infantry", cx, cz), new OrderIntakeProbe.At("ranged", cx + 14, cz))), true, 1, 0, 0, 1, 0);
-        order(c, r, 350, "hold2", "hold", () -> OrderIntakeProbe.send("infantry", "hold", "line", px + 6, pz, 20f), false, 0, 0, 1, 0, 0);
+        order(c, r, 350, "hold2", "hold", () -> OrderIntakeProbe.send("infantry", "hold", "block", px + 6, pz, 20f), false, 0, 0, 1, 0, 0);
         if (r == 392) {
             evaluateOrders(c);
             CommandUiChecks.server(c, b -> {
@@ -222,11 +222,11 @@ public final class FeedbackSuite implements CommandUiChecks.Suite {
         // Cap path: the troops are held where they stand and sent a Formation 25 blocks away, so they cannot arrive; the mate's ghost must then retire on
         // outlineShareTicks (200). Then a last Formation, and the mate really disconnects while its ghost, pulse and raised weapons are live.
         if (r == 416) CommandUiChecks.server(c, b -> FeedbackProbe.freeze(b, id, "infantry", true));
-        if (r == 420) { events.put("hold3", System.currentTimeMillis()); OrderIntakeProbe.send("infantry", "hold", "line", px + 6, pz + 25, 20f); }
+        if (r == 420) { events.put("hold3", System.currentTimeMillis()); OrderIntakeProbe.send("infantry", "hold", "block", px + 6, pz + 25, 20f); }
         if (r == 650 && wantMate) {
             try { Files.writeString(ctl.resolve("disconnect.txt"), "go"); } catch (Exception e) { throw new RuntimeException(e); }
             events.put("hold4", System.currentTimeMillis());
-            OrderIntakeProbe.send("infantry", "hold", "line", px - 8, pz + 25, 20f);
+            OrderIntakeProbe.send("infantry", "hold", "block", px - 8, pz + 25, 20f);
         }
         if (r == 740) {
             CommandUiChecks.server(c, b -> FeedbackProbe.freeze(b, id, "infantry", false));

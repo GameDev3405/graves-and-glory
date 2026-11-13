@@ -107,11 +107,20 @@ public final class CommandMode {
      * order need not be the server's slot order.
      */
     static double[][] places(java.util.List<Spec.TroopsRow> troops,int count,String groupId,String order,Spec.FormationsRow f){
+        if(f.id().equals("banner"))return bannerPlaces(troops,count);
         boolean[] shield=new boolean[count];double[] width=new double[count];
         for(int i=0;i<count;i++){var t=i<troops.size()?troops.get(i):null;width[i]=t==null?net.minecraft.entity.EntityType.HUSK.getWidth():ArmyMobs.width(t);shield[i]=t!=null&&order.equals("hold")&&ArmyMobs.tags(t).contains("shield");}
         double[][] places=BattleMath.holdLayout(shield,width,f.spacing(),Spec.COMBATDISCIPLINE[0].shieldWallCell(),BattleMath.groupColumns(groupId,f.columns()),f.wedge());
         double role=BattleMath.roleDepth(groupId);for(double[] p:places)p[1]+=role;
         return places;
+    }
+    /** The Banner shape's places for a group: each of its troops at the war table cell the player's banner gives that troop type (cells taken in order), any past them in a row behind the table (BattleMath.bannerPlaces). */
+    static double[][] bannerPlaces(java.util.List<Spec.TroopsRow> troops,int count){
+        java.util.Map<String,Integer> need=new java.util.HashMap<>();for(var t:troops)need.merge(t.id(),1,Integer::sum);
+        java.util.List<Integer> cells=new java.util.ArrayList<>();
+        var profile=CampaignClient.profile;
+        if(profile!=null){var line=profile.line();for(int i=0;i<line.size()&&cells.size()<count;i++){Integer left=need.get(line.get(i));if(left!=null&&left>0){need.put(line.get(i),left-1);cells.add(i);}}}
+        return BattleMath.bannerPlaces(cells,count);
     }
     static void tick(MinecraftClient c){
         preview.clear();if(!GravesAndGloryClient.battleActive()){cancel();return;}if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;

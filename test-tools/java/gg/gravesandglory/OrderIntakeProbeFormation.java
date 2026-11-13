@@ -47,7 +47,7 @@ public final class OrderIntakeProbeFormation {
     /** A Charge stored as OrderRules.playerOrder stores one: the order to dest, its direction, and the group's Charge stamp now. */
     public static void charge(GravesAndGlory.Battle b, Object squad, String group, Vec3d dest, Vec3d dir, float yaw) {
         var s = (GravesAndGlory.Squad) squad;
-        b.issue(s, group, "charge", "line", dest, yaw, -1);
+        b.issue(s, group, "charge", "block", dest, yaw, -1);
         s.assignments.get(group).chargeDir = dir.normalize();
         b.markCharge(s, group);
     }

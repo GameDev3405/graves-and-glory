@@ -128,7 +128,7 @@ public final class FormationRulesSuite implements CommandUiChecks.Suite {
             wall = troops(b, true, a1.add(-side * 3, 0, 0), "knight", 6); Object sw = squadA;
             line = troops(b, true, a2.add(-side * 3, 0, 0), "knight", 6); Object sl = squadA;
             OrderIntakeProbeFormation.issue(b, sw, "infantry", "hold", "block", ground(a1), face(), true);
-            OrderIntakeProbeFormation.issue(b, sl, "infantry", "hold", "line", ground(a2), face(), true);
+            OrderIntakeProbeFormation.issue(b, sl, "infantry", "hold", "block", ground(a2), face(), true);
             D = a1; D1 = a2;
         }
         if (t == 140) {
@@ -162,7 +162,7 @@ public final class FormationRulesSuite implements CommandUiChecks.Suite {
         }
         if (t == 90) OrderIntakeProbeFormation.issue(b, squadA, "infantry", "hold", "block", ground(P.add(side * 16, 0, 0)), face(), true);
         if (t > 92 && t < 240) for (var u : wall) if (OrderIntakeProbeBehaviour.walking(u)) { double s = OrderIntakeProbeBehaviour.speedShare(u); if (s > 0.05) { wallShare = Math.max(wallShare, s); wallLow = Math.min(wallLow, s); samples++; } }
-        if (t == 240) OrderIntakeProbeFormation.issue(b, squadA, "infantry", "hold", "line", ground(P), face(), true);
+        if (t == 240) OrderIntakeProbeFormation.issue(b, squadA, "infantry", "hold", "block", ground(P), face(), true);
         if (t > 242 && t < 400) for (var u : wall) if (OrderIntakeProbeBehaviour.walking(u)) lineShare = Math.max(lineShare, OrderIntakeProbeBehaviour.speedShare(u));
         if (t == 400) {
             double ratio = lineShare <= 0 ? -1 : wallShare / lineShare;
@@ -207,7 +207,7 @@ public final class FormationRulesSuite implements CommandUiChecks.Suite {
             if (!layout(b)) { next(b); return; }
             Vec3d l = P.add(side * 8, 0, 0); D = l;
             foes = troops(b, false, l, "revenant", 6); OrderIntakeProbeFormation.stun(foes);
-            OrderIntakeProbeFormation.issue(b, squadB, "infantry", "hold", "line", ground(l), -face(), true);
+            OrderIntakeProbeFormation.issue(b, squadB, "infantry", "hold", "block", ground(l), -face(), true);
             mine = troops(b, true, P, "revenant", 6);
             OrderIntakeProbeFormation.issue(b, squadA, "infantry", "hold", "wedge", ground(P), face(), true);
         }
@@ -377,7 +377,7 @@ public final class FormationRulesSuite implements CommandUiChecks.Suite {
     // Ruling 11: Follow me while the commander waits to respawn: the troops stop at his last living spot, not at a stale point nor at the spectator.
     void followRespawning(GravesAndGlory.Battle b, long t) {
         if (t == 40) { if (!layout(b)) { next(b); return; } D1 = C.add(-side * 6, 0, zs * 8); D = C.add(-side * 6, 0, zs * 24); OrderIntakeProbeBehaviour.teleport(b, id, D1.x, D1.z); }
-        if (t == 50) { OrderIntakeProbeBehaviour.order(b, id, "infantry", "follow", "line", 0, 0, face()); issuedAt = now(b); note = "stored " + snap(b, "infantry"); }
+        if (t == 50) { OrderIntakeProbeBehaviour.order(b, id, "infantry", "follow", "block", 0, 0, face()); issuedAt = now(b); note = "stored " + snap(b, "infantry"); }
         if (t == 60) OrderIntakeProbeBehaviour.teleport(b, id, D.x, D.z);
         if (t == 150) {
             var p = b.server.getPlayerManager().getPlayer(id); D = p.getPos();
@@ -409,7 +409,7 @@ public final class FormationRulesSuite implements CommandUiChecks.Suite {
         }
         if (t == 80) {
             Vec3d c = OrderIntakeProbeBehaviour.centre(inf(b));
-            OrderIntakeProbeBehaviour.order(b, id, "infantry", "charge", "line", c.x, c.z, face()); issuedAt = now(b);
+            OrderIntakeProbeBehaviour.order(b, id, "infantry", "charge", "block", c.x, c.z, face()); issuedAt = now(b);
             Snap a = snap(b, "infantry"); T = a == null ? null : new Vec3d(a.tx(), 0, a.tz()); note += "from " + xz(c) + ", stored " + a;
             if (a == null || !a.order().equals("charge")) { fail("charge not stored: " + note); next(b); return; }
         }

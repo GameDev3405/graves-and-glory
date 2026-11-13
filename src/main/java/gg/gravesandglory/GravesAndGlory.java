@@ -1036,6 +1036,19 @@ public final class GravesAndGlory implements ModInitializer {
         public void tactical(ServerPlayerEntity p,String group,String action,String formation,double x,double z,float yaw,int enemyId){
             OrderRules.playerOrder(this,p,group,action,formation,x,z,yaw,enemyId);
         }
+        /** The Banner shape's place for a troop: its own war table cell round the order's point (no role depth, no closing up), or a row behind the table when it has no cell. */
+        Vec3d bannerPlace(Unit u,Assignment a){
+            double[] place;
+            if(u.hasCell())place=BattleMath.tableOffset(u.slot,BattleMath.BANNER_COL,BattleMath.BANNER_ROW);
+            else{
+                List<Unit> loose=new ArrayList<>();String key=CustomGroups.stateKey(u);
+                for(Unit other:units)if(other.squad==u.squad&&other.mob.isAlive()&&!other.hasCell()&&(other.musterSince<0)==(u.musterSince<0)&&CustomGroups.stateKey(other).equals(key))loose.add(other);
+                if(!loose.contains(u))loose.add(u);
+                loose.sort(Comparator.<Unit>comparingInt(m->m.slot).thenComparingInt(m->m.mob.getId()));
+                place=BattleMath.bannerPlaces(List.of(),loose.size())[loose.indexOf(u)];
+            }
+            double angle=Math.toRadians(a.yaw);return a.target.add(Math.cos(angle)*place[0]+Math.sin(angle)*place[1],0,Math.sin(angle)*place[0]-Math.cos(angle)*place[1]);
+        }
         /** The room a troop's body takes in a formation and the lane it takes on a bridge: its width and 0.3, at least 1.3 (BattleMath.spacing). */
         public static double spacing(Unit u){return BattleMath.spacing(u.mob.getWidth());}
         /** Whether the unit closes into the shield wall under this order: a shield troop on Hold (animation rework §7.1). */
@@ -1043,6 +1056,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** The unit's formation slot: its deploy spot on a player's default Hold, else its place in its group's formation round the order's point (BattleMath.holdLayout). */
         Vec3d formation(Unit u){
             Assignment a=assignment(u);if(!u.squad.bot&&u.squad.order.equals("hold")&&!u.squad.assignments.containsKey(u.spec.group())&&!CustomGroups.ordered(u))return u.deployed;var f=Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(a.formation)).findFirst().orElse(Spec.FORMATIONS[0]);
+            if(f.id().equals("banner"))return bannerPlace(u,a);
             // the group in slot order (then entity id, so every member sees the same order); BattleMath.holdLayout lays it out: on Hold its shield troops close into the wall in the front ranks, the rest form behind them
             List<Unit> group=new ArrayList<>();group.add(u);
             String key=CustomGroups.stateKey(u); // its spec group, or the troops sharing its custom group's order (Task 12 fix I1)

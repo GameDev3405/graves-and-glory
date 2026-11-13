@@ -27,15 +27,16 @@ class CommandUiSheet(unittest.TestCase):
                          {'attack': 'Z', 'charge': 'X', 'follow': 'C', 'retreat': 'V'})
 
         formations = {f['id']: f for f in data['formations']}
-        self.assertEqual([f['id'] for f in data['formations']], ['block', 'line', 'wedge', 'loose'])
+        self.assertEqual([f['id'] for f in data['formations']], ['block', 'banner', 'wedge', 'loose'])
         self.assertEqual(formations['block']['label'], 'Shield wall')
         self.assertEqual((formations['block']['moveMultiplier'], formations['block']['arrowBlock'], formations['block']['shove']), (0.85, 0.75, 0))
         self.assertEqual(formations['wedge']['shove'], 0.6)
         self.assertEqual(formations['loose']['spacing'], 3.2)
-        for fid in ('line', 'wedge', 'loose'):
+        self.assertEqual((formations['banner']['columns'], formations['banner']['spacing']), (9, 2.5))
+        for fid in ('banner', 'wedge', 'loose'):
             self.assertEqual(formations[fid]['moveMultiplier'], 1.0, fid)
             self.assertEqual(formations[fid]['arrowBlock'], 0, fid)
-        for fid in ('block', 'line', 'loose'):
+        for fid in ('block', 'banner', 'loose'):
             self.assertEqual(formations[fid]['shove'], 0, fid)
 
         groups = {g['id']: g for g in data['groups']}

@@ -122,7 +122,7 @@ import static gg.gravesandglory.Phase2Checks.server;
 final class HoldLineChecks {
     private HoldLineChecks() {}
 
-    static void register(Map<String, Supplier<Phase2Checks.Suite>> suites) { suites.put("holdline", () -> new Wall(false)); suites.put("holdline-corpse", () -> new Wall(true)); }
+    static void register(Map<String, Supplier<Phase2Checks.Suite>> suites) { suites.put("holdline", () -> new Wall(false)); suites.put("holdline-corpse", () -> new Wall(true)); suites.put("holdline-banner", () -> new Wall(false, true)); }
 
     static final class Wall extends Phase2Checks.Staged {
         final List<GravesAndGlory.Unit> knights = new ArrayList<>(), hearthguard = new ArrayList<>(), breakers = new ArrayList<>();
@@ -250,7 +250,9 @@ final class HoldLineChecks {
         // hl-corpse and hl-corpse-load (Task 7)
         /** Only hl-corpse and hl-corpse-load after the round and its patch (GRAVES_PHASE2_CHECKS=holdline-corpse). */
         final boolean corpseOnly;
-        Wall(boolean corpseOnly) {this.corpseOnly = corpseOnly;}
+        final boolean bannerOnly;
+        Wall(boolean corpseOnly) {this(corpseOnly, false);}
+        Wall(boolean corpseOnly, boolean bannerOnly) {this.corpseOnly = corpseOnly; this.bannerOnly = bannerOnly;}
         /** The Squire struck down, its foe the Dusk Squire, the other own Squire, the one set against the body, the Revenant that rises. */
         GravesAndGlory.Unit cpVictim, cpHunter, cpBait, cpLeaner, cpRevenant;
         Vec3d cpHome, cpBody0, cpBody10, cpLean0;
@@ -382,7 +384,7 @@ final class HoldLineChecks {
             var a = b.assignment(u); double angle = Math.toRadians(a.yaw);
             return Math.sin(angle) * (u.mob.getX() - a.target.x) - Math.cos(angle) * (u.mob.getZ() - a.target.z);
         }
-        static String key(double side, double back) { return String.format(Locale.ROOT, "%.3f,%.3f", side + 0.0, back + 0.0); }
+        static String key(double side, double back) { return String.format(Locale.ROOT, "%.3f,%.3f", Math.round(side * 1000) / 1000.0 + 0.0, Math.round(back * 1000) / 1000.0 + 0.0); }
 
         GravesAndGlory.Unit spawn(GravesAndGlory.Battle b, GravesAndGlory.Squad s, String troop, int slot) {
             var u = b.spawn(s, Campaign.troop(troop), slot, ground(b, lineAt.x + 30, lineAt.z)); fixture.add(u); return u;
@@ -482,7 +484,7 @@ final class HoldLineChecks {
             var troops = group == null ? List.<Spec.TroopsRow>of() : CommandMode.troops(group);
             int want = serverPlaces.size();
             if ((group == null || group.count() != want || troops.size() != want) && ++mirrorWait < 200) return;
-            var line = Arrays.stream(Spec.FORMATIONS).filter(f -> f.id().equals("line")).findFirst().orElseThrow();
+            var line = Arrays.stream(Spec.FORMATIONS).filter(f -> f.id().equals("block")).findFirst().orElseThrow();
             Set<String> client = new TreeSet<>();
             if (group != null) for (double[] p : CommandMode.places(troops, group.count(), group.id(), "hold", line)) client.add(key(p[0], p[1]));
             boolean pass = client.equals(serverPlaces) && client.size() == want;
@@ -495,7 +497,7 @@ final class HoldLineChecks {
             if (player == null || stage == 99) return;
             if (stage == 73 && arcTarget != null) arcAim = Projectiles.aim(arcTarget.mob); // where the battle aimed this tick, before the pins move the dummy on
             hold(); // the pinned enemies of hl-raise and hl-crawl stand where they were put
-            try {stages(b); if (stage >= 40) shieldStages(b); if (stage >= 70) arcStages(b); if (stage >= 80) impactStages(b); if (stage >= 100 && stage < 120) eventStages(b); if (stage >= 120) corpseStages(b);} catch (RuntimeException e) {report("hl-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, 99);}
+            try {stages(b); if (stage >= 40) shieldStages(b); if (stage >= 70) arcStages(b); if (stage >= 80) impactStages(b); if (stage >= 100 && stage < 120) eventStages(b); if (stage >= 120 && stage < 150) corpseStages(b); if (stage >= 150) bannerStages(b);} catch (RuntimeException e) {report("hl-exception", false, "stage " + stage + ": " + e); e.printStackTrace(); next(b, 99);}
         }
 
         void stages(GravesAndGlory.Battle b) {
@@ -511,14 +513,14 @@ final class HoldLineChecks {
                     lineAt = ground(b, g[0] + 20.5, g[2] - 3.5); blockAt = ground(b, g[0] + 20.5, g[2] + 5.5);
                     cameraAt = new Vec3d(g[0] + 28, lineAt.y + 2.2, g[2] + 1);
                     var p = sp(b); p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE); b.relocate(p, cameraAt.x, cameraAt.y, cameraAt.z, 90f, 16f);
-                    next(b, corpseOnly ? 120 : 4);
+                    next(b, corpseOnly ? 120 : bannerOnly ? 150 : 4);
                 }
                 case 4 -> {
                     if (since(b) < 40) return; // the client has the chunks round the camera
                     // the commander's army: twelve Squires (slots 0-11) and the Marshal (slot 12), on Hold in Line, facing east
                     for (int i = 0; i < 12; i++) knights.add(spawn(b, own, "knight", i));
                     marshal = spawn(b, own, "gl_marshal", 12);
-                    b.issue(own, "infantry", "hold", "line", lineAt, -90, -1);
+                    b.issue(own, "infantry", "hold", "block", lineAt, -90, -1);
                     // an Ironclad army on Hold in Compact: six Hearthguard (slots 0-5) and four Shieldbreakers (slots 6-9)
                     dawn.order = "hold"; dawn.formation = "block"; dawn.target = blockAt; dawn.yaw = -90;
                     for (int i = 0; i < 6; i++) hearthguard.add(spawn(b, dawn, "ic_hearthguard", i));
@@ -618,7 +620,7 @@ final class HoldLineChecks {
                             if (ok) hopRise = new Vec3d(x + .5, hi, z + .5);
                         }
                         if (hopRise == null) {report("hl-hop-yaw", false, "no real one-block rise with level ground round it within 40 blocks of the wall's patch"); next(b, 29); return;}
-                        b.issue(own, "infantry", "hold", "line", ground(b, hopRise.x - ox, hopRise.z - oz), -90, -1);
+                        b.issue(own, "infantry", "hold", "block", ground(b, hopRise.x - ox, hopRise.z - oz), -90, -1);
                         Vec3d goal = b.formation(hopper); Vec3d from = ground(b, goal.x + 1.15, goal.z);
                         hopper.mob.getNavigation().stop(); hopper.mob.refreshPositionAndAngles(from.x, from.y, from.z, -90, 0); hopper.mob.setVelocity(Vec3d.ZERO); hopper.place = null;
                         hopFrom = from; hopGoal = goal; hopClearAtStart = Tactics.clear(b, hopper, goal);
@@ -642,8 +644,8 @@ final class HoldLineChecks {
                     next(b, 29);
                 }
                 case 29 -> { // the Line back to its Hold for the mirror
-                    if (since(b) == 1) b.issue(own, "infantry", "hold", "line", lineAt, -90, -1);
-                    if (since(b) < 200) return;
+                    if (since(b) == 1) b.issue(own, "infantry", "hold", "block", lineAt, -90, -1);
+                    if (since(b) < 200 || (since(b) < 900 && fixture.stream().anyMatch(u -> u.squad == own && u.mob.isAlive() && distance(u.mob.getPos(), b.formation(u)) > 1.5))) return; // the hop-yaw hopper walks home from up to 40 blocks at the Shield wall's 0.85 share
                     serverPlaces = places(b);
                     next(b, 30);
                 }
@@ -652,7 +654,7 @@ final class HoldLineChecks {
         }
 
         /** The Line's formation row (Spec.FORMATIONS), the commander's wall's shape. */
-        static Spec.FormationsRow lineRow() { return Arrays.stream(Spec.FORMATIONS).filter(f -> f.id().equals("line")).findFirst().orElseThrow(); }
+        static Spec.FormationsRow lineRow() { return Arrays.stream(Spec.FORMATIONS).filter(f -> f.id().equals("block")).findFirst().orElseThrow(); }
         /** How many abreast the commander's infantry stands in Line, from the formation row (as Battle.formation counts them). */
         static int columns() { return BattleMath.groupColumns("infantry", lineRow().columns()); }
         /** Each wall man's place now, in blocks from the order's point and in cells from the server's held places (Squad.places). */
@@ -844,7 +846,7 @@ final class HoldLineChecks {
                 n++; float want = b.assignment(u).yaw;
                 double d = Math.max(Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.getYaw() - want)), Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(u.mob.bodyYaw - want)));
                 if (d > worst) {worst = d; who = name(u);}
-                if (d > 10) askew.add(name(u) + " " + fmt(d));
+                if (d > 10) askew.add(name(u) + " " + fmt(d) + " (yaw " + fmt(u.mob.getYaw()) + ", body " + fmt(u.mob.bodyYaw) + ", want " + fmt(want) + ", " + fmt(distance(u.mob.getPos(), b.formation(u))) + " from its slot, slot " + u.slot + ", speed " + fmt(u.mob.getVelocity().horizontalLength()) + ")");
             }
             boolean ok = n > 0 && askew.isEmpty();
             return new String[]{String.valueOf(ok), n + " wall troops face their Hold yaw, yaw and body: the worst " + fmt(worst) + " degrees off (" + who + "; want within 10)" + (askew.isEmpty() ? "" : ", askew " + askew)};
@@ -1069,7 +1071,7 @@ final class HoldLineChecks {
                     }
                     boolean lowered = !front.mob.isUsingItem(), rule = wrong == 0 && inReach > 0 && beyond > 0 && lowered; raisePass &= rule;
                     raiseWhy.add("the Revenant pinned 1.8 in front of " + name(front) + ": 12 ticks later " + inReach + " shield troops stand inside their reach (less 0.3) and " + beyond + " beyond it (plus 0.3); " + wrong + " hold the wrong way " + bad + "; " + name(front) + " lowered=" + lowered + " (want every one in reach down to strike, every one beyond up)=" + rule);
-                    b.issue(own, "infantry", "charge", "line", foe.mob.getPos(), -90, foe.mob.getId());
+                    b.issue(own, "infantry", "charge", "block", foe.mob.getPos(), -90, foe.mob.getId());
                     b.issue(dawn, "all", "charge", "block", foe.mob.getPos(), -90, foe.mob.getId());
                     for (var u : shieldTroops()) u.squad.shotAt.put(u.spec.group(), b.time);
                     chargeRaised = 0; chargeTicks = 0;
@@ -1094,13 +1096,13 @@ final class HoldLineChecks {
                         var kb = u.mob.getAttributeInstance(net.minecraft.entity.attribute.EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE); if (kb != null) kb.setBaseValue(1);
                     }
                     lineUp(b, crawlFrom.x);
-                    b.issue(own, "infantry", "hold", "line", crawlFrom, -90, -1);
+                    b.issue(own, "infantry", "hold", "loose", crawlFrom, -90, -1);
                     var p = sp(b); b.relocate(p, crawlFrom.x + 15, Phase1Checks.top(b, crawlFrom.x + 15, crawlFrom.z - 14) + 2.2, crawlFrom.z - 14, 0f, 20f);
                     next(b, 51);
                 }
                 case 51 -> {
                     if (since(b) < 60) return;
-                    b.issue(own, "infantry", "move", "line", crawlTo, -90, -1);
+                    b.issue(own, "infantry", "move", "loose", crawlTo, -90, -1);
                     next(b, 52);
                 }
                 case 52 -> { // unfired: v0 over ticks 30-70 of the Move
@@ -1110,13 +1112,13 @@ final class HoldLineChecks {
                     long crawled = crawlers.stream().filter(Wall::crawling).count();
                     boolean ok = v0 > 0.05 && crawled == 0; crawlPass &= ok;
                     crawlWhy.add("unfired, the six Squires Move at " + fmt(v0 * 20) + " blocks a second (ticks 30-70; " + crawled + " with the crawl modifier, want 0)=" + ok);
-                    lineUp(b, crawlFrom.x); b.issue(own, "infantry", "hold", "line", crawlFrom, -90, -1);
+                    lineUp(b, crawlFrom.x); b.issue(own, "infantry", "hold", "loose", crawlFrom, -90, -1);
                     archersUp(b);
                     next(b, 53);
                 }
                 case 53 -> {
                     if (since(b) < 40) return;
-                    b.issue(own, "infantry", "move", "line", crawlTo, -90, -1);
+                    b.issue(own, "infantry", "move", "loose", crawlTo, -90, -1);
                     next(b, 54);
                 }
                 case 54 -> { // under fire: v1 over ticks 30-130 of the Move
@@ -1144,7 +1146,7 @@ final class HoldLineChecks {
                     crawlWhy.add("the archers removed (" + crawlingAtRemoval + " crawling then): the 10-tick mean speed is back to 0.85 v0 with no crawl modifier " + (recoveredAt < 0 ? "never" : recoveredAt + " ticks") + " later (want within fireMemoryTicks + 20 = " + limit + ")=" + back);
                     // Hold: the knights walk back to their slots 27 blocks west, under fire, shields up, never crawling
                     lineUp(b, crawlFrom.x + 27); archersUp(b);
-                    b.issue(own, "infantry", "hold", "line", crawlFrom, -90, -1); own.shotAt.put("infantry", b.time);
+                    b.issue(own, "infantry", "hold", "loose", crawlFrom, -90, -1); own.shotAt.put("infantry", b.time);
                     holdCrawled = 0; holdUp = 0; holdFire = 0;
                     next(b, 56);
                 }
@@ -1178,9 +1180,9 @@ final class HoldLineChecks {
                     float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)); // facing out over the wall
                     houseKnight = b.spawn(own, Campaign.troop("knight"), 0, houseStart); fixture.add(houseKnight);
                     houseKnight.mob.refreshPositionAndAngles(houseStart.x, houseStart.y, houseStart.z, yaw, 0);
-                    b.issue(own, "infantry", "hold", "line", houseSlot, yaw, -1);
+                    b.issue(own, "infantry", "hold", "block", houseSlot, yaw, -1);
                     Vec3d f = b.formation(houseKnight);
-                    b.issue(own, "infantry", "hold", "line", houseSlot.add(houseSlot.x - f.x, 0, houseSlot.z - f.z), yaw, -1);
+                    b.issue(own, "infantry", "hold", "block", houseSlot.add(houseSlot.x - f.x, 0, houseSlot.z - f.z), yaw, -1);
                     f = b.formation(houseKnight);
                     boolean blocked = !Tactics.clear(b, houseKnight, f);
                     double[] gate = HouseRoute.next(r.x(), r.z(), r.rotation(), houseStart.x, houseStart.z, f.x, f.z, 0);
@@ -1990,6 +1992,57 @@ final class HoldLineChecks {
                     evLoadAt = b.time; evArrived.clear(); next(b, 110);
                 }
                 case 110 -> {if (evArrival(b, "the channels registered again (REGISTER)")) evFinish(b);}
+                default -> {}
+            }
+        }
+        /** The point, in blocks, a troop at war table cell `cell` stands from the order's point P facing yaw: along the rank (side) and back from the front, read off the world offset. */
+        static double[] bannerOffset(Vec3d at, Vec3d p, float yaw) {
+            double a = Math.toRadians(yaw), dx = at.x - p.x, dz = at.z - p.z;
+            return new double[]{Math.cos(a) * dx + Math.sin(a) * dz, Math.sin(a) * dx - Math.cos(a) * dz};
+        }
+        static boolean at(double[] got, double side, double back) {return Math.abs(got[0] - side) < 0.02 && Math.abs(got[1] - back) < 0.02;}
+        GravesAndGlory.Unit bannerUnit;
+        Vec3d bannerPoint, bannerBefore2;
+        /** hl-banner-places, hl-banner-gaps and hl-banner-selected (army Task 4): the Banner shape stands each troop at its own war table cell. */
+        void bannerStages(GravesAndGlory.Battle b) {
+            switch (stage) {
+                case 150 -> {
+                    if (!b.running || since(b) < 20) {if (since(b) > 2000) {report("hl-banner-places", false, "the round never ran"); next(b, 99);} return;}
+                    if (patch == null) {report("hl-banner-places", false, "no level patch"); next(b, 99); return;}
+                    clearFixture(b, "hl-banner"); knights.clear(); hearthguard.clear(); breakers.clear(); crawlers.clear(); marshal = null;
+                    bannerPoint = ground(b, patch[0] + 12, patch[2]);
+                    own.assignments.clear(); own.arrived.clear();
+                    for (int cell : new int[]{4, 0, 13, 2, 3}) knights.add(spawn(b, own, "knight", cell));
+                    bannerUnit = spawn(b, own, "archer", 20);
+                    b.issue(own, "infantry", "hold", "banner", bannerPoint, -90, -1); // facing east
+                    var want = new int[][]{{0, 0}, {-4, 0}, {0, 1}, {-2, 0}, {-1, 0}}; // {column - 4, row} of cells 4, 0, 13, 2, 3
+                    boolean pass = true; var why = new ArrayList<String>();
+                    for (int i = 0; i < knights.size(); i++) {
+                        var u = knights.get(i); double[] got = bannerOffset(b.formation(u), bannerPoint, -90);
+                        boolean ok = at(got, want[i][0] * 2.5, want[i][1] * 3.0); pass &= ok;
+                        why.add("cell " + u.slot + " stands " + fmt(got[0]) + " along the rank and " + fmt(got[1]) + " back (want " + fmt(want[i][0] * 2.5) + ", " + fmt(want[i][1] * 3.0) + ")=" + ok);
+                    }
+                    report("hl-banner-places", pass, "Hold in Banner at a point facing east: " + String.join("; ", why));
+                    bannerBefore2 = b.formation(knights.get(3));
+                    knights.get(4).mob.kill(); // the troop of cell 3 falls
+                    next(b, 151);
+                }
+                case 151 -> {
+                    if (since(b) < 5) return;
+                    var now = b.formation(knights.get(3)); var four = bannerOffset(b.formation(knights.get(0)), bannerPoint, -90);
+                    boolean pass = distance(now, bannerBefore2) < 0.01 && at(four, 0, 0) && !knights.get(4).mob.isAlive();
+                    report("hl-banner-gaps", pass, "cell 3 fell; cell 2's place moved " + fmt(distance(now, bannerBefore2)) + " blocks (want none), cell 4 still at the point=" + at(four, 0, 0));
+                    // a second group holds its own order: Banner to the infantry only
+                    Vec3d other = ground(b, bannerPoint.x, bannerPoint.z + 14);
+                    b.issue(own, "ranged", "hold", "block", other, -90, -1);
+                    Vec3d archerBefore = b.formation(bannerUnit);
+                    b.issue(own, "infantry", "hold", "banner", ground(b, bannerPoint.x, bannerPoint.z - 6), -90, -1);
+                    var a = b.assignment(bannerUnit);
+                    boolean pass2 = a.formation.equals("block") && distance(a.target, other) < 0.01 && distance(b.formation(bannerUnit), archerBefore) < 0.01
+                        && b.assignment(knights.get(0)).formation.equals("banner");
+                    report("hl-banner-selected", pass2, "Banner given to the infantry alone: the archers keep " + a.formation + " at their point (moved " + fmt(distance(b.formation(bannerUnit), archerBefore)) + " blocks; want 0)");
+                    next(b, 99);
+                }
                 default -> {}
             }
         }

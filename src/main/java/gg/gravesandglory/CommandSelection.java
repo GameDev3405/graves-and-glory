@@ -24,7 +24,7 @@ public final class CommandSelection {
     public record Pill(String id, String label, int members, boolean custom) {}
 
     /** The tray's four shapes in the order of the number keys 1 to 4: Line, Shield wall (block), Wedge, Loose. */
-    public static final String[] SHAPES = {"line", "block", "wedge", "loose"};
+    public static final String[] SHAPES = {"block", "banner", "wedge", "loose"};
 
     private static final List<String> selected = new ArrayList<>(List.of("all"));
     private static boolean panelOpen, trayOpen;

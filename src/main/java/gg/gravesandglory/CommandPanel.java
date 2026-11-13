@@ -35,9 +35,9 @@ public final class CommandPanel {
     /** The orders in pennant order, with their names. */
     public static final String[] ORDERS = {"attack", "charge", "follow", "retreat", "formation"};
     static final String[] NAMES = {"Attack", "Charge", "Follow me", "Retreat", "Formation"};
-    static final String[] SHAPE_NAMES = {"Line", "Wall", "Wedge", "Loose"};
+    static final String[] SHAPE_NAMES = {"Wall", "Banner", "Wedge", "Loose"};
     static final String[] ICONS = {"command/icon_attack", "command/icon_charge", "command/icon_follow", "command/icon_retreat", "command/icon_formation"};
-    static final String[] SHAPE_ICONS = {"command/shape_line", "command/shape_block", "command/shape_wedge", "command/shape_loose"};
+    static final String[] SHAPE_ICONS = {"command/shape_block", "command/shape_line", "command/shape_wedge", "command/shape_loose"};
     static final int CREAM = 0xfff6dc, GOLD = 0xffd27a, TRIM = 0xe6c46a, DARK = 0x1b1a1f;
     static final int[] PILL_INSET = {4, 2, 1, 1, 0, 0, 0, 0, 1, 1, 2, 4};
     /** Pennant text layout: icon at ICON_X (16 wide), name at NAME_X, at least KEY_GAP between the name and the key, the key ending KEY_PAD before the box's end. */

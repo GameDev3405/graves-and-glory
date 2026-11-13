@@ -974,12 +974,12 @@
       "shove": 0.0
     },
     {
-      "id": "line",
-      "label": "Line",
-      "columns": 10,
-      "spacing": 1.8,
+      "id": "banner",
+      "label": "Banner",
+      "columns": 9,
+      "spacing": 2.5,
       "wedge": false,
-      "purpose": "Wide firing frontage; needs open ground.",
+      "purpose": "Stand as the war table lays the army out.",
       "moveMultiplier": 1.0,
       "arrowBlock": 0.0,
       "shove": 0.0
@@ -1836,7 +1836,7 @@
     },
     {
       "id": "formations-commanded",
-      "evidence": "client packets applied block, line, wedge and loose on the host"
+      "evidence": "client packets applied block, banner, wedge and loose on the host"
     },
     {
       "id": "army-capacity",
@@ -2381,7 +2381,7 @@
       "trigger": "R",
       "screen": "CommandScreen",
       "content": "attack,rush,move,follow,hold",
-      "bottom": "block,line,wedge,loose"
+      "bottom": "block,banner,wedge,loose"
     },
     {
       "id": "barracks",
@@ -5897,7 +5897,7 @@
       "dx": -55.9,
       "y": 66.55,
       "dz": 2.5,
-      "text": "LESSON 2 OF 4 / Press {key:formation} for Formation, then aim and click to set your army's shape. Line makes a front; Wedge breaks one."
+      "text": "LESSON 2 OF 4 / Press {key:formation} for Formation, then aim and click to set your army's shape. Banner stands as your war table laid it out; Wedge breaks a line."
     },
     {
       "id": "lesson-3",
@@ -11017,7 +11017,7 @@
     },
     {
       "id": "wm_oldhorn",
-      "beats": "archer lines, Commons in Line formation",
+      "beats": "archer lines, Commons in Banner formation",
       "beatenBy": "braced spears, Shieldbreaker, Mortar"
     },
     {
@@ -11848,7 +11848,7 @@
     },
     {
       "id": "tip-12",
-      "text": "An army holds 20 slots: most troops take 1, some take 2, Legendaries take 4."
+      "text": "A banner holds up to 40 troops in a 9 by 6 war table; each troop stands in its own cell."
     },
     {
       "id": "tip-13",

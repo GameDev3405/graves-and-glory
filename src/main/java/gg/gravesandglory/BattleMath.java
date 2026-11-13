@@ -248,10 +248,17 @@ public final class BattleMath {
         for (var o : Spec.ORDERS) if (o.id().equals(order)) return order;
         return "follow";
     }
-    /** A formation id as the command UI reads it (OrderRules.loadFormation): a sheet shape stays (block is now labelled Shield wall); anything else is line. */
+    /** The formation id a sent or saved name means: the retired line reads as block, a known id as itself, anything else null (OrderRules refuses it). */
+    public static String formationId(String sent) {
+        if (sent == null) return null;
+        if (sent.equals("line")) return "block";
+        for (var f : Spec.FORMATIONS) if (f.id().equals(sent)) return sent;
+        return null;
+    }
+    /** A formation id as the command UI reads it (OrderRules.loadFormation): a sheet shape stays (block is labelled Shield wall); the retired line, and anything else, is block. */
     public static String loadFormation(String formation) {
         if (formation != null) for (var f : Spec.FORMATIONS) if (f.id().equals(formation)) return formation;
-        return "line";
+        return "block";
     }
     /** The plain-hold rule (carry 2 of Task 6): on Hold a shield or spear troop braces, a shield troop formed in its wall shows the wall, and every other troop holds. */
     public static String holdStance(boolean shield, boolean spear, boolean formed) { return shield && formed ? "wall" : shield || spear ? "brace" : "hold"; }
@@ -568,6 +575,22 @@ public final class BattleMath {
     public static double[] tableOffset(int cell, double colGap, double rowGap) {
         int middle = (WarGrid.cols() - 1) / 2;
         return new double[]{(WarGrid.col(cell) - middle) * colGap, WarGrid.row(cell) * rowGap};
+    }
+    /** The room between banner columns and rows on the field, in blocks (the Banner shape: tableOffset at these gaps). */
+    public static final double BANNER_COL = 2.5, BANNER_ROW = 3;
+    /**
+     * The Banner shape's places for a group of `count` troops, {side, back} from the order's point before facing. `cells` are the war table
+     * cells the group's living-or-not troops hold, in order: each stands at its own cell (tableOffset), so a fallen troop leaves a gap and
+     * nobody closes up. Troops past the cells (no cell of their own) stand in one row behind the last table row, BANNER_COL apart, centred.
+     */
+    public static double[][] bannerPlaces(List<Integer> cells, int count) {
+        double[][] out = new double[count][];
+        int extra = Math.max(0, count - cells.size()), seen = 0;
+        for (int i = 0; i < count; i++) {
+            if (i < cells.size()) out[i] = tableOffset(cells.get(i), BANNER_COL, BANNER_ROW);
+            else out[i] = new double[]{(seen++ - (extra - 1) / 2.0) * BANNER_COL, WarGrid.rows() * BANNER_ROW};
+        }
+        return out;
     }
     /**
      * A held group's places (Battle.heldPlace): its members (slot order), the shape (formation, columns, wedge) and layout they stood in, and

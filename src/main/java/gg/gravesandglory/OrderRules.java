@@ -58,8 +58,9 @@ final class OrderRules {
     static void playerOrder(GravesAndGlory.Battle b, ServerPlayerEntity p, List<At> groups, String action, String formation, float yaw, int enemyId) {
         var s = b.squads.get(p.getUuid());
         if (s == null || !b.ready || !b.running || !s.seated || b.time < b.campaign.introUntil || b.campaign.ending() || b.respawns.containsKey(s.owner) || b.time - s.lastOrder < R.commandCooldownTicks()) return;
-        if (groups == null || action == null || formation == null) return;
-        if (Arrays.stream(Spec.FORMATIONS).noneMatch(f -> f.id().equals(formation))) return;
+        if (groups == null || action == null) return;
+        formation = formationId(formation);
+        if (formation == null) return;
         List<At> named = known(b, s, groups);
         if (named.isEmpty()) return;
         List<String> ids = named.stream().map(At::group).toList();
@@ -189,6 +190,9 @@ final class OrderRules {
 
     /** An old order id onto the new set: move and hold are hold (the Formation order); see BattleMath.loadOrder. */
     static String loadOrder(String order) { return BattleMath.loadOrder(order); }
+
+    /** The formation id a sent or saved name means: the retired line reads as block, a known id as itself, anything else null (refused). */
+    static String formationId(String sent) { return BattleMath.formationId(sent); }
 
     /** An old or unknown formation id onto the new set (block stays block, labelled Shield wall); see BattleMath.loadFormation. */
     static String loadFormation(String formation) { return BattleMath.loadFormation(formation); }

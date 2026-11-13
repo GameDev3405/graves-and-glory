@@ -50,7 +50,7 @@ public final class OrderIntakeSuite implements CommandUiChecks.Suite {
             });
         }
         // Attack: hunt, at the group's centre (x/z sent are ignored)
-        if (tick == 45) OrderIntakeProbe.send("infantry", "attack", "line", 0, 0, 0);
+        if (tick == 45) OrderIntakeProbe.send("infantry", "attack", "block", 0, 0, 0);
         if (tick == 55) CommandUiChecks.server(c, b -> {
             Snap a = OrderIntakeProbe.snap(b, id, "infantry");
             boolean near = a != null && Math.hypot(a.tx() - cx, a.tz() - cz) < 12;
@@ -74,14 +74,14 @@ public final class OrderIntakeSuite implements CommandUiChecks.Suite {
         });
         // Charge toward the arena edge: the end walks back inside
         if (tick == 90) CommandUiChecks.server(c, b -> OrderIntakeProbe.resetCharge(b, id));
-        if (tick == 95) OrderIntakeProbe.send("infantry", "charge", "line", 335, cz, -90f);
+        if (tick == 95) OrderIntakeProbe.send("infantry", "charge", "block", 335, cz, -90f);
         if (tick == 105) CommandUiChecks.server(c, b -> {
             Snap a = OrderIntakeProbe.snap(b, id, "infantry");
             boolean ok = a != null && a.order().equals("charge") && OrderIntakeProbe.inArena(a.tx(), a.tz()) && !OrderIntakeProbe.wet(a.tx(), a.tz()) && a.tx() >= 335;
             CommandUiChecks.report("cu-intake-charge-edge", ok, "charge from 335, " + (int) cz + " east 32 blocks (past the 340 limit) stored " + a);
         });
         // Retreat: to the commander, then Follow me
-        if (tick == 110) OrderIntakeProbe.send("infantry", "retreat", "line", 0, 0, 0);
+        if (tick == 110) OrderIntakeProbe.send("infantry", "retreat", "block", 0, 0, 0);
         if (tick == 120) CommandUiChecks.server(c, b -> {
             Snap a = OrderIntakeProbe.snap(b, id, "infantry");
             var p = b.server.getPlayerManager().getPlayer(id);
@@ -116,11 +116,11 @@ public final class OrderIntakeSuite implements CommandUiChecks.Suite {
             OrderIntakeProbe.resetCharge(b, id); OrderIntakeProbe.respawning(b, id, true);
             infBefore = OrderIntakeProbe.snap(b, id, "infantry"); rngBefore = OrderIntakeProbe.snap(b, id, "ranged");
         });
-        if (tick == 165) OrderIntakeProbe.send("all", "attack", "line", 0, 0, 0);
+        if (tick == 165) OrderIntakeProbe.send("all", "attack", "block", 0, 0, 0);
         if (tick == 172) OrderIntakeProbe.send("all", "charge", "wedge", cx, cz, -90f);
-        if (tick == 179) OrderIntakeProbe.send("all", "retreat", "line", 0, 0, 0);
+        if (tick == 179) OrderIntakeProbe.send("all", "retreat", "block", 0, 0, 0);
         if (tick == 186) OrderIntakeProbe.send("all", "hold", "wedge", px, pz, 10f);
-        if (tick == 193) OrderIntakeProbe.send("all", "follow", "line", 0, 0, 0);
+        if (tick == 193) OrderIntakeProbe.send("all", "follow", "block", 0, 0, 0);
         if (tick == 200) OrderIntakeProbe.send("all", "formation", "loose", 0, 0, 0);
         if (tick == 210) CommandUiChecks.server(c, b -> {
             Snap inf = OrderIntakeProbe.snap(b, id, "infantry"), rng = OrderIntakeProbe.snap(b, id, "ranged");
@@ -132,7 +132,7 @@ public final class OrderIntakeSuite implements CommandUiChecks.Suite {
         });
         if (tick == 215) {
             boolean ok = OrderIntakeProbe.loadOrder("move").equals("hold") && OrderIntakeProbe.loadOrder("hold").equals("hold") && OrderIntakeProbe.loadOrder("attack").equals("attack")
-                && OrderIntakeProbe.loadFormation("block").equals("block") && OrderIntakeProbe.loadFormation("nonsense").equals("line");
+                && OrderIntakeProbe.loadFormation("block").equals("block") && OrderIntakeProbe.loadFormation("nonsense").equals("block");
             CommandUiChecks.report("cu-intake-compat", ok, "OrderRules.loadOrder/loadFormation in game: move->" + OrderIntakeProbe.loadOrder("move") + ", nonsense->" + OrderIntakeProbe.loadFormation("nonsense"));
         }
         // Task 3b. One Charge (X, then confirm) with infantry and ranged selected: one packet, both groups charge in the same tick, each from its own
@@ -197,14 +197,14 @@ public final class OrderIntakeSuite implements CommandUiChecks.Suite {
             });
         }
         // An old client's single-group tactical_v1 still lands.
-        if (tick == 276) v1open = OrderIntakeProbe.sendV1("infantry", "hold", "line", px + 2, pz, 15f);
+        if (tick == 276) v1open = OrderIntakeProbe.sendV1("infantry", "hold", "block", px + 2, pz, 15f);
         if (tick == 286) CommandUiChecks.server(c, b -> {
             Snap a = OrderIntakeProbe.snap(b, id, "infantry");
-            boolean ok = v1open && a != null && a.order().equals("hold") && a.formation().equals("line") && a.yaw() == 15f && Math.abs(a.tx() - (px + 2)) < 0.01 && Math.abs(a.tz() - pz) < 0.01;
+            boolean ok = v1open && a != null && a.order().equals("hold") && a.formation().equals("block") && a.yaw() == 15f && Math.abs(a.tx() - (px + 2)) < 0.01 && Math.abs(a.tz() - pz) < 0.01;
             CommandUiChecks.report("cu-intake-v1-compat", ok, "tactical_v1 open " + v1open + ", infantry hold/line at " + String.format("%.1f, %.1f", px + 2, pz) + " yaw 15 stored " + a);
         });
         // A custom:<n> id in the list is skipped (Task 12's) and the rest of the order still lands.
-        if (tick == 288) customOpen = OrderIntakeProbe.sendMany("retreat", "line", 0f, List.of(new OrderIntakeProbe.At("custom:1", 0, 0), new OrderIntakeProbe.At("ranged", 0, 0)));
+        if (tick == 288) customOpen = OrderIntakeProbe.sendMany("retreat", "block", 0f, List.of(new OrderIntakeProbe.At("custom:1", 0, 0), new OrderIntakeProbe.At("ranged", 0, 0)));
         if (tick == 298) CommandUiChecks.server(c, b -> {
             Snap rng = OrderIntakeProbe.snap(b, id, "ranged");
             CommandUiChecks.report("cu-intake-multi-custom-ignored", customOpen && rng != null && rng.order().equals("retreat"), "tactical_v2 open " + customOpen + "; [custom:1, ranged] retreat stored ranged " + rng);

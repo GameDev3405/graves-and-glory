@@ -79,14 +79,14 @@ public final class ClicksSuite implements CommandUiChecks.Suite {
         int w = SIZES[k][0], h = SIZES[k][1]; String size = String.valueOf(w);
         if (t == 0) { cancelAim(c); CommandSelection.setPanelOpen(false); GLFW.glfwSetWindowSize(c.getWindow().getHandle(), w, h); }
         // the tray: opened, a cell hovered (a shot), then clicked
-        if (t == 14) { CommandSelection.select("infantry", false); CommandSelection.setPanelOpen(true); CommandSelection.setTrayOpen(true); setFormation("line"); PanelSuite.cursorCentre(c); }
+        if (t == 14) { CommandSelection.select("infantry", false); CommandSelection.setPanelOpen(true); CommandSelection.setTrayOpen(true); setFormation("block"); PanelSuite.cursorCentre(c); }
         if (t == 18) waits.when(tick, 12, () -> CommandPanel.hovered == CommandPanel.CELL + 1, () -> PanelSuite.cursorTo(c, CommandPanel.CELL + 1), ok -> {
             trayHover.put(size, (ok ? "hovered" : "NOT hovered") + " (id " + CommandPanel.hovered + ")");
             shot(c, "clicks-tray-hover-" + size + ".png");
         });
         if (t == 34) { sentBefore = OrderIntakeProbe.ordersSent(); PanelSuite.click(c, CommandPanel.CELL + 1, 0); }
         if (t == 37) {
-            boolean ok = "hold".equals(CommandSelection.aiming()) && "block".equals(PanelSuite.formation()) && !CommandSelection.trayOpen() && OrderIntakeProbe.ordersSent() == sentBefore;
+            boolean ok = "hold".equals(CommandSelection.aiming()) && "banner".equals(PanelSuite.formation()) && !CommandSelection.trayOpen() && OrderIntakeProbe.ordersSent() == sentBefore;
             cellOk[k] = ok;
             log.add("cell " + size + ": aiming '" + CommandSelection.aiming() + "' shape " + PanelSuite.formation() + " tray open " + CommandSelection.trayOpen() + " orders sent " + (OrderIntakeProbe.ordersSent() - sentBefore));
         }
@@ -96,8 +96,8 @@ public final class ClicksSuite implements CommandUiChecks.Suite {
         if (t == 54) { wheelDown = PanelSuite.formation(); scroll(c, 1); scroll(c, 1); }
         if (t == 56) {
             String back = PanelSuite.formation(); int slot = c.player.getInventory().selectedSlot;
-            wheelOk[k] = "wedge".equals(wheelDown) && "line".equals(back) && slot == slotBefore && "hold".equals(CommandSelection.aiming());
-            log.add("wheel " + size + ": block, down -> " + wheelDown + ", up twice -> " + back + "; hotbar slot " + slotBefore + " -> " + slot + "; aiming '" + CommandSelection.aiming() + "'");
+            wheelOk[k] = "wedge".equals(wheelDown) && "block".equals(back) && slot == slotBefore && "hold".equals(CommandSelection.aiming());
+            log.add("wheel " + size + ": banner, down -> " + wheelDown + ", up twice -> " + back + "; hotbar slot " + slotBefore + " -> " + slot + "; aiming '" + CommandSelection.aiming() + "'");
             waits.when(tick, 6, () -> BattleHud.aimStrip != null, null, ok -> shot(c, "clicks-aim-strip-wheel-" + size + ".png"));
         }
         if (t == 66) cancelAim(c);

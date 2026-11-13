@@ -138,7 +138,7 @@ public final class CustomGroupsSuite implements CommandUiChecks.Suite {
             case 9 -> { // Attack on custom:1
                 if (r < 5) return;
                 if (!secondGroups.contains(NAME)) { createOk = false; createNotes.add("second battle groups " + secondGroups); }
-                OrderIntakeProbe.sendMany("attack", "line", 0, List.of(new OrderIntakeProbe.At("custom:2", 0, 0)));
+                OrderIntakeProbe.sendMany("attack", "block", 0, List.of(new OrderIntakeProbe.At("custom:2", 0, 0)));
                 next(tick);
             }
             case 10 -> {
@@ -160,7 +160,7 @@ public final class CustomGroupsSuite implements CommandUiChecks.Suite {
             }
             case 11 -> { // a later group order beats the earlier troop-type order
                 if (r < 10) return;
-                OrderIntakeProbe.sendMany("follow", "line", 0, List.of(new OrderIntakeProbe.At(groupG, 0, 0)));
+                OrderIntakeProbe.sendMany("follow", "block", 0, List.of(new OrderIntakeProbe.At(groupG, 0, 0)));
                 next(tick);
             }
             case 12 -> {
@@ -170,7 +170,7 @@ public final class CustomGroupsSuite implements CommandUiChecks.Suite {
             }
             case 13 -> { // and a later custom order beats that group order
                 if (r < 5) return;
-                OrderIntakeProbe.sendMany("retreat", "line", 0, List.of(new OrderIntakeProbe.At("custom:2", 0, 0)));
+                OrderIntakeProbe.sendMany("retreat", "block", 0, List.of(new OrderIntakeProbe.At("custom:2", 0, 0)));
                 next(tick);
             }
             case 14 -> {
@@ -199,7 +199,7 @@ public final class CustomGroupsSuite implements CommandUiChecks.Suite {
             case 18 -> { // the split (fix I1): custom:2 (knights) holds at a spot ten blocks off while the Sentinels keep infantry's Follow me
                 if (r < 5) return;
                 if (spot == null) { if (r > 100) { CommandUiChecks.report("cu-custom-split", false, "no dry spot near the knights"); retreatResult = "skipped"; step = 20; at = tick; } return; }
-                OrderIntakeProbe.sendMany("hold", "line", 0, List.of(new OrderIntakeProbe.At("custom:2", spot.x, spot.z)));
+                OrderIntakeProbe.sendMany("hold", "block", 0, List.of(new OrderIntakeProbe.At("custom:2", spot.x, spot.z)));
                 step = 19; at = tick;
             }
             case 19 -> {
@@ -219,7 +219,7 @@ public final class CustomGroupsSuite implements CommandUiChecks.Suite {
             case 21 -> { // a custom Retreat moves only its members: the rest of the infantry group keeps its order, key and places
                 if (r < 5) return;
                 if (preRetreat.isEmpty()) { if (r > 100) { CommandUiChecks.report("cu-custom-retreat-split", false, "no order snapshot after the split"); CommandUiChecks.server(c, b -> CustomGroupsProbe.returnLobby(b)); retreatResult = "skipped"; step = 20; at = tick; } return; }
-                OrderIntakeProbe.sendMany("retreat", "line", 0, List.of(new OrderIntakeProbe.At("custom:2", 0, 0)));
+                OrderIntakeProbe.sendMany("retreat", "block", 0, List.of(new OrderIntakeProbe.At("custom:2", 0, 0)));
                 step = 22; at = tick;
             }
             case 22 -> {
