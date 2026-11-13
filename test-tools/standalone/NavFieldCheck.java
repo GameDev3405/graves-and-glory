@@ -63,6 +63,10 @@ public final class NavFieldCheck {
         NavField slit = grid(60, 40, (x, z) -> x >= 30 && x <= 32 && z != 5, new int[][]{{10, 20, 64}});
         var s = follow(slit, 10.5, 20.5, 50.5, 20.5, 40);
         check(!s.isEmpty() && s.get(s.size() - 1) != null && s.stream().anyMatch(wp -> wp.portal() && wp.width() == 1), "a 1-wide slit is a portal of width 1: " + s);
+        // a troop standing within a block of the portal cell it was sent to is at the door: the way goes on past it, the same waypoint is never handed back
+        var door1 = s.stream().filter(wp -> wp != null && wp.portal()).findFirst().get();
+        var past = slit.route(door1.x() - .9, 65, door1.z(), 50.5, 65, 20.5, 0);
+        check(past != null && (Math.abs(past.x() - door1.x()) > 1 || Math.abs(past.z() - door1.z()) > 1), "at the door the waypoint moves on: " + door1 + " then " + past);
         NavField closed = grid(60, 40, (x, z) -> x >= 30 && x <= 32, new int[][]{{10, 20, 64}});
         check(closed.route(10.5, 65, 20.5, 50.5, 65, 20.5, 0) == null, "no way across a closed wall: no waypoint");
         check(closed.distance(10.5, 65, 20.5, 50.5, 65, 20.5) < 0, "no distance across a closed wall");

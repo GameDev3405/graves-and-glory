@@ -43,6 +43,8 @@ public final class NavField {
     static final int CACHE = 96, BUILDS_PER_TICK = 6;
     /** How near a goal must be to a floor to be given a field: columns. */
     static final int GOAL_RADIUS = 8;
+    /** A troop this close (blocks) to the portal cell of its first hop is at the door: the way goes on past it. */
+    static final double AT_PORTAL = 1.6;
     static final char FAR = 65535;
     static final double SCALE = 16;
 
@@ -408,13 +410,16 @@ public final class NavField {
         if (f == null || f.dist[nf] == FAR) return null;
         int n = nf;
         Waypoint best = null;
+        boolean through = false;
         for (int hop = 0; hop < HOPS; hop++) {
             int a = f.arc[n];
             if (a < 0) break;
             int cell = arcCell[a], col = colOf[cell];
             double px = col % w + ox + .5, pz = col / w + oz + .5;
-            if (hop > 0 && (Math.hypot(px - x, pz - z) > AHEAD || !line(x, z, ys[from], px, pz))) break;
             boolean portal = arcWidth[a] < PORTAL;
+            if (hop == 0 && portal && Math.hypot(px - x, pz - z) < AT_PORTAL) { n = arcTo[a]; through = true; continue; } // already at the door: on to the far side, a waypoint that is not reached is never given again
+            if (hop > 0 && !through && (Math.hypot(px - x, pz - z) > AHEAD || !line(x, z, ys[from], px, pz))) break;
+            through = false;
             best = new Waypoint(px, ys[cell] + 1, pz, portal, arcWidth[a]);
             if (portal) break;
             n = arcTo[a];
