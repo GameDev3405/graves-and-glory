@@ -52,7 +52,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     final List<Hit> hits = new ArrayList<>();
     /** Boxes the frame's labels and icons cover: the popup is placed off them. */
     final List<int[]> taken = new ArrayList<>();
-    /** Centres of the troop icons drawn this frame: a new icon nudges off one it would cover. */
+    /** Boxes {x0, y0, x1, y1} of the troop icons and their counts drawn this frame: a new icon nudges off one it would cover. */
     final List<int[]> icons = new ArrayList<>();
     /** What the mouse was over at the frame's start (from the last frame's hits): an own group, an ally army and its group. */
     String hoverOwn, hoverArmy, hoverAllyGroup;
@@ -86,16 +86,16 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     /** The map's controls, named by the player's own bindings (a mouse button as LMB, RMB or MMB). */
     public static String legend() { return GravesAndGloryClient.hint("hit") + " select or plan / " + GravesAndGloryClient.hint("use") + " to move / scroll to zoom / drag to pan"; }
     /** The same controls, shorter, for a window where the long line and the glyph key do not share a row. */
-    public static String legendShort() { return GravesAndGloryClient.hint("hit") + " select or plan, " + GravesAndGloryClient.hint("use") + " move, scroll zoom, drag pan"; }
+    public static String legendShort() { return GravesAndGloryClient.hint("hit") + " select/plan, " + GravesAndGloryClient.hint("use") + " move, scroll zoom, drag pan"; }
     static final String[] KEY_WORDS = {"Yours", "Ally", "Enemy", "Fight", "Plan"};
-    static final int KEY_GAP = 14;
+    static final int KEY_GAP = 7, KEY_SEP = 10;
 
     int keyWidth() { int w = 9; for (String s : KEY_WORDS) w += 10 + textRenderer.getWidth(s) + KEY_GAP; return w - KEY_GAP; } // 9: your mark after Yours
 
     @Override protected void init() {
-        int keyW = keyWidth(), room = width - 8;
-        if (textRenderer.getWidth(legend()) + 12 + keyW <= room) { legendText = legend(); legendRows = 1; }
-        else if (textRenderer.getWidth(legendShort()) + 12 + keyW <= room) { legendText = legendShort(); legendRows = 1; }
+        int keyW = keyWidth(), room = width - 6;
+        if (textRenderer.getWidth(legend()) + KEY_SEP + keyW <= room) { legendText = legend(); legendRows = 1; }
+        else if (textRenderer.getWidth(legendShort()) + KEY_SEP + keyW <= room) { legendText = legendShort(); legendRows = 1; }
         else { legendText = legend(); legendRows = 2; }
         bottom = 3 + BUTTON_H + 3 + legendRows * 10 + 2;
         ax = 0; ay = TOP; aw = width; ah = Math.max(20, height - TOP - bottom);
@@ -503,7 +503,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         int col = ours();
         if (BattleMapClient.current() == null) { // no battlemap_v1 yet: the state_v10 marks, as outlined icons with no type
             for (var m : GravesAndGloryClient.markers) if (!m.own()) {
-                int[] c = nudge(sx(m.x()), sy(m.z()));
+                int[] c = nudge(sx(m.x()), sy(m.z()), 0);
                 icon(g, c[0], c[1], DOT, col, false, false);
                 if (m.fighting()) glyph(g, SWORDS, c[0] + ICON + 2, c[1] - ICON - 5, DarkUi.WARN, INK);
                 hits.add(new Hit("ally", c[0] - ICON, c[1] - ICON, c[0] + ICON + 1, c[1] + ICON + 1, -1, null, null, List.of("Allied troops")));
@@ -515,7 +515,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             String job = a.retreating() ? "Falling back" : a.aimed() ? "Follows the mode's own plan" : a.bot() ? jobText(a.job(), a.point(), a.direct()) : null;
             for (var gr : a.groups()) {
                 if (gr.count() <= 0) continue;
-                int[] c = nudge(sx(gr.x()), sy(gr.z()));
+                int[] c = nudge(sx(gr.x()), sy(gr.z()), textRenderer.getWidth(String.valueOf(gr.count())));
                 int x = c[0], y = c[1];
                 icon(g, x, y, typeGlyph(gr.group()), col, false, false);
                 countLabel(g, x, y, gr.count());
@@ -536,7 +536,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         int col = ours();
         for (var gr : CommandMode.groups) {
             if (gr.count() <= 0) continue; // a group with nobody left has no place on the map
-            int[] c = nudge(sx(gr.cx()), sy(gr.cz()));
+            int[] c = nudge(sx(gr.cx()), sy(gr.cz()), textRenderer.getWidth(String.valueOf(gr.count())));
             int x = c[0], y = c[1];
             boolean selected = CommandSelection.isSelected(gr.id());
             icon(g, x, y, typeGlyph(gr.id()), col, true, selected);
@@ -556,19 +556,20 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         }
     }
 
-    /** Where a troop icon goes: its own spot, or a step off an icon already there (up, down, right, left), else its own spot anyway. */
-    int[] nudge(int x, int y) {
-        int step = ICON + 3;
-        int[][] tries = {{0, 0}, {0, -step}, {0, step}, {step, 0}, {-step, 0}, {step, -step}, {-step, step}};
+    /** Where a troop icon goes: its own spot, or the nearest step off the icons and counts already drawn (up, down, then aside, then
+     *  further), else its own spot anyway. The box is the icon with its count label (labelW px) beside it. */
+    int[] nudge(int x, int y, int labelW) {
+        int l = ICON + 1, r = ICON + 4 + labelW, t = ICON + 1, b = ICON + 2, dy = 2 * ICON + 3, dx = l + r + 2;
+        int[][] tries = {{0, 0}, {0, -dy}, {0, dy}, {dx, 0}, {-dx, 0}, {0, -2 * dy}, {0, 2 * dy}, {dx, -dy}, {dx, dy}, {-dx, -dy}, {-dx, dy}, {dx, -2 * dy}, {dx, 2 * dy}, {0, -3 * dy}, {0, 3 * dy}};
         int[] at = {x, y};
-        for (int[] t : tries) {
-            int cx = x + t[0], cy = y + t[1];
+        for (int[] tr : tries) {
+            int cx = x + tr[0], cy = y + tr[1];
             boolean clear = true;
-            for (int[] o : icons) if (Math.abs(o[0] - cx) < 2 * ICON - 1 && Math.abs(o[1] - cy) < 2 * ICON - 1) { clear = false; break; }
+            for (int[] o : icons) if (cx - l < o[2] && cx + r > o[0] && cy - t < o[3] && cy + b > o[1]) { clear = false; break; }
             if (clear) { at = new int[] {cx, cy}; break; }
         }
-        icons.add(at);
-        taken.add(new int[] {at[0] - ICON - 2, at[1] - ICON - 2, 2 * ICON + 16, 2 * ICON + 5});
+        icons.add(new int[] {at[0] - l, at[1] - t, at[0] + r, at[1] + b});
+        taken.add(new int[] {at[0] - l - 1, at[1] - t - 1, l + r + 2, t + b + 2});
         return at;
     }
 
@@ -652,9 +653,9 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         int lw = textRenderer.getWidth(legendText), kw = keyWidth();
         int ly = y0 + 3 + BUTTON_H + 4;
         if (legendRows == 1) {
-            int x = (width - lw - 12 - kw) / 2;
+            int x = (width - lw - KEY_SEP - kw) / 2;
             g.drawText(textRenderer, legendText, x, ly, DarkUi.MUTED, false);
-            key(g, x + lw + 12, ly);
+            key(g, x + lw + KEY_SEP, ly);
         } else {
             g.drawText(textRenderer, legendText, (width - lw) / 2, ly, DarkUi.MUTED, false);
             key(g, (width - kw) / 2, ly + 10);
