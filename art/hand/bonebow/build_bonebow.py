@@ -384,14 +384,14 @@ def bones():
         Box((-1.5, -4, 0), (3, 11, 3), quiver), Box((-1.5, -8, 0.5), (3, 4, 2), arrows)]))
     # the mark: a skull on a grave-iron pauldron over the bow (left) shoulder
     B.append(Bone("skull_pauldron", "left_arm", boxes=[
-        Box((-2, -3.5, -3), (5, 3, 6), pad, dil=0.2),
-        Box((-2, -8, -2.5), (5, 5, 4), pskull)]))
+        Box((-2, -2, -3.5), (5, 3, 6), pad, dil=0.2),
+        Box((0, -4, -6.5), (5, 5, 4), pskull)]))
     # tier II, the Barrow Archer: salvaged grave-iron plate piped in violet
     P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
     B.append(Bone("plate_gorget", "body", stages=[2, 3], boxes=[Box((-5.5, -13.2, -3.4), (11, 3, 6.8), P2("gg"), dil=0.1)]))
-    B.append(Bone("right_pauldron", "right_arm", (0, -3, 0), rot=(0, 0, 10), stages=[2, 3], boxes=[
-        Box((-3, -2.6, -3), (5, 3, 5.6), P2("rp"), dil=0.3),
-        Box((-1.5, -6.2, -0.5), (1.5, 3.6, 1.5), per_tier(lambda t: gb_spike(GI, 3, 3), (2, 3)))]))
+    B.append(Bone("right_pauldron", "right_arm", (0, -3, 0), stages=[2, 3], boxes=[
+        Box((-3.5, 1.5, -1.1), (5, 3, 5.6), P2("rp"), dil=0.3),
+        Box((-3.5, -0.6, 1), (1.5, 3.6, 1.5), per_tier(lambda t: gb_spike(GI, 3, 3), (2, 3)))]))
     for side in ("right", "left"):
         B.append(Bone(f"{side}_bracer", f"{side}_forearm", stages=[2, 3], boxes=[Box((-1.8, 0.5, -1.8), (3.6, 3.5, 3.6), P2("br" + side, 0.18), dil=0.1)]))
     B.append(Bone("quiver_bands", "body", (0, -6, 2.9), rot=(0, 0, -26), stages=[2, 3], boxes=[
@@ -401,8 +401,8 @@ def bones():
     B.append(Bone("crown_band", "head", stages=[3], boxes=[Box((-4.6, -8.6, -4.6), (9.2, 1.4, 9.2), gb_gilt("cb"), dil=0.05)]))
     for i, (x, z, h) in enumerate([(-3.6, -3.6, 5), (-1.2, -4.0, 7), (1.2, -4.0, 7), (3.6, -3.6, 5)]):
         B.append(Bone(f"crown_tine{i}", "head", stages=[3], boxes=[Box((x - 0.5, -8.6 - h, z - 0.5), (1, h, 1), gb_spike(BN, 4, 3))]))
-    B.append(Bone("bow_plate", "left_arm", (0, -3, 0), rot=(0, 0, -10), stages=[3], boxes=[
-        Box((-2, -2.8, -3), (5, 2, 6), gb_plate(3, "bp"), dil=0.35)]))
+    B.append(Bone("bow_plate", "left_arm", (0, -3, 0), stages=[3], boxes=[
+        Box((-2, 1, -3.5), (5, 2, 6), gb_plate(3, "bp"), dil=0.35)]))
     for i, (rz, ox) in enumerate([(-34, -1), (-30, 1)]):
         B.append(Bone(f"fan_arrow{i}", "body", (ox, -6, 2.9), rot=(0, 0, rz), stages=[3], boxes=[
             Box((-0.5, -9, 0.6), (1, 5, 1), arrows), Box((-0.5, -9, 0.6), (1, 1.2, 1), gb_gilt("fa%d" % i))]))
