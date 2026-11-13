@@ -92,21 +92,21 @@ final class OrderRules {
         for (At g : named) {
             Vec3d dest = null;
             switch (order) {
-                case "attack" -> { Vec3d c = centre(b, s, List.of(g.group()), p.getPos()); dest = GravesAndGlory.Battle.groundAt(c.x, c.z); }
+                case "attack" -> { Vec3d c = centre(b, s, List.of(g.group()), p.getPos()); dest = GravesAndGlory.Battle.groundAt(c.x, c.z, p.getX(), p.getZ()); }
                 case "follow", "retreat" -> dest = p.getPos();
                 case "charge" -> {
                     Vec3d start = CustomGroups.number(g.group()) > 0 ? centre(b, s, List.of(g.group()), new Vec3d(g.x(), 0, g.z())) : new Vec3d(g.x(), 0, g.z()); // a custom group's start is its troops' centre: the client has no per-type centre
                     if (!GravesAndGlory.Battle.inArena(start.x, start.z)) break;
                     for (int d = Spec.COMBATDISCIPLINE[0].chargeRunBlocks(); d >= 0 && dest == null; d--) {
                         double ex = start.x + dx * d, ez = start.z + dz * d;
-                        if (GravesAndGlory.Battle.inArena(ex, ez) && !GravesAndGlory.Battle.wet(ex, ez)) dest = GravesAndGlory.Battle.groundAt(ex, ez);
+                        if (GravesAndGlory.Battle.inArena(ex, ez) && !GravesAndGlory.Battle.wet(ex, ez)) dest = GravesAndGlory.Battle.groundAt(ex, ez, p.getX(), p.getZ());
                     }
                     if (dest == null) wetRefusal = true;
                 }
                 default -> { // hold: the Formation order's anchor
                     if (!GravesAndGlory.Battle.inArena(g.x(), g.z())) break;
                     if (GravesAndGlory.Battle.wet(g.x(), g.z())) { wetRefusal = true; break; }
-                    dest = GravesAndGlory.Battle.groundAt(g.x(), g.z());
+                    dest = GravesAndGlory.Battle.groundAt(g.x(), g.z(), p.getX(), p.getZ());
                 }
             }
             if (dest != null) dests.put(g.group(), dest);

@@ -208,27 +208,46 @@ public final class Arena {
         warnOnce("no yard ground within 48 of "+(int)x+","+(int)z+": the troop stands at its base spawn");
         return new Vec3d(home.x(),home.y(),home.z());
     }
-    /** The cell a troop or a waypoint at column (x, z) stands on, as {x, z, feet y}. The hand-made maps: the column itself on the ground there, as always.
-     *  An engine map: the column when it is walkable ground (EngineMap.walkable: not a roof, wall top, tree crown or closed building top, whose top block is not
-     *  where anyone stands), else the nearest walkable column within FLOOR_RADIUS (ties toward x; none: the column's top block as before). Step 0 of the pathing plan:
-     *  deployment, refill, order targets and walk's waypoints all read this, so nothing is placed or sent to a roof. */
+    /** The cell a troop or an order at column (x, z) stands on, as {x, z, feet y}. The hand-made maps: the column itself on the ground there, as always.
+     *  An engine map: the column when it is walkable ground (EngineMap.walkable: not a roof, wall top, tree crown or closed building top, whose top block is not where anyone stands),
+     *  else the lowest 2-high air gap in that world column when w is given (a doorway or arch under a lintel stays a doorway), else the nearest walkable column within FLOOR_RADIUS,
+     *  ties toward (refX, refZ) (the troop or the order giver); none: the column's top block as before. Deployment centres and order targets read this; walk's waypoints do not
+     *  (step 1 of the pathing plan, the route field, owns those: a gatehouse has no walkable top, and snapping its waypoints put the path at the far side of a sealed gate). */
     public static final int FLOOR_RADIUS=12;
-    public static int[] floor(int x,int z){
+    private static final java.util.concurrent.ConcurrentHashMap<Long,int[]> FLOORS=new java.util.concurrent.ConcurrentHashMap<>();private static String floorsOf="";
+    public static int[] floor(ServerWorld w,int x,int z,double refX,double refZ){
         var e=EngineMaps.current();
         if(e==null||e.walkable(x,z))return new int[]{x,z,ground(x,z)+1};
-        int bx=0,bz=0;long best=Long.MAX_VALUE;boolean found=false;
+        if(w!=null){int y=gap(w,e,x,z);if(y!=Integer.MIN_VALUE)return new int[]{x,z,y};}
+        int quad=(refX>=x+.5?1:0)|(refZ>=z+.5?2:0); // the tie side is the only thing the reference changes, so a column's answer is cached per quadrant of it
+        if(!floorsOf.equals(e.sha)){FLOORS.clear();floorsOf=e.sha;}
+        return FLOORS.computeIfAbsent(((long)x*1_000_003L+z)*4+quad,k->nearest(e,x,z,refX,refZ)).clone();
+    }
+    public static int[] floor(int x,int z){return floor(null,x,z,x+.5,z+.5);}
+    private static int[] nearest(EngineMap e,int x,int z,double refX,double refZ){
+        int bx=x,bz=z;long best=Long.MAX_VALUE;double bt=Double.MAX_VALUE;boolean found=false;
         for(int r=1;r<=FLOOR_RADIUS;r++){
             if(found&&(long)(r-1)*(r-1)>best)break;
             for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
                 if(Math.max(Math.abs(dx),Math.abs(dz))!=r)continue;
                 long d=(long)dx*dx+(long)dz*dz;if(d>best)continue;
-                if(!e.walkable(x+dx,z+dz))continue;
-                if(d<best){best=d;bx=x+dx;bz=z+dz;found=true;}}}
-        return found?new int[]{bx,bz,ground(bx,bz)+1}:new int[]{x,z,ground(x,z)+1};
+                int cx=x+dx,cz=z+dz;if(!e.walkable(cx,cz))continue;
+                double t=Math.hypot(cx+.5-refX,cz+.5-refZ);if(d==best&&t>=bt)continue;
+                best=d;bt=t;bx=cx;bz=cz;found=true;}}
+        return new int[]{bx,bz,ground(bx,bz)+1};
     }
-    /** The point (x, z) as a standing place: feet on its floor, or on the nearest walkable column's when it lies over a roof or a wall top (floor). Unmoved on the hand-made maps. */
-    public static Vec3d floorAt(double x,double z){
-        int ix=(int)Math.floor(x),iz=(int)Math.floor(z);int[] f=floor(ix,iz);
+    /** The lowest y in column (x, z) with a solid block under it and two free blocks (feet and head) at and above it, below the column's top block: a floor under a roof, lintel or crown. MIN_VALUE when there is none. */
+    private static int gap(ServerWorld w,EngineMap e,int x,int z){
+        var pos=new BlockPos.Mutable();int top=e.solid(x,z);
+        for(int y=e.floorY+1;y<=top;y++){
+            if(w.getBlockState(pos.set(x,y-1,z)).getCollisionShape(w,pos).isEmpty()||!w.getFluidState(pos).isEmpty())continue;
+            if(w.getBlockState(pos.set(x,y,z)).getCollisionShape(w,pos).isEmpty()&&w.getFluidState(pos).isEmpty()&&w.getBlockState(pos.set(x,y+1,z)).getCollisionShape(w,pos).isEmpty()&&w.getFluidState(pos).isEmpty())return y;
+        }
+        return Integer.MIN_VALUE;
+    }
+    /** The point (x, z) as a standing place: feet on its floor (floor), the point itself when its column stands. Unmoved on the hand-made maps. */
+    public static Vec3d floorAt(ServerWorld w,double x,double z,double refX,double refZ){
+        int ix=(int)Math.floor(x),iz=(int)Math.floor(z);int[] f=floor(w,ix,iz,refX,refZ);
         return f[0]==ix&&f[1]==iz?new Vec3d(x,f[2],z):new Vec3d(f[0]+.5,f[2],f[1]+.5);
     }
     /** The spawn guard for a troop deployed forward at a held point (x, z): walkable ground near the point, dry, no higher than the nearest
