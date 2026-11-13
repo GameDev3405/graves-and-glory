@@ -205,7 +205,7 @@ final class UiReportChecks implements Suite {
                 var p=page(c);if(p==null)return;
                 if(msub==0){var b=p.button("tab-chapter");if(b!=null)WarTableRecruit.press(b);msub=1;subAt=tick;return;}
                 var t=WarTableReport.texts();String tag2=SIZES[size][0]+"x"+SIZES[size][1];String lay=layout(c);
-                if(!"chapter".equals(t.get("face"))&&tick-subAt<80)return;
+                if((!"chapter".equals(t.get("face"))||!t.containsKey("march"))&&tick-subAt<80)return; // a camp snapshot handled in a frame with no tick draws one frame without the held report: wait for a full one
                 var rs=WarTableReport.rects();boolean has=t.containsKey("march")&&t.containsKey("march-next")&&t.containsKey("march-bonuses")&&t.containsKey("march-pacts");
                 note("p1-ui-report-march-chapter-"+tag2,has&&lay.isEmpty(),"chapter face at "+tag2+": march head "+t.get("march")+", next \""+t.get("march-next")+"\", "+t.get("march-bonuses")+", \""+t.get("march-pacts")+"\""+(lay.isEmpty()?", layout clean":", layout: "+lay));
                 shot(c,"report-chapter-march-"+tag2);
