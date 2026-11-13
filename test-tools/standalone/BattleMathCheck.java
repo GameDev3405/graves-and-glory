@@ -258,8 +258,8 @@ public final class BattleMathCheck {
             "tableOffsetCentres: cell 4 at side 0, cell 0 at -4 gaps, cell 13 one row back, cell 53 at +4 gaps and five rows back");
 
         double[][] bp = BattleMath.bannerPlaces(java.util.List.of(4, 13, 0), 5);
-        check(bp[0][0] == 0 && bp[0][1] == 0 && bp[1][1] == 3 && bp[2][0] == -10 && bp[3][1] == 18 && bp[4][1] == 18 && bp[3][0] == -1.25 && bp[4][0] == 1.25,
-            "bannerPlaces: cells keep their own offsets, two troops with no cell stand centred 2.5 apart in a row behind the sixth row");
+        check(bp[0][0] == 0 && bp[0][1] == 0 && bp[1][1] == 3 && bp[2][0] == 10 && bp[3][1] == 18 && bp[4][1] == 18 && bp[3][0] == -1.25 && bp[4][0] == 1.25,
+            "bannerPlaces: cells keep their own offsets (column 0 on the facing's left, +side), two troops with no cell stand centred 2.5 apart in a row behind the sixth row");
         double[] px={-44,0,44}, pz={-43,0,43}; int[] own={-1,-1,-1};
         check(BattleMath.leastDefended(0,0,px,pz,own,new int[]{0,9,0},1,25) != 1, "nine defenders push hard bots off the centre");
         check(BattleMath.leastDefended(0,0,px,pz,own,new int[]{0,0,0},1,25) == 1, "undefended nearest point wins");
