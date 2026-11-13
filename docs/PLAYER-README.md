@@ -1,6 +1,6 @@
 # Graves and Glory
 
-Graves and Glory is a Fabric mod for Minecraft: Java Edition 1.20.1. You collect troops, arrange an army of twenty, command it in real time and fight over objectives on large fantasy battlefields, alone or with friends.
+Graves and Glory is a Fabric mod for Minecraft: Java Edition 1.20.1. You collect troops, lay out a war table banner of up to 40 troops, command it in real time and fight over objectives on large fantasy battlefields, alone or with friends.
 
 ## What you need
 

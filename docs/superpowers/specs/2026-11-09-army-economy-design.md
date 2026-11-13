@@ -1,3 +1,5 @@
+> **Superseded** by `2026-11-12-war-table-army-design.md` (war table banner, troop writs and gear shards).
+
 # Army size and match economy: design
 
 Date: 2026-11-09. Author: the coordinator session, from two rounds of questions with Kort.

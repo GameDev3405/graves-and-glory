@@ -1,11 +1,11 @@
 # Welcome to Graves and Glory
 
-Collect soldiers, arrange a twenty-unit army and lead it across five large fantasy battlefields, all inside Minecraft: Java Edition. Inspired by Command an Army, built as a Fabric modpack.
+Collect soldiers, arrange a 40-troop army and lead it across five large fantasy battlefields, all inside Minecraft: Java Edition. Inspired by Command an Army, built as a Fabric modpack.
 
 **What you do**
-- Build a banner of up to 20 troops from five Houses (30 troops in all), and gear up your commander as a bruiser, healer, ranged fighter or commander.
+- Build a war table banner of up to 40 troops (at most 640 in muster cost) from five Houses (30 troops in all), and gear up your commander as a bruiser, healer, ranged fighter or commander.
 - Command your army with orders, formations and the tactical map, then fight for objectives in 1v1 through 4v4 matches. Bots can fill empty slots.
-- Earn gold, XP and titles through the free Founders chapter. No real-money rolls.
+- Earn troop writs, gear shards, XP and titles through the free Founders chapter. No real-money rolls.
 
 **Get playing**
 1. Read **#install-help** (or the install guide) and import the modpack into Prism Launcher.
