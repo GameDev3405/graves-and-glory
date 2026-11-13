@@ -37,7 +37,7 @@ final class AiMetrics {
     static final class UnitMem {LivingEntity target;long abilityAt,secondAt;Vec3d spell;boolean spellHit;
         LivingEntity apSeen,apTarget;long apStart;double apD0;int apTicks,apCrawl;final Vec3d[] trail=new Vec3d[3];final boolean[] trailIdle=new boolean[3];
         /** no-progress stretch (stuckRead): the last 11 seconds' distances to the spot, how many were read, the running stretch in seconds, the good seconds since it was last stuck, the army's index */
-        final double[] dist=new double[WINDOW+1],route=new double[WINDOW+1];int reads,run,grace,army;}
+        final double[] dist=new double[WINDOW+1],route=new double[WINDOW+1];int reads,run,grace,army;Vec3d lastSpot;}
     // ---- troop metrics (fixes of 2026-11-11: Attack creep, archer homing, pacing at spawn), botsim/troop-metrics.csv, one row per team per match ----
     //  - arrows: archer shots (Projectiles.ARROWS_*) fired, struck their target, lost (target gone before landing), by range bin at the loose; hit rate = hit / (fired - lost).
     //  - approach: a melee troop of a bot army on Attack or Charge picks an enemy more than its reach + 2 away; timed until it stands within reach + 0.5 of it
@@ -47,7 +47,7 @@ final class AiMetrics {
     static final String[] TROOP_COLUMNS={"match","map","mode","team","fired0","hit0","lost0","fired8","hit8","lost8","fired16","hit16","lost16","fired24","hit24","lost24",
         "approaches","approachMeanS","approachMedianS","approachSpeed","approachCrawl","spawnReversals","spawnReversalsOpening","baseYawFlips"};
     static final int WINDOW=10;static final double WINDOW_BLOCKS=2;static final int GRACE=2;
-    static final double SPAWN_RADIUS=40;static final int TRAIL_SECONDS=2;static final long OPENING_TICKS=400; // spawnReversalsOpening: those in the round's first 20 s
+    static final double SPOT_MOVED=4;static final double SPAWN_RADIUS=40;static final int TRAIL_SECONDS=2;static final long OPENING_TICKS=400; // spawnReversalsOpening: those in the round's first 20 s
     static final class TeamAcc {final long[][] arrows0=new long[3][];final List<Double> apSeconds=new ArrayList<>();double apDist;long apTicks,apCrawl;int reversals,reversalsOpening,yawFlips;}
     TeamAcc[] teams={new TeamAcc(),new TeamAcc()};final StringBuilder pacingRows=new StringBuilder(),blindRows=new StringBuilder(),stuckRows=new StringBuilder(),stuck10Rows=new StringBuilder();Path pacingCsv,blindCsv,stuckCsv,stuck10Csv;final Map<GravesAndGlory.Squad,Float> lastYaw=new IdentityHashMap<>();Path troopCsv;
     static long[] row(long[][] counter,int team){return counter[team].clone();}
@@ -177,6 +177,7 @@ final class AiMetrics {
     void stuckRead(GravesAndGlory.Battle b,GravesAndGlory.Unit u,AiState.Read r,int army,Acc a){
         var m=mem.computeIfAbsent(u,k->new UnitMem());m.army=army;
         if(r.fighting||r.atSpot||r.arrived){endStretch(m,a);m.reads=0;return;}
+        if(r.spot!=null){if(m.lastSpot!=null&&Math.hypot(r.spot.x-m.lastSpot.x,r.spot.z-m.lastSpot.z)>SPOT_MOVED){m.reads=0;endStretch(m,a);} m.lastSpot=r.spot;} // a new order (a spot moved over 4 blocks): the window starts again, distances to two spots are not progress
         m.dist[m.reads%(WINDOW+1)]=r.spotDistance;m.route[m.reads%(WINDOW+1)]=routeTo(u,r);m.reads++;
         if(m.reads<=WINDOW)return;
         boolean stuck=m.dist[(m.reads-1-WINDOW)%(WINDOW+1)]-m.dist[(m.reads-1)%(WINDOW+1)]<WINDOW_BLOCKS;
