@@ -88,6 +88,7 @@ public final class BattleMapArt {
             if (gen != generation) { images[0].close(); images[1].close(); return; }
             realTex = new NativeImageBackedTexture(images[0]);
             parchmentTex = new NativeImageBackedTexture(images[1]);
+            realTex.setFilter(true, false); parchmentTex.setFilter(true, false); // linear: a nearest sample shimmers the ink lines when the sheet is drawn small or between whole scales
             real = c.getTextureManager().registerDynamicTexture("gravesandglory_battlemap_real", realTex);
             parchment = c.getTextureManager().registerDynamicTexture("gravesandglory_battlemap_parchment", parchmentTex);
             builtKey = key;

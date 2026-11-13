@@ -33,6 +33,8 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     final Screen parent;
     /** The view of the field; built on the first init and kept across resizes. */
     MapView view;
+    /** The field size the view was built for; a different map's screen rebuilds it. */
+    private int viewHx, viewHz;
     /** The map area: the screen between the bars. */
     int ax, ay, aw, ah, bottom;
     /** Rows of the legend: 1 when the controls and the glyph key share a line, else 2. */
@@ -57,12 +59,15 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     /** A marker's box and what a click or a hover there means. kind: point, ally, own, enemy, ping, you. */
     record Hit(String kind, int x0, int y0, int x1, int y1, int point, String army, String group, List<String> tip) {
         boolean has(double x, double y) { return x >= x0 && x < x1 && y >= y0 && y < y1; }
+        /** Stacking for a hover: a plaque over the you arrow over a ping over a sighting over a point. */
+        int rank() { return switch (kind) { case "ally", "own" -> 4; case "you" -> 3; case "ping" -> 2; case "enemy" -> 1; default -> 0; }; }
         int cx() { return (x0 + x1) / 2; }
         int cy() { return (y0 + y1) / 2; }
     }
     /** An open popup: a title row and its option rows. kind 0 is a point (point), 1 an ally bot army (army). */
     record Popup(int kind, int point, String army, String title, List<String> rows, int active, double wx, double wz, int x, int y, int w) {
         int h() { return ROW + 3 + rows.size() * ROW + 2; }
+        boolean has(double mx, double my) { return mx >= x && mx < x + w && my >= y && my < y + h(); }
         int rowY(int i) { return y + ROW + 3 + i * ROW; }
     }
 
@@ -111,8 +116,8 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         legendRows = legendW + 16 + keyW <= width - 16 ? 1 : 2;
         bottom = 3 + BUTTON_H + 3 + legendRows * 10 + 2;
         ax = 0; ay = TOP; aw = width; ah = Math.max(20, height - TOP - bottom);
-        if (view == null) view = new MapView(Field.halfX(), Field.halfZ());
-        view.layout(ax, ay, aw, ah);
+        popup = null; // a resize moves everything under it
+        ensureView();
         // the bottom bar's buttons: the pings, then Fit, centred
         List<String> labels = new ArrayList<>();
         for (var p : Spec.PINGS) labels.add(p.label());
@@ -131,9 +136,18 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         addDrawableChild(new ToggleButton(width - tw - 4, 3, tw, BUTTON_H));
     }
 
+    /** The view for this field: built on the first call and again when the field's size changes (another map). */
+    void ensureView() {
+        int hx = Field.halfX(), hz = Field.halfZ();
+        if (view == null || hx != viewHx || hz != viewHz) { view = new MapView(hx, hz); viewHx = hx; viewHz = hz; }
+        view.layout(ax, ay, aw, ah);
+    }
+
+    @Override public void tick() { if (!GravesAndGloryClient.battleActive()) client.setScreen(null); } // the round ended under the screen
+
     int toggleWidth() { return textRenderer.getWidth("Parchment | Real") + 12; }
 
-    void fit() { view.fit(); }
+    void fit() { view.fit(); popup = null; }
     /** The look toggle's key: the player's own map_look binding, or while that is unbound (the default) the chat key, T unless rebound. A
      *  binding of its own on T would take T from chat, since a key drives only one binding. */
     static net.minecraft.client.option.KeyBinding lookKey() {
@@ -156,16 +170,18 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
 
     @Override public boolean mouseScrolled(double mx, double my, double amount) {
         if (!inMap(mx, my)) return false;
+        popup = null;
         view.zoomAt(mx, my, amount);
         return true;
     }
 
     @Override public boolean mouseClicked(double mx, double my, int button) {
-        if (popup == null && super.mouseClicked(mx, my, button)) return true; // the bar buttons
+        if ((popup == null || !popup.has(mx, my)) && super.mouseClicked(mx, my, button)) { popup = null; return true; } // a bar button acts, and closes an open popup
         if (!inMap(mx, my) && popup == null) return false;
         if (button == 1) {
-            popup = null;
-            if (inMap(mx, my) && client.player != null) CommandSelection.issueSelected("hold", CommandMode.formation, new Vec3d(view.worldX(mx), 65, view.worldZ(my)), client.player.getYaw(), -1);
+            if (popup != null || attackArmy != null || !pingMode.isEmpty()) { popup = null; attackArmy = null; pingMode = ""; return true; } // only cancels
+            double wx = view.worldX(mx), wz = view.worldZ(my);
+            if (inMap(mx, my) && inField(wx, wz) && client.player != null) CommandSelection.issueSelected("hold", CommandMode.formation, new Vec3d(wx, 65, wz), client.player.getYaw(), -1);
             return true;
         }
         if (button == 0 || button == 2) { pressX = lastX = mx; pressY = lastY = my; pressButton = button; dragging = false; return true; }
@@ -174,7 +190,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
 
     @Override public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
         if (button != pressButton || pressButton < 0) return super.mouseDragged(mx, my, button, dx, dy);
-        if (!dragging && Math.hypot(mx - pressX, my - pressY) > DRAG) { dragging = true; view.pan(mx - pressX, my - pressY); lastX = mx; lastY = my; return true; }
+        if (!dragging && Math.hypot(mx - pressX, my - pressY) > DRAG) { dragging = true; popup = null; view.pan(mx - pressX, my - pressY); lastX = mx; lastY = my; return true; }
         if (dragging) { view.pan(mx - lastX, my - lastY); lastX = mx; lastY = my; }
         return true;
     }
@@ -197,21 +213,34 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         }
         if (!inMap(mx, my)) return;
         double wx = view.worldX(mx), wz = view.worldZ(my);
-        if (!pingMode.isEmpty()) { CommandMode.ping(pingMode, wx, wz); pingMode = ""; return; }
+        if (!pingMode.isEmpty()) { if (inField(wx, wz)) { CommandMode.ping(pingMode, wx, wz); pingMode = ""; } return; } // off the sheet: ignored, still armed
         Hit point = hit("point", mx, my), ally = hit("ally", mx, my), own = hit("own", mx, my);
         if (attackArmy != null) {
-            if (point != null) BattleMapClient.sendPlan(1, point.point(), attackArmy, BattlePlan.Job.ATTACK.ordinal(), 0, 0);
-            else BattleMapClient.sendPlan(1, -1, attackArmy, BattlePlan.Job.ATTACK.ordinal(), wx, wz);
+            if (!inField(wx, wz)) return; // off the sheet: ignored, still armed
+            if (point != null && CampaignClient.showsPoints()) BattleMapClient.sendPlan(1, point.point(), attackArmy, BattlePlan.Job.ATTACK.ordinal(), 0, 0);
+            else { double[] at = arena(wx, wz); BattleMapClient.sendPlan(1, -1, attackArmy, BattlePlan.Job.ATTACK.ordinal(), at[0], at[1]); } // a mode with no points: the place under the click
             attackArmy = null;
             return;
         }
         if (point != null) { openPointPopup(point.point(), point.cx(), point.cy()); return; }
         if (ally != null) {
             var a = army(ally.army());
-            if (a != null && a.bot() && !a.aimed()) { openArmyPopup(a, ally.cx(), ally.cy()); return; }
+            if (a != null && takesOrder(a)) { openArmyPopup(a, ally.cx(), ally.cy()); return; }
         }
         if (own != null) CommandSelection.select(own.group(), hasShiftDown());
     }
+
+    /** True for a world point inside the field's sheet. */
+    static boolean inField(double wx, double wz) { return wx >= -Field.halfX() && wx <= Field.halfX() + 1 && wz >= -Field.halfZ() && wz <= Field.halfZ() + 1; }
+
+    /** A place pulled inside the arena the server accepts orders for (10 blocks in from the edge). */
+    static double[] arena(double wx, double wz) {
+        double mx = Field.halfX() - 10.5, mz = Field.halfZ() - 10.5;
+        return new double[] {Math.max(-mx, Math.min(mx, wx)), Math.max(-mz, Math.min(mz, wz))};
+    }
+
+    /** True for an ally bot that takes an order: not one whose goal the mode sets (Siege, Convoy, Survival), not a player. */
+    static boolean takesOrder(BattleMapClient.Army a) { return a.bot() && !a.aimed(); }
 
     Hit hit(String kind, double x, double y) {
         for (int i = hits.size() - 1; i >= 0; i--) { var h = hits.get(i); if (h.kind().equals(kind) && h.has(x, y)) return h; }
@@ -229,6 +258,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     }
 
     void openArmyPopup(BattleMapClient.Army a, int x, int y) {
+        if (!takesOrder(a)) return; // the server would refuse it
         int active = -1;
         for (var o : orders()) if (o.army().equals(a.id())) active = o.job(); // the rows follow the Job order
         double[] c = centre(a);
@@ -268,8 +298,8 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         }
         switch (row) {
             case "Attack" -> { attackArmy = p.army(); attackName = p.title(); }
-            case "Defend here" -> BattleMapClient.sendPlan(1, -1, p.army(), BattlePlan.Job.DEFEND.ordinal(), p.wx(), p.wz());
-            case "Hold here" -> BattleMapClient.sendPlan(1, -1, p.army(), BattlePlan.Job.HOLD.ordinal(), p.wx(), p.wz());
+            case "Defend here" -> { double[] at = arena(p.wx(), p.wz()); BattleMapClient.sendPlan(1, -1, p.army(), BattlePlan.Job.DEFEND.ordinal(), at[0], at[1]); }
+            case "Hold here" -> { double[] at = arena(p.wx(), p.wz()); BattleMapClient.sendPlan(1, -1, p.army(), BattlePlan.Job.HOLD.ordinal(), at[0], at[1]); }
             case "Follow me" -> BattleMapClient.sendPlan(1, -1, p.army(), BattlePlan.Job.FOLLOW.ordinal(), 0, 0);
             case "Clear" -> BattleMapClient.sendPlan(1, -1, p.army(), -1, 0, 0);
             default -> {}
@@ -281,7 +311,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     String me() { return client.player == null ? "" : client.player.getUuid().toString(); }
 
     List<BattleMapClient.Army> allies() {
-        var s = BattleMapClient.state;
+        var s = BattleMapClient.current();
         if (s == null) return List.of();
         List<BattleMapClient.Army> out = new ArrayList<>();
         String me = me();
@@ -290,8 +320,19 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     }
 
     BattleMapClient.Army army(String id) { for (var a : allies()) if (a.id().equals(id)) return a; return null; }
-    List<BattleMapClient.Order> orders() { var s = BattleMapClient.state; return s == null ? List.of() : s.orders(); }
-    BattleMapClient.PointPlan pointPlan(int i) { var s = BattleMapClient.state; if (s == null) return null; for (var p : s.points()) if (p.point() == i) return p; return null; }
+    List<BattleMapClient.Order> orders() { var s = BattleMapClient.current(); return s == null ? List.of() : s.orders(); }
+    BattleMapClient.PointPlan pointPlan(int i) { var s = BattleMapClient.current(); if (s == null) return null; for (var p : s.points()) if (p.point() == i) return p; return null; }
+
+    /** Where the player this army follows stands as the client knows it (the own player, a player in view, a player's army on the map), or null. */
+    double[] followTarget(BattleMapClient.Army a) {
+        String setter = null;
+        for (var o : orders()) if (o.army().equals(a.id()) && o.job() == BattlePlan.Job.FOLLOW.ordinal()) setter = o.setter();
+        if (setter == null || setter.isEmpty() || client == null || client.player == null) return null;
+        if (setter.equals(client.player.getGameProfile().getName())) return new double[] {client.player.getX(), client.player.getZ()};
+        if (client.world != null) for (var pl : client.world.getPlayers()) if (setter.equals(pl.getGameProfile().getName())) return new double[] {pl.getX(), pl.getZ()};
+        for (var o : allies()) if (!o.bot() && setter.equals(o.name())) return centre(o);
+        return null;
+    }
 
     static int count(BattleMapClient.Army a) { int n = 0; for (var g : a.groups()) n += g.count(); return n; }
     static double[] centre(BattleMapClient.Army a) {
@@ -314,7 +355,8 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     // ---------------------------------------------------------------- drawing
 
     @Override public void render(DrawContext g, int mx, int my, float delta) {
-        view.layout(ax, ay, aw, ah); // re-clamps when the window changed under a live screen
+        ensureView(); // re-clamps when the window changed under a live screen; rebuilt for another field
+        clipX0 = ax; clipY0 = ay; clipX1 = ax + aw; clipY1 = ay + ah;
         hits.clear();
         taken.clear();
         if (client != null && client.player != null) { // the "you" arrow keeps its spot; labels move off it
@@ -348,6 +390,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         boolean parch = lookParchment();
         Identifier tex = parch ? BattleMapArt.parchment() : BattleMapArt.real();
         var grid = BattleMapClient.grid;
+        if (grid != null && !grid.map.equals(Spec.MAPS[Math.max(0, Math.min(Spec.MAPS.length - 1, CampaignMaps.selected))].id())) grid = null; // another map's field: the fallback
         int x0, y0, x1, y1;
         if (tex != null && grid != null) {
             x0 = (int) Math.round(view.screenX(grid.minX)); y0 = (int) Math.round(view.screenY(grid.minZ));
@@ -450,7 +493,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
 
     void drawAllies(DrawContext g) {
         var allies = allies();
-        if (BattleMapClient.state == null) { // no battlemap_v1 yet: the state_v10 marks, as rings
+        if (BattleMapClient.current() == null) { // no battlemap_v1 yet: the state_v10 marks, as rings
             for (var m : GravesAndGloryClient.markers) if (!m.own()) {
                 int x = sx(m.x()), y = sy(m.z());
                 DarkUi.mapMark(g, "ally", x, y, DarkUi.MAP_TROOP);
@@ -469,9 +512,14 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
                 fighting |= gr.fighting();
                 tx += gr.targetX() * gr.count(); tz += gr.targetZ() * gr.count(); n += gr.count();
             }
-            // where it is heading: the plan's place, else its groups' goal
+            // where it is heading: the plan's place, else its groups' goal; a Follow heads for the one it follows, where known
             int ex, ey;
-            if (a.job() >= 0) { ex = sx(a.planX()); ey = sy(a.planZ()); }
+            boolean follow = a.job() == BattlePlan.Job.FOLLOW.ordinal(), followUnknown = false;
+            if (follow) {
+                double[] t = followTarget(a);
+                followUnknown = t == null;
+                ex = followUnknown ? x : sx(t[0]); ey = followUnknown ? y : sy(t[1]);
+            } else if (a.job() >= 0) { ex = sx(a.planX()); ey = sy(a.planZ()); }
             else { ex = n > 0 ? sx(tx / n) : x; ey = n > 0 ? sy(tz / n) : y; }
             if (Math.hypot(ex - x, ey - y) > 10) {
                 line(g, x, y, ex, ey, 0xddeee9df, 1, 3);
@@ -485,6 +533,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             g.drawBorder(px, py, w, 11, DarkUi.IVORY);
             g.drawText(textRenderer, label, px + 3, py + 2, DarkUi.IVORY, false);
             if (fighting) glyph(g, SWORDS, px + w + 2, py + 2, DarkUi.WARN, INK);
+            if (followUnknown) glyph(g, FOLLOW, px - 9, py + 2, DarkUi.IVORY, INK); // no line without a known goal: the glyph by the plaque
             List<String> tip = new ArrayList<>();
             tip.add(a.name() + (a.bot() ? " (bot)" : " (player)"));
             tip.add(count(a) + " troops in " + a.groups().size() + (a.groups().size() == 1 ? " group" : " groups"));
@@ -642,7 +691,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
 
     void tooltip(DrawContext g, int mx, int my) {
         Hit h = null;
-        for (int i = hits.size() - 1; i >= 0 && h == null; i--) if (hits.get(i).has(mx, my)) h = hits.get(i);
+        for (int i = hits.size() - 1; i >= 0; i--) { var c = hits.get(i); if (c.has(mx, my) && (h == null || c.rank() > h.rank())) h = c; } // the topmost, a plaque over a ping
         if (h == null) return;
         int w = 0;
         for (String s : h.tip()) w = Math.max(w, textRenderer.getWidth(s));
@@ -697,13 +746,25 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         }
     }
 
-    /** A line of `on` px dashes with `off` px gaps (1 px wide). */
+    /** The map area the frame's lines are cut to (set by render). */
+    private static int clipX0, clipY0, clipX1, clipY1;
+
+    /** A line of `on` px dashes with `off` px gaps (1 px wide), cut to the map area so a far goal costs only what shows. */
     static void line(DrawContext g, int x0, int y0, int x1, int y1, int color, int on, int off) {
         double len = Math.hypot(x1 - x0, y1 - y0);
         int n = (int) len;
-        for (int i = 0; i < n; i++) {
+        double t0 = 0, t1 = 1, dx = x1 - x0, dy = y1 - y0;
+        double[] p = {-dx, dx, -dy, dy}, q = {x0 - clipX0, clipX1 - 1 - x0, y0 - clipY0, clipY1 - 1 - y0};
+        for (int k = 0; k < 4; k++) { // Liang-Barsky
+            if (p[k] == 0) { if (q[k] < 0) return; continue; }
+            double r = q[k] / p[k];
+            if (p[k] < 0) t0 = Math.max(t0, r); else t1 = Math.min(t1, r);
+            if (t0 > t1) return;
+        }
+        for (int i = Math.max(0, (int) Math.floor(t0 * n) - 1); i < Math.min(n, (int) Math.ceil(t1 * n) + 1); i++) {
             if (i % (on + off) >= on) continue;
             int x = x0 + (int) Math.round((x1 - x0) * i / len), y = y0 + (int) Math.round((y1 - y0) * i / len);
+            if (x < clipX0 || x >= clipX1 || y < clipY0 || y >= clipY1) continue;
             g.fill(x, y, x + 1, y + 1, color);
         }
     }

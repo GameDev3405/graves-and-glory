@@ -14,7 +14,9 @@ import java.util.UUID;
  *    drag moves the view; T switches the look and the texture drawn; Home fits again; with no grid the screen still draws (fallback).
  *  - plan: a click on point B opens its popup; Attack puts ATTACK on B in battlemap_v1 and a bot says "on it, taking"; a click on an ally
  *    bot's plaque opens its popup; Hold here puts a direct HOLD for that army in battlemap_v1. With the screen closed and the player
- *    moved 100 blocks from point B and facing it, PlanMarkers drew at least one world flag (Task 7).
+ *    moved 100 blocks from point B and facing it, PlanMarkers drew point B's own world flag (Task 7), and the popup methods
+ *    refuse what the server would: no order popup for an aimed bot, only "Ping here" on a point in a mode with no capture points. A plan
+ *    only counts when it is in a state sent after the click.
  *  Screenshots (screenshots/p4-ui-map-*-(map)[-1080|-small].png): fit, zoom, real, plan at 960x540 GUI 2, fit and plan at 1920x1080 GUI 3,
  *  fit at 854x480 GUI 2; the world flag from the player's view toward B (p4-ui-plan-flag-(map)). */
 public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
@@ -29,7 +31,8 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
     boolean fitOpen, zoomUp, zoomKept, dragMoved, toggled, homeFit, noGridOk;
     String viewWhy = "";
     // the plan check's
-    boolean pointPopup, planInState, ackHeard, armyPopup, orderInState, flagDrawn;
+    boolean pointPopup, planInState, ackHeard, armyPopup, orderInState, flagDrawn, aimedNoPopup, noPointsOk;
+    long planClickTime = -1, orderClickTime = -1; // the state's time when each click went out: only a later state can hold its effect
     String planWhy = "", ally = "", setter = "";
     final List<String> heard = new ArrayList<>();
     int winW, winH, winGui;
@@ -48,7 +51,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
         int waited = tick - stageTick;
         switch (stage) {
             case 1 -> { // the grid, both looks and a state packet, or 400 ticks
-                boolean ready = BattleMapClient.grid != null && id.equals(BattleMapArt.builtMap()) && BattleMapClient.state != null && !CommandMode.groups.isEmpty();
+                boolean ready = BattleMapClient.grid != null && id.equals(BattleMapArt.builtMap()) && BattleMapClient.current() != null && !CommandMode.groups.isEmpty();
                 if (!ready && waited < 400) return;
                 if (!ready) viewWhy += "not ready after 400 ticks (grid " + (BattleMapClient.grid != null) + ", built " + BattleMapArt.builtMap() + ", state " + (BattleMapClient.state != null) + "); ";
                 Phase1Checks.window(c, 960, 540, 2);
@@ -113,6 +116,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 if (waited < 3) return;
                 int[] p = screen.pointAt(1);
                 if (p == null) { planWhy += "point B not drawn; "; next(19, tick); return; }
+                planClickTime = stateTime();
                 screen.clickAt(p[0], p[1]);
                 pointPopup = screen.popup != null && screen.popup.kind() == 0 && screen.popup.point() == 1;
                 planWhy += "click on B at " + p[0] + "," + p[1] + ": popup " + (screen.popup == null ? "none" : screen.popup.title() + " " + screen.popup.rows()) + "; ";
@@ -122,8 +126,8 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 next(11, tick);
             }
             case 11 -> { // the plan in battlemap_v1
-                var s = BattleMapClient.state;
-                if (s != null) for (var q : s.points()) if (q.point() == 1 && q.job() == BattlePlan.Job.ATTACK.ordinal()) { planInState = true; setter = q.setter(); }
+                var s = BattleMapClient.current();
+                if (s != null && s.time() > planClickTime) for (var q : s.points()) if (q.point() == 1 && q.job() == BattlePlan.Job.ATTACK.ordinal()) { planInState = true; setter = q.setter(); } // a state sent after the click
                 if (planInState || waited > 60) { planWhy += "ATTACK on B in the state after " + waited + " ticks: " + planInState + " (set by " + setter + "); "; next(12, tick); }
             }
             case 12 -> { // a bot's line
@@ -131,7 +135,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 if (ackHeard || waited > 240) { planWhy += "bot line 'on it, taking' heard: " + ackHeard + " (" + heard.stream().filter(h -> h.contains("bot")).limit(4).toList() + "); "; next(13, tick); }
             }
             case 13 -> { // an ally bot's plaque, zoomed onto it so no point disc covers it
-                var s = BattleMapClient.state;
+                var s = BattleMapClient.current();
                 BattleMapClient.Army pick = null;
                 if (s != null) for (var a : s.armies()) if (a.bot() && !a.aimed() && !a.groups().isEmpty() && !a.retreating()) { pick = a; break; }
                 if (pick == null) { if (waited > 100) { planWhy += "no free ally bot in the state; "; next(19, tick); } return; }
@@ -149,12 +153,13 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 armyPopup = screen.popup != null && screen.popup.kind() == 1 && ally.equals(screen.popup.army());
                 planWhy += "click on the plaque: popup " + (screen.popup == null ? "none" : screen.popup.title() + " " + screen.popup.rows()) + "; ";
                 int[] row = screen.popupRow("Hold here");
+                orderClickTime = stateTime();
                 if (row != null) screen.clickAt(row[0], row[1]);
                 next(15, tick);
             }
             case 15 -> {
-                var s = BattleMapClient.state;
-                if (s != null) for (var o : s.orders()) if (o.army().equals(ally) && o.job() == BattlePlan.Job.HOLD.ordinal()) orderInState = true;
+                var s = BattleMapClient.current();
+                if (s != null && s.time() > orderClickTime) for (var o : s.orders()) if (o.army().equals(ally) && o.job() == BattlePlan.Job.HOLD.ordinal()) orderInState = true;
                 if (orderInState || waited > 60) {
                     planWhy += "direct HOLD in the state after " + waited + " ticks: " + orderInState + "; ";
                     screen.keyPressed(GLFW.GLFW_KEY_HOME, 0, 0);
@@ -184,15 +189,16 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)), pitch = (float) -Math.toDegrees(Math.atan2(dy, h));
                 c.player.setYaw(yaw); c.player.setPitch(pitch); c.player.prevYaw = yaw; c.player.prevPitch = pitch; c.player.setHeadYaw(yaw); c.player.prevHeadYaw = yaw;
                 if (waited < 22) return;
-                flagDrawn = PlanMarkers.drawn() >= 1;
-                planWhy += "screen closed, facing B from " + Math.round(Math.hypot(h, dy)) + " blocks: PlanMarkers drew " + PlanMarkers.drawn() + " flags; ";
+                flagDrawn = PlanMarkers.pointDrawn(1); // B's own plan flag, not just any flag
+                planWhy += "screen closed, facing B from " + Math.round(Math.hypot(h, dy)) + " blocks: PlanMarkers drew " + PlanMarkers.pointsDrawn() + " point flags (B's: " + flagDrawn + ") of " + PlanMarkers.drawn() + " flags; ";
                 Phase4Checks.shot(c, "ui-plan-flag-" + id);
                 c.setScreen(screen);
                 next(19, tick);
             }
             case 19 -> {
                 boolean pointsPlanned = CampaignClient.showsPoints();
-                Phase4Checks.report("p4-map-plan-" + id, pointPopup && (!pointsPlanned || planInState && ackHeard) && armyPopup && orderInState && flagDrawn, planWhy);
+                refusals();
+                Phase4Checks.report("p4-map-plan-" + id, pointPopup && (!pointsPlanned || planInState && ackHeard && flagDrawn) && armyPopup && orderInState && aimedNoPopup && noPointsOk, planWhy);
                 screen.popup = null;
                 if (c.currentScreen != screen) c.setScreen(screen);
                 Phase1Checks.window(c, 1920, 1080, 3, true);
@@ -218,6 +224,38 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
 
     BattleMapGrid saved;
 
+    /** The state's server time, or -1 when none. */
+    static long stateTime() { var s = BattleMapClient.current(); return s == null ? -1 : s.time(); }
+
+    /** What the server would refuse is never offered: an aimed bot (Siege, Convoy, Survival) gets no order popup, and a mode with no capture
+     *  points gets only "Ping here" on a point. Both through the popup-building methods, with a fake state and a fake mode block. */
+    void refusals() {
+        var s = BattleMapClient.current();
+        BattleMapClient.Army real = null;
+        if (s != null) for (var a : s.armies()) if (a.bot() && !a.groups().isEmpty()) { real = a; break; }
+        screen.popup = null;
+        if (real == null) planWhy += "no bot army for the aimed check; ";
+        else {
+            var aimed = new BattleMapClient.Army(real.id(), real.name(), true, false, true, real.groups(), -1, -1, 0, 0, false);
+            screen.openArmyPopup(aimed, 100, 100);
+            aimedNoPopup = screen.popup == null;
+            screen.popup = null;
+            var free = new BattleMapClient.Army(real.id(), real.name(), true, false, false, real.groups(), -1, -1, 0, 0, false);
+            screen.openArmyPopup(free, 100, 100);
+            aimedNoPopup &= screen.popup != null; // and a free bot still gets one
+            screen.popup = null;
+        }
+        var mode = CampaignClient.battleMode;
+        var none = new com.google.gson.JsonObject();
+        none.addProperty("points", false);
+        CampaignClient.battleMode = none;
+        try {
+            screen.openPointPopup(1, 100, 100);
+            noPointsOk = screen.popup != null && screen.popup.rows().equals(List.of("Ping here"));
+            planWhy += "no capture points: point popup " + (screen.popup == null ? "none" : screen.popup.rows()) + "; aimed bot popup refused: " + aimedNoPopup + "; ";
+        } finally { CampaignClient.battleMode = mode; screen.popup = null; }
+    }
+
     /** The look key as the player has it bound (T by default, through the chat key). */
     static void pressLook(BattleMapScreen s) {
         var k = net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.getBoundKeyOf(BattleMapScreen.lookKey());
@@ -226,7 +264,8 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
 
     void resetFindings() {
         fitOpen = zoomUp = zoomKept = dragMoved = toggled = homeFit = noGridOk = false;
-        pointPopup = planInState = ackHeard = armyPopup = orderInState = flagDrawn = false;
+        pointPopup = planInState = ackHeard = armyPopup = orderInState = flagDrawn = aimedNoPopup = noPointsOk = false;
+        planClickTime = orderClickTime = -1;
         viewWhy = ""; planWhy = ""; ally = ""; setter = ""; heard.clear();
     }
 

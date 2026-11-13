@@ -28,17 +28,23 @@ public final class PlanMarkers {
     static final int FAINT = 0x99;
 
     private static int drawn, counting;
+    private static boolean[] drawnPoints = new boolean[0], countingPoints = new boolean[0];
 
-    /** How many flags the last frame drew (read by the checks). */
+    /** How many flags the last frame drew, order flags included (read by the checks). */
     public static int drawn() { return drawn; }
+    /** Whether the last frame drew capture point i's own plan flag (read by the checks). */
+    public static boolean pointDrawn(int i) { return i >= 0 && i < drawnPoints.length && drawnPoints[i]; }
+    /** How many point flags the last frame drew. */
+    public static int pointsDrawn() { int n = 0; for (boolean b : drawnPoints) if (b) n++; return n; }
 
     static void render(WorldRenderContext context) {
         counting = 0;
-        try { draw(context); } finally { drawn = counting; }
+        countingPoints = new boolean[Spec.POINTS.length];
+        try { draw(context); } finally { drawn = counting; drawnPoints = countingPoints; }
     }
 
     private static void draw(WorldRenderContext context) {
-        var s = BattleMapClient.state;
+        var s = BattleMapClient.current(); // null outside a running round
         var c = MinecraftClient.getInstance();
         if (s == null || c.player == null || context.consumers() == null) return;
         var pts = Spec.POINTS;
@@ -52,6 +58,7 @@ public final class PlanMarkers {
             var pt = pts[p.point()];
             double x = pt.x() + .5, z = pt.z() + .5;
             flag(c, matrices, consumers, cam, x, ground(pt, x, z) + POINT_LIFT, z, p.job(), pt.id(), false, false);
+            countingPoints[p.point()] = true;
         }
         String me = c.player.getGameProfile().getName();
         for (var o : s.orders()) {

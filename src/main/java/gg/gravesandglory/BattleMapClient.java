@@ -99,6 +99,14 @@ public final class BattleMapClient {
         ClientPlayNetworking.send(GravesAndGlory.PLAN, buf);
     }
 
+    /** The state while a round runs on this client, else null: a record left by an earlier round never shows. Everything that reads the
+     *  state for display (the screen, the world flags) goes through this. */
+    public static State current() { return GravesAndGloryClient.battleActive() ? state : null; }
+
     /** Forgets the field and state (a new battle, or leaving). */
     public static void clear() { grid = null; state = null; BattleMapArt.clear(); }
+
+    /** Forgets the state only, at a round's start and end (the client's running flag flips). The grid stays: the server sends it once per
+     *  map build, so a round on the same map would never get it again; the screen checks the grid's map id instead. */
+    public static void clearRound() { state = null; }
 }
