@@ -1173,6 +1173,7 @@ public final class GravesAndGlory implements ModInitializer {
          */
         Deploy deploy(Squad s,int slot,Spec.TroopsRow spec){
             Vec3d home=fieldBase(s.team),ring=ringPlace(s,slot,spec),barracks=home.add(ring);
+            if(EngineMaps.active())barracks=Arena.standing(world,barracks.x,barracks.z,home.x); // the spawn guard: never a roof, pile or wall in the base
             if(!forwardReinforcement)return new Deploy(barracks,null);
             List<Anchor> anchors=reinforcementAnchors(s.team);if(anchors.isEmpty())return new Deploy(barracks,null);
             Vec3d target=groupOrder(s,"infantry").target;double[] ax=new double[anchors.size()],az=new double[anchors.size()];
@@ -1181,6 +1182,7 @@ public final class GravesAndGlory implements ModInitializer {
             Anchor anchor=anchors.get(chosen);Vec3d centre=deployCentre(s.team,anchor);
             double x=centre.x+ring.x,z=centre.z+ring.z;int gx=(int)Math.floor(x),gz=(int)Math.floor(z);
             if(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)return new Deploy(barracks,null);
+            if(EngineMaps.active())return new Deploy(Arena.standing(world,x,z,home.x,Integer.MAX_VALUE),anchor); // the spawn guard at a held point: walkable ground, not a roof
             return new Deploy(new Vec3d(x,Arena.ground(gx,gz)+1,z),anchor);
         }
         Vec3d deployPoint(Squad s,int slot){return deploy(s,slot).at();}

@@ -82,6 +82,37 @@ public final class EngineMap {
  /** world y of the top water block, or NONE */
  public int water(int wx,int wz){return water[index(wx,wz)];}
  public boolean wet(int wx,int wz){int i=index(wx,wz);return wetCell(water[i],solid[i]);}
+ private boolean[] walk;
+ /** On foot from either base (distances: 4-neighbour steps of at most MAX_STEP over the top of each column): the cell is ground a troop can
+  *  reach, not a roof, wall top, tree crown or the top of a closed building. Off the canvas: false. */
+ public boolean walkable(int wx,int wz){
+  if(!inside(wx,wz))return false;
+  if(walk==null){boolean[] r=new boolean[width*depth];
+   for(Spawn s:spawns){int[] d=distances(solid,water,width,depth,cellX(s.x()),cellZ(s.z()));for(int i=0;i<d.length;i++)if(d[i]>=0)r[i]=true;}
+   walk=r;}
+  return walk[(wz-oz)*width+(wx-ox)];
+ }
+ /** A troop may be placed on cell (x, z): walkable ground (no roof, wall top, tree crown or closed building top), dry, ground at most
+  *  maxGround, and not on a pile: at most one block above the lowest of its eight neighbours (a crate stack or cart top is not a place). */
+ public boolean stands(int x,int z,int maxGround){
+  if(!walkable(x,z)||wet(x,z))return false;int g=solid(x,z);if(g>maxGround)return false;
+  int low=g;for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++)low=Math.min(low,solid(x+dx,z+dz));
+  return g-low<=1;
+ }
+ /** Where a troop placed at cell (x, z) stands: the cell itself when stands(x, z, maxGround) holds (and also, when given), else the nearest
+  *  such cell within radius by straight distance, ties to the one nearest towardX (the troop's own base). Null when there is none.
+  *  also is the caller's extra test (Arena.standing: two free blocks of headroom in the world). */
+ public int[] footing(int x,int z,double towardX,int radius,int maxGround,java.util.function.BiPredicate<Integer,Integer> also){
+  int[] best=null;long bestD=Long.MAX_VALUE;double bestT=Double.MAX_VALUE;
+  for(int r=0;r<=radius;r++){ // square rings outward; a fit in ring r may be beaten by a nearer cell of a later ring, so stop once (r-1)^2 passes it
+   if(best!=null&&(long)(r-1)*(r-1)>bestD)break;
+   for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){if(Math.max(Math.abs(dx),Math.abs(dz))!=r)continue;
+    long d=(long)dx*dx+(long)dz*dz;if(d>(long)radius*radius||d>bestD)continue;int cx=x+dx,cz=z+dz;double t=Math.abs(cx+.5-towardX);
+    if(d==bestD&&t>=bestT)continue;
+    if(!stands(cx,cz,maxGround)||also!=null&&!also.test(cx,cz))continue;
+    best=new int[]{cx,cz};bestD=d;bestT=t;}}
+  return best;
+ }
  /** mean world x of the water in row wz, or -100000 when the row is dry */
  public double riverX(int wz){return riverX[Math.max(0,Math.min(depth-1,wz-oz))];}
  public boolean inside(int wx,int wz){return wx>=ox&&wx<ox+width&&wz>=oz&&wz<oz+depth;}

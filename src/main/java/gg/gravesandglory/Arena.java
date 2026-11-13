@@ -195,10 +195,30 @@ public final class Arena {
     static boolean endsAt(CampaignMaps.Road r,int x,int z){return r.ax()==x&&r.az()==z||r.bx()==x&&r.bz()==z;}
     /** Deep water: river below 64, as GravesAndGlory.Battle.wet. */
     public static boolean deep(int x,int z){return river(x,z)&&ground(x,z)<64;}
-    /** Where a troop lined up at (x, z) stands: on the ground there, one block up. A spot over deep water moves to the nearest dry column (dryNear) no higher
-     *  than the floor (a parapet or roof is not a lineup spot): new Rivergate's river runs through each base at z 0, under the middle army's lineup.
-     *  On dry ground (every other map) the spot is as before. */
+    /** The spawn guard: where a troop deployed, reinforced or trained at (x, z) by the base at homeX stands, its feet one block up.
+     *  On an engine map (New Kingsfield, New Rivergate) the spot must be ground its base reaches on foot, dry, no higher than the base's yard
+     *  (the spawn's feet), not on a crate pile, with two free blocks above (EngineMap.stands); else it moves to the nearest such cell within 48
+     *  (EngineMap.footing), and with none to the base spawn itself. Kort's playtest 2026-11-13: troops spawned on roofs inside the base.
+     *  On the hand-made maps: the ground there, or over deep water the nearest dry column no higher than the floor, as before. */
     public static Vec3d standing(ServerWorld w,double x,double z,double homeX){
+        var e=EngineMaps.current();
+        if(e!=null){EngineMap.Spawn home=null;for(var s:e.spawns)if(home==null||Math.abs(s.x()-homeX)<Math.abs(home.x()-homeX))home=s;
+            return standing(w,x,z,homeX,home==null?Integer.MAX_VALUE:home.y());}
+        return legacyStanding(w,x,z,homeX);
+    }
+    /** As standing, on an engine map with the ground at most maxGround (a forward deploy at a held point: Integer.MAX_VALUE, its ground is not the yard's). */
+    public static Vec3d standing(ServerWorld w,double x,double z,double homeX,int maxGround){
+        var e=EngineMaps.current();if(e==null)return legacyStanding(w,x,z,homeX);
+        int ix=(int)Math.floor(x),iz=(int)Math.floor(z);var pos=new BlockPos.Mutable();
+        java.util.function.BiPredicate<Integer,Integer> headroom=w==null?null:(cx,cz)->{int g=e.solid(cx,cz);
+            for(int y=g+1;y<=g+2;y++)if(!w.getBlockState(pos.set(cx,y,cz)).getCollisionShape(w,pos).isEmpty())return false;return true;};
+        if(e.stands(ix,iz,maxGround)&&(headroom==null||headroom.test(ix,iz)))return new Vec3d(x,e.solid(ix,iz)+1,z);
+        int[] c=e.footing(ix,iz,homeX,48,maxGround,headroom);
+        if(c!=null)return new Vec3d(c[0]+.5,e.solid(c[0],c[1])+1,c[1]+.5);
+        EngineMap.Spawn home=null;for(var s:e.spawns)if(home==null||Math.abs(s.x()-homeX)<Math.abs(home.x()-homeX))home=s;
+        return home==null?new Vec3d(x,e.solid(ix,iz)+1,z):new Vec3d(home.x(),home.y(),home.z());
+    }
+    static Vec3d legacyStanding(ServerWorld w,double x,double z,double homeX){
         int ix=(int)Math.floor(x),iz=(int)Math.floor(z);
         if(!deep(ix,iz))return new Vec3d(x,ground(ix,iz)+1,z);
         int[] c=dryNear(w,ix,iz,homeX,Y);
