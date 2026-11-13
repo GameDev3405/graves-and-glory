@@ -269,3 +269,8 @@ shot cmd-farm2 -124 225 -118 -146 200 -146
 shot st-wood -190 201.6 -90 -205 202 -106
 shot air-outsk -160 262 -100 -120 199 -152
 shot cmd-wall-w -272 226 -52 -248 203 -24
+shot st-yard-horse -206 202.6 -19 -192 200 -35
+shot st-yard-mess -228 202.6 -9 -240 200 -18
+shot st-yard-quay -188 202.6 -19 -199 200 -13
+shot st-watergate-e -166 201.6 0 -180 200 0
+shot cmd-yard -215 232 20 -215 199 -12

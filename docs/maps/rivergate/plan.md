@@ -135,3 +135,9 @@ Same grid as Kingsfield: columns A to I from x -288, rows 1 to 6 from z -192. Th
 - Base yards: tents and drill gear. Base gates face the field (Kort).
 - After the built map was shown (Kort): mill gets a timber upper storey and a bigger wheel, shrine tower 5 higher with pale quoins and a spire, base walls get buttresses, barred loops, banners and raised corners. One house east of the mill removed so the wheel shows.
 - Every map review now includes the inventory of non-full blocks: `nonfull-blocks.md`, made by `gen/nonfull.py`.
+
+Round four (Kort, 2026-11-12):
+- Outskirts filled: three farms, a woodcutter, lanes, closed hedges, more trees.
+- Every house furnished by room role (kitchen, shop, inn, guild, store, bedroom, workshop, guest, archive, loft).
+- Base yards: horse lines, two practice posts, lamp posts on the gate lane, a mess table, stores on the quay. Court, gate lanes and quay edge kept clear. No lit fires outdoors.
+- Base water gates: two stone piers, three grilled arches.

@@ -93,11 +93,11 @@ def build(b):
                 b.set(x, y, z, 'deepslate_tile_slab[type=bottom]' if corner else 'deepslate_tile_stairs[facing=%s,half=bottom,shape=straight]' % f)
     for x in (34, 35):
         for z in (106, 107):
-            for y in (G + 27, G + 28, G + 29): b.set(x, y, z, 'deepslate_tiles')
-            b.set(x, G + 30, z, 'deepslate_tile_wall')
-    b.set(34, G + 31, 106, 'lightning_rod[facing=up]')
+            b.set(x, G + 27, z, 'deepslate_tiles')
+            f = {(34, 106): 'east', (35, 106): 'south', (35, 107): 'west', (34, 107): 'north'}[(x, z)]
+            b.set(x, G + 28, z, 'deepslate_tile_stairs[facing=%s,half=bottom,shape=outer_right]' % f)
     for x, z in ((tx0, tz0), (tx0, tz1), (tx1, tz0), (tx1, tz1)):  # corner pinnacles
-        b.set(x, G + 22, z, 'stone_brick_wall'); b.set(x, G + 23, z, 'deepslate_tile_slab[type=bottom]')
+        b.set(x, G + 22, z, 'polished_andesite'); b.set(x, G + 23, z, 'stone_brick_wall'); b.set(x, G + 24, z, 'stone_brick_wall'); b.set(x, G + 25, z, 'deepslate_tile_wall')
     b.box(34, G + 20, 105, 35, G + 20, 108, 'dark_oak_log[axis=z]'); b.set(34, G + 19, 106, 'bell[attachment=ceiling,facing=north]')
     b.air(X1, G + 1, 106, tx0, G + 2, 106)                     # vestry door from the chapel
     for y in range(G + 1, G + 18): b.set(33, y, 105, 'ladder[facing=east]')

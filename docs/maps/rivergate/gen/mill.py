@@ -123,6 +123,14 @@ def build(b):
     b.set(29, L, -104, 'white_bed[facing=east,part=foot]'); b.set(30, L, -104, 'white_bed[facing=east,part=head]'); b.set(30, L, -105, 'chest[facing=west]')
     for x, z in ((20, -103), (21, -103), (20, -104), (27, -110), (28, -110), (28, -109)): b.set(x, L, z, 'hay_block[axis=x]')
     b.set(20, L + 1, -103, 'hay_block[axis=z]'); b.set(22, L, -109, 'barrel[facing=up]'); b.set(22, L, -110, 'barrel[facing=up]'); b.set(23, L, -110, 'composter[level=7]')
+    for x in (23, 24, 25, 26): b.set(x, L, -103, 'composter[level=%d]' % (4 + x % 4)); b.set(x, L, -102, 'barrel[facing=up]')
+    b.set(24, L + 1, -102, 'barrel[facing=up]'); b.set(26, L + 1, -102, 'white_wool')
+    for x in (24, 25):
+        for z in (-107, -106): b.set(x, L, z, 'smooth_stone_slab[type=bottom]')     # a spare millstone laid flat
+    for x in (27, 28): b.set(x, L, -106, 'spruce_fence'); b.set(x, L + 1, -106, 'spruce_pressure_plate')
+    b.set(29, L, -106, 'spruce_stairs[facing=east,half=bottom,shape=straight]'); b.set(28, L + 2, -106, 'air')
+    for x, z in ((20, -107), (20, -108), (21, -108)): b.set(x, L, z, 'white_wool')
+    b.set(20, L + 1, -108, 'white_wool'); b.set(30, L, -110, 'loom[facing=west]'); b.set(30, L, -108, 'bookshelf')
     # forecourt touches: a sack bench and a lamp by the door
     b.set(X0 - 1, G + 1, -109, 'barrel[facing=up]'); b.set(X0 - 1, G + 2, -109, 'lantern[hanging=false]'); b.set(X0 - 1, G + 1, -104, 'hay_block[axis=z]')
 

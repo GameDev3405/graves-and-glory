@@ -9,7 +9,7 @@ from kit import Build, MASON, FOOT
 G, BED, WATER = 64, 59, 62
 X0, X1, Z0, Z1 = -251, -180, -40, 39
 STREET = [('cobblestone', 55), ('stone', 20), ('andesite', 20), ('mossy_cobblestone', 5)]
-YARD = [('cobblestone', 30), ('gravel', 25), ('coarse_dirt', 25), ('stone', 10), ('andesite', 10)]
+YARD = [('cobblestone', 46), ('gravel', 16), ('coarse_dirt', 8), ('stone', 15), ('andesite', 15)]
 FLAGS = [('stone_bricks', 45), ('andesite', 25), ('polished_andesite', 20), ('cobblestone', 10)]
 SWAP = {'north': 'south', 'south': 'north'}
 
@@ -77,6 +77,12 @@ def build(b, colour='cyan'):
                     b.set(x, G + 5, z, 'spruce_fence')
                     if (x + z) % 5 == 0 and not river:
                         for y in range(G + 1, G + 4): b.set(x, y, z, 'dark_oak_log[axis=y]')
+    # the water gates: two stone piers in each, so three arched, grilled openings
+    for x in (X0, X1):
+        for z in (-5, -4, 3, 4):
+            for y in range(BED, G + 3): b.set(x, y, z, b.pick(FOOT) if y <= WATER else b.pick(MASON))
+        for za, zb in ((-9, -6), (-3, 2), (5, 8)):
+            b.set(x, G + 2, za, 'stone_brick_stairs[facing=north,half=top,shape=straight]'); b.set(x, G + 2, zb, 'stone_brick_stairs[facing=south,half=top,shape=straight]')
     # outer faces: buttresses every 8, a barred loop and a banner between them, corners 3 higher
     for x in range(X0 + 4, X1 - 7, 8):
         for y in range(G + 1, G + 4): M(x, y, Z0 - 1, b.pick(FOOT) if y == G + 1 else b.pick(MASON))
@@ -208,14 +214,38 @@ def build(b, colour='cyan'):
         for dx in range(5):
             for dz, y in ((0, 1), (4, 1), (1, 2), (3, 2), (2, 3)):
                 M(tx + dx, G + y, -24 + dz, ('%s_wool' % colour) if dz == 2 or dx in (0, 4) and y == 1 else 'white_wool')
-        for dx in (-1, 5):
+        for dx in ((-1,) if tx == -246 else (5,) if tx == -232 else ()):   # poles only at the ends of the row: the gaps between tents stay open
             for y in (1, 2, 3): M(tx + dx, G + y, -22, 'spruce_fence')
         M(tx + 3, G + 1, -22, 'hay_block[axis=x]'); M(tx + 2, G + 1, -23, '%s_carpet' % colour); M(tx + 1, G + 1, -22, 'white_carpet')
     for x in (-222, -218, -214): b.set(x, G + 2, -34, 'target')
     for x in (-204, -203, -202, -201): M(x, G + 1, -34, 'spruce_fence' if x in (-204, -201) else 'spruce_fence_gate[facing=north,open=false]')
     M(-205, G + 1, -34, 'barrel[facing=up]'); M(-200, G + 1, -34, 'fletching_table')
-    for z in (-14, 13):                                    # watch fires
-        b.set(-216, G + 1, z, 'campfire[lit=false]')
+    # what a garrison keeps in its yard, on both banks; the court, the gate lane (z -29..-22) and the quay edge stay clear
+    for x in range(-196, -186):                            # stable under the north wall: three open stalls, a manger rail, troughs, fodder
+        for z in (-36, -35, -34, -33): M(x, G + 4, z, 'spruce_slab[type=bottom]')
+        if -195 <= x <= -188: M(x, G + 1, -35, 'spruce_fence')
+    for x in (-196, -193, -190, -187):
+        for y in (1, 2, 3): M(x, G + y, -33, 'spruce_fence')
+        M(x, G + 1, -34, 'spruce_fence'); M(x, G + 1, -35, 'spruce_fence')
+    M(-195, G + 1, -36, 'water_cauldron[level=3]'); M(-192, G + 1, -36, 'water_cauldron[level=3]'); M(-189, G + 1, -36, 'water_cauldron[level=3]')
+    M(-194, G + 1, -36, 'hay_block[axis=x]'); M(-191, G + 1, -36, 'hay_block[axis=z]'); M(-188, G + 1, -36, 'hay_block[axis=x]'); M(-188, G + 2, -36, 'hay_block[axis=z]')
+    M(-193, G + 3, -32, 'lantern[hanging=false]') if False else None
+    for x in (-200, -198):                                 # two pells to hack at: plain posts bound with straw
+        M(x, G + 1, -32, 'stripped_spruce_log[axis=y]'); M(x, G + 2, -32, 'hay_block[axis=y]'); M(x, G + 3, -32, 'stripped_spruce_log[axis=y]')
+    for x in (-203, -196, -189):                           # lamp posts lining the gate lane, both sides
+        for z in (-30, -21):
+            M(x, G + 1, z, 'stone_brick_wall'); M(x, G + 2, z, 'spruce_fence'); M(x, G + 3, z, 'lantern[hanging=false]')
+    for x in range(-244, -237):                            # the mess: one long table by the tents, benches, a kettle
+        M(x, G + 1, -17, 'spruce_fence'); M(x, G + 2, -17, 'spruce_pressure_plate')
+        if x % 2 == 0: M(x, G + 1, -18, 'spruce_stairs[facing=north,half=bottom,shape=straight]'); M(x, G + 1, -16, 'spruce_stairs[facing=south,half=bottom,shape=straight]')
+    M(-235, G + 1, -17, 'campfire[lit=false]'); M(-235, G + 2, -17, 'cauldron'); M(-234, G + 1, -16, 'barrel[facing=up]'); M(-234, G + 1, -18, 'stripped_spruce_log[axis=x]')
+    for i, x in enumerate(range(-203, -191)):              # stores landed at the quay: one tidy row, crates, casks, timber, fodder
+        blk = ('spruce_planks', 'barrel[facing=up]', 'spruce_planks', 'barrel[facing=up]', None, 'stripped_spruce_log[axis=x]', 'stripped_spruce_log[axis=x]', 'stripped_spruce_log[axis=x]', None, 'hay_block[axis=x]', 'hay_block[axis=z]', 'hay_block[axis=x]')[i]
+        if blk is None: continue
+        M(x, G + 1, -14, blk)
+        if i in (0, 1, 6, 10): M(x, G + 2, -14, blk)
+    for z in (-14, 13):                                    # watch fires, off the court, against the bank parapet
+        b.set(-227, G + 1, z, 'campfire[lit=false]')
 
 
 if __name__ == '__main__':

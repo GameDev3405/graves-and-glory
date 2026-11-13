@@ -257,6 +257,18 @@ def furnish(b, w, d, floors, st, doors, lx, ix1, ground, upper, seed):
             for x in range(3, min(5, x1 - 1) + 1):
                 for z in (cz, cz + 1):
                     if (x, z) not in res and free(x, y, z) and x < x1 - 1: b.set(x, y, z, c + '_carpet')
+        if k >= 1 and w >= 11 and role != 'archive':             # an island so the room is not all wall furniture
+            iz = cz + 3 if cz + 3 <= z1 - 2 else cz - 3
+            cells = [(w // 2 + 1, iz), (w // 2 + 2, iz)]
+            if all((x, z) not in res and free(x, y, z) and free(x, y + 1, z) for x, z in cells) and iz >= 3:
+                (xa, _), (xb, _) = cells
+                if role in ('loft', 'workshop'):
+                    b.set(xa, y, iz, 'barrel[facing=up]' if role == 'loft' else 'crafting_table'); b.set(xb, y, iz, 'hay_block[axis=x]' if role == 'loft' else 'barrel[facing=up]')
+                    b.set(xa, y + 1, iz, 'white_wool' if role == 'loft' else 'lantern[hanging=false]')
+                else:
+                    for x in (xa, xb): b.set(x, y, iz, 'spruce_fence'); b.set(x, y + 1, iz, 'spruce_pressure_plate')
+                    if free(xa - 1, y, iz) and (xa - 1, iz) not in res: b.set(xa - 1, y, iz, 'spruce_stairs[facing=west,half=bottom,shape=straight]')
+                    if free(xb + 1, y, iz) and (xb + 1, iz) not in res and xb + 1 < w - 2: b.set(xb + 1, y, iz, 'spruce_stairs[facing=east,half=bottom,shape=straight]')
         # light: lanterns hang from the floor above, or from a tie beam under the roof
         xs = [x for x in range(2, (x1 if k == 0 else w - 2), 4)]
         for x in xs:
