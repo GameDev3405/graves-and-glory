@@ -244,3 +244,20 @@ replays the in-place changes the step made to its arguments. The cache lives in 
 - Focus check: 0 FAIL rows. This was the troop's last fix round.
 - In game: `work/ingame-check/ic_breaker-review4`, 23 lines, 0 false. A first run (`review3`) ran beside a booth build and
   failed two lag-sensitive rows (march-run-side, attack-sync-walk).
+
+## Model fix: left shoulder spikes (2026-11-13)
+
+Kort asked for the left shoulder spike to be fixed in the model. In the haft jab's shove (t7.5) the raised left shoulder
+sits under the helm, and the helm covers the whole front half of the left pauldron's top plate, so any spike standing there
+is inside the helm down to its base.
+
+- Hand builder: the left row of three 1x1 iron spikes now stands on the back half of the plate, rising 1, 2, 3 px to the
+  back (bedrock z 0, 1.5, 3; x and the bone unchanged). Before: three 3 px spikes at z -3, -0.5, 2. The right row is
+  unchanged. From the front the left row still shows one 3 px spike, as the right does (sheet in the model-fix report).
+- jab helm into left_spikes 3.52 (t7.5) -> 1.89 (t7). Every other row naming left_spikes is now under 0.5 px (was up to 1.80).
+- The jab's armour_clip exemption stays: without it the row is helm into right_spikes 3.40 (t13) and helm into
+  left_pauldron 2.26 (t5.5), both outside the left spikes. Its reason text still names the left spikes.
+- Clips: a cold rebuild (empty cache) changed one clip, attack_haft_jab, on one bone: the plate yield
+  (fullbody._plates_yield reads the plate's spikes) keeps left_pauldron slid down its arm a little longer after the
+  wind-up, at most 0.15 px (t4.25). Timing fields unchanged on all 55 clips.
+- Scorecard exit 0, identical to before. Focus check 0 FAIL rows, 131 WARN rows as before.
