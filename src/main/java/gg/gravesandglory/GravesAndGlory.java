@@ -218,6 +218,8 @@ public final class GravesAndGlory implements ModInitializer {
         long takeoverAt;
         /** The banner this squad fields this round: the dense war table, WarGrid.cells() entries indexed row * cols + col (a troop id, or empty where nothing stands), set by Campaign.prepareRound through Campaign.banner. */
         List<String> banner=new ArrayList<>();
+        /** The ordered troop list the banner was built from (Campaign.field): a bot buys in its order (WarGrid.buyOrder), so the war table's role placement never changes what it trains first. Empty means cell order. */
+        List<String> line=new ArrayList<>();
         /** A bot's difficulty: the id of its Spec.BOTCOMMAND row. Set from Campaign.difficulty when the round is prepared. */
         String tier="normal";
         Vec3d target;
@@ -893,11 +895,11 @@ public final class GravesAndGlory implements ModInitializer {
                 // The seat keeps the bot's living army and its queue, but from now on it trains and reinforces from the joiner's own banner, and fights under his class.
                 // The active's cooldown belongs to the squad, not to whoever commands it: it stays with the seat, so taking a seat over (its owner coming back, or
                 // anyone else) never refreshes an active. Only a running active stops here, before the class changes; leave already stopped the owner's.
-                Commander.stop(this,s);s.banner=campaign.banner(s);GearCombat.seat(s,campaign.profile(s.owner));
+                Commander.stop(this,s);campaign.field(s);GearCombat.seat(s,campaign.profile(s.owner));
             }else{
                 s=new Squad(p.getUuid(),team,fieldBase(team));s.seated=decision.seated();
                 // A fresh seat mid-round fights under its owner's class, as round setup (Campaign.prepareRound) and a takeover give it.
-                if(s.seated){GearCombat.seat(s,campaign.profile(s.owner));s.banner=campaign.banner(s);reinforce(s);}
+                if(s.seated){GearCombat.seat(s,campaign.profile(s.owner));campaign.field(s);reinforce(s);}
             }
             squads.put(s.owner,s);welcomed.add(s.owner);
             p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);

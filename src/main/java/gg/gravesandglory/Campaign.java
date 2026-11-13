@@ -360,7 +360,7 @@ public final class Campaign {
             if(fill||practice)for(int i=humans;i<target;i++){UUID id=UUID.randomUUID();var s=new GravesAndGlory.Squad(id,team,b.fieldBase(team));s.bot=true;s.tier=activeBattle!=null?activeBattle.difficulty():botTier();s.lane=i%3;var ally=allyRow(s);if(ally!=null)s.tier=ally.difficulty();b.squads.put(id,s);} // a March battle's allies fight at their own row's tier
         }
         participants.clear();for(var s:b.squads.values())if(!s.bot&&s.seated){participants.add(s.owner);results.remove(s.owner);joinedAt.put(s.owner,b.time);GearCombat.seat(s,profile(s.owner));}
-        for(var s:b.squads.values())if(s.seated)s.banner=banner(s);
+        for(var s:b.squads.values())if(s.seated)field(s);
         chooseSides();
         serial++;matchId=UUID.randomUUID().toString();introUntil=b.time+120;headline="";
         timeline.clear();playAgain.clear(); // pass 3: a new round's graph
@@ -373,6 +373,8 @@ public final class Campaign {
      *  the House he took on the lobby (lobbyHouse; Kort, 2026-10-31); anyone else's own banner with the units of Houses that
      *  cannot be fielded yet left empty. Always the dense war table (table): a bot row is placed on it by role. */
     List<String> banner(GravesAndGlory.Squad s){return table(bannerLine(s));}
+    /** Sets a squad's banner for this round and keeps the ordered line it came from, which a bot's buy order follows. */
+    void field(GravesAndGlory.Squad s){s.line=bannerLine(s);s.banner=table(s.line);}
     /** The war table of a banner list: a dense list of WarGrid.cells() entries is copied as it is; any other list (a botBanners row, a campaign enemy, boss or ally row, a house chapter row, a synthetic or test squad's) is an ordered troop list that WarGrid.botTable places by role, then WarGrid.dense. */
     static List<String> table(List<String> line){
         if(line.size()==WarGrid.cells())return new ArrayList<>(line);
@@ -993,9 +995,9 @@ public final class Campaign {
                 long living=b.fielded(s).count();
                 if(living==0){long until=botRespawns.computeIfAbsent(s.owner,k->b.time+240);if(b.time<until)continue;}else botRespawns.remove(s.owner);
                 // Buy toward the banner: each troop up to its count there, while fielded and queued troops stay below rules.maxTroops.
-                Map<String,Integer> wanted=new LinkedHashMap<>();for(String id:s.banner)if(troop(id)!=null)wanted.merge(id,1,Integer::sum);
+                var wanted=WarGrid.buyOrder(s.banner,s.line); // the line's order, not the table's cells: role placement must not change what a bot trains first
                 long army=b.fielded(s).count()+s.training.size();
-                for(var want:wanted.entrySet()){var type=troop(want.getKey());
+                for(var want:wanted.entrySet()){var type=troop(want.getKey());if(type==null)continue;
                     long have=b.fielded(s).filter(u->u.spec==type).count()+s.training.stream().filter(q->q.spec()==type).count();
                     int price=type.cost();
                     while(have<want.getValue()&&s.gold>=price&&army<RosterMath.maxTroops()){s.gold-=price;s.stats.goldSpent+=price;long previous=s.training.isEmpty()?b.time:s.training.getLast().finished();s.training.addLast(new GravesAndGlory.Training(type,Math.max(b.time,previous)+Commander.trainingTicks(type),price));army++;have++;}

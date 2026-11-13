@@ -159,7 +159,7 @@ public final class BotSimulation implements ModInitializer {
         for(var s:armies){String house=kit.equals("native")?(s.team==0?"gilded":"graveborn"):kit;
             b.units.removeIf(u->{if(u.squad!=s)return false;u.mob.discard();return true;});
             String id=bannerChoice[s.team]!=null?bannerChoice[s.team]:house+"_"+s.tier;fielded[s.team]=id;
-            s.banner=Campaign.table(Campaign.bannerRow(id));s.fullHealth.clear();b.reinforce(s);}
+            s.line=Campaign.bannerRow(id);s.banner=Campaign.table(s.line);s.fullHealth.clear();b.reinforce(s);}
     }
     /** Where each troop stood at the last sample, for the stuck count (cleared at each round start). */
     final Map<UUID,net.minecraft.util.math.Vec3d> seen=new HashMap<>();

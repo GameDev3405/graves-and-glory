@@ -134,7 +134,20 @@ public final class WarGridCheck {
             var table = WarGrid.botTable(ordered);
             check(table.size() == ordered.size(), row.id() + " places every troop");
             check(RosterMath.validTable(table, real, owned, houses) == null, row.id() + " is a valid table: " + RosterMath.validTable(table, real, owned, houses));
+            var buy = WarGrid.buyOrder(WarGrid.dense(table), ordered);
+            List<String> named = new ArrayList<>();
+            for (String id : ordered) if (!id.equals(RosterMath.MARKER) && !id.equals(RosterMath.EMPTY) && !named.contains(id)) named.add(id);
+            check(new ArrayList<>(buy.keySet()).equals(named), row.id() + " buys in its line's order, not cell order: " + buy);
+            for (String id : named) check(buy.get(id) == Collections.frequency(ordered, id), row.id() + " buys every " + id);
         }
+    }
+
+    static void buyOrderFollowsLine() {
+        var table = WarGrid.dense(table(0, "reaper", 1, "revenant", 2, "revenant", 18, "hexer"));
+        var buy = WarGrid.buyOrder(table, List.of("hexer", "revenant", "revenant", "reaper"));
+        check(new ArrayList<>(buy.keySet()).equals(List.of("hexer", "revenant", "reaper")) && buy.get("revenant") == 2, "the line's order wins over cell order: " + buy);
+        check(new ArrayList<>(WarGrid.buyOrder(table, List.of()).keySet()).equals(List.of("reaper", "revenant", "hexer")), "with no line the table's cell order stands");
+        check(new ArrayList<>(WarGrid.buyOrder(table, List.of("hexer", "knight")).keySet()).equals(List.of("hexer", "reaper", "revenant")), "a line troop off the table is skipped; table troops it lacks follow in cell order");
     }
 
     public static void main(String[] args) {
@@ -149,6 +162,7 @@ public final class WarGridCheck {
         validTableOrder();
         starterValid();
         botBannersValid();
+        buyOrderFollowsLine();
         System.out.println("WarGridCheck ok: " + checks + " checks");
     }
 }

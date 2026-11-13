@@ -138,6 +138,20 @@ public final class WarGrid {
     }
 
     /**
+     * A bot's buy priority: each troop's count on its table, keyed in the order its ordered line first names it, then any troop the
+     * line does not name in cell order. Role placement can put a later troop in a lower cell (graveborn_normal's reapers take
+     * column 0), so buying in cell order would change what a bot trains first; spec 6 says bots field the same troops as before.
+     */
+    public static LinkedHashMap<String, Integer> buyOrder(List<String> table, List<String> line) {
+        Map<String, Integer> count = new HashMap<>();
+        for (String id : table) if (id != null && !id.equals(RosterMath.MARKER) && !id.equals(RosterMath.EMPTY)) count.merge(id, 1, Integer::sum);
+        LinkedHashMap<String, Integer> out = new LinkedHashMap<>();
+        if (line != null) for (String id : line) if (count.containsKey(id)) out.putIfAbsent(id, count.get(id));
+        for (String id : table) if (count.containsKey(id)) out.putIfAbsent(id, count.get(id));
+        return out;
+    }
+
+    /**
      * Removes the highest-index troop (the last row, from its right end backwards) until ok accepts the table or it is empty. The
      * input is not changed.
      */
