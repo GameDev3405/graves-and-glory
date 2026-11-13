@@ -274,3 +274,8 @@ shot st-yard-mess -228 202.6 -9 -240 200 -18
 shot st-yard-quay -188 202.6 -19 -199 200 -13
 shot st-watergate-e -166 201.6 0 -180 200 0
 shot cmd-yard -215 232 20 -215 199 -12
+shot st-seal-bridge 3 201.6 44 -9 201 33
+shot st-seal-bridge-end 2 201.6 60 -9 201 49
+shot st-seal-pier -22 204 24 -8 200 36
+shot st-seal-causeway -106 200.6 -16 -98 200 6
+shot cmd-seal-wing -262 214 -24 -252 203 -9

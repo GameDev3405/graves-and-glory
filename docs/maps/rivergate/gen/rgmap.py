@@ -446,6 +446,12 @@ class Map:
                 for y in range(65, 93): self.extra.pop((x, y, z), None)
             for pos, b in cells.items():
                 if (pos[0], pos[2]) in self.col: self.extra[pos] = b
+        self.sealed = {}
+        sp = os.path.join(HERE, 'seal.json')                       # extra guard blocks found by `rgmap.py seal`
+        if os.path.exists(sp):
+            import json
+            for x, y, z, b in json.load(open(sp)):
+                if (x, z) in self.col: self.extra[(x, y, z)] = b; self.sealed[(x, y, z)] = b
 
     def put(self, x, y, z, b):
         if (x, z) in self.col: self.extra[(x, y, z)] = b
@@ -465,6 +471,8 @@ class Map:
             elif ax <= 113: g = 'mossy_stone_brick_wall' if r < 0.15 else 'stone_brick_wall'
             else: g = 'spruce_fence'
             self.extra[(x, h + 1, z)] = g
+            if ax in (252, 253) and az == 10:                      # wing walls where the base wall meets the river: nobody drops from the wall top to the bank rail
+                for y in range(65, 72): self.extra[(x, y, z)] = 'stone_bricks' if (x + y) % 3 else 'mossy_stone_bricks'
             if ax <= 113 and h == 64 and (ax * 7 + az * 3) % 13 == 0: self.extra[(x, h + 2, z)] = 'lantern[hanging=false]'
         for (x, z), (h, s, u, top) in self.col.items():            # culvert decks, mooring posts, the arch where the river leaves
             ax, az = Q(x, z)
@@ -576,6 +584,81 @@ def free(b):
     return b is None or b.split('[')[0] in PASS or b.endswith('_carpet') or b.endswith('pressure_plate')
 
 
+POST = ('wall', 'fence', 'bars', 'lantern', 'chain', 'banner')
+
+
+def flood(m):
+    """walk the whole map as a soldier can (jump 1.25, any drop, standing on any top, also on the rim of a block that
+    carries a wall or fence post) and return {last dry column: standing height} for every way into open water"""
+    def blk(x, y, z):
+        h, s, u, _ = m.col[(x, z)]
+        return m.extra.get((x, y, z), s if y == h else (('water' if u == 'water' else 'stone') if y < h else None))
+    def kind(b):
+        if b in (None, 'air') or b == 'water' or free(b) or any(t in b for t in ('lantern', 'chain', 'banner', 'trapdoor', 'campfire')): return None
+        if 'slab' in b: return 0.5 if 'type=bottom' in b else 1.0
+        if 'bars' in b or 'pane' in b: return 1.0
+        if 'wall' in b or 'fence' in b: return 1.5
+        return 1.0
+    def tops(x, z):
+        h = m.col[(x, z)][0]; out = []
+        for y in range(h, 76):
+            k = kind(blk(x, y, z))
+            if k is None: continue
+            t = y + k; yy = math.ceil(t - 1e-6)
+            up = [blk(x, yy + d, z) for d in (0, 1)]
+            if k == 1.5 and kind(blk(x, y + 1, z)) is not None: continue      # a post under another post: no top to stand on
+            if all(kind(u) is None or any(p in u for p in POST) for u in up): out.append((t, k == 1.5, any(kind(u) is not None for u in up)))      # height, is a post top, is the rim of a block under a post
+        return out
+    def openwater(x, z):
+        c = m.col.get((x, z))
+        return c is not None and c[1] == 'water' and all(m.extra.get((x, y, z)) in (None, 'air', 'lily_pad') for y in (62, 63, 64))
+    T = {}
+    def tp(c):
+        if c not in T: T[c] = tops(*c)
+        return T[c]
+    seen = set(); q = []; entries = {}; m.ascents = {}; m.solid_entries = {}
+    for p in list(POINTS.values()) + [(-215, 0), (214, 0), (-150, -100), (150, 100)]:
+        for t in tp(p): seen.add((p, t)); q.append((p, t))
+    while q:
+        c, (t, post, rim) = q.pop()
+        for i, j in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+            n = (c[0] + i, c[1] + j)
+            if n not in m.col or abs(n[0]) > 270 or abs(n[1]) > 190: continue
+            if i and j and all(any(kind(blk(p[0], y, p[1])) for y in range(int(t), int(t) + 2)) for p in ((c[0] + i, c[1]), (c[0], c[1] + j))): continue      # no squeezing through a corner
+            if openwater(*n):
+                if rim: continue                                  # the post on this block is in the way
+                if not any(kind(blk(n[0], y, n[1])) for y in range(int(t), int(t) + 2)):
+                    entries[c] = max(t, entries.get(c, 0))
+                    if not post: m.solid_entries[c] = max(t, m.solid_entries.get(c, 0))
+                continue
+            for u in tp(n):
+                if u[0] <= t + 1.25 and (n, u) not in seen and not (rim and u[0] < t):
+                    seen.add((n, u)); q.append((n, u))
+                    if u[1] and not post: m.ascents[n] = max(u[0], m.ascents.get(n, 0)); m.__dict__.setdefault("afrom", {})[n] = (c, t)      # stepped from solid ground onto a post top
+    return entries
+
+
+def seal(m, path):
+    """raise the guard wherever flood() finds a way in, until there is none; the added blocks go to seal.json"""
+    import json
+    added = dict(m.sealed)
+    for rnd in range(12):
+        ent = flood(m)
+        todo = dict(m.solid_entries)
+        for n, u in m.ascents.items():
+            if any(m.col.get((n[0] + i, n[1] + j), (0, ''))[1] == 'water' for i in range(-2, 3) for j in range(-2, 3)): todo[n] = max(u, todo.get(n, 0))
+        print('round', rnd, 'ways in:', len(ent), 'to raise:', len(todo))
+        if not ent: break
+        for (x, z), t in todo.items():
+            y = int(t) if (t != int(t) and m.extra.get((x, int(t), z)) in (None, 'air')) else math.ceil(t - 1e-6)      # the first empty cell above what was stood on
+            below = m.extra.get((x, y - 1, z)) or m.col[(x, z)][1]
+            ax, az = Q(x, z)
+            g = below.split('[')[0] if ('wall' in below or 'fence' in below) and 'gate' not in below else ('spruce_fence' if ax > 113 and not base(ax, az) else 'stone_brick_wall')
+            m.extra[(x, y, z)] = g; added[(x, y, z)] = g
+    json.dump(sorted([[x, y, z, b] for (x, y, z), b in added.items()]), open(path, 'w'))
+    print('seal blocks:', len(added))
+
+
 def check(m):
     bad = 0
     for name, (px, pz) in POINTS.items():
@@ -609,6 +692,9 @@ def check(m):
                 if m.col[n][1] == 'water' and not deck(*Q(*n)): continue      # boats and posts: not reachable from the land
                 if stand(*n) is not None: gaps.append(n)
     gaps = sorted(set(gaps))
+    ledges = sorted(flood(m).items())
+    print('places a soldier can enter open water:', len(ledges), ledges[:40])
+    bad += len(ledges)
     print('water guard gaps:', len(gaps), gaps[:60])
     return bad + len(gaps)
 
@@ -632,5 +718,7 @@ if __name__ == '__main__':
             lo, hi = (b[0], YLO, b[1]), (b[2], YHI, b[3])
             m.world(lo, hi, solid=True).export_structure(lo, hi).save(os.path.join(outdir, 'rg_%s.nbt' % n.lower()))
             print(n, b)
+    elif cmd == 'seal':
+        seal(Map(), os.path.join(HERE, 'seal.json'))
     elif cmd == 'check':
         sys.exit(1 if check(Map()) else 0)

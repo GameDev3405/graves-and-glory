@@ -11,12 +11,12 @@ Levels: floor = the ground surface itself; feet = one above the ground; head = t
 | plants | 0 | 32577 | 0 | 0 | 0 | 32577 |
 | stairs | 0 | 396 | 32 | 2029 | 15136 | 17593 |
 | path and farmland | 9383 | 0 | 0 | 0 | 0 | 9383 |
-| slab | 0 | 963 | 1 | 514 | 1624 | 3102 |
-| wall | 0 | 1102 | 1118 | 0 | 262 | 2482 |
-| fence | 0 | 1249 | 166 | 0 | 704 | 2119 |
+| slab | 0 | 963 | 17 | 490 | 1632 | 3102 |
+| wall | 0 | 1144 | 1228 | 0 | 472 | 2844 |
+| fence | 0 | 1241 | 213 | 0 | 717 | 2171 |
 | bars and panes | 176 | 138 | 410 | 0 | 807 | 1531 |
 | workstations and props | 0 | 441 | 156 | 0 | 601 | 1198 |
-| trapdoor | 0 | 64 | 11 | 1 | 737 | 813 |
+| trapdoor | 0 | 22 | 11 | 1 | 737 | 771 |
 | lantern | 0 | 0 | 217 | 0 | 526 | 743 |
 | carpet | 0 | 202 | 0 | 345 | 0 | 547 |
 | ladder | 0 | 97 | 97 | 0 | 326 | 520 |
@@ -71,10 +71,10 @@ states: dirt_path x5971, farmland[moisture=7] x3412
 - H5: 23, e.g. 160 64 64; 160 64 65; 160 64 66; 165 64 69
 
 - **leaves**: 5359 (pass-through or decorative; not listed)
-### fence (1249)
-states: spruce_fence x2091, oak_fence x28
-- A3: 38, e.g. -269 75 -5; -269 74 -1; -266 73 -10; -265 72 -10
-- A4: 36, e.g. -269 75 5; -269 75 8; -268 74 9; -266 73 9
+### fence (1241)
+states: spruce_fence x2143, oak_fence x28
+- A3: 36, e.g. -269 75 -5; -269 74 -1; -266 73 -10; -265 72 -10
+- A4: 34, e.g. -269 75 5; -269 75 8; -268 74 9; -266 73 9
 - B2: 8, e.g. -172 65 -70; -172 65 -69; -172 65 -68; -172 65 -67
 - B3: 50, e.g. -172 65 -64; -172 65 -63; -172 65 -62; -172 65 -61
 - B4: 47, e.g. -172 65 60; -172 65 61; -172 65 62; -172 65 63
@@ -111,28 +111,28 @@ states: spruce_fence x2091, oak_fence x28
 - H3: 50, e.g. 160 65 -36; 161 65 -36; 162 65 -36; 163 65 -36
 - H4: 47, e.g. 160 65 35; 161 65 35; 162 65 35; 163 65 35
 - H5: 8, e.g. 171 65 64; 171 65 65; 171 65 66; 171 65 67
-- I3: 38, e.g. 257 66 -10; 258 67 -10; 259 68 -10; 262 70 -10
-- I4: 36, e.g. 257 66 9; 259 68 9; 265 73 9; 266 73 9
+- I3: 36, e.g. 257 66 -10; 258 67 -10; 259 68 -10; 262 70 -10
+- I4: 34, e.g. 257 66 9; 259 68 9; 265 73 9; 266 73 9
 
-### wall (1102)
-states: stone_brick_wall x1183, cobblestone_wall x967, mossy_cobblestone_wall x129, mossy_stone_brick_wall x117, brick_wall x82, deepslate_tile_wall x4
+### wall (1144)
+states: stone_brick_wall x1543, cobblestone_wall x967, mossy_cobblestone_wall x129, mossy_stone_brick_wall x119, brick_wall x82, deepslate_tile_wall x4
 - A3: 25, e.g. -250 65 -10; -249 65 -10; -248 65 -10; -247 65 -10
 - A4: 24, e.g. -250 65 9; -248 65 9; -247 65 9; -246 65 9
 - B3: 34, e.g. -205 65 -10; -204 65 -10; -203 65 -10; -202 65 -10
 - B4: 31, e.g. -205 65 9; -204 65 9; -203 65 9; -202 65 9
-- C3: 17, e.g. -113 65 -10; -113 64 -9; -113 64 -8; -113 64 -7
+- C3: 21, e.g. -113 65 -10; -113 64 -9; -113 64 -8; -113 64 -7
 - C4: 17, e.g. -113 64 1; -113 64 2; -113 64 3; -113 64 6
-- D3: 130, e.g. -96 65 -10; -95 65 -10; -94 65 -10; -93 65 -10
-- D4: 130, e.g. -96 65 9; -95 65 9; -94 65 9; -93 65 9
+- D3: 143, e.g. -96 65 -10; -95 65 -10; -94 65 -10; -93 65 -10
+- D4: 134, e.g. -96 65 9; -95 65 9; -94 65 9; -93 65 9
 - D5: 22, e.g. -33 65 99; -33 65 112; -34 65 99; -34 65 112
 - E3: 118, e.g. -32 65 -46; -32 65 -23; -31 65 -47; -31 65 -46
 - E4: 118, e.g. -32 65 22; -32 65 45; -31 65 22; -31 65 23
 - E5: 4, e.g. -31 65 104; -31 65 107; -18 65 103; -18 65 108
 - F2: 24, e.g. 32 65 -113; 32 65 -100; 33 65 -113; 33 65 -100
-- F3: 130, e.g. 32 65 -46; 32 65 -23; 32 65 -22; 33 65 -46
-- F4: 130, e.g. 32 65 21; 32 65 22; 32 65 45; 33 65 21
+- F3: 134, e.g. 32 65 -46; 32 65 -23; 32 65 -22; 33 65 -46
+- F4: 143, e.g. 32 65 21; 32 65 22; 32 65 45; 33 65 21
 - G3: 17, e.g. 96 65 -10; 97 65 -10; 98 65 -10; 99 65 -10
-- G4: 17, e.g. 96 65 9; 97 65 9; 98 65 9; 99 64 1
+- G4: 21, e.g. 96 65 9; 97 65 9; 98 65 9; 99 64 1
 - H3: 34, e.g. 204 65 -10; 203 65 -10; 202 65 -10; 201 65 -10
 - H4: 31, e.g. 204 65 9; 203 65 9; 202 65 9; 201 65 9
 - I3: 25, e.g. 249 65 -10; 248 65 -10; 247 65 -10; 246 65 -10
@@ -417,17 +417,6 @@ states: campfire[lit=true] x81, campfire[lit=false] x10
 - I3: 2, e.g. 234 65 -17; 226 65 -14
 - I4: 2, e.g. 234 65 16; 226 65 13
 
-### trapdoor (64)
-states: dark_oak_trapdoor[facing=north,half=top,open=true] x170, dark_oak_trapdoor[facing=south,half=top,open=true] x154, spruce_trapdoor[facing=south,half=top,open=true] x117, spruce_trapdoor[facing=north,half=top,open=true] x107, spruce_trapdoor[facing=west,half=top,open=true] x72, spruce_trapdoor[facing=east,half=top,open=true] x70, spruce_trapdoor[facing=south,half=bottom,open=true] x21, spruce_trapdoor[facing=north,half=bottom,open=true] x20
-- C3: 4, e.g. -97 63 -9; -97 63 -8; -97 63 -7; -97 63 -6
-- D3: 22, e.g. -89 63 -9; -96 63 -9; -96 63 -6; -95 63 -9
-- D4: 4, e.g. -89 63 8; -96 63 8; -93 63 8; -86 63 8
-- E2: 2, e.g. -9 65 -67; 8 65 -67
-- E5: 2, e.g. -9 65 66; 8 65 66
-- F3: 4, e.g. 88 63 -9; 95 63 -9; 92 63 -9; 85 63 -9
-- F4: 22, e.g. 88 63 8; 95 63 8; 95 63 5; 94 63 8
-- G4: 4, e.g. 96 63 8; 96 63 7; 96 63 6; 96 63 5
-
 ### other: red_mushroom (56)
 states: red_mushroom x56
 - A1: 3, e.g. -256 65 -161; -244 65 -178; -234 65 -138
@@ -465,6 +454,13 @@ states: red_bed[facing=south,part=head] x25, red_bed[facing=south,part=foot] x25
 - E4: 2, e.g. -9 65 52; -9 65 53
 - I3: 12, e.g. 245 65 -35; 245 65 -34; 242 65 -35; 242 65 -34
 
+### trapdoor (22)
+states: dark_oak_trapdoor[facing=north,half=top,open=true] x170, dark_oak_trapdoor[facing=south,half=top,open=true] x154, spruce_trapdoor[facing=south,half=top,open=true] x117, spruce_trapdoor[facing=north,half=top,open=true] x107, spruce_trapdoor[facing=west,half=top,open=true] x72, spruce_trapdoor[facing=east,half=top,open=true] x70, spruce_trapdoor[facing=south,half=top,open=false] x15, spruce_trapdoor[facing=north,half=top,open=false] x15
+- D3: 9, e.g. -89 63 -9; -96 63 -9; -95 63 -9; -94 63 -9
+- E2: 2, e.g. -9 65 -67; 8 65 -67
+- E5: 2, e.g. -9 65 66; 8 65 66
+- F4: 9, e.g. 88 63 8; 95 63 8; 94 63 8; 93 63 8
+
 ### other: white_concrete_powder (2)
 states: white_concrete_powder x2
 - E2: 2, e.g. 22 65 -108; 22 65 -109
@@ -476,13 +472,13 @@ states: lily_of_the_valley x1
 ## Outdoors at floor or feet level (open sky above): the ones most likely to trip troops
 
 - **path and farmland**: 5653. dirt_path x5653
-- **wall**: 936. stone_brick_wall x826, mossy_stone_brick_wall x101, cobblestone_wall x8, mossy_cobblestone_wall x1
-- **fence**: 816. spruce_fence x816
-- **slab**: 87. stone_brick_slab[type=bottom] x59, cobblestone_slab[type=bottom] x16, spruce_slab[type=bottom] x8, spruce_slab[type=top] x4
-- **trapdoor**: 64. spruce_trapdoor[facing=north,half=bottom,open=true] x20, spruce_trapdoor[facing=south,half=bottom,open=true] x20, spruce_trapdoor[facing=west,half=bottom,open=true] x12, spruce_trapdoor[facing=east,half=bottom,open=true] x12
+- **wall**: 936. stone_brick_wall x827, mossy_stone_brick_wall x100, cobblestone_wall x8, mossy_cobblestone_wall x1
+- **fence**: 771. spruce_fence x771
+- **slab**: 63. stone_brick_slab[type=bottom] x59, spruce_slab[type=top] x4
 - **fence gate**: 44. spruce_fence_gate[facing=south,open=false] x40, spruce_fence_gate[facing=north,open=false] x4
 - **other: brown_mushroom**: 43. brown_mushroom x43
 - **stairs**: 39. spruce_stairs[facing=north,half=bottom,shape=straight] x16, spruce_stairs[facing=south,half=bottom,shape=straight] x16, stone_brick_stairs[facing=west,half=bottom,shape=straight] x2, stone_brick_stairs[facing=east,half=bottom,shape=straight] x2, spruce_stairs[facing=east,half=bottom,shape=straight] x1, spruce_stairs[facing=west,half=bottom,shape=straight] x1
 - **workstations and props**: 35. cauldron x12, composter[level=3] x8, composter[level=2] x4, grindstone[face=floor,facing=east] x3, grindstone[face=floor,facing=west] x3, composter[level=5] x2
 - **other: red_mushroom**: 29. red_mushroom x29
+- **trapdoor**: 22. spruce_trapdoor[facing=north,half=bottom,open=true] x11, spruce_trapdoor[facing=south,half=bottom,open=true] x11
 - **campfire**: 6. campfire[lit=false] x6

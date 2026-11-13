@@ -141,3 +141,4 @@ Round four (Kort, 2026-11-12):
 - Every house furnished by room role (kitchen, shop, inn, guild, store, bedroom, workshop, guest, archive, loft).
 - Base yards: horse lines, two practice posts, lamp posts on the gate lane, a mess table, stores on the quay. Court, gate lanes and quay edge kept clear. No lit fires outdoors.
 - Base water gates: two stone piers, three grilled arches.
+- Water seal (Kort, 2026-11-13: troops must not be able to get into the water at all). `rgmap.py flood` walks the map as a soldier (jump 1.25, any drop) and lists every place open water can be entered; `rgmap.py seal` raises those spots one guard block at a time and writes `gen/seal.json` (422 blocks), loaded last by the map. `check` fails unless "places a soldier can enter open water" is 0. Base river corners got stone wing walls. Formation spots over water are a code matter for the army lead.
