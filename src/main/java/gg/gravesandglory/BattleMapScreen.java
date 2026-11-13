@@ -240,10 +240,17 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         int w = textRenderer.getWidth(p.title()) + 12;
         for (String r : p.rows()) w = Math.max(w, textRenderer.getWidth(r) + 16);
         int h = ROW + 3 + p.rows().size() * ROW + 2;
-        int x = p.x() + 14, y = p.y() + 8 - h; // above the anchor's right, clear of a point's name plate below it
-        if (x + w > ax + aw - 2) x = p.x() - 14 - w;
-        x = Math.max(ax + 2, x);
-        y = Math.max(ay + 2, Math.min(y, ay + ah - h - 2));
+        // above-right, above-left, below-right, below-left of the anchor: the first spot that covers no label drawn last frame
+        int[][] spots = {{p.x() + 14, p.y() + 8 - h}, {p.x() - 14 - w, p.y() + 8 - h}, {p.x() + 14, p.y() - 8}, {p.x() - 14 - w, p.y() - 8}};
+        int x = 0, y = 0;
+        for (int k = 0; k < spots.length; k++) {
+            int cx = Math.max(ax + 2, Math.min(spots[k][0], ax + aw - w - 2));
+            int cy = Math.max(ay + 2, Math.min(spots[k][1], ay + ah - h - 2));
+            if (k == 0) { x = cx; y = cy; }
+            boolean clear = true;
+            for (int[] t : taken) if (cx < t[0] + t[2] && cx + w > t[0] && cy < t[1] + t[3] && cy + h > t[1]) { clear = false; break; }
+            if (clear) { x = cx; y = cy; break; }
+        }
         return new Popup(p.kind(), p.point(), p.army(), p.title(), p.rows(), p.active(), p.wx(), p.wz(), x, y, w);
     }
 
@@ -310,6 +317,10 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         view.layout(ax, ay, aw, ah); // re-clamps when the window changed under a live screen
         hits.clear();
         taken.clear();
+        if (client != null && client.player != null) { // the "you" arrow keeps its spot; labels move off it
+            int yx = sx(client.player.getX()), yy = sy(client.player.getZ());
+            taken.add(new int[] {yx - 8, yy - 8, 17, 17});
+        }
         g.fill(0, 0, width, height, TABLE);
         g.enableScissor(ax, ay, ax + aw, ay + ah);
         try {
