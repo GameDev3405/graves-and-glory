@@ -694,7 +694,7 @@ public final class MotionChecks {
      * (a shield troop braces, or shows the wall formed). mo-crowd: with the real clips, after 60 ticks to settle, 80 ticks of frames
      * in which every knight drew a new pose; for each pair of knights the RMS of the angle between their poses over every bone
      * rotation the engine moves (channels that never move on any knight are left out, and the RMS over every channel is logged
-     * too) must be over 1 degree; mo-crowd.png is the view. mo-late-join: a synthetic swing (the knight family's first variant, 1.6
+     * too) must be over 1 degree (on GeckoLib the mean over every pair must be over 0.3: decision 9, a phase offset only); mo-crowd.png is the view. mo-late-join: a synthetic swing (the knight family's first variant, 1.6
      * s) is sent to the front knight; once its clip time is past impactTicks + 12 ticks (where the old impactTicks + 10 catch-up window
      * had closed: carry B8, fix round 1 I2) and at least 4 ticks before the clip ends, this client forgets the knight as an unload would
      * (MotionEvents.Client.forget and TroopMotion.forget) and the server sends what a player who starts tracking it is owed
@@ -833,9 +833,13 @@ public final class MotionChecks {
                 if (rMove < minMove) { minMove = rMove; closest = "knights " + i + " and " + j; }
                 minAll = Math.min(minAll, rAll); sumMove += rMove; pairs++;
             }
-            boolean pass = minMove > 1;
+            // Geo (Kort 2026-11-12, decision 9, via the animation session: a per-knight phase offset only, no posture variety): two random phases can
+            // land together, so the GeckoLib crowd passes on the mean pair RMS over 0.3 degrees (lockstep reads 0.00, the offset 0.70 to 0.75);
+            // the legacy path, whose idles carry per-troop variety, keeps every pair over 1 degree
+            boolean geo = GeoDraws.geo("knight"); double mean = sumMove / Math.max(1, pairs);
+            boolean pass = geo ? mean > 0.3 : minMove > 1;
             report("mo-crowd", pass, String.format(Locale.ROOT, "%d knights" + via + " idle on Hold, %d frames over %d ticks (%.1f s) with every knight newly drawn; %d of %d bone rotation channels move; pair RMS over the moving channels: least %.2f degrees (%s), mean %.2f; over every rotation channel: least %.2f; %s",
-                n, samples.size(), ticks, ticks / 20.0, moving, len / 2, minMove, closest, sumMove / pairs, minAll, pass ? "no two within 1 degree" : "two within 1 degree"));
+                n, samples.size(), ticks, ticks / 20.0, moving, len / 2, minMove, closest, sumMove / pairs, minAll, geo ? (pass ? "mean over 0.3 degrees (GeckoLib rule)" : "mean 0.3 degrees or less: lockstep (GeckoLib rule)") : (pass ? "no two within 1 degree" : "two within 1 degree")));
         }
 
         /** mo-late-join, in steps: the swing sent; its track on this client; the forget and the catch-up; the comparison each tick. */
