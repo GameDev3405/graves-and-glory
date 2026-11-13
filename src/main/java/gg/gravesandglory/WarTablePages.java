@@ -233,11 +233,11 @@ final class WarTablePages {
     double pressX, pressY, curX, curY, grabX, grabY;
     /** The banner the drag began on, and what every seat would do with a drop of the card (fromRoll or move), and the roll (unseat). */
     List<String> dragBase = List.of();
-    final BannerDrop.Plan[] seatPlan = new BannerDrop.Plan[SEATS];
-    BannerDrop.Plan unseatPlan;
+    final SlotDrop.Plan[] seatPlan = new SlotDrop.Plan[SEATS];
+    SlotDrop.Plan unseatPlan;
     /** A drop in flight: the plan's commands go out one by one, each once the banner shows the step before; the banner it ends on
      *  stands in for the server's while a plan has several steps, so the seats do not flicker. */
-    BannerDrop.Plan pend;
+    SlotDrop.Plan pend;
     List<String> pendBase = List.of();
     int pendStep;
     long pendAt;
@@ -552,7 +552,7 @@ final class WarTablePages {
     }
 
     /** The banner as the server will have it once the commands already sent or queued land: the snapshot's, with each Add, Remove and
-     *  seat click applied (BannerDrop.apply, the server's own rule) until the snapshot catches up or PLANNED_MS pass. A click resolves its
+     *  seat click applied (SlotDrop.apply, the server's own rule) until the snapshot catches up or PLANNED_MS pass. A click resolves its
      *  seat from this, so rapid clicks before the next snapshot do not all pick the same stale seat. */
     static List<String> line() {
         var snap = CampaignClient.profile.line();
@@ -563,7 +563,7 @@ final class WarTablePages {
     private static long plannedAt;
     private static final long PLANNED_MS = 2500;
     /** Notes a slot command just sent or queued: the projected banner moves on by it. */
-    static void planSlot(int slot, String id) { planned = BannerDrop.apply(line(), slot, id, dropRules()); plannedAt = System.currentTimeMillis(); }
+    static void planSlot(int slot, String id) { planned = SlotDrop.apply(line(), slot, id, dropRules()); plannedAt = System.currentTimeMillis(); }
 
     /** The copies of a troop in the deployment. */
     static int copies(String troop) { return java.util.Collections.frequency(CampaignClient.profile.line(), troop); }
@@ -609,7 +609,7 @@ final class WarTablePages {
         var line = shownLine();
         String id = i < line.size() ? line.get(i) : EMPTY;
         if (!id.equals(RosterMath.MARKER)) return id;
-        String head = line.get(BannerDrop.head(line, i));
+        String head = line.get(SlotDrop.head(line, i));
         return RosterMath.MARKER.equals(head) ? EMPTY : head;
     }
     /** The banner the seats show: the one a drop in flight ends on while it has steps to go, else the profile's. */
@@ -715,19 +715,19 @@ final class WarTablePages {
         String troop = roll.get(i).troopId(); var line = line(); // integration: p2 takes slot:<i>:<id>, not army:
         int at = how.equals("add") ? firstRun(weight(troop)) : line.lastIndexOf(troop);
         String id = how.equals("add") ? troop : EMPTY;
-        if (at >= 0 && send("slot:" + at + ":" + id)) planSlot(at, id);
+        if (at >= 0 && send(BannerDrop.command(CampaignClient.profile.activeBanner, at, EMPTY.equals(id) ? BannerDrop.ERASE : id))) planSlot(at, id);
     }
 
     /** A seat click: the troop goes in the seat; emptying a later half of a wide troop empties the troop's own seat (the server repacks). */
     void place(int seat, String troop) {
         if (troop == null) return;
         int at = EMPTY.equals(troop) ? unitSeat(seat) : seat;
-        if (send("slot:" + at + ":" + troop)) planSlot(at, troop);
+        if (send(BannerDrop.command(CampaignClient.profile.activeBanner, at, EMPTY.equals(troop) ? BannerDrop.ERASE : troop))) planSlot(at, troop);
     }
 
     // ============================================================================================================ drag and drop
 
-    static BannerDrop.Rules dropRules() { return new BannerDrop.Rules(RosterMath.Catalog.fromSpec(), CampaignClient.profile.owned.keySet(), RosterMath.fieldableHouses()); }
+    static SlotDrop.Rules dropRules() { return new SlotDrop.Rules(RosterMath.Catalog.fromSpec(), CampaignClient.profile.owned.keySet(), RosterMath.fieldableHouses()); }
 
     /** A left press (GUI px) on the Banner page. A press on a seat is taken here: its click (place the armed troop) goes on the release,
      *  so that a drag from an occupied seat does not first place the armed troop. A press on a roll row goes on to arm the row, and may
@@ -765,8 +765,8 @@ final class WarTablePages {
         moved = true;
         if (pressSeat >= 0) { // a seated troop is lifted by any of its seats; an empty seat has nothing to lift
             var line = CampaignClient.profile.line();
-            if (pressSeat >= line.size() || line.get(pressSeat).equals(EMPTY) || line.get(pressSeat).equals(RosterMath.MARKER) && line.get(BannerDrop.head(line, pressSeat)).equals(EMPTY)) { pressed = false; pressSeat = -1; return true; }
-            dragFromRoll = false; dragSeat = BannerDrop.head(line, pressSeat); dragTroop = line.get(dragSeat);
+            if (pressSeat >= line.size() || line.get(pressSeat).equals(EMPTY) || line.get(pressSeat).equals(RosterMath.MARKER) && line.get(SlotDrop.head(line, pressSeat)).equals(EMPTY)) { pressed = false; pressSeat = -1; return true; }
+            dragFromRoll = false; dragSeat = SlotDrop.head(line, pressSeat); dragTroop = line.get(dragSeat);
         }
         flyAt = 0; dropWhy = "";
         if (!classify()) { cancelDrag(); return true; }
@@ -802,8 +802,8 @@ final class WarTablePages {
         dragBase = new ArrayList<>(CampaignClient.profile.line());
         if (dragBase.size() < SEATS || dragTroop.isEmpty()) return false;
         var r = dropRules();
-        for (int s = 0; s < SEATS; s++) seatPlan[s] = dragFromRoll ? BannerDrop.fromRoll(dragBase, dragTroop, s, r) : BannerDrop.move(dragBase, dragSeat, s, r);
-        unseatPlan = dragFromRoll ? null : BannerDrop.unseat(dragBase, dragSeat, r);
+        for (int s = 0; s < SEATS; s++) seatPlan[s] = dragFromRoll ? SlotDrop.fromRoll(dragBase, dragTroop, s, r) : SlotDrop.move(dragBase, dragSeat, s, r);
+        unseatPlan = dragFromRoll ? null : SlotDrop.unseat(dragBase, dragSeat, r);
         return true;
     }
 
@@ -828,13 +828,13 @@ final class WarTablePages {
     }
 
     /** What dropping the card at a GUI point would do against the banner now: the plan, or null when the point is no target. */
-    BannerDrop.Plan planAt(double x, double y) {
+    SlotDrop.Plan planAt(double x, double y) {
         var line = new ArrayList<>(CampaignClient.profile.line());
         if (line.size() < SEATS) return null;
         var r = dropRules();
         int s = seatAt(x, y);
-        if (s >= 0) return dragFromRoll ? BannerDrop.fromRoll(line, dragTroop, s, r) : BannerDrop.move(line, dragSeat, s, r);
-        if (!dragFromRoll && rollAt(x, y)) return BannerDrop.unseat(line, dragSeat, r);
+        if (s >= 0) return dragFromRoll ? SlotDrop.fromRoll(line, dragTroop, s, r) : SlotDrop.move(line, dragSeat, s, r);
+        if (!dragFromRoll && rollAt(x, y)) return SlotDrop.unseat(line, dragSeat, r);
         return null;
     }
 
@@ -924,7 +924,7 @@ final class WarTablePages {
                 var here = planAt(curX, curY);
                 int hs = seatAt(curX, curY);
                 legal = here != null && here.ok();
-                var lifted = dragFromRoll ? List.<Integer>of() : BannerDrop.seatsOf(dragBase, dragSeat);
+                var lifted = dragFromRoll ? List.<Integer>of() : SlotDrop.seatsOf(dragBase, dragSeat);
                 for (int i = 0; i < SEATS; i++) {
                     var b = buttons.get("seat-" + i);
                     if (b == null || !b.visible) continue;
@@ -1075,7 +1075,7 @@ final class WarTablePages {
         var line = shownLine();
         for (int i = 0; i < SEATS; i++) {
             String id = i < line.size() ? line.get(i) : EMPTY, label = null;
-            if (id.equals(RosterMath.MARKER)) { int u = BannerDrop.head(line, i); label = (i - u + 1) + " of " + weight(line.get(u)); }
+            if (id.equals(RosterMath.MARKER)) { int u = SlotDrop.head(line, i); label = (i - u + 1) + " of " + weight(line.get(u)); }
             else if (!id.equals(EMPTY) && weight(id) > 1) label = "1 of " + weight(id);
             seat(g, "seat-" + i, id, drawnTroop(i), ox + SEAT_X + SEAT_STEP * (i % 5), oy + SEAT_Y + SEAT_STEP * (i / 5), label); // a wide troop's later half draws the troop and its place in it
         }

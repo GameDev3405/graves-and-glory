@@ -6,7 +6,59 @@ public final class LobbyRulesCheck {
  static UUID id(){return UUID.randomUUID();}
  /** Steps the countdown n times by 10 ticks, as Campaign.roomCountdown does every 10 ticks; returns every room that came due. */
  static List<SocialHub.Room> run(SocialHub h,int n,boolean busy,String preparing){List<SocialHub.Room> due=new ArrayList<>();for(int i=0;i<n;i++)due.addAll(h.countdown(10,busy,preparing).due());return due;}
+ static final com.google.gson.Gson GSON=new com.google.gson.Gson();
+ static final RosterMath.Catalog CAT=RosterMath.Catalog.fromSpec();
+ static final Set<String> HOUSES=new HashSet<>(CAT.house().values());
+ /** A fresh profile as the server holds it: the starter banner and every Common owned. */
+ static Profile fresh(){Profile p=new Profile();p.sanitize();return p;}
+ /** Runs a banner command as the server does and returns its refusal (null when accepted). */
+ static String run(Profile p,String cmd){return BannerCommands.apply(p,cmd,CAT,HOUSES);}
+ static String json(Profile p){return GSON.toJson(p);}
+ /** Each malformed or illegal cell command is refused with a sentence and leaves the profile exactly as it was (Review Focus 5). */
+ static void cellCommandRefusals(){
+  Profile p=fresh();String legendary=CAT.rarity().entrySet().stream().filter(e->e.getValue().equals("legendary")).map(Map.Entry::getKey).sorted().findFirst().get();
+  String unowned=CAT.rarity().keySet().stream().filter(id->!p.owned.containsKey(id)&&!CAT.rarityOf(id).equals("legendary")).sorted().findFirst().get();
+  String second=CAT.rarity().entrySet().stream().filter(e->e.getValue().equals("legendary")&&!e.getKey().equals(legendary)).map(Map.Entry::getKey).sorted().findFirst().get();
+  p.owned.put(legendary,new Profile.Owned());p.owned.put(second,new Profile.Owned());p.setTable(0,new TreeMap<>()); // an empty banner, so the cost allowance cannot refuse first
+  String saved=json(p);
+  String[] bad={"cell:5:0:0:knight","cell:0:9:0:knight","cell:0:-1:0:knight","cell:0:0:-1:knight","cell:0:0:6:knight","cell:0:0:0:"+unowned,"cell:0:0:0:no_such","cell:0:x:0:knight","cell:0:0:0","cell:0:0:0:knight:extra"};
+  for(String cmd:bad){String why=run(p,cmd);check(why!=null&&why.endsWith(".")&&json(p).equals(saved),"Refused and unchanged: "+cmd+" ("+why+")");}
+  check(run(p,"cell:0:0:5:"+legendary)==null,"A first Legendary is accepted");
+  String after=json(p);
+  String why=run(p,"cell:0:1:5:"+second);
+  check("Only one Legendary troop can stand in a banner.".equals(why)&&json(p).equals(after),"A second Legendary is refused and the profile is unchanged");
+  check(run(p,"cell:0:2:5:knight")==null&&p.table().get(WarGrid.index(2,5)).equals("knight"),"A good cell command paints");
+  check(run(p,"cell:0:2:5:-")==null&&!p.table().containsKey(WarGrid.index(2,5)),"The brush - clears the cell");
+ }
+ /** The banner commands: the sixth banner, names, copy, delete and use. */
+ static void bannerCommands(){
+  Profile p=fresh();
+  for(int i=1;i<RosterMath.maxBanners();i++)check(run(p,"banner:new:Wing "+i)==null,"A new banner "+i);
+  String saved=json(p);
+  check(run(p,"banner:new:Sixth")!=null&&json(p).equals(saved),"A sixth banner is refused and nothing changes");
+  check(run(p,"banner:copy:0")!=null&&json(p).equals(saved),"A copy past the limit is refused");
+  check(run(p,"banner:rename:1: \u0007"+"x".repeat(17)+" ")==null&&p.banners.get(1).name.equals("x".repeat(16)),"A 17-character name is cut to 16 without control characters");
+  check(run(p,"banner:rename:2:   ")==null&&p.banners.get(2).name.equals("Banner 3"),"A blank name becomes Banner N");
+  check(run(p,"banner:rename:9:Nope")!=null,"Renaming a banner that does not exist is refused");
+  check(run(p,"banner:use:3")==null&&p.activeBanner==3,"use sets the active banner");
+  check(run(p,"banner:delete:1")==null&&p.activeBanner==2&&p.banners.size()==4,"Deleting a banner before the active one moves the active index with it");
+  check(run(p,"banner:delete:2")==null&&p.activeBanner==2&&p.banners.size()==3,"Deleting the active banner keeps the index on the next one");
+  check(run(p,"banner:delete:2")==null&&p.activeBanner==1,"Deleting the active last banner steps back");
+  p.activeBanner=0;
+  check(run(p,"banner:copy:0")==null&&p.banners.get(p.banners.size()-1).cells.equals(p.banners.get(0).cells)&&p.banners.get(p.banners.size()-1).name.endsWith("copy"),"copy duplicates the cells");
+  check(run(p,"banner:delete:1")==null&&run(p,"banner:delete:1")==null&&p.banners.size()==1&&run(p,"banner:delete:0")!=null&&p.banners.size()==1,"The last banner cannot be deleted");
+  check(run(p,"banner:bogus")!=null&&run(p,"banner:use:x")!=null,"Unknown banner commands are refused");
+ }
+ /** The one-time notice: set, saved, kept through a reload until shown, null once shown and saved. Campaign.showNotice is this clear-and-save. */
+ static void noticeOnce(){
+  Profile p=fresh();p.notice="Your banner cost more than the war table allows; 2 troops were taken off the back rows.";
+  Profile a=GSON.fromJson(json(p),Profile.class);a.sanitize();
+  check(p.notice.equals(a.notice),"The notice survives a save and reload until it is shown");
+  String shown=a.notice;a.notice=null;Profile b=GSON.fromJson(json(a),Profile.class);b.sanitize();
+  check(shown!=null&&b.notice==null,"Once shown and saved the notice is null after a reload");
+ }
  public static void main(String[] args){
+  cellCommandRefusals();bannerCommands();noticeOnce();
   long now=1_000_000;
   // seat assignment
   SocialHub h=new SocialHub();UUID a=id(),b=id(),c=id(),d=id(),e=id(),f=id(),g=id(),k=id(),x=id();

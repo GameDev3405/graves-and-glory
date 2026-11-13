@@ -200,7 +200,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
     static String dragWord(String n){return switch(n){case "drag-valid"->"Seat";case "drag-invalid"->"The same troop.";case "drag-ghost"->"Trade places";default->"Take off";};}
     static int[] mid(int[] b){return b==null?null:new int[]{b[0]+b[2]/2,b[1]+b[3]/2};}
 
-    List<String> base=List.of();BannerDrop.Plan plan;int[] src,dst;int sent0,doneAt,relK;String flight="",dragSeen="";
+    List<String> base=List.of();SlotDrop.Plan plan;int[] src,dst;int sent0,doneAt,relK;String flight="",dragSeen="";
 
     /** Works the scene's source, target and expected plan out from the banner and the page as drawn now (canvas px). */
     boolean resolve(MinecraftClient c,String name){
@@ -215,8 +215,8 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
             default->dst=new int[]{UiCanvas.width()-30,30};
         }
         if(src==null||dst==null)return false;
-        if(sp[2].equals("seat")||sp[2].equals("unit"))plan=sp[0].equals("roll")?BannerDrop.fromRoll(base,troop,seat,r):BannerDrop.move(base,head,seat,r);
-        else if(sp[2].equals("paper"))plan=BannerDrop.unseat(base,head,r);
+        if(sp[2].equals("seat")||sp[2].equals("unit"))plan=sp[0].equals("roll")?SlotDrop.fromRoll(base,troop,seat,r):SlotDrop.move(base,head,seat,r);
+        else if(sp[2].equals("paper"))plan=SlotDrop.unseat(base,head,r);
         return true;
     }
     int[] nudge(){double dx=dst[0]-src[0],dy=dst[1]-src[1],n=Math.max(1,Math.hypot(dx,dy));return new int[]{(int)Math.round(src[0]+dx/n*14),(int)Math.round(src[1]+dy/n*14)};}
@@ -232,7 +232,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         if(k==0){
             sent0=WarTablePages.sent().size();doneAt=-1;flight="";dragSeen="";relK=click?8:6;
             if(click){
-                base=new ArrayList<>(CampaignClient.profile.line());plan=BannerDrop.fromRoll(base,"knight",18,WarTablePages.dropRules());
+                base=new ArrayList<>(CampaignClient.profile.line());plan=SlotDrop.fromRoll(base,"knight",18,WarTablePages.dropRules());
                 var roll=WarTablePages.owned();for(int i=0;i<roll.size();i++)if(roll.get(i).troopId().equals("knight"))UiPagesChecks.click(c,UiPagesChecks.box(c,"row-"+i));
                 return;
             }

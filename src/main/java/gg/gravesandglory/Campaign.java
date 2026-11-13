@@ -208,7 +208,10 @@ public final class Campaign {
         if(ending()){skipped.put(p.getUuid(),MatchEnding.Step.DONE);endingDone.add(p.getUuid());toLobby(p);return;} // joining during the ending: to camp, no step; a participant's reward and report are already settled
         if(b.running&&squad!=null&&squad.seated){returned(p.getUuid());b.toBase(p,squad.team);}else toLobby(p);
         if(b.running&&(squad==null||!squad.seated))notice(p.getUuid(),WELCOME_WAIT); // true for the moments he reads it, and gone with the round (returnLobby) or after NOTICE_TICKS: no standing line, which the round's end would leave false
-        else standing(p.getUuid(),WELCOME);}
+        else standing(p.getUuid(),WELCOME);
+        showNotice(p.getUuid());}
+    /** Shows the profile's one-time notice (Profile.notice, set when a banner was trimmed on load) as a normal notice, then clears it and saves; nothing when there is none. */
+    void showNotice(UUID id){var pr=profile(id);if(pr.notice==null)return;String text=pr.notice;pr.notice=null;if(save(id))notice(id,text);else pr.notice=text;}
     void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();GearCombat.clear(p);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
         // The mode takes down what it placed before the round's armies go (idempotent: finish and a manual return both call it).
@@ -249,11 +252,12 @@ public final class Campaign {
             if(row.map()!=map){switchMap(row.map());notice(p.getUuid(),"Preparing "+Spec.MAPS[map].name()+" for "+row.name()+".");}
             return true;
         }
+        if(cmd.equals("notice")){showNotice(p.getUuid());return true;} // the War Table page opened: a one-time profile text (a banner trimmed on load) is shown now
         if(cmd.equals("lobby")){if(b.running)notice(p.getUuid(),"Finish the battle before returning to the lobby.");else toLobby(p);return true;}
         if(b.running){
             var current=b.squads.get(p.getUuid());
             boolean global=cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill")||cmd.equals("start")||cmd.startsWith("difficulty:");
-            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||cmd.startsWith("slot:")||cmd.startsWith("colour:")||GearCommands.arsenal(cmd);
+            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||BannerCommands.handles(cmd)||cmd.startsWith("colour:")||GearCommands.arsenal(cmd);
             if(global||personal&&current!=null&&current.seated){notice(p.getUuid(),"Active battle choices are locked until the match ends.");return true;}
         }
         if(cmd.startsWith("difficulty:")){
@@ -268,16 +272,10 @@ public final class Campaign {
         if(cmd.startsWith("star:")){star(p,pr,cmd.substring(5));return true;}
         if(cmd.startsWith("legendary:")){legendary(p,pr,cmd.substring(10));return true;}
         if(cmd.startsWith("unlock:")||cmd.startsWith("army:")){notice(p.getUuid(),"Troops now join by recruitment rolls at the camp shrine.");return true;}
-        if(cmd.startsWith("slot:")){ // slot:<cell>:<troop id or empty>: one troop on one cell of the active banner (Task 7 rewrites the war table pages over this)
-            String[] parts=cmd.split(":");if(parts.length!=3)return true;int slot;try{slot=Integer.parseInt(parts[1]);}catch(Exception e){return true;}
-            var catalog=RosterMath.Catalog.fromSpec();String id=parts[2];var type=troop(id);
-            if(!WarGrid.inRange(slot)||type==null&&!id.equals(RosterMath.EMPTY))return true;
-            if(type!=null&&!pr.owned.containsKey(id)){notice(p.getUuid(),type.name()+" is not in your collection. Recruit it first.");return true;}
-            if(type!=null&&!RosterMath.fieldableHouses().contains(type.house())){notice(p.getUuid(),type.name()+" cannot be fielded yet: "+RosterMath.houseName(type.house())+" has not joined the war.");return true;}
-            List<String> entries=new ArrayList<>(pr.line());entries.set(slot,id);
-            var next=WarGrid.sparse(entries);var refusal=RosterMath.validTable(next,catalog,pr.owned.keySet(),RosterMath.fieldableHouses());
-            if(refusal!=null){notice(p.getUuid(),"That banner does not fit the war table ("+refusal+").");return true;}
-            var before=pr.table();int active=pr.activeBanner;pr.setTable(active,next);if(!save(p.getUuid())){pr.setTable(active,before);return true;}
+        if(BannerCommands.handles(cmd)){ // cell:<banner>:<col>:<row>:<id|-> and banner:new/rename/copy/delete/use: the same paint rules the page previews with; a refusal changes and saves nothing
+            var before=JSON.toJson(pr);String refusal=BannerCommands.apply(pr,cmd,RosterMath.Catalog.fromSpec(),RosterMath.fieldableHouses());
+            if(refusal!=null){notice(p.getUuid(),refusal);return true;}
+            if(!save(p.getUuid())){profiles.put(p.getUuid(),JSON.fromJson(before,Profile.class));return true;}
             var room=social.room(p.getUuid()); // a banner change that leaves the lobby's House pick no troop takes back the Ready
             if(room!=null&&!room.playing&&room.ready.contains(p.getUuid())&&!houseRefusal(room,p.getUuid()).isEmpty()){room.ready.remove(p.getUuid());social.revision++;notice(p.getUuid(),houseRefusal(room,p.getUuid()));}
             return true;

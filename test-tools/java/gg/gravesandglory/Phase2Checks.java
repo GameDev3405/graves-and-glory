@@ -243,7 +243,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 }
                 case 2->{ // p2-banner-edit: the Sunweaver is granted (the migration refunded it), then placed in the last slot
                     var pr=profile(b);pr.owned.putIfAbsent("mage",new Profile.Owned());b.campaign.save(player);
-                    before=new ArrayList<>(pr.line());command(b,"slot:53:mage",3);
+                    before=new ArrayList<>(pr.line());command(b,"cell:0:8:5:mage",3);
                 }
                 case 3->{if(since(b)>=20){
                     var pr=profile(b);var cat=RosterMath.Catalog.fromSpec();
@@ -251,13 +251,13 @@ public final class Phase2Checks implements ClientModInitializer {
                     boolean fits=RosterMath.validTable(WarGrid.sparse(edit),cat,pr.owned.keySet(),RosterMath.fieldableHouses())==null;
                     boolean valid=RosterMath.validTable(pr.table(),cat,pr.owned.keySet(),RosterMath.fieldableHouses())==null,repacked=fits&&pr.line().equals(edit)&&pr.line().get(53).equals("mage");
                     editOk=valid&&repacked;editWhy="slot:53:mage (the last war table cell) -> "+String.join(",",pr.line())+" (valid="+valid+", the edit fits the allowance="+fits+", exactly the edit="+repacked+")";
-                    before=new ArrayList<>(pr.line());command(b,"slot:0:gl_marshal",4);
+                    before=new ArrayList<>(pr.line());command(b,"cell:0:0:0:gl_marshal",4);
                 }}
                 case 4->{if(since(b)>=20){
                     var pr=profile(b);boolean same=pr.line().equals(before)&&!pr.owned.containsKey("gl_marshal");
                     editOk&=same;editWhy+="; slot:0:gl_marshal (not owned) left the banner unchanged="+same+", notice: "+notice(b);
                     report("p2-banner-edit",editOk,editWhy);
-                    command(b,"slot:2:wm_hound",5);
+                    command(b,"cell:0:2:0:wm_hound",5);
                 }}
                 case 5->{if(since(b)>=20){ // ruling 2 (an owned troop of an unfieldable House stays out of the banner) has nothing left to bite on: every House is fieldable since Task 10, so the owned Wildmoot troop goes in
                     var pr=profile(b);boolean placed=pr.line().size()>2&&"wm_hound".equals(pr.line().get(2)),owned=pr.owned.containsKey("wm_hound"),quiet=!notice(b).contains("cannot be fielded");
