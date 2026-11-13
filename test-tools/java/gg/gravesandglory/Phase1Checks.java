@@ -3598,42 +3598,38 @@ public final class Phase1Checks implements ClientModInitializer {
             }
         }
 
-        /** Banner: a click on row 1 arms its troop and a click on seat 0 sends slot:0:<it>, which the snapshot brings back and the seat
-         *  draws; the other button on seat 19 sends slot:19:empty; then both seats are put back as they were. */
+        /** Banner: the palette, counts and House trait rows are drawn; a click on a palette row arms a troop the table can take, a click on an
+         *  empty cell sends cell:<banner>:<col>:<row>:<it> (BannerDrop.command), which the snapshot brings back and the cell draws; the other
+         *  button on that cell sends the erase and the cell is empty again, so the banner ends as it began. */
         void banner(MinecraftClient c,int tick){
-            int k=at(tick),t=WarTablePages.team();int[] o=WarTable.origin();var line=CampaignClient.profile.line();var p=pages(c);
+            int k=at(tick);int[] o=WarTable.origin();var p=pages(c);var saved=WarTablePages.savedTable();
             switch(sub){
-                case 0->{roll=new ArrayList<>();for(var r:WarTablePages.owned())roll.add(r.troopId());at0=line.get(0);at19=line.get(19);
-                    var add=button(c,"add-0");var remove=button(c,"remove-0");
-                    boolean start=roll.size()>=2&&at0.equals(roll.get(0))&&!at19.equals(WarTablePages.EMPTY)&&add!=null&&!add.active&&remove!=null&&remove.active&&(WarTablePages.used()+"/20 seats").equals(text("seated"))&&"12 seats".equals(text("count-0"));
-                    ok&=start;why+="; the roll "+roll+", seat 0 "+at0+", seat 19 "+at19+", \""+text("seated")+"\", row 0 \""+text("count-0")+"\" with Add "+(add!=null&&add.active?"taking a press":"dull")+" and Remove "+(remove!=null&&remove.active?"taking a press":"dull")+(start?"":" WRONG");
+                case 0->{roll=new ArrayList<>();for(var r:WarTablePages.owned())roll.add(r.troopId());
+                    String troops=WarTablePages.troops()+" / "+RosterMath.maxTroops()+" troops",gold=WarTablePages.spent()+" / "+RosterMath.allowance()+" gold";
+                    boolean start=!roll.isEmpty()&&troops.equals(text("troops"))&&gold.equals(text("gold"))&&"Front".equals(text("front"))&&box(c,"cell-"+(WarGrid.cells()-1))!=null;
+                    ok&=start;why+="; the palette "+roll+", \""+text("troops")+"\", \""+text("gold")+"\", \""+text("front")+"\""+(start?"":" WRONG (want \""+troops+"\", \""+gold+"\")");
                     // with places left on the roll, the hint sits in its last place, at the foot (finding 3 of the Task 7 review)
                     int[] hr=rect("roll-hint");int last=o[1]+WarTablePages.ROW_TOP+WarTablePages.ROW_H*(WarTablePages.ROWS-1);
                     boolean foot=roll.size()>=WarTablePages.ROWS||WarTablePages.ROLL_HINT.equals(text("roll-hint"))&&in(hr,rect("roll"))&&hr[1]>=last&&hr[1]+hr[3]<=last+WarTablePages.ROW_H;
                     ok&=foot;why+="; the hint \""+text("roll-hint")+"\" at "+str(hr)+(foot?" in the roll's last place":" WRONG (the last place "+last+" to "+(last+WarTablePages.ROW_H)+", the roll "+str(rect("roll"))+")");
                     var tf=traitFaults(c);ok&=tf.isEmpty();why+="; House trait rows "+WarTablePages.traitRows().size()+(tf.isEmpty()?" drawn, on the page and apart":" WRONG: "+tf);
-                    click(c,box(c,"row-1"));next(tick);}
-                // a step that reads the page as a frame drew it (its words, marks and art) waits for the frame: on a busy machine the client
-                // can run more than one tick before it draws, so the snapshot can land with the last frame still showing the old state.
-                // Each waits for the drawn state to catch up, or judges (and fails) once the wait is over
-                case 1->{int[] mark=rect("mark");if(k<2||!WarTablePages.troopName(roll.get(1)).equals(text("armed"))&&k<40)return;
-                    boolean armed=roll.get(1).equals(p.armed)&&WarTablePages.troopName(roll.get(1)).equals(text("armed"))&&Arrays.equals(mark,new int[]{o[0]+52,o[1]+196,234,58});
-                    ok&=armed;why+="; row 1 armed "+p.armed+" (the band reads \""+text("armed")+"\", the mark at "+str(mark)+")"+(armed?"":" WRONG");
-                    landedAt=-1;click(c,box(c,"seat-0"));next(tick);}
-                case 2->{boolean landed=roll.get(1).equals(line.get(0));if(landed&&landedAt<0)landedAt=tick;
-                    if(landed&&k>=3&&(roll.get(1).equals(text("seat-0"))||tick>=landedAt+20)){boolean pass=("slot:0:"+roll.get(1)).equals(lastSent())&&roll.get(1).equals(text("seat-0"));ok&=pass;
-                        why+="; seat 0 clicked: sent "+lastSent()+", the snapshot's seat 0 is "+line.get(0)+", drawn "+text("seat-0")+(pass?"":" WRONG");landedAt=-1;next(tick);}
-                    else if(!landed&&k>100){ok=false;why+="; seat 0 clicked: sent "+lastSent()+", the snapshot's seat 0 still "+line.get(0)+" 100 ticks on WRONG";landedAt=-1;next(tick);}}
-                case 3->{if(k<8)return;landedAt=-1;rightClick(c,box(c,"seat-19"));next(tick);}
-                case 4->{boolean landed=WarTablePages.EMPTY.equals(line.get(19));if(landed&&landedAt<0)landedAt=tick;
-                    if(landed&&k>=3&&(WarTablePages.EMPTY.equals(text("seat-19"))||tick>=landedAt+20)){boolean pass="slot:19:empty".equals(lastSent())&&WarTablePages.EMPTY.equals(text("seat-19"));ok&=pass;
-                        why+="; the other button on seat 19: sent "+lastSent()+", the snapshot's seat 19 is "+line.get(19)+", drawn "+text("seat-19")+(pass?"":" WRONG");landedAt=-1;next(tick);}
-                    else if(!landed&&k>100){ok=false;why+="; the other button on seat 19: sent "+lastSent()+", seat 19 still "+line.get(19)+" WRONG";landedAt=-1;next(tick);}}
-                case 5->{if(k<8)return;click(c,box(c,"row-"+Math.max(0,roll.indexOf(at0))));click(c,box(c,"seat-0"));next(tick);}
-                case 6->{if(at0.equals(line.get(0)))next(tick);else if(k>100){ok=false;why+="; seat 0 not put back ("+line.get(0)+") WRONG";next(tick);}}
-                case 7->{if(k<8)return;click(c,box(c,"row-"+Math.max(0,roll.indexOf(at19))));click(c,box(c,"seat-19"));next(tick);}
-                case 8->{if(at19.equals(line.get(19))){why+="; seats 0 and 19 put back ("+line.get(0)+", "+line.get(19)+")";next(tick);}
-                    else if(k>100){ok=false;why+="; seat 19 not put back ("+line.get(19)+") WRONG";next(tick);}}
+                    cellE=-1;brush=null;for(int i=0;i<WarGrid.cells()&&cellE<0;i++)if(!saved.containsKey(i))cellE=i;
+                    for(int i=0;i<roll.size()&&brush==null&&cellE>=0;i++)if(BannerDrop.paint(saved,cellE,roll.get(i),WarTablePages.rules()).ok()){brush=roll.get(i);click(c,box(c,"row-"+i));}
+                    if(brush==null){ok=false;why+="; no palette troop the table can take on an empty cell WRONG";sub=8;}
+                    next(tick);}
+                case 1->{if(k<2||!brush.equals(WarTablePages.armed)&&k<40)return;
+                    boolean armed=brush.equals(WarTablePages.armed)&&rect("mark")!=null;ok&=armed;why+="; the brush "+WarTablePages.armed+" (want "+brush+")"+(armed?"":" WRONG");
+                    cmd=BannerDrop.command(WarTablePages.shownBanner(),cellE,brush);landedAt=-1;click(c,box(c,"cell-"+cellE));next(tick);}
+                case 2->{boolean landed=brush.equals(saved.get(cellE));if(landed&&landedAt<0)landedAt=tick;
+                    if(landed&&k>=3&&(brush.equals(text("cell-"+cellE))||tick>=landedAt+20)){boolean pass=cmd.equals(lastSent())&&brush.equals(text("cell-"+cellE));ok&=pass;
+                        why+="; cell "+cellE+" painted: sent "+lastSent()+" (want "+cmd+"), the snapshot holds "+saved.get(cellE)+", drawn "+text("cell-"+cellE)+(pass?"":" WRONG");landedAt=-1;next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; cell "+cellE+" painted: sent "+lastSent()+", the snapshot's cell still "+saved.get(cellE)+" 100 ticks on WRONG";landedAt=-1;next(tick);}}
+                case 3->{if(k<8)return;landedAt=-1;cmd=BannerDrop.command(WarTablePages.shownBanner(),cellE,BannerDrop.ERASE);rightClick(c,box(c,"cell-"+cellE));next(tick);}
+                case 4->{boolean landed=!saved.containsKey(cellE);if(landed&&landedAt<0)landedAt=tick;
+                    if(landed&&k>=3&&(WarTablePages.EMPTY.equals(text("cell-"+cellE))||tick>=landedAt+20)){boolean pass=cmd.equals(lastSent())&&WarTablePages.EMPTY.equals(text("cell-"+cellE));ok&=pass;
+                        why+="; the other button on cell "+cellE+": sent "+lastSent()+" (want "+cmd+"), drawn "+text("cell-"+cellE)+(pass?", the banner as it began":" WRONG");landedAt=-1;next(tick);}
+                    else if(!landed&&k>100){ok=false;why+="; the other button on cell "+cellE+": sent "+lastSent()+", the cell still "+saved.get(cellE)+" WRONG";landedAt=-1;next(tick);}}
+                case 5,6,7,8->next(tick);
                 // the colour row: a press on a side that is not the commander's sends colour:<side>, the saved colour becomes it, and the chip is set in; then it is put back
                 case 9->{if(k<8)return;colourWas=CampaignClient.profile.bannerColour;colourTo=null;for(var f:Spec.FACTIONS)if(colourTo==null&&!f.id().equals(colourWas))colourTo=f.id();
                     ok&=colourTo!=null;click(c,box(c,"colour-"+colourTo));landedAt=-1;next(tick);}
@@ -3646,7 +3642,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 default->stage=4;
             }
         }
-        String colourWas="",colourTo;
+        String colourWas="",colourTo,brush,cmd;int cellE=-1;
 
         /** What claiming key would pay now, by the game's own rule: Progression.claim on a copy of the state (a JSON round trip) with every contract finished,
          *  every tier reached and stored's own claim taken off. The expected words and amounts of the claim checks come from here and from the sheets, never from a number written out. */

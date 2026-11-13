@@ -5,56 +5,68 @@ import java.util.*;
 
 import static gg.gravesandglory.Phase1Checks.*;
 
-/** Phase 1 suite ui-bannerfield (plan 1.3): the War Table's Banner page and Field page in a real client against its integrated
- *  server, each in a normal, an empty and an error state, shot at 1920x1080 (canvas scale 2) and 2560x1440 (scale 3), GUI Auto,
- *  borderless. Scenes: banner-normal (a mixed banner, a wide troop), banner-empty (one troop, no seat filled), banner-empty-house
- *  (a House with no troop recruited), banner-error (a third Epic refused by the server), banner-battle (a round is on),
- *  field-normal (a commander with a mixed banner), field-empty (a commander back in the camp), field-error (a round is on). Every shot is
- *  judged: the page is open at the wanted scale, no widget overlaps another, and every widget and drawn box sits 12 px inside the
- *  canvas and clear of the rail (UiHomeChecks.fits). Shots: run/screenshots/p1-bf-(scene)-(1080|1440).png. */
+/** Phase 1 suite ui-bannerfield (plan 1.3, army Task 7): the War Table's Banner page (the 9 x 6 grid) and Field page in a real client
+ *  against its integrated server. Shot scenes: banner-normal (a mixed banner of 630 gold with a Legendary), banner-empty (one troop owned,
+ *  nothing placed), banner-empty-house (a House with no troop recruited), banner-hover (the brush over an empty cell: its words beside it),
+ *  banner-error (a second Legendary refused, the why in the notice and on the palette), banner-battle (a round is on), field-normal,
+ *  field-empty and field-error; each banner scene at 1920x1080 (canvas scale 2), 2560x1440 (scale 3) and 900x520 (the compact page), the
+ *  field scenes at the first two. Every shot is judged: the page is open at the wanted scale, no widget overlaps another, and every widget and
+ *  drawn box sits 12 px inside the canvas and clear of the rail (UiHomeChecks.fits). Shots: run/screenshots/p1-bf-(scene)-(1080|1440|small).png.
+ *  banner-paint is the paint proof, by real clicks: a cell painted with the brush is sent and the server's snapshot carries it
+ *  (p1-bf-paint-place), a second Legendary is refused with the why in words and nothing sent (p1-bf-paint-refused), and another banner's tab
+ *  shows that banner, whose Use button makes it the one that goes into battle (p1-bf-paint-switch). */
 final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch {
-    static final String[] SCENES = {"banner-normal", "banner-empty", "banner-empty-house", "banner-error", "field-normal", "field-empty", "field-error", "banner-battle",
-        "drag-valid", "drag-invalid", "drag-ghost", "drag-unseat",
-        "drop-roll-empty", "drop-roll-wide", "drop-roll-refused", "drop-move-empty", "drop-swap", "drop-swap-wide", "drop-unseat", "drop-snap", "drop-cancel", "drop-same", "drop-click"};
+    static final String[] SCENES = {"banner-normal", "banner-empty", "banner-empty-house", "banner-hover", "banner-error", "banner-paint",
+        "field-normal", "field-empty", "field-error", "banner-battle"};
+    /** The window sizes shot: 1080p, 1440p and a small window that gets the compact page (scale -1: the page must be compact). */
+    static final int[][] SIZES = {{1920, 1080, 2}, {2560, 1440, 3}, {900, 520, -1}};
+    static final String[] SIZE_NAMES = {"1080", "1440", "small"};
+    static final String LEGEND = "gl_marshal";
     volatile UUID player;volatile boolean serverRunning;
-    int scene,phase,pAt,sub,oldW,oldH,oldGui,serial;boolean started,finished;String saved;List<String> want=List.of();String note="";
+    int scene,phase,pAt,sub,oldW,oldH,oldGui,serial,shotIdx;boolean started,finished;String saved;List<String> want=List.of();String note="";
 
     public void serverTick(GravesAndGlory.Battle b){serverRunning=b.running;}
 
     void go(int next,int tick){phase=next;pAt=tick+1;sub=0;} // k reads 0 on the next tick
     static String page(String scene){return scene.startsWith("field")?"field":"banner";}
 
-    /** A commander owning `owned` (plus every Common), with `stars` for the ids named, and the banner these units make. */
-    static Profile profile(List<String> owned,Map<String,Integer> stars,List<String> units){
+    /** A table from cell, troop pairs. */
+    static SortedMap<Integer,String> tbl(Object... pairs){SortedMap<Integer,String> t=new TreeMap<>();for(int i=0;i+1<pairs.length;i+=2)t.put((Integer)pairs[i],(String)pairs[i+1]);return t;}
+    /** Cells first..first+n-1 holding the troop, put into t. */
+    static void fill(SortedMap<Integer,String> t,int first,int n,String id){for(int i=0;i<n;i++)t.put(first+i,id);}
+    /** A commander owning `owned` (plus every Common) with the banners given (name, table, name, table...), the first the active one. */
+    @SuppressWarnings("unchecked")
+    static Profile profile(List<String> owned,Object... banners){
         var p=new Profile();p.troopWrits=3;
         for(String id:owned)p.owned.computeIfAbsent(id,x->new Profile.Owned());
-        for(var e:stars.entrySet()){var o=p.owned.get(e.getKey());if(o!=null)o.stars=e.getValue();}
-        p.sanitize();p.setTable(p.activeBanner,WarGrid.sparse(Campaign.table(RosterMath.repack(units,RosterMath.Catalog.fromSpec(),p.owned.keySet()))));p.sanitize();
+        p.sanitize();p.banners.clear();
+        for(int i=0;i+1<banners.length;i+=2)p.banners.add(new Profile.Banner((String)banners[i],WarGrid.format((SortedMap<Integer,String>)banners[i+1])));
+        p.activeBanner=0;p.sanitize();
         return p;
     }
-    static List<String> times(int n,String id){List<String> l=new ArrayList<>();for(int i=0;i<n;i++)l.add(id);return l;}
-    static List<String> join(List<String>... parts){List<String> l=new ArrayList<>();for(var p:parts)l.addAll(p);return l;}
+    /** Every banner's name and cells, as the snapshot carries them. */
+    static List<String> cells(Profile p){List<String> l=new ArrayList<>();if(p.banners!=null)for(var b:p.banners)l.add(b.name+"="+b.cells);return l;}
 
     /** The profile each banner scene runs on. */
     static Profile banner(String scene){
-        if(scene.startsWith("drop-")||scene.startsWith("drag-"))return dragProfile(scene);
         return switch(scene){
-            case "banner-normal" -> profile(List.of("sentinel","longbow","mage","wm_tusk","tc_tideguard","ic_breaker"),Map.of("knight",3,"sentinel",2,"longbow",2),
-                join(List.of("mage"),times(3,"sentinel"),times(4,"longbow"),times(4,"knight"),times(3,"archer")));
-            case "banner-error" -> profile(List.of("mage","tc_brute","wm_seer","wm_tusk"),Map.of(),join(List.of("mage","tc_brute"),times(8,"knight"),times(4,"archer")));
-            case "banner-battle" -> banner("banner-normal");
-            default -> { var p=profile(List.of(),Map.of(),List.of());p.owned.keySet().removeIf(id->!id.equals("knight"));p.setTable(p.activeBanner,WarGrid.sparse(Campaign.table(RosterMath.repack(List.of(),RosterMath.Catalog.fromSpec(),p.owned.keySet()))));yield p; }
+            case "banner-normal","banner-battle" -> { var t=tbl(4,LEGEND,13,"mage");fill(t,9,3,"sentinel");fill(t,18,4,"longbow");fill(t,27,4,"knight");fill(t,36,3,"archer");
+                yield profile(List.of("sentinel","longbow","mage",LEGEND,"wm_tusk"),"Banner I",t,"Banner II",tbl(0,"knight",1,"knight")); }
+            case "banner-hover","banner-error","banner-paint" -> profile(List.of(LEGEND,"sentinel"),"Banner I",tbl(4,LEGEND,30,"sentinel"),"Banner II",tbl(0,"knight",1,"knight"));
+            default -> { var p=profile(List.of(),"Banner I",tbl());p.owned.keySet().removeIf(id->!id.equals("knight"));p.sanitize();yield p; }
         };
     }
+
+    static boolean isBanner(String n){return n.startsWith("banner")&&!n.equals("banner-battle");}
 
     /** Server and client state for the scene. */
     void setup(MinecraftClient c,String name){
         var id=player;serial=CampaignClient.noticeSerial;
         if(isBanner(name)){
-            var p=banner(name);want=p.line();
+            var p=banner(name);want=cells(p);
             server(c,b->{if(b.running)b.campaign.returnLobby();var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,p);b.campaign.save(id);});
         } else if(name.equals("banner-battle")){
-            want=banner(name).line();
+            want=cells(banner(name));
         } else if(name.equals("field-normal")){
             server(c,b->{if(b.running)b.campaign.returnLobby();var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,banner("banner-normal"));});
         } else if(name.equals("field-empty")){
@@ -63,62 +75,67 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
             server(c,b->{var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,banner("banner-normal"));b.campaign.save(id);});
         }
     }
-    boolean startedRound,standDown;
+    boolean standDown;
     /** Whether the scene's state has reached the client. */
     boolean ready(MinecraftClient c,String name,int tick){
         switch(name){
-            case "field-normal": return CampaignClient.profile.line().equals(banner("banner-normal").line())&&!GravesAndGloryClient.running;
+            case "field-normal": return cells(CampaignClient.profile).equals(cells(banner("banner-normal")))&&!GravesAndGloryClient.running;
             case "field-empty": return !GravesAndGloryClient.running;
             case "field-error": case "banner-battle": return GravesAndGloryClient.running&&CampaignClient.waiting&&serverRunning; // seated players cannot open the War Table in a round: the commander is stood down
-            default: return CampaignClient.profile.line().equals(want)&&!GravesAndGloryClient.running;
+            default: return cells(CampaignClient.profile).equals(want)&&!GravesAndGloryClient.running;
         }
     }
 
-    /** The scene's own action once the page is open; true when done. */
+    /** The palette row box of a troop on the House shown, or null. */
+    static int[] row(MinecraftClient c,String troop){int i=rowIndex(troop);return i<0?null:UiPagesChecks.box(c,"row-"+i);}
+    /** The palette row index of a troop on the House shown, or -1. */
+    static int rowIndex(String troop){var roll=WarTablePages.owned();for(int i=0;i<roll.size();i++)if(roll.get(i).troopId().equals(troop))return i;return -1;}
+    /** Shows the Gilded House's troops on the palette. */
+    static void gilded(MinecraftClient c){UiPagesChecks.click(c,UiPagesChecks.box(c,"house-gilded"));}
+
+    /** The scene's own action once the page is open (run again after each resize); true when done. */
     boolean act(MinecraftClient c,String name,int k){
         switch(name){
             case "banner-empty-house": if(k==0)UiPagesChecks.click(c,UiPagesChecks.box(c,"house-wildmoot"));return k>=8;
+            case "banner-hover": {
+                if(k==0){gilded(c);return false;}
+                if(k==6){UiPagesChecks.click(c,row(c,"knight"));return false;}
+                if(k==10){var b=UiPagesChecks.box(c,"cell-13");if(b!=null)UiRecruitChecks.pointer(c,b[0]+b[2]/2.0,b[1]+b[3]/2.0);return false;}
+                return k>=14;
+            }
             case "banner-error": {
-                if(k==0){UiPagesChecks.click(c,UiPagesChecks.box(c,"house-wildmoot"));return false;}
-                if(k==8){var roll=WarTablePages.owned();int i=-1;for(int j=0;j<roll.size();j++)if(roll.get(j).troopId().equals("wm_seer"))i=j;
-                    if(i<0){note+="; wm_seer not on the Wildmoot roll";return true;}UiPagesChecks.click(c,UiPagesChecks.box(c,"row-"+i));return false;}
-                if(k==16){serial=CampaignClient.noticeSerial;UiPagesChecks.click(c,UiPagesChecks.box(c,"seat-17"));return false;}
-                if(k>16&&CampaignClient.noticeSerial!=serial&&CampaignClient.notice.startsWith("No room")){note+="; notice \""+CampaignClient.notice+"\"";return k>=22;}
-                if(k>120){note+="; no refusal notice 120 ticks on";return true;}
-                return false;
+                if(k==0){gilded(c);return false;}
+                if(k==6){UiPagesChecks.click(c,row(c,LEGEND));return false;}
+                if(k==10){UiPagesChecks.click(c,UiPagesChecks.box(c,"cell-20"));return false;}
+                return k>=13;
             }
             case "field-normal": { // a click on the second map row shows its card; nothing is voted any more
                 if(k==0){UiPagesChecks.click(c,UiPagesChecks.box(c,"map-1"));return false;}
-                if(k>=8){note+="; map-1 clicked, no Vote beside it";return true;}
-                return false;
-            }
-            case "drag-valid": case "drag-invalid": case "drag-ghost": case "drag-unseat": {
-                if(fromRoll(name)){if(k==0){gildedTab(c);return false;}if(k<8)return false;k-=8;}
-                if(k==0){if(!resolve(c,name)){note+="; source or target not on the page";return true;}press(c);return false;}
-                if(k==2){if(src!=null)moveTo(c,nudge());return false;}
-                if(k==4){if(src!=null)moveTo(c,dst);return false;}
-                return k>=8; // the card is held while the shot is taken
+                return k>=8;
             }
             default: return true;
         }
     }
+    /** Whether the scene keeps the pointer where its action left it (the hover shot). */
+    static boolean held(String name){return name.equals("banner-hover");}
 
-    /** The page as the last frame drew it at canvas scale wantK. */
+    /** The page as the last frame drew it at canvas scale wantK (-1: the compact page). */
     String judge(MinecraftClient c,String name,int wantK,boolean[] ok){
         var p=UiPagesChecks.pages(c);var b=UiPagesChecks.boxes(c);List<String> over=new ArrayList<>();var keys=new ArrayList<>(b.keySet());
         for(int i=0;i<keys.size();i++)for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(b.get(keys.get(i)),b.get(keys.get(j))))over.add(keys.get(i)+"/"+keys.get(j));
         var bad=p==null?List.of("no page"):UiHomeChecks.fits(WarTablePages.rects(),b);
-        boolean pass=p!=null&&p.page.equals(page(name))&&UiCanvas.k()==wantK&&over.isEmpty()&&bad.isEmpty();
-        var t=WarTablePages.texts();String drag="";
-        if(isDrag(name)){var gw=t.get("ghost-word");boolean g=p!=null&&p.dragging&&WarTablePages.rects().containsKey("ghost")&&dragWord(name).equals(gw);pass&=g;drag=", dragging "+(p!=null&&p.dragging)+", ghost word \""+gw+"\" (wanted \""+dragWord(name)+"\")";}
+        boolean pass=p!=null&&p.page.equals(page(name))&&(wantK<0?WarTable.compact():UiCanvas.k()==wantK)&&over.isEmpty()&&bad.isEmpty();
+        var t=WarTablePages.texts();String extra="";
+        if(name.equals("banner-hover")){String w=t.get("cell-word"),want="Place "+WarTablePages.troopName("knight")+", "+WarTablePages.cost("knight")+" gold";pass&=want.equals(w);extra=", hover words \""+w+"\" (want \""+want+"\")";}
+        if(name.equals("banner-error")){String why=BannerDrop.why("legendary_limit"),on=t.get("why-"+rowIndex(LEGEND));pass&=p!=null&&why.equals(p.noticeText)&&why.equals(on);extra=", why on the palette \""+on+"\" (want \""+why+"\")";}
         ok[0]=pass;
-        String said=page(name).equals("banner")?" seated \""+t.get("seated")+"\", roll-empty \""+t.get("roll-empty")+"\", hint \""+t.get("roll-hint")+"\"":" status \""+t.get("status")+"\", bots "+t.get("bots-current");
-        return "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" (k "+UiCanvas.k()+"), "+b.size()+" widgets, overlapping "+over+", not fitting "+bad+", notice \""+t.get("notice")+"\","+said+drag+(pass?"":" WRONG");
+        String said=page(name).equals("banner")?" troops \""+t.get("troops")+"\", gold \""+t.get("gold")+"\", shown tab \""+t.get("tab-shown")+"\", roll-empty \""+t.get("roll-empty")+"\"":" status \""+t.get("status")+"\", bots "+t.get("bots-current");
+        return "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" (k "+UiCanvas.k()+", compact "+WarTable.compact()+"), "+b.size()+" widgets, overlapping "+over+", not fitting "+bad+", notice \""+t.get("notice")+"\","+said+extra+(pass?"":" WRONG");
     }
 
     public void step(MinecraftClient c,int tick){
         if(finished)return;
-        if(tick>16000){report("p1-bf-timeout",false,"stuck in scene "+(scene<SCENES.length?SCENES[scene]:"end")+" phase "+phase);end(c);return;}
+        if(tick>20000){report("p1-bf-timeout",false,"stuck in scene "+(scene<SCENES.length?SCENES[scene]:"end")+" phase "+phase);end(c);return;}
         if(!started){
             if(tick<20)return;
             started=true;var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();player=c.player.getUuid();
@@ -134,156 +151,81 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                     else if(serverRunning&&!standDown){standDown=true;server(c,b->{var sq=b.squads.get(player);if(sq!=null)sq.seated=false;});}
                 }
                 if(ready(c,name,tick)&&k>=(name.equals("field-error")||name.equals("banner-battle")?150:30)&&CampaignClient.camera==null){go(1,tick);return;}
-                if(k>(name.equals("field-error")?2400:400)){report("p1-bf-"+name,false,"the state never reached the client: banner "+CampaignClient.profile.line()+" wanted "+want+" (valid: "+RosterMath.validTable(WarGrid.sparse(want),RosterMath.Catalog.fromSpec(),banner(name).owned.keySet(),RosterMath.fieldableHouses())+"), running "+GravesAndGloryClient.running+", server running "+serverRunning);scene++;go(0,tick);}
+                if(k>(name.equals("field-error")?2400:400)){report("p1-bf-"+name,false,"the state never reached the client: banners "+cells(CampaignClient.profile)+" wanted "+want+", running "+GravesAndGloryClient.running+", server running "+serverRunning);scene++;go(0,tick);}
             }
             case 1->{ // the page from the table's door
                 if(k<60&&k%6==0&&UiPagesChecks.pages(c)==null){CampScreen.open(page(name));return;} // a round's opening may close it again
                 if(k>=20&&UiPagesChecks.pages(c)!=null){UiRecruitChecks.park(c);go(2,tick);}
                 else if(k>=80)go(2,tick);
             }
-            case 2->{ // the scene's action, then the pointer parked off the page
-                if(UiPagesChecks.pages(c)==null){report("p1-bf-"+name,false,"the page is not open; screen "+c.currentScreen+", running "+GravesAndGloryClient.running+", waiting "+CampaignClient.waiting+", player "+(c.player==null?"none":c.player.isAlive()+" "+c.interactionManager.getCurrentGameMode()));scene++;go(0,tick);return;}
-                if(name.startsWith("drop-")){dropScene(c,name,k,tick);return;}
-                if(sub==0){if(act(c,name,k)){sub=1;pAt=tick+1;}return;}
-                if(k==0&&!isDrag(name))UiRecruitChecks.park(c);
-                if(k>=4)go(3,tick);
+            case 2->{ // the scene's action, then the shots
+                if(UiPagesChecks.pages(c)==null){report("p1-bf-"+name,false,"the page is not open; screen "+c.currentScreen+", running "+GravesAndGloryClient.running+", waiting "+CampaignClient.waiting);scene++;go(0,tick);return;}
+                if(name.equals("banner-paint")){paint(c,k,tick);return;}
+                if(act(c,name,k)){shotIdx=0;go(3,tick);sub=1;}
             }
-            case 3->{ // shot at 1080p
-                boolean[] ok={false};String why=judge(c,name,2,ok);shot(c,"bf-"+name+"-1080");
-                report("p1-bf-"+name+"-1080",ok[0],why+note);window(c,2560,1440,0,true);go(4,tick);
-            }
-            case 4->{ // shot at 1440p
-                if(isDrag(name)){ // the resize built the screen again: the card is lifted again, at the new scale
-                    if(k==10&&fromRoll(name))gildedTab(c);
-                    if(k==18){var pg=UiPagesChecks.pages(c);if(pg!=null)pg.cancelDrag();if(!resolve(c,name))note+="; source or target not on the page at 1440";else press(c);}
-                    if(k==20&&src!=null)moveTo(c,nudge());
-                    if(k==22&&src!=null)moveTo(c,dst);
-                } else if(k==22)UiRecruitChecks.park(c);
-                if(k==(isDrag(name)?30:26)){boolean[] ok={false};String why=judge(c,name,3,ok);shot(c,"bf-"+name+"-1440");report("p1-bf-"+name+"-1440",ok[0],why+note);
-                    window(c,1920,1080,0,true);c.setScreen(null);scene++;go(0,tick);}
+            case 3->{ // a shot at SIZES[shotIdx]; after a resize the page is built again, so the action runs again first
+                if(sub==0){
+                    if(k==0)window(c,SIZES[shotIdx][0],SIZES[shotIdx][1],0,true);
+                    if(k<12)return;
+                    if(act(c,name,k-12)){sub=1;pAt=tick+1;}
+                    return;
+                }
+                if(k==0&&!held(name))UiRecruitChecks.park(c);
+                if(k<4)return;
+                boolean[] ok={false};String why=judge(c,name,SIZES[shotIdx][2],ok);shot(c,"bf-"+name+"-"+SIZE_NAMES[shotIdx]);
+                report("p1-bf-"+name+"-"+SIZE_NAMES[shotIdx],ok[0],why+note);
+                shotIdx++;
+                if(shotIdx>=(page(name).equals("banner")?SIZES.length:2)){window(c,1920,1080,0,true);c.setScreen(null);scene++;go(0,tick);}
+                else go(3,tick);
             }
             default->{}
         }
     }
 
-    // ============================================================================================================ drag and drop
-    static boolean isBanner(String n){return n.startsWith("banner")&&!n.equals("banner-battle")||n.startsWith("drop-")||n.startsWith("drag-");}
-    static boolean isDrag(String n){return n.startsWith("drag-");}
+    // ============================================================================================================ the paint proof
+    int st,stAt,sent0;String expect="",why="";
 
-    /** The profile each drag or drop scene runs on: the mixed banner (4 seats free), a banner with 2 seats free (and a wide troop on the roll), or one with 1 seat free. */
-    static Profile dragProfile(String n){
-        return switch(n){
-            case "drop-roll-wide" -> profile(List.of("mage"),Map.of(),join(times(9,"knight"),times(9,"archer")));
-            case "drop-roll-refused","drop-same","drag-invalid" -> profile(List.of("mage"),Map.of(),join(times(10,"knight"),times(9,"archer")));
-            default -> banner("banner-normal");
-        };
-    }
-    /** {source kind (roll: a roll row of the troop; unit: the first seat the troop is in), its troop, target kind (seat: a seat; unit: the first seat of a troop; paper: the roll; off: nothing), its argument, "esc" to press Esc before the drop}. */
-    static String[] spec(String n){
-        return switch(n){
-            case "drop-roll-empty","drag-valid" -> new String[]{"roll","knight","seat","18"};
-            case "drop-roll-wide" -> new String[]{"roll","mage","seat","19"};
-            case "drop-roll-refused" -> new String[]{"roll","mage","seat","19"};
-            case "drop-move-empty" -> new String[]{"unit","mage","seat","19"};
-            case "drop-swap" -> new String[]{"unit","sentinel","unit","longbow"};
-            case "drop-swap-wide","drag-ghost" -> new String[]{"unit","mage","unit","knight"};
-            case "drop-unseat","drag-unseat" -> new String[]{"unit","archer","paper",""};
-            case "drop-snap" -> new String[]{"unit","mage","off",""};
-            case "drop-cancel" -> new String[]{"unit","mage","seat","19","esc"};
-            case "drop-same","drag-invalid" -> new String[]{"unit","knight","seat","3"};
-            default -> null;
-        };
-    }
-    /** Whether the scene lifts a troop from the roll (the Gilded tab is opened first: the roll opens on the Wildmoot tab). */
-    static boolean fromRoll(String n){var s=spec(n);return n.equals("drop-click")||s!=null&&s[0].equals("roll");}
-    static void gildedTab(MinecraftClient c){UiPagesChecks.click(c,UiPagesChecks.box(c,"house-"+RosterMath.Catalog.fromSpec().houseOf("knight")));}
-    static String dragWord(String n){return switch(n){case "drag-valid"->"Seat";case "drag-invalid"->"The same troop.";case "drag-ghost"->"Trade places";default->"Take off";};}
-    static int[] mid(int[] b){return b==null?null:new int[]{b[0]+b[2]/2,b[1]+b[3]/2};}
-
-    List<String> base=List.of();SlotDrop.Plan plan;int[] src,dst;int sent0,doneAt,relK;String flight="",dragSeen="";
-
-    /** Works the scene's source, target and expected plan out from the banner and the page as drawn now (canvas px). */
-    boolean resolve(MinecraftClient c,String name){
-        var sp=spec(name);base=new ArrayList<>(CampaignClient.profile.line());plan=null;src=null;dst=null;
-        var r=WarTablePages.dropRules();String troop=sp[1];int head=base.indexOf(troop),seat=-1;
-        if(sp[0].equals("roll")){var roll=WarTablePages.owned();for(int i=0;i<roll.size();i++)if(roll.get(i).troopId().equals(troop))src=mid(UiPagesChecks.box(c,"row-"+i));}
-        else if(head>=0)src=mid(UiPagesChecks.box(c,"seat-"+head));
-        switch(sp[2]){
-            case "seat"->{seat=Integer.parseInt(sp[3]);dst=mid(UiPagesChecks.box(c,"seat-"+seat));}
-            case "unit"->{seat=base.indexOf(sp[3]);if(seat>=0)dst=mid(UiPagesChecks.box(c,"seat-"+seat));}
-            case "paper"->dst=mid(WarTablePages.rects().get("roll"));
-            default->dst=new int[]{UiCanvas.width()-30,30};
-        }
-        if(src==null||dst==null)return false;
-        if(sp[2].equals("seat")||sp[2].equals("unit"))plan=sp[0].equals("roll")?SlotDrop.fromRoll(base,troop,seat,r):SlotDrop.move(base,head,seat,r);
-        else if(sp[2].equals("paper"))plan=SlotDrop.unseat(base,head,r);
-        return true;
-    }
-    int[] nudge(){double dx=dst[0]-src[0],dy=dst[1]-src[1],n=Math.max(1,Math.hypot(dx,dy));return new int[]{(int)Math.round(src[0]+dx/n*14),(int)Math.round(src[1]+dy/n*14)};}
-    void press(MinecraftClient c){var s=c.currentScreen;double x=UiHomeChecks.gui(c,src[0]),y=UiHomeChecks.gui(c,src[1]);if(s!=null){s.mouseMoved(x,y);s.mouseClicked(x,y,0);}}
-    void moveTo(MinecraftClient c,int[] pt){var s=c.currentScreen;if(s!=null)s.mouseDragged(UiHomeChecks.gui(c,pt[0]),UiHomeChecks.gui(c,pt[1]),0,0,0);}
-    void release(MinecraftClient c,int[] pt){var s=c.currentScreen;if(s!=null)s.mouseReleased(UiHomeChecks.gui(c,pt[0]),UiHomeChecks.gui(c,pt[1]),0);}
-    static String flightOf(WarTablePages p){return p==null||p.flyAt==0?"none":p.flyBack?"back":"land";}
-
-    /** A drop scene: the real mouse events of a drag (press, two moves, release) or of a click, then what the banner and the commands sent came to. */
-    void dropScene(MinecraftClient c,String name,int k,int tick){
-        var p=UiPagesChecks.pages(c);boolean click=name.equals("drop-click"),esc=!click&&spec(name).length>4;
-        if(fromRoll(name)){if(k==0){gildedTab(c);return;}if(k<8)return;k-=8;}
-        if(k==0){
-            sent0=WarTablePages.sent().size();doneAt=-1;flight="";dragSeen="";relK=click?8:6;
-            if(click){
-                base=new ArrayList<>(CampaignClient.profile.line());plan=SlotDrop.fromRoll(base,"knight",18,WarTablePages.dropRules());
-                var roll=WarTablePages.owned();for(int i=0;i<roll.size();i++)if(roll.get(i).troopId().equals("knight"))UiPagesChecks.click(c,UiPagesChecks.box(c,"row-"+i));
-                return;
+    /** banner-paint, by real clicks on the page: a place the server takes, a refusal in words, then another banner shown and made the one
+     *  that goes into battle. */
+    void paint(MinecraftClient c,int k,int tick){
+        var p=UiPagesChecks.pages(c);
+        if(k==0){st=0;stAt=0;}
+        int d=k-stAt;
+        switch(st){
+            case 0->{if(d==0)gilded(c);if(d>=6){st=1;stAt=k+1;}}
+            case 1->{if(d==0)UiPagesChecks.click(c,row(c,"knight"));if(d>=4){st=2;stAt=k+1;}}
+            case 2->{
+                sent0=WarTablePages.sent().size();
+                var plan=BannerDrop.paint(WarTablePages.table(),13,"knight",WarTablePages.rules());
+                expect=plan.ok()?plan.withBanner(WarTablePages.shownBanner()).command():"(refused: "+plan.why()+")";
+                UiPagesChecks.click(c,UiPagesChecks.box(c,"cell-13"));st=3;stAt=k+1;
             }
-            if(!resolve(c,name)){report("p1-bf-"+name,false,"source or target not on the page: src "+Arrays.toString(src)+" dst "+Arrays.toString(dst));scene++;go(0,tick);return;}
-            press(c);return;
-        }
-        if(click){if(k==8)UiPagesChecks.click(c,UiPagesChecks.box(c,"seat-18"));}
-        else{
-            if(k==2)moveTo(c,nudge());
-            if(k==4){moveTo(c,dst);dragSeen=""+(p!=null&&p.dragging);}
-            if(k==6){
-                if(esc){UiHomeChecks.key(c,org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE);flight=flightOf(UiPagesChecks.pages(c));release(c,dst);}
-                else{release(c,dst);flight=flightOf(UiPagesChecks.pages(c));}
+            case 3->{
+                var sent=WarTablePages.sent();var mine=new ArrayList<>(sent.subList(Math.min(sent0,sent.size()),sent.size()));
+                boolean went=mine.contains(expect),held="knight".equals(WarTablePages.savedTable().get(13));
+                if(went&&held||d>120){report("p1-bf-paint-place",went&&held,"a click on cell 13 with the Order Squire brush sent "+mine+" (want "+expect+"), the snapshot holds it "+held+", troops \""+WarTablePages.texts().get("troops")+"\", gold \""+WarTablePages.texts().get("gold")+"\"");st=4;stAt=k+1;}
             }
+            case 4->{if(d==0)UiPagesChecks.click(c,row(c,LEGEND));if(d>=4){st=5;stAt=k+1;}}
+            case 5->{
+                sent0=WarTablePages.sent().size();why=BannerDrop.paint(WarTablePages.table(),20,LEGEND,WarTablePages.rules()).why();
+                UiPagesChecks.click(c,UiPagesChecks.box(c,"cell-20"));st=6;stAt=k+1;
+            }
+            case 6->{if(d>=6){
+                int more=WarTablePages.sent().size()-sent0;boolean ok=!why.isEmpty()&&more==0&&p!=null&&why.equals(p.noticeText)&&!WarTablePages.table().containsKey(20);
+                report("p1-bf-paint-refused",ok,"a second Legendary on cell 20: why \""+why+"\", commands sent "+more+" (want 0), notice \""+(p==null?"":p.noticeText)+"\", cell 20 "+WarTablePages.table().get(20));st=7;stAt=k+1;}}
+            case 7->{if(d==0)UiPagesChecks.click(c,UiPagesChecks.box(c,"tab-1"));if(d>=6){st=8;stAt=k+1;}}
+            case 8->{
+                var bs=CampaignClient.profile.banners;
+                boolean shows=WarTablePages.shownBanner()==1&&bs.size()>1&&WarTablePages.table().equals(WarGrid.parse(bs.get(1).cells))&&"Banner II".equals(WarTablePages.texts().get("tab-shown"));
+                note="tab-1 shows banner "+WarTablePages.shownBanner()+" (want 1), its table "+WarTablePages.table()+", shown tab \""+WarTablePages.texts().get("tab-shown")+"\""+(shows?"":" WRONG");
+                UiPagesChecks.click(c,UiPagesChecks.box(c,"use"));st=9;stAt=k+1;
+            }
+            case 9->{
+                boolean used=CampaignClient.profile.activeBanner==1;
+                if(used||d>120){report("p1-bf-paint-switch",used&&!note.endsWith("WRONG"),note+"; Use made the active banner "+CampaignClient.profile.activeBanner+" (want 1)");note="";scene++;go(0,tick);}
+            }
+            default->{}
         }
-        if(k<=relK)return;
-        boolean change=plan!=null&&plan.ok()&&!esc;
-        if(change){
-            if(doneAt<0&&CampaignClient.profile.line().equals(plan.result())&&(p==null||p.pend==null))doneAt=k;
-            if(doneAt>=0&&k>=doneAt+6||k>relK+130)dropJudge(c,name,tick,change,esc);
-        }else if(k>=relK+24)dropJudge(c,name,tick,change,esc);
-    }
-
-    /** The scene's literal expectations (apart from the plan's), on the banner it began with. */
-    static boolean literal(String name,List<String> live,List<String> base){
-        int f=Collections.frequency(live,"knight");
-        return switch(name){
-            case "drop-roll-empty","drop-click" -> f==5&&live.get(16).equals("knight");
-            case "drop-roll-wide" -> live.get(18).equals("mage")&&live.get(19).equals(RosterMath.MARKER);
-            case "drop-move-empty" -> live.get(14).equals("mage")&&live.get(15).equals(RosterMath.MARKER)&&live.get(0).equals("sentinel");
-            case "drop-swap" -> {int a=base.indexOf("sentinel"),b=base.indexOf("longbow");yield live.get(a).equals("longbow")&&live.get(b).equals("sentinel")&&Collections.frequency(live,"sentinel")==3;}
-            case "drop-swap-wide" -> Collections.frequency(live,"mage")==1&&f==4&&!live.equals(base);
-            case "drop-unseat" -> Collections.frequency(live,"archer")==2&&live.indexOf(RosterMath.EMPTY)==15;
-            case "drop-roll-refused","drop-snap","drop-cancel","drop-same" -> live.equals(base);
-            default -> true;
-        };
-    }
-
-    void dropJudge(MinecraftClient c,String name,int tick,boolean change,boolean esc){
-        var p=UiPagesChecks.pages(c);var live=new ArrayList<>(CampaignClient.profile.line());var all=WarTablePages.sent();
-        var cmds=new ArrayList<>(all.subList(Math.min(sent0,all.size()),all.size()));
-        boolean click=name.equals("drop-click");
-        boolean ok=change?live.equals(plan.result())&&cmds.equals(plan.commands()):live.equals(base)&&cmds.isEmpty();
-        var valid=RosterMath.validTable(WarGrid.sparse(live),RosterMath.Catalog.fromSpec(),CampaignClient.profile.owned.keySet(),RosterMath.fieldableHouses());
-        ok&=valid==null&&literal(name,live,base)&&p!=null&&p.page.equals("banner");
-        String wantFlight=click?"":change?(spec(name)[2].equals("paper")?"none":"land"):"back"; // a card taken off the banner has no seat to land on
-        if(!click)ok&=dragSeen.equals("true")&&flight.equals(wantFlight);
-        String said=plan==null?"no plan":plan.ok()?"legal":"refused \""+plan.why()+"\"";
-        if(plan!=null&&!plan.ok()&&!plan.why().isEmpty()&&!esc)ok&=p!=null&&p.noticeText.contains(plan.why());
-        report("p1-bf-"+name,ok,said+", sent "+cmds+" (planned "+(plan==null?"[]":plan.commands())+"), banner "+(live.equals(base)?"unchanged":"changed")+(change?", matches plan "+live.equals(plan.result()):"")+", dragging seen "+dragSeen+", card flight "+flight+" (wanted "+wantFlight+"), valid "+valid+", notice \""+(p==null?"":p.noticeText)+"\""+(ok?"":" WRONG"));
-        scene++;go(0,tick);
     }
 
     void end(MinecraftClient c){
