@@ -467,7 +467,7 @@ class Map:
                 continue
             if not any(wet(ax + i, az + j) and not deck(ax + i, az + j) for i in (-1, 0, 1) for j in (-1, 0, 1)): continue
             r = hash01(SEED, x, z, 71)
-            if 59 <= ax <= 63 and 20 <= az <= 45: g = 'spruce_fence_gate[facing=south,open=false]'      # the gated landings
+            if 59 <= ax <= 63 and 20 <= az <= 45: g = 'spruce_fence'      # the landings (closed gates leaked: troops slip between two gates that only touch at a corner)
             elif ax <= 113: g = 'mossy_stone_brick_wall' if r < 0.15 else 'stone_brick_wall'
             else: g = 'spruce_fence'
             self.extra[(x, h + 1, z)] = g
@@ -599,6 +599,9 @@ def flood(m):
         if 'bars' in b or 'pane' in b: return 1.0
         if 'wall' in b or 'fence' in b: return 1.5
         return 1.0
+    def thick(b):                                             # half-width of what stands in a cell
+        if kind(b) is None: return 0.0
+        return 0.125 if ('fence' in b or 'bars' in b or 'pane' in b) else 0.25 if 'wall' in b else 0.5
     def tops(x, z):
         h = m.col[(x, z)][0]; out = []
         for y in range(h, 76):
@@ -624,7 +627,9 @@ def flood(m):
         for i, j in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
             n = (c[0] + i, c[1] + j)
             if n not in m.col or abs(n[0]) > 270 or abs(n[1]) > 190: continue
-            if i and j and all(any(kind(blk(p[0], y, p[1])) for y in range(int(t), int(t) + 2)) for p in ((c[0] + i, c[1]), (c[0], c[1] + j))): continue      # no squeezing through a corner
+            if i and j:                                       # squeezing through a corner: a soldier is 0.6 wide and slips between two thin posts that only touch diagonally
+                ws = [max(thick(blk(p[0], y, p[1])) for y in range(int(t), int(t) + 2)) for p in ((c[0] + i, c[1]), (c[0], c[1] + j))]
+                if min(ws) > 0 and sum(ws) >= 0.4: continue
             if openwater(*n):
                 if rim: continue                                  # the post on this block is in the way
                 if not any(kind(blk(n[0], y, n[1])) for y in range(int(t), int(t) + 2)):

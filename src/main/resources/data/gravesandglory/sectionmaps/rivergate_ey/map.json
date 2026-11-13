@@ -2,7 +2,7 @@
  "baseY": 64,
  "columns": "columns.bin.gz",
  "depth": 384,
- "design_sha256": "2c18b88d071bd9d57b5f995ead09af5d489ce18650415999f8e0c38c1430ccc1",
+ "design_sha256": "fd302a5e5d0e3bfbe46f00b1a19725797aed2ef1164fc0bb9c92eee636f4e9b8",
  "field": {
   "halfX": 270,
   "halfZ": 190
