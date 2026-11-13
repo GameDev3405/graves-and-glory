@@ -67,6 +67,13 @@ public final class BotSimulation implements ModInitializer {
     /** -PsimMode: the battle mode every round plays (default domination; the map list must host it). A mode other than Domination keeps its own clock unless -PsimRoundSeconds is given.
      *  Under siege, botsim/siege.csv gets one row per bot army and group every SIEGE_TICKS: where the group stands and what it was told, for the stage plan's report. */
     String simMode,simPlan,simOrder;boolean roundSecondsGiven;Path siegeCsv,convoyCsv,dominationCsv;
+    /** -PsimGoto=TEAM:X:Z (pathing proof): every decision of that team's bot armies, retreats aside, is overridden after the fact with an Attack on (X, Z) on the ground there, groups unsplit: the way a player sends a whole army across a map. */
+    static final String GOTO=System.getProperty("gravesandglory.simGoto");
+    void forceGoto(GravesAndGlory.Squad sq,boolean retreating){
+        if(GOTO==null||retreating)return;
+        String[] f=GOTO.split(":");if(f.length!=3||sq.team!=Integer.parseInt(f[0].trim()))return;
+        sq.assignments.clear();sq.order="attack";sq.target=GravesAndGlory.Battle.groundAt(Double.parseDouble(f[1].trim()),Double.parseDouble(f[2].trim()));sq.arrived.clear();
+    }
     /** Lobby ticks waited since the arena was ready (or the last round ended); a round starts at LOBBY_TICKS, the shipped ready-pad countdown. */
     int lobbyTicks;static final int LOBBY_TICKS=200;
     static final int SIEGE_TICKS=100;
@@ -105,7 +112,7 @@ public final class BotSimulation implements ModInitializer {
             Files.writeString(meta,"override="+SheetOverride.describe()+"\nfast="+gg.gravesandglory.testing.SimSpeed.FAST+"\n",StandardCharsets.UTF_8);
         }catch(IOException e){throw new UncheckedIOException(e);}
         metrics.open(dir);
-        Campaign.decisionListener=(c,sq,tr,ce,lv,fu,se,en,cc,ch,ho,re,wo,wt)->{try{if(playing)metrics.decision(c,sq,tr,ce,lv,fu,se,en,cc,ch,ho,re,wo,wt);}catch(RuntimeException e){System.out.println("[botsim] decision log failed: "+e);e.printStackTrace(System.out);}};
+        Campaign.decisionListener=(c,sq,tr,ce,lv,fu,se,en,cc,ch,ho,re,wo,wt)->{try{if(playing)forceGoto(sq,re);if(playing)metrics.decision(c,sq,tr,ce,lv,fu,se,en,cc,ch,ho,re,wo,wt);}catch(RuntimeException e){System.out.println("[botsim] decision log failed: "+e);e.printStackTrace(System.out);}};
         overlayCheck=Boolean.getBoolean("gravesandglory.simOverlayCheck");
         net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((entity,source)->ledger.onDeath(GravesAndGlory.battle,entity,source));
         ServerTickEvents.END_SERVER_TICK.register(this::tick);
