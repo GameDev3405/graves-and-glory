@@ -141,3 +141,17 @@ Unit tests (scorecard, focus_check, render_geo, booth*) OK.
 Booth batch `work/booth/revenant-20261112-dcca7d6` (built, not uploaded); phone video
 `C:/Users/kortt/Melty/status/booth-videos/revenant_review.mp4` (3:25, 42 clips).
 In-game reel revenant-review3 (geo-knight, `GRAVES_GEO_CHECK_TROOP=revenant`): 23 p1 lines, 0 `=false` (clean).
+
+## Shoulder spike (2026-11-13)
+
+Kort chose to fix the recorded shoulder-spike debt in the model ("Shoulder spikes (revenant's spike and the breaker's left
+spike)"). The inner spike of `right_spike2` (tiers II and III) is 1 px shorter: 1 x 2 x 1 in place of 1 x 3 x 1, its
+root where it was (`art/hand/revenant/build_revenant.py`). The outer spike and the left shoulder are unchanged.
+
+- stun_upper `coif into right_spike2` 2.52: gone. The clip's worst armour row is now `coif into pauldron_cap` 2.25 at
+  tick 4, which the spike row had hidden: the coif sinks into the tier III left pauldron plate in the slump. Three model
+  probes (the cap's small spike 1 px out, its tall spike 1 px shorter, the plate's inner edge 1 px in) did not clear it;
+  the last made it worse (2.48). The plate is not a spike, so it stays as it is and the exemption now names it.
+- Clips: byte-identical (the layer was re-run). Timing untouched. Scorecard 42 clips, 0 failing. Focus check 0 FAIL rows.
+- Rebuilt: the old-format model and its tier II and III textures (`install`), the geo, the rig json and the tier II and III
+  geo textures (the atlas reflowed for the smaller box). Sheet: `work/modelfix/revenant_sheet.jpg`.

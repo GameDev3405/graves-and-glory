@@ -398,7 +398,7 @@ def bones():
     B.append(Bone("left_cap2", "left_arm", (1, -2.5, 0), rot=(0, 0, -12), stages=[2], boxes=[
         Box((-3.5, -3.2, -3.5), (7, 2, 7), P2("lc2"), dil=0.3), Box((0, -7, 0), (1, 4, 1), per_tier(lambda t: gb_spike(GIRON, 3, 3), (2, 3)))]))
     B.append(Bone("right_spike2", "right_arm", (-1, -2.5, 0), rot=(0, 0, 8), stages=[2, 3], boxes=[
-        Box((-3.2, -4.6, -1), (1, 3, 1), per_tier(lambda t: gb_spike(GIRON, 3, 3), (2, 3))), Box((1.2, -4.6, -1), (1, 3, 1), per_tier(lambda t: gb_spike(GIRON, 3, 3), (2, 3)))]))
+        Box((-3.2, -4.6, -1), (1, 3, 1), per_tier(lambda t: gb_spike(GIRON, 3, 3), (2, 3))), Box((1.2, -3.6, -1), (1, 2, 1), per_tier(lambda t: gb_spike(GIRON, 3, 3), (2, 3)))]))   # the inner spike a pixel shorter: it reached the coif in the stun slump
     B.append(Bone("gilt_collar", "body", stages=[3], boxes=[Box((-4.5, -13.5, -2.8), (9, 1, 5.6), gb_gilt("gc"), dil=0.1)]))
     B.append(Bone("gilt_buckle", "body", stages=[3], boxes=[Box((-1, -4.6, -2.9), (2, 2, 0.8), gb_gilt("gk"), dil=0.1)]))
     B.append(Bone("gilt_rim_r", "right_arm", (-1, -2.5, 0), rot=(0, 0, 8), stages=[3], boxes=[Box((-3, -1, -3), (6, 1, 6), gb_gilt("grr"), dil=0.5)]))
