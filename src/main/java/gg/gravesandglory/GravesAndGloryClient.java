@@ -88,7 +88,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         armoury=key("armoury",GLFW.GLFW_KEY_U); // opens the barracks screen on its Armoury tab, anywhere in a battle (ArmouryTab)
         gearKey=key("gear",GLFW.GLFW_KEY_I); // the Arsenal (the commander's gear, WarTableGear), in camp only
         banner=key("banner",GLFW.GLFW_KEY_N); // the War Table's shortcut to the Banner page (WarTableRecruit.keyPressed), rebindable in Controls like the rest (4F.5)
-        playAgain=key("play_again",GLFW.GLFW_KEY_P); // Play again on the battle report's REWARDS step (EndingScreen), in a room only
+        playAgain=key("play_again",GLFW.GLFW_KEY_J); // Play again on the battle report's REWARDS step (EndingScreen), in a room only; J is free in vanilla 1.20.1 and in every other binding here (test_key_defaults), P is vanilla's Social Interactions
         panelEdit=key("panel_edit",GLFW.GLFW_KEY_H); // Arrange command panel: edit mode moves, hides or fades the panel (CommandPanel.toggleEdit), only while the battle HUD shows
         confirmOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.confirm",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_ENTER,"category.gravesandglory"));
         cancelOrder=KeyBindingHelper.registerKeyBinding(new KeyBinding("key.gravesandglory.cancel",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_BACKSPACE,"category.gravesandglory"));

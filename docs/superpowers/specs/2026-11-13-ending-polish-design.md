@@ -58,9 +58,9 @@ The existing `VICTORY` and `DEFEAT` cues play with the banner. The audio lead ma
 
 ## 5. Graph, bests, play again, left tag
 
-- **Score graph.** The server samples each team's mode score every 5 s of battle time (at most 240 samples). The report gains `timeline` {interval, label, teams: [[...],[...]]}. It is drawn on STATS as a small two-line chart in team colours with the final score at the right edge. A match shorter than 15 s shows no chart.
+- **Score graph.** The server samples each team's mode score every 5 s of battle time (at most 120 samples: past that every second sample is dropped and the interval doubles). The report gains `timeline` {interval, label, teams: [[...],[...]]}. It is drawn on STATS as a small two-line chart in team colours with the final score at the right edge. A match shorter than 15 s shows no chart.
 - **Personal bests.** The profile gains `bests` (kills, armyKills, score, keptPct, captures, commanderDowns), with a default of empty, so no migration is needed beyond the field default. A value counts as a best only when an earlier record exists, so the first match sets records quietly. The report gains `bests`: [{label, value, previous}], shown on REWARDS above the claim strip ("New best: 14 kills (was 11)"). A history list is not stored. *(Lead's call: bests only, no history, to keep the save small.)* This is a save format addition, approved by Kort's pick, and it gets a ProfileMigrationCheck case.
-- **Play again.** The DONE step already returns the player to the room. The rewards screen gets a "Play again" button (or key P) that skips to DONE and marks the player Ready in the room. The room's existing all-ready ten-second countdown does the rest. No new vote system.
+- **Play again.** The DONE step already returns the player to the room. The rewards screen gets a "Play again" button (or its rebindable key, J by default: P is vanilla's Social Interactions; unbound, the button shows no key) that skips to DONE and marks the player Ready in the room. The room's existing all-ready ten-second countdown does the rest. No new vote system.
 - **Left the battle.** Participants who were offline at `finish` get `squads[i].left = true`. The scoreboard row and the podium plate read "Left the battle", and such a player cannot win an award or MVP.
 
 ## Constraints

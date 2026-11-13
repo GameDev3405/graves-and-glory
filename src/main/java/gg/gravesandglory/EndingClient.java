@@ -136,7 +136,7 @@ public final class EndingClient {
     static void beginEnding(MinecraftClient c, String outcomeWord, String scoreLine) {
         if (serverStep != null || c.player == null || c.world == null) return;
         skippedTo = null; freezeTime = c.world.getTime(); beganBy = "packet"; beganAt = ticks; beganNanos = System.nanoTime(); bannerNanos = -1;
-        serverStep = MatchEnding.Step.RESULT; doneEarly = false;
+        serverStep = MatchEnding.Step.RESULT; doneEarly = false; resultId = "";
         total = left = Spec.ENDING[0].resultSeconds() * 20;
         outcome = outcomeWord; line = scoreLine;
         sync(c);
@@ -153,7 +153,7 @@ public final class EndingClient {
 
     /** Ending polish pass 3: Play again is offered on REWARDS to a member of a room (the snapshot's social block names one). */
     static boolean playAgainShown() { return step() == MatchEnding.Step.REWARDS && WarTableLobby.inRoom(); }
-    /** Play again (the REWARDS button or P): this player is done at once and the server marks him Ready in his room (ending:again); the room's
+    /** Play again (the REWARDS button or its key): this player is done at once and the server marks him Ready in his room (ending:again); the room's
      *  all-ready countdown does the rest. Nothing outside a room. */
     static void playAgain(MinecraftClient c) {
         if (!playAgainShown()) return;

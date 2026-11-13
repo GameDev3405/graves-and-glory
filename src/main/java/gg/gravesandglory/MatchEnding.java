@@ -166,10 +166,12 @@ public final class MatchEnding {
      * is due past MAX, every second sample is dropped and the interval doubles.
      */
     public static final class Timeline {
-        public static final int MAX = 240, START = 5;
+        public static final int MAX = 120, START = 5; // 120 samples: the report rides the size-limited camp snapshot (see fit)
         public int interval = START;
         public final List<int[]> samples = new ArrayList<>();
         public void clear() { samples.clear(); interval = START; }
+        /** Whether a sample is due at seconds of battle time (before the finish), so the caller reads the score only then. */
+        public boolean due(long seconds) { return samples.size() < seconds / interval; }
         /** Samples now at seconds of battle time; last (the finish) takes the partial interval too and puts now in the last sample. */
         public void sample(long seconds, int[] now, boolean last) {
             for (;;) {
@@ -242,11 +244,45 @@ public final class MatchEnding {
             String k = BEST_KEYS.get(i);
             Integer v = values.get(k);
             if (v == null) continue;
-            Integer was = records.get(k);
-            if (was != null && v > was) out.add(new Best(k, BEST_LABELS.get(i), v, was));
-            if (was == null || v > was) records.put(k, v);
+            int was = records.getOrDefault(k, 0); // a record of 0 is no earlier record: nothing to beat, nothing to say
+            if (was > 0 && v > was) out.add(new Best(k, BEST_LABELS.get(i), v, was));
+            if (v > was || !records.containsKey(k)) records.put(k, v);
         }
         return out;
+    }
+    /** Fewest troops a match must field (kept + lost) before "kept alive" is a personal best: 100% of two troops is no record. */
+    public static final int MIN_FIELDED_FOR_KEPT = 10;
+    /** Kept alive as a percent of the army fielded, or -1 when fewer than MIN_FIELDED_FOR_KEPT were. */
+    public static int keptPct(int kept, int lost) { return kept + lost < MIN_FIELDED_FOR_KEPT ? -1 : Math.round(100f * kept / (kept + lost)); }
+    /** One camp snapshot as sent: {text, form, full}. */
+    public record Fitted(String text, String form, int full) {}
+    /**
+     * The snapshot within limit characters (the client drops its connection on a longer string): pretty when it fits, else compact, else compact with
+     * the report's timeline stripped, then its bests, then its progress (the extras, in that order; the rewards, bars' totals and the rest stay), then
+     * the whole report, last "{}" (the client keeps its last camp state). Never changes j.
+     */
+    public static Fitted fit(com.google.gson.JsonObject j, int limit, com.google.gson.Gson pretty, com.google.gson.Gson wire) {
+        String out = pretty.toJson(j);
+        int full = out.length();
+        if (full <= limit) return new Fitted(out, "pretty", full);
+        out = wire.toJson(j);
+        if (out.length() <= limit) return new Fitted(out, "compact", full);
+        var copy = j.deepCopy();
+        var res = copy.has("result") && copy.get("result").isJsonObject() ? copy.getAsJsonObject("result") : null;
+        String form = "compact";
+        if (res != null) {
+            for (String k : new String[]{"timeline", "bests", "progress"}) {
+                if (!res.has(k)) continue;
+                res.remove(k);
+                form = form.equals("compact") ? "compact without the " + k : form + " and " + k;
+                out = wire.toJson(copy);
+                if (out.length() <= limit) return new Fitted(out, form, full);
+            }
+            copy.add("result", new com.google.gson.JsonObject());
+            out = wire.toJson(copy);
+            if (out.length() <= limit) return new Fitted(out, "compact without the battle report", full);
+        }
+        return new Fitted("{}", "empty", full);
     }
     /** The words of one best on REWARDS: "New best: 14 kills (was 11)", "New best: a score of 812 (was 640)", "New best: 90% kept alive (was 75%)". */
     public static String bestText(String key, int value, int previous) {
@@ -260,6 +296,6 @@ public final class MatchEnding {
             case "commanderDowns" -> v + (value == 1 ? " commander downed" : " commanders downed");
             default -> v + " " + key;
         };
-        return "New best: " + what + " (was " + p + (key.equals("keptPct") ? "%" : "") + ")";
+        return "New best: " + what + (previous > 0 ? " (was " + p + (key.equals("keptPct") ? "%" : "") + ")" : "");
     }
 }

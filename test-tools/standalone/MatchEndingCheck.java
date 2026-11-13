@@ -122,7 +122,11 @@ public final class MatchEndingCheck {
         check(jump.samples.size() == 36, "timeline: a clock jump catches up (181 s gives 36 samples)");
         var lng = new MatchEnding.Timeline();
         for (int s = 0; s <= 1500; s++) lng.sample(s, new int[]{s, s / 2}, false);
-        check(lng.samples.size() <= MatchEnding.Timeline.MAX && lng.interval == 10 && lng.samples.size() == 150 && lng.row(0)[0] == 10 && lng.row(0)[149] == 1500, "timeline: past 240 samples the interval doubles (1500 s: 150 samples of 10 s)");
+        check(lng.samples.size() <= MatchEnding.Timeline.MAX && MatchEnding.Timeline.MAX == 120 && lng.interval == 20 && lng.samples.size() == 75 && lng.row(0)[0] == 20 && lng.row(0)[74] == 1500, "timeline: past 120 samples the interval doubles (1500 s: 75 samples of 20 s)");
+        var due = new MatchEnding.Timeline();
+        check(!due.due(4) && due.due(5) && due.due(181), "timeline: a sample is due from 5 s, not before");
+        due.sample(5, new int[]{1, 1}, false);
+        check(!due.due(5) && !due.due(9) && due.due(10), "timeline: nothing is due while the count is up to date");
         int[] row = {0, 3, 7, 7, 120, 119, 64, 300, 299, 0};
         String enc = MatchEnding.encodeRow(row);
         check(Arrays.equals(MatchEnding.decodeRow(enc), row) && MatchEnding.encodeRow(new int[]{1, 2, 3}).length() == 3, "timeline row: encodes and decodes (" + enc + ")");
@@ -134,7 +138,37 @@ public final class MatchEndingCheck {
         check(better.size() == 1 && better.get(0).equals(new MatchEnding.Best("kills", "Kills", 14, 11)) && rec.equals(Map.of("kills", 14, "score", 400, "captures", 2)), "bests: a higher value beats its record; a lower one does not; a new key is quiet");
         check(MatchEnding.bests(rec, Map.of("kills", 14)).isEmpty(), "bests: an equal value is no best");
         check(MatchEnding.bestText("kills", 14, 11).equals("New best: 14 kills (was 11)") && MatchEnding.bestText("keptPct", 90, 75).equals("New best: 90% kept alive (was 75%)")
-            && MatchEnding.bestText("score", 812, 640).equals("New best: a score of 812 (was 640)") && MatchEnding.bestText("captures", 1, 0).equals("New best: 1 capture (was 0)"), "bests: the REWARDS words");
+            && MatchEnding.bestText("score", 812, 640).equals("New best: a score of 812 (was 640)") && MatchEnding.bestText("captures", 1, 0).equals("New best: 1 capture"), "bests: the REWARDS words (no \"was 0\")");
+        Map<String, Integer> zero = new LinkedHashMap<>(Map.of("kills", 0, "captures", 0));
+        check(MatchEnding.bests(zero, Map.of("kills", 3, "captures", 0)).isEmpty() && zero.equals(Map.of("kills", 3, "captures", 0)), "bests: a record of 0 is no earlier record (quiet, no \"was 0\")");
+        check(MatchEnding.bests(new LinkedHashMap<>(), Map.of("kills", 0)).isEmpty(), "bests: a 0 with no record is no best");
+        check(MatchEnding.keptPct(5, 4) == -1 && MatchEnding.keptPct(0, 0) == -1 && MatchEnding.keptPct(5, 5) == 50 && MatchEnding.keptPct(10, 0) == 100 && MatchEnding.keptPct(7, 3) == 70, "bests: kept alive needs 10 fielded");
+        // Snapshot fit: degrade in steps, never dropping the rewards before the extras.
+        var gson = new com.google.gson.Gson(); var pretty = new com.google.gson.GsonBuilder().setPrettyPrinting().create();
+        com.google.gson.JsonObject snap = new com.google.gson.JsonObject(), res = new com.google.gson.JsonObject();
+        res.addProperty("id", "m"); res.add("rewards", gson.toJsonTree(List.of("Gold 100", "XP 50")));
+        res.addProperty("timeline", "t".repeat(3000)); res.addProperty("bests", "b".repeat(3000)); res.addProperty("progress", "p".repeat(3000));
+        snap.add("result", res); snap.addProperty("x", "y".repeat(3000));
+        int whole = gson.toJson(snap).length();
+        var cut = snap.deepCopy(); cut.getAsJsonObject("result").remove("timeline"); int noTimeline = gson.toJson(cut).length();
+        cut.getAsJsonObject("result").remove("bests"); int noBests = gson.toJson(cut).length();
+        cut.getAsJsonObject("result").remove("progress"); int noProgress = gson.toJson(cut).length();
+        cut.add("result", new com.google.gson.JsonObject()); int noResult = gson.toJson(cut).length();
+        var f0 = MatchEnding.fit(snap, pretty.toJson(snap).length(), pretty, gson);
+        check(f0.form().equals("pretty"), "fit: a snapshot within the limit is sent pretty");
+        var f1 = MatchEnding.fit(snap, whole, pretty, gson);
+        check(f1.form().equals("compact") && f1.text().contains("\"timeline\""), "fit: compact first");
+        var f2 = MatchEnding.fit(snap, noTimeline, pretty, gson);
+        check(f2.text().length() == noTimeline && !f2.text().contains("\"timeline\"") && f2.text().contains("\"bests\"") && f2.text().contains("\"progress\"") && f2.text().contains("Gold 100"), "fit: the timeline goes first");
+        var f3 = MatchEnding.fit(snap, noBests, pretty, gson);
+        check(f3.text().length() == noBests && !f3.text().contains("\"bests\"") && f3.text().contains("\"progress\"") && f3.text().contains("Gold 100"), "fit: then the bests");
+        var f4 = MatchEnding.fit(snap, noProgress, pretty, gson);
+        check(f4.text().length() == noProgress && !f4.text().contains("\"progress\"") && f4.text().contains("Gold 100") && f4.text().contains("\"rewards\""), "fit: then the progress, the rewards stay");
+        var f5 = MatchEnding.fit(snap, noResult, pretty, gson);
+        check(f5.text().contains("\"result\":{}") && f5.text().length() == noResult, "fit: then the whole report");
+        var f6 = MatchEnding.fit(snap, 100, pretty, gson);
+        check(f6.text().equals("{}") && f6.form().equals("empty"), "fit: last, an empty snapshot");
+        check(res.has("timeline") && res.has("bests") && res.has("progress"), "fit: the caller's report is never changed");
         System.out.println("MatchEndingCheck: " + checks + " checks passed");
     }
 }

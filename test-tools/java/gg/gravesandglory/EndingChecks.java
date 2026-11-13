@@ -422,6 +422,22 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         boolean ok = EndingPanels.graphSamples >= 2 && EndingPanels.graphSamples == want && EndingPanels.graphFinals.size() == 2 && lay.isEmpty();
         return (ok ? "ok" : "FAIL") + " samples " + EndingPanels.graphSamples + " of " + want + ", finals " + EndingPanels.graphFinals + (lay.isEmpty() ? "" : ", layout: " + lay);
     }
+    /** ending-play-again-key: the default is J (never P, vanilla's Social Interactions) with the button reading [J]; unbound, the label has no bracket and no key press is taken. */
+    void againKeyReport(MinecraftClient c) {
+        var k = GravesAndGloryClient.playAgain;
+        String bound = EndingScreen.againKey(), unbound;
+        boolean rebound = false, pressedUnbound = true;
+        try {
+            c.options.setKeyCode(k, net.minecraft.client.util.InputUtil.UNKNOWN_KEY); net.minecraft.client.option.KeyBinding.updateKeysByCode();
+            unbound = EndingScreen.againKey();
+            pressedUnbound = c.currentScreen instanceof EndingScreen sc && sc.keyPressed(GLFW.GLFW_KEY_UNKNOWN, 0, 0);
+        } finally { c.options.setKeyCode(k, k.getDefaultKey()); net.minecraft.client.option.KeyBinding.updateKeysByCode(); }
+        rebound = EndingScreen.againKey().equals(bound);
+        boolean vanillaFree = true; // no vanilla option holds the default key
+        for (var o : c.options.allKeys) if (o != k && o.getBoundKeyTranslationKey().equals(k.getDefaultKey().getTranslationKey())) vanillaFree = false;
+        report("ending-play-again-key", k.getDefaultKey().getCode() == GLFW.GLFW_KEY_J && bound.equals("[J]") && unbound.isEmpty() && !pressedUnbound && rebound && vanillaFree,
+            "default " + k.getDefaultKey().getTranslationKey() + ", label " + bound + ", unbound label \"" + unbound + "\", unknown key taken=" + pressedUnbound + ", rebound label " + EndingScreen.againKey() + ", no other option on the key=" + vanillaFree);
+    }
     /** The bests and Play again on REWARDS: the report's bests drawn, every reward word inside its box, the button drawn under the sheet inside the window. */
     String bestsState(MinecraftClient c) {
         int want = CampaignClient.result.has("bests") ? Math.min(3, CampaignClient.result.getAsJsonArray("bests").size()) : -1;
@@ -484,12 +500,13 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             if (k == 100) {
                 String small = bestsState(c);
                 report("ending-client-bests", bestsNormal.startsWith("ok") && small.startsWith("ok"), "1280x720 gui 3: " + bestsNormal + " | 854x480 gui 2: " + small + " (shots ending-bests, ending-bests-small)");
+                againKeyReport(c);
                 Phase4Checks.shot(c, "ending-bests-small"); later(tick + 3, () -> Phase1Checks.window(c, 1280, 720, 3));
             }
             if (k == 110) {
                 againPressAt = tick;
-                boolean pressed = c.currentScreen instanceof EndingScreen sc && sc.keyPressed(GLFW.GLFW_KEY_P, 0, 0);
-                againClientWhy = "P on REWARDS handled=" + pressed + " (sent " + EndingClient.playAgainSent + "); ";
+                boolean pressed = c.currentScreen instanceof EndingScreen sc && sc.keyPressed(GravesAndGloryClient.playAgain.getDefaultKey().getCode(), 0, 0);
+                againClientWhy = "the Play again key on REWARDS handled=" + pressed + " (sent " + EndingClient.playAgainSent + "); ";
             }
             return;
         }
@@ -744,7 +761,46 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         report("ending-snapshot-size", sent.length() <= Campaign.SNAPSHOT_LIMIT && whole, "4v4: snapshot " + sent.length() + " of " + Campaign.SNAPSHOT_LIMIT + " characters with the report (" + raw.length() + " pretty) and ending=" + whole + " (" + b.squads.size() + " squads)"
             + "; sent " + (pretty ? "pretty" : "compact") + "; pass 3: timeline " + tlText.length() + " characters pretty, bests " + bText.length() + " (" + (rs != null && rs.has("bests") ? rs.getAsJsonArray("bests").size() : 0) + " rows)");
         evidence("ending-report-4v4.json", raw);
+        worstSnapshot(c, p);
+        { // Play again outside a room: the skip is recorded all the same (the client has already skipped), nobody is queued for Ready
+            boolean room = c.social.room(player) != null; c.skipped.remove(player); c.playAgain(p);
+            boolean skipped = c.skipped.get(player) == MatchEnding.Step.DONE, queued = c.playAgain.contains(player);
+            c.skipped.remove(player); c.playAgain.remove(player);
+            report("ending-play-again-no-room", !room && skipped && !queued, "in a room=" + room + ", skip recorded=" + skipped + ", queued for Ready=" + queued);
+        }
         podiumThree = true; stage = 3; at = b.time;
+    }
+    /** ending-snapshot-worst: the 4v4 report made as big as it can be (longest names, many troop types, a full 120-sample timeline, 3 bests, every progress row)
+     *  and sent through Campaign.snapshot: it keeps the rewards and stays within the limit in the form sent. */
+    void worstSnapshot(Campaign c, ServerPlayerEntity p) {
+        var real = c.results.get(player); if (real == null) { report("ending-snapshot-worst", false, "no report"); return; }
+        var worst = real.deepCopy();
+        String longest = "MMMMMMMMMMMMMMMM"; // 16 characters, a Minecraft name's longest
+        for (var key : new String[]{"squads", "podium"}) for (var e : worst.getAsJsonArray(key)) e.getAsJsonObject().addProperty("name", longest);
+        var troops = worst.getAsJsonObject("you").getAsJsonObject("army").getAsJsonArray("troops");
+        for (int i = troops.size(); i < 12; i++) { var t = new JsonObject(); t.addProperty("id", "troop_type_" + i); t.addProperty("fielded", 99); t.addProperty("kills", 999); t.addProperty("lost", 99); troops.add(t); }
+        var tl = new JsonObject(); tl.addProperty("interval", 20); tl.addProperty("label", "Wave / Dead standing");
+        var teams = new com.google.gson.JsonArray();
+        for (int t = 0; t < 2; t++) { int[] row = new int[MatchEnding.Timeline.MAX]; for (int i = 0; i < row.length; i++) row[i] = i % 2 == 0 ? 0 : 99999; teams.add(MatchEnding.encodeRow(row)); }
+        tl.add("teams", teams);
+        var max = new com.google.gson.JsonArray(); max.add(99999); max.add(99999); tl.add("max", max); var format = new com.google.gson.JsonArray(); format.add("plain"); format.add("plain"); tl.add("format", format);
+        worst.add("timeline", tl);
+        var bests = new com.google.gson.JsonArray();
+        for (var k : new String[]{"commanderDowns", "armyKills", "keptPct"}) { var b = new JsonObject(); b.addProperty("key", k); b.addProperty("label", "Commanders downed"); b.addProperty("value", 999999); b.addProperty("previous", 999998); bests.add(b); }
+        worst.add("bests", bests);
+        var progress = worst.getAsJsonArray("progress");
+        for (int i = progress.size(); i < 9; i++) { var r = new JsonObject(); r.addProperty("label", "Wild Moot Renown and a long contract name " + i); r.addProperty("kind", "renown"); r.addProperty("before", 99999); r.addProperty("after", 99999); r.addProperty("base", 99999); r.addProperty("next", 99999); r.addProperty("tier", 9); progress.add(r); }
+        var original = c.results.get(player);
+        try {
+            c.results.put(player, worst);
+            String sent = c.snapshot(p);
+            var sn = JsonParser.parseString(sent).getAsJsonObject();
+            var res = sn.has("result") ? sn.getAsJsonObject("result") : new JsonObject();
+            String pretty = Campaign.JSON.toJson(c.results.get(player));
+            boolean rewards = res.has("rewards") && res.getAsJsonArray("rewards").size() > 0 && res.has("podium") && res.has("squads");
+            report("ending-snapshot-worst", sent.length() <= Campaign.SNAPSHOT_LIMIT && rewards && !sent.equals("{}"), "4v4 worst case: report " + pretty.length() + " pretty, snapshot " + sent.length() + " of " + Campaign.SNAPSHOT_LIMIT
+                + " characters; kept rewards=" + rewards + ", timeline " + res.has("timeline") + ", bests " + res.has("bests") + ", progress " + res.has("progress") + "; the stored report keeps its timeline, bests and progress=" + (worst.has("timeline") && worst.has("bests") && worst.has("progress")));
+        } finally { c.results.put(player, original); }
     }
     /** The 4v4 ending held into STATS for the client's three plates (ending-client-plates) and the left participant's row (ending-left-client), then torn down. */
     void sizeHold(GravesAndGlory.Battle b, Campaign c) {

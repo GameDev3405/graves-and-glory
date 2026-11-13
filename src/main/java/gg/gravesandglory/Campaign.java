@@ -13,7 +13,7 @@ import java.util.*;
 /** Lobby, permanent collections, team admission, rewards and bot commanders. */
 public final class Campaign {
     static final Gson JSON=new GsonBuilder().setPrettyPrinting().create();
-    /** The client reads the camp snapshot with readString(SNAPSHOT_LIMIT) and a longer string drops its connection, so fitted() never returns one. WIRE is the compact form it falls back to. */
+    /** The client reads the camp snapshot with readString(SNAPSHOT_LIMIT) and a longer string drops its connection, so fitted() never returns one. WIRE is the compact form it falls back to (MatchEnding.fit). */
     static final int SNAPSHOT_LIMIT=16000;static final Gson WIRE=new Gson();
     final GravesAndGlory.Battle b;
     final Map<UUID,Profile> profiles=new HashMap<>();
@@ -783,20 +783,22 @@ public final class Campaign {
             for(int t=0;t<2;t++){max.add(t<mx.length?mx[t]:0);format.add(t<f.length?f[t]:"plain");}j.add("max",max);j.add("format",format);}
         return j;
     }
-    /** Pass 3: this match's values for the personal bests (MatchEnding.BEST_KEYS); kept alive is a percent of the army fielded, left out when none was. */
+    /** Pass 3: this match's values for the personal bests (MatchEnding.BEST_KEYS); kept alive is a percent of the army fielded, left out when fewer than MatchEnding.MIN_FIELDED_FOR_KEPT were. */
     Map<String,Integer> bestValues(GravesAndGlory.Squad s){
         var t=s.stats;Map<String,Integer> v=new LinkedHashMap<>();
         v.put("kills",t.commanderKills);v.put("armyKills",Math.max(0,t.kills-t.commanderKills));v.put("score",MatchEnding.score(entry(s,0),Spec.ENDING[0]));
-        if(t.kept+t.lost>0)v.put("keptPct",Math.round(100f*t.kept/(t.kept+t.lost)));
+        int kept=MatchEnding.keptPct(t.kept,t.lost);if(kept>=0)v.put("keptPct",kept); // left out below MIN_FIELDED_FOR_KEPT troops fielded
         v.put("captures",t.captures);v.put("commanderDowns",t.commanderDowns);return v;
     }
     static JsonArray reportBests(List<MatchEnding.Best> bests){
         JsonArray rows=new JsonArray();for(var x:bests){JsonObject row=new JsonObject();row.addProperty("key",x.key());row.addProperty("label",x.label());row.addProperty("value",x.value());row.addProperty("previous",x.previous());rows.add(row);}return rows;
     }
-    /** Pass 3, Play again on REWARDS (ending:again): in a room, this participant's sequence ends now and he is marked Ready (readyAgain); outside a room nothing happens. */
+    /** Pass 3, Play again on REWARDS (ending:again): this participant's sequence ends now, always (the client has skipped to DONE already); in a room he is also marked Ready (readyAgain), outside one nothing more happens. */
     void playAgain(ServerPlayerEntity p){
-        UUID id=p.getUuid();if(!ending()||!participants.contains(id)||social.room(id)==null)return;
-        skipped.put(id,MatchEnding.Step.DONE);playAgain.add(id);readyAgain();
+        UUID id=p.getUuid();if(!ending()||!participants.contains(id))return;
+        skipped.put(id,MatchEnding.Step.DONE);
+        if(social.room(id)==null)return;
+        playAgain.add(id);readyAgain();
     }
     /** Each Play again waiting on an idle room: the room's own ready command (social:ready) for him unless he is ready already; then he is forgotten. A room still playing waits for returnLobby. */
     void readyAgain(){
@@ -973,7 +975,7 @@ public final class Campaign {
         // Unseated lobby players wait in the hall while a match runs.
         if(b.time%20==0)for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(leash&&(s==null||!s.seated)&&!CampWorld.inCamp(p.getX(),p.getY(),p.getZ()))toLobby(p);}
         if(ending()){endingTick();return;}
-        timeline.sample((b.time-b.roundStarted)/20,timelineNow(),false); // pass 3: the STATS graph, every interval of battle time
+        long elapsed=(b.time-b.roundStarted)/20;if(timeline.due(elapsed))timeline.sample(elapsed,timelineNow(),false); // pass 3: the STATS graph, every interval of battle time (the ledger is read only when a sample is due)
         if(b.time<introUntil){for(var p:b.server.getPlayerManager().getPlayerList()){var s=b.squads.get(p.getUuid());if(s!=null&&s.seated&&p.squaredDistanceTo(b.fieldBase(s.team))>2)b.toBase(p,s.team);}return;}
         boolean economy=b.time%100==0;
         for(var s:b.squads.values())if(s.bot){
@@ -1296,13 +1298,11 @@ public final class Campaign {
     /** The client's copy of a profile: match ids stay on the server. They only stop one match paying twice, and 256 of them (94 characters a match across both copies) would outgrow SNAPSHOT_LIMIT. */
     static JsonObject forClient(Profile p){JsonObject j=JSON.toJsonTree(p).getAsJsonObject();var s=j.getAsJsonObject(Profile.PROGRESSION);if(s!=null)s.remove(Progression.State.MATCH_GRANTS);j.remove(Profile.GEAR);j.remove("bests");return j;} // the gear list travels on gear_v1 (GearWire), never in the camp snapshot
     static JsonObject forClient(Progression.State s){JsonObject j=JSON.toJsonTree(s).getAsJsonObject();j.remove(Progression.State.MATCH_GRANTS);return j;}
-    /** The snapshot as sent: pretty when it fits SNAPSHOT_LIMIT, else compact, else compact without the battle report, else "{}" (the client then keeps its last camp state). Each shortened form is logged the first time a commander is sent it. */
+    /** The snapshot as sent (MatchEnding.fit): pretty when it fits SNAPSHOT_LIMIT, else compact, else compact without the report's timeline, then its bests, then its progress, then the whole report, last "{}" (the client then keeps its last camp state). Each shortened form is logged the first time a commander is sent it. */
     String fitted(JsonObject j,UUID id){
-        String out=JSON.toJson(j);if(out.length()<=SNAPSHOT_LIMIT)return out;int full=out.length();String form="compact";
-        out=WIRE.toJson(j);if(out.length()>SNAPSHOT_LIMIT){j.add("result",new JsonObject());out=WIRE.toJson(j);form="compact without the battle report";}
-        if(out.length()>SNAPSHOT_LIMIT){out="{}";form="empty";}
-        if(snapshotForms.computeIfAbsent(id,k->new HashSet<>()).add(form))System.err.println("[Graves and Glory] The camp snapshot for "+name(id)+" ran to "+full+" characters, over the client's "+SNAPSHOT_LIMIT+"; sent "+form+" ("+out.length()+" characters).");
-        return out;
+        var f=MatchEnding.fit(j,SNAPSHOT_LIMIT,JSON,WIRE);
+        if(!f.form().equals("pretty")&&snapshotForms.computeIfAbsent(id,k->new HashSet<>()).add(f.form()))System.err.println("[Graves and Glory] The camp snapshot for "+name(id)+" ran to "+f.full()+" characters, over the client's "+SNAPSHOT_LIMIT+"; sent "+f.form()+" ("+f.text().length()+" characters).");
+        return f.text();
     }
 
     boolean saveSocial(){

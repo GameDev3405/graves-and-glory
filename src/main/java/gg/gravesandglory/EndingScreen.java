@@ -44,7 +44,7 @@ final class EndingScreen extends Screen {
             if (client != null) EndingClient.skip(client);
             return true;
         }
-        if (GravesAndGloryClient.playAgain != null && GravesAndGloryClient.playAgain.matchesKey(key, scan) && client != null && EndingClient.playAgainShown()) { EndingClient.playAgain(client); return true; } // pass 3: Play again
+        if (GravesAndGloryClient.playAgain != null && !GravesAndGloryClient.playAgain.isUnbound() && GravesAndGloryClient.playAgain.matchesKey(key, scan) && client != null && EndingClient.playAgainShown()) { EndingClient.playAgain(client); return true; } // pass 3: Play again
         return super.keyPressed(key, scan, mods);
     }
 
@@ -62,13 +62,13 @@ final class EndingScreen extends Screen {
     /** Pass 3, harness: Play again's box in sheet pixels as last drawn (null when not drawn). */
     static volatile int[] againDrawn;
     static final String AGAIN = "Play again";
-    /** The player's own Play again key in brackets ([P] by default; rebindable in Controls). */
-    static String againKey() { return "[" + (GravesAndGloryClient.playAgain == null ? "P" : GravesAndGloryClient.playAgain.getBoundKeyLocalizedText().getString()) + "]"; }
+    /** The player's own Play again key in brackets ([J] by default; rebindable in Controls); "" when it is unbound, so the button shows no bracket. */
+    static String againKey() { var k = GravesAndGloryClient.playAgain; return k == null || k.isUnbound() ? "" : "[" + k.getBoundKeyLocalizedText().getString() + "]"; }
     /** Play again under the sheet's right edge, beside the hint: a dark plate with the brass rim, lit while the mouse is over it. */
     void againButton(DrawContext g, boolean hot) {
         var font = textRenderer;
         Text label = DarkUi.body(AGAIN), key = DarkUi.small(againKey());
-        int bw = font.getWidth(label) + font.getWidth(key) + 16, bh = 14, bx = W - bw, by = H + FRAME + 3;
+        int bw = font.getWidth(label) + (againKey().isEmpty() ? 0 : font.getWidth(key) + 4) + 12, bh = 14, bx = W - bw, by = H + FRAME + 3;
         g.fill(bx - 1, by - 1, bx + bw + 1, by + bh + 1, DarkUi.BRASS);
         g.fill(bx, by, bx + bw, by + bh, hot ? 0xff57432f : EndingPanels.CLAIM_FILL);
         g.drawText(font, label, bx + 6, by + 3, EndingPanels.CLAIM_INK, false);
