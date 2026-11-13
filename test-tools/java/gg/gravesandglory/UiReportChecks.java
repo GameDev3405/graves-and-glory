@@ -17,7 +17,7 @@ import static gg.gravesandglory.Phase1Checks.*;
  *  1920x1080, 1280x720 and 854x480. */
 final class UiReportChecks implements Suite {
     static final String[] MODES = {Modes.DOMINATION, Modes.SIEGE, Modes.CONVOY, "unknown", "survival"};
-    int stage,sub,subAt,oldW,oldH,oldGui;boolean finished;JsonObject want;
+    int stage,sub,subAt,oldW,oldH,oldGui,campAt=-1000;boolean finished;JsonObject want;
     final StringBuilder why=new StringBuilder();boolean ok=true;
 
     static CampScreen screen(MinecraftClient c){return c.currentScreen instanceof CampScreen s&&s.page.equals("results")?s:null;}
@@ -105,7 +105,11 @@ final class UiReportChecks implements Suite {
         if(finished)return;
         if(tick>6000){finished=true;report("p1-ui-report-timeout",false,"stuck in stage "+stage+" sub "+sub);finish(c,"ui-report");return;}
         if(stage==0){
-            if(tick<20)return;var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();
+            if(tick<20)return;
+            // an earlier suite in the same run (ui-hud) may leave its battle running, and the War Table closes itself while one runs: back to camp first, as the other suites do
+            if(GravesAndGloryClient.running||GravesAndGlory.battle!=null&&GravesAndGlory.battle.running){if(tick-campAt>40){campAt=tick;server(c,b->{if(b.running)b.campaign.returnLobby();});}
+                if(tick>1200){note("p1-ui-report-camp",false,"a battle was still running 1200 ticks into the suite");finished=true;finish(c,"ui-report");}return;}
+            var w=c.getWindow();oldW=w.getWidth();oldH=w.getHeight();oldGui=c.options.getGuiScale().getValue();
             c.setScreen(null);size=0;window(c,SIZES[0][0],SIZES[0][1],0,true);stage=1;subAt=tick;return;
         }
         if(want!=null&&CampaignClient.result!=want)CampaignClient.result=want; // the camp's state packets put the server's report back: the test's own is held every tick
