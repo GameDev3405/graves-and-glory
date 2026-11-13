@@ -189,7 +189,9 @@
   "belt": {},
   "hip_r": {},
   "hip_l": {},
-  "rags": {},
+  "rags_r": {},
+  "rags_c": {},
+  "rags_l": {},
   "weapon_t1": {
    "stages": [
     1

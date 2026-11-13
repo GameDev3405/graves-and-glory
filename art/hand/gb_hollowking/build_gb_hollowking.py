@@ -417,8 +417,11 @@ def bones():
     B.append(Bone("belt", "body", boxes=[Box((-5, -4, -2.5), (10, 3, 5), belt, dil=0.45)]))
     B.append(Bone("hip_r", "body", (-5.5, -2, 0), rot=(0, 0, 8), boxes=[Box((-1, 0, -3), (2, 7, 6), tasset, dil=0.1)]))
     B.append(Bone("hip_l", "body", (5.5, -2, 0), rot=(0, 0, -8), boxes=[Box((-1, 0, -3), (2, 6, 6), tasset, dil=0.1)]))
-    B.append(Bone("rags", "body", boxes=[
-        Box((-4.5, -2, -3.4), (3, 12, 0), rag(4, "a")), Box((-1.5, -2, -3.6), (3, 14, 0), rag(5, "b")), Box((1.5, -2, -3.4), (3, 10, 0), rag(3, "c"))]))
+    # the rag skirt hangs in three groups (model fix 2026-11-13), each hinged on the belt line at its own strip's top: rags_r
+    # over the right thigh, rags_c between the thighs, rags_l over the left, so each can trail its own leg. Every strip keeps
+    # its box, paint and place at rest (the boxes are the old ones, moved into their bone's frame).
+    for name, x, z, ln, cut, key in (("rags_r", -3, -3.4, 12, 4, "a"), ("rags_c", 0, -3.6, 14, 5, "b"), ("rags_l", 3, -3.4, 10, 3, "c")):
+        B.append(Bone(name, "body", (x, -2, z), boxes=[Box((-1.5, 0, 0), (3, ln, 0), rag(cut, key))]))
     # the cloak: three panels hanging from the high collar, each with a train along the floor
     panels = [("a", -6.5, 5, 26, 8), ("b", -2.5, 5, 27, 12), ("c", 1.5, 5, 25, 7)]
     flare = {"a": 5, "b": 0, "c": -5}

@@ -143,3 +143,76 @@ are identical.
 - Focus check: 44 clips, 0 FAIL.
 - Scorecard: exit 0, with the 4 rise rows EXEMPT.
 - The allowed 9 unit-test files: all OK.
+
+## Model fix 2026-11-13: rags in three bones
+
+Kort (2026-11-13): "Hollow King rags (split into more than one bone)".
+
+**Model** (`art/hand/gb_hollowking/build_gb_hollowking.py`):
+- The one `rags` bone (three flat strips on a pivot at the body origin) is now three bones under `body`. Each one is hinged on
+  the belt line at its own strip's top: `rags_r` over the right thigh (3x12 px), `rags_c` between the thighs (3x14), and
+  `rags_l` over the left thigh (3x10).
+- Every strip keeps its box, UV and place at rest; the world boxes and the textures are byte-identical. Only the pivots
+  moved. There is no mid joint: the strips reach only 1-5 px past the knee, so a joint there would bend a tiny flap.
+
+**Clips** (`art/anim/gb_hollowking/hk_polish.py`, `fix_rags`):
+- Before: one turn plus a fold (scale) for the whole skirt, set by the forward thigh.
+- Now: each group is a damped spring toward plumb (period 0.5 s, damping 0.45). It is clamped to the range in which it
+  clears the legs and the ground, and it is carried by a thigh that pushes it. So each strip trails its own thigh by a
+  beat in the gaits, sways and settles after attacks and hits, and hangs to gravity in the deaths. There is no scale.
+- One-shot clips limit a push to 6 deg a sample, so a landing body lifts the strip a few samples early instead of in one
+  frame. This cleared a pop FAIL on the forward deaths.
+- The rag fix now runs after the thigh fix, so it sees the final legs. The cuisse and plate fixes no longer measure
+  against the cloth.
+- Every clip that keyed `rags` now keys the three bones instead: the gaits, attacks, stances, hits, deaths and rise, plus
+  the late clips (hold, fallback, stun, knockback, pulled).
+- Timing: `animation_length`, `loop` and `timeline` are equal to HEAD on all 67 asset clips and all 54 out/ clips.
+
+**One other bone changed:** `run_legs` `left_cuisse` position.
+- At HEAD it slid down to 2.5 px to clear the old single rag board.
+- That board is gone, and the cuisse now measures only the body and legs, so it slides 1.75 px, like the right one.
+- No other bone changed in any clip.
+
+**Rows** (focus check):
+- Before: 44 clips, 0 FAIL, 109 WARN rows.
+- After: 44 clips, 0 FAIL, 109 WARN rows.
+- The forward deaths and fake_death now show their worst floor row as `rags_c` at 2.48 px. That is a fall, so it is not
+  gated (before, the worst was `weapon_t3` at 1.81 px or a boot at 1.55 px). The cloth lies on the ground there.
+- Scorecard: exit 0, with the same 4 EXEMPT rows on rise.
+- Exemptions: there was no rags entry, so none was removed.
+
+**Rag tip at hand-overs** (px, hips frame, worst strip):
+
+| hand-over | HEAD | now |
+|---|---|---|
+| idle -> ready first frames | 4.28 | 2.36 |
+| idle -> walk first frames | 5.79 | 6.84 |
+| idle -> run first frames | 7.22 | 7.71 |
+| ready -> walk first frames | 5.03 | 4.55 |
+| ready -> run first frames | 5.16 | 5.41 |
+| walk -> run first frames | 2.02 | 1.21 |
+| in game, idle -> walk at matchPhase | 4.87 | 3.52 |
+| in game, walk <-> run at the same phase, worst | 3.03 | 8.61 |
+
+The 2 px target is not met. Each strip now lies on its own thigh, and the thighs themselves jump:
+- The right thigh is at -61 deg at walk t0 and at -26 deg in idle.
+- At the same phase, walk and run differ by up to 49 deg at the thigh, and the knee jumps up to 5.8 px.
+
+A strip that follows its leg jumps with that leg. Meeting 2 px would need the strip to pass through the thigh, or a
+change to the gaits (other bones). In game, the start from idle or ready is blended over startBlend ticks; walk <-> run
+is not blended.
+
+**Renders:** `work/modelfix/render/before` and `after`; sheet `work/modelfix/gb_hollowking_sheet.jpg`.
+
+**What I saw:**
+- The rest pose is unchanged from the front.
+- From the side, the strips still read as thin edge-on lines. Each one now trails its own thigh in the walk and run.
+- At game16 the rags read as a dark fringe at the waist, as before.
+- Deaths: the strips lie on the ground with the body.
+
+**Tests:**
+- `test_hk_polish.py`: OK.
+- A second `hk_polish.py` run changes no byte.
+
+**Not checked:**
+- The in-game reel, verify and Gradle (not allowed by this brief).

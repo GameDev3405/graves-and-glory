@@ -1,12 +1,15 @@
 """The Hollow King's polish pass (batch review 2026-11-11): what his clips needed after the four-focus-point check, applied to
 the finished animation document (doc level, his clips only; every other troop's clips are never touched).
 
-  rags       The three rag strips hang from the hips in front of the thighs as rigid planes. A thigh or knee that comes
-             forward passed straight through them (armour_clip 2.2-2.5 px in every gait, stance, attack and hit). They are
-             cloth: every sample turns them forward about their hip hinge by the least angle that keeps them on the front of
-             the legs and off the ground, and that need is spread into a soft rise and a slower fall (a cloth lag, never a
-             snap), periodic in the loops. Keyed on "rags" in the _legs clip (additive hit legs: only what the stance under
-             them does not already give).
+  rags       The rag skirt hangs in three groups (model fix 2026-11-13; it was one rigid board across both thighs):
+             rags_r over the right thigh, rags_c between the thighs, rags_l over the left, each hinged on the belt line at
+             its strip's top. Each group is a damped spring on its hinge pulled toward plumb, pushed by what it lies on:
+             per sample the range of turns that keeps it clear of the legs, the body and the floor is found, and the spring
+             is held inside it. A thigh coming forward lifts its own group at once; when it goes back the cloth falls late,
+             on its own swing, a beat behind the leg. A tipping or turning body leaves the cloth behind, so it sways and
+             settles after attacks and hits and hangs to gravity in the deaths. Loops run to their steady swing and close.
+             Keyed on the groups in the _legs clip and the whole-body clips (additive hit legs: only what the stance under
+             them does not already give, back to it by the end). No scale: the strips keep their length.
   soft       cloak_a/b/c and both pauldrons stood still in his attacks, heavy hits and stuns: fullbody.soft_motion (damped
              spring per cloak, pauldrons following 70% of the arm, at most 10 degrees behind) on the pose the game shows
              (an additive hit over the guard). tine_r/tine_l share their pauldron's hinge and take its keys.
@@ -65,11 +68,17 @@ STATE = HERE / "out" / "hk_polish.state.json"
 SUB, TPS = 4, 20.0
 Z3 = (0.0, 0.0, 0.0)
 RAG_CLEAR = 1.0      # px a rag may lie in a leg beyond its rest fit (focus_check armour_clip warns at 1.7)
-RAG_RATE = 1.6       # degrees per sample (a quarter tick) the rags rise at most; they fall at RAG_FALL
-RAG_FALL = 0.9
-RAG_MAX = 70.0
-RAG_FOLDS = (1.0, 0.85, 0.7, 0.55)   # how short the strips may bunch, tried in turn
-FOLD_RATE = 0.03     # per sample
+RAGS = ("rags_r", "rags_c", "rags_l")   # the rag skirt's three groups (model fix 2026-11-13), each on its own belt hinge
+RAG_MAX = 80.0       # degrees a group may turn forward at most
+RAG_BACK = 25.0      # degrees a group may swing back past its rest at most
+RAG_STEP = 5.0       # degrees: the scan for the clear range, then bisected
+RAG_PERIOD = 0.5     # s: the cloth's swing on its hinge (a damped spring toward plumb)
+RAG_ZETA = 0.45
+RAG_FLOOR = 1.0      # px a strip may lie on (in) the ground beyond FLOOR_PAD: cloth lands and folds there (a rigid strip
+                     # cannot fold, so where it meets the floor it is let in this far instead of being flung up)
+RAG_CARRY = 0.5      # of a pushing thigh's speed the cloth keeps when the thigh stops (heavy, rotted cloth)
+RAG_LAND = 6.0       # degrees per sample at most a strip is pushed in a one-shot clip: where the body lands on it or a
+                     # thigh meets it, it starts to move a few samples early instead of flicking in one sample
 PLATE_CLEAR = 1.2    # px a plate or the head may lie in the body beyond its rest fit (armour_clip warns at 1.7)
 CUISSE_SLIDE = 2.5   # px a thigh plate slides down its thigh at most
 SLIDE_RATE = 0.15    # px per sample
@@ -94,13 +103,16 @@ TINES = {"right_pauldron": "tine_r", "left_pauldron": "tine_l"}
 HITS = ["hit_light_front", "hit_light_back", "hit_light_right", "hit_light_left", "hit_medium_front", "hit_medium_back",
         "hit_medium_right", "hit_medium_left", "hit_block"]
 READY = ("stance_ready_upper", "stance_ready_legs", 0.0)
+DEATHS = ["death_%s%s" % (d, x) for d in ("back", "forward", "left", "right") for x in ("", "_drop1", "_drop2")] + [
+    "fake_death", "rise"]     # whole-body clips: the rags hang to gravity as he falls (and as he is drawn up again)
 BUILT = {
     "floor": [("run_legs", "run_upper", None), ("stance_wall_legs", "stance_wall_upper", None)],
     "rags": [("idle_legs", "idle_upper", None), ("walk_legs", "walk_upper", None), ("run_legs", "run_upper", None),
              ("attack_overhead_cleave_legs", "attack_overhead_cleave", None),
              ("attack_side_cut_legs", "attack_side_cut", None), ("attack_thrust_legs", "attack_thrust", None),
              ("stance_ready_legs", "stance_ready_upper", None), ("stance_brace_legs", "stance_brace_upper", None),
-             ("stance_wall_legs", "stance_wall_upper", None)] + [(h + "_legs", h, READY) for h in HITS],
+             ("stance_wall_legs", "stance_wall_upper", None)] + [(h + "_legs", h, READY) for h in HITS]
+            + [(d, None, None) for d in DEATHS],
     "weapon": [("attack_overhead_cleave", "attack_overhead_cleave_legs", None)],
     "cuisse": [("run_legs", "run_upper", None), ("attack_side_cut_legs", "attack_side_cut", None),
                ("attack_overhead_cleave_legs", "attack_overhead_cleave", None)],
@@ -126,7 +138,7 @@ LATE = {
              ("stun_upper", "stun_legs", None), ("stun_out_upper", "stun_legs", STUN)],
 }
 STUN_LOOP = (4.0, 24.0)     # reactions.py: the stun clip plays its entry once, then loops ticks 4-24
-UNFOLDED = ("idle_legs",)   # at ease the strips keep their full length, as in the ready guard he goes to from idle
+START = {}     # group -> {clip: forward turn its first sample starts from} (none yet: plumb)
 HIP_PLATES = ("hip_r", "hip_l")
 
 
@@ -273,8 +285,9 @@ class Rig:
         self.hard = P.hard()
         self.weapon = P.idx(["weapon"])
         keep = [i for i in range(len(self.bone_of)) if P.part[i] not in ("weapon", "prop")]
-        self.rags = [i for i in keep if self.bone_of[i] == "rags"]
-        self.others = [i for i in keep if self.bone_of[i] != "rags"]
+        self.rag_idx = {g: [i for i in keep if self.bone_of[i] == g] for g in RAGS}
+        self.rags = [i for i in keep if self.bone_of[i] in RAGS]
+        self.others = [i for i in keep if self.bone_of[i] not in RAGS]
 
         def under(root):
             out = set()
@@ -291,7 +304,12 @@ class Rig:
                     for s in ("right", "left")}
         rest = self.fk({})
         self.ground = min(0.0, float(rest[1][self.hard][:, :, 1].min()) * 16.0)     # px: focus_check's floor line
-        self.rest_fit = self._rag_fits(rest[1], rest[2], rest[1][self.rags], rest[2][self.rags])
+        self._tip_local, self._tip_order = {}, {}
+        for g, ix in self.rag_idx.items():      # the hem: the strip's four lowest corners at rest (model space, blocks)
+            c = self.model.cube_list[ix[0]].corners
+            self._tip_order[g] = np.argsort(c[:, 1])[:4]
+            self._tip_local[g] = c[self._tip_order[g]].mean(axis=0)
+        self.rest_fit = {g: self._rag_fits(rest[1], rest[2], rest[1][ix], rest[2][ix], ix) for g, ix in self.rag_idx.items()}
         self.full = rig.full
         self._pieces = {}
         self.sign = self._rag_sign(rest)
@@ -327,24 +345,26 @@ class Rig:
         return M, C, R
 
     # rags ---------------------------------------------------------------------------------------
-    def rag_boxes(self, M, theta, fold=1.0):
-        rg = self.rg
+    def rag_boxes(self, M, g, theta):
+        """The cubes of rag group g turned theta degrees (the channel's own sign) on its hinge, in a pose's matrices."""
         Mr = dict(M)
-        L = self.local("rags", (theta, 0.0, 0.0), None)
-        if fold != 1.0:      # scaled along the strips about their hinge (the render applies scale after the turn)
-            pv = self.model.bones["rags"].pivot / 16.0
-            L = L @ rg._T(*pv) @ rg._S(1.0, fold, 1.0) @ rg._T(*(-pv))
-        Mr["rags"] = M[self.model.bones["rags"].parent] @ L
-        return self._cubes(Mr, self.rags)
+        Mr[g] = M[self.model.bones[g].parent] @ self.local(g, (theta, 0.0, 0.0), None)
+        return self._cubes(Mr, self.rag_idx[g])
 
-    def _rag_fits(self, C, R, RC, RR):
+    def rag_tip(self, M, g, theta):
+        """The middle of group g's hem (its lowest edge at rest), in blocks, for a turn theta."""
+        C, _ = self.rag_boxes(M, g, theta)
+        c = C[0]
+        return c[self._tip_order[g]].mean(axis=0)
+
+    def _rag_fits(self, C, R, RC, RR, idx):
         sc = self.sc
         out = {}
         lo, hi = C.min(axis=1), C.max(axis=1)
-        for k in range(len(self.rags)):
+        for k in range(len(idx)):
             a = RC[k]
             alo, ahi = a.min(axis=0), a.max(axis=0)
-            pa = sc.cube_points(a, self.lat[self.rags[k]])
+            pa = sc.cube_points(a, self.lat[idx[k]])
             for j in self.others:
                 if not (np.all(alo <= hi[j]) and np.all(lo[j] <= ahi)):
                     continue
@@ -390,64 +410,102 @@ class Rig:
                 out.add(n)
         return out
 
-    def piece(self, root, skip_limb=None):
-        """(cubes under `root`, the other cubes it may clip, its rest fits) for a gap solve."""
+    def piece(self, root, skip_limb=None, cloth=True):
+        """(cubes under `root`, the other cubes it may clip, its rest fits) for a gap solve. cloth=False leaves the rag
+        strips out of the others: the cloth yields to a plate, never the plate to the cloth."""
         import focus_check as fc
-        if root not in self._pieces:
+        key = (root, skip_limb, cloth)
+        if key not in self._pieces:
             under = self.subtree(root)
-            mov = [i for i in self.rags + self.others if self.bone_of[i] in under]
-            oth = [i for i in self.rags + self.others if self.bone_of[i] not in under
+            pool = self.rags + self.others if cloth else self.others
+            mov = [i for i in pool if self.bone_of[i] in under]
+            oth = [i for i in pool if self.bone_of[i] not in under
                    and (skip_limb is None or fc._limb_root(self.full, self.bone_of[i]) != skip_limb)]
             M, C, R = self.fk({})
             rest = self.fits_of(C, R, mov, C[mov], R[mov], oth)
-            self._pieces[root] = (mov, oth, rest)
-        return self._pieces[root]
+            self._pieces[key] = (mov, oth, rest)
+        return self._pieces[key]
 
-    def gap(self, fr, root, M2, skip_limb=None):
+    def gap(self, fr, root, M2, skip_limb=None, cloth=True):
         """px the piece under `root` (posed by the bone matrices M2) lies in the rest of the body beyond its rest fit."""
-        mov, oth, rest = self.piece(root, skip_limb)
+        mov, oth, rest = self.piece(root, skip_limb, cloth)
         MC, MR = self._cubes(M2, mov)
         fits = self.fits_of(fr[1], fr[2], mov, MC, MR, oth)
         return max([v - rest.get(b, 0.0) for b, v in fits.items()] + [0.0])
 
-    def rag_gap(self, fr, theta, fold=1.0):
+    def rag_gap(self, fr, g, theta):
+        """(px group g lies in the body beyond its rest fit, px its lowest point is under the floor line) at a turn."""
         M, C, R = fr
-        RC, RR = self.rag_boxes(M, theta, fold)
-        fits = self._rag_fits(C, R, RC, RR)
-        gap = max([v - self.rest_fit.get(b, 0.0) for b, v in fits.items()] + [0.0])
+        RC, RR = self.rag_boxes(M, g, theta)
+        fits = self._rag_fits(C, R, RC, RR, self.rag_idx[g])
+        rf = self.rest_fit[g]
+        gap = max([v - rf.get(b, 0.0) for b, v in fits.items()] + [0.0])
         low = self.ground + FLOOR_PAD - float(RC[:, :, 1].min()) * 16.0
         return gap, low
 
     def _rag_sign(self, rest):
-        z = []
-        for s in (1.0, -1.0):
-            RC, _ = self.rag_boxes(rest[0], 15.0 * s)
-            z.append(float(RC[:, :, 2].mean()))
-        return 1.0 if z[0] > z[1] else -1.0          # world +z is his front
+        RC, _ = self.rag_boxes(rest[0], "rags_c", 15.0)
+        RC0, _ = self.rag_boxes(rest[0], "rags_c", -15.0)
+        return 1.0 if RC[:, :, 2].mean() > RC0[:, :, 2].mean() else -1.0     # world +z is his front
 
-    def rag_need(self, fr, folds=RAG_FOLDS):
-        """(least forward turn in degrees >= 0, fold) that clears the legs and the ground. The strips turn first; when a
-        knee comes up higher than a turn can clear, they also bunch (fold < 1 shortens them about the hinge)."""
-        def ok(a, f):
-            g = self.rag_gap(fr, self.sign * a, f)
-            return g[0] <= RAG_CLEAR and g[1] <= 0.0
-        if ok(0.0, folds[0]):
-            return 0.0, folds[0]
-        for f in folds:
-            prev = None
-            for a in np.arange(0.0, RAG_MAX + 1e-6, 5.0):
-                if ok(a, f):
-                    if prev is None:
-                        return 0.0, f
-                    lo, hi = prev, a
-                    for _ in range(4):
-                        mid = (lo + hi) / 2.0
-                        lo, hi = (lo, mid) if ok(mid, f) else (mid, hi)
-                    return hi, f
-                prev = a
-        best = min(((self.rag_gap(fr, self.sign * a, f)[0], a, f) for f in folds[-1:]
-                    for a in np.arange(0.0, RAG_MAX + 1e-6, 5.0)))
-        return best[1], best[2]
+    def rag_ok(self, fr, g, a, floor=0.0):
+        gp, low = self.rag_gap(fr, g, self.sign * a)
+        return gp <= RAG_CLEAR and low <= floor
+
+    def rag_range(self, fr, g, floor=0.0):
+        """(least, greatest) forward turn in degrees, in [-RAG_BACK, RAG_MAX], at which group g lies clear of the legs, the
+        body and the floor. The clear turns are taken as one range: scanned in from both ends, then bisected."""
+        grid = np.arange(-RAG_BACK, RAG_MAX + 1e-6, RAG_STEP)
+        ok = None
+        for j, a in enumerate(grid):
+            if self.rag_ok(fr, g, float(a), floor):
+                ok = j
+                break
+        if ok is None:      # nothing clears (pinned between the legs and the floor): the spring alone decides
+            return -RAG_BACK, RAG_MAX
+        lo = float(grid[ok])
+        if ok > 0:
+            a, b = float(grid[ok - 1]), lo
+            for _ in range(5):
+                m = (a + b) / 2.0
+                a, b = (a, m) if self.rag_ok(fr, g, m, floor) else (m, b)
+            lo = b
+        hi = float(grid[-1])
+        if not self.rag_ok(fr, g, hi, floor):
+            j = len(grid) - 1
+            while j > ok and not self.rag_ok(fr, g, float(grid[j]), floor):
+                j -= 1
+            a, b = float(grid[j]), float(grid[j + 1])
+            for _ in range(5):
+                m = (a + b) / 2.0
+                a, b = (m, b) if self.rag_ok(fr, g, m, floor) else (a, m)
+            hi = a
+        return lo, hi
+
+    def rag_plumb(self, M, g):
+        """The forward turn (degrees) that hangs group g straight down under its hinge: gravity's pull, in its parent."""
+        Mp = M[self.model.bones[g].parent]
+        down = Mp[:3, :3].T @ np.array([0.0, -1.0, 0.0])
+        a0 = self.rag_dir(M, g, 0.0)
+        a1 = self.rag_dir(M, g, self.sign * 10.0)
+        # the strip's direction turns about the hinge's x axis: the angle from down in the plane of that turn
+        n = np.cross(a0, a1)
+        n /= np.linalg.norm(n)
+        d = down - n * float(down @ n)
+        m = float(np.linalg.norm(d))
+        if m < 1e-6:
+            return 0.0
+        d /= m
+        ang = math.degrees(math.atan2(float(np.cross(a0, d) @ n), float(a0 @ d)))
+        return ang * m * m        # lying on his side, down is along the hinge: the strips have no pull either way
+
+    def rag_dir(self, M, g, theta):
+        """Unit direction from group g's hinge to its hem, in its parent's frame, at a turn."""
+        L = self.local(g, (theta, 0.0, 0.0), None)
+        pv = self.model.bones[g].pivot / 16.0
+        tip = (L @ np.append(self._tip_local[g], 1.0))[:3]
+        v = tip - pv
+        return v / np.linalg.norm(v)
 
     # floor --------------------------------------------------------------------------------------
     def low(self, C, idx):
@@ -497,46 +555,78 @@ def _times(ctx):
 
 # ------------------------------------------------------------------------------------------------ the fixes
 
+def rag_curve(rig, frames, g, x0, loop, seam=False, floor=0.0):
+    """Group g's forward turn per sample (degrees): a damped spring on its hinge toward plumb (gravity, so a turning or
+    tipping body leaves the cloth behind and it swings and settles after), pushed by whatever it lies on: a thigh coming
+    forward lifts it at once (the clear range's floor), and when the thigh goes back the strip falls late, on its own
+    swing, a beat behind the leg. Loops run to their steady swing and close; x0 (or None: plumb) starts the rest."""
+    n = len(frames) - 1
+    rng = [rig.rag_range(fr, g, floor) for fr in frames]
+    lo = np.array([r[0] for r in rng])
+    hi = np.array([r[1] for r in rng])
+    goal = np.clip([rig.rag_plumb(fr[0], g) for fr in frames], -RAG_BACK, RAG_MAX)
+    w = 2.0 * math.pi / RAG_PERIOD
+    k, damp = w * w, 2.0 * RAG_ZETA * w
+    dt = 1.0 / (SUB * TPS)
+    x = float(np.clip(goal[0] if x0 is None else x0, lo[0], hi[0]))
+    v = 0.0
+    out = np.zeros(n + 1)
+    touch = 0     # which bound held it the sample before (-1 lo, +1 hi): only a bound already holding it carries it on
+    for _ in range(4 if loop else 1):       # a loop runs round until its swing repeats
+        for i in range(n + 1):
+            if i:
+                h = dt / 4.0
+                for _ in range(4):
+                    v += (k * (goal[i] - x) - damp * v) * h
+                    x += v * h
+            if x < lo[i]:            # pushed: it moves with what pushes it (a bound that only now meets it just stops it)
+                x = lo[i]
+                v = max(v, RAG_CARRY * (lo[i] - lo[i - 1]) / dt if i and touch < 0 else 0.0)
+                touch = -1
+            elif x > hi[i]:
+                x = hi[i]
+                v = min(v, RAG_CARRY * (hi[i] - hi[i - 1]) / dt if i and touch > 0 else 0.0)
+                touch = 1
+            else:
+                touch = 0
+            out[i] = x
+    if loop:      # the residue of the wrap is spread over the cycle, so the last sample is the first
+        out -= (out[n] - out[0]) * np.arange(n + 1) / float(n)
+    if seam:
+        out = _seam(out, n)
+    out = np.clip(out, lo, np.maximum(lo, hi))
+    if not loop:     # a one-shot (death, hit, attack): no push faster than RAG_LAND a sample, it starts early instead
+        for i in range(n - 1, -1, -1):
+            out[i] = min(max(out[i], out[i + 1] - RAG_LAND, lo[i]), out[i + 1] + RAG_LAND, max(lo[i], hi[i]))
+    return out, lo
+
+
 def fix_rags(rig, B, anims, name, partner, base, log):
     ctx = Ctx(anims, name, partner, base)
-    ctx.clip["bones"].pop("rags", None)
+    for b in ("rags",) + RAGS:
+        ctx.clip["bones"].pop(b, None)
     ts, n = _times(ctx)
-    folds = (1.0,) if name in UNFOLDED else RAG_FOLDS
-    if base is not None:     # HitController adds a hit's turns only: the strips keep the stance's length under it
-        sc0 = anims[base[1]]["bones"].get("rags", {}).get("scale")
-        folds = (_at(_keys(sc0), base[2])[1] if sc0 else 1.0,)
-    res = [rig.rag_need(rig.fk(ctx.pose(t, strip=("rags",))), folds) for t in ts]
-    need = [a for a, _ in res]
-    bunch = [folds[0] - f for _, f in res]
-    if ctx.loop:
-        need[-1] = need[0] = max(need[0], need[-1])
-        bunch[-1] = bunch[0] = max(bunch[0], bunch[-1])
-    env = envelope(need, RAG_RATE, RAG_FALL, ctx.loop)
-    fold = envelope(bunch, FOLD_RATE, FOLD_RATE, ctx.loop)
-    if base is not None:     # the stance under an additive hit already turns them this far
-        r0 = rig.sign * ctx.base_of("rags")[0][0]
-        env = np.maximum(env - r0, 0.0)
-        env[0] = env[-1] = 0.0
-        fold[0] = fold[-1] = 0.0
-    seam = ()
-    if name == "stun_legs":      # the game loops ticks 4-24: tick 24 comes back to tick 4
-        env, fold = _seam(env, n), _seam(fold, n)
-        seam = (int(STUN_LOOP[0] * SUB), int(STUN_LOOP[1] * SUB))
-    if max(env) < 0.05 and max(fold) < 0.005:
-        log("  rags %-28s clear (no key)" % name)
-        return
-    ch = {}
-    vals = [[round(rig.sign * float(v), 3), 0.0, 0.0] for v in env]
-    ch["rotation"] = {_ft(i / SUB / TPS): vals[i] for i in sorted(set(B.thin(vals, B.ROT_TOL)) | set(seam))}
-    if max(fold) >= 0.005 and base is None:
-        sv = [[1.0, round(1.0 - float(v), 4), 1.0] for v in fold]
-        ch["scale"] = {_ft(i / SUB / TPS): sv[i] for i in sorted(set(B.thin(sv, 0.002)) | set(seam))}
-    ctx.clip["bones"]["rags"] = ch
-    k = int(np.argmax(need))
-    left = max(rig.rag_gap(rig.fk(ctx.pose(t, strip=("rags",))), rig.sign * float(env[i]) + (ctx.base_of("rags")[0][0] if base is not None else 0.0), folds[0] - float(fold[i]))[0]
-               for i, t in enumerate(ts) if i % 4 == 0)
-    log("  rags %-28s turn max %.1f deg at t%s (keyed %.1f), bunch max %.2f; worst gap left %.2f px"
-        % (name, max(need), B.fmt_t(k / SUB) if k else "0", max(env), max(fold), left))
+    frames = [rig.fk(ctx.pose(t, strip=RAGS)) for t in ts]
+    seam = (int(STUN_LOOP[0] * SUB), int(STUN_LOOP[1] * SUB)) if name == "stun_legs" else ()
+    msg = []
+    for g in RAGS:
+        b0 = rig.sign * ctx.base_of(g)[0][0] if base is not None else None    # the stance an additive hit plays over
+        x0 = b0 if b0 is not None else START.get(g, {}).get(name)
+        curve, lo = rag_curve(rig, frames, g, x0, ctx.loop, seam=bool(seam), floor=RAG_FLOOR if name in DEATHS else 0.0)
+        if b0 is not None:        # HitController adds a hit's turns: only what the stance does not already give,
+            curve = curve - b0    # and back to the stance by the end
+            m = min(n, 4 * SUB)
+            for i in range(n - m, n + 1):
+                f = B.smooth((i - (n - m)) / float(m))
+                curve[i] = max(curve[i] * (1.0 - f), lo[i] - b0)
+        if np.abs(curve).max() < 0.05:
+            msg.append("%s still" % g)
+            continue
+        vals = [[round(rig.sign * float(v), 3), 0.0, 0.0] for v in curve]
+        keys = sorted(set(B.thin(vals, B.ROT_TOL)) | set(seam))
+        ctx.clip["bones"][g] = {"rotation": {_ft(i / SUB / TPS): vals[i] for i in keys}}
+        msg.append("%s %+.1f..%+.1f" % (g, float(curve.min()), float(curve.max())))
+    log("  rags %-28s %s" % (name, ", ".join(msg)))
 
 
 def _bpose(pose):
@@ -819,12 +909,12 @@ def fix_cuisse(rig, B, anims, name, partner, base, log):
         need = np.zeros(n + 1)
         for i, t in enumerate(ts):
             fr = rig.fk(ctx.pose(t))
-            if rig.gap(fr, bone, fr[0], skip_limb=side + "_leg") <= PLATE_CLEAR:
+            if rig.gap(fr, bone, fr[0], skip_limb=side + "_leg", cloth=False) <= PLATE_CLEAR:
                 continue
             d = CUISSE_SLIDE
             for x in np.arange(0.25, CUISSE_SLIDE + 1e-6, 0.25):
                 M2 = _posed(rig, fr[0], bone, pos=(0.0, -float(x), 0.0))
-                if rig.gap(fr, bone, M2, skip_limb=side + "_leg") <= PLATE_CLEAR:
+                if rig.gap(fr, bone, M2, skip_limb=side + "_leg", cloth=False) <= PLATE_CLEAR:
                     d = float(x)
                     break
             need[i] = d
@@ -1020,7 +1110,7 @@ def fix_plate(rig, B, anims, name, partner, base, log):
             r, q = pose.get(bone, (Z3, None))
             r = list(r)
             r[ax] += d
-            return rig.gap(fr, bone, _posed(rig, fr[0], bone, rot=tuple(r), pos=q))
+            return rig.gap(fr, bone, _posed(rig, fr[0], bone, rot=tuple(r), pos=q), cloth=False)
 
         frames = [(i, ctx.pose(t)) for i, t in enumerate(ts)]
         deep = []
@@ -1089,7 +1179,7 @@ def fix_seam(rig, B, anims, name, partner, base, log):
     log("  seam %-28s tick 24 = tick 4 on every channel (largest change %.3f, %s)" % (name, worst[0], worst[1] or "none"))
 
 
-FIXES = (("floor", fix_floor), ("rags", fix_rags), ("cuisse", fix_cuisse), ("thigh", fix_thigh), ("weapon", fix_weapon),
+FIXES = (("floor", fix_floor), ("cuisse", fix_cuisse), ("thigh", fix_thigh), ("rags", fix_rags), ("weapon", fix_weapon),
          ("edge", fix_edge), ("head", fix_head), ("plate", fix_plate), ("soft", fix_soft), ("seam", fix_seam))
 
 
