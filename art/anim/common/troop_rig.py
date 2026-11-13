@@ -10,6 +10,7 @@ Every bone keeps its absolute pivot, so its boxes and their painted UVs carry ov
   shins         stop 2 px above the sole; <side>_foot hangs at the ankle with the shin gear from y 3 down (boot, toe), or, with
                 no boot, the shin's own bottom rows
   shield        gripped in the left fist at the knight's grip (build_anims turns the hand to keep it upright)
+                its children (the cloth face) move with it; every other bone keeps its absolute pivot
   cape          the capes and collar under one "cape" bone at their shared pivot, the bone the knight's clips swing
   pauldrons     undersides painted as the leather lining (they show whenever an arm lifts)
   weapon        the troop's weapon tiers (art/hand/weapons) in the right fist, Y-up grip frame like the knight's sword
@@ -240,6 +241,7 @@ def rigify(src, weapon_rot, kind="blade", hang=None, robe=None, big=None, swing=
     waist, ankle = (big["waist"], big["ankle"]) if big else (WAIST, 4)
     cape_pivot = None
     hang, later = hang or {}, []
+    carried = {}   # a bone rigify moves from where the art put it: how far, for its children
     for bn in src:
         if bn.name in ("root", "body"):
             continue
@@ -273,8 +275,13 @@ def rigify(src, weapon_rot, kind="blade", hang=None, robe=None, big=None, swing=
             continue
         if bn.name == "shield":
             bn.rot = [0, 0, 0]
-            add(bn, "left_hand", [ab["left_hand"][i] + SHIELD_AT[i] for i in range(3)])
+            grip = [ab["left_hand"][i] + SHIELD_AT[i] for i in range(3)]
+            carried[bn.name] = [grip[i] - a[i] for i in range(3)]
+            add(bn, "left_hand", grip)
             continue
+        if par in carried:   # a moved bone's children move with it (the shield's cloth face stays on the shield)
+            carried[bn.name] = carried[par]
+            a = [a[i] + carried[par][i] for i in range(3)]
         if bn.name.endswith("_pauldron") or bn.name.endswith("_spaulder"):
             for b in bn.boxes:
                 b.paint = {k: lined(v) for k, v in b.paint.items()}

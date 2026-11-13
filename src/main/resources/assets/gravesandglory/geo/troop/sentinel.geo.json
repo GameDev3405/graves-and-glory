@@ -979,15 +979,15 @@
      "name": "shield_face_t1",
      "parent": "shield",
      "pivot": [
-      7.7,
-      12.0,
+      5.0,
+      10.0,
       -1.5
      ],
      "cubes": [
       {
        "origin": [
-        1.7,
-        4.0,
+        -1.0,
+        2.0,
         -3.6
        ],
        "size": [
@@ -1006,15 +1006,15 @@
      "name": "shield_face_t3",
      "parent": "shield",
      "pivot": [
-      7.7,
-      12.0,
+      5.0,
+      10.0,
       -1.5
      ],
      "cubes": [
       {
        "origin": [
-        1.7,
-        4.0,
+        -1.0,
+        2.0,
         -3.6
        ],
        "size": [
