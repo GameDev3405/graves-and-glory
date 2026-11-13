@@ -220,7 +220,7 @@ public final class Campaign {
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
         boolean wasEnding=ending();endingStart=-1;skipped.clear();endingStaged.clear();endingDone.clear();endingRanks.clear();endingAwards.clear();endingLines.clear();endingLeft.clear();endingMvp=null;if(wasEnding)PodiumStage.release(b.world);
         b.running=false;introUntil=0;social.finish();readyAgain();activeRoom="";roundTier="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);b.clearIntel();
-        Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearCorpses();b.clearSides();b.clearProgression();
+        Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearCorpses();b.clearSides();b.clearProgression();b.clearPlans();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();botGuard.clear();musterFirstAt.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();deleteProgress();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}closeParty();
         notices.values().removeIf(WELCOME_WAIT::equals);noticeAt.keySet().retainAll(notices.keySet()); // "Battle in progress" is no longer true
@@ -1051,6 +1051,7 @@ public final class Campaign {
         else if(living>=full*tier.rallyShare())botRetreating.remove(s.owner);
         boolean retreating=botRetreating.contains(s.owner);
         musterRelease(s,all,front,retreating);
+        BattlePlan.Assignment plan=retreating?null:BattleMapNet.jobFor(b,s); // the battle map's plan for this army (a pure query), applied below once the mode has had its say; retreat above keeps priority
         int hold=tier.flankLeastDefended()?garrisonPoint(s,center,tier):-1,current=-1;
         if(hold>=0)choice=b.points.get(hold);
         else if(tier.flankLeastDefended()){
@@ -1080,6 +1081,17 @@ public final class Campaign {
         else{
             goal=b.mode.botGoal(b,s,center,tier); // a mode's own goal (Convoy's wagon), else the chosen point
             s.order=goal!=null||choice.owner!=s.team||choice.contested?"attack":"hold";s.formation=living<8?"loose":"block";s.target=goal!=null?goal:spot(choice);
+            if(plan!=null&&goal==null){ // a player's plan replaces the point choice (and the guard below); only the goal changes, never routing or movement
+                var pt=plan.point()>=0&&plan.point()<count?b.points.get(plan.point()):null;Vec3d at=null;String order="hold";
+                switch(plan.job()){
+                    case FOLLOW->{var who=BattleMapNet.followed(b,s);at=who==null?null:who.getPos();}
+                    case ATTACK->{at=pt!=null?spot(pt):place(plan.x(),plan.z());order="attack";}
+                    case DEFEND->{at=pt!=null?spot(pt):place(plan.x(),plan.z());double r=(pt!=null?pt.spec.radius():0)+PLAN_DEFEND_REACH;
+                        for(var sight:seen.values())if(Math.hypot(sight.x()-at.x,sight.z()-at.z)<=r){order="attack";break;}}
+                    case HOLD->at=pt!=null?spot(pt):place(plan.x(),plan.z());
+                }
+                if(at==null)plan=null;else{s.order=order;s.target=at;if(pt!=null)choice=pt;}
+            }
             if(s.order.equals("attack")){
                 if(tier.chargeDistance()>0){
                     // Timed charge: judged on the enemies this team has seen, counted near the army, and only once the nearest is in range.
@@ -1087,12 +1099,14 @@ public final class Campaign {
                 }else if(enemies>0&&BattleMath.timedCharge(0,living,enemies,tier.chargeRatio(),0))s.order="charge";
             }
         }
+        if(!retreating)BattleMapNet.noted(b,s,goal==null?plan:null); // the bot says what it was asked, once
         Vec3d objective=retreating?null:b.mode.botTarget(b,s); // a mode's own objective (Siege's stage) replaces the point plan
         if(objective!=null){s.target=objective;if(b.mode.howToSide(b,s).equals("defend"))s.order="hold";else if(!s.order.equals("charge"))s.order="attack";}
         if(s.order.equals("charge")&&couldCharge&&!OrderRules.useCharge(b,s))s.order="attack"; // a new Charge needs the commander's cooldown (OrderRules.chargeReady, markChargeUsed); not ready, the army attacks its objective. A bot never hunts: only a player's Attack does (Assignment.hunt).
         // Guard (audit D2): on the points plan, the army nearest a threatened point its team owns leaves one group there; an army of one group holds it whole.
         boolean points=!retreating&&goal==null&&objective==null&&!tier.flankLeastDefended()&&b.mode.capturesPoints(b);
-        int guard=points?guardPoint(s,center,seen.values()):-1;String guardGroup=null;
+        int guard=points&&plan==null?guardPoint(s,center,seen.values()):-1; // a plan's Defend or Hold stands in for the guard; the else below drops only this army's own claim
+        String guardGroup=null;
         if(guard>=0){
             var at=b.points.get(guard);boolean here=b.points.indexOf(choice)==guard;
             guardGroup=here?null:guardGroup(mine);
@@ -1107,6 +1121,10 @@ public final class Campaign {
         if(s.order.equals("charge")&&couldCharge)b.markCharge(s,"all");
         var listener=decisionListener;if(listener!=null)listener.decided(this,s,tier,center,(int)living,full,seen.values(),(int)enemies,couldCharge,choice,hold,retreating,wasOrder,wasTarget); // dev hook, null in play
     }
+    /** How far past a planned point's radius a sighting makes a Defend plan attack instead of hold (spec 5.1). */
+    static final double PLAN_DEFEND_REACH=16;
+    /** A place a plan names: its block column's ground, a block over. */
+    Vec3d place(double x,double z){return new Vec3d(x,b.world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES,(int)Math.floor(x),(int)Math.floor(z))+1,z);}
     /** The spot an order to a capture point sends a group to: its centre, a block over the ground. */
     static Vec3d spot(GravesAndGlory.Capture p){return new Vec3d(p.spec.x(),p.spec.elevation()+1,p.spec.z());}
     /** Whether an order's target is this point (within 2 blocks of its centre). */
@@ -1248,7 +1266,7 @@ public final class Campaign {
     }
     /** Switches the battlefield. The arena rebuilds on the next ticks; the lobby stays. */
     void switchMap(int index){if(b.mode.teardown(b))Modes.unmark(b);b.saves.clear(); // the next map's recover drops a kept marker and its files: the arena is rebuilt
-        Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);Houses.reset(b);b.clearCorpses();b.clearSides();b.clearProgression();FeedEvents.clear();map=index;if(!Modes.registered(battleMode)||!Modes.hosts(battleMode,map))battleMode=Modes.DOMINATION;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;EngineMaps.reset();Structures.clearQueue();b.placing=false;}
+        Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);Houses.reset(b);b.clearCorpses();b.clearSides();b.clearProgression();b.clearPlans();FeedEvents.clear();map=index;if(!Modes.registered(battleMode)||!Modes.hosts(battleMode,map))battleMode=Modes.DOMINATION;CampaignMaps.select(map);b.points.clear();for(var point:Spec.POINTS)b.points.add(new GravesAndGlory.Capture(point));b.ready=false;b.buildColumn=0;EngineMaps.reset();Structures.clearQueue();b.placing=false;}
     /** The lesson a commander is on, or -1: only a campaign battle whose sheet row teaches (lessons) shows them, to its commanders, until all four are done. They repeat on every replay. */
     int tutorialStep(UUID id){
         if(!b.running||activeBattle==null||!activeBattle.lessons()||!participants.contains(id))return -1;

@@ -41,6 +41,10 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier PROFILE = new Identifier("gravesandglory", "profile_v1");
     public static final Identifier IMPACT = new Identifier("gravesandglory", "impact_v1");
     public static final Identifier PING = new Identifier("gravesandglory", "ping_v1");
+    /** The battle map (BattleMapNet): the field grid once per match (S2C), the allied armies and plans every 20 ticks (S2C), and a player's plan or direct order (C2S). */
+    public static final Identifier MAP_GRID = new Identifier("gravesandglory", "battlemap_grid_v1");
+    public static final Identifier MAP_STATE = new Identifier("gravesandglory", "battlemap_v1");
+    public static final Identifier PLAN = new Identifier("gravesandglory", "battleplan_v1");
     public static final Identifier TACTICAL = new Identifier("gravesandglory", "tactical_v1");
     /** One order to several groups (command UI Task 3b): action, formation, float yaw, int target, int n, then n x (String group, double x, z), each
      *  group with its own point. The command keys send only this; tactical_v1 (one group) stays accepted for old clients, bots and tests. */
@@ -106,7 +110,7 @@ public final class GravesAndGlory implements ModInitializer {
         ServerEntityEvents.ENTITY_UNLOAD.register((entity,world)->{if(ArmyMobs.isTroop(entity))Battle.leaveSide(entity);});
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             if(battle==null) return;
-            battle.tick();FeedEvents.tick(battle);GearCombat.tick(battle);
+            battle.tick();FeedEvents.tick(battle);BattleMapNet.tick(battle);GearCombat.tick(battle);
             // No hunger in Graves and Glory: food stays full (sprinting and slow natural healing still work) and saturation empty (so healing stays slow).
             for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList()){var hunger=p.getHungerManager();if(hunger.getFoodLevel()!=20)hunger.setFoodLevel(20);hunger.setSaturationLevel(0);hunger.setExhaustion(0);}
         });
@@ -135,6 +139,10 @@ public final class GravesAndGlory implements ModInitializer {
         });
         ServerPlayNetworking.registerGlobalReceiver(PROFILE,(server,p,handler,buf,responder)->{String json=buf.readString(32000);server.execute(()->{if(battle!=null)battle.campaign.importProfile(p,json);});});
         ServerPlayNetworking.registerGlobalReceiver(PING,(server,p,handler,buf,responder)->{String kind=buf.readString(16);double x=buf.readDouble(),z=buf.readDouble();server.execute(()->{if(battle!=null)battle.ping(p,kind,x,z);});});
+        ServerPlayNetworking.registerGlobalReceiver(PLAN,(server,p,handler,buf,responder)->{
+            int kind=buf.readByte(),point=buf.readInt();String army=buf.readString(36);int job=buf.readByte();double x=buf.readDouble(),z=buf.readDouble();
+            server.execute(()->{if(battle!=null)BattleMapNet.apply(battle,p,kind,point,army,job,x,z);});
+        });
         ServerPlayNetworking.registerGlobalReceiver(TACTICAL, (server, player, handler, buf, responder) -> {
             String group=buf.readString(16), action=buf.readString(16), formation=buf.readString(16);
             double x=buf.readDouble(),z=buf.readDouble();float yaw=buf.readFloat();int target=buf.readInt();
@@ -623,6 +631,13 @@ public final class GravesAndGlory implements ModInitializer {
         /** A round boundary for in-match progression (startRound, Campaign.returnLobby and switchMap): the credit logs, every Armoury, every status, every client's ranks and the fallen troops' records go. */
         void clearProgression(){Veterans.clear(this);Statuses.clear(this);RankSync.clear(this);fallen.clear();}
         public final List<Capture> points=new ArrayList<>();
+        /** The battle map's team plans and direct orders (BattlePlan; nothing saved), cleared at every round boundary (clearPlans). */
+        final BattlePlan plan=new BattlePlan();
+        /** The scanned field grid, its (map id, build key) and its encoded bytes; mapGridSent says which key each player holds this session (BattleMapNet). */
+        BattleMapGrid mapGrid;String mapGridKey;byte[] mapGridBytes;final Map<UUID,String> mapGridSent=new HashMap<>();
+        /** Bot ack lines (BattleMapNet.noted): the assignment last applied and last spoken per bot army, the line waiting, when each bot last spoke, and each player's last plan packet. */
+        final Map<UUID,BattlePlan.Assignment> lastAck=new HashMap<>(),saidAck=new HashMap<>();final Map<UUID,BattleMapNet.Ack> pendingAck=new HashMap<>();final Map<UUID,Long> lastSaid=new HashMap<>(),lastPlan=new HashMap<>();
+        void clearPlans(){plan.clear();lastAck.clear();saidAck.clear();pendingAck.clear();lastSaid.clear();lastPlan.clear();}
         /** The pieces this round's mode saved before changing them (Phase 4 Task 5); teardown and the crash marker put them back. */
         public final List<Structures.Saved> saves=new ArrayList<>();
         public final List<Projectiles.Shot> shots=new ArrayList<>();
@@ -765,7 +780,7 @@ public final class GravesAndGlory implements ModInitializer {
          * is the one that stands. The camp's war table is laid down by the build path before this.
          */
         void mapReady(){
-            Modes.recover(this);campaign.payInterrupted();
+            Modes.recover(this);campaign.payInterrupted();BattleMapNet.scan(this);
             ready=true;placing=false;message="Your war council is ready. Press {key:menu}.";
             prewarmSpawn();
         }
@@ -889,6 +904,7 @@ public final class GravesAndGlory implements ModInitializer {
             Squad replacement=decision.replacement()==null?null:squads.get(decision.replacement());
             Squad s;
             if(replacement!=null){
+                plan.dropArmy(replacement.owner.toString());lastAck.remove(replacement.owner);saidAck.remove(replacement.owner);pendingAck.remove(replacement.owner);
                 s=replacement;campaign.botRespawns.remove(s.owner);campaign.botRetreating.remove(s.owner);campaign.botGuard.remove(s.owner);campaign.musterFirstAt.remove(s.owner);
                 s.muster=null;for(var u:units)if(u.squad==s)u.musterSince=-1; // a player's army never musters: its refills stay where his orders put them
                 campaign.vacated.values().remove(s.owner);campaign.vacatedUntil.remove(p.getUuid());rekey(s.owner,p.getUuid());s.owner=p.getUuid();s.bot=false;s.seated=true;s.takeoverAt=0;
@@ -903,7 +919,7 @@ public final class GravesAndGlory implements ModInitializer {
             }
             squads.put(s.owner,s);welcomed.add(s.owner);
             p.changeGameMode(GameMode.ADVENTURE);equipPlayer(p);
-            campaign.joined(p);
+            campaign.joined(p);if(running)BattleMapNet.sendGrid(this,p);
             if(running&&s.seated)campaign.participants.add(s.owner);
             else if(running&&!campaign.away(s.owner))campaign.participants.remove(s.owner); // a commander who dropped and comes back to no seat is still owed the time he was seated
 
@@ -934,7 +950,7 @@ public final class GravesAndGlory implements ModInitializer {
             Squad s=squads.get(owner);welcomed.remove(owner);respawns.remove(owner);if(s!=null)Commander.stop(this,s);
             // Mid-battle, the army waits on its last orders for disconnectGraceSeconds, then a bot commands it until its owner rejoins (Kort 2026-11-01).
             if(s!=null&&running&&s.seated&&!s.bot){campaign.dropped(s);UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.tier=campaign.botTier();s.takeoverAt=MatchRules.takeoverAt(time,Spec.CAMPAIGN[0].disconnectGraceSeconds());rekey(owner,stand);campaign.vacated.put(owner,stand);campaign.vacatedUntil.put(owner,MatchRules.releaseAt(time));return;}
-            squads.remove(owner);
+            squads.remove(owner);mapGridSent.remove(owner);
             units.removeIf(u->{if(u.squad==s){leaveSide(u.mob);u.mob.discard();return true;}return false;});
         }
         static Vec3d base(int t){var f=Spec.FACTIONS[t];return new Vec3d(f.spawnX(),Arena.height(f.spawnX(),f.spawnZ())+1,f.spawnZ());}
@@ -1204,7 +1220,7 @@ public final class GravesAndGlory implements ModInitializer {
             mode=Modes.create(campaign.battleMode);
             PropGameplay.clear(world); // a round's gameplay props start whole
             roundSeconds=mode.row.roundSeconds();
-            Projectiles.clear(this);strikes.clear();Abilities.clearBanners(this);Houses.reset(this);FeedEvents.clear();clearProgression();clearIntel();
+            Projectiles.clear(this);strikes.clear();Abilities.clearBanners(this);Houses.reset(this);FeedEvents.clear();clearProgression();clearIntel();clearPlans();
             campaign.prepareRound();
             clearSides();
             Arrays.fill(scores,0);pointSeconds=new int[2][points.size()];
@@ -1221,6 +1237,7 @@ public final class GravesAndGlory implements ModInitializer {
             rounds++;roundStarted=time;running=true;message=mode.startLine(this);
             rolls.setSeed(BattleMath.roundSeed(world.getSeed(),rounds)); // this round's swings, whatever the rounds before drew
             mode.mark(this); // the mode says what it changed: flags down, saved pieces
+            BattleMapNet.sendGridAll(this);
         }
         void reinforce(Squad s){
             if(s.banner.size()!=WarGrid.cells())s.banner=Campaign.table(s.banner); // a banner set by hand (a test squad's old 20-entry list) is moved onto the table first
