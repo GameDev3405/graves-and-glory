@@ -125,8 +125,16 @@ public final class WarGridCheck {
     }
 
     static void botBannersValid() {
-        // TODO Task 6: bot banners become plain ordered lists placed by WarGrid.botTable; until then the old 20-entry rows hold markers.
-        System.out.println("SKIP botBannersValid (Task 6)");
+        var real = RosterMath.Catalog.fromSpec();
+        Set<String> owned = new HashSet<>(), houses = new HashSet<>();
+        for (var tr : Spec.TROOPS) owned.add(tr.id());
+        for (var h : Spec.HOUSES) houses.add(h.id());
+        for (var row : Spec.BOTBANNERS) {
+            List<String> ordered = Arrays.asList(row.slots().split(","));
+            var table = WarGrid.botTable(ordered);
+            check(table.size() == ordered.size(), row.id() + " places every troop");
+            check(RosterMath.validTable(table, real, owned, houses) == null, row.id() + " is a valid table: " + RosterMath.validTable(table, real, owned, houses));
+        }
     }
 
     public static void main(String[] args) {

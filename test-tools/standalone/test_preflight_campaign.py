@@ -23,7 +23,7 @@ def pools(data):
     reserved = {a for r in data['campaignBattles'] if r['allies'] != 'none' for a in r['allies'].split(',')}
     reserved |= {c['bannerRow'] for c in data.get('campaignChapters', []) if c['bannerRow'] != 'none'}
     return {tier: [b['id'] for b in data['botBanners'] if b['difficulty'] == tier and b['id'] not in reserved
-                   and all(s in ('^', '') or house_of.get(s) in fieldable for s in b['slots'].split(','))]
+                   and all(s == '' or house_of.get(s) in fieldable for s in b['slots'].split(','))]
             for tier in POOLS_BEFORE}
 
 

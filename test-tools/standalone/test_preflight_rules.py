@@ -77,6 +77,20 @@ class PreflightRules(unittest.TestCase):
         for word in words:
             self.assertIn(word, out)
 
+    def bot_banner(self, data, id='gilded_normal'):
+        return next(b for b in data['botBanners'] if b['id'] == id)
+
+    def test_bot_banner_refuses_a_caret_marker(self):
+        self.refuses(lambda d: self.bot_banner(d).__setitem__('slots', self.bot_banner(d)['slots'] + ',^'), 'botBanners/gilded_normal', '^ marker')
+
+    def test_bot_banner_refuses_41_troops(self):
+        self.refuses(lambda d: self.bot_banner(d).__setitem__('slots', ','.join(['archer'] * 41)), 'botBanners/gilded_normal', '41 troops')
+
+    def test_bot_banner_refuses_cost_641(self):
+        # longbow 35 + 9 knights 22 + 17 archers 24 = 641, one over musterAllowance 640
+        row = ','.join(['longbow'] + ['knight'] * 9 + ['archer'] * 17)
+        self.refuses(lambda d: self.bot_banner(d).__setitem__('slots', row), 'botBanners/gilded_normal', 'costs 641', 'over musterAllowance 640')
+
     def test_gear_priority_must_be_banner_role_or_open(self):
         for bad in ('rolle', 'Role', 'none', 'banner '):
             with self.subTest(priority=bad):

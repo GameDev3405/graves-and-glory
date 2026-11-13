@@ -374,12 +374,12 @@ public final class Campaign {
     static List<String> bannerRow(String id){for(var row:Spec.BOTBANNERS)if(row.id().equals(id))return new ArrayList<>(Arrays.asList(row.slots().split(",")));return RosterMath.starterBanner();}
     /** The banner a squad fields this round: a bot's from botBanner; a War Table room member's own banner with only the units of
      *  the House he took on the lobby (lobbyHouse; Kort, 2026-10-31); anyone else's own banner with the units of Houses that
-     *  cannot be fielded yet left empty. Always the dense war table (table): a 20-entry botBanners row is moved onto it. */
+     *  cannot be fielded yet left empty. Always the dense war table (table): a bot row is placed on it by role. */
     List<String> banner(GravesAndGlory.Squad s){return table(bannerLine(s));}
-    /** The war table of a banner list: a dense list of WarGrid.cells() entries is copied as it is; an old 20-entry banner (a botBanners row, a test squad's) is moved onto columns 2-6 (WarGrid.fromLine), so it deploys in the shape it had. */
+    /** The war table of a banner list: a dense list of WarGrid.cells() entries is copied as it is; any other list (a botBanners row, a campaign enemy, boss or ally row, a house chapter row, a synthetic or test squad's) is an ordered troop list that WarGrid.botTable places by role, then WarGrid.dense. */
     static List<String> table(List<String> line){
         if(line.size()==WarGrid.cells())return new ArrayList<>(line);
-        return WarGrid.dense(WarGrid.fromLine(line,RosterMath.Catalog.fromSpec(),t->true).table());
+        return WarGrid.dense(WarGrid.botTable(line));
     }
     private List<String> bannerLine(GravesAndGlory.Squad s){
         if(s.bot)return botBanner(s);
@@ -410,7 +410,7 @@ public final class Campaign {
         if(activeBattle==null||bonusTracker==null||!bonusTracker.kind.equals("kill_unit")||s.team!=1||s.lane!=0)return null;
         var catalog=RosterMath.Catalog.fromSpec();var fieldable=RosterMath.fieldableHouses();
         for(var row:Spec.BOTBANNERS){var slots=Arrays.asList(row.slots().split(","));
-            if(slots.contains(bonusTracker.target)&&slots.stream().allMatch(id->id.equals(RosterMath.MARKER)||id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))return new ArrayList<>(slots);}
+            if(slots.contains(bonusTracker.target)&&slots.stream().allMatch(id->id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))return new ArrayList<>(slots);}
         return null;
     }
     /** A March battle's allied banner for a bot on the commander's side (campaignBattles.allies; Kort 2026-11-02, Q76: battle 6 fields all five Houses beside you): the named row at lane % allies, or null when the battle names none. */
@@ -421,7 +421,7 @@ public final class Campaign {
     /** The botBanners rows of a tier, in sheet order, whose every troop belongs to a fieldable House (houses.fieldable), less the rows a battle reserves as allies. */
     static List<Spec.BotBannersRow> fieldableBotBanners(String tier){
         var catalog=RosterMath.Catalog.fromSpec();var fieldable=RosterMath.fieldableHouses();List<Spec.BotBannersRow> out=new ArrayList<>();
-        for(var row:Spec.BOTBANNERS)if(row.difficulty().equals(tier)&&!MarchMath.reserved(row.id(),Spec.CAMPAIGNBATTLES,Spec.CAMPAIGNCHAPTERS)&&Arrays.stream(row.slots().split(",")).allMatch(id->id.equals(RosterMath.MARKER)||id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))out.add(row);
+        for(var row:Spec.BOTBANNERS)if(row.difficulty().equals(tier)&&!MarchMath.reserved(row.id(),Spec.CAMPAIGNBATTLES,Spec.CAMPAIGNCHAPTERS)&&Arrays.stream(row.slots().split(",")).allMatch(id->id.equals(RosterMath.EMPTY)||fieldable.contains(catalog.houseOf(id))))out.add(row);
         return out;
     }
     /** Units in the banner a commander would field now; 0 means he has no army to bring. */

@@ -324,11 +324,11 @@ if [r['id'] for r in data['rarities']]!=RARITY_ORDER: errors.append('rarities: t
 abilityIds={a['id'] for a in data['abilities']}
 evolveTroops={e['troop'] for e in data['levelNames']}
 HOUSE_SHAPE={'common':2,'rare':2,'epic':1,'legendary':1}
-houseOf,rarityOf={},{}
+houseOf,rarityOf,costOf={},{},{}
 for t in data['troops']:
     name=f'troops/{t["id"]}'
     if t['house'] not in houses or t['rarity'] not in rarities: errors.append(f'{name}: house {t["house"]} or rarity {t["rarity"]} does not resolve'); continue
-    houseOf[t['id']]=t['house'];rarityOf[t['id']]=t['rarity']
+    houseOf[t['id']]=t['house'];rarityOf[t['id']]=t['rarity'];costOf[t['id']]=t['cost']
     if t['ability'] not in abilityIds: errors.append(f'{name}: ability {t["ability"]} does not resolve')
     if t['rarity'] in ('common','rare'):
         if t['evolveLine'] not in evolveTroops: errors.append(f'{name}: a Common or Rare needs an evolveLine that names a levelNames troop, not {t["evolveLine"]}')
@@ -584,22 +584,23 @@ for b in data['botBanners']:
     else: shape=not(b['id']!=(f'mix_{b["house"]}_{"_".join(parts[2:-1])}_{b["difficulty"]}' if mixed else f'{b["house"]}_{b["difficulty"]}') or len(allowed)!=len(parts)-2 and mixed or not allowed<=set(houses))
     if not shape: errors.append(f'{name}: id must be <house>_<difficulty>, mix_<house>_<second house>[_<more Houses>]_<difficulty> with house the first House and each House once, or ally_<house>_<difficulty>[_b]')
     slots=b['slots'].split(',')
-    if len(slots)!=squad: errors.append(f'{name}: {len(slots)} entries, not {squad}')
-    pending,weights,units,last=0,0,{},None
-    for s in slots:
-        if s=='^':
-            if pending==0: errors.append(f'{name}: a ^ that follows no Epic or Legendary'); break
-            pending-=1;continue
-        if pending: errors.append(f'{name}: {last} is missing a ^'); break
-        if s not in rarityOf or houseOf[s] not in allowed: errors.append(f'{name}: {s} is not a troop of this banner\'s Houses'); break
-        last=s;w=rarities.get(rarityOf[s],{}).get('slotWeight',1);weights+=w;pending=w-1;units[rarityOf[s]]=units.get(rarityOf[s],0)+1
+    # A bot banner is an ordered troop list (ruling R6); WarGrid.botTable places it on the war table by role.
+    maxTroops=data['rules'][0]['maxTroops'];allowance=data['rules'][0]['musterAllowance']
+    if '^' in slots: errors.append(f'{name}: a ^ marker; a bot banner is a plain ordered troop list')
+    elif not slots or len(slots)>maxTroops: errors.append(f'{name}: {len(slots)} troops, the table holds 1 to {maxTroops}')
     else:
-        if pending: errors.append(f'{name}: {last} is missing a ^')
-        if weights!=squad: errors.append(f'{name}: slot weights sum to {weights}, not {squad}')
-        for r,n in units.items():
-            if n>rarities.get(r,{}).get('bannerMax',squad): errors.append(f'{name}: {n} {r} units, over bannerMax {rarities[r]["bannerMax"]}')
+        unknown=[s for s in slots if s not in rarityOf]
+        if unknown: errors.append(f'{name}: {unknown[0]} is not a troop id')
+        elif any(houseOf[s] not in allowed for s in slots): errors.append(f'{name}: a troop is not of the Houses of this banner')
+        else:
+            cost=sum(costOf[s] for s in slots)
+            if cost>allowance: errors.append(f'{name}: costs {cost}, over musterAllowance {allowance}')
+            units={}
+            for s in slots: units[rarityOf[s]]=units.get(rarityOf[s],0)+1
+            for r,n in units.items():
+                if n>rarities.get(r,{}).get('bannerMax',maxTroops): errors.append(f'{name}: {n} {r} units, over bannerMax {rarities[r]["bannerMax"]}')
 for d in sorted(difficulties):
-    if not any(b['difficulty']==d and all(houses.get(houseOf.get(s),{}).get('fieldable') for s in b['slots'].split(',') if s!='^') for b in data['botBanners']): errors.append(f'botBanners: no {d} banner fields only fieldable Houses (Campaign.botBanner picks from those)')
+    if not any(b['difficulty']==d and all(houses.get(houseOf.get(s),{}).get('fieldable') for s in b['slots'].split(',')) for b in data['botBanners']): errors.append(f'botBanners: no {d} banner fields only fieldable Houses (Campaign.botBanner picks from those)')
 # The Long March (plan 2C.3): six battles in one order, each on a map index, in one of the four 1.0 modes, at a botCommand difficulty, with one
 # bonusObjectives row of its own. A cell the plan leaves open is listed in the row's placeholder column ('none' when the row is settled).
 MARCH_MODES={'domination','siege','survival','convoy'}

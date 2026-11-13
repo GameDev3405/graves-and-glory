@@ -117,7 +117,7 @@ public final class LevelMathCheck {
             check(2 * (LevelMath.price(rar[i], 2) + LevelMath.price(rar[i], 3)) == 6 * table[i][0], "lm-prices: " + rar[i] + " both tracks, both tiers is " + 6 * table[i][0]);
         }
         var gn = Arrays.stream(Spec.BOTBANNERS).filter(b -> b.id().equals("gilded_normal")).findFirst().orElseThrow();
-        Set<String> kinds = new LinkedHashSet<>(Arrays.asList(gn.slots().split(","))); kinds.remove("^");
+        Set<String> kinds = new LinkedHashSet<>(Arrays.asList(gn.slots().split(",")));
         int full = 0; for (String k : kinds) full += 2 * (LevelMath.price(troop(k).rarity(), 2) + LevelMath.price(troop(k).rarity(), 3));
         check(kinds.size() == 5 && full == 1680, "lm-prices: gilded_normal's full gear cost is 1,680 over five types, not " + full + " over " + kinds);
         boolean threw = false; try { LevelMath.price("mythic", 2); } catch (IllegalArgumentException e) { threw = true; }

@@ -117,6 +117,26 @@ public final class WarGrid {
         return out;
     }
 
+    /** The placement rank of a troop id from its sheet tags: 0 for a shield troop, 2 for a ranged or magic troop, 1 for any other melee (and for an unknown id). */
+    public static int role(String id) {
+        for (var t : Spec.TROOPS) if (t.id().equals(id)) {
+            if (Arrays.asList(t.tags().split(",")).contains("shield")) return 0;
+            return t.ranged() || t.magic() ? 2 : 1;
+        }
+        return 1;
+    }
+
+    /**
+     * The war table of an ordered bot or campaign troop list (ruling R6): one troop per entry, markers and empty entries skipped,
+     * placed by role (shield first, then other melee, then ranged or magic), rows from the front, each row centre-out.
+     */
+    public static SortedMap<Integer, String> botTable(List<String> ordered) {
+        List<String> troops = new ArrayList<>();
+        if (ordered != null) for (String id : ordered)
+            if (id != null && !id.equals(RosterMath.MARKER) && !id.equals(RosterMath.EMPTY)) troops.add(id);
+        return place(troops, WarGrid::role);
+    }
+
     /**
      * Removes the highest-index troop (the last row, from its right end backwards) until ok accepts the table or it is empty. The
      * input is not changed.

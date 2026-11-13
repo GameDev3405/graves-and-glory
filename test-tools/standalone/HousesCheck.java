@@ -265,7 +265,7 @@ public final class HousesCheck {
         // the full gear cost of gilded_normal: both tracks, tiers II and III, once per troop type (design 4.3)
         var banner = Arrays.stream(Spec.BOTBANNERS).filter(b -> b.id().equals("gilded_normal")).findFirst().orElseThrow();
         int cost = 0;
-        for (String id : new LinkedHashSet<>(Arrays.asList(banner.slots().split(",")))) if (!id.equals("^")) { var r = rarity(troop(id).rarity()); cost += 2 * (r.gearPrice2() + r.gearPrice3()); }
+        for (String id : new LinkedHashSet<>(Arrays.asList(banner.slots().split(",")))) { var r = rarity(troop(id).rarity()); cost += 2 * (r.gearPrice2() + r.gearPrice3()); }
         check(cost == 1680, "gilded_normal's full gear cost is 1,680 (two Commons, two Rares, one Epic), not " + cost);
         // level names: the 40 old evolve-line rows, nothing else
         check(Spec.LEVELNAMES.length == 40, "levelNames: 40 rows, 20 Commons and Rares at levels 2 and 3");
@@ -418,7 +418,7 @@ public final class HousesCheck {
         check(legendaries(repack(TWO_LEGENDARIES,cat,ALL))==1 && epics(repack(THREE_EPICS,cat,ALL))==3 && repack(THREE_EPICS,cat,ALL).size()==20, "limits and size");
         check(repack(banner("knight*12,mage,^,oracle,archer*8"),cat,Set.of("knight","archer")).equals(banner("knight*12,archer*8")) && starterBanner().equals(banner("knight*12,archer*8")), "repack drops unowned and unknown ids; the starter banner");
         check(repack(banner("knight*17,gl_marshal,archer"),cat,ALL).equals(banner("knight*17,archer,empty*2")), "repack skips a Legendary that does not fit and still places the Common after it");
-        for (var b : Spec.BOTBANNERS) check(validBanner(Arrays.asList(b.slots().split(",")),cat,ALL)==null, "bot banner " + b.id() + " is a valid banner");
+        for (var b : Spec.BOTBANNERS) { var tbl = WarGrid.botTable(Arrays.asList(b.slots().split(","))); check(validTable(tbl,cat,ALL,Set.of("gilded","graveborn","wildmoot","ironclad","tidecallers"))==null && tbl.size()==b.slots().split(",").length, "bot banner " + b.id() + " places as a valid war table"); }
         // renown, rewards, mastery
         check(renownLevel(2,R)==0 && renownLevel(3,R)==1 && renownLevel(29,R)==4 && renownLevel(30,R)==5, "renown 3/8/15/22/30");
         var w=matchRewards(Map.of("gilded",14,"graveborn",6),T,HOUSES,true); check(w.shards().equals(Map.of("gilded",2,"graveborn",1)) && w.renown().equals(Map.of("gilded",2,"graveborn",2)), "win rewards");

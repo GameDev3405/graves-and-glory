@@ -10770,13 +10770,13 @@
       "id": "gilded_normal",
       "house": "gilded",
       "difficulty": "normal",
-      "slots": "mage,^,knight,knight,knight,knight,knight,knight,archer,archer,archer,archer,sentinel,sentinel,sentinel,sentinel,longbow,longbow,longbow,longbow"
+      "slots": "mage,knight,knight,knight,knight,knight,knight,archer,archer,archer,archer,sentinel,sentinel,sentinel,sentinel,longbow,longbow,longbow,longbow"
     },
     {
       "id": "gilded_hard",
       "house": "gilded",
       "difficulty": "hard",
-      "slots": "gl_marshal,^,^,^,mage,^,knight,knight,knight,knight,knight,archer,archer,archer,sentinel,sentinel,sentinel,longbow,longbow,longbow"
+      "slots": "gl_marshal,mage,knight,knight,knight,knight,knight,archer,archer,archer,sentinel,sentinel,sentinel,longbow,longbow,longbow"
     },
     {
       "id": "graveborn_easy",
@@ -10788,13 +10788,13 @@
       "id": "graveborn_normal",
       "house": "graveborn",
       "difficulty": "normal",
-      "slots": "hexer,^,revenant,revenant,revenant,revenant,revenant,revenant,bonebow,bonebow,bonebow,bonebow,reaper,reaper,reaper,reaper,stalker,stalker,stalker,stalker"
+      "slots": "hexer,revenant,revenant,revenant,revenant,revenant,revenant,bonebow,bonebow,bonebow,bonebow,reaper,reaper,reaper,reaper,stalker,stalker,stalker,stalker"
     },
     {
       "id": "graveborn_hard",
       "house": "graveborn",
       "difficulty": "hard",
-      "slots": "gb_hollowking,^,^,^,hexer,^,revenant,revenant,revenant,revenant,revenant,bonebow,bonebow,bonebow,reaper,reaper,reaper,stalker,stalker,stalker"
+      "slots": "gb_hollowking,hexer,revenant,revenant,revenant,revenant,revenant,bonebow,bonebow,bonebow,reaper,reaper,reaper,stalker,stalker,stalker"
     },
     {
       "id": "wildmoot_easy",
@@ -10806,13 +10806,13 @@
       "id": "wildmoot_normal",
       "house": "wildmoot",
       "difficulty": "normal",
-      "slots": "wm_seer,^,wm_hound,wm_hound,wm_hound,wm_hound,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_hunter,wm_hunter,wm_stalker,wm_stalker,wm_stalker,wm_stalker,wm_tusk,wm_tusk,wm_tusk,wm_tusk"
+      "slots": "wm_seer,wm_hound,wm_hound,wm_hound,wm_hound,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_hunter,wm_hunter,wm_stalker,wm_stalker,wm_stalker,wm_stalker,wm_tusk,wm_tusk,wm_tusk,wm_tusk"
     },
     {
       "id": "wildmoot_hard",
       "house": "wildmoot",
       "difficulty": "hard",
-      "slots": "wm_oldhorn,^,^,^,wm_seer,^,wm_hound,wm_hound,wm_hound,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_hunter,wm_stalker,wm_stalker,wm_stalker,wm_tusk,wm_tusk,wm_tusk"
+      "slots": "wm_oldhorn,wm_seer,wm_hound,wm_hound,wm_hound,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_hunter,wm_stalker,wm_stalker,wm_stalker,wm_tusk,wm_tusk,wm_tusk"
     },
     {
       "id": "ironclad_easy",
@@ -10824,13 +10824,13 @@
       "id": "ironclad_normal",
       "house": "ironclad",
       "difficulty": "normal",
-      "slots": "ic_mortar,^,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_arbalist,ic_arbalist,ic_arbalist,ic_breaker,ic_breaker,ic_breaker,ic_breaker,ic_ballista,ic_ballista,ic_ballista,ic_ballista"
+      "slots": "ic_mortar,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_arbalist,ic_arbalist,ic_arbalist,ic_breaker,ic_breaker,ic_breaker,ic_breaker,ic_ballista,ic_ballista,ic_ballista,ic_ballista"
     },
     {
       "id": "ironclad_hard",
       "house": "ironclad",
       "difficulty": "hard",
-      "slots": "ic_colossus,^,^,^,ic_mortar,^,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_arbalist,ic_arbalist,ic_breaker,ic_breaker,ic_breaker,ic_ballista,ic_ballista,ic_ballista"
+      "slots": "ic_colossus,ic_mortar,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_arbalist,ic_arbalist,ic_breaker,ic_breaker,ic_breaker,ic_ballista,ic_ballista,ic_ballista"
     },
     {
       "id": "tidecallers_easy",
@@ -10842,13 +10842,13 @@
       "id": "tidecallers_normal",
       "house": "tidecallers",
       "difficulty": "normal",
-      "slots": "tc_brute,^,tc_raider,tc_raider,tc_raider,tc_raider,tc_raider,tc_raider,tc_harpooner,tc_harpooner,tc_harpooner,tc_harpooner,tc_tideguard,tc_tideguard,tc_tideguard,tc_tideguard,tc_mist,tc_mist,tc_mist,tc_mist"
+      "slots": "tc_brute,tc_raider,tc_raider,tc_raider,tc_raider,tc_raider,tc_raider,tc_harpooner,tc_harpooner,tc_harpooner,tc_harpooner,tc_tideguard,tc_tideguard,tc_tideguard,tc_tideguard,tc_mist,tc_mist,tc_mist,tc_mist"
     },
     {
       "id": "tidecallers_hard",
       "house": "tidecallers",
       "difficulty": "hard",
-      "slots": "tc_admiral,^,^,^,tc_brute,^,tc_raider,tc_raider,tc_raider,tc_raider,tc_raider,tc_harpooner,tc_harpooner,tc_harpooner,tc_tideguard,tc_tideguard,tc_tideguard,tc_mist,tc_mist,tc_mist"
+      "slots": "tc_admiral,tc_brute,tc_raider,tc_raider,tc_raider,tc_raider,tc_raider,tc_harpooner,tc_harpooner,tc_harpooner,tc_tideguard,tc_tideguard,tc_tideguard,tc_mist,tc_mist,tc_mist"
     },
     {
       "id": "mix_gilded_graveborn_easy",
@@ -10860,13 +10860,13 @@
       "id": "mix_gilded_graveborn_normal",
       "house": "gilded",
       "difficulty": "normal",
-      "slots": "mage,^,knight,knight,knight,knight,archer,archer,sentinel,longbow,hexer,^,revenant,revenant,revenant,revenant,bonebow,bonebow,reaper,stalker"
+      "slots": "mage,knight,knight,knight,knight,archer,archer,sentinel,longbow,hexer,revenant,revenant,revenant,revenant,bonebow,bonebow,reaper,stalker"
     },
     {
       "id": "mix_gilded_graveborn_hard",
       "house": "gilded",
       "difficulty": "hard",
-      "slots": "gl_marshal,^,^,^,knight,knight,archer,archer,sentinel,longbow,hexer,^,revenant,revenant,revenant,revenant,bonebow,bonebow,reaper,stalker"
+      "slots": "gl_marshal,knight,knight,archer,archer,sentinel,longbow,hexer,revenant,revenant,revenant,revenant,bonebow,bonebow,reaper,stalker"
     },
     {
       "id": "mix_ironclad_tidecallers_easy",
@@ -10878,13 +10878,13 @@
       "id": "mix_ironclad_tidecallers_normal",
       "house": "ironclad",
       "difficulty": "normal",
-      "slots": "ic_mortar,^,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_arbalist,ic_breaker,ic_ballista,tc_brute,^,tc_raider,tc_raider,tc_raider,tc_raider,tc_harpooner,tc_harpooner,tc_tideguard,tc_mist"
+      "slots": "ic_mortar,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_arbalist,ic_breaker,ic_ballista,tc_brute,tc_raider,tc_raider,tc_raider,tc_raider,tc_harpooner,tc_harpooner,tc_tideguard,tc_mist"
     },
     {
       "id": "mix_ironclad_tidecallers_hard",
       "house": "ironclad",
       "difficulty": "hard",
-      "slots": "ic_colossus,^,^,^,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_arbalist,ic_breaker,ic_ballista,tc_brute,^,tc_raider,tc_raider,tc_raider,tc_raider,tc_harpooner,tc_harpooner,tc_tideguard,tc_mist"
+      "slots": "ic_colossus,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_arbalist,ic_breaker,ic_ballista,tc_brute,tc_raider,tc_raider,tc_raider,tc_raider,tc_harpooner,tc_harpooner,tc_tideguard,tc_mist"
     },
     {
       "id": "mix_wildmoot_gilded_easy",
@@ -10896,13 +10896,13 @@
       "id": "mix_wildmoot_gilded_normal",
       "house": "wildmoot",
       "difficulty": "normal",
-      "slots": "wm_seer,^,wm_hound,wm_hound,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_stalker,wm_tusk,mage,^,knight,knight,knight,knight,archer,archer,sentinel,longbow"
+      "slots": "wm_seer,wm_hound,wm_hound,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_stalker,wm_tusk,mage,knight,knight,knight,knight,archer,archer,sentinel,longbow"
     },
     {
       "id": "mix_wildmoot_gilded_hard",
       "house": "wildmoot",
       "difficulty": "hard",
-      "slots": "wm_oldhorn,^,^,^,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_stalker,wm_tusk,mage,^,knight,knight,knight,knight,archer,archer,sentinel,longbow"
+      "slots": "wm_oldhorn,wm_hound,wm_hound,wm_hunter,wm_hunter,wm_stalker,wm_tusk,mage,knight,knight,knight,knight,archer,archer,sentinel,longbow"
     },
     {
       "id": "ally_gilded_easy",
@@ -10914,19 +10914,19 @@
       "id": "ally_gilded_normal",
       "house": "gilded",
       "difficulty": "normal",
-      "slots": "mage,^,knight,knight,knight,knight,knight,knight,archer,archer,archer,archer,sentinel,sentinel,sentinel,sentinel,longbow,longbow,longbow,longbow"
+      "slots": "mage,knight,knight,knight,knight,knight,knight,archer,archer,archer,archer,sentinel,sentinel,sentinel,sentinel,longbow,longbow,longbow,longbow"
     },
     {
       "id": "ally_gilded_normal_b",
       "house": "gilded",
       "difficulty": "normal",
-      "slots": "mage,^,knight,knight,knight,knight,knight,knight,archer,archer,archer,archer,sentinel,sentinel,sentinel,sentinel,longbow,longbow,longbow,longbow"
+      "slots": "mage,knight,knight,knight,knight,knight,knight,archer,archer,archer,archer,sentinel,sentinel,sentinel,sentinel,longbow,longbow,longbow,longbow"
     },
     {
       "id": "ally_ironclad_normal",
       "house": "ironclad",
       "difficulty": "normal",
-      "slots": "ic_mortar,^,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_arbalist,ic_arbalist,ic_arbalist,ic_breaker,ic_breaker,ic_breaker,ic_breaker,ic_ballista,ic_ballista,ic_ballista,ic_ballista"
+      "slots": "ic_mortar,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_hearthguard,ic_arbalist,ic_arbalist,ic_arbalist,ic_arbalist,ic_breaker,ic_breaker,ic_breaker,ic_breaker,ic_ballista,ic_ballista,ic_ballista,ic_ballista"
     }
   ],
   "troopNotes": [
