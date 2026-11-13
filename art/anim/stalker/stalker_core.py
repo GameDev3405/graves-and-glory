@@ -38,6 +38,7 @@ CLOTH = ("mantle_back", "mantle_back_l", "mantle_back_r", "mantle_front_l", "man
 WRIST_L = (5.5, 15.0, 0.0)      # left_forearm-local: the bow hand's pivot
 FIST_R = B.FIST                  # right_forearm-local: the fist on the string
 GRIP_X, NOCK_Y = 6.0, B.NOCK_Y   # bow-local: the grip and the nock's height
+STRING_TIP = (0.8, 2.6)           # bow-local: where the lower string meets the bottom limb
 
 # One footing under everything that stands: the bow side leads, the back foot is turned out, the weight sits low between them.
 FEET = {"right": ((-3.3, 2.0, -3.1), -40.0), "left": ((2.5, 2.0, 3.3), 6.0)}
@@ -79,16 +80,25 @@ def to_chest(pose, w):
     return (-v[0] * 16.0, v[1] * 16.0, v[2] * 16.0)
 
 
-def arm_ik(Mt, side, target, hint, x0=None):
+ELBOW = {"right": (-5.5, 19.0, 0.0), "left": (5.5, 19.0, 0.0)}     # the forearm pivots, model space
+
+
+def arm_ik(Mt, side, target, hint, x0=None, elbow=None):
+    """elbow: optional (x, y, z, weight), a chest-space point the elbow is drawn toward (fix round 2: the ready stance's
+    string elbow is set out from the ribs; a weak Euler hint alone let it fold through the chest)."""
     arm, fore = side + "_arm", side + "_forearm"
     pt = FIST_R if side == "right" else WRIST_L
     hint = np.array(hint, float)
+    ew = None if elbow is None else (K.point(Mt, elbow[:3]), float(elbow[3]))
 
     def tip(x):
         return K.point(Mt @ K.local(arm, (x[0], x[1], x[2])) @ K.local(fore, (x[3], 0.0, 0.0)), pt)
 
     def f(x):
-        return np.concatenate([4.0 * (tip(x) - target), 0.03 * (x - hint)])
+        r = [4.0 * (tip(x) - target), 0.03 * (x - hint)]
+        if ew is not None:
+            r.append(ew[1] * (K.point(Mt @ K.local(arm, (x[0], x[1], x[2])), ELBOW[side]) - ew[0]))
+        return np.concatenate(r)
 
     x = B.gn(f, hint if x0 is None else x0, iters=30, clamp=lambda x: np.r_[x[:3], min(-2.0, max(-142.0, x[3]))])
     return x, float(np.linalg.norm(tip(x) - target))
@@ -161,9 +171,12 @@ class Solver:
         target = K.point(Mt, g["rh"])
         ws = g["string"][0]
         if ws > 0:
-            nock = K.point(K.world(pose, B.BOW), (B.nock_x(max(1.0, min(3.0, g["draw"][0]))), NOCK_Y, 0.0))
+            nx = B.nock_x(max(1.0, min(3.0, g["draw"][0])))
+            sl = float(g["slide"][0]) if "slide" in g else 0.0
+            # slide (fix round 2): how far the string hand rests down the lower string from the nock, toward the bottom tip
+            nock = K.point(K.world(pose, B.BOW), (nx + (STRING_TIP[0] - nx) * sl, NOCK_Y + (STRING_TIP[1] - NOCK_Y) * sl, 0.0))
             target = target + (nock - target) * ws
-        ra, e = arm_ik(Mt, "right", target, g["rhint"], self.w.get("ra"))
+        ra, e = arm_ik(Mt, "right", target, g["rhint"], self.w.get("ra"), g.get("relbow"))
         self.w["ra"] = ra
         if ws >= 1.0:
             self.err["right"] = max(self.err["right"], e)

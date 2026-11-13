@@ -132,3 +132,48 @@ Still open (two attempts each, then recorded; no exemption added):
 - brace / charge head into right_pauldron 2.8-2.9; charge bow into breastplate 2.01; run bow into greave 1.65;
   stun bow into hips 1.96; stun_out bow 1.78 and end rows inherited from stance_ready; walk armour 1.91; rally 2.35.
 - Scorecard not attempted: death_left/right and hit_medium_left weapon speed, stun loop_vel, run torso, fallback legs.
+
+## Fix round 2 (2026-11-13, branch anim/stalker-on-bow)
+Builder only (`build_stalker_anims.py`, `stalker_core.py`). The two shots and their legs are byte-identical to
+2e04d4ec. `animation_length`, `loop` and `timeline` match on all 57 clips. No model, design.json, scorecard, focus
+or exemption change.
+
+What changed:
+- Ready stance: the string hand no longer holds the nock across the chest. It rests on the lower string by the right
+  hip (new solver goal `slide`, 0 = nock, 1 = lower limb tip), arrow still nocked, bow canted down to the left. The
+  shots keep the old nocked guard (`READY_SHOT`), and brace, wall and the stun build on it. stance_ready limb
+  2.74 -> 1.23 (WARN), armour 2.63 -> pass, scorecard pen_limb 1.799 -> pass.
+- Wall, ward, fallback: same low string hand, bow forward and canted. shield_up: bow held flat across the chest,
+  string hand high on the string. hold: bow out from the hips. Rally swing keys moved out. Aims: half-draw anchor
+  2.5 px further out (aim_down 3.5). Brace and charge look down 10 deg. Charge grip and hand hints re-solved.
+- Fallback: the bow follows the chest in the step; the back gait lifts the feet 0.85 (was 1.5).
+- Run: string hand tucked lower and wider, chest swing 5.4 (was 6.0).
+- Hits (additive over the new ready): the bow follows the chest twist (`BOW_FOLLOW`), lean only forward; the string
+  hand lets go of the string by half the blow; right-side hits keep the bow still and half the kick; knockback holds
+  the grip forward and tears slower.
+- Stun: eased loop phase, bow lower and grip back. Deaths: hand turn clamped 12 deg (was 32).
+- New optional solver goals in stalker_core: `relbow` (elbow target) and `slide`. Unused by the shots.
+
+Rows (shots counted apart; shots unchanged at 14 FAIL / 8 WARN focus rows and 4 scorecard rows):
+- Focus, other clips: FAIL rows 36 -> 19, WARN 64 -> 77, clips with a FAIL 22 -> 15. Troop: 50 -> 33 FAIL rows,
+  24 -> 17 clips.
+- Scorecard, other clips: 18 -> 2 rows, 15 -> 2 clips.
+- Got worse in status: hit_knockback armour WARN 2.64 (stance-exempt) -> FAIL 2.31 (value lower; the stance
+  exemption no longer applies because ready passes). New WARNs: bow into body 0.81-1.12 in six hits, left_pauldron
+  still in four medium hits (secondary_life 3.04), hit_light_right dead_hold 3.25, death_forward weapon_in_arm 2.19.
+  aim_up limb 2.55 -> 2.75 (was already FAIL).
+
+Hand-off ready -> shot (largest upper-body or hand difference): tick 0 was 3.2 deg / 0.52 px, now 84.8 deg
+(right_arm) / 13.2 px (right_hand). Last tick back to ready: volley 85.2 -> 146.9 deg, direct 79.6 -> 71.8 deg, about
+15 px both. The draw-up jump is now visibly larger. AttackController's FADE_IN (2.5 ticks, smoothstep) covers the
+entry and FADE_OUT (6 ticks) the exit; peak about 51 deg per tick on entry.
+
+Still open (two or more attempts each; model parts named where only geometry clears them):
+- charge_run armour 2.86 (head into right_pauldron), weapon 2.02, scorecard pen_weapon 2.728; brace armour 2.64.
+  Right pauldron (x -10.3..-3.1, y 22.8-27.6) sits where the lowered head goes.
+- Aims: armour 1.94 / 3.08 / 3.31 and head_turn 115-123 (aim_down, aim_up), aim_up limb 2.75. The fur_cowl flaps
+  (x +-5.3..6.7, y 21-28) sit on the shot anchor.
+- walk 1.91 and run 2.05 armour: left bracer into mantle_front_l, the knee_mantle collar (x +-6.8, y 19.7-25.3,
+  z +-3.8). Bracers are about 4.6 px wide.
+- Hits armour 1.98-2.36: fur_cowl into pelt_tail or pauldrons, mantle_front_r into right_bracer (cloth parts).
+- rally armour 2.34, scorecard pen_weapon 1.614; stun bow into left_greave 1.9.

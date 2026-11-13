@@ -34,8 +34,16 @@ RH = (-20.0, 0.0, 12.0, -75.0)      # the string arm's: folded, the elbow back
 FREE = (-6.0, 0.0, 10.0, -30.0)     # the string arm hanging free
 
 # Fighting ready: coiled over the lead leg, the bow canted across the body with the arrow down the line of the lead foot.
-READY = dict(hips_r=(2, 10, 0), hips_p=(0.1, -2.0, 0.3), torso=(9, 34, 0), head=(-6, -40, 0),
-             grip=(7.0, 18.0, -4.6), lhint=LH, bow=(-18, 24, -55), rh=(-3, 16, -5), rhint=RH, string=1.0, draw=1.0, rhand=Z3)
+# READY_SHOT is the guard the two shots start from and end on (Kort approved both shots exactly as they are, so it never
+# changes); READY is the stance itself, set by fix round 2 below.
+READY_SHOT = dict(hips_r=(2, 10, 0), hips_p=(0.1, -2.0, 0.3), torso=(9, 34, 0), head=(-6, -40, 0),
+                  grip=(7.0, 18.0, -4.6), lhint=LH, bow=(-18, 24, -55), rh=(-3, 16, -5), rhint=RH, string=1.0, draw=1.0, rhand=Z3)
+# Fix round 2: at rest the arrow stays nocked but the string hand drops off the nock and rests on the lower string by the right
+# hip, two fingers hooked on it, the bow canted further down across the body. Holding the nock itself put the string forearm
+# through the chest (limb 2.74): the nock of a bow held this low sits inside the torso's depth. The shots lift the hand back to
+# the nock in their first ticks (the game's 2.5-tick fade in covers the move).
+READY = dict(READY_SHOT, grip=(6.3, 17.4, -3.8), bow=(-40, -2, -58), rhint=(-18.0, 0.0, 11.0, -72.0), lhint=(-35.0, 0.0, -4.8, -45.0),
+          slide=0.89)
 # Standing watch: taller and looser, the bow carried flat and low across the hips in the bow hand alone, no arrow on the string
 # yet; the string hand hangs free by the arrows at the belt. (Joined hands that low would put the string arm through his chest.)
 WATCH = dict(hips_r=(0, 8, 0), hips_p=(0.0, -1.2, 0.0), torso=(3, 22, 0), head=(-1, -28, 0),
@@ -132,6 +140,7 @@ def anchor_solve(g, elev, draw=3.0, anchor=ANCHOR, feet=C.FEET):
 
 
 def shot(volley):
+    READY = READY_SHOT      # the approved shots keep their own guard (fix round 2 moved the stance, not the shots)
     name = "volley" if volley else "direct"
     elev = ELEV[name]
     lean = -15.0 if volley else 1.0
@@ -310,30 +319,44 @@ FEET_HOLD = {"right": ((-3.0, 2.0, -2.3), -30.0), "left": ((2.3, 2.0, 2.5), 4.0)
 PRE_ANCHOR = (ANCHOR[0] - 1.6, ANCHOR[1], ANCHOR[2] - 2.7)   # half draw: the string hand a hand's width short of the ear and
 #                                                              out from the cowl (review pass 2026-11-13; was ANCHOR[0])
 
-BRACE = body(READY, 52, 15, look=(0, 2), hips_r=(3, 12, 0), hips_p=(0.1, -3.6, 0.2), grip=(6.6, 18.6, -5.2),
+BRACE = body(READY_SHOT, 52, 15, look=(0, -10), hips_r=(3, 12, 0), hips_p=(0.1, -3.6, 0.2), grip=(6.6, 18.6, -5.2),
              bow=(2, 6, -40), draw=2.0, rhint=(-45.0, -10.0, 16.0, -100.0))
-WALL = body(READY, 20, 4, look=(0, 5), hips_r=(0, 4, 0), hips_p=(0.0, -1.5, 0.0), grip=(3.4, 20.6, -7.0), bow=(0, 0, 2),
-            lhint=(-50.0, 20.0, -4.0, -60.0))
-WARD = body(WATCH, 34, -9, look=(4, 9), grip=(4.6, 21.6, -7.0), bow=(4, 2, -86), lhint=(-70.0, 10.0, -10.0, -30.0),
-            rh=(-3, 15, -5), rhint=RH, string=1.0, draw=1.0)
-SHIELD_UP = body(WATCH, 40, 27, look=(0, 16), grip=(4.0, 26.6, -6.6), bow=(4, 10, -88), lhint=(-150.0, 0.0, -20.0, -60.0),
-                 rh=(-2.6, 20.6, -6.6), rhint=(-45.0, 0.0, -8.0, -125.0), string=0.0, draw=0.0)
-HOLD = body(WATCH, 26, 1, look=(0, 0), hips_r=(0, 6, 0), hips_p=(0.0, -0.8, 0.0), grip=(8.4, 18.0, -4.4), bow=(2, 0, 4),
-            lhint=(-25.0, 0.0, -12.0, -50.0), rh=(-5.8, 14.4, -1.6), rhint=(-8.0, 0.0, 14.0, -50.0))
+# fix round 2: the string hand on the lower string (it held the nock, which put the forearm through the chest); the bow canted
+# a little off upright so the lower string runs out past his right hip
+WALL = body(READY_SHOT, 20, 4, look=(0, 5), hips_r=(0, 4, 0), hips_p=(0.0, -1.5, 0.0), grip=(4.05, 20.8, -7.0), bow=(-28, 5, -39),
+            lhint=(-50.0, 20.0, 1.0, -60.0), rhint=(-19.0, 0.0, 13.5, -67.0), slide=0.89)
+WARD = body(WATCH, 34, -9, look=(4, 9), grip=(4.8, 21.6, -7.9), bow=(-7, 1, -63), lhint=(-70.0, 10.0, -7.3, -30.0),
+            rh=(-3, 15, -5), rhint=(-17.4, 0.0, 17.2, -72.0), string=1.0, draw=1.0, slide=0.88)    # fix round 2: string hand on the lower string
+SHIELD_UP = body(WATCH, 40, 27, look=(0, 16), grip=(5.75, 25.4, -6.3), bow=(13, -12, -84), lhint=(-150.0, 0.0, -19.9, -60.0),
+                 rh=(-4.6, 20.6, -8.0), rhint=(-57.7, 0.0, 13.6, -124.0), string=0.0, draw=0.0)    # fix round 2: string hand out off the collar
+HOLD = body(WATCH, 26, 1, look=(0, 0), hips_r=(0, 6, 0), hips_p=(0.0, -0.8, 0.0), grip=(8.7, 18.2, -4.0), bow=(-12, -2, 0.5),
+            lhint=(-25.0, 0.0, -7.8, -50.0), rh=(-5.8, 14.4, -1.6), rhint=(-3.3, 0.0, 17.0, -43.4))   # fix round 2: the staff tipped forward
 REST = body(WATCH, 14, -3, look=(6, 3), grip=(7.2, 15.4, -1.4), bow=(-66, 16, -8), lhint=(-4.0, 0.0, -10.0, -24.0),
             rh=(-4.3, 15.2, -2.7), rhint=(-8.0, 0.0, 16.0, -70.0), string=0.0, draw=0.0)
-FALLBACK = body(WATCH, 44, -7, look=(0, 3), hips_r=(0, 0, 0), grip=(5.4, 20.4, -6.6), bow=(-4, 0, -30), draw=1.0, string=1.0,
-                rh=(-3, 15, -5), rhint=RH,
-                lhint=(-60.0, 0.0, -10.0, -40.0))
+FALLBACK = body(WATCH, 44, -7, look=(0, 3), hips_r=(0, 0, 0), grip=(5.7, 20.6, -7.2), bow=(-26, 2.5, -57), draw=1.0, string=1.0,
+                rh=(-3, 15, -5), rhint=(-18.6, 0.0, 17.2, -62.0), slide=0.87,       # fix round 2: string hand on the lower string
+                lhint=(-60.0, 0.0, -8.5, -40.0))
+
+
+FB_FOLLOW, FB_BOB = 1.0, 0.0
+
+
+RALLY_SWING = (9.0, 24.0, -8.6)    # the bow hand on its way up, out in front
+RALLY_TOP = (7.6, 31.0, -1.8)      # ... and at the top of the punch
 
 
 AIM_HIPS = 20.0      # review pass 2026-11-13: degrees of the aim's turn the hips take from the chest (head_turn was 111-130)
 
 
+# fix round 2: aiming high or low, the half-draw hand sits further back by the jaw (head-local px), so the string forearm comes
+# across the chest less (pen_limb 2.37 high, 1.96 low)
+AIM_SHIFT = {0.0: (0.0, 0.0, 2.5), 45.0: (1.5, 0.0, 2.5), -30.0: (0.0, 0.0, 3.5)}
+
+
 def aim_pose(elev):
     lean, nod = {0.0: (1.0, 0.0), 45.0: (-15.0, -12.0), -30.0: (12.0, 9.0)}[elev]
     g, err = anchor_solve(G(WATCH, hips_r=(0, 8 + AIM_HIPS, 0), torso=(lean, 78 - AIM_HIPS, 0), head=(-lean * 0.55 + nod, -94 + AIM_HIPS, 0), bow=(elev, 0, -6), draw=2.0, string=1.0,
-                            rhint=(-70.0, -30.0, 20.0, -130.0)), elev, draw=2.0, anchor=PRE_ANCHOR)
+                            rhint=(-70.0, -30.0, 20.0, -130.0)), elev, draw=2.0, anchor=add(PRE_ANCHOR, AIM_SHIFT.get(elev, Z3)))
     print("  aim %+.0f: anchor miss %.3f px" % (elev, err))
     return g
 
@@ -366,9 +389,9 @@ def stance_clips(out, only=None):
                   lhint=(-175.0, 0.0, -8.0, -6.0), rh=(-5.6, 18.4, -3.6), rhint=(-30.0, 0.0, 10.0, -110.0), string=0.0, draw=0.0)
         dip = body(WATCH, 24, 7, look=(0, 4), hips_p=(0.0, -2.4, 0.2), grip=(6.4, 16.4, -4.6), bow=(-14, 8, -72),
                    string=0.0, draw=0.0)
-        swing = body(WATCH, 22, 2, look=(0, -4), hips_p=(0.0, -1.9, 0.1), grip=(6.6, 23.0, -7.0), bow=(-4, 4, -36),
+        swing = body(WATCH, 22, 2, look=(0, -4), hips_p=(0.0, -1.9, 0.1), grip=RALLY_SWING, bow=(-4, 4, -36),
                      string=0.0, draw=0.0)       # review pass 2026-11-13: on the way up the bow passes out in front
-        keys = [(0, WATCH), (3.0, dip), (6.2, swing), (10.0, G(up, grip=(6.4, 31.2, -1.0), hips_p=(0.0, -1.0, 0.0))),
+        keys = [(0, WATCH), (3.0, dip), (6.2, swing), (10.0, G(up, grip=RALLY_TOP, hips_p=(0.0, -1.0, 0.0))),
                 (12.5, G(up, grip=(6.4, 30.0, -1.4), hips_p=(0.0, -1.6, 0.0))), (15.0, up), (20, up)]
 
         def mod(t, g):
@@ -380,8 +403,11 @@ def stance_clips(out, only=None):
     if want("stance_fallback"):
         def back_goal(u, hr):
             s2 = math.sin(2 * TAU * u)
+            # fix round 2: the bow rides the chest's swing (it held still in the world while the chest turned under it, and the
+            # string hand, now on the lower string, swept with it) and the bow hand no longer bobs
             return body(FALLBACK, 44 - 4.0 * math.cos(TAU * u), -7 + 1.2 * s2, look=(0, 3), hips_r=hr,
-                        grip=add(FALLBACK["grip"], (0, 0.3 * s2, 0)))
+                        grip=add(FALLBACK["grip"], (0, FB_BOB * s2, 0)),
+                        bow=add(FALLBACK["bow"], (-FB_FOLLOW * 1.2 * s2, FB_FOLLOW * 4.0 * math.cos(TAU * u), 0.0)))
         gait_run(out, "stance_fallback", BACK, back_goal, reverse=True, wind=-3.0)
 
 
@@ -395,10 +421,10 @@ WALK = K.Gait("walk", ticks=8, speed=0.16, duty=0.6, heel=12, toe_off=22, front=
               bob=0.4, bob_phase=0.06, sway=0.3, yaw=5.0, roll=1.0, pitch_hips=2.0, lane=2.0)
 RUN = K.Gait("run", ticks=7, speed=0.26, duty=0.37, heel=6, toe_off=34, front=4.5, lift=3.4, lift_peak=0.45, hip_drop=2.2,
              bob=0.75, bob_phase=0.19, sway=0.2, yaw=7.0, roll=1.4, pitch_hips=5.0, lane=2.0)
-BACK = K.Gait("back", ticks=8, speed=0.12, duty=0.62, heel=8, toe_off=10, front=3.4, lift=1.5, lift_peak=0.5, hip_drop=1.4,
+BACK = K.Gait("back", ticks=8, speed=0.12, duty=0.62, heel=8, toe_off=10, front=3.4, lift=0.85, lift_peak=0.5, hip_drop=1.4,
               bob=0.3, bob_phase=0.06, sway=0.25, yaw=3.0, roll=0.8, pitch_hips=-2.0, lane=2.2)
 CARRY = G(WATCH, grip=(6.4, 17.2, -5.4), bow=(-10, 10, -76))
-TUCK = G(WATCH, grip=(6.6, 17.8, -4.4), bow=(-16, 18, -60))
+TUCK = G(WATCH, grip=(7.0, 17.8, -5.2), bow=(-8, 18, -60))      # fix round 2: the tucked bow carried higher and out (was 6.6, 17.8, -4.4 / -16)
 
 
 def walk_goal(u, hr):
@@ -408,17 +434,22 @@ def walk_goal(u, hr):
                 rh=(-6.2, 14.8, -1.2 + 2.0 * c), rhint=(-6.0, 0.0, 10.0, -34.0))
 
 
+RUN_RH = (-6.8, 15.2, -3.0)    # the string hand's mean place over the run, chest space
+RUN_SWING = 5.4      # degrees the chest swings either way over the run
+
+
 def run_goal(u, hr):
     c, s2 = math.cos(TAU * u), math.sin(2 * TAU * (u - 0.08))
-    return body(TUCK, 26 + 6.0 * c, 19 + 1.5 * s2, look=(0, -3), hips_r=hr,
+    return body(TUCK, 26 + RUN_SWING * c, 19 + 1.5 * s2, look=(0, -3), hips_r=hr,
                 grip=add(TUCK["grip"], (0, 0.5 * s2, 0.2 * c)), bow=add(TUCK["bow"], (3.0 * s2, 0, 4.0 * c)),
-                rh=(-6.4, 16.0, -2.2 + 3.0 * c), rhint=(-10.0, 0.0, 14.0, -60.0))
+                rh=add(RUN_RH, (0.0, 0.0, 3.0 * c)), rhint=(-10.0, 0.0, 14.0, -60.0))
 
 
 def charge_goal(u, hr):
     c, s2 = math.cos(TAU * u), math.sin(2 * TAU * (u - 0.08))
-    return body(TUCK, 58 + 3.0 * c, 13 + 1.0 * s2, look=(0, 0), hips_r=hr, grip=(2.4, 21.2, -7.0 + 0.2 * s2),
-                bow=(1 + 1.0 * s2, 0, -55), draw=2.0, string=1.0, rh=(-3, 16, -5), lhint=(-80.0, -20.0, 0.0, -20.0), rhint=(-60.0, -20.0, 16.0, -120.0))
+    return body(TUCK, 58 + 3.0 * c, 13 + 1.0 * s2, look=(0, -10), hips_r=hr, grip=(2.35, 21.6, -7.2 + 0.2 * s2),     # fix round 2: chin up,
+                bow=(2 + 1.0 * s2, 1.6, -59), draw=2.0, string=1.0, rh=(-3, 16, -5), lhint=(-80.0, -20.0, -4.7, -20.0),   # string elbow out
+                rhint=(-58.8, -20.0, 25.0, -123.0))
 
 
 def gait_run(out, name, g, goal, reverse=False, wind=0.0, flutter=0.0, legs=True):
@@ -464,23 +495,43 @@ def gait_clips(out, only=None):
 READY_YAW, READY_LEAN = 44.0, 9.0
 # How far the bow is drawn in toward the chest a degree of the blow (review pass 2026-11-13: pushing it out instead did not
 # keep the string forearm out of the fur collar; kept as it was).
-HIT_GRIP_Z = 0.04
+HIT_GRIP_Z = -0.03
 PUSH = {"front": (0.0, -1.0), "back": (0.0, 1.0), "right": (1.0, 0.0), "left": (-1.0, 0.0)}
 TWIST = {"front": -0.8, "back": 0.5, "right": 0.5, "left": -0.5}          # how the blow turns the shoulders, per degree of lean
 BOW_KICK = {"front": (18, 4, 22), "back": (-24, -4, -10), "right": (4, 13, -8), "left": (3, -8, 11)}
+# Fix round 2: the string hand rests on the lower string, not the nock, so a blow knocks it partly off the string toward the hip
+# and it hooks back on as he recovers (it no longer has to chase the string through the flinch); the arrow stays nocked.
+HIT_RELEASE = 0.5
+HIT_RH = (-5.8, 14.2, -5.8)
+FOLLOW_MAX = 20.0
+FOLLOW_SIDE = {"right": 0.0}       # a blow from his right: the bow takes the kick alone (following it made the bow too fast)
+KB_FOLLOW = 0.3
+KICK_SIDE = {"right": 0.5}            # a scale on the bow's kick, by the side the blow comes from
+KB_TEAR = (0.2, 3.8)      # the ticks over which the knockback tears the string hand off the string
+KB_GRIP = ((7.8, 19.4, -6.4), (7.6, 18.8, -6.0))     # the bow hand thrown up and caught low in the knockback
+RELEASE_SIDE = {"right": 0.5}      # ... and the string hand comes half as far off the string
+BOW_FOLLOW = (-1.0, -1.0, -0.5)    # fix round 2: the bow rides with the chest's turn and roll, and up with it when he is knocked back
 STEP_FOOT = {"front": "right", "back": "left", "right": "left", "left": "right"}
 ROLL_SIGN = -1.0      # a positive torso z tips him to his right
 
 
-def struck(d, amt, head=0.0, drop=0.0, kick=1.0, **over):
+def follow(amt, pz, px, d):
+    """The chest's lean (only back), turn and roll in a blow, each held to FOLLOW_MAX degrees: what BOW_FOLLOW scales."""
+    c = lambda v: max(-FOLLOW_MAX, min(FOLLOW_MAX, v))  # noqa: E731
+    k = FOLLOW_SIDE.get(d, 1.0)
+    return (k * c(min(0.0, amt * pz)), k * c(TWIST[d] * amt), k * c(amt * px))
+
+
+def struck(d, amt, head=0.0, drop=0.0, kick=1.0, fk=1.0, **over):
     """The ready pose shoved `amt` degrees along a blow's line; `head` is how far the head has followed (0 left behind, 1 with the
     chest, more whipped past)."""
     px, pz = PUSH[d]
-    k = kick * amt / 20.0
+    k = kick * KICK_SIDE.get(d, 1.0) * amt / 20.0
     kw = dict(hips_r=add(READY["hips_r"], (0.25 * amt * pz, 0.3 * TWIST[d] * amt, 0.25 * amt * px * ROLL_SIGN)),
               hips_p=add(READY["hips_p"], (0.075 * amt * px, -drop, -0.075 * amt * pz)),      # hips position: +z is BACK
-              bow=add(READY["bow"], tuple(k * v for v in BOW_KICK[d])),
-              grip=add(READY["grip"], (0.0, 0.05 * abs(amt), HIT_GRIP_Z * abs(amt))))
+              bow=add(READY["bow"], tuple(k * v + fk * f * w for v, f, w in zip(BOW_KICK[d], BOW_FOLLOW, follow(amt, pz, px, d)))),
+              grip=add(READY["grip"], (0.0, 0.05 * abs(amt), HIT_GRIP_Z * abs(amt))),
+              string=1.0 - HIT_RELEASE * RELEASE_SIDE.get(d, 1.0) * min(1.0, abs(amt) / 20.0), rh=HIT_RH)
     kw.update(over)
     return body(READY, READY_YAW + TWIST[d] * amt, READY_LEAN + amt * pz, amt * px * ROLL_SIGN,
                 look=(-0.3 * TWIST[d] * amt * (head - 1), 4 + 0.9 * amt * pz * (head - 0.35), 0.9 * amt * px * ROLL_SIGN * (head - 0.35)),
@@ -543,9 +594,9 @@ def hit_clips(out, only=None):
     if only in (None, "hit_knockback"):
         # thrown: the chest goes over backwards, the string hand is torn off the string and both arms fly; two stumbling steps
         # catch him low, and he gathers the bow back in as he comes up over the lead leg again
-        air = struck("front", 32, head=0.0, drop=0.3, kick=1.1, grip=(7.8, 20.4, -3.8), rh=(-7.4, 18.6, -3.2),
+        air = struck("front", 32, head=0.0, drop=0.3, kick=1.1, grip=KB_GRIP[0], rh=(-7.4, 18.6, -3.2), fk=KB_FOLLOW,
                      rhint=(-40.0, 0.0, 40.0, -60.0), lhint=(-60.0, 0.0, -30.0, -35.0), hips_p=add(READY["hips_p"], (0, -2.0, 2.8)))
-        low = struck("front", 20, head=1.7, drop=2.2, kick=0.8, grip=(7.6, 18.8, -4.0), rh=(-7.2, 16.0, -3.2),
+        low = struck("front", 20, head=1.7, drop=2.2, kick=0.8, grip=KB_GRIP[1], rh=(-7.2, 16.0, -3.2), fk=KB_FOLLOW,
                      rhint=(-30.0, 0.0, 36.0, -60.0), hips_p=add(READY["hips_p"], (0, -2.2, 3.0)))
         up = struck("front", -6, head=1.0, drop=0.9, kick=0.5)
         keys = [(0, R0), (3.0, air), (7.5, low), (11.0, G(low, hips_p=add(low["hips_p"], (0, 0.5, -0.3)))), (15.0, up), (20, R0)]
@@ -554,7 +605,7 @@ def hit_clips(out, only=None):
                  ("left", 10.5, 14.5, fl[0], fl[1], 0.9), ("right", 14.5, 18.5, fr[0], fr[1], 0.9)]
 
         def mod(t, g):
-            g["string"] = (1.0 - ramp(t, 0.6, 2.6) + ramp(t, 11.0, 15.0),)
+            g["string"] = (1.0 - ramp(t, *KB_TEAR) + ramp(t, 11.0, 15.0),)
         additive(out, "hit_knockback", run(keys, 20, steps=steps, mod=mod, report="hit_knockback"), 20, ref)
     if only in (None, "hit_pulled"):
         # yanked: the chest is dragged out ahead of the feet, the head left behind looking at the sky, the bow arm hauled
@@ -575,12 +626,17 @@ def hit_clips(out, only=None):
 # The shake-off (stun_out_upper, additive, rotations only): the head shaken clear, the shoulders shrugged up and dropped.
 # ------------------------------------------------------------------------------------------------
 
+DAZE_EASE = 0.5       # fix round 2: the daze moves slower through the loop seam, where the jolt hands over to it (loop_vel)
+DAZE_GRIP_Z = -3.2    # the slack bow hand a little out in front (was -2.4)
+DAZE_BOW = -54.0      # the trailing bow's elevation (was -58: the low limb went into the hips)
+
+
 def daze(ph, jolt=0.0):
-    a = TAU * ph
-    return body(READY, 30 + 4 * math.sin(a), 19 + 4 * math.sin(2 * a) - 17 * jolt, 6 * math.sin(a + 0.6),
+    a = TAU * ph - DAZE_EASE * math.sin(TAU * ph)
+    return body(READY_SHOT, 30 + 4 * math.sin(a), 19 + 4 * math.sin(2 * a) - 17 * jolt, 6 * math.sin(a + 0.6),
                 look=(8 + 15 * math.cos(a), 24 + 9 * math.sin(a) - 16 * jolt, 13 * math.sin(a + 0.4)),
                 hips_r=(4, 8 + 2 * math.sin(a), 2.5 * math.sin(a)), hips_p=(0.5 * math.sin(a), -2.7 - 0.3 * math.cos(2 * a), 0.3 * math.cos(a)),
-                grip=(6.8 + 0.8 * jolt, 15.4 + 0.3 * math.sin(2 * a) + 1.6 * jolt, -2.4), bow=(-58 + 5 * math.sin(a), 30, -30 + 8 * math.sin(a + 1)),
+                grip=(6.8 + 0.8 * jolt, 15.4 + 0.3 * math.sin(2 * a) + 1.6 * jolt, DAZE_GRIP_Z), bow=(DAZE_BOW + 5 * math.sin(a), 30, -30 + 8 * math.sin(a + 1)),
                 lhint=(-6.0, 0.0, -12.0, -16.0), rh=(-6.6, 13.6, -1.4 + 0.8 * math.sin(a + 2)), rhint=(-4.0, 0.0, 10.0, -14.0),
                 string=0.0, draw=0.0)
 
@@ -658,7 +714,7 @@ DEATH_FORWARD = [
 FLAT = {"death_back": (4, 12), "death_forward": (8, 16), "death_left": (5, 13), "death_right": (5, 13)}   # the bow let go, slowly
 
 
-MAX_HAND_TURN = 32.0     # degrees a tick
+MAX_HAND_TURN = 12.0     # degrees a tick (fix round 2: was 32; the side deaths turned the bow too fast)
 
 
 def rest_hand(pose, ref):
