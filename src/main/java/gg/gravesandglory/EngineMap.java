@@ -60,6 +60,7 @@ public final class EngineMap {
  }
 
  private NavField loadNav(){
+  if(System.getenv("GRAVES_NO_NAV")!=null)return null; // test control: the walk as before the route field
   List<int[]> seeds=new ArrayList<>();
   for(Spawn s:spawns)seeds.add(new int[]{(int)Math.floor(s.x()),(int)Math.floor(s.z()),s.y()-1});
   for(Point p:points)seeds.add(new int[]{(int)Math.floor(p.x()),(int)Math.floor(p.z()),p.y()-1});

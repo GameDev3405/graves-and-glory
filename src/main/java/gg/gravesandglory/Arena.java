@@ -209,7 +209,7 @@ public final class Arena {
         return new Vec3d(home.x(),home.y(),home.z());
     }
     /** The cell a troop or an order at column (x, z) stands on, as {x, z, feet y}. The hand-made maps: the column itself on the ground there, as always.
-     *  An engine map: the column when it is walkable ground (EngineMap.walkable: not a roof, wall top, tree crown or closed building top, whose top block is not where anyone stands),
+     *  An engine map with a route field (NavField, nav.bin.gz): the floor of that column the field keeps, else the nearest column with one. An engine map without: the column when it is walkable ground (EngineMap.walkable: not a roof, wall top, tree crown or closed building top, whose top block is not where anyone stands),
      *  else the lowest 2-high air gap in that world column when w is given (a doorway or arch under a lintel stays a doorway), else the nearest walkable column within FLOOR_RADIUS,
      *  ties toward (refX, refZ) (the troop or the order giver); none: the column's top block as before. Deployment centres and order targets read this; walk's waypoints do not
      *  (step 1 of the pathing plan, the route field, owns those: a gatehouse has no walkable top, and snapping its waypoints put the path at the far side of a sealed gate). */
@@ -217,7 +217,14 @@ public final class Arena {
     private static final java.util.concurrent.ConcurrentHashMap<Long,int[]> FLOORS=new java.util.concurrent.ConcurrentHashMap<>();private static String floorsOf="";
     public static int[] floor(ServerWorld w,int x,int z,double refX,double refZ){
         var e=EngineMaps.current();
-        if(e==null||e.walkable(x,z))return new int[]{x,z,ground(x,z)+1};
+        if(e==null)return new int[]{x,z,ground(x,z)+1};
+        if(e.nav!=null){ // the route field's floors (NavField: reachable floors of every column, the ground under a roof or a lintel too): the column's top when it is a floor, else its lowest, else the nearest column with one
+            int[] here=e.nav.stand(x,z,e::solid,refX,refZ,0);if(here!=null)return new int[]{here[0],here[1],here[2]+1};
+            if(!floorsOf.equals(e.sha)){FLOORS.clear();floorsOf=e.sha;}
+            int q=(refX>=x+.5?1:0)|(refZ>=z+.5?2:0);
+            return FLOORS.computeIfAbsent(((long)x*1_000_003L+z)*4+q,k->{int[] f=e.nav.stand(x,z,e::solid,refX,refZ,FLOOR_RADIUS);return f==null?new int[]{x,z,ground(x,z)+1}:new int[]{f[0],f[1],f[2]+1};}).clone();
+        }
+        if(e.walkable(x,z))return new int[]{x,z,ground(x,z)+1};
         if(w!=null){int y=gap(w,e,x,z);if(y!=Integer.MIN_VALUE)return new int[]{x,z,y};}
         int quad=(refX>=x+.5?1:0)|(refZ>=z+.5?2:0); // the tie side is the only thing the reference changes, so a column's answer is cached per quadrant of it
         if(!floorsOf.equals(e.sha)){FLOORS.clear();floorsOf=e.sha;}

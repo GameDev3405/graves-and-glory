@@ -481,6 +481,7 @@ final class Tactics {
     /** The way to a goal: across the river by the nearest bridge, unless the troop fords it (Riptide tier II and III), which goes straight at the goal. */
     static Vec3d route(GravesAndGlory.Unit u,Vec3d goal){
         if(Houses.fords(u))return goal;
+        Vec3d way=fieldWay(u,goal);if(way!=null)return way;
         Vec3d here=u.mob.getPos();
         double side=here.x-Arena.riverX(here.z),destination=goal.x-Arena.riverX(goal.z);
         if(Math.signum(side)!=Math.signum(destination)&&Math.abs(destination)>7){
@@ -499,6 +500,16 @@ final class Tactics {
             }
         }
         return houseGate(u,goal);
+    }
+    /** The route field of the engine map in play (NavField, nav.bin.gz), or null: an old map, or an engine build without one. */
+    static NavField field(){var e=EngineMaps.current();return e==null?null:e.nav;}
+    /** Where a troop on foot goes next toward a goal it cannot see across the floors: the farthest cell of the field's way it can see, a real floor with its height (Arena.floor and the world's top block play no part), a portal cell at a door narrower than NavField.PORTAL.
+     *  Null: no field (old maps, and the goal itself is wanted), the goal is in plain sight over the floors, or no route is known. A table lookup and a few line tests, no search of the map; a field is built at most NavField.BUILDS_PER_TICK times a tick. */
+    static Vec3d fieldWay(GravesAndGlory.Unit u,Vec3d goal){
+        var nav=field();if(nav==null)return null;
+        var mob=u.mob;var b=GravesAndGlory.battle;
+        var wp=nav.route(mob.getX(),mob.getY(),mob.getZ(),goal.x,goal.y,goal.z,b==null?0:b.time);
+        return wp==null?null:new Vec3d(wp.x(),wp.y(),wp.z());
     }
     /** A goal inside the walled yard of a supply house (Phase 3 Task 8b): the point just outside a gate (HouseRoute) until the unit stands at it, then the goal itself, so that the units do not stand at the wall. Any other goal comes back as it is. */
     static Vec3d houseGate(GravesAndGlory.Unit u,Vec3d goal){
@@ -600,6 +611,7 @@ final class Tactics {
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed){walk(battle,u,destination,time,speed,false);}
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed,boolean climb){
         MobEntity mob=u.mob;Vec3d goal=route(u,destination);Vec3d routed=goal;
+        boolean onField=goal!=destination&&field()!=null; // a waypoint of the route field: a floor cell with its own height, taken as it is (like a detour point)
         // A raised goal (a tower top): every ground waypoint below would put it at the tower's foot (Arena.ground is the terrain under the tower), so near enough it paths to the goal's own height, up the stair.
         if(climb&&goal==destination&&destination.y>Arena.ground((int)Math.floor(destination.x),(int)Math.floor(destination.z))+2.5&&GravesAndGlory.Battle.horizontalDistance(mob.getPos(),destination)<CLIMB_RANGE*CLIMB_RANGE){
             if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),destination)<N.preciseRange()*N.preciseRange()&&Math.abs(mob.getY()-destination.y)<1.1){mob.getNavigation().stop();mob.getMoveControl().moveTo(destination.x,destination.y,destination.z,speed);return;}
@@ -612,12 +624,12 @@ final class Tactics {
         if(u.detour!=null){if(Wedge.over(time,u.detourUntil,mob.getX(),mob.getY(),mob.getZ(),u.detour.x,u.detour.y,u.detour.z,routed.x,routed.z,u.detourFor.x,u.detourFor.z))u.detour=null;else{goal=u.detour;onDetour=true;}}
         boolean wade=Houses.fords(u); // a fording troop's water path penalty is 0, and neither the river snap nor the waypoint search below keeps its waypoints out of the river
         mob.setPathfindingPenalty(PathNodeType.WATER,wade?0f:(float)N.waterPenalty());
-        int gx=(int)Math.floor(goal.x),gz=(int)Math.floor(goal.z),gy;{int[] f=Arena.floor(battle.world,gx,gz,mob.getX(),mob.getZ());gx=f[0];gz=f[1];gy=f[2];} // the goal's cell: x, z and floor together, the same cell for the arrival test and moveTo (Arena.floor)
+        int gx=(int)Math.floor(goal.x),gz=(int)Math.floor(goal.z),gy;{int[] f=onField&&!onDetour?new int[]{gx,gz,(int)Math.floor(goal.y)}:Arena.floor(battle.world,gx,gz,mob.getX(),mob.getZ());gx=f[0];gz=f[1];gy=f[2];} // the goal's cell: x, z and floor together, the same cell for the arrival test and moveTo (Arena.floor)
         if(!onDetour&&GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)<N.preciseRange()*N.preciseRange()&&Math.abs(mob.getY()-gy)<1.1&&!(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)&&battle.world.getBlockState(new BlockPos(gx,gy,gz)).isAir()&&battle.world.getBlockState(new BlockPos(gx,gy+1,gz)).isAir()){
             mob.getNavigation().stop();boolean same=gx==(int)Math.floor(goal.x)&&gz==(int)Math.floor(goal.z);mob.getMoveControl().moveTo(same?goal.x:gx+.5,gy,same?goal.z:gz+.5,speed);return;
         }
         Vec3d delta=goal.subtract(mob.getPos()).multiply(1,0,1);
-        if(!onDetour&&delta.length()>N.waypointDistance())goal=mob.getPos().add(delta.normalize().multiply(N.waypointDistance())); // a detour point is on a whole path: no straight waypoint toward it
+        if(!onDetour&&!onField&&delta.length()>N.waypointDistance())goal=mob.getPos().add(delta.normalize().multiply(N.waypointDistance())); // a detour point is on a whole path: no straight waypoint toward it
         if(mob.squaredDistanceTo(u.lastPosition)<.03)u.stuckTicks+=10;else u.stuckTicks=0;
         u.lastPosition=mob.getPos();
         boolean pinned=pinned(u,time);
@@ -643,11 +655,11 @@ final class Tactics {
             }
         }
         // A detour point is a node of a path: it is used as it is (its own height; no move off the river bank, no search for another column, which could land behind the wall it leads round).
-        int x=(int)Math.floor(goal.x),z=(int)Math.floor(goal.z),y=onDetour?(int)Math.floor(goal.y):Arena.ground(x,z)+1;
-        if(!onDetour&&!wade&&Arena.river(x,z)&&Arena.ground(x,z)<64){int[] dry=EngineMaps.active()?Arena.dryNear(battle.world,x,z,mob.getX(),Integer.MAX_VALUE):null; // an engine map's river need not run north-south (new Rivergate): the nearest dry column
+        int x=(int)Math.floor(goal.x),z=(int)Math.floor(goal.z),y=onDetour||onField?(int)Math.floor(goal.y):Arena.ground(x,z)+1;
+        if(!onDetour&&!onField&&!wade&&Arena.river(x,z)&&Arena.ground(x,z)<64){int[] dry=EngineMaps.active()?Arena.dryNear(battle.world,x,z,mob.getX(),Integer.MAX_VALUE):null; // an engine map's river need not run north-south (new Rivergate): the nearest dry column
             if(dry!=null){x=dry[0];z=dry[1];}else x=(int)Arena.riverX(z)+(x>Arena.riverX(z)?11:-11);y=Arena.ground(x,z)+1;}
         // Keep local waypoints out of tree trunks, flagpoles and walls.
-        if(!onDetour&&!(wade&&Arena.river(x,z))&&(!battle.world.getBlockState(new BlockPos(x,y,z)).isAir()||!battle.world.getBlockState(new BlockPos(x,y+1,z)).isAir())){
+        if(!onDetour&&!onField&&!(wade&&Arena.river(x,z))&&(!battle.world.getBlockState(new BlockPos(x,y,z)).isAir()||!battle.world.getBlockState(new BlockPos(x,y+1,z)).isAir())){
             boolean found=false;
             for(int r=1;r<=5&&!found;r++)for(int dx=-r;dx<=r&&!found;dx++)for(int dz=-r;dz<=r;dz++){
                 int tx=x+dx,tz=z+dz,ty=Arena.ground(tx,tz)+1;
