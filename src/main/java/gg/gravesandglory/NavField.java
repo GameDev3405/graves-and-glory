@@ -39,8 +39,10 @@ public final class NavField {
     static final int SIGHT = 64;
     /** A waypoint is looked for this many hops along a field, and no farther than AHEAD blocks from the troop. */
     static final int HOPS = 12, AHEAD = 28;
-    /** Distance fields kept (the pinned ones come on top), and fields built in one tick before lookups answer "no route" until the next. */
-    static final int CACHE = 96, BUILDS_PER_TICK = 6;
+    /** Distance fields kept are bounded by memory, not by a count: CACHE_BYTES of them (fieldBytes each, between CACHE_MIN and CACHE_MAX fields; the pinned ones come on top). Fields built in one tick before lookups answer "no route" until the next:
+     *  a round opens with every troop asking for its own slot's field (a goal node apiece), and 6 a tick refused some of them. A build is a fraction of a millisecond (roundStats prints the mean). */
+    static final long CACHE_BYTES = 24L << 20;
+    static final int CACHE_MIN = 64, CACHE_MAX = 512, BUILDS_PER_TICK = 16;
     /** The cells a search inside one node looks at. */
     static final int INSIDE = 96;
     /** How near a goal must be to a floor to be given a field: columns. */
@@ -74,8 +76,10 @@ public final class NavField {
     }
     private final Map<Integer, Field> pinned = new HashMap<>();
     private final LinkedHashMap<Integer, Field> cache = new LinkedHashMap<>(128, .75f, true) {
-        @Override protected boolean removeEldestEntry(Map.Entry<Integer, Field> e) { return size() > CACHE; }
+        @Override protected boolean removeEldestEntry(Map.Entry<Integer, Field> e) { return size() > cacheCap(); }
     };
+    /** Fields the cache keeps: CACHE_BYTES of them, so that memory stays bounded whatever the map's size. */
+    int cacheCap() { return (int) Math.max(CACHE_MIN, Math.min(CACHE_MAX, CACHE_BYTES / Math.max(1, fieldBytes()))); }
     private long budgetTick = Long.MIN_VALUE;
     private long roundBuilds, roundRefused, roundLookups, roundRouted;
     private int builtThisTick;
@@ -361,11 +365,13 @@ public final class NavField {
         return f;
     }
 
-    private Field fieldFor(int goal, long tick) {
+    private Field fieldFor(int goal, long tick) { return fieldFor(goal, tick, false); }
+    private Field fieldFor(int goal, long tick, boolean force) {
         Field f = pinned.get(goal);
         if (f != null) return f;
         f = cache.get(goal);
         if (f != null) return f;
+        if (force) { f = build(goal); cache.put(goal, f); return f; }
         if (tick != budgetTick) { budgetTick = tick; builtThisTick = 0; }
         if (builtThisTick >= BUILDS_PER_TICK) { refused++; return null; }
         builtThisTick++;
@@ -492,13 +498,57 @@ public final class NavField {
         return wp;
     }
 
+    /** How far a rescue looks for a floor, in blocks, and how many hops of the route (4 blocks each) a troop on the route is put on. */
+    static final int RESCUE_RADIUS = 24, RESCUE_HOPS = 2;
+
+    /** Where a troop that has been stuck for good is put (the stall ladder's last rung): a standing point on a floor of the field, as a waypoint (feet y), or null when there is none to give (the goal has no floor, no route to it from anywhere near).
+     *  A troop on a floor with a way to the goal goes RESCUE_HOPS hops along that way (past whatever the field does not know holds it); a troop off the field (water, a roof, a wall top) or on a piece of floor cut off from the goal
+     *  goes to the nearest floor, within RESCUE_RADIUS columns, from which the goal can be reached, ties toward the goal. Builds the goal's field if it must (it is asked for after half a minute of standing still, not every tick). */
+    public synchronized Waypoint rescue(double x, double y, double z, double gx, double gy, double gz, long tick) {
+        int to = cellNear(gx, gy, gz, GOAL_RADIUS, false);
+        if (to < 0) return null;
+        Field f = fieldFor(nodeOf[to], tick, true);
+        int from = cellNear(x, y, z, 1);
+        if (from >= 0 && f.dist[nodeOf[from]] != FAR) {
+            int n = nodeOf[from], cell = -1;
+            for (int hop = 0; hop < RESCUE_HOPS; hop++) {
+                int a = f.arc[n];
+                if (a < 0) break;
+                cell = arcCell[a];
+                n = arcTo[a];
+            }
+            if (cell < 0) cell = to; // already in the goal's node: the goal's own floor
+            int col = colOf[cell];
+            return new Waypoint(col % w + ox + .5, ys[cell] + 1, col / w + oz + .5, false, CAP);
+        }
+        int bx = (int) Math.floor(x) - ox, bz = (int) Math.floor(z) - oz, best = -1;
+        double bestScore = Double.MAX_VALUE;
+        for (int r = 0; r <= RESCUE_RADIUS; r++) {
+            if (best >= 0 && (r - 1.0) * (r - 1.0) > bestScore) break;
+            for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) {
+                if (Math.max(Math.abs(dx), Math.abs(dz)) != r) continue;
+                int cx = bx + dx, cz = bz + dz;
+                if (cx < 0 || cx >= w || cz < 0 || cz >= d) continue;
+                int c = cz * w + cx;
+                for (int i = start[c]; i < start[c + 1]; i++) {
+                    if (f.dist[nodeOf[i]] == FAR || width(i) < 2) continue;
+                    double score = (double) dx * dx + (double) dz * dz + 1e-3 * Math.hypot(cx + ox + .5 - gx, cz + oz + .5 - gz);
+                    if (score < bestScore) { bestScore = score; best = i; }
+                }
+            }
+        }
+        if (best < 0) return null;
+        int col = colOf[best];
+        return new Waypoint(col % w + ox + .5, ys[best] + 1, col / w + oz + .5, false, CAP);
+    }
+
     // ---- reading it back
 
     /** Drops the cached (not the pinned) fields: a map was selected. */
     public synchronized void reset() { cache.clear(); budgetTick = Long.MIN_VALUE; builtThisTick = 0; roundBuilds = builds; roundRefused = refused; roundLookups = lookups; roundRouted = routed; }
     /** One line for the log, what this field did since the last call (a round, or a map select): fields built, lookups refused by the budget, lookups, lookups answered with a waypoint, fields held. */
     public synchronized String roundStats() {
-        String t = String.format(java.util.Locale.ROOT, "%d lookups (%d with a waypoint), %d fields built, %d refused by the build budget, %d cached + %d pinned", lookups - roundLookups, routed - roundRouted, builds - roundBuilds, refused - roundRefused, cache.size(), pinned.size());
+        String t = String.format(java.util.Locale.ROOT, "%d lookups (%d with a waypoint), %d fields built (%.2f ms each), %d refused by the build budget, %d cached (cap %d) + %d pinned", lookups - roundLookups, routed - roundRouted, builds - roundBuilds, builds == 0 ? 0.0 : buildNanos / 1e6 / builds, refused - roundRefused, cache.size(), cacheCap(), pinned.size());
         roundBuilds = builds; roundRefused = refused; roundLookups = lookups; roundRouted = routed;
         return t;
     }
@@ -511,7 +561,13 @@ public final class NavField {
         Field f = pinned.get(nodeOf[b]);
         if (f == null) f = cache.get(nodeOf[b]);
         if (f == null) return Double.NaN;
-        return f.dist[nodeOf[a]] == FAR ? -1 : f.dist[nodeOf[a]] / SCALE;
+        int n = nodeOf[a];
+        if (f.dist[n] == FAR) return -1;
+        // continuous (a node is 4 blocks, and a troop crawling in a file moves inside one): the next node's distance plus the way to it; the goal itself in the goal's own node
+        int arc = f.arc[n];
+        if (arc < 0) return Math.hypot(x - gx, z - gz);
+        int m = arcTo[arc];
+        return f.dist[m] / SCALE + Math.hypot(x - nodeX[m], z - nodeZ[m]);
     }
     /** Whether a troop at (x, feet y, z) sees (bx, bz) over the floors (the test route() makes of its waypoints). */
     public synchronized boolean sees(double x, double y, double z, double bx, double bz) {

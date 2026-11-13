@@ -93,8 +93,8 @@ public final class NavFieldCheck {
         // 4. the build budget: more fields than BUILDS_PER_TICK in one tick are refused, then answered the next tick
         NavField big = grid(60, 40, (x, z) -> x >= 30 && x <= 32 && z != 5, new int[][]{{10, 20, 64}});
         int answered = 0;
-        for (int g = 0; g < 12; g++) if (big.route(10.5, 65, 20.5, 40.5 + g % 3 * 4, 65, 6.5 + g * 2.5, 7) != null) answered++;
-        check(big.refused > 0 && answered < 12, "lookups past the per-tick budget are refused: " + big.refused + " refused, " + answered + " answered");
+        for (int g = 0; g < 40; g++) if (big.route(10.5, 65, 20.5, 34.5 + g % 6 * 4, 65, 2.5 + g / 6 % 6 * 4, 7) != null) answered++;
+        check(big.refused > 0 && answered < 40, "lookups past the per-tick budget are refused: " + big.refused + " refused, " + answered + " answered");
         long before = big.refused;
         check(big.route(10.5, 65, 20.5, 52.5, 65, 6.5, 99) != null && big.refused == before, "a later tick builds again and answers");
         check(big.distance(10.5, 65, 20.5, 52.5, 65, 6.5) >= 0 && big.cachedDistance(10.5, 65, 20.5, 52.5, 65, 6.5) >= 0, "the goal's field is held and gives a distance");
@@ -104,6 +104,26 @@ public final class NavFieldCheck {
         check(big.builds == builtBefore, "cachedDistance builds nothing");
         big.reset();
         check(Double.isNaN(big.cachedDistance(10.5, 65, 20.5, 52.5, 65, 6.5)), "reset drops the cached fields");
+
+        // 4b. the cache is bounded by memory: the cap is CACHE_BYTES of fields, never under CACHE_MIN nor over CACHE_MAX
+        check(big.cacheCap() >= NavField.CACHE_MIN && big.cacheCap() <= NavField.CACHE_MAX && (long) big.cacheCap() * big.fieldBytes() <= Math.max(NavField.CACHE_BYTES, (long) NavField.CACHE_MIN * big.fieldBytes()), "the cache cap keeps memory bounded: " + big.cacheCap() + " fields of " + big.fieldBytes() + " bytes");
+
+        // 4c. rescue (the stall ladder's jump): a troop on the field goes along its way; one off the field (on the wall, in the plug) goes to the nearest floor with a way to the goal; no floor near the goal: none
+        var onWay = yard.rescue(29.5, 65, 20.5, 50.5, 65, 20.5, 0);
+        check(onWay != null && Math.hypot(onWay.x() - 29.5, onWay.z() - 20.5) >= 3 && yard.distance(onWay.x(), onWay.y(), onWay.z(), 50.5, 65, 20.5) >= 0
+            && yard.distance(onWay.x(), onWay.y(), onWay.z(), 50.5, 65, 20.5) < yard.distance(29.5, 65, 20.5, 50.5, 65, 20.5), "a troop at the wall is put farther along its way: " + onWay);
+        check(yard.onField(onWay.x(), onWay.y(), onWay.z()), "the rescue spot is a floor of the field");
+        check(!yard.onField(31.5, 65, 10.5), "the wall top is off the field");
+        var offWall = yard.rescue(31.5, 65, 10.5, 50.5, 65, 20.5, 0);
+        check(offWall != null && yard.onField(offWall.x(), offWall.y(), offWall.z()) && Math.hypot(offWall.x() - 31.5, offWall.z() - 10.5) <= 4.5 && yard.distance(offWall.x(), offWall.y(), offWall.z(), 50.5, 65, 20.5) >= 0, "a troop in the wall is put on the nearest floor with a way to its goal: " + offWall);
+        check(yard.rescue(31.5, 65, 10.5, 500.5, 65, 20.5, 0) == null, "a goal off the map has no rescue");
+        long builtRescue = yard.builds;
+        yard.rescue(29.5, 65, 20.5, 55.5, 65, 33.5, 5);
+        check(yard.builds >= builtRescue, "a rescue may build the goal's field past the per-tick budget");
+        // a troop on a piece of floor cut off from the goal goes to the nearest floor that is connected
+        NavField cut = grid(60, 40, (x, z) -> x >= 30 && x <= 32 || (x >= 8 && x <= 12 && (z == 14 || z == 22)) || (z >= 14 && z <= 22 && (x == 8 || x == 12)), new int[][]{{20, 20, 64}});
+        var inPen = cut.rescue(10.5, 65, 18.5, 50.5, 65, 5.5, 0);
+        check(inPen == null || inPen.x() > 12.5 || inPen.x() < 7.5 || inPen.z() < 14 || inPen.z() > 22, "a troop in a closed pen is put outside it: " + inPen);
 
         // 3b. several floor levels: ground under a deck reached by a ramp (floors {64, 65 + i} on the ramp, {64, 70} under the deck)
         int[][] deck = new int[60 * 20][];
