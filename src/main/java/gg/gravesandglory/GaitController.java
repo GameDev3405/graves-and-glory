@@ -29,7 +29,8 @@ import java.util.Map;
  * <p>
  * GeckoLib puts a controller's clip pose on the bones after {@link #process} returns, so a blend written inside it is overwritten. The hand blends therefore run in
  * {@link #after}, which {@link After}, registered behind both gait layers, calls once their poses are on the bones. Until 2026-11-12 the setting-off blend ran inside
- * {@code process} and so never showed in play: a troop setting off cut to the matched phase. {@link #START_BLEND} keeps that as it was approved.
+ * {@code process} and so never showed in play: a troop setting off shows the moving clip's first frame for one render frame, then the matched phase.
+ * {@link #START_BLEND} keeps that as it was approved.
  */
 final class GaitController extends AnimationController<GeoTroop> {
     /** Reference speed of each gait clip (blocks per tick) as built by art/anim/knight/build_anims.py; the clip name is its key prefix. */
@@ -51,8 +52,6 @@ final class GaitController extends AnimationController<GeoTroop> {
      * the knight was approved without it; turning it on is a change to how a troop sets off, for Kort to look at.
      */
     static final boolean START_BLEND = false;
-    /** The world clock (ticks) the idle loop is read on, as StanceController reads its loops: it runs on when a troop is tracked anew, which the animation time does not. */
-    private double standingClock = Double.NaN;
     private Map<String, float[]> from;
     private double fromAt, fromLength;
     /** Whether the blend out of {@link #from} is eased (setting off) or straight (stopping, as GeckoLib's own transition was). */
@@ -79,7 +78,6 @@ final class GaitController extends AnimationController<GeoTroop> {
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e != null) gait.update(e, seekTime, state.getPartialTick());
-        standingClock = e != null && e.getWorld() != null ? e.getWorld().getTime() + state.getPartialTick() : seekTime;
         Gait.Mode m = gait.mode;
         if (m != lastMode && m != Gait.Mode.IDLE && lastMode != Gait.Mode.IDLE) { transitionLength = 0; keepPhase = true; }
         else if (m != lastMode && m != Gait.Mode.IDLE && !out.isEmpty()) {
@@ -228,7 +226,8 @@ final class GaitController extends AnimationController<GeoTroop> {
             // The idle loop runs on a free clock at this troop's own point in the loop (Gait.standingTime), never from its first frame: a rank does not breathe as one.
             // keepPhase is left for process to clear: a troop that stops and sets off again on the next frame still needs it for the moving clip
             if (shouldResetTick) super.adjustTick(tick);
-            return gait.standingTime(Double.isNaN(standingClock) ? tick : standingClock, currentAnimation.animation().length());
+            // read on the animation time, which runs evenly frame to frame; the world clock is set again from the server about once a second and would step the loop on a slow one
+            return gait.standingTime(tick, currentAnimation.animation().length());
         }
         double ref = playingRef();
         if (ref <= 0 || getAnimationState() != State.RUNNING) return super.adjustTick(tick);
