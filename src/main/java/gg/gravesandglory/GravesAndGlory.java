@@ -1182,7 +1182,7 @@ public final class GravesAndGlory implements ModInitializer {
             Anchor anchor=anchors.get(chosen);Vec3d centre=deployCentre(s.team,anchor);
             double x=centre.x+ring.x,z=centre.z+ring.z;int gx=(int)Math.floor(x),gz=(int)Math.floor(z);
             if(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)return new Deploy(barracks,null);
-            if(EngineMaps.active())return new Deploy(Arena.standing(world,x,z,home.x,Integer.MAX_VALUE),anchor); // the spawn guard at a held point: walkable ground, not a roof
+            if(EngineMaps.active()){Vec3d at=Arena.forward(world,x,z,home.x);return at==null?new Deploy(barracks,null):new Deploy(at,anchor);} // the spawn guard at a held point: walkable ground, not a roof
             return new Deploy(new Vec3d(x,Arena.ground(gx,gz)+1,z),anchor);
         }
         Vec3d deployPoint(Squad s,int slot){return deploy(s,slot).at();}

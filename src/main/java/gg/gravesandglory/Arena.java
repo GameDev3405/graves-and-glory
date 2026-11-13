@@ -195,29 +195,39 @@ public final class Arena {
     static boolean endsAt(CampaignMaps.Road r,int x,int z){return r.ax()==x&&r.az()==z||r.bx()==x&&r.bz()==z;}
     /** Deep water: river below 64, as GravesAndGlory.Battle.wet. */
     public static boolean deep(int x,int z){return river(x,z)&&ground(x,z)<64;}
-    /** The spawn guard: where a troop deployed, reinforced or trained at (x, z) by the base at homeX stands, its feet one block up.
-     *  On an engine map (New Kingsfield, New Rivergate) the spot must be ground its base reaches on foot, dry, no higher than the base's yard
-     *  (the spawn's feet), not on a crate pile, with two free blocks above (EngineMap.stands); else it moves to the nearest such cell within 48
-     *  (EngineMap.footing), and with none to the base spawn itself. Kort's playtest 2026-11-13: troops spawned on roofs inside the base.
-     *  On the hand-made maps: the ground there, or over deep water the nearest dry column no higher than the floor, as before. */
+    /** The spawn guard: where a troop lined up or trained at its base (x, z; the base at homeX) stands, its feet one block up.
+     *  On an engine map (New Kingsfield, New Rivergate) the spot must be walkable ground in the base's own yard (EngineMap.walkable, nearHome),
+     *  dry, no higher than the yard (the spawn's feet), not on a crate pile, with two free blocks above (EngineMap.stands); else it moves to the
+     *  nearest such cell within 48 (EngineMap.footing), and with none to the base spawn itself. Kort's playtest 2026-11-13: troops spawned on roofs
+     *  inside the base. On the hand-made maps: the ground there, or over deep water the nearest dry column no higher than the floor, as before. */
     public static Vec3d standing(ServerWorld w,double x,double z,double homeX){
-        var e=EngineMaps.current();
-        if(e!=null){EngineMap.Spawn home=null;for(var s:e.spawns)if(home==null||Math.abs(s.x()-homeX)<Math.abs(home.x()-homeX))home=s;
-            return standing(w,x,z,homeX,home==null?Integer.MAX_VALUE:home.y());}
-        return legacyStanding(w,x,z,homeX);
-    }
-    /** As standing, on an engine map with the ground at most maxGround (a forward deploy at a held point: Integer.MAX_VALUE, its ground is not the yard's). */
-    public static Vec3d standing(ServerWorld w,double x,double z,double homeX,int maxGround){
         var e=EngineMaps.current();if(e==null)return legacyStanding(w,x,z,homeX);
+        var home=e.home(homeX);if(home==null)return legacyStanding(w,x,z,homeX);
+        Vec3d at=guarded(w,e,x,z,homeX,home.y(),home);
+        if(at!=null)return at;
+        warnOnce("no yard ground within 48 of "+(int)x+","+(int)z+": the troop stands at its base spawn");
+        return new Vec3d(home.x(),home.y(),home.z());
+    }
+    /** The spawn guard for a troop deployed forward at a held point (x, z): walkable ground near the point, dry, no higher than the nearest
+     *  point's own ground plus one, not on a pile, with headroom; null when there is none within 48 (the caller deploys it at the barracks).
+     *  The hand-made maps: the ground there, as before. */
+    public static Vec3d forward(ServerWorld w,double x,double z,double homeX){
+        var e=EngineMaps.current();if(e==null)return new Vec3d(x,ground((int)Math.floor(x),(int)Math.floor(z))+1,z);
+        var p=e.nearestPoint(x,z);int max=p==null?Integer.MAX_VALUE:e.solid((int)Math.floor(p.x()),(int)Math.floor(p.z()))+1;
+        Vec3d at=guarded(w,e,x,z,homeX,max,null);
+        if(at==null)warnOnce("no ground within 48 of the forward deploy "+(int)x+","+(int)z+": the troop deploys at the barracks");
+        return at;
+    }
+    static Vec3d guarded(ServerWorld w,EngineMap e,double x,double z,double homeX,int maxGround,EngineMap.Spawn home){
         int ix=(int)Math.floor(x),iz=(int)Math.floor(z);var pos=new BlockPos.Mutable();
         java.util.function.BiPredicate<Integer,Integer> headroom=w==null?null:(cx,cz)->{int g=e.solid(cx,cz);
             for(int y=g+1;y<=g+2;y++)if(!w.getBlockState(pos.set(cx,y,cz)).getCollisionShape(w,pos).isEmpty())return false;return true;};
-        if(e.stands(ix,iz,maxGround)&&(headroom==null||headroom.test(ix,iz)))return new Vec3d(x,e.solid(ix,iz)+1,z);
-        int[] c=e.footing(ix,iz,homeX,48,maxGround,headroom);
-        if(c!=null)return new Vec3d(c[0]+.5,e.solid(c[0],c[1])+1,c[1]+.5);
-        EngineMap.Spawn home=null;for(var s:e.spawns)if(home==null||Math.abs(s.x()-homeX)<Math.abs(home.x()-homeX))home=s;
-        return home==null?new Vec3d(x,e.solid(ix,iz)+1,z):new Vec3d(home.x(),home.y(),home.z());
+        if(e.stands(ix,iz,maxGround)&&(home==null||e.nearHome(home,ix,iz))&&(headroom==null||headroom.test(ix,iz)))return new Vec3d(x,e.solid(ix,iz)+1,z);
+        int[] c=e.footing(ix,iz,homeX,48,maxGround,home,headroom);
+        return c==null?null:new Vec3d(c[0]+.5,e.solid(c[0],c[1])+1,c[1]+.5);
     }
+    private static final java.util.Set<String> WARNED=java.util.concurrent.ConcurrentHashMap.newKeySet();
+    static void warnOnce(String text){if(WARNED.add(text))System.err.println("[Graves and Glory] spawn guard: "+text);}
     static Vec3d legacyStanding(ServerWorld w,double x,double z,double homeX){
         int ix=(int)Math.floor(x),iz=(int)Math.floor(z);
         if(!deep(ix,iz))return new Vec3d(x,ground(ix,iz)+1,z);

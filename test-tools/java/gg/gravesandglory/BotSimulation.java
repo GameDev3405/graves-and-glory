@@ -389,21 +389,21 @@ public final class BotSimulation implements ModInitializer {
             System.out.println(line);
         }catch(Throwable e){System.out.println("[botsim] probe failed: "+e);}
     }
-    /** Recreates botsim/ if it vanished. A failed write is logged, not thrown, so the run still ends with its summary line. */
     /** The spawn guard at a round's start (Kort's playtest 2026-11-13, troops on roofs): on an engine map, botsim/spawn-ground.csv holds every troop as it
      *  was placed (team, army, group, slot, feet, the column's top, whether the cell is ground its base walks to, EngineMap.stands with the yard's
-     *  height, and ok = stands and the feet on that ground), and one "[botsim] spawn ground" line gives the count of troops not ok. */
+     *  height and nearHome (in its own base's yard), and ok = stands and the feet on that ground), and one "[botsim] spawn ground" line gives the count of troops not ok. */
     void spawnGround(GravesAndGlory.Battle b){
         var e=EngineMaps.current();if(e==null)return;
         Path f=results.resolveSibling("spawn-ground.csv");StringBuilder rows=new StringBuilder();int n=0,bad=0;
         try{if(!Files.exists(f))Files.writeString(f,"match,team,army,group,slot,x,y,z,top,walkable,stands,ok\n",StandardCharsets.UTF_8);}catch(java.io.IOException x){throw new RuntimeException(x);}
         for(var u:b.units){if(!u.mob.isAlive())continue;int x=(int)Math.floor(u.mob.getX()),z=(int)Math.floor(u.mob.getZ());
-            EngineMap.Spawn home=null;for(var s:e.spawns)if(home==null||Math.abs(s.x()-b.fieldBase(u.squad.team).x)<Math.abs(home.x()-b.fieldBase(u.squad.team).x))home=s;
-            boolean stands=e.stands(x,z,home.y()),ok=stands&&Math.abs(u.mob.getY()-(e.solid(x,z)+1))<0.6;n++;if(!ok)bad++;
+            var home=e.home(b.fieldBase(u.squad.team).x);
+            boolean stands=e.stands(x,z,home.y())&&e.nearHome(home,x,z),ok=stands&&Math.abs(u.mob.getY()-(e.solid(x,z)+1))<0.6;n++;if(!ok)bad++;
             rows.append(String.format(Locale.ROOT,"%d,%d,%d,%s,%d,%.1f,%.1f,%.1f,%d,%s,%s,%s%n",match+1,u.squad.team,armies.indexOf(u.squad),u.spec.group(),u.slot,u.mob.getX(),u.mob.getY(),u.mob.getZ(),e.solid(x,z),e.walkable(x,z),stands,ok));}
         append(f,rows.toString());
         System.out.println("[botsim] spawn ground match "+(match+1)+": "+n+" troops placed, "+bad+" off the ground or above the yard");
     }
+    /** Recreates botsim/ if it vanished. A failed write is logged, not thrown, so the run still ends with its summary line. */
     static void append(Path file,String text){
         try{Files.createDirectories(file.getParent());Files.writeString(file,text,StandardCharsets.UTF_8,StandardOpenOption.CREATE,StandardOpenOption.APPEND);}
         catch(IOException e){System.out.println("[botsim] could not write "+file+": "+e);}

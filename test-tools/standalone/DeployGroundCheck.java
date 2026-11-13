@@ -3,10 +3,13 @@ package gg.gravesandglory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/** The deploy guard on every bundled engine map (Kort's playtest 2026-11-13: troops spawned on roofs inside the New Kingsfield base).
- * For both teams, every cell a troop can be placed on at round start or when trained at the barracks (the base's lineup and ring area:
- * 0 to 24 ahead of the spawn, 44 to each side) goes through EngineMap.footing, and the spot it gives must be on ground the spawn
- * reaches on foot (no roof, wall top, tree or closed interior), dry, no higher than one step above the yard, and not on a crate pile (EngineMap.stands). */
+/** The spawn guard on every bundled engine map (Kort's playtest 2026-11-13: troops spawned on roofs inside the New Kingsfield base).
+ * Base deploys: for both teams, every cell a troop can be placed on at round start or when trained at the barracks (the lineup and ring area:
+ * 0 to 24 ahead of the spawn, 56 to each side, room for five armies a team) goes through EngineMap.footing as Arena.standing calls it, and the
+ * spot must be ground (reached on foot from a spawn or point over the column tops: no roof, wall top, tree or closed building), in the team's
+ * own yard (EngineMap.nearHome: not across its wall), dry, no higher than one block above the yard, and not on a crate pile.
+ * Forward deploys: every cell within 14 of each point, as Arena.forward calls it, stands on ground no higher than the point's plus one.
+ * The world's headroom test (Arena.guarded) needs a world: the bot sim's spawn-ground.csv covers it. */
 public final class DeployGroundCheck {
  static int count;static void check(boolean pass,String text){count++;if(!pass)throw new AssertionError(text);}
  public static void main(String[] args)throws Exception{
@@ -15,20 +18,31 @@ public final class DeployGroundCheck {
   int maps=0;
   for(var row:Spec.MAPS){if(row.source().equals("-"))continue;maps++;
    EngineMap m=EngineMap.read(root.resolve(row.source()));
-   for(EngineMap.Spawn s:m.spawns){int sx=(int)Math.floor(s.x()),sz=(int)Math.floor(s.z()),side=sx<0?1:-1;
-    check(m.stands(sx,sz,s.y()),row.id()+" "+s.team()+": the spawn itself is walkable ground");
+   for(EngineMap.Spawn s:m.spawns){int sx=(int)Math.floor(s.x()),sz=(int)Math.floor(s.z()),side=s.team().equals("dawn")?1:-1;
+    check(m.home(s.x())==s,row.id()+" "+s.team()+": the spawn is its own side's home");
+    check(m.stands(sx,sz,s.y())&&m.nearHome(s,sx,sz),row.id()+" "+s.team()+": the spawn itself is yard ground");
     int sampled=0,moved=0,off=0;
-    for(int u=0;u<=24;u++)for(int dz=-44;dz<=44;dz++){int x=sx+side*u,z=sz+dz;sampled++;
-     if(!m.stands(x,z,s.y()))off++;
-     int[] c=m.footing(x,z,sx,48,s.y(),null);
+    for(int u=0;u<=24;u++)for(int dz=-56;dz<=56;dz++){int x=sx+side*u,z=sz+dz;sampled++;
+     if(!m.stands(x,z,s.y())||!m.nearHome(s,x,z))off++;
+     int[] c=m.footing(x,z,s.x(),48,s.y(),s,null);
      check(c!=null,row.id()+" "+s.team()+": no ground for the deploy cell "+x+","+z);
      if(c[0]!=x||c[1]!=z)moved++;
-     check(m.walkable(c[0],c[1]),row.id()+" "+s.team()+": deploy cell "+x+","+z+" stands on "+c[0]+","+c[1]+" (y "+m.solid(c[0],c[1])+"), not ground the spawn walks to");
-     check(!m.wet(c[0],c[1]),row.id()+" "+s.team()+": deploy cell "+x+","+z+" stands in water at "+c[0]+","+c[1]);
-     check(m.solid(c[0],c[1])<=s.y(),row.id()+" "+s.team()+": deploy cell "+x+","+z+" stands at y "+(m.solid(c[0],c[1])+1)+", above the yard (spawn feet y "+s.y()+")");
-     check(Math.abs(c[0]-x)+Math.abs(c[1]-z)<=48,row.id()+": a deploy spot moved far: "+x+","+z+" to "+c[0]+","+c[1]);}
-    check(off==moved&&off>0,row.id()+" "+s.team()+": exactly the cells off the ground move ("+off+" off, "+moved+" moved)");
-    System.out.println("DeployGroundCheck "+row.id()+" "+s.team()+": "+sampled+" deploy cells, "+off+" off the ground (roof, wall, tree, pile, water) and moved to the nearest ground");}}
+     String at=row.id()+" "+s.team()+": deploy cell "+x+","+z+" stands on "+c[0]+","+c[1]+" (ground y "+m.solid(c[0],c[1])+")";
+     check(m.walkable(c[0],c[1]),at+": not ground a troop walks to (roof, wall top, tree)");
+     check(m.nearHome(s,c[0],c[1]),at+": outside its own yard");
+     check(!m.wet(c[0],c[1]),at+": in water");
+     check(m.solid(c[0],c[1])<=s.y(),at+": above the yard (spawn feet y "+s.y()+")");
+     check(Math.hypot(c[0]-x,c[1]-z)<=48,at+": moved more than 48");}
+    check(off==moved&&off>0,row.id()+" "+s.team()+": exactly the cells off the yard ground move ("+off+" off, "+moved+" moved)");
+    System.out.println("DeployGroundCheck "+row.id()+" "+s.team()+": "+sampled+" base deploy cells, "+off+" off the yard ground (roof, wall, tree, pile, water, across the wall) and moved");}
+   for(EngineMap.Point p:m.points){int px=(int)Math.floor(p.x()),pz=(int)Math.floor(p.z()),max=m.solid(px,pz)+1,moved=0,n=0;
+    check(m.walkable(px,pz),row.id()+" point "+p.name()+" is walkable ground");
+    for(int dx=-14;dx<=14;dx++)for(int dz=-14;dz<=14;dz++){if(dx*dx+dz*dz>14*14)continue;int x=px+dx,z=pz+dz;n++;
+     int[] c=m.footing(x,z,m.spawns.get(0).x(),48,max,null,null);
+     check(c!=null,row.id()+" point "+p.name()+": no ground for the forward deploy cell "+x+","+z);
+     if(c[0]!=x||c[1]!=z)moved++;
+     check(m.stands(c[0],c[1],max),row.id()+" point "+p.name()+": forward cell "+x+","+z+" stands on "+c[0]+","+c[1]+" (ground y "+m.solid(c[0],c[1])+", point ground "+(max-1)+")");}
+    System.out.println("DeployGroundCheck "+row.id()+" point "+p.name()+": "+n+" forward deploy cells, "+moved+" moved off a roof, pile or water");}}
   check(maps>=2,"both engine maps are checked (New Kingsfield, New Rivergate): "+maps);
   System.out.println("DeployGroundCheck: PASS ("+count+" checks)");
  }
