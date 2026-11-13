@@ -839,7 +839,8 @@ public final class Campaign {
     }
     static void progressRow(JsonArray rows,MatchEnding.Progress g){
         if(g==null)return;JsonObject row=new JsonObject();row.addProperty("label",g.label());row.addProperty("kind",g.kind());row.addProperty("before",g.before());row.addProperty("after",g.after());
-        row.addProperty("base",g.base());row.addProperty("next",g.next());row.addProperty("tier",g.tier());rows.add(row);
+        row.addProperty("base",g.base());row.addProperty("next",g.next());row.addProperty("tier",g.tier());
+        if(g.multi()){row.addProperty("crossings",g.crossings());row.addProperty("finalBase",g.finalBase());row.addProperty("finalNext",g.finalNext());row.addProperty("finalTier",g.finalTier());} // two or more thresholds in one match: the bar ends on the last climb
     }
     /** Contracts (daily slots and the weekly) and chapter tiers ready to claim now (Progression.claimable). */
     static JsonObject reportClaimable(Profile p){

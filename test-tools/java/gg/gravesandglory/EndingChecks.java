@@ -789,7 +789,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         for (var k : new String[]{"commanderDowns", "armyKills", "keptPct"}) { var b = new JsonObject(); b.addProperty("key", k); b.addProperty("label", "Commanders downed"); b.addProperty("value", 999999); b.addProperty("previous", 999998); bests.add(b); }
         worst.add("bests", bests);
         var progress = worst.getAsJsonArray("progress");
-        for (int i = progress.size(); i < 9; i++) { var r = new JsonObject(); r.addProperty("label", "Wild Moot Renown and a long contract name " + i); r.addProperty("kind", "renown"); r.addProperty("before", 99999); r.addProperty("after", 99999); r.addProperty("base", 99999); r.addProperty("next", 99999); r.addProperty("tier", 9); progress.add(r); }
+        for (int i = progress.size(); i < 9; i++) { var r = new JsonObject(); r.addProperty("label", "Wild Moot Renown and a long contract name " + i); r.addProperty("kind", "renown"); r.addProperty("before", 99999); r.addProperty("after", 99999); r.addProperty("base", 99999); r.addProperty("next", 99999); r.addProperty("tier", 9); r.addProperty("crossings", 12); r.addProperty("finalBase", 99999); r.addProperty("finalNext", 99999); r.addProperty("finalTier", 99); progress.add(r); } // every extra row also carries the multi-crossing fields
         var original = c.results.get(player);
         try {
             c.results.put(player, worst);

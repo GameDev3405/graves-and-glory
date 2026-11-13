@@ -70,6 +70,44 @@ public final class MatchEndingCheck {
         check(renown.tier() == 2 && renown.base() == 3 && renown.next() == 8 && renown.crossed(), "renown crossing tier 2: " + renown);
         check(MatchEnding.progress("c", "contract", 2, 3, new int[]{3}).crossed() && !MatchEnding.progress("c", "contract", 1, 2, new int[]{3}).crossed(), "contract 3 battles");
         check(MatchEnding.progress("c", "contract", 5, 3, new int[]{6}).after() == 5, "after never below before");
+        // Several thresholds in one match: the bar ends on the final level and the position within it.
+        var two2 = MatchEnding.progress("XP", "xp", 240, 520, xp);
+        check(two2.crossings() == 2 && two2.multi() && two2.base() == 0 && two2.next() == 250 && two2.tier() == 1, "xp 240 to 520 crosses two: " + two2);
+        check(two2.finalBase() == 500 && two2.finalNext() == 750 && two2.finalTier() == 3 && two2.reached() == 2, "xp ends on level 2, 20 of 250 into the next: " + two2);
+        var three = MatchEnding.progress("XP", "xp", 100, 800, xp);
+        check(three.crossings() == 3 && three.finalBase() == 750 && three.finalNext() == 1000 && three.reached() == 3, "three levels in one match: " + three);
+        check(MatchEnding.progress("XP", "xp", 240, 500, xp).crossings() == 2 && MatchEnding.progress("XP", "xp", 240, 499, xp).crossings() == 1, "a threshold reached exactly counts; one short does not");
+        var one = MatchEnding.progress("XP", "xp", 240, 260, xp);
+        check(one.crossings() == 1 && !one.multi() && one.finalBase() == one.base() && one.finalNext() == one.next() && one.finalTier() == one.tier() && one.reached() == 1, "one crossing: the final climb is the first: " + one);
+        check(MatchEnding.progress("XP", "xp", 240, 249, xp).crossings() == 0, "no crossing");
+        var tiers2 = MatchEnding.progress("Ironclad Renown", "renown", 2, 9, new int[]{3, 8, 15, 22, 30});
+        check(tiers2.crossings() == 2 && tiers2.finalBase() == 8 && tiers2.finalNext() == 15 && tiers2.finalTier() == 3 && tiers2.reached() == 2, "renown crossing two tiers ends in tier 2: " + tiers2);
+        var topped = MatchEnding.progress("Ironclad Renown", "renown", 2, 40, new int[]{3, 8, 15, 22, 30});
+        check(topped.crossings() == 5 && topped.finalBase() == 30 && topped.finalNext() == 30 && topped.reached() == 5, "past the last threshold: the bar ends full on the top tier: " + topped);
+        var lastTwo = MatchEnding.progress("c", "renown", 20, 31, new int[]{3, 8, 15, 22, 30});
+        check(lastTwo.crossings() == 2 && lastTwo.finalNext() == lastTwo.finalBase() && lastTwo.reached() == 5, "two thresholds ending at the last: " + lastTwo);
+        // The multi-crossing animation: climb, hold, empty, climb; one crossing counted per threshold, the whole bar inside the step.
+        var c0 = MatchEnding.climb(2, 0f, .9f, .08f);
+        check(c0.index() == 0 && Math.abs(c0.share() - .9f) < 1e-5 && c0.crossed() == 0, "the first climb starts where the bar was: " + c0);
+        var c1 = MatchEnding.climb(2, MatchEnding.CLIMB_FILL, .9f, .08f);
+        check(c1.index() == 0 && c1.share() > .999f && c1.crossed() == 1 && c1.since() < .001f, "the first climb ends full and counts one crossing: " + c1);
+        var c2 = MatchEnding.climb(2, 1f, .9f, .08f);
+        check(c2.index() == 1 && c2.share() == 0f && c2.crossed() == 1, "then the bar empties for the next climb: " + c2);
+        var c3 = MatchEnding.climb(2, 1f + MatchEnding.CLIMB_FILL, .9f, .08f);
+        check(c3.index() == 1 && c3.share() > .999f && c3.crossed() == 2, "the second climb ends full and counts the second crossing: " + c3);
+        var c4 = MatchEnding.climb(2, 2f + MatchEnding.CLIMB_FILL, .9f, .08f);
+        check(c4.index() == 2 && Math.abs(c4.share() - .08f) < 1e-5 && c4.crossed() == 2, "the last climb ends on the final position, not on full: " + c4);
+        var c5 = MatchEnding.climb(2, 50f, .9f, .08f);
+        check(c5.index() == 2 && Math.abs(c5.share() - .08f) < 1e-5 && c5.crossed() == 2, "after the end it stays there: " + c5);
+        int seen = 0, lastCrossed = 0; boolean mono = true;
+        for (float t = 0; t < 3.5f; t += .01f) { var c = MatchEnding.climb(2, t, .5f, .3f); if (c.crossed() < lastCrossed) mono = false; if (c.crossed() > lastCrossed) seen++; lastCrossed = c.crossed(); }
+        check(mono && seen == 2, "the crossings only count up, once each (" + seen + ")");
+        for (int n = 2; n <= 40; n++) {
+            float end = MatchEnding.barEnd(.6f, n, .14f, .09f);
+            check(end <= 1f, n + " crossings starting at the latest (.6 of the step) finish by " + end);
+            check(MatchEnding.climbSpan(n, .14f) <= .14f && MatchEnding.climbSpan(n, .14f) > 0, "a climb never takes longer than a single bar's");
+        }
+        check(MatchEnding.barEnd(.6f, 1, .14f, .09f) == .6f + .14f + .09f && MatchEnding.barEnd(.6f, 0, .14f, .09f) == .74f, "single bars keep their timing");
         check(MatchEnding.cue("VICTORY") == AudioCues.Cue.VICTORY, "a cue by name");
         check(MatchEnding.cue("NO_SUCH_CUE_YET") == null, "a missing cue is null, not a throw");
         // Podium.

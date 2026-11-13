@@ -87,15 +87,59 @@ public final class MatchEnding {
     }
 
     /** One REWARDS bar (ending polish pass 2): label, before and after the match, the bar's floor (the threshold already reached), the next threshold
-     *  and the tier that threshold is (1-based); kind is xp, renown or contract. */
-    public record Progress(String label, String kind, int before, int after, int base, int next, int tier) {
+     *  and the tier that threshold is (1-based); kind is xp, renown or contract. base, next and tier are the first climb. When the match crosses
+     *  two or more thresholds, crossings counts them and finalBase, finalNext and finalTier are the climb the bar ends on (the last threshold reached,
+     *  the one after it and that one's tier; finalNext equals finalBase when no threshold is left); otherwise they repeat the first climb. */
+    public record Progress(String label, String kind, int before, int after, int base, int next, int tier, int crossings, int finalBase, int finalNext, int finalTier) {
         public boolean crossed() { return after >= next; }
+        /** Whether the match crossed more than one threshold (the bar climbs, empties and climbs again). */
+        public boolean multi() { return crossings >= 2; }
+        /** The level or tier the bar ends on: the tier of the last threshold crossed (the first climb's own when it crossed one or none). */
+        public int reached() { return multi() ? (finalNext > finalBase ? finalTier - 1 : finalTier) : crossed() ? tier : Math.max(0, tier - 1); }
     }
     /** The bar from before toward the first of the ascending thresholds above before, or null when before is at or past the last (nothing left to fill). */
     public static Progress progress(String label, String kind, int before, int after, int[] thresholds) {
-        for (int i = 0; i < thresholds.length; i++)
-            if (before < thresholds[i]) return new Progress(label, kind, before, Math.max(before, after), i == 0 ? 0 : thresholds[i - 1], thresholds[i], i + 1);
+        for (int i = 0; i < thresholds.length; i++) {
+            if (before >= thresholds[i]) continue;
+            int end = Math.max(before, after), k = 0;
+            while (i + k < thresholds.length && end >= thresholds[i + k]) k++;
+            int base = i == 0 ? 0 : thresholds[i - 1];
+            int fb = base, fn = thresholds[i], ft = i + 1;
+            if (k >= 2) {
+                int last = i + k - 1;
+                fb = thresholds[last];
+                if (last + 1 < thresholds.length) { fn = thresholds[last + 1]; ft = last + 2; } else { fn = fb; ft = last + 1; }
+            }
+            return new Progress(label, kind, before, end, base, thresholds[i], i + 1, k, fb, fn, ft);
+        }
         return null;
+    }
+
+    /** A bar that crosses several thresholds animates in climbs: each climb fills for CLIMB_FILL of its time and holds full (the flash) for the rest, then the bar
+     *  empties for the next; the last climb fills to where the match left it. MULTI_SPAN is the most of the REWARDS step all the climbs may take together. */
+    public static final float CLIMB_FILL = .7f, MULTI_SPAN = .26f;
+    /** The share of the step one climb takes: barFill for a bar that crosses at most one threshold, else barFill or less so the whole bar stays within MULTI_SPAN. */
+    public static float climbSpan(int crossings, float barFill) { return crossings < 2 ? barFill : Math.min(barFill, MULTI_SPAN / (crossings + CLIMB_FILL)); }
+    /** The progress at which a bar starting at start has finished its last climb and its last flash (flash is the flash's share of the step). */
+    public static float barEnd(float start, int crossings, float barFill, float flash) {
+        return start + (crossings < 2 ? barFill : climbSpan(crossings, barFill) * (crossings + CLIMB_FILL)) + (crossings < 1 ? 0 : flash);
+    }
+    /** One frame of a multi-crossing bar: the climb it is on (0 first, crossings last), the share of that climb's bar filled (0..1), the thresholds crossed so far,
+     *  and the time since the latest crossing in climbs (a huge number before the first). */
+    public record Climb(int index, float share, int crossed, float since) {}
+    /**
+     * The frame t climbs after the bar started (t in climbs, one climb being one unit): the first climb fills from was (the share the bar began at), each later
+     * climb from empty to full, the last from empty to finalShare. Crossing m (1-based) is reached at the end of climb m's fill, t = m - 1 + CLIMB_FILL, and is
+     * counted from then on.
+     */
+    public static Climb climb(int crossings, float t, float was, float finalShare) {
+        t = Math.max(0, t);
+        int j = (int) Math.min(Math.floor(t), crossings);
+        float f = Math.min(1, (t - j) / CLIMB_FILL), ease = 1 - (1 - f) * (1 - f);
+        float lo = j == 0 ? was : 0, hi = j < crossings ? 1 : finalShare;
+        int crossed = 0;
+        for (int m = 1; m <= crossings; m++) if (t >= m - 1 + CLIMB_FILL - 1e-4f) crossed = m;
+        return new Climb(j, lo + (hi - lo) * ease, crossed, crossed == 0 ? Float.MAX_VALUE : t - (crossed - 1 + CLIMB_FILL));
     }
 
     public static int mvpIndex(List<Entry> entries, int winner, Spec.EndingRow w) {

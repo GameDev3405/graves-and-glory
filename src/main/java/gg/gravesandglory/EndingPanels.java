@@ -553,18 +553,29 @@ final class EndingPanels {
     }
 
     // ---- the progress bars (ending polish pass 2) ----
-    record Bar(String label, String kind, int before, int after, int base, int next, int tier) {
+    record Bar(String label, String kind, int before, int after, int base, int next, int tier, int crossings, int finalBase, int finalNext, int finalTier) {
         boolean crossed() { return after >= next; }
+        /** Two or more thresholds in one match: the bar climbs, flashes, empties and climbs again, ending on the last climb. */
+        boolean multi() { return crossings >= 2; }
         /** What a crossing reads: Level up! for XP, Tier N! for Renown, Contract done! for a contract. */
         String word() { return kind.equals("xp") ? "Level up!" : kind.equals("renown") ? "Tier " + tier + "!" : "Contract done!"; }
+        /** What crossing number m (1-based) reads: Renown names each tier reached in turn. */
+        String word(int m) { return kind.equals("renown") ? "Tier " + (tier + m - 1) + "!" : word(); }
+        /** The level or tier a multi-crossing bar ends on. */
+        int reached() { return finalNext > finalBase ? finalTier - 1 : finalTier; }
+        /** The label once every crossing is made: it names the final level or tier ("XP: Level 3", "Ironclad Renown: Tier 2"). */
+        String finalLabel() { return label + (kind.equals("xp") ? ": Level " : ": Tier ") + reached(); }
     }
     static List<Bar> barsOf(JsonObject r) {
         List<Bar> out = new ArrayList<>();
         for (JsonElement e : arr(r, "progress")) {
             if (!e.isJsonObject()) continue;
             var o = e.getAsJsonObject();
-            if (num(o, "next") <= num(o, "base")) continue;
-            out.add(new Bar(str(o, "label"), str(o, "kind"), num(o, "before"), num(o, "after"), num(o, "base"), num(o, "next"), num(o, "tier")));
+            int base = num(o, "base"), next = num(o, "next"), tier = num(o, "tier");
+            if (next <= base) continue;
+            int cross = num(o, "crossings"), fb = base, fn = next, ft = tier;
+            if (cross >= 2 && num(o, "finalNext") > 0) { fb = num(o, "finalBase"); fn = num(o, "finalNext"); ft = num(o, "finalTier"); } else cross = num(o, "after") >= next ? 1 : 0;
+            out.add(new Bar(str(o, "label"), str(o, "kind"), num(o, "before"), num(o, "after"), base, next, tier, cross, fb, fn, ft));
         }
         return out;
     }
@@ -595,22 +606,44 @@ final class EndingPanels {
             float k = (b.next() - b.before()) / (float) Math.max(1, b.after() - b.before());
             float crossAt = start + BAR_FILL * (float) (1 - Math.sqrt(Math.max(0, 1 - Math.min(1, k))));
             float flash = crossed ? Math.max(0, 1 - (progress - crossAt) / FLASH) : 0;
-            put(g, "reward-bar-" + i, fit(b.label(), labelW), x, by, waiting ? 0x80000000 | (SEPIA & 0xffffff) : INK);
+            String label = b.label(), word = b.word(), numeric = UiMath.thousands(Math.round(value)) + " / " + UiMath.thousands(b.next());
+            int fill = crossed ? BAR_DONE : BAR_INK, crossedNow = crossed ? 1 : 0;
+            boolean wordShown = crossed;
+            float fillShown = f;
+            if (b.multi()) {
+                // several thresholds: climb to full, flash, empty and climb again; the last climb stops where the match left the bar and the label names that level
+                float finalShare = b.finalNext() > b.finalBase() ? Math.max(0, Math.min(1, (b.after() - b.finalBase()) / (float) (b.finalNext() - b.finalBase()))) : 1f;
+                float seg = MatchEnding.climbSpan(b.crossings(), BAR_FILL);
+                var c = MatchEnding.climb(b.crossings(), (progress - start) / seg, was, finalShare);
+                boolean last = c.index() >= b.crossings(), counted = b.finalNext() > b.finalBase();
+                share = c.share(); crossedNow = c.crossed();
+                flash = c.crossed() > 0 ? Math.max(0, 1 - c.since() * seg / FLASH) : 0;
+                word = b.word(Math.max(1, c.crossed()));
+                if (c.crossed() >= b.crossings()) label = b.finalLabel();
+                fill = last || c.crossed() == 0 ? BAR_INK : BAR_DONE;
+                if (c.index() > 0) was = 0;
+                if (last && counted) numeric = UiMath.thousands(Math.round(b.finalBase() + share * (b.finalNext() - b.finalBase()))) + " / " + UiMath.thousands(b.finalNext());
+                else if (c.index() == 0) numeric = UiMath.thousands(Math.round(b.before() + (b.next() - b.before()) * share)) + " / " + UiMath.thousands(b.next());
+                // the numbers of a climb in the middle are not in the report: the word of the level just reached stands in
+                wordShown = !waiting && (flash > 0 || (c.index() > 0 && !(last && counted)));
+                fillShown = Math.max(0, Math.min(1, (progress - start) / (seg * (b.crossings() + MatchEnding.CLIMB_FILL))));
+            }
+            put(g, "reward-bar-" + i, fit(label, labelW), x, by, waiting ? 0x80000000 | (SEPIA & 0xffffff) : INK);
             int ty = by + 2, th = 6;
             g.fill(tx0 - 1, ty - 1, tx1 + 1, ty + th + 1, RULE);
             g.fill(tx0, ty, tx1, ty + th, BAR_TRACK);
             int wasX = tx0 + Math.round((tx1 - tx0) * was), nowX = tx0 + Math.round((tx1 - tx0) * share);
             g.fill(tx0, ty, wasX, ty + th, BROWN);
-            if (nowX > wasX) g.fill(wasX, ty, nowX, ty + th, crossed ? BAR_DONE : BAR_INK);
+            if (nowX > wasX) g.fill(wasX, ty, nowX, ty + th, fill);
             if (flash > 0) {
                 int al = (int) (255 * flash);
                 g.fill(tx0 - 2, ty - 2, tx1 + 2, ty + th + 2, (al << 24) | (FLASH_INK & 0xffffff));
-                flashes.add(b.word());
+                flashes.add(word);
             }
-            Text val = crossed ? heading(b.word()) : body(UiMath.thousands(Math.round(value)) + " / " + UiMath.thousands(b.next()));
-            right(g, "reward-bar-" + i + "-value", val, x + w, by + (crossed ? -1 : 0), crossed ? BROWN : waiting ? SEPIA : INK);
-            barFill.add(f); barsDrawn++;
-            if (crossed) barsCrossed++;
+            Text val = wordShown ? heading(word) : body(numeric);
+            right(g, "reward-bar-" + i + "-value", val, x + w, by + (wordShown ? -1 : 0), wordShown ? BROWN : waiting ? SEPIA : INK);
+            barFill.add(fillShown); barsDrawn++;
+            barsCrossed += crossedNow;
         }
     }
 
