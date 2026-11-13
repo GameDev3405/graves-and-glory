@@ -625,7 +625,7 @@ final class Tactics {
         boolean wade=Houses.fords(u); // a fording troop's water path penalty is 0, and neither the river snap nor the waypoint search below keeps its waypoints out of the river
         mob.setPathfindingPenalty(PathNodeType.WATER,wade?0f:(float)N.waterPenalty());
         int gx=(int)Math.floor(goal.x),gz=(int)Math.floor(goal.z),gy;{int[] f=onField&&!onDetour?new int[]{gx,gz,(int)Math.floor(goal.y)}:Arena.floor(battle.world,gx,gz,mob.getX(),mob.getZ());gx=f[0];gz=f[1];gy=f[2];} // the goal's cell: x, z and floor together, the same cell for the arrival test and moveTo (Arena.floor)
-        if(!onDetour&&GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)<N.preciseRange()*N.preciseRange()&&Math.abs(mob.getY()-gy)<1.1&&!(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)&&battle.world.getBlockState(new BlockPos(gx,gy,gz)).isAir()&&battle.world.getBlockState(new BlockPos(gx,gy+1,gz)).isAir()){
+        if(!onDetour&&!onField&&GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)<N.preciseRange()*N.preciseRange()&&Math.abs(mob.getY()-gy)<1.1&&!(Arena.river(gx,gz)&&Arena.ground(gx,gz)<64)&&battle.world.getBlockState(new BlockPos(gx,gy,gz)).isAir()&&battle.world.getBlockState(new BlockPos(gx,gy+1,gz)).isAir()){
             mob.getNavigation().stop();boolean same=gx==(int)Math.floor(goal.x)&&gz==(int)Math.floor(goal.z);mob.getMoveControl().moveTo(same?goal.x:gx+.5,gy,same?goal.z:gz+.5,speed);return;
         }
         Vec3d delta=goal.subtract(mob.getPos()).multiply(1,0,1);
