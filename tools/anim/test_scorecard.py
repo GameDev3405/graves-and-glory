@@ -168,6 +168,53 @@ class MetricTest(unittest.TestCase):
         self.assertIn("biped", rows["ang_speed_arms"]["note"])
 
 
+class ApprovedTest(unittest.TestCase):
+    """A clip the owner approved as it is: the metric still reads fail, the clip no longer refuses the batch (Kort 2026-11-13:
+    the stalker's two shots stay exactly as he approved them)."""
+    FAST = {"right_arm": rot({0: [0, 0, 0], 0.1: [-170, 0, 0], 1.0: [-170, 0, 0]})}
+
+    def card(self, approved=None):
+        meas = sc.measure(RIG, anim(self.FAST, name="c"), "c")
+        return sc.score(meas, LIMITS, approved)
+
+    def test_an_approved_metric_stays_a_fail_but_passes_the_clip(self):
+        plain = self.card()
+        row = next(m for m in plain["metrics"] if m["id"] == "ang_speed_arms")
+        self.assertEqual(row["status"], "fail")
+        self.assertFalse(plain["pass"])
+        card = self.card({"ang_speed_arms": {"value": row["value"], "reason": "Kort: keep it"}})
+        got = next(m for m in card["metrics"] if m["id"] == "ang_speed_arms")
+        self.assertEqual(got["status"], "fail")
+        self.assertEqual(got["approved"], "Kort: keep it")
+        self.assertTrue(card["pass"])
+        self.assertEqual(sc.failures([card]), [])
+        self.assertIn("Kort: keep it", sc.approvals([card])[0])
+
+    def test_a_clip_that_got_worse_loses_its_approval(self):
+        row = next(m for m in self.card()["metrics"] if m["id"] == "ang_speed_arms")
+        card = self.card({"ang_speed_arms": {"value": row["value"] - 1.0, "reason": "Kort: keep it"}})
+        self.assertFalse(card["pass"])
+        self.assertEqual(len(sc.failures([card])), 1)
+
+    def test_only_the_named_metric_is_approved(self):
+        card = self.card({"pen_limb": {"value": 99.0, "reason": "Kort: keep it"}})
+        self.assertFalse(card["pass"])
+
+    def test_the_file_is_keyed_by_troop_and_clip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "a.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"approved": [{"troop": "t", "clip": "c", "metric": "pen_limb", "value": 2.0, "reason": "r"}]}, f)
+            self.assertEqual(sc.load_approved(path)[("t", "c")]["pen_limb"]["value"], 2.0)
+            self.assertEqual(sc.load_approved(os.path.join(tmp, "none.json")), {})
+
+    def test_the_shipped_file_reads(self):
+        for (troop, clip), rows in sc.load_approved().items():
+            for metric, e in rows.items():
+                self.assertTrue(e.get("reason"), (troop, clip, metric))
+                self.assertIn("value", e)
+
+
 class NamingTest(unittest.TestCase):
     def test_kinds(self):
         self.assertEqual([sc.clip_kind(n) for n in ("attack_thrust", "walk_upper", "idle_legs", "stance_wall_up_upper",

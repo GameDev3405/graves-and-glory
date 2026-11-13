@@ -45,6 +45,21 @@ class GateTest(unittest.TestCase):
         self.assertNotIn("head_bob", msg)
         self.assertFalse(os.path.exists(os.path.join(self.repo, "work", "booth")))
 
+    def test_an_owner_approved_clip_builds_and_still_shows_its_fail(self):
+        ok = {("rig", "whip"): {"loop_pose": {"value": 60.0, "reason": "Kort: keep it"},
+                                "loop_vel": {"value": 1e9, "reason": "Kort: keep it"}}}
+        cfg_troop = read_json(os.path.join(self.repo, *CFG.split("/")))["troop"]
+        ok = {(cfg_troop, k[1]): v for k, v in ok.items()}
+        real = booth.sc.load_approved
+        booth.sc.load_approved = lambda path=None: ok
+        self.addCleanup(setattr, booth.sc, "load_approved", real)
+        m = self.build()
+        card = next(c for c in m["clips"] if c["name"] == "whip")["scorecard"]
+        self.assertTrue(card["pass"])
+        row = next(r for r in card["metrics"] if r["id"] == "loop_pose")
+        self.assertEqual(row["status"], "fail")
+        self.assertEqual(row["approved"], "Kort: keep it")
+
     def test_passing_batch_carries_scorecards(self):
         m = self.build(clips=["head_bob"])
         card = m["clips"][0]["scorecard"]

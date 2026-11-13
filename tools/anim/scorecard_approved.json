@@ -1,0 +1,4 @@
+{
+ "about": "Clips the owner approved exactly as they are, although a metric is over its limit. Each entry names the troop, clip, metric, the value that was approved and Kort's words with the date. The metric still shows as a fail on the clip's card; it only stops refusing the batch, and only while the value is no worse than the approved one. Add an entry only for a clip Kort has seen and said to keep as it is. Never add one to get a new or changed clip through.",
+ "approved": []
+}

@@ -101,6 +101,11 @@ the body), `edge_lead` (slash edge leads the tip's travel), `impact_tick` (conta
 `loop_pose`/`loop_pos`/`loop_vel` (looping clips close). A metric that does not apply is `n/a`, never pass.
 `booth.py build` runs it and refuses any failing batch.
 
+A clip Kort has seen and said to keep exactly as it is can be over a limit: record it in
+`tools/anim/scorecard_approved.json` (troop, clip, metric, the approved value, his words and the date). The metric still
+shows as a fail on the clip's card and prints as `APPROVED`; it only stops refusing the batch, and only while the value
+is no worse than the approved one. Never add an entry to get a new or changed clip through.
+
 ## 4b. Focus check, full-body layer, grading tools
 
 - `python tools/anim/focus_check.py --troop <troop>` (or `--all`, `--clip`, `--anim other.json`, `--json`, `--ticks`,

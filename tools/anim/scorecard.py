@@ -64,6 +64,7 @@ import render_geo as rg  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(HERE))
 LIMITS_PATH = os.path.join(HERE, "scorecard_limits.json")
+APPROVED_PATH = os.path.join(HERE, "scorecard_approved.json")
 ASSETS = "src/main/resources/assets/gravesandglory"
 RENDERER = "src/main/java/gg/gravesandglory/GeoTroopRenderer.java"
 DESIGN = "sheets/design.json"
@@ -682,10 +683,25 @@ def judge(meas, limits):
     return out
 
 
-def score(meas, limits):
+def _within(val, cap):
+    """An approved clip keeps its approval only while it is no worse than the value that was approved."""
+    if isinstance(val, (int, float)) and isinstance(cap, (int, float)):
+        return val <= cap + 1e-3
+    if isinstance(val, (list, tuple)) and isinstance(cap, (list, tuple)) and len(val) == len(cap):
+        return all(isinstance(a, (int, float)) and isinstance(b, (int, float)) and abs(a - b) <= 1e-3 for a, b in zip(val, cap))
+    return False
+
+
+def score(meas, limits, approved=None):
+    """approved: {metric id: entry} for this clip (scorecard_approved.json). A metric over its limit that the owner approved
+    as it is stays "fail" with the entry's reason under "approved", and does not fail the clip while its value is no worse."""
     metrics = judge(meas, limits)
+    for m in metrics:
+        e = (approved or {}).get(m["id"])
+        if e and m["status"] == "fail" and _within(m["value"], e.get("value")):
+            m["approved"] = e.get("reason", "")
     return {"name": meas["name"], "base": meas["base"], "kind": meas["kind"], "speed": meas["speed"],
-            "pass": all(m["status"] != "fail" for m in metrics), "metrics": metrics}
+            "pass": all(m["status"] != "fail" or "approved" in m for m in metrics), "metrics": metrics}
 
 
 def failures(scored):
@@ -693,9 +709,15 @@ def failures(scored):
     out = []
     for c in scored:
         for m in c["metrics"]:
-            if m["status"] == "fail":
+            if m["status"] == "fail" and "approved" not in m:
                 out.append("%s: %s = %s %s, limit %s" % (c["name"], m["id"], _fmt(m["value"]), m["unit"], _fmt(m["limit"])))
     return out
+
+
+def approvals(scored):
+    """Readable lines for every metric over its limit that the owner approved as it is."""
+    return ["%s: %s = %s %s, limit %s (%s)" % (c["name"], m["id"], _fmt(m["value"]), m["unit"], _fmt(m["limit"]), m["approved"])
+            for c in scored for m in c["metrics"] if m["status"] == "fail" and "approved" in m]
 
 
 def _fmt(v):
@@ -719,6 +741,16 @@ def load_limits(path=LIMITS_PATH):
     if not os.path.isfile(path):
         raise ScoreError("no limits file %s; run scorecard.py --derive" % path)
     return _read(path)
+
+
+def load_approved(path=None):
+    """{(troop, clip): {metric id: entry}} from scorecard_approved.json: clips the owner approved exactly as they are."""
+    path = path or APPROVED_PATH
+    out = {}
+    if os.path.isfile(path):
+        for e in _read(path).get("approved", []):
+            out.setdefault((e["troop"], e["clip"]), {})[e["metric"]] = e
+    return out
 
 
 def renderer_troops(repo=REPO):
@@ -783,13 +815,15 @@ def measure_troop(repo, troop, geo=None, anim=None, config=None, only=None):
     return out
 
 
-def score_troop(repo, troop, limits, **kw):
-    return [score(m, limits) for m in measure_troop(repo, troop, **kw)]
+def score_troop(repo, troop, limits, approved=None, **kw):
+    approved = load_approved() if approved is None else approved
+    return [score(m, limits, approved.get((troop, m["name"]))) for m in measure_troop(repo, troop, **kw)]
 
 
-def score_booth(repo, cfg, names, limits=None):
+def score_booth(repo, cfg, names, limits=None, approved=None):
     """Scorecards of the named clips of a booth config, keyed by clip name (the booth build gate)."""
     limits = limits or load_limits()
+    approved = load_approved() if approved is None else approved
     model = rg.load_geo(os.path.join(repo, *cfg.source.geo.split("/")))
     data = _read(os.path.join(repo, *cfg.source.anim.split("/")))
     rig = Rig(model, rig_rules_for(repo, cfg.source.geo), cfg.troop)
@@ -800,7 +834,7 @@ def score_booth(repo, cfg, names, limits=None):
         c = by[n]
         meas = measure(rig, data, n, c.base, c.speed if c.speed > 0 else None, variant=design.variant(cfg.troop, n),
                        family=design.family.get(cfg.troop))
-        out[n] = score(meas, limits)
+        out[n] = score(meas, limits, approved.get((cfg.troop, n)))
     return out
 
 
@@ -878,7 +912,7 @@ def summary(results):
         by = {}
         for c in clips:
             for m in c["metrics"]:
-                if m["status"] == "fail":
+                if m["status"] == "fail" and "approved" not in m:
                     by[m["id"]] = by.get(m["id"], 0) + 1
         lines.append("%-15s %5d %5d  %s" % (troop, len(clips), sum(not c["pass"] for c in clips),
                                             ", ".join("%s %d" % kv for kv in sorted(by.items())) or "-"))
@@ -920,6 +954,8 @@ def main(argv=None):
     if not a.all:
         for line in bad:
             print("FAIL " + line)
+        for line in [line for cl in results.values() for line in approvals(cl)]:
+            print("APPROVED " + line)
     return 1 if bad else 0
 
 
