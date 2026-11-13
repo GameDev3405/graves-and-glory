@@ -148,10 +148,15 @@ Kort chose to fix the recorded shoulder-spike debt in the model ("Shoulder spike
 spike)"). The inner spike of `right_spike2` (tiers II and III) is 1 px shorter: 1 x 2 x 1 in place of 1 x 3 x 1, its
 root where it was (`art/hand/revenant/build_revenant.py`). The outer spike and the left shoulder are unchanged.
 
-- stun_upper `coif into right_spike2` 2.52: gone. The clip's worst armour row is now `coif into pauldron_cap` 2.25 at
+- stun_upper `coif into right_spike2`: 2.52 down to 1.71 at tick 0 (the WARN line is 1.7), not gone. It is no longer
+  the clip's worst row, so the focus check does not print it (`fit_pairs.py --part right_spike2` does). Moving the
+  spike 1 px and 2 px outward made it worse (2.26, 2.15: the rest overlap goes and the slump still reaches it), so
+  the 1 px shortening stays. Found by the review (`review_modelfix_a.md`). The clip's worst armour row is now `coif into pauldron_cap` 2.25 at
   tick 4, which the spike row had hidden: the coif sinks into the tier III left pauldron plate in the slump. Three model
   probes (the cap's small spike 1 px out, its tall spike 1 px shorter, the plate's inner edge 1 px in) did not clear it;
   the last made it worse (2.48). The plate is not a spike, so it stays as it is and the exemption now names it.
 - Clips: byte-identical (the layer was re-run). Timing untouched. Scorecard 42 clips, 0 failing. Focus check 0 FAIL rows.
+- The legacy sheets `art/troops/revenant_s2.png` and `_s3.png` went into the first commit by mistake (drift the
+  `install` step writes); a follow-up commit put them back.
 - Rebuilt: the old-format model and its tier II and III textures (`install`), the geo, the rig json and the tier II and III
   geo textures (the atlas reflowed for the smaller box). Sheet: `work/modelfix/revenant_sheet.jpg`.
