@@ -19,15 +19,16 @@ import java.util.*;
  *   - wasted cast: a cooldown spent (Unit.abilityAt or the level-3 store rising) with nothing to use it on: an enemy-target row with no living enemy within the caster's reach plus the row's radius, an
  *     ally-target row with no ally in its radius; a blight or mist is judged at its burst, by whether an enemy stood in the radius at the last tick before the burst.
  *   - stuck over 30 s: a troop that should walk (not fighting, not at its spot, no arrival) makes no progress for 30 s running; counted once per run.
+ *   - no progress over 10 s / 30 s / 60 s (stuck10Share, stuck30Share, stuck60Share): the same no-progress read, as troop-seconds over troopSeconds; stuck10 counts stretches once each.
  *  Nothing here changes a tick of the game except through its own time, which BotSimulation subtracts from the probe's tick times. */
 final class AiMetrics {
     static final String[] COLUMNS={"match","map","mode","scope","id","team","banner","troopSeconds","idleShare","holdIdleShare","fightShare","objectiveShare","idleMaxGroupS","blindPicks","picks","trickleAlone","trickleTotal","trickleIndex",
-        "wastedCasts","casts","stuck30","retreats","commanderSwitches","decisions","troopSwitches","unspentGold","tickMeanMs","tickP99Ms"};
+        "wastedCasts","casts","stuck30","stuck10","stuck10Share","stuck30Share","stuck60Share","retreats","commanderSwitches","decisions","troopSwitches","unspentGold","tickMeanMs","tickP99Ms"};
     static final String[] DECISION_COLUMNS={"match","second","army","team","tier","order","formation","targetName","targetX","targetZ","living","full","retreatTest","retreating","scores","charge","lane","planJob","planPoint","planDirect","owners"};
     static final String[] SEATS={"dawn","dusk"};
 
     static final class Acc {
-        long troopSec,idleSec,holdIdleSec,fightSec,objSec;int picks,blind,switches,trickleAlone,trickleTotal,casts,wasted,stuck30,retreats,cmdSwitches,decisions,gold,idleMax;
+        long troopSec,idleSec,holdIdleSec,fightSec,objSec;int picks,blind,switches,trickleAlone,trickleTotal,casts,wasted,stuck30,stuck10,retreats,cmdSwitches,decisions,gold,idleMax;long stuck10Sec,stuck30Sec,stuck60Sec;
         final Map<String,Integer> groupRun=new HashMap<>();
         String lastTarget="";boolean retreating;
     }
@@ -178,7 +179,10 @@ final class AiMetrics {
             boolean idle=AiState.idle(r),holdIdle=idle&&r.holdAtOwn(),otherIdle=idle&&!holdIdle;
             if(holdIdle)a.holdIdleSec++;else if(otherIdle)a.idleSec++;
             if(r.objective())a.objSec++;
-            if(m.noMoveTicks>=600){if(m.stuckCounted==0){a.stuck30++;m.stuckCounted=1;stuck(b,u,r,i);}}else if(m.noMoveTicks==0)m.stuckCounted=0;
+            if(m.noMoveTicks>=200){a.stuck10Sec++;if((m.stuckCounted&2)==0){a.stuck10++;m.stuckCounted|=2;}} // no-progress metric: the same read as stuck30, at 10 s, 30 s and 60 s, as troop-seconds over troopSeconds
+            if(m.noMoveTicks>=600){a.stuck30Sec++;if((m.stuckCounted&1)==0){a.stuck30++;m.stuckCounted|=1;stuck(b,u,r,i);}}
+            if(m.noMoveTicks>=1200)a.stuck60Sec++;
+            if(m.noMoveTicks==0)m.stuckCounted=0;
             var g=groups.computeIfAbsent(i+"/"+r.group,k->new int[2]);g[0]++;if(otherIdle)g[1]++;
         }
         state.retain(alive);mem.keySet().retainAll(Set.copyOf(alive));
@@ -256,11 +260,11 @@ final class AiMetrics {
         if(pacingRows.length()>0){BotSimulation.append(pacingCsv,pacingRows.toString());pacingRows.setLength(0);}
     }
     String row(String map,String scope,String id,int team,String banner,List<Acc> list,String tickMean,String tickP99){
-        long troop=0,idle=0,hold=0,fight=0,obj=0;int blind=0,picks=0,alone=0,total=0,wasted=0,casts=0,stuck=0,retreats=0,cmd=0,decisions=0,switches=0,gold=0,idleMax=0;
+        long troop=0,idle=0,hold=0,fight=0,obj=0,s10=0,s30=0,s60=0;int blind=0,picks=0,alone=0,total=0,wasted=0,casts=0,stuck=0,stuck10=0,retreats=0,cmd=0,decisions=0,switches=0,gold=0,idleMax=0;
         for(var a:list){troop+=a.troopSec;idle+=a.idleSec;hold+=a.holdIdleSec;fight+=a.fightSec;obj+=a.objSec;blind+=a.blind;picks+=a.picks;alone+=a.trickleAlone;total+=a.trickleTotal;wasted+=a.wasted;casts+=a.casts;
-            stuck+=a.stuck30;retreats+=a.retreats;cmd+=a.cmdSwitches;decisions+=a.decisions;switches+=a.switches;gold+=a.gold;idleMax=Math.max(idleMax,a.idleMax);}
+            stuck+=a.stuck30;stuck10+=a.stuck10;s10+=a.stuck10Sec;s30+=a.stuck30Sec;s60+=a.stuck60Sec;retreats+=a.retreats;cmd+=a.cmdSwitches;decisions+=a.decisions;switches+=a.switches;gold+=a.gold;idleMax=Math.max(idleMax,a.idleMax);}
         return String.join(",",String.valueOf(match+1),map,mode,scope,id,SEATS[team],banner,String.valueOf(troop),share(idle,troop),share(hold,troop),share(fight,troop),share(obj,troop),String.valueOf(idleMax),String.valueOf(blind),String.valueOf(picks),
-            String.valueOf(alone),String.valueOf(total),share(alone,total),String.valueOf(wasted),String.valueOf(casts),String.valueOf(stuck),String.valueOf(retreats),String.valueOf(cmd),String.valueOf(decisions),String.valueOf(switches),String.valueOf(gold),tickMean,tickP99);
+            String.valueOf(alone),String.valueOf(total),share(alone,total),String.valueOf(wasted),String.valueOf(casts),String.valueOf(stuck),String.valueOf(stuck10),share(s10,troop),share(s30,troop),share(s60,troop),String.valueOf(retreats),String.valueOf(cmd),String.valueOf(decisions),String.valueOf(switches),String.valueOf(gold),tickMean,tickP99);
     }
     static String share(long part,long whole){return whole==0?"":String.format(Locale.ROOT,"%.4f",part/(double)whole);}
 }
