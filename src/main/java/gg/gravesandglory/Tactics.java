@@ -82,12 +82,14 @@ final class Tactics {
      */
     static void show(GravesAndGlory.Battle b,GravesAndGlory.Unit u,GravesAndGlory.Assignment a,boolean aiming,float pitch){
         boolean shield=u.tags.contains("shield"),spear=u.tags.contains("spear");
-        boolean formed=GravesAndGlory.Battle.walls(u,a.order)&&GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(),b.formation(u))<=N.arrivalTolerance()*N.arrivalTolerance();
+        boolean formed=GravesAndGlory.Battle.walls(u,a.order)&&GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(),slotOf(b,u))<=N.arrivalTolerance()*N.arrivalTolerance();
         String stance=BattleMath.stance(a.order,shield,spear,u.spec.ranged(),formed,aiming,shield&&u.mob.isUsingItem());
         u.orderStance=stance;u.orderPitch=stance.equals("ranged_aim")?pitch:0;
         String shown=BattleMath.shownStance(u.orderStance,b.time,u.stunnedUntil);
         set(u,shown,shown.equals("stunned")?0:u.orderPitch);
     }
+    /** The place the troop forms on: the one its slot walk keeps (u.place: its slot, or the dry cell a slot in water is moved to), else its slot. */
+    static Vec3d slotOf(GravesAndGlory.Battle b,GravesAndGlory.Unit u){return u.place!=null?u.place:b.formation(u);}
     /**
      * A stunned troop (Unit.stunnedUntil: a Shield bash, Rise Again, a bear's roar) shows "stunned" over its order's stance, sent the tick the stun begins (this runs
      * every tick, not only on the beat) and replaced by the order's stance (the last one a beat chose, orderStance) the tick it ends. A commander is never a Unit,
@@ -325,7 +327,7 @@ final class Tactics {
         double engage=holdSiege?Abilities.range(battle,u):engageRadius(battle,u,hunt?Spec.SCOUTING[0].range():order.engageRadius()); // the order's radius, widened to the weapon's reach for a siege troop; on Hold the weapon's reach as it is now
         if(volley)engage=Math.min(engage,Abilities.range(battle,u));
         boolean slotted=a.order.equals("hold")&&a.holdSlots&&placed(battle,u); // a player's Formation in place: melee keep their slots, ranged shoot anything in reach
-        Vec3d slot=slotted?battle.formation(u):null;double keep=Abilities.range(battle,u);
+        Vec3d slot=slotted?slotOf(battle,u):null;double keep=Abilities.range(battle,u);
         if(slotted&&u.spec.ranged())engage=keep;
         boolean holdRanged=hold&&!holdSiege&&u.spec.ranged(); // a ranged troop on Hold (or arrived) shoots any enemy it sees within its weapon's reach, from its slot: it never walks out after one
         if(holdRanged)engage=Math.max(engage,keep);
@@ -426,35 +428,42 @@ final class Tactics {
     /** A slot cell that is no place to stand (in a pond, in a wall, on a column with no floor the route field keeps) is not walked to: on an engine map with a route field the troop forms on the nearest dry floor instead, one of those at the least distance
      *  chosen by its slot so that the troops of a bad row do not all take the same cell. The pond near (-43, 76) on New Kingsfield was the case that showed it: the field once counted its bed as floor, and the troops walked up to its shore and stood there until the stall
      *  ladder jumped them out (the bake no longer counts a floor under water; the slots of a formation that fall in the pond are what this moves). Any other slot comes back as it is (the same object: walk compares it by identity). */
-    static Vec3d dryCell(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d slot){
-        var nav=field();if(nav==null)return slot;
+    static Vec3d dryCell(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,GravesAndGlory.Assignment a,Vec3d slot){
+        var nav=field();if(nav==null||a.perch||Houses.fords(u))return slot; // no field, a post on a wall or tower, a troop that wades: the slot as it is
         var w=battle.world;var mob=u.mob;
         int gx=(int)Math.floor(slot.x),gz=(int)Math.floor(slot.z);
         int[] f=Arena.floor(w,gx,gz,mob.getX(),mob.getZ());
         if(f[0]==gx&&f[1]==gz&&!wetAt(w,gx,f[2],gz))return slot; // the column is a floor of the field and dry
         if(dryOf!=battle){DRY.clear();dryOf=battle;}
-        long key=((long)gx*1_000_003L+gz)*8+(u.slot&7);
+        long key=(((long)gx*1_000_003L+gz)<<12)^(u.slot&0xfff);
         var cached=DRY.get(key);
         if(cached!=null){movedSlots++;return cached;}
-        java.util.List<int[]> best=new java.util.ArrayList<>();int bestR=-1;
-        for(int r=1;r<=DRY_RADIUS&&(bestR<0||r<=bestR+1);r++)for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
-            if(Math.max(Math.abs(dx),Math.abs(dz))!=r)continue;
+        int radius=u.squad.bot?DRY_RADIUS:DRY_RADIUS_PLAYER;
+        java.util.List<int[]> cells=new java.util.ArrayList<>();
+        for(int dx=-radius;dx<=radius;dx++)for(int dz=-radius;dz<=radius;dz++){
             int cx=gx+dx,cz=gz+dz;int[] c=Arena.floor(w,cx,cz,mob.getX(),mob.getZ());
             if(c[0]!=cx||c[1]!=cz||!nav.has(cx,cz)||wetAt(w,cx,c[2],cz)||wetAt(w,cx,c[2]-1,cz)||!w.getBlockState(new BlockPos(cx,c[2],cz)).getCollisionShape(w,new BlockPos(cx,c[2],cz)).isEmpty())continue;
-            if(bestR<0)bestR=r;best.add(c);
+            cells.add(c);
         }
-        Vec3d out=slot;
-        if(!best.isEmpty()){var c=best.get(Math.floorMod(u.slot,best.size()));out=new Vec3d(c[0]+.5,c[2],c[1]+.5);}
+        double sx=slot.x,sz=slot.z;
+        cells.sort(java.util.Comparator.comparingDouble(c->Math.hypot(c[0]+.5-sx,c[1]+.5-sz))); // nearest the original slot first
+        Vec3d out=slot;int tried=0;
+        for(var c:cells){ // the nearest that the troop can reach by the route field: its own side of the water
+            if(tried++>=DRY_TRIES)break;
+            if(nav.distance(mob.getX(),mob.getY(),mob.getZ(),c[0]+.5,c[2],c[1]+.5)>=0){out=new Vec3d(c[0]+.5,c[2],c[1]+.5);break;}
+        }
         DRY.put(key,out);movedSlots++;
         return out;
     }
-    /** How far (columns) a wet slot looks for dry ground. */
-    static final int DRY_RADIUS=10;
+    /** How many of the nearest dry cells are tried for a route from the troop before the slot is left as it is. */
+    static final int DRY_TRIES=6;
+    /** How far (columns) a wet slot looks for dry ground: a bot's, a player's squad (which keeps nearer to the slot the player picked). */
+    static final int DRY_RADIUS=10,DRY_RADIUS_PLAYER=4;
     /** Whether the block at (x, y, z) holds fluid. */
     static boolean wetAt(net.minecraft.world.World w,int x,int y,int z){return !w.getFluidState(new BlockPos(x,y,z)).isEmpty();}
     /** To its formation slot, and still there facing the order's way once it stands on it: within arrivalTolerance across and, on a post (Assignment.perch), at its height, so that a troop under a tower top is not taken for one on it. */
     static void toSlot(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,GravesAndGlory.Assignment a,long time,double speed){
-        MobEntity mob=u.mob;Vec3d goal=dryCell(battle,u,battle.formation(u));u.place=goal;
+        MobEntity mob=u.mob;Vec3d goal=dryCell(battle,u,a,battle.formation(u));u.place=goal;
         boolean there=GravesAndGlory.Battle.horizontalDistance(mob.getPos(),goal)<=N.arrivalTolerance()*N.arrivalTolerance()&&(!a.perch||Math.abs(mob.getY()-goal.y)<1.1);
         if(!there){if(!stretch(battle,u,a,time))walk(battle,u,goal,time,speed,a.perch);} // a wall troop's last stretch faces its Hold yaw (stretch)
         else{mob.getNavigation().stop();mob.setYaw(a.yaw);mob.setHeadYaw(a.yaw);mob.setBodyYaw(a.yaw);if(GravesAndGlory.Battle.walls(u,a.order))settle(u,goal,time);}
@@ -680,7 +689,7 @@ final class Tactics {
         queueTests++;
         double dx=way.x/len,dz=way.z/len,x=u.mob.getX(),z=u.mob.getZ();
         for(var v:battle.units){
-            if(v==u||v.squad.team!=u.squad.team||!v.mob.isAlive()||!Stall.moving(v.stall,time))continue;
+            if(v==u||v.squad.team!=u.squad.team||!v.mob.isAlive()||!Stall.moving(v.stall,time)||v.stall.live&&v.stall.rung>=Stall.DETOUR)continue; // a friend whose own clock is past the detour rung is stuck too, not going on
             if(Stall.queueing(x,z,dx,dz,v.mob.getX(),v.mob.getZ(),v.stall.mvx,v.stall.mvz))return true;
         }
         return false;
@@ -790,11 +799,13 @@ final class Tactics {
         if(v.go)return null;
         fileWaits++;
         int lanes=FileThrough.lanes(width);double back=FileThrough.back(v.place,lanes);
-        if(dist<=back+.7||dist<1e-3)return STAY;
-        double ux=dx/dist,uz=dz/dist,side=FileThrough.side(v.place,lanes);
+        if(Math.abs(dist-back)<=.7)return STAY; // level with its place in the column
+        double ux,uz;
+        if(dist<1e-3){double yaw=Math.toRadians(mob.getYaw());ux=Math.sin(yaw);uz=-Math.cos(yaw);}else{ux=dx/dist;uz=dz/dist;} // in the doorway itself: back the way it came (opposite its facing)
+        double side=FileThrough.side(v.place,lanes);
         double sx=door.x+ux*back-uz*side,sz=door.z+uz*back+ux*side;
-        if(!nav.sees(mob.getX(),mob.getY(),mob.getZ(),sx,sz)){sx=door.x+ux*back;sz=door.z+uz*back;if(!nav.sees(mob.getX(),mob.getY(),mob.getZ(),sx,sz))return STAY;}
-        return new Vec3d(sx,door.y,sz);
+        if(!nav.sees(mob.getX(),mob.getY(),mob.getZ(),sx,sz)){sx=door.x+ux*back;sz=door.z+uz*back;if(!nav.sees(mob.getX(),mob.getY(),mob.getZ(),sx,sz))return dist<back?null:STAY;} // nearer the door than its place and no sight of it: on through, never stand in the doorway
+        return new Vec3d(sx,door.y,sz); // nearer the door than its place: it walks back to it (a troop that lost its turn); farther: it walks up to it
     }
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed){walk(battle,u,destination,time,speed,false);}
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed,boolean climb){

@@ -44,8 +44,9 @@ public final class FileThroughCheck {
         check(FileThrough.back(0, 2) == FileThrough.QUEUE0 && FileThrough.back(2, 2) == FileThrough.QUEUE0 + FileThrough.GAP && FileThrough.side(0, 2) < 0 && FileThrough.side(1, 2) > 0, "column places");
         // re-forms: once all have passed, a troop asking again is simply let go
         long after = t + 20;
-        var again = FileThrough.beat(g, after, 3, 1, 3, 9);
-        check(again.go || FileThrough.waiting(g) <= 1, "after the file, nobody waits for it");
+        check(g.passes == n && FileThrough.waiting(g) == 0, "everyone of the file has passed and nobody waits: " + g.passes + "/" + FileThrough.waiting(g));
+        check(FileThrough.beat(g, after, 50, 2, 3, 9).go && FileThrough.beat(g, after, 51, 2, 3, 9).go, "a fresh pair of troops finds the door free again: the formation re-forms on the far side, the next file starts empty");
+        check(!FileThrough.beat(g, after, 52, 2, 3, 9).go, "and the door still takes only its lanes (a third waits)");
         // a squad no bigger than the lanes never waits: the open ground and small squads are untouched
         var small = new FileThrough.Gate();
         check(FileThrough.beat(small, 0, 1, 0, 3, 8).go && FileThrough.beat(small, 0, 2, 0, 3, 8).go, "two troops, two lanes: nobody waits");
@@ -88,6 +89,24 @@ public final class FileThroughCheck {
         }
         check(opened > 0 && d.opened >= 1, "a stuck file opens: " + opened);
 
+        // 4b. a new order mid-file gives a troop another cell: its rank is read afresh, so it takes its new place in the file
+        var rr = new FileThrough.Gate();
+        FileThrough.beat(rr, 0, 1, 0, 1, 10);
+        FileThrough.beat(rr, 0, 2, 5, 1, 10); FileThrough.beat(rr, 0, 3, 6, 1, 10);
+        FileThrough.beat(rr, 10, 3, 1, 1, 10); // troop 3 is moved up to row 1 by a new formation
+        check(FileThrough.beat(rr, 10, 2, 5, 1, 10).place == 1 && FileThrough.beat(rr, 10, 3, 1, 1, 10).place == 0, "a troop's new rank counts at once");
+
+        // 4c. after a gate has opened, the troops that did not get through are filed by rank, not by when they came
+        var og = new FileThrough.Gate();
+        for (long tt = 0; tt <= FileThrough.FILE_STALL + FileThrough.OPEN + FileThrough.TURN + 60; tt += 10) {
+            for (int i = 0; i < 4; i++) FileThrough.beat(og, tt, 10 + i, 3 - i, 1, 10); // ids ascend as ranks fall: id 13 is row 0
+        }
+        check(og.opened >= 1 && og.turnsLost >= 1, "the file opened and the turns were lost: " + og.opened + "/" + og.turnsLost);
+        long now = FileThrough.FILE_STALL + FileThrough.OPEN + FileThrough.TURN + 70;
+        int firstPlace = -1;
+        for (int i = 0; i < 4; i++) { var v = FileThrough.beat(og, now, 10 + i, 3 - i, 1, 10); if (v.go) firstPlace = 10 + i; }
+        check(firstPlace == 13 || firstPlace == -1, "of those that wait, the front rank (id 13, row 0) goes first, not the first to arrive (id 10): " + firstPlace);
+
         // 5. the queue test: a friend ahead, near, going the same way; not one behind, far off, still, or going the other way
         check(Stall.queueing(0, 0, 1, 0, 2, 0.3, 1.2, 0), "a friend 2 blocks ahead walking on: queueing");
         check(!Stall.queueing(0, 0, 1, 0, -2, 0, 1.2, 0), "one behind is not");
@@ -104,24 +123,44 @@ public final class FileThroughCheck {
         Stall.track(fr, 120, 11.3, 0);
         check(!Stall.moving(fr, 120), "a tenth of a block a beat is standing");
 
-        // 6. a troop pressed behind a mover: its clock is held (no rung, no jump), for QUEUE_MAX ticks; then it runs
+        // 6. a troop pressed behind a mover: its clock is held (no rung, no jump), for QUEUE_MAX ticks of holds in all; then it runs, from where it paused
         var q = new Stall.State();
         int rungs = 0;
-        for (long tt = 0; tt <= Stall.QUEUE_MAX; tt += 10) if (Stall.step(q, tt, 100, 0, 160, 0, 0, 60, false, true) != Stall.NONE) rungs++;
-        check(rungs == 0 && q.held, "a moving queue holds the clock for its whole hold: " + rungs);
+        for (long tt = 0; tt <= Stall.QUEUE_MAX - 10; tt += 10) if (Stall.step(q, tt, 100, 0, 160, 0, 0, 60, false, true) != Stall.NONE) rungs++;
+        check(rungs == 0 && q.held, "a moving queue holds the clock for its hold: " + rungs);
         int jumped = 0, fired = 0;
-        for (long tt = Stall.QUEUE_MAX + 10; tt <= Stall.QUEUE_MAX + 700; tt += 10) { int r = Stall.step(q, tt, 100, 0, 160, 0, 0, 60, false, true); if (r == Stall.JUMP) jumped++; if (r != Stall.NONE) fired++; }
+        for (long tt = Stall.QUEUE_MAX; tt <= Stall.QUEUE_MAX + 1000; tt += 10) { int r = Stall.step(q, tt, 100, 0, 160, 0, 0, 60, false, true); if (r == Stall.JUMP) jumped++; if (r != Stall.NONE) fired++; }
         check(!q.held && fired >= 4 && jumped >= 1, "a ring that never gets anywhere stops being a queue: " + fired + " rungs");
         // the same troop, the friend stops: the clock runs from that beat, the ladder as ever
         var q2 = new Stall.State();
-        for (long tt = 0; tt <= 300; tt += 10) Stall.step(q2, tt, 100, 0, 160, 0, 0, 60, false, true);
+        for (long tt = 0; tt <= 150; tt += 10) Stall.step(q2, tt, 100, 0, 160, 0, 0, 60, false, true);
         List<Integer> got = new ArrayList<>();
-        for (long tt = 310; tt <= 1000; tt += 10) { int r = Stall.step(q2, tt, 100, 0, 160, 0, 0, 60, false, false); if (r != Stall.NONE) got.add(r); }
+        for (long tt = 160; tt <= 1000; tt += 10) { int r = Stall.step(q2, tt, 100, 0, 160, 0, 0, 60, false, false); if (r != Stall.NONE) got.add(r); }
         check(got.size() >= 5 && got.subList(0, 5).equals(List.of(Stall.REPATH, Stall.SIDESTEP, Stall.DETOUR, Stall.REGROUP, Stall.JUMP)), "the ladder runs from when the queue stops: " + got);
+        // a jostled line (the friend ahead moves one beat in three) or a ring that flickers on and off does not hold the clock for ever: a troop stuck five minutes escalates, to the jump
+        var q4 = new Stall.State();
+        List<Integer> jostled = new ArrayList<>();
+        for (long tt = 0; tt <= 3000; tt += 10) { int r = Stall.step(q4, tt, 100, 0, 160, 0, 0, 60, false, (tt / 10) % 3 == 0); if (r != Stall.NONE) jostled.add(r); }
+        check(jostled.contains(Stall.REPATH) && jostled.contains(Stall.JUMP), "a jostled queue that goes nowhere escalates: " + jostled);
+        long first = -1;
+        var q5 = new Stall.State();
+        for (long tt = 0; tt <= 3000 && first < 0; tt += 10) if (Stall.step(q5, tt, 100, 0, 160, 0, 0, 60, false, (tt / 10) % 3 == 0) == Stall.JUMP) first = tt;
+        check(first > 0 && first <= 600 + 2 * Stall.QUEUE_MAX + 200, "and not so late as a held clock would: the jump at " + first);
+        // on, off, on: the hold pauses the clock, it does not restart it
+        var q6 = new Stall.State();
+        for (long tt = 0; tt < 100; tt += 10) Stall.step(q6, tt, 100, 0, 160, 0, 0, 60, false, false);
+        long before = q6.age(90);
+        Stall.step(q6, 100, 100, 0, 160, 0, 0, 60, false, true);
+        check(q6.held && q6.age(100) == before, "a held beat pauses the clock where it was: " + before + " -> " + q6.age(100));
+        // real progress of a queue crawling on starts the count of holds again
+        var q7 = new Stall.State();
+        double crawl = 100;
+        for (long tt = 0; tt <= 1500; tt += 10) { crawl -= 0.3; Stall.step(q7, tt, 100, 0, 160, 0, 0, crawl, false, true); }
+        check(q7.held, "a queue that crawls on keeps its holds: it is getting somewhere");
         // a queued troop is never flagged on a map with no field either
         var q3 = new Stall.State();
         int f3 = 0;
-        for (long tt = 0; tt <= 500; tt += 10) if (Stall.step(q3, tt, 100, 0, 160, 0, 0, Double.NaN, false, true) != Stall.NONE) f3++;
+        for (long tt = 0; tt <= 150; tt += 10) if (Stall.step(q3, tt, 100, 0, 160, 0, 0, Double.NaN, false, true) != Stall.NONE) f3++;
         check(f3 == 0, "no field: a queued troop is not flagged");
         System.out.println("FileThroughCheck: " + count + " checks passed");
     }

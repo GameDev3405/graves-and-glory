@@ -14,7 +14,7 @@ import java.util.Map;
  *
  * A gate is one portal of one side. A troop within RANGE blocks of it that can see it takes a ticket (renewed every beat; one not renewed for EXPIRE ticks is gone). The gate lets LANES(width) troops through at a time: the
  * admitted ones walk on to the door, and a troop that gets within REACHED blocks of it has passed, which frees a lane for the next in the file. The file is ordered by rank (the WarGrid row of the troop's cell, the front rank first),
- * then by who is nearest the door; a troop with no cell (a refill, a summon) has the rank after the last row, so it joins the end, by the order it came. The others wait in a column behind the door, each at its own place in it
+ * then by who is nearest the door; a troop with no cell (a refill, a summon) has the rank after the last row, so it joins the end. A troop's rank is read afresh every beat (a new order may give it another cell). The others wait in a column behind the door, each at its own place in it
  * (place 0 first). A troop admitted that has not reached the door in TURN ticks loses its turn and goes to the back, so that nobody pushes at a door for ever; a gate nobody has passed for FILE_STALL ticks while troops wait opens for
  * OPEN ticks (everyone walks on as before; the stall ladder does the rest). With no more troops than lanes nobody waits at all, so a lone troop, a small squad and the open ground are untouched.
  */
@@ -36,7 +36,7 @@ final class FileThrough {
         final int id; int rank; final long seq;
         long seen, admitted = -1;
         double dist;
-        boolean passed;
+        boolean passed, lost;
         Ticket(int id, int rank, long seq) { this.id = id; this.rank = rank; this.seq = seq; }
     }
 
@@ -48,9 +48,9 @@ final class FileThrough {
         int passes, turnsLost, opened;
     }
 
-    /** What a troop does this beat: go on to the door (walk its route as it was), or wait in the column at place (0 is the first to wait). live: the file has moved lately, so a waiting troop is queueing, not stalled. */
+    /** What a troop does this beat: go on to the door (walk its route as it was), or wait in the column at place (0 is the first to wait). */
     static final class Verdict {
-        boolean go = true, live = true;
+        boolean go = true;
         int place;
     }
 
@@ -63,6 +63,7 @@ final class FileThrough {
         Ticket me = g.tickets.get(id);
         if (me == null) { me = new Ticket(id, rank < 0 ? LOOSE : rank, g.seq++); g.tickets.put(id, me); }
         me.seen = time; me.dist = dist;
+        me.rank = rank < 0 ? LOOSE : rank; // a new order mid-file (a player's) may give the troop another cell, so another rank
         if (me.passed) return v;
         if (dist <= REACHED) { me.passed = true; g.lastPass = time; g.passes++; return v; }
         if (time < g.openUntil) return v;
@@ -70,10 +71,10 @@ final class FileThrough {
         List<Ticket> waiting = new ArrayList<>();
         for (Ticket t : g.tickets.values()) {
             if (t.passed) continue;
-            if (t.admitted >= 0 && time - t.admitted > TURN) { t.admitted = -1; t.rank = LOOSE + 1 + (int) Math.min(t.seq, 1 << 18); g.turnsLost++; } // it had its turn: to the back
+            if (t.admitted >= 0 && time - t.admitted > TURN) { t.admitted = -1; t.lost = true; g.turnsLost++; } // it had its turn: to the back (behind every troop that has not had one, among those that lost it by rank again)
             if (t.admitted >= 0) inflight++; else waiting.add(t);
         }
-        waiting.sort(Comparator.<Ticket>comparingInt(t -> t.rank).thenComparingDouble(t -> t.dist).thenComparingInt(t -> t.id));
+        waiting.sort(Comparator.<Ticket>comparingInt(t -> t.lost ? 1 : 0).thenComparingInt(t -> t.rank).thenComparingDouble(t -> t.dist).thenComparingInt(t -> t.id));
         int admit = Math.min(Math.max(0, lanes - inflight), waiting.size());
         for (int i = 0; i < admit; i++) waiting.get(i).admitted = time;
         waiting = waiting.subList(admit, waiting.size());
@@ -81,7 +82,6 @@ final class FileThrough {
         if (me.admitted >= 0) return v;
         if (!waiting.isEmpty() && time - Math.max(g.lastPass, g.waitSince) > FILE_STALL) { g.openUntil = time + OPEN; g.opened++; g.waitSince = -1; for (Ticket t : g.tickets.values()) if (!t.passed) t.admitted = time; return v; } // nobody has passed: the gate opens
         v.go = false; v.place = Math.max(0, waiting.indexOf(me));
-        v.live = time - Math.max(g.lastPass, g.waitSince) <= FILE_STALL / 2;
         return v;
     }
 

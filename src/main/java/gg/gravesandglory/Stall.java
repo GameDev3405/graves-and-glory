@@ -16,8 +16,9 @@ import java.util.List;
  * for again every RETRY ticks, and each refusal sets the troop on another rung of the cycle meanwhile (REGROUP, SIDESTEP, DETOUR, by cycle), so that it keeps trying until nobody watches.
  *
  * The queue test (plan step 3): a troop with a friend ahead of it on its way who is moving the same way is queueing, not stalled. queueing() is that test (a few numbers in, a boolean out); step() given queued holds the clock
- * (it starts again every beat, no rung fires, and the jump least of all). A queue that has held the clock for QUEUE_MAX ticks without the troop getting anywhere is not a queue any more (a ring of troops each behind the next):
- * the clock runs from then on, until the troop gets somewhere or a gap of GAP ticks ends the stretch.
+ * (the clock pauses for the beat: it neither runs nor starts again, no rung fires, and the jump least of all). The holds of a stretch add up, and a stretch that has held the clock for QUEUE_MAX ticks in all without the
+ * troop getting anywhere is not a queue any more (a ring of troops each behind the next, or a jostled line that moves one beat in three): the clock runs from then on, until the troop gets somewhere or its goal changes (progress,
+ * a new goal, a gap of GAP ticks: Stall.start). A friend whose own clock is past the detour rung is not moving on (Tactics.queueing leaves it out).
  */
 final class Stall {
     private Stall() {}
@@ -41,9 +42,9 @@ final class Stall {
     static final double HEAD = 1.8;
     /** A troop not seen walking for more than this many ticks (three beats) was holding or fighting: the clock starts again when it walks on. */
     static final long GAP = 30;
-    /** The queue test: a friend within QUEUE_RANGE blocks, QUEUE_CONE (cosine) round the way on, moving at least QUEUE_SPEED blocks a beat (10 ticks) with the troop's way (cosine over 0) and measured within QUEUE_FRESH ticks. A hold of the clock lasts QUEUE_MAX ticks. */
+    /** The queue test: a friend within QUEUE_RANGE blocks, QUEUE_CONE (cosine) round the way on, moving at least QUEUE_SPEED blocks a beat (10 ticks) with the troop's way (cosine over 0) and measured within QUEUE_FRESH ticks. The holds of a stretch add up to at most QUEUE_MAX ticks. */
     static final double QUEUE_RANGE = 3.5, QUEUE_CONE = 0.3, QUEUE_SPEED = 0.5;
-    static final long QUEUE_FRESH = 25, QUEUE_MAX = 600;
+    static final long QUEUE_FRESH = 25, QUEUE_MAX = 200;
 
     /** One troop's clock. since: tick the clock started; seen: the tick of its last beat; best: the least route distance reached (field mode); ax, az: where it started (place mode); gx, gz: the goal it started for. */
     static final class State {
@@ -51,9 +52,9 @@ final class Stall {
         double best, ax, az, gx, gz;
         long since, seen, nextJump;
         int rung, cycle, sidesteps, jumps;
-        /** The queue test's memory: where and when the troop was last measured (px, pz, pt), how far it went in that beat (mvx, mvz: blocks), when a queue hold began and last held (qSince, qLast; -1: none), and whether this beat's clock was held. */
+        /** The queue test's memory: where and when the troop was last measured (px, pz, pt), how far it went in that beat (mvx, mvz: blocks), how many ticks the clock has been held this stretch (qHeld), and whether this beat's clock was held. */
         double px, pz, mvx, mvz;
-        long pt = -1000, qSince = -1, qLast = -1000;
+        long pt = -1000, qHeld;
         boolean held;
         /** Diagnostics: the age (ticks) the clock had when it was last restarted, and why (gap, goal, progress). */
         long lostAge; String why;
@@ -81,7 +82,7 @@ final class Stall {
     }
 
     private static void start(State s, long time, double x, double z, double gx, double gz, double dist, boolean field) {
-        s.live = true; s.field = field; s.best = field ? dist : Double.NaN; s.ax = x; s.az = z; s.gx = gx; s.gz = gz; s.since = time; s.rung = 0; s.nextJump = 0;
+        s.live = true; s.field = field; s.best = field ? dist : Double.NaN; s.ax = x; s.az = z; s.gx = gx; s.gz = gz; s.since = time; s.rung = 0; s.nextJump = 0; s.qHeld = 0;
     }
 
     /**
@@ -95,21 +96,19 @@ final class Stall {
         s.held = false;
         boolean field = !Double.isNaN(dist) && dist >= 0;
         if (Math.hypot(gx - x, gz - z) < ARRIVED && Math.abs(dy) < RAISED) { s.live = false; return NONE; }
-        if (!s.live || time - s.seen > GAP || Math.hypot(gx - s.gx, gz - s.gz) > MOVED) { s.lostAge = s.live ? s.seen - s.since : 0; s.why = !s.live ? "dead" : time - s.seen > GAP ? "gap " + (time - s.seen) : "goal"; start(s, time, x, z, gx, gz, dist, field); }
+        long prev = s.seen;
+        if (!s.live || time - s.seen > GAP || Math.hypot(gx - s.gx, gz - s.gz) > MOVED) { s.lostAge = s.live ? s.seen - s.since : 0; s.why = !s.live ? "dead" : time - s.seen > GAP ? "gap " + (time - s.seen) : "goal"; start(s, time, x, z, gx, gz, dist, field); prev = time; }
         else if (field && Double.isNaN(s.best)) s.best = dist; // the field knows the way now (the goal was in plain sight before): the clock runs on, it does not start over
         s.field = field;
         s.seen = time;
-        if (queued) s.qLast = time;
-        else if (time - s.qLast > GAP) s.qSince = -1;
-        if (queued && (s.qSince < 0 || time - s.qSince <= QUEUE_MAX)) { // a moving queue: the clock starts again, nothing fires
-            if (s.qSince < 0) s.qSince = time;
-            s.since = time; s.rung = 0; s.nextJump = 0; s.held = true;
-            if (field) s.best = Math.min(s.best, dist);
-            return NONE;
-        }
         double moved = Math.hypot(x - s.ax, z - s.az);
         boolean progress = field ? dist < s.best - GAIN : moved > PATCH && (!off || moved >= OFF_SPEED * (time - s.since) / 20.0);
-        if (progress) { s.qSince = -1; s.lostAge = s.seen - s.since; s.why = "progress " + String.format("%.1f<%.1f", dist, s.best); start(s, time, x, z, gx, gz, dist, field); }
+        if (progress) { s.lostAge = s.seen - s.since; s.why = "progress " + String.format("%.1f<%.1f", dist, s.best); start(s, time, x, z, gx, gz, dist, field); prev = time; }
+        if (queued && s.qHeld < QUEUE_MAX) { // a moving queue: the clock pauses for this beat, nothing fires (progress starts it again, and the count of holds with it)
+            long dt = Math.min(time - prev, GAP);
+            s.since += dt; s.qHeld += Math.max(dt, 1); s.held = true;
+            return NONE;
+        }
         long age = (time - s.since) * (off && !field ? OFF_RATE : 1);
         if (s.rung < JUMP) {
             if (age < AT[s.rung + 1]) return NONE;
