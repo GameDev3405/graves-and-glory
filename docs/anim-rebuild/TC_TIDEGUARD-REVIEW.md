@@ -75,3 +75,16 @@ after rows of hit_* are not like for like (check fault, reported to the lead).
 - **Looked at:** three-view sheets of high thrust, low sweep, thrust, hit_medium_front, fallback and stun (work/render/),
   every second tick, not every tick.
 
+## Tabard (2026-11-13)
+
+Kort chose to fix the recorded tabard debt in the model ("Tabards"). Both tabard panels are 7 rows tall in place of 9: the
+hem ends 2 px below the hips (was 5) and the top is 1 px higher (`art/hand/tc_tideguard/build_tc_tideguard.py`, a0cfce55).
+Same width, standoff, bone, paint and UVs; no new bones.
+
+- Tabard armour rows: 16 WARN and 3 exempt before, 5 WARN and 0 exempt after. The three exemptions (hit_pulled,
+  hit_medium_right, hit_medium_left) are removed. Focus check 0 FAIL rows; scorecard 31 clips, 0 failing.
+- The clips are the reviewed ones, byte-identical. **A rebuild of this troop's clips with the new model re-keys 17 of
+  them** (the spear builder solves the tabard against its geometry; the brace stance and three death wrists follow).
+  That rebuild was not deployed. Whoever next runs `GG_SPEAR_TROOP=tc_tideguard build_spear_anims.py` must review those
+  17 clips before committing them (a copy of the rebuild is in `work/modelfix/out_new.json` on the lane, untracked).
+- Report: `bb-anim-skill-fable/work/batch/reports/modelfix_tc_tideguard.md`; sheet `work/modelfix/tc_tideguard_sheet.jpg`.
