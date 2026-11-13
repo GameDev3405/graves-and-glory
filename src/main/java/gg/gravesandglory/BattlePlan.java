@@ -18,7 +18,8 @@ public final class BattlePlan {
     public record PointPlan(int point, Job job, String setter, long tick) {}
     /** point -1 means a place at (x, z). */
     public record Order(String army, Job job, int point, double x, double z, String setter, long tick) {}
-    public record Army(String id, int team, double x, double z, boolean bot, boolean retreating) {}
+    /** current = the point index the army's present target sits on (-1 none). Assignment treats a plan on that point as half as far, so bots do not swap plans as they move. */
+    public record Army(String id, int team, double x, double z, boolean bot, boolean retreating, int current) {}
     public record Assignment(Job job, int point, double x, double z, boolean direct) {}
 
     /** team -> point -> plan. LinkedHashMaps, and a re-set moves the entry to the end, so insertion order is recency (the later call wins an equal tick). */
@@ -96,7 +97,7 @@ public final class BattlePlan {
         for (PointPlan p : points(team)) if (p.point() >= 0 && p.point() < n) valid.add(p);
         if (valid.isEmpty()) return out;
         for (PointPlan p : valid) {
-            Army best = nearest(free, px[p.point()], pz[p.point()]);
+            Army best = nearest(free, p.point(), px[p.point()], pz[p.point()]);
             if (best == null) break;
             free.remove(best);
             out.put(best.id(), new Assignment(p.job(), p.point(), px[p.point()], pz[p.point()], false));
@@ -107,7 +108,7 @@ public final class BattlePlan {
                 double bd = Double.MAX_VALUE;
                 for (PointPlan p : valid) {
                     if (p.job() != j) continue;
-                    double d = dist(a, px[p.point()], pz[p.point()]);
+                    double d = dist(a, p.point(), px[p.point()], pz[p.point()]);
                     if (d < bd) { bd = d; pick = p; }
                 }
                 if (pick != null) break;
@@ -120,14 +121,15 @@ public final class BattlePlan {
     /** The army's job, or null when no plan reaches it (so it keeps its own plan). */
     public Assignment jobFor(String army, int team, List<Army> armies, double[] px, double[] pz) { return assign(team, armies, px, pz).get(army); }
 
-    private static Army nearest(List<Army> l, double x, double z) {
+    private static Army nearest(List<Army> l, int point, double x, double z) {
         Army best = null;
         double bd = Double.MAX_VALUE;
-        for (Army a : l) { double d = dist(a, x, z); if (d < bd) { bd = d; best = a; } }
+        for (Army a : l) { double d = dist(a, point, x, z); if (d < bd) { bd = d; best = a; } }
         return best;
     }
 
-    private static double dist(Army a, double x, double z) { return Math.hypot(a.x() - x, a.z() - z); }
+    /** Distance to a plan's point, halved for an army already heading there (the stickiness between decisions). */
+    private static double dist(Army a, int point, double x, double z) { return Math.hypot(a.x() - x, a.z() - z) * (a.current() == point ? 0.5 : 1); }
 
     /** What the bot says when it takes the job; a null assignment means its plan was cleared. */
     public static String ackLine(Assignment a, String[] pointIds) {

@@ -9,7 +9,8 @@ public final class BattlePlanCheck {
     static int checks;
     static void check(boolean pass, String message) { if (!pass) throw new AssertionError(message); checks++; }
     static final double[] PX = {0, 100, 200}, PZ = {0, 0, 0};
-    static Army bot(String id, double x) { return new Army(id, 0, x, 0, true, false); }
+    static Army bot(String id, double x) { return new Army(id, 0, x, 0, true, false, -1); }
+    static Army botOn(String id, double x, int current) { return new Army(id, 0, x, 0, true, false, current); }
 
     public static void main(String[] args) {
         { // assignNearestPerPlan
@@ -55,14 +56,31 @@ public final class BattlePlanCheck {
         { // retreatingExcluded
             var p = new BattlePlan();
             p.setPoint(0, 0, Job.ATTACK, "p1", 1); p.setPoint(0, 2, Job.ATTACK, "p1", 2);
-            var m = p.assign(0, List.of(new Army("r", 0, 0, 0, true, true), bot("a", 5), bot("b", 190)), PX, PZ);
+            var m = p.assign(0, List.of(new Army("r", 0, 0, 0, true, true, -1), bot("a", 5), bot("b", 190)), PX, PZ);
             check(!m.containsKey("r") && m.size() == 2, "retreating bot gets nothing");
             check(m.get("a").point() == 0 && m.get("b").point() == 2, "others cover the plans");
+        }
+        { // stickyAssignment
+            var p = new BattlePlan();
+            p.setPoint(0, 2, Job.ATTACK, "p1", 5); p.setPoint(0, 0, Job.DEFEND, "p1", 3);
+            var m = p.assign(0, List.of(botOn("a", 150, 2), botOn("b", 160, 0)), PX, PZ);
+            check(m.get("a").point() == 2 && m.get("b").point() == 0, "a keeps 2 though b is a little closer");
+            m = p.assign(0, List.of(botOn("a", 150, 2), botOn("b", 180, 0)), PX, PZ);
+            check(m.get("b").point() == 2 && m.get("a").point() == 0, "b under half a's distance takes 2");
+            m = p.assign(0, List.of(bot("a", 150), bot("b", 160)), PX, PZ);
+            check(m.get("b").point() == 2, "without current the nearer bot wins");
+            // the extras pass: two Attack plans, both staffed; c sits between them and keeps the one it is on
+            var q = new BattlePlan();
+            q.setPoint(0, 2, Job.ATTACK, "p1", 5); q.setPoint(0, 0, Job.ATTACK, "p1", 4);
+            m = q.assign(0, List.of(botOn("a", 190, 2), botOn("b", 10, 0), botOn("c", 80, 2)), PX, PZ);
+            check(m.get("c").point() == 2, "extra bot keeps the Attack plan it is on");
+            m = q.assign(0, List.of(botOn("a", 190, 2), botOn("b", 10, 0), botOn("c", 80, -1)), PX, PZ);
+            check(m.get("c").point() == 0, "without current the extra bot takes the nearer plan");
         }
         { // humansIgnored
             var p = new BattlePlan();
             p.setPoint(0, 0, Job.ATTACK, "p1", 1);
-            check(p.assign(0, List.of(new Army("h", 0, 0, 0, false, false)), PX, PZ).isEmpty(), "humans never assigned");
+            check(p.assign(0, List.of(new Army("h", 0, 0, 0, false, false, -1)), PX, PZ).isEmpty(), "humans never assigned");
         }
         { // noBots
             var p = new BattlePlan();
@@ -100,7 +118,7 @@ public final class BattlePlanCheck {
             var p = new BattlePlan();
             p.setPoint(1, 0, Job.ATTACK, "p1", 1);
             check(p.assign(0, List.of(bot("a", 0)), PX, PZ).isEmpty() && p.points(0).isEmpty(), "team 1 plan never reaches team 0");
-            check(p.assign(1, List.of(new Army("c", 1, 0, 0, true, false)), PX, PZ).containsKey("c"), "team 1 bot takes it");
+            check(p.assign(1, List.of(new Army("c", 1, 0, 0, true, false, -1)), PX, PZ).containsKey("c"), "team 1 bot takes it");
         }
         { // jobForIsPure
             var p = new BattlePlan();
