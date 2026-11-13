@@ -44,7 +44,8 @@ final class HitController extends AnimationController<GeoTroop> {
     /** That blow's direction mix, front back right left. */
     final double[] shownMix = new double[4];
     private final double[] mixBuf = new double[4];
-    private boolean listed;
+    /** The entity this controller is listed under in {@link #LIVE}. A troop tracked anew is a new entity object on the same controller (GeckoLib keys them by entity id), so it is listed again; held weakly, as LIVE holds it. */
+    private java.lang.ref.WeakReference<Entity> listed;
     /** The stance layer, whose standing factor scales each reaction's footwork (&lt;clip&gt;_legs): a walking troop keeps its gait. */
     private final StanceController stance;
     /** That frame's footwork weight, for the in-game checks. */
@@ -67,7 +68,7 @@ final class HitController extends AnimationController<GeoTroop> {
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e == null || e.getWorld() == null) return;
-        if (!listed) { listed = true; LIVE.put(e, this); }
+        if (listed == null || listed.get() != e) { listed = new java.lang.ref.WeakReference<>(e); LIVE.put(e, this); }
         double now = e.getWorld().getTime() + state.getPartialTick();
         MotionInput.Hit latest = null;
         for (MotionInput.Hit h : MotionEvents.Client.hits(e.getId())) if (h.tick() <= now && (latest == null || h.tick() >= latest.tick())) latest = h;

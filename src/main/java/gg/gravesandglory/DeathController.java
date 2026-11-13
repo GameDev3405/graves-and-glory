@@ -52,7 +52,8 @@ final class DeathController extends AnimationController<GeoTroop> {
     /** What the last frame showed, for the in-game checks (GeoKnightChecks): clip, clip time and weight; for a rise, the ticks since it fired and its span. Never read in play. */
     String shownClip = "";
     double shownT = -1, shownWeight, shownRiseElapsed = -1, shownRiseSpan;
-    private boolean listed;
+    /** The entity this controller is listed under in {@link #LIVE}. A troop tracked anew is a new entity object on the same controller (GeckoLib keys them by entity id), so it is listed again; held weakly, as LIVE holds it. */
+    private java.lang.ref.WeakReference<Entity> listed;
     static final Map<Entity, DeathController> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
 
     DeathController(GeoTroop troop) {
@@ -117,7 +118,7 @@ final class DeathController extends AnimationController<GeoTroop> {
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e == null) return;
-        if (!listed) { listed = true; LIVE.put(e, this); }
+        if (listed == null || listed.get() != e) { listed = new java.lang.ref.WeakReference<>(e); LIVE.put(e, this); }
         shownWeight = 0; shownT = -1; shownClip = ""; shownRiseElapsed = -1;
         if (!(e instanceof LivingEntity l) || !(l.isDead() || l.deathTime > 0)) {
             latched = null; riseDeath = null; lastRise = null;

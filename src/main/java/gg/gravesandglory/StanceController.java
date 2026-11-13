@@ -49,7 +49,8 @@ final class StanceController extends AnimationController<GeoTroop> {
     String shownUpper = "", shownLegs = "", shownStance = "";
     double shownUpperWeight, shownLegsWeight, shownStill;
     boolean shownShield;
-    private boolean listed;
+    /** The entity this controller is listed under in {@link #LIVE}. A troop tracked anew is a new entity object on the same controller (GeckoLib keys them by entity id), so it is listed again; held weakly, as LIVE holds it. */
+    private java.lang.ref.WeakReference<Entity> listed;
     /**
      * AIM_PITCH_HOOK: the aim pitch the server sent with a ranged_aim stance (degrees, positive down; 0 in any other stance), refreshed every frame. It is eased into
      * {@link #aimSmooth} and read each frame to weight {@code stance_aim_upper} (authored at pitch 0) against {@code stance_aim_up_upper} (-45) and
@@ -131,7 +132,7 @@ final class StanceController extends AnimationController<GeoTroop> {
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e == null || e.getWorld() == null) return;
-        if (!listed) { listed = true; LIVE.put(e, this); }
+        if (listed == null || listed.get() != e) { listed = new java.lang.ref.WeakReference<>(e); LIVE.put(e, this); }
         double now = e.getWorld().getTime() + state.getPartialTick();
         double dt = Double.isNaN(last) || now - last > 4 ? 1e9 : Math.max(0, now - last);
         last = now;

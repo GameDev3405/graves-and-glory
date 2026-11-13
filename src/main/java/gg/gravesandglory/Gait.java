@@ -61,6 +61,8 @@ final class Gait {
      */
     double idlePhase;
     private boolean seeded;
+    /** The entity this clock is listed under in {@link #LIVE}; a troop tracked anew is a new entity object on the same clock, so it is listed again. */
+    private java.lang.ref.WeakReference<Entity> listed;
     private double last = Double.NaN, lastRx = Double.NaN, lastRz = Double.NaN, movedAt = Double.NaN;
     /** Each drawn troop's clock, for the in-game checks (test-tools GeoKnightChecks); weak, so unloaded troops drop out. */
     static final Map<Entity, Gait> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
@@ -79,7 +81,7 @@ final class Gait {
             seeded = true;
         }
         if (time == last) return;
-        if (Double.isNaN(last)) LIVE.put(e, this);
+        if (listed == null || listed.get() != e) { listed = new java.lang.ref.WeakReference<>(e); LIVE.put(e, this); }
         // First sight, or back in view after not being drawn: the old averages describe another moment, so start from now.
         boolean fresh = Double.isNaN(last) || time - last > 4;
         double dt = fresh ? 0 : Math.max(0, time - last);

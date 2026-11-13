@@ -79,7 +79,8 @@ final class AttackController extends AnimationController<GeoTroop> {
     /** The world tick the newest howl clip drawn started on (NaN: none yet); kept apart from the swing's shown fields. */
     double howlShown = Double.NaN;
     String shownClip = "";
-    private boolean listed;
+    /** The entity this controller is listed under in {@link #LIVE}. A troop tracked anew is a new entity object on the same controller (GeckoLib keys them by entity id), so it is listed again; held weakly, as LIVE holds it. */
+    private java.lang.ref.WeakReference<Entity> listed;
     /** Each drawn troop's attack layer, for the checks; weak, so unloaded troops drop out. */
     static final Map<Entity, AttackController> LIVE = Collections.synchronizedMap(new WeakHashMap<>());
 
@@ -115,7 +116,7 @@ final class AttackController extends AnimationController<GeoTroop> {
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e == null || e.getWorld() == null || family.isEmpty()) return;
-        if (!listed) { listed = true; LIVE.put(e, this); }
+        if (listed == null || listed.get() != e) { listed = new java.lang.ref.WeakReference<>(e); LIVE.put(e, this); }
         shownWeight = 0;
         shownLegsWeight = 0;
         List<Spec.AttackVariantsRow> variants = Tactics.variants(family);
