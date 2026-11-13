@@ -44,6 +44,8 @@ final class Stall {
         double best, ax, az, gx, gz;
         long since, seen, nextJump;
         int rung, cycle, sidesteps, jumps;
+        /** Diagnostics: the age (ticks) the clock had when it was last restarted, and why (gap, goal, progress). */
+        long lostAge; String why;
         /** Ticks the troop has been stalled as of its last beat (0 when it is not). */
         long age(long time) { return live ? time - since : 0; }
     }
@@ -59,13 +61,13 @@ final class Stall {
     static int step(State s, long time, double x, double z, double gx, double gz, double dy, double dist, boolean off) {
         boolean field = !Double.isNaN(dist) && dist >= 0;
         if (Math.hypot(gx - x, gz - z) < ARRIVED && Math.abs(dy) < RAISED) { s.live = false; return NONE; }
-        if (!s.live || time - s.seen > GAP || Math.hypot(gx - s.gx, gz - s.gz) > MOVED) start(s, time, x, z, gx, gz, dist, field);
+        if (!s.live || time - s.seen > GAP || Math.hypot(gx - s.gx, gz - s.gz) > MOVED) { s.lostAge = s.live ? s.seen - s.since : 0; s.why = !s.live ? "dead" : time - s.seen > GAP ? "gap " + (time - s.seen) : "goal"; start(s, time, x, z, gx, gz, dist, field); }
         else if (field && Double.isNaN(s.best)) s.best = dist; // the field knows the way now (the goal was in plain sight before): the clock runs on, it does not start over
         s.field = field;
         s.seen = time;
         double moved = Math.hypot(x - s.ax, z - s.az);
         boolean progress = field ? dist < s.best - GAIN : moved > PATCH && (!off || moved >= OFF_SPEED * (time - s.since) / 20.0);
-        if (progress) start(s, time, x, z, gx, gz, dist, field);
+        if (progress) { s.lostAge = s.seen - s.since; s.why = "progress " + String.format("%.1f<%.1f", dist, s.best); start(s, time, x, z, gx, gz, dist, field); }
         long age = (time - s.since) * (off && !field ? OFF_RATE : 1);
         if (s.rung < JUMP) {
             if (age < AT[s.rung + 1]) return NONE;

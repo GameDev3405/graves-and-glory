@@ -631,6 +631,7 @@ final class Tactics {
         double d=nav==null?Double.NaN:nav.cachedDistance(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z);
         boolean off=nav!=null&&Double.isNaN(d)&&(!nav.onField(mob.getX(),mob.getY(),mob.getZ())||mob.isTouchingWater()); // off the field (in water, on a wall top): the clock runs fast and wide (Stall.OFF_SPEED)
         int rung=Stall.step(u.stall,time,mob.getX(),mob.getZ(),destination.x,destination.z,destination.y-mob.getY(),d,off);
+        if(TRACE_HOPS&&u.stall.lostAge>=200&&u.stall.since==time){System.out.println("[Graves and Glory] stall clock of slot "+u.slot+" restarted after "+u.stall.lostAge+" ticks ("+u.stall.why+") at ("+String.format("%.1f,%.1f",mob.getX(),mob.getZ())+") toward ("+String.format("%.1f,%.1f",destination.x,destination.z)+")");u.stall.lostAge=0;}
         if(rung!=Stall.NONE&&rung!=Stall.JUMP)stalls[rung]++; // a jump is counted when it is made (jumpTry)
         stallNanos+=System.nanoTime()-t0;stallCalls++;
         return rung;
