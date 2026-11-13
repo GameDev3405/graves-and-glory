@@ -480,8 +480,9 @@ final class Tactics {
     }
     /** The way to a goal: across the river by the nearest bridge, unless the troop fords it (Riptide tier II and III), which goes straight at the goal. */
     static Vec3d route(GravesAndGlory.Unit u,Vec3d goal){
+        fieldPoint=null;
         if(Houses.fords(u))return goal;
-        Vec3d way=fieldWay(u,goal);if(way!=null)return way;
+        Vec3d way=fieldWay(u,goal);if(way!=null){fieldPoint=way;return way;}
         Vec3d here=u.mob.getPos();
         double side=here.x-Arena.riverX(here.z),destination=goal.x-Arena.riverX(goal.z);
         if(Math.signum(side)!=Math.signum(destination)&&Math.abs(destination)>7){
@@ -502,6 +503,8 @@ final class Tactics {
         return houseGate(u,goal);
     }
     /** The route field of the engine map in play (NavField, nav.bin.gz), or null: an old map, or an engine build without one. */
+    /** The waypoint the last route() call took from the route field (an identity: walk asks whether the goal it was handed is that very point), null when it took none. */
+    static Vec3d fieldPoint;
     static NavField field(){var e=EngineMaps.current();return e==null?null:e.nav;}
     /** Where a troop on foot goes next toward a goal it cannot see across the floors: the farthest cell of the field's way it can see, a real floor with its height (Arena.floor and the world's top block play no part), a portal cell at a door narrower than NavField.PORTAL.
      *  Null: no field (old maps, and the goal itself is wanted), the goal is in plain sight over the floors, or no route is known. A table lookup and a few line tests, no search of the map; a field is built at most NavField.BUILDS_PER_TICK times a tick. */
@@ -509,7 +512,10 @@ final class Tactics {
         var nav=field();if(nav==null)return null;
         var mob=u.mob;var b=GravesAndGlory.battle;
         var wp=nav.route(mob.getX(),mob.getY(),mob.getZ(),goal.x,goal.y,goal.z,b==null?0:b.time);
-        return wp==null?null:new Vec3d(wp.x(),wp.y(),wp.z());
+        if(wp==null)return null;
+        double lane=(u.hasCell()?WarGrid.col(u.slot)-(WarGrid.cols()-1)/2:u.slot%5-2)*(b==null?GravesAndGlory.Battle.spacing(u):b.cell(u)); // its lane through a door, as at a bridge: a wall troop's cell on Hold, else its body's room
+        wp=nav.lane(wp,mob.getX(),mob.getZ(),lane);
+        return new Vec3d(wp.x(),wp.y(),wp.z());
     }
     /** A goal inside the walled yard of a supply house (Phase 3 Task 8b): the point just outside a gate (HouseRoute) until the unit stands at it, then the goal itself, so that the units do not stand at the wall. Any other goal comes back as it is. */
     static Vec3d houseGate(GravesAndGlory.Unit u,Vec3d goal){
@@ -611,7 +617,7 @@ final class Tactics {
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed){walk(battle,u,destination,time,speed,false);}
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed,boolean climb){
         MobEntity mob=u.mob;Vec3d goal=route(u,destination);Vec3d routed=goal;
-        boolean onField=goal!=destination&&field()!=null; // a waypoint of the route field: a floor cell with its own height, taken as it is (like a detour point)
+        boolean onField=fieldPoint!=null&&goal==fieldPoint; // a waypoint of the route field: a floor cell with its own height, taken as it is (like a detour point)
         // A raised goal (a tower top): every ground waypoint below would put it at the tower's foot (Arena.ground is the terrain under the tower), so near enough it paths to the goal's own height, up the stair.
         if(climb&&goal==destination&&destination.y>Arena.ground((int)Math.floor(destination.x),(int)Math.floor(destination.z))+2.5&&GravesAndGlory.Battle.horizontalDistance(mob.getPos(),destination)<CLIMB_RANGE*CLIMB_RANGE){
             if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),destination)<N.preciseRange()*N.preciseRange()&&Math.abs(mob.getY()-destination.y)<1.1){mob.getNavigation().stop();mob.getMoveControl().moveTo(destination.x,destination.y,destination.z,speed);return;}

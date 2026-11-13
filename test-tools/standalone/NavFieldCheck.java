@@ -23,7 +23,13 @@ public final class NavFieldCheck {
         double cx = x, cz = z, cy = 65;
         for (int i = 0; i < max; i++) {
             var wp = n.route(cx, cy, cz, gx, 65, gz, i);
-            if (wp == null) return out;
+            if (wp == null) {
+                // no waypoint is an arrival only when the goal is in plain sight (or in this very node) and the field says it can be reached: not for a refused build or a goal with no way
+                double dist = n.distance(cx, cy, cz, gx, 65, gz);
+                if (dist < 0 || !(n.sees(cx, cy, cz, gx, gz) || dist < 6)) out.add(null);
+                return out;
+            }
+            check(n.sees(cx, cy, cz, wp.x(), wp.z()), "step " + i + ": the waypoint " + wp + " is in sight of (" + cx + ", " + cz + ")");
             out.add(wp);
             cx = wp.x(); cy = wp.y(); cz = wp.z();
         }
@@ -88,9 +94,44 @@ public final class NavFieldCheck {
         NavField big = grid(60, 40, (x, z) -> x >= 30 && x <= 32 && z != 5, new int[][]{{10, 20, 64}});
         int answered = 0;
         for (int g = 0; g < 12; g++) if (big.route(10.5, 65, 20.5, 40.5 + g % 3 * 4, 65, 6.5 + g * 2.5, 7) != null) answered++;
-        check(big.refused > 0 || answered <= 12, "lookups past the per-tick budget are refused");
+        check(big.refused > 0 && answered < 12, "lookups past the per-tick budget are refused: " + big.refused + " refused, " + answered + " answered");
         long before = big.refused;
-        check(big.route(10.5, 65, 20.5, 52.5, 65, 6.5, 99) != null || big.refused == before, "a later tick builds again");
+        check(big.route(10.5, 65, 20.5, 52.5, 65, 6.5, 99) != null && big.refused == before, "a later tick builds again and answers");
+        check(big.distance(10.5, 65, 20.5, 52.5, 65, 6.5) >= 0 && big.cachedDistance(10.5, 65, 20.5, 52.5, 65, 6.5) >= 0, "the goal's field is held and gives a distance");
+        check(Double.isNaN(big.cachedDistance(10.5, 65, 20.5, 59.5, 65, 38.5)) || big.cachedDistance(10.5, 65, 20.5, 59.5, 65, 38.5) >= 0, "a cached distance never builds");
+        long builtBefore = big.builds;
+        big.cachedDistance(10.5, 65, 20.5, 58.5, 65, 1.5);
+        check(big.builds == builtBefore, "cachedDistance builds nothing");
+        big.reset();
+        check(Double.isNaN(big.cachedDistance(10.5, 65, 20.5, 52.5, 65, 6.5)), "reset drops the cached fields");
+
+        // 3b. several floor levels: ground under a deck reached by a ramp (floors {64, 65 + i} on the ramp, {64, 70} under the deck)
+        int[][] deck = new int[60 * 20][];
+        for (int z = 0; z < 20; z++) for (int x = 0; x < 60; x++) deck[z * 60 + x] = x >= 20 && x <= 25 ? new int[]{64, 65 + (x - 20)} : x >= 26 && x <= 34 ? new int[]{64, 70} : new int[]{64};
+        NavField two = NavField.fromColumns(0, 0, 60, 20, deck, new int[][]{{5, 10, 64}});
+        check(two.has(30, 10), "the deck columns are floors");
+        check(two.onField(30.5, 71, 10.5) && two.onField(30.5, 65, 10.5), "a troop on the deck and one under it are both on the field");
+        check(two.distance(5.5, 65, 10.5, 30.5, 71, 10.5) >= 0, "the deck is reachable by its ramp");
+        var under = follow(two, 5.5, 10.5, 55.5, 10.5, 40);
+        check(under.stream().noneMatch(wp -> wp == null || wp.y() > 66), "the way along the ground does not climb the deck: " + under);
+        check(!two.onField(30.5, 76, 10.5), "a troop 5 blocks over the deck is off the field");
+        // a roof troop is not matched to the ground below (a roof with no stair)
+        int[][] hut = new int[40 * 20][];
+        for (int z = 0; z < 20; z++) for (int x = 0; x < 40; x++) hut[z * 40 + x] = x >= 10 && x < 20 && z >= 5 && z < 12 ? new int[]{64, 70} : new int[]{64};
+        NavField huts = NavField.fromColumns(0, 0, 40, 20, hut, new int[][]{{2, 2, 64}});
+        check(!huts.onField(15.5, 71, 8.5) && huts.onField(15.5, 65, 8.5), "a troop on a stairless roof is off the field, one under it is on");
+        // 3c. a tent: 8 x 8 walled, one 1-wide door on the east at z 4, a troop at the far west corner inside; the first waypoint is in sight and the way arrives
+        NavField tent = grid(30, 16, (x, z) -> (x == 8 || x == 9) && z != 4 && z >= 0 || ((z == 0 || z == 15) && x >= 8 && x <= 9), new int[][]{{2, 8, 64}});
+        var tw = follow(tent, 2.5, 12.5, 25.5, 8.5, 40);
+        check(!tw.isEmpty() && tw.get(tw.size() - 1) != null, "a troop behind a jamb reaches the door: " + tw);
+        check(tw.stream().anyMatch(wp -> wp != null && wp.portal() && wp.width() == 1), "through the 1-wide door: " + tw);
+        // 3d. the lane: a 3-wide door, troops in lane -1 and +1 get waypoints a block apart, none outside the door
+        var near = follow(yard, 10.5, 20.5, 50.5, 20.5, 40);
+        var door3 = near.stream().filter(wp -> wp != null && wp.portal() && wp.width() == 3).findFirst().orElse(null);
+        check(door3 != null, "the 3-wide door is met: " + near);
+        var l1 = yard.lane(door3, door3.x() - 3, door3.z(), -2);
+        var l2 = yard.lane(door3, door3.x() - 3, door3.z(), 2);
+        check(Math.abs(l1.z() - l2.z()) >= 1.5 && Math.abs(l1.z() - door3.z()) <= 1.01 && Math.abs(l2.z() - door3.z()) <= 1.01, "the lanes are spread across the 3 wide door, clamped to (width - 1) / 2: " + l1 + " " + l2);
 
         // 5. the bundled maps: follow the waypoints from each spawn to each point
         for (String id : new String[]{"kingsfield_cq", "rivergate_ey"}) {

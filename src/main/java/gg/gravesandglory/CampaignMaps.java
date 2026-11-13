@@ -12,6 +12,8 @@ import java.util.*;
 /** Authored 700 by 500 battlefields. Routes are also terrain constraints. */
 public final class CampaignMaps {
     public static int selected=0;
+    /** The route field last selected, whose cached goal fields are dropped when another map is. */
+    private static NavField navHeld;
     /** The z of the camp origin. */
     static final int LOBBY_Z=Spec.CAMP[0].originZ();
     record Road(int ax,int az,int bx,int bz,int width){}
@@ -20,6 +22,7 @@ public final class CampaignMaps {
     public static int objectiveCount(int map){var e=EngineMaps.map(map);return e!=null?e.points.size():map==4?5:3;}
     public static synchronized void select(int index){
         selected=Math.max(0,Math.min(Spec.MAPS.length-1,index));
+        if(navHeld!=null)navHeld.reset();var engine=EngineMaps.map(selected);navHeld=engine==null?null:engine.nav;if(navHeld!=null)navHeld.reset(); // a map was selected: no route field keeps the goals of the last one
         var structures=new ArrayList<Spec.StructuresRow>();var scenery=new ArrayList<Spec.SceneryRow>();
         var terrain=new ArrayList<Spec.TerrainRow>();building=new ArrayList<>();
         String[] names=switch(selected){case 1->new String[]{"Supply Yard","Iron Gate","Watch Hill"};case 2->new String[]{"Caravan Refuge","Pass Crossing","Signal Ridge"};case 3->new String[]{"Logging Camp","Old Causeway","Moon Shrine"};case 4->new String[]{"North Ford","Kings Bridge","South Ford"};default->new String[]{"Mill Hamlet","Trade Crossing","River Shrine"};};

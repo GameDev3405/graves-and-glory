@@ -1218,6 +1218,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** The deploy notice after "<troop> trained: " (a null anchor means the barracks). */
         String deployNote(Squad s,Anchor anchor){return anchor==null?"deploying from barracks":"deploying at "+anchor.name();}
         void startRound(){
+            {var nv=Tactics.field();if(nv!=null)System.out.println("[Graves and Glory] route field, since the last round: "+nv.roundStats());}
             // The previous mode's pieces go back before a new mode is built: a Siege round re-entered here must not re-save its shut gate over the open one.
             // A piece that cannot be restored stays in saves, and the new round's marker lists it, so a crash still recovers it.
             if(!mode.teardown(this))System.err.println("[Graves and Glory] startRound: "+saves.size()+" saved piece(s) of the last "+mode.id()+" round could not be restored; the marker keeps them.");

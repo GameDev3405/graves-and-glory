@@ -41,6 +41,8 @@ public final class NavField {
     static final int HOPS = 12, AHEAD = 28;
     /** Distance fields kept (the pinned ones come on top), and fields built in one tick before lookups answer "no route" until the next. */
     static final int CACHE = 96, BUILDS_PER_TICK = 6;
+    /** The cells a search inside one node looks at. */
+    static final int INSIDE = 96;
     /** How near a goal must be to a floor to be given a field: columns. */
     static final int GOAL_RADIUS = 8;
     /** A troop this close (blocks) to the portal cell of its first hop is at the door: the way goes on past it. */
@@ -75,6 +77,7 @@ public final class NavField {
         @Override protected boolean removeEldestEntry(Map.Entry<Integer, Field> e) { return size() > CACHE; }
     };
     private long budgetTick = Long.MIN_VALUE;
+    private long roundBuilds, roundRefused, roundLookups, roundRouted;
     private int builtThisTick;
     /** Counters for the harness: fields built, their time, lookups, lookups answered with a waypoint, lookups refused by the build budget. */
     public long builds, buildNanos, lookups, routed, refused;
@@ -207,7 +210,7 @@ public final class NavField {
             arcTo[back] = edgeA[e]; arcCell[back] = crossA[e]; arcRev[back] = fwd; arcWidth[back] = width[e];
         }
         // the map's own points and spawns are goals every order meets: their fields now, not on the first troop's tick
-        for (int[] s : seeds) { int c = cellNear(s[0] + .5, s[2] + 1, s[1] + .5, 2); if (c >= 0 && !pinned.containsKey(nodeOf[c])) pinned.put(nodeOf[c], build(nodeOf[c])); }
+        for (int[] s : seeds) { int c = cellNear(s[0] + .5, s[2] + 1, s[1] + .5, 2, false); if (c >= 0 && !pinned.containsKey(nodeOf[c])) pinned.put(nodeOf[c], build(nodeOf[c])); }
         builds = 0; buildNanos = 0;
         bakeNanos = System.nanoTime() - t0;
     }
@@ -266,7 +269,9 @@ public final class NavField {
     private int width(int c) { return Math.min(run(c, 1, 0), run(c, 0, 1)); }
 
     /** The cell standing at world (x, z) with feet y nearest to the floor under it, looking over radius columns round it; -1 when none. */
-    public int cellNear(double x, double feetY, double z, int radius) {
+    public int cellNear(double x, double feetY, double z, int radius) { return cellNear(x, feetY, z, radius, true); }
+    /** strict: a floor more than 2 blocks from the feet is never the match (a troop); not strict (a goal, a seed): only the troop's own column holds to it, a goal's height is the point's, not a floor's. */
+    private int cellNear(double x, double feetY, double z, int radius, boolean strict) {
         int bx = (int) Math.floor(x) - ox, bz = (int) Math.floor(z) - oz, target = (int) Math.floor(feetY - .01);
         int best = -1;
         double bestScore = Double.MAX_VALUE;
@@ -280,7 +285,7 @@ public final class NavField {
                 double h = Math.hypot(Math.max(0, Math.abs(cx + .5 + ox - x) - .5), Math.max(0, Math.abs(cz + .5 + oz - z) - .5));
                 for (int i = start[c]; i < start[c + 1]; i++) {
                     int dy = Math.abs(ys[i] - target);
-                    if (r == 0 && dy > 2) continue;
+                    if (dy > 2 && (strict || r == 0)) continue; // a roof troop is not matched to the ground below, a troop in the air over a floor is off the field
                     double score = h * h + 4.0 * dy * dy;
                     if (score < bestScore) { bestScore = score; best = i; }
                 }
@@ -313,7 +318,7 @@ public final class NavField {
         }
         if (bestD == Long.MAX_VALUE) return null;
         int c = bestZ * w + bestX, y = ys[start[c]], t = top.applyAsInt(bestX + ox, bestZ + oz);
-        for (int i = start[c]; i < start[c + 1]; i++) if (ys[i] == t) y = ys[i];
+        for (int i = start[c]; i < start[c + 1]; i++) if (ys[i] == t && width(i) >= 3) y = ys[i]; // the top block only when it is a place to stand (a tent ridge is not): else the lowest floor
         return new int[]{bestX + ox, bestZ + oz, y};
     }
 
@@ -401,7 +406,7 @@ public final class NavField {
         lookups++;
         int from = cellNear(x, y, z, 1);
         if (from < 0) return null;
-        int to = cellNear(gx, gy, gz, GOAL_RADIUS);
+        int to = cellNear(gx, gy, gz, GOAL_RADIUS, false);
         if (to < 0) return null;
         int nf = nodeOf[from], ng = nodeOf[to];
         if (nf == ng) return null;
@@ -418,6 +423,10 @@ public final class NavField {
             double px = col % w + ox + .5, pz = col / w + oz + .5;
             boolean portal = arcWidth[a] < PORTAL;
             if (hop == 0 && portal && Math.hypot(px - x, pz - z) < AT_PORTAL) { n = arcTo[a]; through = true; continue; } // already at the door: on to the far side, a waypoint that is not reached is never given again
+            if (hop == 0 && !line(x, z, ys[from], px, pz)) { // the crossing is out of sight (a 4 x 4 node can hold a wall, a tent's jamb): the way inside the node to it first
+                Waypoint in = inside(from, arcCell[arcRev[a]], x, z, portal, arcWidth[a]);
+                if (in != null) { routed++; return in; }
+            }
             if (hop > 0 && !through && (Math.hypot(px - x, pz - z) > AHEAD || !line(x, z, ys[from], px, pz))) break;
             through = false;
             best = new Waypoint(px, ys[cell] + 1, pz, portal, arcWidth[a]);
@@ -428,7 +437,87 @@ public final class NavField {
         return best;
     }
 
+    /** The way from cell from to the cell near (the near side of the crossing) inside their node: a breadth-first search over the node's own cells (at most INSIDE of them), and the farthest cell of that way the
+     *  troop at (x, z) can see, as a waypoint; the portal flag and width of the arc when that cell is the crossing cell itself. Null: from is near already, or no way found (the caller goes on as before). */
+    private Waypoint inside(int from, int near, double x, double z, boolean portal, int width) {
+        if (from == near) return null;
+        int node = nodeOf[from];
+        if (nodeOf[near] != node) return null;
+        int[] cell = new int[INSIDE], parent = new int[INSIDE];
+        int head = 0, tail = 0;
+        cell[tail] = from; parent[tail++] = -1;
+        int found = -1;
+        int[] DX = {1, -1, 0, 0}, DZ = {0, 0, 1, -1};
+        while (head < tail && found < 0) {
+            int cur = cell[head++];
+            for (int k = 0; k < 4 && found < 0; k++) {
+                int nb = step(cur, DX[k], DZ[k]);
+                if (nb < 0 || nodeOf[nb] != node) continue;
+                boolean seen = false;
+                for (int i = 0; i < tail; i++) if (cell[i] == nb) { seen = true; break; }
+                if (seen || tail == INSIDE) continue;
+                cell[tail] = nb; parent[tail] = head - 1; tail++;
+                if (nb == near) found = tail - 1;
+            }
+        }
+        if (found < 0) return null;
+        int pick = found;
+        for (int i = found; i >= 0; i = parent[i]) {
+            if (parent[i] < 0) break;
+            int col = colOf[cell[i]];
+            pick = i;
+            if (line(x, z, ys[from], col % w + ox + .5, col / w + oz + .5)) break;
+        }
+        int c = cell[pick], col = colOf[c];
+        boolean end = pick == found;
+        return new Waypoint(col % w + ox + .5, ys[c] + 1, col / w + oz + .5, end && portal, end ? width : CAP);
+    }
+
+    /** A waypoint at a portal moved sideways into its own lane: lane is the troop's offset in blocks across the way (WarGrid column minus the middle, times its body's room), clamped to half the door's free width less the
+     *  half of one block; the cell it lands on must be a floor of the field a step from the waypoint and in sight of it, else the waypoint stays. Any other waypoint comes back as it is. */
+    public synchronized Waypoint lane(Waypoint wp, double fromX, double fromZ, double lane) {
+        if (wp == null || !wp.portal() || wp.width() < 2) return wp;
+        double hx = wp.x() - fromX, hz = wp.z() - fromZ, len = Math.hypot(hx, hz);
+        if (len < 1e-6) return wp;
+        double max = (wp.width() - 1) / 2.0, off = Math.max(-max, Math.min(max, lane));
+        if (Math.abs(off) < .25) return wp;
+        double nx = wp.x() - hz / len * off, nz = wp.z() + hx / len * off;
+        int fy = (int) Math.round(wp.y()) - 1;
+        int c = cellNear(wp.x(), fy + 1, wp.z(), 0);
+        if (c < 0) return wp;
+        int bx = (int) Math.floor(nx) - ox, bz = (int) Math.floor(nz) - oz;
+        if (bx < 0 || bx >= w || bz < 0 || bz >= d) return wp;
+        for (int i = start[bz * w + bx]; i < start[bz * w + bx + 1]; i++)
+            if (Math.abs(ys[i] - fy) <= 1 && line(wp.x(), wp.z(), fy, nx, nz)) return new Waypoint(nx, ys[i] + 1, nz, true, wp.width());
+        return wp;
+    }
+
     // ---- reading it back
+
+    /** Drops the cached (not the pinned) fields: a map was selected. */
+    public synchronized void reset() { cache.clear(); budgetTick = Long.MIN_VALUE; builtThisTick = 0; roundBuilds = builds; roundRefused = refused; roundLookups = lookups; roundRouted = routed; }
+    /** One line for the log, what this field did since the last call (a round, or a map select): fields built, lookups refused by the budget, lookups, lookups answered with a waypoint, fields held. */
+    public synchronized String roundStats() {
+        String t = String.format(java.util.Locale.ROOT, "%d lookups (%d with a waypoint), %d fields built, %d refused by the build budget, %d cached + %d pinned", lookups - roundLookups, routed - roundRouted, builds - roundBuilds, refused - roundRefused, cache.size(), pinned.size());
+        roundBuilds = builds; roundRefused = refused; roundLookups = lookups; roundRouted = routed;
+        return t;
+    }
+    /** Whether a troop at (x, feet y, z) stands on a floor of the field (a floor within 2 blocks of its feet, in its column or a neighbour): false for a roof with no stair, a fall, a wall top. */
+    public synchronized boolean onField(double x, double y, double z) { return cellNear(x, y, z, 1) >= 0; }
+    /** The distance from a troop to a goal by the fields already held (pinned or cached), never a build: -1 not reachable, NaN none held for that goal or an end off the field. */
+    public synchronized double cachedDistance(double x, double y, double z, double gx, double gy, double gz) {
+        int a = cellNear(x, y, z, 1), b = cellNear(gx, gy, gz, GOAL_RADIUS, false);
+        if (a < 0 || b < 0) return Double.NaN;
+        Field f = pinned.get(nodeOf[b]);
+        if (f == null) f = cache.get(nodeOf[b]);
+        if (f == null) return Double.NaN;
+        return f.dist[nodeOf[a]] == FAR ? -1 : f.dist[nodeOf[a]] / SCALE;
+    }
+    /** Whether a troop at (x, feet y, z) sees (bx, bz) over the floors (the test route() makes of its waypoints). */
+    public synchronized boolean sees(double x, double y, double z, double bx, double bz) {
+        int c = cellNear(x, y, z, 1);
+        return c >= 0 && line(x, z, ys[c], bx, bz);
+    }
 
     public int nodeCount() { return nodes; }
     /** The portal arcs: how many, and how many are narrower than 4 (doors). For the report. */
@@ -441,7 +530,7 @@ public final class NavField {
     public boolean standable(int wx, int wz) { return has(wx, wz); }
     /** The distance a field gives from cell to goal, in blocks, or -1: for the checks. */
     public synchronized double distance(double x, double y, double z, double gx, double gy, double gz) {
-        int a = cellNear(x, y, z, 1), b = cellNear(gx, gy, gz, GOAL_RADIUS);
+        int a = cellNear(x, y, z, 1), b = cellNear(gx, gy, gz, GOAL_RADIUS, false);
         if (a < 0 || b < 0) return -1;
         Field f = pinned.getOrDefault(nodeOf[b], cache.get(nodeOf[b]));
         if (f == null) { f = build(nodeOf[b]); cache.put(nodeOf[b], f); }
