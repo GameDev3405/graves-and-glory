@@ -49,7 +49,7 @@ final class AiMetrics {
     static final int WINDOW=10;static final double WINDOW_BLOCKS=2;static final int GRACE=2;
     static final double SPOT_MOVED=4;static final double SPAWN_RADIUS=40;static final int TRAIL_SECONDS=2;static final long OPENING_TICKS=400; // spawnReversalsOpening: those in the round's first 20 s
     static final class TeamAcc {final long[][] arrows0=new long[3][];final List<Double> apSeconds=new ArrayList<>();double apDist;long apTicks,apCrawl;int reversals,reversalsOpening,yawFlips;}
-    TeamAcc[] teams={new TeamAcc(),new TeamAcc()};final StringBuilder pacingRows=new StringBuilder(),blindRows=new StringBuilder(),stuckRows=new StringBuilder(),stuck10Rows=new StringBuilder();Path pacingCsv,blindCsv,stuckCsv,stuck10Csv;final Map<GravesAndGlory.Squad,Float> lastYaw=new IdentityHashMap<>();Path troopCsv;
+    TeamAcc[] teams={new TeamAcc(),new TeamAcc()};final StringBuilder pacingRows=new StringBuilder(),blindRows=new StringBuilder(),stuckRows=new StringBuilder(),stuck10Rows=new StringBuilder();Path pacingCsv,blindCsv,stuckCsv,stuck10Csv,jumpsCsv;final StringBuilder jumpRows=new StringBuilder();final Map<String,Integer> jumpPlaces=new java.util.TreeMap<>();int jumpCount;final Map<GravesAndGlory.Squad,Float> lastYaw=new IdentityHashMap<>();Path troopCsv;
     static long[] row(long[][] counter,int team){return counter[team].clone();}
 
     final AiState state=new AiState();
@@ -69,12 +69,15 @@ final class AiMetrics {
         blindCsv=dir.resolve("blind.csv");BotSimulation.append(blindCsv,"match,second,team,group,ranged,order,kind,distance,cacheAge,speed\n"); // one row per blind pick: what was picked, and how old its sight cache (Tactics.sees) was
         stuck10Csv=dir.resolve("stuck10.csv");BotSimulation.append(stuck10Csv,"match,second,team,army,group,ranged,order,state,x,z,spotX,spotZ,spotDistance,hasTarget,targetDistance,navIdle,stuckTicks,location,routeClosed\n"); // one row per no-progress stretch, when its first 10 s are spent
         stuckCsv=dir.resolve("stuck.csv");BotSimulation.append(stuckCsv,"match,second,team,army,group,ranged,order,state,x,z,spotX,spotZ,spotDistance,hasTarget,targetDistance,navIdle,stuckTicks,location\n"); // one row per troop counted in stuck30
+        jumpsCsv=dir.resolve("jumps.csv");BotSimulation.append(jumpsCsv,"match,second,team,army,group,slot,stalledSeconds,fromX,fromZ,toX,toZ,location\n"); // one row per jump free of the stall ladder (Tactics.jumpFree)
+        Tactics.jumpListener=this::jumped;
         pacingCsv=dir.resolve("pacing.csv");BotSimulation.append(pacingCsv,"match,second,team,army,group,slot,x0,z0,x1,z1,x2,z2,order,formation,targetX,targetZ,yaw,muster,retreating,entity\n"); // one row per spawnReversals event
     }
     void reset(List<GravesAndGlory.Squad> armies,int match,String mode){
         this.armies=List.copyOf(armies);this.match=match;this.mode=mode;index.clear();acc=new Acc[armies.size()];
         for(int i=0;i<armies.size();i++){index.put(armies.get(i),i);acc[i]=new Acc();}
         mem.clear();state.reset();decisionRows.setLength(0);lastYaw.clear();
+        Arrays.fill(Tactics.stalls,0);Tactics.jumpsWatched=0;Tactics.jumpsNowhere=0;jumpPlaces.clear();jumpCount=0;
         for(int t=0;t<2;t++){teams[t]=new TeamAcc();teams[t].arrows0[0]=row(Projectiles.ARROWS_FIRED,t);teams[t].arrows0[1]=row(Projectiles.ARROWS_HIT,t);teams[t].arrows0[2]=row(Projectiles.ARROWS_LOST,t);}
     }
     /** The approach of a melee troop on Attack or Charge (TROOP_COLUMNS), every tick. */
@@ -196,7 +199,21 @@ final class AiMetrics {
     /** Where a stuck troop stands, from its coordinates (New Kingsfield's layout: the grange gatehouse, the inner wall round it, the base yards). */
     static String location(double x,double z){
         double ax=Math.abs(x),az=Math.abs(z);
+        var e=EngineMaps.current();if(e!=null&&e.id.toLowerCase(Locale.ROOT).contains("rivergate")&&ax>=190&&az<=25)return "quay";
         return ax>=100&&ax<=107&&az<=8?"gatehouse":ax>=100&&ax<=112&&az<30?"inner wall":ax>180?"base yard":"other";
+    }
+
+    /** Tactics.jumpListener: a troop was put on a floor by the stall ladder; where it stood and the place label, one row of jumps.csv. */
+    void jumped(GravesAndGlory.Unit u,Vec3d from){
+        var b=GravesAndGlory.battle;if(b==null||jumpsCsv==null)return;Integer i=index.get(u.squad);if(i==null)return;
+        String place=location(from.x,from.z);jumpPlaces.merge(place,1,Integer::sum);jumpCount++;
+        jumpRows.append(String.format(Locale.ROOT,"%d,%d,%s,%d,%s,%d,%.0f,%.1f,%.1f,%.1f,%.1f,%s%n",match+1,(b.time-b.roundStarted)/20,SEATS[u.squad.team],i,u.spec.group(),u.slot,(b.time-u.stall.since)/20.0,from.x,from.z,u.mob.getX(),u.mob.getZ(),place));
+    }
+    /** One line per match: the stall ladder's rungs, its jumps with their place labels, and the route field's round. */
+    String stallLine(){
+        var st=Tactics.stalls;StringBuilder sb=new StringBuilder("[botsim] stall match "+(match+1)+": jumps="+jumpCount+" "+jumpPlaces+" refusedWatched="+Tactics.jumpsWatched+" noSpot="+Tactics.jumpsNowhere+" rungs");
+        for(int r=1;r<st.length;r++)sb.append(' ').append(Stall.NAMES[r]).append('=').append(st[r]);
+        return sb.toString();
     }
 
     void second(GravesAndGlory.Battle b){
@@ -289,6 +306,8 @@ final class AiMetrics {
                 .append(',').append(ta.reversals).append(',').append(ta.reversalsOpening).append(',').append(ta.yawFlips).append('\n');}
         BotSimulation.append(troopCsv,troops.toString());
         if(stuck10Rows.length()>0){BotSimulation.append(stuck10Csv,stuck10Rows.toString());stuck10Rows.setLength(0);}
+        if(jumpRows.length()>0){BotSimulation.append(jumpsCsv,jumpRows.toString());jumpRows.setLength(0);}
+        System.out.println(stallLine());
         if(stuckRows.length()>0){BotSimulation.append(stuckCsv,stuckRows.toString());stuckRows.setLength(0);}
         if(blindRows.length()>0){BotSimulation.append(blindCsv,blindRows.toString());blindRows.setLength(0);}
         if(pacingRows.length()>0){BotSimulation.append(pacingCsv,pacingRows.toString());pacingRows.setLength(0);}

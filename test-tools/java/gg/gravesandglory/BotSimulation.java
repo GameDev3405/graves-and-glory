@@ -74,6 +74,22 @@ public final class BotSimulation implements ModInitializer {
         String[] f=GOTO.split(":");if(f.length!=3||sq.team!=Integer.parseInt(f[0].trim()))return;
         sq.assignments.clear();sq.order="attack";sq.target=GravesAndGlory.Battle.groundAt(Double.parseDouble(f[1].trim()),Double.parseDouble(f[2].trim()));sq.arrived.clear();
     }
+    /** -PsimSeed=N (test only, off by default): each match is an independent sample. At every round start the battle's rolls and the world's random are reseeded from N and the match number, and every troop is moved by up to
+     *  SEED_JITTER blocks (to a floor of its own column) with its path timer staggered: without it every match opens identically (the bots draw no random numbers) and repeated runs are one sample. */
+    static final String SEED=System.getProperty("gravesandglory.simSeed");static final double SEED_JITTER=1.5;
+    void applySeed(GravesAndGlory.Battle b){
+        if(SEED==null)return;
+        long seed=Long.parseLong(SEED.trim())*1_000_003L+match;var r=new Random(seed);
+        b.rolls.setSeed(r.nextLong());b.world.random.setSeed(r.nextLong());
+        int moved=0;
+        for(var u:b.units){if(!u.mob.isAlive())continue;var m=u.mob;
+            double nx=m.getX()+(r.nextDouble()*2-1)*SEED_JITTER,nz=m.getZ()+(r.nextDouble()*2-1)*SEED_JITTER;
+            u.nextPath=b.time+r.nextInt(20);
+            int bx=(int)Math.floor(nx),bz=(int)Math.floor(nz);int[] f=Arena.floor(b.world,bx,bz,m.getX(),m.getZ());
+            if(f[0]!=bx||f[1]!=bz)continue; // no floor of its own in that column: it stays
+            m.refreshPositionAndAngles(nx,f[2],nz,m.getYaw(),0);u.deployed=m.getPos();u.lastPosition=m.getPos();moved++;}
+        System.out.println("[botsim] simSeed "+SEED.trim()+" match "+(match+1)+": rolls reseeded, "+moved+" troops moved");
+    }
     /** Lobby ticks waited since the arena was ready (or the last round ended); a round starts at LOBBY_TICKS, the shipped ready-pad countdown. */
     int lobbyTicks;static final int LOBBY_TICKS=200;
     static final int SIEGE_TICKS=100;
@@ -195,7 +211,7 @@ public final class BotSimulation implements ModInitializer {
         var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;c.lastWinner=ABORTED;c.battleMode=simMode;
         long t0=System.nanoTime();b.startRound();startRoundNs=System.nanoTime()-t0;if(roundSecondsGiven||simMode.equals(Modes.DOMINATION))b.roundSeconds=roundSeconds; // after startRound, which sets the row's clock
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}
-        t0=System.nanoTime();field(b);fieldNs=System.nanoTime()-t0;spawnGround(b);seen.clear();resetStats();ledger.reset(b.time);metrics.reset(armies,match,simMode);wallStart=System.currentTimeMillis();
+        t0=System.nanoTime();field(b);fieldNs=System.nanoTime()-t0;applySeed(b);spawnGround(b);seen.clear();resetStats();ledger.reset(b.time);metrics.reset(armies,match,simMode);wallStart=System.currentTimeMillis();
         applyPlans(b);
         score300[0]=score300[1]=-1;startedAt=b.roundStarted;tallies[0]=tallies[1]=null;shareLevel2[0]=shareLevel2[1]=-1;
         playing=true;if(probe)probeStart();
