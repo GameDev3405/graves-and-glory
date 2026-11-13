@@ -1466,11 +1466,12 @@ public final class Phase1Checks implements ClientModInitializer {
          *  with the hint layer up (a round's first seconds: the hint slip) and the commander up; C, a battle with neither, the layer
          *  down (the default battle state, the footprint's); D, a battle's first seconds, the layer up (the 1080p GUI 4 frame of the
          *  Task 8a review's Minor 4). Every frame has a feed line (its Important 2). Closed, the chat's lowest line keeps 4 px clear of
-         *  vanilla's 15 px crosshair: below it where there is room (one line at 854x480 GUI 2 in B and D, the hint slip above the chips
-         *  leaving one line between it and the crosshair), else above it. Open, the crosshair does not count (UI polish round 2). At
+         *  vanilla's 15 px crosshair: below it where there is room (two lines at 854x480 GUI 2 in B and D, the hint slip above the chips
+         *  leaving two lines between it and the crosshair), else above it. The numbers are UiMathCheck's wantChat, which the left column
+         *  alone fixes (the gold readout hangs under the score strip, not over the chat). Open, the crosshair does not count (UI polish round 2). At
          *  Standard and Large the chat is held to the same rules, not to numbers. Last, the HUD's scale under Task 8a (the footprint's
          *  baseline) and 1 for the brief's five footprint windows. */
-        static final int[][] WINDOWS={{960,540,1,0,1,1,1,10,20,10,20,10,20,10,20,1,0},{854,480,2,0,1,1,1,2,4,1,7,2,13,1,10,1,1},{1280,720,3,0,1,1,1,6,8,5,15,6,18,5,16,1,1},{1920,1080,2,1,2,3,3,10,20,10,20,10,20,10,20,2,1},{1920,1080,4,1,2,3,3,7,8,3,13,7,18,3,15,2,1},{1280,720,2,0,1,2,2,10,13,9,20,10,20,9,20,2,0},{1366,768,2,0,1,2,2,10,15,10,20,10,20,10,20,2,1}};
+        static final int[][] WINDOWS={{960,540,1,0,1,1,1,10,20,10,20,10,20,10,20,1,0},{854,480,2,0,1,1,1,5,7,2,11,5,15,2,13,1,1},{1280,720,3,0,1,1,1,6,8,6,16,6,18,6,18,1,1},{1920,1080,2,1,2,3,3,10,20,10,20,10,20,10,20,2,1},{1920,1080,4,1,2,3,3,7,10,6,16,7,20,6,18,2,1},{1280,720,2,0,1,2,2,10,15,10,20,10,20,10,20,2,0},{1366,768,2,0,1,2,2,10,16,10,20,10,20,10,20,2,1}};
         /** Each window's screenshot; pass B adds -hints, C -battle and D -battle-hints, and a size above Compact -standard or -large. */
         static final String[] SHOTS={"ui-hud-chat","ui-hud-small","ui-hud-1280","ui-hud-1080-gui2","ui-hud-1080-gui4","ui-hud-720-gui2","ui-hud-1366"},PASS_SHOT={"","-hints","-battle","-battle-hints"},SIZE_SHOT={"","-standard","-large"};
         /** The footprint's baseline (UI Task 8c, run ui-8c-base-211317): in the default battle state the HUD before this task drew two
@@ -1548,7 +1549,7 @@ public final class Phase1Checks implements ClientModInitializer {
             var own=b.squads.get(player);quiet(b,own);float yaw=-90;
             own.order="hold";own.formation="block";own.target=new Vec3d(AX,top(b,AX,AZ),AZ);own.yaw=yaw;
             own.assignments.put("infantry",new GravesAndGlory.Assignment("attack","wedge",new Vec3d(AX,top(b,AX,AZ),AZ),yaw));
-            own.assignments.put("ranged",new GravesAndGlory.Assignment("hold","line",new Vec3d(AX-9,top(b,AX-9,AZ),AZ),yaw));
+            own.assignments.put("ranged",new GravesAndGlory.Assignment("follow","line",new Vec3d(AX-9,top(b,AX-9,AZ),AZ),yaw)); // Follow, not Hold: since f239c816 archers on Hold shoot whatever they see within their bow's reach, and the frozen revenant 16 blocks off would keep their card at Fighting, not Steady
             own.assignments.put("support",new GravesAndGlory.Assignment("follow","block",new Vec3d(AX-16,top(b,AX-16,AZ+9),AZ+9),yaw));
             for(var u:b.units)if(u.squad==own){Vec3d at=b.formation(u);MoraleChecks.place(b,u,at.x,at.z,yaw);freeze(u);}
             kill(b,own,"infantry",KILLED_INFANTRY);kill(b,own,"support",KILLED_SUPPORT);
@@ -1624,8 +1625,10 @@ public final class Phase1Checks implements ClientModInitializer {
                     var inf=group("infantry");var ran=group("ranged");var sup=group("support");
                     boolean shown=GravesAndGloryClient.battleActive()&&!CampaignClient.cinematic()&&inf!=null&&inf.count()==INFANTRY-KILLED_INFANTRY&&ran!=null&&ran.count()==RANGED&&sup!=null&&sup.count()==SUPPORT-KILLED_SUPPORT
                         &&GravesAndGloryClient.ownerAt(0)==0&&GravesAndGloryClient.ownerAt(2)==1&&GravesAndGloryClient.contestedAt(1)&&!GravesAndGloryClient.contestedAt(0)&&!GravesAndGloryClient.contestedAt(2);
-                    if(shown&&seen==0){seen=tick;BattleHud.roundShownMs=net.minecraft.util.Util.getMeasuringTimeMs()-61000;} // past the hint layer of the round's first seconds, 15 at Compact and 60 at Standard and Large (suite ui-feed checks it)
-                    if(seen>0&&tick>=seen+2){sealsOk=BattleHud.seals().equals(SEALS);sealsWhy="owners [0, contested, 1]: "+BattleHud.seals()+(sealsOk?"":" (wanted "+SEALS+")");seen=0;stage=3;}
+                    if(shown&&seen==0){seen=tick;framesAt=BattleHud.frames;BattleHud.roundShownMs=net.minecraft.util.Util.getMeasuringTimeMs()-61000;} // past the hint layer of the round's first seconds, 15 at Compact and 60 at Standard and Large (suite ui-feed checks it)
+                    if(seen>0&&tick>=seen+2&&BattleHud.frames>=framesAt+3){ // frames, not ticks: the seals read are the ones a frame drew after the client held the fixture
+                        sealsOk=BattleHud.seals().equals(SEALS);sealsWhy="owners [0, contested, 1]: "+BattleHud.seals()+(sealsOk?"":" (wanted "+SEALS+")")+" after "+(tick-seen)+" ticks and "+(BattleHud.frames-framesAt)+" HUD frames";seen=0;stage=3;}
+                    else if(seen>0&&tick-seen>200){report("p1-ui-seals",false,"the HUD drew only "+(BattleHud.frames-framesAt)+" frames in 200 ticks after the client held the fixture: "+BattleHud.seals());end(c);}
                     else if(seen==0&&tick-waitFrom>2400){report("p1-ui-hud-fixture",false,"the client never showed the fixture ("+fixture+"): groups "+CommandMode.groups+", owners "+Arrays.toString(GravesAndGloryClient.owners)+", contested "+Arrays.toString(GravesAndGloryClient.contested));end(c);}
                 }
                 case 3->{hungerOn=true;watchHunger=true;waitFrom=tick;stage=4;}
@@ -1684,10 +1687,10 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(!settled)seen=0;else if(seen==0)seen=tick;
                     if(seen>0&&tick>=seen+2){var cs=BattleHud.cards();int[] strip=BattleHud.rects().get("keys");var rows=BattleHud.keyRows().stream().map(k->k.group()+" "+k.parts()).toList();
                         // a brass chip for each group; the old key strip is gone (command UI cleanup)
-                        boolean ok=cs.size()==3&&cs.stream().allMatch(d->d.state().equals("SELECTED"))&&cs.stream().map(BattleHud.CardDraw::tall).toList().equals(List.of(false,false,false))&&cs.stream().map(BattleHud.CardDraw::y).toList().equals(List.of(456,478,500))
+                        boolean ok=cs.size()==3&&cs.stream().allMatch(d->d.state().equals("SELECTED"))&&cs.stream().map(BattleHud.CardDraw::tall).toList().equals(List.of(false,false,false))&&cs.stream().map(BattleHud.CardDraw::y).toList().equals(List.of(460,482,504))
                             &&strip==null&&BattleHud.keyRows().isEmpty();
                         shot(c,"ui-hud-army");
-                        report("p1-ui-army-selected",ok,"with the whole army selected the column drew "+cs+", the key strip at "+box(strip)+" and the key rows "+rows+" (wanted three brass chips at y 456, 478 and 500 with no key strip and no key row: the pennant panel carries the keys)");seen=0;stage=30;}
+                        report("p1-ui-army-selected",ok,"with the whole army selected the column drew "+cs+", the key strip at "+box(strip)+" and the key rows "+rows+" (wanted three brass chips at y 460, 482 and 504, the foot 18 px above the canvas's bottom, with no key strip and no key row: the pennant panel carries the keys)");seen=0;stage=30;}
                     else if(seen==0&&tick-waitFrom>200){report("p1-ui-army-selected",false,"support never stopped routing, or a flash never ended: "+BattleHud.cards());stage=30;}
                 }
                 case 30->{askAt=tick;stage=-30;server(c,b->{b.testAbility=new GravesAndGlory.Battle.AbilityState("rally_horn",960,1800);stage=31;});}
