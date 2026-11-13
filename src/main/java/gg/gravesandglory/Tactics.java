@@ -616,7 +616,7 @@ final class Tactics {
     }
     // ---- the stall ladder (Stall; engine-map pathing plan step 2): walk asks once per beat of every walking troop, a player's squad's and a bot's, and carries out the rung it is given.
     /** Counters of the ladder (the bot sim prints them): rungs carried out by kind (Stall.NAMES), jumps refused because a player watched, and jumps with nowhere to put the troop. */
-    static final int[] stalls=new int[Stall.NAMES.length];static int jumpsWatched,jumpsNowhere;
+    static final int[] stalls=new int[Stall.NAMES.length],nowhereWhy=new int[3];static int jumpsWatched,jumpsNowhere,stallCalls;static long stallNanos,stallMaxNanos; // the clock's own time (stallRung), and the time of the rungs that search (regroupPoint, jumpFree): the ladder's cost, read by the bot sim
     /** A test hook: told of every jump free, the troop and where it was put from (the bot sim logs them with their place). */
     static java.util.function.BiConsumer<GravesAndGlory.Unit,Vec3d> jumpListener;
     /** How long a regroup walk may take before it is dropped, in ticks. */
@@ -626,15 +626,20 @@ final class Tactics {
     static final boolean STALL=System.getenv("GRAVES_NO_STALL")==null;
     static int stallRung(GravesAndGlory.Unit u,Vec3d destination,long time){
         if(!STALL)return Stall.NONE;
+        long t0=System.nanoTime();
         var nav=field();var mob=u.mob;
         double d=nav==null?Double.NaN:nav.cachedDistance(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z);
         int rung=Stall.step(u.stall,time,mob.getX(),mob.getZ(),destination.x,destination.z,d);
         if(rung!=Stall.NONE)stalls[rung]++;
+        stallNanos+=System.nanoTime()-t0;stallCalls++;
         return rung;
     }
     /** The nearest cell of the troop's own banner on a floor of the field that the troop can walk straight to over the floors, its lane's cells first (a cell of another lane costs two blocks a lane): a place to walk to when its slot is round a wall.
      *  Only for a troop on its way to its slot on a banner formation, on a map with a route field; null otherwise. The troop keeps its slot: only this walk is changed. */
     static Vec3d regroupPoint(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination){
+        long t0=System.nanoTime();try{return regroupSearch(battle,u,destination);}finally{long d=System.nanoTime()-t0;stallNanos+=d;stallMaxNanos=Math.max(stallMaxNanos,d);}
+    }
+    private static Vec3d regroupSearch(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination){
         var nav=field();if(nav==null||u.place!=destination||!u.hasCell())return null;
         var a=battle.assignment(u);if(!"banner".equals(a.formation))return null;
         var mob=u.mob;double ang=Math.toRadians(a.yaw);int lane=WarGrid.col(u.slot);Vec3d best=null;double bestScore=Double.MAX_VALUE;
@@ -668,8 +673,14 @@ final class Tactics {
     }
     /** The last rung: the troop is put on its jump spot, unless a player watches it or the spot, or the spot is not free for its body. True when it was moved. */
     static boolean jumpFree(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time){
+        long t0=System.nanoTime();try{return jumpTry(battle,u,destination,time);}finally{long d=System.nanoTime()-t0;stallNanos+=d;stallMaxNanos=Math.max(stallMaxNanos,d);}
+    }
+    private static boolean jumpTry(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time){
         var mob=u.mob;Vec3d to=jumpSpot(battle,u,destination,time);
-        if(to==null||to.squaredDistanceTo(mob.getPos())<4||!battle.world.isSpaceEmpty(mob,mob.getBoundingBox().offset(to.x-mob.getX(),to.y-mob.getY(),to.z-mob.getZ()))){jumpsNowhere++;return false;}
+        if(to==null||to.squaredDistanceTo(mob.getPos())<4||!battle.world.isSpaceEmpty(mob,mob.getBoundingBox().offset(to.x-mob.getX(),to.y-mob.getY(),to.z-mob.getZ()))){
+            jumpsNowhere++;int why=to==null?0:to.squaredDistanceTo(mob.getPos())<4?1:2;nowhereWhy[why]++;
+            if(TRACE_HOPS)System.out.println("[Graves and Glory] no jump spot for slot "+u.slot+" at ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+"): "+new String[]{"no spot","spot too near "+to,"spot not free "+to}[why]);
+            return false;}
         if(watched(battle,mob,to)){jumpsWatched++;return false;}
         Vec3d from=mob.getPos();
         mob.getNavigation().stop();mob.refreshPositionAndAngles(to.x,to.y,to.z,mob.getYaw(),0);mob.setVelocity(Vec3d.ZERO);mob.fallDistance=0;

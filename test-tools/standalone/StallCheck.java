@@ -123,6 +123,7 @@ public final class StallCheck {
             if (rung == Stall.JUMP) {
                 var wp = yard.rescue(f.x, 65, f.z, gx, 65, gz, t);
                 check(wp != null, "the field has a rescue spot");
+                check(Math.hypot(wp.x() - f.x, wp.z() - f.z) >= NavField.RESCUE_MIN, "the jump is a real move, not a step in the wedge: " + Math.hypot(wp.x() - f.x, wp.z() - f.z));
                 double before = yard.cachedDistance(f.x, 65, f.z, gx, 65, gz);
                 f.x = wp.x(); f.z = wp.z();
                 double after = yard.cachedDistance(f.x, wp.y(), f.z, gx, 65, gz);

@@ -77,7 +77,7 @@ final class AiMetrics {
         this.armies=List.copyOf(armies);this.match=match;this.mode=mode;index.clear();acc=new Acc[armies.size()];
         for(int i=0;i<armies.size();i++){index.put(armies.get(i),i);acc[i]=new Acc();}
         mem.clear();state.reset();decisionRows.setLength(0);lastYaw.clear();
-        Arrays.fill(Tactics.stalls,0);Tactics.jumpsWatched=0;Tactics.jumpsNowhere=0;jumpPlaces.clear();jumpCount=0;
+        Arrays.fill(Tactics.stalls,0);Tactics.jumpsWatched=0;Tactics.jumpsNowhere=0;Tactics.stallNanos=0;Tactics.stallCalls=0;Tactics.stallMaxNanos=0;Arrays.fill(Tactics.nowhereWhy,0);jumpPlaces.clear();jumpCount=0;
         for(int t=0;t<2;t++){teams[t]=new TeamAcc();teams[t].arrows0[0]=row(Projectiles.ARROWS_FIRED,t);teams[t].arrows0[1]=row(Projectiles.ARROWS_HIT,t);teams[t].arrows0[2]=row(Projectiles.ARROWS_LOST,t);}
     }
     /** The approach of a melee troop on Attack or Charge (TROOP_COLUMNS), every tick. */
@@ -211,7 +211,7 @@ final class AiMetrics {
     }
     /** One line per match: the stall ladder's rungs, its jumps with their place labels, and the route field's round. */
     String stallLine(){
-        var st=Tactics.stalls;StringBuilder sb=new StringBuilder("[botsim] stall match "+(match+1)+": jumps="+jumpCount+" "+jumpPlaces+" refusedWatched="+Tactics.jumpsWatched+" noSpot="+Tactics.jumpsNowhere+" rungs");
+        var st=Tactics.stalls;StringBuilder sb=new StringBuilder("[botsim] stall match "+(match+1)+": jumps="+jumpCount+" "+jumpPlaces+" refusedWatched="+Tactics.jumpsWatched+" noSpot="+Tactics.jumpsNowhere+java.util.Arrays.toString(Tactics.nowhereWhy)+" cost="+String.format(Locale.ROOT,"%.1fms over %d beats, worst rung %.2fms",Tactics.stallNanos/1e6,Tactics.stallCalls,Tactics.stallMaxNanos/1e6)+" rungs");
         for(int r=1;r<st.length;r++)sb.append(' ').append(Stall.NAMES[r]).append('=').append(st[r]);
         return sb.toString();
     }

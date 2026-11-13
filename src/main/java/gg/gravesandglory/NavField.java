@@ -499,7 +499,9 @@ public final class NavField {
     }
 
     /** How far a rescue looks for a floor, in blocks, and how many hops of the route (4 blocks each) a troop on the route is put on. */
-    static final int RESCUE_RADIUS = 24, RESCUE_HOPS = 2;
+    static final int RESCUE_RADIUS = 24, RESCUE_HOPS = 2, RESCUE_MAX_HOPS = 6;
+    /** A rescue on the route moves the troop at least this many blocks (up to RESCUE_MAX_HOPS hops), so that it is not put back in the wedge it is stuck in. */
+    static final double RESCUE_MIN = 6;
 
     /** Where a troop that has been stuck for good is put (the stall ladder's last rung): a standing point on a floor of the field, as a waypoint (feet y), or null when there is none to give (the goal has no floor, no route to it from anywhere near).
      *  A troop on a floor with a way to the goal goes RESCUE_HOPS hops along that way (past whatever the field does not know holds it); a troop off the field (water, a roof, a wall top) or on a piece of floor cut off from the goal
@@ -511,11 +513,15 @@ public final class NavField {
         int from = cellNear(x, y, z, 1);
         if (from >= 0 && f.dist[nodeOf[from]] != FAR) {
             int n = nodeOf[from], cell = -1;
-            for (int hop = 0; hop < RESCUE_HOPS; hop++) {
+            for (int hop = 0; hop < RESCUE_MAX_HOPS; hop++) {
                 int a = f.arc[n];
                 if (a < 0) break;
                 cell = arcCell[a];
                 n = arcTo[a];
+                if (hop + 1 >= RESCUE_HOPS) {
+                    int col = colOf[cell];
+                    if (Math.hypot(col % w + ox + .5 - x, col / w + oz + .5 - z) >= RESCUE_MIN) break; // far enough to be a real move, not a step into the same wedge
+                }
             }
             if (cell < 0) cell = to; // already in the goal's node: the goal's own floor
             int col = colOf[cell];

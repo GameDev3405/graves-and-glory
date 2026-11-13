@@ -39,7 +39,7 @@ final class Stall {
     }
 
     private static void start(State s, long time, double x, double z, double gx, double gz, double dist, boolean field) {
-        s.live = true; s.field = field; s.best = dist; s.ax = x; s.az = z; s.gx = gx; s.gz = gz; s.since = time; s.rung = 0; s.nextJump = 0;
+        s.live = true; s.field = field; s.best = field ? dist : Double.NaN; s.ax = x; s.az = z; s.gx = gx; s.gz = gz; s.since = time; s.rung = 0; s.nextJump = 0;
     }
 
     /**
@@ -49,7 +49,9 @@ final class Stall {
     static int step(State s, long time, double x, double z, double gx, double gz, double dist) {
         boolean field = !Double.isNaN(dist) && dist >= 0;
         if (Math.hypot(gx - x, gz - z) < ARRIVED) { s.live = false; return NONE; }
-        if (!s.live || time - s.seen > GAP || field != s.field || Math.hypot(gx - s.gx, gz - s.gz) > MOVED) start(s, time, x, z, gx, gz, dist, field);
+        if (!s.live || time - s.seen > GAP || Math.hypot(gx - s.gx, gz - s.gz) > MOVED) start(s, time, x, z, gx, gz, dist, field);
+        else if (field && Double.isNaN(s.best)) s.best = dist; // the field knows the way now (the goal was in plain sight before): the clock runs on, it does not start over
+        s.field = field;
         s.seen = time;
         boolean progress = field ? dist < s.best - GAIN : Math.hypot(x - s.ax, z - s.az) > PATCH;
         if (progress) start(s, time, x, z, gx, gz, dist, field);
