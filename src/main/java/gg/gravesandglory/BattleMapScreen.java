@@ -739,7 +739,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
                 case 2 -> allyIcon(g, cx, my, SHIELD, col);
                 case 3 -> glyph(g, TRI, cx - 3, my - 4, DarkUi.MAP_ENEMY, INK);
                 case 4 -> glyph(g, SWORDS, cx - 3, my - 3, DarkUi.WARN, INK);
-                default -> pennant(g, cx - 8, my + 10, 0, col); // the cloth beside the word, the pole into the panel's foot
+                default -> pennant(g, cx - 8, my + 8, 0, col); // the cloth beside the word, the pole into the panel's foot
             }
             g.drawText(textRenderer, KEY_WORDS[i], tx, my - 3, DarkUi.IVORY, false);
             if (i == 1) oursMark(g, tx + textRenderer.getWidth(KEY_WORDS[i]) + 3, my - 3);
