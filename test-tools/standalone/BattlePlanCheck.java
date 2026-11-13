@@ -13,6 +13,12 @@ public final class BattlePlanCheck {
     static Army botOn(String id, double x, int current) { return new Army(id, 0, x, 0, true, false, current); }
 
     public static void main(String[] args) {
+        { // dropFollowsBy: a leaver's Follow orders go, his other orders stay
+            var p = new BattlePlan();
+            p.setOrder(0, "a", Job.FOLLOW, -1, 0, 0, "p1", 1); p.setOrder(0, "b", Job.HOLD, -1, 5, 5, "p1", 2); p.setOrder(0, "c", Job.FOLLOW, -1, 0, 0, "p2", 3);
+            p.dropFollowsBy("p1");
+            check(p.orders(0).size() == 2 && p.orders(0).stream().noneMatch(o -> o.army().equals("a")), "p1's follow gone, p1's hold and p2's follow stay");
+        }
         { // assignNearestPerPlan
             var p = new BattlePlan();
             p.setPoint(0, 2, Job.ATTACK, "p1", 5); p.setPoint(0, 0, Job.DEFEND, "p1", 3);

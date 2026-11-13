@@ -637,7 +637,9 @@ public final class GravesAndGlory implements ModInitializer {
         BattleMapGrid mapGrid;String mapGridKey;byte[] mapGridBytes;final Map<UUID,String> mapGridSent=new HashMap<>();
         /** Bot ack lines (BattleMapNet.noted): the assignment last applied and last spoken per bot army, the line waiting, when each bot last spoke, and each player's last plan packet. */
         final Map<UUID,BattlePlan.Assignment> lastAck=new HashMap<>(),saidAck=new HashMap<>();final Map<UUID,BattleMapNet.Ack> pendingAck=new HashMap<>();final Map<UUID,Long> lastSaid=new HashMap<>(),lastPlan=new HashMap<>();
-        void clearPlans(){plan.clear();lastAck.clear();saidAck.clear();pendingAck.clear();lastSaid.clear();lastPlan.clear();}
+        /** A player's plan packet held back by the cooldown (one slot, the latest wins). */
+        final Map<UUID,BattleMapNet.Pending> pendingPlan=new HashMap<>();
+        void clearPlans(){plan.clear();lastAck.clear();saidAck.clear();pendingAck.clear();lastSaid.clear();lastPlan.clear();pendingPlan.clear();}
         /** The pieces this round's mode saved before changing them (Phase 4 Task 5); teardown and the crash marker put them back. */
         public final List<Structures.Saved> saves=new ArrayList<>();
         public final List<Projectiles.Shot> shots=new ArrayList<>();
@@ -947,10 +949,11 @@ public final class GravesAndGlory implements ModInitializer {
         }
         void leave(UUID owner){
             campaign.left(owner);
+            mapGridSent.remove(owner);pendingPlan.remove(owner);lastPlan.remove(owner);plan.dropFollowsBy(owner.toString()); // a returning player gets the grid again; nobody is left to follow
             Squad s=squads.get(owner);welcomed.remove(owner);respawns.remove(owner);if(s!=null)Commander.stop(this,s);
             // Mid-battle, the army waits on its last orders for disconnectGraceSeconds, then a bot commands it until its owner rejoins (Kort 2026-11-01).
             if(s!=null&&running&&s.seated&&!s.bot){campaign.dropped(s);UUID stand=UUID.randomUUID();s.owner=stand;s.bot=true;s.tier=campaign.botTier();s.takeoverAt=MatchRules.takeoverAt(time,Spec.CAMPAIGN[0].disconnectGraceSeconds());rekey(owner,stand);campaign.vacated.put(owner,stand);campaign.vacatedUntil.put(owner,MatchRules.releaseAt(time));return;}
-            squads.remove(owner);mapGridSent.remove(owner);
+            squads.remove(owner);
             units.removeIf(u->{if(u.squad==s){leaveSide(u.mob);u.mob.discard();return true;}return false;});
         }
         static Vec3d base(int t){var f=Spec.FACTIONS[t];return new Vec3d(f.spawnX(),Arena.height(f.spawnX(),f.spawnZ())+1,f.spawnZ());}

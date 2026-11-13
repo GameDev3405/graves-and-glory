@@ -1099,8 +1099,8 @@ public final class Campaign {
                 }else if(enemies>0&&BattleMath.timedCharge(0,living,enemies,tier.chargeRatio(),0))s.order="charge";
             }
         }
-        if(!retreating)BattleMapNet.noted(b,s,goal==null?plan:null); // the bot says what it was asked, once
         Vec3d objective=retreating?null:b.mode.botTarget(b,s); // a mode's own objective (Siege's stage) replaces the point plan
+        if(!retreating)BattleMapNet.noted(b,s,goal==null&&objective==null?plan:null); // the bot says what it was asked, once (nothing when the mode's own aim overrides it)
         if(objective!=null){s.target=objective;if(b.mode.howToSide(b,s).equals("defend"))s.order="hold";else if(!s.order.equals("charge"))s.order="attack";}
         if(s.order.equals("charge")&&couldCharge&&!OrderRules.useCharge(b,s))s.order="attack"; // a new Charge needs the commander's cooldown (OrderRules.chargeReady, markChargeUsed); not ready, the army attacks its objective. A bot never hunts: only a player's Attack does (Assignment.hunt).
         // Guard (audit D2): on the points plan, the army nearest a threatened point its team owns leaves one group there; an army of one group holds it whole.
@@ -1124,7 +1124,7 @@ public final class Campaign {
     /** How far past a planned point's radius a sighting makes a Defend plan attack instead of hold (spec 5.1). */
     static final double PLAN_DEFEND_REACH=16;
     /** A place a plan names: its block column's ground, a block over. */
-    Vec3d place(double x,double z){return new Vec3d(x,b.world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES,(int)Math.floor(x),(int)Math.floor(z))+1,z);}
+    Vec3d place(double x,double z){return GravesAndGlory.Battle.groundAt(x,z);}
     /** The spot an order to a capture point sends a group to: its centre, a block over the ground. */
     static Vec3d spot(GravesAndGlory.Capture p){return new Vec3d(p.spec.x(),p.spec.elevation()+1,p.spec.z());}
     /** Whether an order's target is this point (within 2 blocks of its centre). */

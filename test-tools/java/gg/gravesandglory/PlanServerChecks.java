@@ -16,7 +16,7 @@ import java.util.UUID;
 public final class PlanServerChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
     record Seen(long time, Vec3d target, boolean retreating, String order) {}
     volatile int stage;volatile UUID player;long stageAt;
-    /** The client's next packet: 1 Attack on point 1, 2 direct Hold at holdX,holdZ on the first bot. */
+    /** The client's next packet: 1 Attack on point 1, 2 direct Hold at holdX,holdZ on the first bot, 3 two point plans at once, 4 a Follow with a stray place, 5 a Hold at a NaN place. */
     volatile int send;volatile double holdX,holdZ;
     final Map<UUID,List<Seen>> decisions=new HashMap<>();
     List<GravesAndGlory.Squad> bots=new ArrayList<>();
@@ -37,6 +37,10 @@ public final class PlanServerChecks implements Phase4Checks.Suite, Phase4Checks.
         if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();Phase4Checks.server(c,b->{player=id;next(b,1);});}
         int cmd=send;
         if(cmd==1){send=0;BattleMapClient.sendPlan(0,1,"",BattlePlan.Job.ATTACK.ordinal(),0,0);}
+        else if(cmd==3){send=0; // two packets in one go: the cooldown holds the second back, and it must still land
+            BattleMapClient.sendPlan(0,0,"",BattlePlan.Job.DEFEND.ordinal(),0,0);BattleMapClient.sendPlan(0,2,"",BattlePlan.Job.HOLD.ordinal(),0,0);}
+        else if(cmd==4){send=0;BattleMapClient.sendPlan(1,-1,bots.get(1%bots.size()).owner.toString(),BattlePlan.Job.FOLLOW.ordinal(),5,7);}
+        else if(cmd==5){send=0;BattleMapClient.sendPlan(1,-1,bots.get(0).owner.toString(),BattlePlan.Job.HOLD.ordinal(),Double.NaN,3);}
         else if(cmd==2){send=0;var id=bots.get(0).owner.toString();BattleMapClient.sendPlan(1,-1,id,BattlePlan.Job.HOLD.ordinal(),holdX,holdZ);}
         if(listening)for(var l:EventFeed.lines(net.minecraft.util.Util.getMeasuringTimeMs()))if(!heard.contains(l.bornMs()+"|"+l.text()))heard.add(l.bornMs()+"|"+l.text());
         if(stage==3&&BattleMapClient.state!=null&&!stateOk){
@@ -109,6 +113,33 @@ public final class PlanServerChecks implements Phase4Checks.Suite, Phase4Checks.
                 var first=ds.get(0);
                 double d=Math.hypot(first.target().x-holdX,first.target().z-holdZ);
                 Phase4Checks.report("p4-plan-server-hold",first.retreating()||d<=1.5&&first.order().equals("hold"),"first decision after the direct HOLD: order "+first.order()+", target "+d+" blocks from the place");
+                next(b,6);
+            }
+            case 6->{ // two quick packets: the second waits out the cooldown and lands (one slot, latest wins)
+                if(since(b)<20)break;
+                send=3;next(b,7);
+            }
+            case 7->{
+                boolean d0=b.plan.points(0).stream().anyMatch(q->q.point()==0&&q.job()==BattlePlan.Job.DEFEND),h2=b.plan.points(0).stream().anyMatch(q->q.point()==2&&q.job()==BattlePlan.Job.HOLD);
+                if(!(d0&&h2)){if(since(b)>60){Phase4Checks.report("p4-plan-server-cooldown",false,"two quick packets: first landed "+d0+", second landed "+h2);next(b,99);}break;}
+                Phase4Checks.report("p4-plan-server-cooldown",true,"both quick packets landed");
+                send=4;next(b,8);
+            }
+            case 8->{ // a Follow keeps no place: stored at point -1, x 0, z 0
+                if(since(b)<20)break;
+                var f=bots.get(1%bots.size());
+                var o=b.plan.orders(0).stream().filter(q->q.army().equals(f.owner.toString())&&q.job()==BattlePlan.Job.FOLLOW).findFirst();
+                if(o.isEmpty()){if(since(b)>80){Phase4Checks.report("p4-plan-server-follow",false,"the follow order never landed");next(b,99);}break;}
+                var q=o.get();
+                Phase4Checks.report("p4-plan-server-follow",q.point()==-1&&q.x()==0&&q.z()==0,"follow stored as point "+q.point()+" at "+q.x()+","+q.z());
+                send=5;next(b,9);
+            }
+            case 9->{ // a non-finite place is refused: bot 0 still holds the earlier place, not a NaN one
+                if(since(b)<30)break;
+                var s0=bots.get(0);
+                var o=b.plan.orders(0).stream().filter(q->q.army().equals(s0.owner.toString())).findFirst();
+                boolean fine=o.isEmpty()||Double.isFinite(o.get().x())&&Double.isFinite(o.get().z());
+                Phase4Checks.report("p4-plan-server-finite",fine,"bot 0 order after a NaN place: "+o.map(q->q.job()+" at "+q.x()+","+q.z()).orElse("none"));
                 next(b,99);
             }
             default->{}

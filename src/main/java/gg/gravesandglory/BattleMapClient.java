@@ -27,6 +27,9 @@ public final class BattleMapClient {
     public static volatile State state;
 
     public static void register() {
+        // stale grid or state from another server (or battle) never shows
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> clear());
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> clear());
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.MAP_GRID, (client, handler, buf, responder) -> {
             int n = buf.readInt();
             if (n < 0 || n > buf.readableBytes()) return;

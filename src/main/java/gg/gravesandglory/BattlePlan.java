@@ -49,6 +49,9 @@ public final class BattlePlan {
     /** An army left or a player took its seat: its direct order goes, the point plans stay. */
     public void dropArmy(String army) { for (var m : orders.values()) m.remove(army); }
 
+    /** A player left the battle: the Follow orders he set (nobody is left to follow) go; his other orders and plans stay. */
+    public void dropFollowsBy(String setter) { for (var m : orders.values()) m.values().removeIf(o -> o.job() == Job.FOLLOW && o.setter().equals(setter)); }
+
     public void clear() { plans.clear(); orders.clear(); }
 
     /** An Attack plan on a point the team now owns and nobody contests has done its job, so it becomes Defend (same setter and tick). */

@@ -67,19 +67,34 @@ final class BattleMapNet {
         return -1;
     }
 
-    /** Every seated squad with living troops as the pure plan sees it: where its troops stand, whether it is a bot, whether it is falling back. */
+    /** Whether the round's mode gives this bot army its own objective or goal (Siege's stage, Convoy's wagon, Survival's shrine), which replaces any plan. */
+    static boolean modeOwns(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+        if (b.mode.botTarget(b, s) != null) return true;
+        var mine = b.units.stream().filter(u -> u.squad == s && u.mob.isAlive()).toList();
+        if (mine.isEmpty()) return false;
+        return b.mode.botGoal(b, s, Morale.centre(mine), b.campaign.tier(s)) != null;
+    }
+
+    /** Every seated squad with living troops as the pure plan sees it: where its troops stand (a bot whose troops are all mustering counts at the
+     *  centre of those troops, so its plan does not flicker off), whether it is a bot, whether it is falling back. A bot the mode commands itself is
+     *  passed as falling back: the plan table gives such an army nothing and it takes no bot's place in a point split. */
     static List<BattlePlan.Army> armies(GravesAndGlory.Battle b) {
-        Map<GravesAndGlory.Squad, double[]> sums = new IdentityHashMap<>();
+        Map<GravesAndGlory.Squad, double[]> sums = new IdentityHashMap<>(), all = new IdentityHashMap<>();
         for (var u : b.units) {
-            if (!u.mob.isAlive() || u.musterSince >= 0) continue;
+            if (!u.mob.isAlive()) continue;
+            double[] t = all.computeIfAbsent(u.squad, k -> new double[3]);
+            t[0] += u.mob.getX(); t[1] += u.mob.getZ(); t[2]++;
+            if (u.musterSince >= 0) continue;
             double[] a = sums.computeIfAbsent(u.squad, k -> new double[3]);
             a[0] += u.mob.getX(); a[1] += u.mob.getZ(); a[2]++;
         }
         List<BattlePlan.Army> out = new ArrayList<>();
         for (var s : b.squads.values()) {
             double[] a = sums.get(s);
+            if (a == null) a = all.get(s);
             if (a == null || !s.seated) continue;
-            out.add(new BattlePlan.Army(s.owner.toString(), s.team, a[0] / a[2], a[1] / a[2], s.bot, b.campaign.botRetreating.contains(s.owner), pointOf(b, s.target)));
+            boolean off = b.campaign.botRetreating.contains(s.owner) || s.bot && modeOwns(b, s);
+            out.add(new BattlePlan.Army(s.owner.toString(), s.team, a[0] / a[2], a[1] / a[2], s.bot, off, pointOf(b, s.target)));
         }
         return out;
     }
@@ -94,7 +109,12 @@ final class BattleMapNet {
     static BattlePlan.Assignment jobFor(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
         if (b.plan.points(s.team).isEmpty() && b.plan.orders(s.team).isEmpty()) return null;
         var xz = pointXZ(b);
-        return b.plan.jobFor(s.owner.toString(), s.team, armies(b), xz[0], xz[1]);
+        return usable(b, s, b.plan.jobFor(s.owner.toString(), s.team, armies(b), xz[0], xz[1]));
+    }
+
+    /** A Follow job needs the player still to be there; otherwise the army has no job from the plan. */
+    private static BattlePlan.Assignment usable(GravesAndGlory.Battle b, GravesAndGlory.Squad s, BattlePlan.Assignment a) {
+        return a != null && a.job() == BattlePlan.Job.FOLLOW && followed(b, s) == null ? null : a;
     }
 
     /** The player an army was told to follow, or null (not following, or he is gone). */
@@ -106,9 +126,14 @@ final class BattleMapNet {
         return null;
     }
 
-    static String botName(GravesAndGlory.Squad s) { return s.tier + " bot"; }
+    /** "normal bot 2": its tier and its seat's place among its team's seats (the seat list keeps join order and a takeover keeps the place, so it holds for the round). */
+    static String botName(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+        int n = 0;
+        for (var q : b.squads.values()) { if (q.team == s.team) n++; if (q == s) break; }
+        return s.tier + " bot " + n;
+    }
 
-    static String nameOf(GravesAndGlory.Battle b, GravesAndGlory.Squad s) { return s.bot ? botName(s) : b.campaign.name(s.owner); }
+    static String nameOf(GravesAndGlory.Battle b, GravesAndGlory.Squad s) { return s.bot ? botName(b, s) : b.campaign.name(s.owner); }
 
     static String[] pointIds(GravesAndGlory.Battle b) {
         String[] ids = new String[b.points.size()];
@@ -146,7 +171,7 @@ final class BattleMapNet {
             if (s == null || !s.bot || !s.seated) continue;
             b.lastSaid.put(s.owner, b.time);
             b.saidAck.put(s.owner, ack.job());
-            String text = botName(s) + ": " + BattlePlan.ackLine(ack.job(), pointIds(b));
+            String text = botName(b, s) + ": " + BattlePlan.ackLine(ack.job(), pointIds(b));
             for (var p : b.server.getPlayerManager().getPlayerList()) {
                 var ps = b.squads.get(p.getUuid());
                 if (ps != null && ps.seated && ps.team == s.team) FeedEvents.send(p, "chat", s.team, text);
@@ -160,6 +185,7 @@ final class BattleMapNet {
     static void tick(GravesAndGlory.Battle b) {
         if (!b.running) return;
         sayDue(b);
+        runPending(b);
         if (b.time % STATE_TICKS != 0) return;
         if (!b.points.isEmpty() && b.mode.capturesPoints(b)) {
             int[] owners = new int[b.points.size()]; boolean[] contested = new boolean[owners.length];
@@ -217,7 +243,7 @@ final class BattleMapNet {
                 buf.writeFloat((float) a.target.z);
                 buf.writeBoolean(members.stream().anyMatch(u -> u.mob.getTarget() != null));
             }
-            var as = s.bot ? jobs.get(id) : null;
+            var as = s.bot ? usable(b, s, jobs.get(id)) : null;
             buf.writeByte(as == null ? -1 : as.job().ordinal());
             buf.writeInt(as == null ? -1 : as.point());
             buf.writeFloat((float) (as == null ? 0 : as.x()));
@@ -242,15 +268,42 @@ final class BattleMapNet {
 
     // ---------------------------------------------------------------- the plan packet
 
-    /** Called on the server thread with what battleplan_v1 said. A refusal is one feed line to the player alone. */
+    static final String MODE_PLAN = "Bots follow the mode's own plan here.";
+
+    /** One plan packet held back by the cooldown. */
+    record Pending(int kind, int point, String army, int job, double x, double z) {}
+
+    /** Called on the server thread with what battleplan_v1 said. A packet inside the cooldown waits in the player's one slot (the latest wins)
+     *  and is applied when the cooldown ends. A refusal is one feed line to the player alone. */
     static void apply(GravesAndGlory.Battle b, ServerPlayerEntity p, int kind, int point, String army, int job, double x, double z) {
         var me = b.squads.get(p.getUuid());
         if (me == null || !me.seated || !b.running) return;
-        if (b.time - b.lastPlan.getOrDefault(p.getUuid(), -100L) < PLAN_COOLDOWN_TICKS) return;
+        if (b.time - b.lastPlan.getOrDefault(p.getUuid(), -100L) < PLAN_COOLDOWN_TICKS) { b.pendingPlan.put(p.getUuid(), new Pending(kind, point, army, job, x, z)); return; }
+        b.pendingPlan.remove(p.getUuid());
+        run(b, p, me, kind, point, army, job, x, z);
+    }
+
+    /** Applies each waiting packet whose player's cooldown has ended. */
+    private static void runPending(GravesAndGlory.Battle b) {
+        if (b.pendingPlan.isEmpty()) return;
+        for (var it = b.pendingPlan.entrySet().iterator(); it.hasNext(); ) {
+            var e = it.next();
+            if (b.time - b.lastPlan.getOrDefault(e.getKey(), -100L) < PLAN_COOLDOWN_TICKS) continue;
+            it.remove();
+            var p = b.server.getPlayerManager().getPlayer(e.getKey());
+            var me = b.squads.get(e.getKey());
+            if (p == null || me == null || !me.seated) continue;
+            var q = e.getValue();
+            run(b, p, me, q.kind(), q.point(), q.army(), q.job(), q.x(), q.z());
+        }
+    }
+
+    private static void run(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad me, int kind, int point, String army, int job, double x, double z) {
         b.lastPlan.put(p.getUuid(), b.time);
         String why = check(b, me, kind, point, army, job, x, z);
         if (why != null) { FeedEvents.send(p, "notice", me.team, why); return; }
         BattlePlan.Job j = job < 0 ? null : BattlePlan.Job.values()[job];
+        if (j == BattlePlan.Job.FOLLOW) { point = -1; x = 0; z = 0; } // a follow has no place of its own
         String setter = p.getUuid().toString();
         if (kind == 0) b.plan.setPoint(me.team, point, j, setter, b.time);
         else b.plan.setOrder(me.team, army, j, point, x, z, setter, b.time);
@@ -259,9 +312,10 @@ final class BattleMapNet {
     /** The reason a request is refused, or null when it is fine. */
     private static String check(GravesAndGlory.Battle b, GravesAndGlory.Squad me, int kind, int point, String army, int job, double x, double z) {
         if (job < -1 || job >= BattlePlan.Job.values().length) return "That order is not known.";
+        if (!Double.isFinite(x) || !Double.isFinite(z)) return "That place is outside the field.";
         var j = job < 0 ? null : BattlePlan.Job.values()[job];
         if (kind == 0) {
-            if (!b.mode.capturesPoints(b)) return "This battle has no points to plan.";
+            if (!b.mode.capturesPoints(b)) return MODE_PLAN;
             if (point < 0 || point >= b.points.size()) return "There is no such point.";
             if (j == BattlePlan.Job.FOLLOW) return "Only one army can be told to follow you.";
             return null;
@@ -271,6 +325,7 @@ final class BattleMapNet {
         try { id = UUID.fromString(army); } catch (IllegalArgumentException e) { return "No such army."; }
         var target = b.squads.get(id);
         if (target == null || !target.bot || !target.seated || target.team != me.team) return "You can only order your allied bots.";
+        if (modeOwns(b, target)) return MODE_PLAN; // Siege, Convoy and Survival aim their bots themselves, so an order could not move them
         if (j == null || j == BattlePlan.Job.FOLLOW) return null;
         if (point >= 0) return point < b.points.size() && b.mode.capturesPoints(b) ? null : "There is no such point.";
         if (!Double.isFinite(x) || !Double.isFinite(z) || !GravesAndGlory.Battle.inArena(x, z)) return "That place is outside the field.";

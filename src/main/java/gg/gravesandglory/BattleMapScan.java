@@ -1,6 +1,9 @@
 package gg.gravesandglory;
 
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.CarpetBlock;
+import net.minecraft.block.PlantBlock;
 import net.minecraft.block.FluidBlock;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
@@ -25,6 +28,14 @@ final class BattleMapScan {
     /** A block that fills most of its cell from above. Thin shapes (a torch, a flower, a fence post) do not count. */
     private static final double FULL = 0.9;
 
+    /** A plant or crop with no collision (wheat, carrots, grass, flowers, saplings) or a carpet: skipped like air so what grows or lies on the ground does not hide it.
+     *  Seagrass and the like stand in water and stay (the water is the top); a snow layer is kept as a top. */
+    private static boolean isGroundCover(BlockState s, ServerWorld w, BlockPos pos) {
+        if (s.isOf(Blocks.SNOW) || !s.getFluidState().isEmpty()) return false;
+        if (s.getBlock() instanceof CarpetBlock) return true;
+        return s.getBlock() instanceof PlantBlock && s.getCollisionShape(w, pos).isEmpty();
+    }
+
     /** @param build the build key the caller caches on (EngineMap.sha, or "old-" + map + "-" + Spec hash); stored on the grid unread */
     static BattleMapGrid scan(ServerWorld w, String map, String build, int halfX, int halfZ) {
         long t0 = System.nanoTime();
@@ -45,6 +56,7 @@ final class BattleMapScan {
                     if (s.isAir()) continue;
                     String id = null;
                     int h = y + 1;
+                    if (isGroundCover(s, w, pos)) continue; // wheat, grass, flowers and carpets: the farmland or ground under them is the top
                     if (s.getBlock() instanceof FluidBlock) id = "minecraft:water";
                     else {
                         var shape = s.getOutlineShape(w, pos);
