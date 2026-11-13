@@ -189,8 +189,8 @@ public final class StallCheck {
         if (!Files.exists(src)) src = Path.of(System.getProperty("user.dir")).resolve(src);
         String t = Files.readString(src);
         int walk = t.indexOf("static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed,boolean climb)");
-        int at = t.indexOf("int rung=stallRung(u,destination,time);", walk);
-        int end = t.indexOf("boolean pinned=pinned(u,time);", at);
+        int at = t.indexOf("int rung=stallRung(u,destination,time,queued);", walk);
+        int end = t.indexOf("boolean pinned=pinned(u,time)", at);
         check(walk > 0 && at > walk && end > at, "the ladder is inside Tactics.walk");
         String block = t.substring(at, end);
         check(!block.contains(".bot") && !block.contains("owner") && !block.contains("PlayerEntity"), "the ladder block makes no bot or player test: it covers every squad");

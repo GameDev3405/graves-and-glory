@@ -480,7 +480,7 @@ final class Tactics {
     }
     /** The way to a goal: across the river by the nearest bridge, unless the troop fords it (Riptide tier II and III), which goes straight at the goal. */
     static Vec3d route(GravesAndGlory.Unit u,Vec3d goal){
-        fieldPoint=null;
+        fieldPoint=null;fieldDoor=null;
         if(Houses.fords(u))return goal;
         Vec3d way=fieldWay(u,goal);if(way!=null){fieldPoint=way;return way;}
         Vec3d here=u.mob.getPos();
@@ -505,6 +505,8 @@ final class Tactics {
     /** The route field of the engine map in play (NavField, nav.bin.gz), or null: an old map, or an engine build without one. */
     /** The waypoint the last route() call took from the route field (an identity: walk asks whether the goal it was handed is that very point), null when it took none. */
     static Vec3d fieldPoint;
+    /** The portal (a door narrower than NavField.PORTAL) the last route() call's waypoint is, as the field gives it (before the troop's lane moves it sideways), and its free width in blocks; null when the waypoint is not a portal. File-through reads it. */
+    static Vec3d fieldDoor;static int fieldDoorWidth;
     static NavField field(){var e=EngineMaps.current();return e==null?null:e.nav;}
     /** Where a troop on foot goes next toward a goal it cannot see across the floors: the farthest cell of the field's way it can see, a real floor with its height (Arena.floor and the world's top block play no part), a portal cell at a door narrower than NavField.PORTAL.
      *  Null: no field (old maps, and the goal itself is wanted), the goal is in plain sight over the floors, or no route is known. A table lookup and a few line tests, no search of the map; a field is built at most NavField.BUILDS_PER_TICK times a tick. */
@@ -514,6 +516,7 @@ final class Tactics {
         var wp=nav.route(mob.getX(),mob.getY(),mob.getZ(),goal.x,goal.y,goal.z,b==null?0:b.time);
         if(wp==null)return null;
         double lane=(u.hasCell()?WarGrid.col(u.slot)-(WarGrid.cols()-1)/2:u.slot%5-2)*(b==null?GravesAndGlory.Battle.spacing(u):b.cell(u)); // its lane through a door, as at a bridge: a wall troop's cell on Hold, else its body's room
+        if(wp.portal()){fieldDoor=new Vec3d(wp.x(),wp.y(),wp.z());fieldDoorWidth=wp.width();}
         wp=nav.lane(wp,mob.getX(),mob.getZ(),lane);
         return new Vec3d(wp.x(),wp.y(),wp.z());
     }
@@ -624,17 +627,32 @@ final class Tactics {
     /** The stall clock's beat for this troop: its distance to the destination by the route field already held (never a build), and the rung to carry out (Stall.NONE for most beats). */
     /** GRAVES_NO_STALL=1 leaves the ladder out (the control of the tick-cost runs). */
     static final boolean STALL=System.getenv("GRAVES_NO_STALL")==null;
-    static int stallRung(GravesAndGlory.Unit u,Vec3d destination,long time){
+    static int stallRung(GravesAndGlory.Unit u,Vec3d destination,long time,boolean queued){
         if(!STALL)return Stall.NONE;
         long t0=System.nanoTime();
         var nav=field();var mob=u.mob;
         double d=nav==null?Double.NaN:nav.cachedDistance(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z);
         boolean off=nav!=null&&Double.isNaN(d)&&(!nav.onField(mob.getX(),mob.getY(),mob.getZ())||mob.isTouchingWater()); // off the field (in water, on a wall top): the clock runs fast and wide (Stall.OFF_SPEED)
-        int rung=Stall.step(u.stall,time,mob.getX(),mob.getZ(),destination.x,destination.z,destination.y-mob.getY(),d,off);
+        int rung=Stall.step(u.stall,time,mob.getX(),mob.getZ(),destination.x,destination.z,destination.y-mob.getY(),d,off,queued);
         if(TRACE_HOPS&&u.stall.lostAge>=200&&u.stall.since==time){System.out.println("[Graves and Glory] stall clock of slot "+u.slot+" restarted after "+u.stall.lostAge+" ticks ("+u.stall.why+") at ("+String.format("%.1f,%.1f",mob.getX(),mob.getZ())+") toward ("+String.format("%.1f,%.1f",destination.x,destination.z)+")");u.stall.lostAge=0;}
         if(rung!=Stall.NONE&&rung!=Stall.JUMP)stalls[rung]++; // a jump is counted when it is made (jumpTry)
         stallNanos+=System.nanoTime()-t0;stallCalls++;
         return rung;
+    }
+    /** Counters of the queue test: beats a troop's clock was held because a friend ahead was moving, and tests made. */
+    static int queueHolds,queueTests;
+    /** The queue test (plan step 3): the troop has been getting nowhere for a moment (its clock has run 1.5 s, or its walk has stood still 1 s) and a friend near it, ahead on its way and moving the same way, is going on: it is queueing, not stalled.
+     *  A scan of the friends only when the troop is already slow, so the cost is a few beats of a few troops. */
+    static boolean queueing(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d way,long time){
+        if(u.stall.age(time)<30&&u.stuckTicks<20)return false;
+        double len=Math.hypot(way.x,way.z);if(len<1e-3)return false;
+        queueTests++;
+        double dx=way.x/len,dz=way.z/len,x=u.mob.getX(),z=u.mob.getZ();
+        for(var v:battle.units){
+            if(v==u||v.squad.team!=u.squad.team||!v.mob.isAlive()||!Stall.moving(v.stall,time))continue;
+            if(Stall.queueing(x,z,dx,dz,v.mob.getX(),v.mob.getZ(),v.stall.mvx,v.stall.mvz))return true;
+        }
+        return false;
     }
     /** The nearest cell of the troop's own banner on a floor of the field that the troop can walk straight to over the floors, its lane's cells first (a cell of another lane costs two blocks a lane): a place to walk to when its slot is round a wall.
      *  Only for a troop on its way to its slot on a banner formation, on a map with a route field; null otherwise. The troop keeps its slot: only this walk is changed. */
@@ -713,10 +731,49 @@ final class Tactics {
         if(jumpListener!=null)jumpListener.accept(u,from);
         return true;
     }
+    // ---- file-through (FileThrough; plan step 3): troops on a slot walk whose next route point is a door narrower than they are wide go through it as a column, front rank first.
+    /** GRAVES_NO_FILE=1 leaves file-through out (the control of the file runs). */
+    static final boolean FILE=System.getenv("GRAVES_NO_FILE")==null;
+    /** The gates of the battle in play (one per door and side), made as troops come to them; a new battle starts with none. */
+    static final Map<Long,FileThrough.Gate> GATES=new java.util.HashMap<>();static GravesAndGlory.Battle gatesOf;
+    /** Counters for the harness: beats a troop waited in a column, beats a troop went on with a ticket, gates opened because nobody passed, and passes. */
+    static int fileWaits,fileBeats,fileOpened;
+    /** What the troop does at a door on its way: null to go on as it was, STAY (the troop's own place) to stand where it is in the column, or the spot in the column to walk to. Only within FileThrough.RANGE of the door, with the door in sight over the floors. */
+    static final Vec3d STAY=new Vec3d(0,-1000,0);
+    static Vec3d fileGoal(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d door,int width,long time){
+        var nav=field();if(nav==null)return null;
+        MobEntity mob=u.mob;
+        double dx=mob.getX()-door.x,dz=mob.getZ()-door.z,dist=Math.hypot(dx,dz);
+        if(dist>FileThrough.RANGE||Math.abs(mob.getY()-door.y)>2.5||!nav.sees(mob.getX(),mob.getY(),mob.getZ(),door.x,door.z))return null;
+        if(gatesOf!=battle){GATES.clear();gatesOf=battle;}
+        long key=((long)u.squad.team<<40)^((long)(Math.floor(door.x)+8192)*16384L+(long)(Math.floor(door.z)+8192));
+        var gate=GATES.computeIfAbsent(key,k->new FileThrough.Gate());
+        for(var t:gate.tickets.values()){ // an admitted troop at the door has passed: once within a step of it the route goes on past it, and the troop no longer asks this gate
+            if(t.passed||t.admitted<0||t.id==mob.getId())continue;
+            var e=battle.world.getEntityById(t.id);
+            if(e==null||!e.isAlive()||Math.hypot(e.getX()-door.x,e.getZ()-door.z)<=FileThrough.REACHED)FileThrough.pass(gate,t.id,time);
+        }
+        int opened=gate.opened;
+        var v=FileThrough.beat(gate,time,mob.getId(),u.hasCell()?WarGrid.row(u.slot):-1,width,dist);
+        fileBeats++;if(gate.opened!=opened)fileOpened++;
+        if(v.go)return null;
+        fileWaits++;
+        int lanes=FileThrough.lanes(width);double back=FileThrough.back(v.place,lanes);
+        if(dist<=back+.7||dist<1e-3)return STAY;
+        double ux=dx/dist,uz=dz/dist,side=FileThrough.side(v.place,lanes);
+        double sx=door.x+ux*back-uz*side,sz=door.z+uz*back+ux*side;
+        if(!nav.sees(mob.getX(),mob.getY(),mob.getZ(),sx,sz)){sx=door.x+ux*back;sz=door.z+uz*back;if(!nav.sees(mob.getX(),mob.getY(),mob.getZ(),sx,sz))return STAY;}
+        return new Vec3d(sx,door.y,sz);
+    }
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed){walk(battle,u,destination,time,speed,false);}
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed,boolean climb){
         MobEntity mob=u.mob;Vec3d goal=route(u,destination);Vec3d routed=goal;
         boolean onField=fieldPoint!=null&&goal==fieldPoint; // a waypoint of the route field: a floor cell with its own height, taken as it is (like a detour point)
+        if(FILE&&onField&&fieldDoor!=null&&u.place==destination&&u.detour==null){ // a slot walk to a door narrower than the troops: file-through
+            Vec3d spot=fileGoal(battle,u,fieldDoor,fieldDoorWidth,time);
+            if(spot==STAY){mob.getNavigation().stop();return;} // in the column, at its place: the file moves on, or opens, or the stall ladder takes it
+            if(spot!=null)goal=spot;
+        }
         // A raised goal (a tower top): every ground waypoint below would put it at the tower's foot (Arena.ground is the terrain under the tower), so near enough it paths to the goal's own height, up the stair.
         if(climb&&goal==destination&&destination.y>Arena.ground((int)Math.floor(destination.x),(int)Math.floor(destination.z))+2.5&&GravesAndGlory.Battle.horizontalDistance(mob.getPos(),destination)<CLIMB_RANGE*CLIMB_RANGE){
             if(GravesAndGlory.Battle.horizontalDistance(mob.getPos(),destination)<N.preciseRange()*N.preciseRange()&&Math.abs(mob.getY()-destination.y)<1.1){mob.getNavigation().stop();mob.getMoveControl().moveTo(destination.x,destination.y,destination.z,speed);return;}
@@ -736,7 +793,10 @@ final class Tactics {
         Vec3d delta=goal.subtract(mob.getPos()).multiply(1,0,1);
         if(!onDetour&&!onField&&delta.length()>N.waypointDistance())goal=mob.getPos().add(delta.normalize().multiply(N.waypointDistance())); // a detour point is on a whole path: no straight waypoint toward it
         // The stall ladder (Stall): re-path, sidestep, detour, regroup, and after half a minute a jump free when no player watches. The sidestep and the detour are walk's own stuck handling below, asked for by the rung.
-        int rung=stallRung(u,destination,time);
+        Stall.track(u.stall,time,mob.getX(),mob.getZ());
+        boolean queued=STALL&&queueing(battle,u,delta,time);
+        int rung=stallRung(u,destination,time,queued);
+        boolean held=u.stall.held;if(held)queueHolds++; // a moving queue: no rung, and walk's older stuck handling below stands down too
         if(rung==Stall.JUMP){ // only a walk to the troop's own slot jumps (not the chase of an enemy, nor a ranged troop's backOff), and only with a route field
             if(u.place==destination&&field()!=null&&jumpFree(battle,u,destination,time))return;
             rung=Stall.refused(u.stall);stalls[rung]++;
@@ -744,9 +804,9 @@ final class Tactics {
         if(rung==Stall.REPATH){mob.getNavigation().stop();u.nextPath=0;u.lastGoal=null;u.detour=null;}
         if(rung==Stall.REGROUP){Vec3d p=regroupPoint(battle,u,destination);if(p!=null){u.detour=p;u.detourFor=routed;u.detourUntil=time+REGROUP_TICKS;goal=p;onDetour=true;}}
         boolean forceSide=rung==Stall.SIDESTEP,forceDetour=rung==Stall.DETOUR;
-        if(mob.squaredDistanceTo(u.lastPosition)<.03)u.stuckTicks+=10;else u.stuckTicks=0;
+        if(mob.squaredDistanceTo(u.lastPosition)<.03&&!held)u.stuckTicks+=10;else u.stuckTicks=0;
         u.lastPosition=mob.getPos();
-        boolean pinned=pinned(u,time);
+        boolean pinned=pinned(u,time)&&!held;
         if(u.stuckTicks>N.stuckSeconds()*20||pinned||forceSide||forceDetour){
             if(!forceSide&&!forceDetour&&stepHop(battle,u,goal)){u.stuckTicks=0;u.nextPath=0;}
             else if(u.stuckTicks>N.stuckSeconds()*20||forceSide||forceDetour){
