@@ -10,10 +10,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** p1-plan-server (battle map Task 4): on map 0 with bot fill, a real battleplan_v1 packet from this client puts ATTACK on point 1; every allied
+/** p4-plan-server (battle map Task 4; a Phase4Checks suite, run as GRAVES_PHASE4_CHECKS=plan-server): on map 0 with bot fill, a real battleplan_v1 packet from this client puts ATTACK on point 1; every allied
  *  bot that is not retreating must have its target on point 1 by its second decision after the plan lands, say "on it, taking" once in the team
  *  feed, and a direct HOLD at a place must put that bot's target on the place at its next decision. Also: the grid and state packets arrived. */
-public final class PlanServerChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch {
+public final class PlanServerChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch {
     record Seen(long time, Vec3d target, boolean retreating, String order) {}
     volatile int stage;volatile UUID player;long stageAt;
     /** The client's next packet: 1 Attack on point 1, 2 direct Hold at holdX,holdZ on the first bot. */
@@ -24,6 +24,7 @@ public final class PlanServerChecks implements Phase1Checks.Suite, Phase1Checks.
     final List<String> heard=new ArrayList<>();
     volatile boolean listening;
 
+    public int limit(){return 4000;}
     void next(GravesAndGlory.Battle b,int s){stage=s;stageAt=b.time;}
     long since(GravesAndGlory.Battle b){return b.time-stageAt;}
     ServerPlayerEntity sp(GravesAndGlory.Battle b){return b.server.getPlayerManager().getPlayer(player);}
@@ -33,7 +34,7 @@ public final class PlanServerChecks implements Phase1Checks.Suite, Phase1Checks.
     }
 
     public void step(MinecraftClient c,int tick){
-        if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();Phase1Checks.server(c,b->{player=id;next(b,1);});}
+        if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();Phase4Checks.server(c,b->{player=id;next(b,1);});}
         int cmd=send;
         if(cmd==1){send=0;BattleMapClient.sendPlan(0,1,"",BattlePlan.Job.ATTACK.ordinal(),0,0);}
         else if(cmd==2){send=0;var id=bots.get(0).owner.toString();BattleMapClient.sendPlan(1,-1,id,BattlePlan.Job.HOLD.ordinal(),holdX,holdZ);}
@@ -41,8 +42,8 @@ public final class PlanServerChecks implements Phase1Checks.Suite, Phase1Checks.
         if(stage==3&&BattleMapClient.state!=null&&!stateOk){
             for(var p:BattleMapClient.state.points())if(p.point()==1&&p.job()==BattlePlan.Job.ATTACK.ordinal())stateOk=true;
         }
-        if(stage==99&&!finished){finished=true;Campaign.decisionListener=null;listening=false;Phase1Checks.finish(c,"plan-server");}
-        if(tick>6000&&!finished){finished=true;Campaign.decisionListener=null;Phase1Checks.report("p1-plan-server-timeout",false,"stuck in stage "+stage);Phase1Checks.finish(c,"plan-server");}
+        if(stage==99&&!finished){finished=true;Campaign.decisionListener=null;listening=false;Phase4Checks.finish(c,"plan-server");}
+        if(tick>3800&&!finished){finished=true;Campaign.decisionListener=null;Phase4Checks.report("p4-plan-server-timeout",false,"stuck in stage "+stage);Phase4Checks.finish(c,"plan-server");}
     }
 
     public void serverTick(GravesAndGlory.Battle b){
@@ -56,7 +57,7 @@ public final class PlanServerChecks implements Phase1Checks.Suite, Phase1Checks.
                     decisions.computeIfAbsent(sq.owner,k->new ArrayList<>()).add(new Seen(b.time,sq.target,re,sq.order));
                 };
                 System.out.println("[p1] plan-server fixture: map "+b.campaign.map+", "+b.points.size()+" points, "+bots.size()+" allied bots");
-                if(bots.isEmpty()){Phase1Checks.report("p1-plan-server-bots",false,"no allied bot seated");next(b,99);break;}
+                if(bots.isEmpty()){Phase4Checks.report("p4-plan-server-bots",false,"no allied bot seated");next(b,99);break;}
                 next(b,2);
             }
             case 2->{
@@ -66,11 +67,11 @@ public final class PlanServerChecks implements Phase1Checks.Suite, Phase1Checks.
             }
             case 3->{ // wait for the plan to land and both bots to decide twice
                 boolean landed=b.plan.points(0).stream().anyMatch(q->q.point()==1&&q.job()==BattlePlan.Job.ATTACK);
-                if(!landed){if(since(b)>100){Phase1Checks.report("p1-plan-server-attack",false,"the plan packet never landed on the server");next(b,99);}break;}
+                if(!landed){if(since(b)>100){Phase4Checks.report("p4-plan-server-attack",false,"the plan packet never landed on the server");next(b,99);}break;}
                 if(landedAt<0){landedAt=b.time;break;}
                 boolean ready=true;
                 for(var s:bots)if(!b.campaign.botRetreating.contains(s.owner)&&decisions.getOrDefault(s.owner,List.of()).size()<2)ready=false;
-                if(!ready){if(since(b)>900){Phase1Checks.report("p1-plan-server-attack",false,"bots did not decide twice: "+summary(b));next(b,99);}break;}
+                if(!ready){if(since(b)>900){Phase4Checks.report("p4-plan-server-attack",false,"bots did not decide twice: "+summary(b));next(b,99);}break;}
                 boolean ok=true;int checked=0;StringBuilder why=new StringBuilder();
                 for(var s:bots){
                     var ds=decisions.getOrDefault(s.owner,List.of());
@@ -82,32 +83,32 @@ public final class PlanServerChecks implements Phase1Checks.Suite, Phase1Checks.
                     if(!on)ok=false;
                 }
                 if(checked==0)ok=false;
-                Phase1Checks.report("p1-plan-server-attack",ok,checked+" non-retreating bots: "+why);
-                Phase1Checks.report("p1-plan-server-grid",gridOk,"the server scanned a grid and the client holds one: "+gridOk+(BattleMapClient.grid==null?"":" ("+BattleMapClient.grid.width+" x "+BattleMapClient.grid.depth+")"));
+                Phase4Checks.report("p4-plan-server-attack",ok,checked+" non-retreating bots: "+why);
+                Phase4Checks.report("p4-plan-server-grid",gridOk,"the server scanned a grid and the client holds one: "+gridOk+(BattleMapClient.grid==null?"":" ("+BattleMapClient.grid.width+" x "+BattleMapClient.grid.depth+")"));
                 next(b,4);
             }
             case 4->{ // the ack lines come spread over 20 to 60 ticks per bot, once each; and the state packet carried the plan
                 if(since(b)<140)break;
                 long taking=heard.stream().filter(h->h.contains("on it, taking ")).count();
                 long expected=bots.stream().filter(s->!b.campaign.botRetreating.contains(s.owner)).count();
-                Phase1Checks.report("p1-plan-server-ack",taking==expected&&expected>0,taking+" 'on it, taking' lines for "+expected+" bots: "+heard);
-                Phase1Checks.report("p1-plan-server-state",stateOk,"battlemap_v1 listed the ATTACK plan on point 1");
+                Phase4Checks.report("p4-plan-server-ack",taking==expected&&expected>0,taking+" 'on it, taking' lines for "+expected+" bots: "+heard);
+                Phase4Checks.report("p4-plan-server-state",stateOk,"battlemap_v1 listed the ATTACK plan on point 1");
                 var s=bots.get(0);
                 holdX=b.points.get(1).spec.x()-30;holdZ=b.points.get(1).spec.z()+20;
-                if(b.campaign.botRetreating.contains(s.owner)){Phase1Checks.report("p1-plan-server-hold",false,"bot 0 is retreating, no place to hold");next(b,99);break;}
+                if(b.campaign.botRetreating.contains(s.owner)){Phase4Checks.report("p4-plan-server-hold",false,"bot 0 is retreating, no place to hold");next(b,99);break;}
                 holdAt=b.time;send=2;next(b,5);
             }
             case 5->{
                 var s=bots.get(0);
                 boolean landed=b.plan.orders(0).stream().anyMatch(o->o.army().equals(s.owner.toString())&&o.job()==BattlePlan.Job.HOLD&&o.point()<0);
-                if(!landed){if(since(b)>100){Phase1Checks.report("p1-plan-server-hold",false,"the direct order never landed");next(b,99);}break;}
+                if(!landed){if(since(b)>100){Phase4Checks.report("p4-plan-server-hold",false,"the direct order never landed");next(b,99);}break;}
                 if(holdLanded<0){holdLanded=b.time;decisions.remove(s.owner);break;}
                 var ds=decisions.getOrDefault(s.owner,List.of());
-                if(ds.isEmpty()){if(since(b)>600){Phase1Checks.report("p1-plan-server-hold",false,"the bot never decided again");next(b,99);}break;}
+                if(ds.isEmpty()){if(since(b)>600){Phase4Checks.report("p4-plan-server-hold",false,"the bot never decided again");next(b,99);}break;}
                 // the decision list was cleared the tick the order landed: its first entry is the one the hold must show in
                 var first=ds.get(0);
                 double d=Math.hypot(first.target().x-holdX,first.target().z-holdZ);
-                Phase1Checks.report("p1-plan-server-hold",first.retreating()||d<=1.5&&first.order().equals("hold"),"first decision after the direct HOLD: order "+first.order()+", target "+d+" blocks from the place");
+                Phase4Checks.report("p4-plan-server-hold",first.retreating()||d<=1.5&&first.order().equals("hold"),"first decision after the direct HOLD: order "+first.order()+", target "+d+" blocks from the place");
                 next(b,99);
             }
             default->{}
@@ -122,6 +123,6 @@ public final class PlanServerChecks implements Phase1Checks.Suite, Phase1Checks.
 
     public void cleanup(MinecraftClient c){
         Campaign.decisionListener=null;
-        if(!finished)Phase1Checks.report("p1-plan-server-incomplete",false,"the suite ended in stage "+stage);
+        if(!finished)Phase4Checks.report("p4-plan-server-incomplete",false,"the suite ended in stage "+stage);
     }
 }
