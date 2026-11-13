@@ -6,7 +6,7 @@ import java.util.*;
  * The match ending's awards (ending polish spec 2026-11-13, section 2): pure rules, no Minecraft types. Computed once at finish from each
  * seated army's stats. The awards are tried in order; each goes to the army with the highest value that meets the award's floor, a tie on
  * the value going to the higher match score; a tie on both gives the award to nobody (it is won outright or not at all). Each army keeps only
- * the first award it wins, so a later award it would also win is simply not given. An army whose commander left the battle wins nothing.
+ * the first award it wins, so a later award it would also win is simply not given. An army whose commander left the battle, and an army a bot holds, wins nothing.
  */
 public final class EndingAwards {
     private EndingAwards() {}
@@ -18,8 +18,9 @@ public final class EndingAwards {
     }
 
     /** One army's numbers: enemy commanders downed by the army, kills by the commander's own hand, captures, objective seconds,
-     *  army kills (troops' kills, the commander's excluded), troops kept and lost, the match score, and whether its commander left. */
-    public record Line(String id, int commanderDowns, int commanderKills, int captures, int objectiveSeconds, int armyKills, int kept, int lost, int score, boolean left) {
+     *  army kills (troops' kills, the commander's excluded), troops kept and lost, the match score, whether its commander left, and whether a bot holds the
+     *  army (a bot never wins an award, whether it was seated as one or stands in for a commander who left). */
+    public record Line(String id, int commanderDowns, int commanderKills, int captures, int objectiveSeconds, int armyKills, int kept, int lost, int score, boolean left, boolean bot) {
         int fielded() { return kept + lost; }
     }
 
@@ -51,7 +52,7 @@ public final class EndingAwards {
     public static Line winner(Award aw, List<Line> lines) {
         Line best = null; boolean tied = false;
         for (Line l : lines) {
-            if (l.left() || !meets(aw, l)) continue;
+            if (l.left() || l.bot() || !meets(aw, l)) continue;
             if (best == null) { best = l; tied = false; continue; }
             int c = compare(aw, l, best);
             if (c == 0) c = Integer.compare(l.score(), best.score());

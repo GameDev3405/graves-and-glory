@@ -11,10 +11,13 @@ public final class EndingAwardsCheck {
     }
     /** id, commander downs, kills by hand, captures, objective seconds, army kills, kept, lost, score. */
     static EndingAwards.Line l(String id, int downs, int ck, int caps, int obj, int army, int kept, int lost, int score) {
-        return new EndingAwards.Line(id, downs, ck, caps, obj, army, kept, lost, score, false);
+        return new EndingAwards.Line(id, downs, ck, caps, obj, army, kept, lost, score, false, false);
     }
     static EndingAwards.Line left(EndingAwards.Line x) {
-        return new EndingAwards.Line(x.id(), x.commanderDowns(), x.commanderKills(), x.captures(), x.objectiveSeconds(), x.armyKills(), x.kept(), x.lost(), x.score(), true);
+        return new EndingAwards.Line(x.id(), x.commanderDowns(), x.commanderKills(), x.captures(), x.objectiveSeconds(), x.armyKills(), x.kept(), x.lost(), x.score(), true, x.bot());
+    }
+    static EndingAwards.Line bot(EndingAwards.Line x) {
+        return new EndingAwards.Line(x.id(), x.commanderDowns(), x.commanderKills(), x.captures(), x.objectiveSeconds(), x.armyKills(), x.kept(), x.lost(), x.score(), x.left(), true);
     }
     static EndingAwards.Award of(List<EndingAwards.Line> lines, String id) { return EndingAwards.awards(lines).get(id); }
 
@@ -48,6 +51,17 @@ public final class EndingAwardsCheck {
         List<EndingAwards.Line> gone = List.of(left(l("gone", 5, 0, 0, 0, 0, 0, 0, 500)), l("stay", 1, 0, 0, 0, 0, 0, 0, 10));
         check(of(gone, "gone") == null && of(gone, "stay") == K, "a commander who left wins nothing; the next best does");
         check(EndingAwards.awards(List.of()).isEmpty(), "no armies");
+        // Bots win no award: the best non-bot that passes the floor takes it, or nobody does.
+        List<EndingAwards.Line> botWins = List.of(bot(l("bot", 4, 0, 0, 0, 0, 0, 0, 500)), l("human", 1, 0, 0, 0, 0, 0, 0, 10));
+        check(of(botWins, "bot") == null && of(botWins, "human") == K, "a bot that would win outright gets nothing; the best human passing the floor does");
+        check(EndingAwards.winner(K, botWins).id().equals("human"), "winner skips the bot");
+        List<EndingAwards.Line> botOnly = List.of(bot(l("bot", 4, 0, 0, 0, 0, 0, 0, 500)), l("human", 0, 0, 0, 0, 0, 0, 0, 10));
+        check(EndingAwards.awards(botOnly).isEmpty(), "no human passes the floor: nobody wins");
+        // A bot's tie does not void the human's award, and a stand-in holding a left commander's army stays excluded.
+        List<EndingAwards.Line> botTie = List.of(bot(l("bot", 1, 0, 0, 0, 0, 0, 0, 50)), l("human", 1, 0, 0, 0, 0, 0, 0, 50));
+        check(EndingAwards.winner(K, botTie).id().equals("human"), "a bot tied with a human cannot void the award");
+        List<EndingAwards.Line> standIn = List.of(bot(left(l("standin", 5, 0, 0, 0, 0, 0, 0, 500))), l("human", 1, 0, 0, 0, 0, 0, 0, 10));
+        check(of(standIn, "standin") == null && of(standIn, "human") == K, "a left commander's stand-in bot stays excluded");
         // Details and titles.
         check(EndingAwards.detail(K, l("a", 1, 0, 0, 0, 0, 0, 0, 0)).equals("1 commander downed"), "Kingslayer detail");
         check(EndingAwards.detail(H, l("a", 0, 0, 0, 125, 0, 0, 0, 0)).equals("2:05 on points"), "Holdfast detail");

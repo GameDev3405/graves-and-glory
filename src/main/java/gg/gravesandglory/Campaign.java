@@ -755,7 +755,7 @@ public final class Campaign {
         for(int r=0;r<ranked.size();r++)endingRanks.put(seated.get(ranked.get(r).seat()),r+1);
         int mvp=MatchEnding.mvpIndex(entries,winner,w,leftIds);endingMvp=mvp<0?null:seated.get(mvp);
         endingAwards.clear();endingLines.clear();List<EndingAwards.Line> lines=new ArrayList<>();
-        for(int i=0;i<seated.size();i++){var s=seated.get(i);var t=s.stats;var line=new EndingAwards.Line(s.owner.toString(),t.commanderDowns,t.commanderKills,t.captures,t.objectiveSeconds,Math.max(0,t.kills-t.commanderKills),t.kept,t.lost,MatchEnding.score(entries.get(i),w),endingLeft.containsKey(s));lines.add(line);endingLines.put(s,line);}
+        for(int i=0;i<seated.size();i++){var s=seated.get(i);var t=s.stats;var line=new EndingAwards.Line(s.owner.toString(),t.commanderDowns,t.commanderKills,t.captures,t.objectiveSeconds,Math.max(0,t.kills-t.commanderKills),t.kept,t.lost,MatchEnding.score(entries.get(i),w),endingLeft.containsKey(s),s.bot);lines.add(line);endingLines.put(s,line);}
         var won=EndingAwards.awards(lines);for(var s:seated){var a=won.get(s.owner.toString());if(a!=null)endingAwards.put(s,a);}
         JsonArray rows=new JsonArray();
         for(var e:MatchEnding.podium(ranked)){var s=seated.get(e.seat());JsonObject row=new JsonObject();
