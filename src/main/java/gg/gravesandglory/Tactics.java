@@ -614,6 +614,66 @@ final class Tactics {
         if(time-p.since<100)return false;
         p.since=time;return true;
     }
+    // ---- the stall ladder (Stall; engine-map pathing plan step 2): walk asks once per beat of every walking troop, a player's squad's and a bot's, and carries out the rung it is given.
+    /** Counters of the ladder (the bot sim prints them): rungs carried out by kind (Stall.NAMES), jumps refused because a player watched, and jumps with nowhere to put the troop. */
+    static final int[] stalls=new int[Stall.NAMES.length];static int jumpsWatched,jumpsNowhere;
+    /** A test hook: told of every jump free, the troop and where it was put from (the bot sim logs them with their place). */
+    static java.util.function.BiConsumer<GravesAndGlory.Unit,Vec3d> jumpListener;
+    /** How long a regroup walk may take before it is dropped, in ticks. */
+    static final long REGROUP_TICKS=200;
+    /** The stall clock's beat for this troop: its distance to the destination by the route field already held (never a build), and the rung to carry out (Stall.NONE for most beats). */
+    static int stallRung(GravesAndGlory.Unit u,Vec3d destination,long time){
+        var nav=field();var mob=u.mob;
+        double d=nav==null?Double.NaN:nav.cachedDistance(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z);
+        int rung=Stall.step(u.stall,time,mob.getX(),mob.getZ(),destination.x,destination.z,d);
+        if(rung!=Stall.NONE)stalls[rung]++;
+        return rung;
+    }
+    /** The nearest cell of the troop's own banner on a floor of the field that the troop can walk straight to over the floors, its lane's cells first (a cell of another lane costs two blocks a lane): a place to walk to when its slot is round a wall.
+     *  Only for a troop on its way to its slot on a banner formation, on a map with a route field; null otherwise. The troop keeps its slot: only this walk is changed. */
+    static Vec3d regroupPoint(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination){
+        var nav=field();if(nav==null||u.place!=destination||!u.hasCell())return null;
+        var a=battle.assignment(u);if(!"banner".equals(a.formation))return null;
+        var mob=u.mob;double ang=Math.toRadians(a.yaw);int lane=WarGrid.col(u.slot);Vec3d best=null;double bestScore=Double.MAX_VALUE;
+        for(int i=0;i<WarGrid.cells();i++){
+            double[] pl=BattleMath.bannerOffset(i);
+            double cx=a.target.x+Math.cos(ang)*pl[0]+Math.sin(ang)*pl[1],cz=a.target.z+Math.sin(ang)*pl[0]-Math.cos(ang)*pl[1];
+            int bx=(int)Math.floor(cx),bz=(int)Math.floor(cz);
+            int[] f=Arena.floor(battle.world,bx,bz,mob.getX(),mob.getZ());
+            if(f[0]!=bx||f[1]!=bz||!nav.sees(mob.getX(),mob.getY(),mob.getZ(),cx,cz))continue;
+            double score=Math.hypot(cx-mob.getX(),cz-mob.getZ())+2*Math.abs(WarGrid.col(i)-lane);
+            if(score<bestScore){bestScore=score;best=new Vec3d(cx,f[2],cz);}
+        }
+        return best;
+    }
+    /** Whether a player watches the troop or the spot it would be put on: a player of this world within the server's view distance that sees the troop (LivingEntity.canSee, as the squads' sight does) or has a clear line to the spot. */
+    static boolean watched(GravesAndGlory.Battle battle,MobEntity mob,Vec3d to){
+        var players=battle.server.getPlayerManager().getPlayerList();if(players.isEmpty())return false;
+        double range=battle.server.getPlayerManager().getViewDistance()*16.0;
+        Vec3d spot=to.add(0,1,0);
+        return Stall.watched(players.size(),i->{var p=players.get(i);return p.getWorld()==mob.getWorld()&&p.squaredDistanceTo(mob)<=range*range&&p.canSee(mob);},
+            i->{var p=players.get(i);return p.getWorld()==mob.getWorld()&&p.squaredDistanceTo(spot)<=range*range
+                &&p.getWorld().raycast(new net.minecraft.world.RaycastContext(p.getEyePos(),spot,net.minecraft.world.RaycastContext.ShapeType.COLLIDER,net.minecraft.world.RaycastContext.FluidHandling.NONE,p)).getType()==net.minecraft.util.hit.HitResult.Type.MISS;});
+    }
+    /** Where a troop stalled for 30 s is put: on a map with a route field the field's rescue point (NavField.rescue: a way ahead on the route, or the nearest floor from which its goal can be reached), else a standable cell six blocks toward the goal. Null: none. */
+    static Vec3d jumpSpot(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time){
+        var mob=u.mob;var nav=field();
+        if(nav!=null){var wp=nav.rescue(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z,time);return wp==null?null:new Vec3d(wp.x(),wp.y(),wp.z());}
+        Vec3d dir=destination.subtract(mob.getPos()).multiply(1,0,1);if(dir.lengthSquared()<1e-6)return null;dir=dir.normalize().multiply(6);
+        int[] c=standable(battle,(int)Math.floor(mob.getX()+dir.x),(int)Math.floor(mob.getZ()+dir.z));
+        return c==null?null:new Vec3d(c[0]+.5,c[1],c[2]+.5);
+    }
+    /** The last rung: the troop is put on its jump spot, unless a player watches it or the spot, or the spot is not free for its body. True when it was moved. */
+    static boolean jumpFree(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time){
+        var mob=u.mob;Vec3d to=jumpSpot(battle,u,destination,time);
+        if(to==null||to.squaredDistanceTo(mob.getPos())<4||!battle.world.isSpaceEmpty(mob,mob.getBoundingBox().offset(to.x-mob.getX(),to.y-mob.getY(),to.z-mob.getZ()))){jumpsNowhere++;return false;}
+        if(watched(battle,mob,to)){jumpsWatched++;return false;}
+        Vec3d from=mob.getPos();
+        mob.getNavigation().stop();mob.refreshPositionAndAngles(to.x,to.y,to.z,mob.getYaw(),0);mob.setVelocity(Vec3d.ZERO);mob.fallDistance=0;
+        u.detour=null;u.stuckTicks=0;u.nextPath=0;u.lastGoal=null;u.lastPosition=mob.getPos();u.stall.live=false;u.stall.jumps++;
+        if(jumpListener!=null)jumpListener.accept(u,from);
+        return true;
+    }
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed){walk(battle,u,destination,time,speed,false);}
     static void walk(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time,double speed,boolean climb){
         MobEntity mob=u.mob;Vec3d goal=route(u,destination);Vec3d routed=goal;
@@ -636,16 +696,23 @@ final class Tactics {
         }
         Vec3d delta=goal.subtract(mob.getPos()).multiply(1,0,1);
         if(!onDetour&&!onField&&delta.length()>N.waypointDistance())goal=mob.getPos().add(delta.normalize().multiply(N.waypointDistance())); // a detour point is on a whole path: no straight waypoint toward it
+        // The stall ladder (Stall): re-path, sidestep, detour, regroup, and after half a minute a jump free when no player watches. The sidestep and the detour are walk's own stuck handling below, asked for by the rung.
+        int rung=stallRung(u,destination,time);
+        if(rung==Stall.JUMP){if(jumpFree(battle,u,destination,time))return;rung=Stall.refused(u.stall);stalls[rung]++;}
+        if(rung==Stall.REPATH){mob.getNavigation().stop();u.nextPath=0;u.lastGoal=null;u.detour=null;}
+        if(rung==Stall.REGROUP){Vec3d p=regroupPoint(battle,u,destination);if(p!=null){u.detour=p;u.detourFor=routed;u.detourUntil=time+REGROUP_TICKS;goal=p;onDetour=true;}}
+        boolean forceSide=rung==Stall.SIDESTEP,forceDetour=rung==Stall.DETOUR;
         if(mob.squaredDistanceTo(u.lastPosition)<.03)u.stuckTicks+=10;else u.stuckTicks=0;
         u.lastPosition=mob.getPos();
         boolean pinned=pinned(u,time);
-        if(u.stuckTicks>N.stuckSeconds()*20||pinned){
-            if(stepHop(battle,u,goal)){u.stuckTicks=0;u.nextPath=0;}
-            else if(u.stuckTicks>N.stuckSeconds()*20){
+        if(u.stuckTicks>N.stuckSeconds()*20||pinned||forceSide||forceDetour){
+            if(!forceSide&&!forceDetour&&stepHop(battle,u,goal)){u.stuckTicks=0;u.nextPath=0;}
+            else if(u.stuckTicks>N.stuckSeconds()*20||forceSide||forceDetour){
                 // Stuck again where it sidestepped before (within ten seconds, six blocks): the sidestep leads to the same corner of a pocket, so go round by a point the pathfinder can reach (Wedge).
                 u.wedgeRepeats=Wedge.repeats(u.wedgeAt!=null,u.wedgeTime,u.wedgeAt==null?0:u.wedgeAt.x,u.wedgeAt==null?0:u.wedgeAt.z,u.wedgeRepeats,time,mob.getX(),mob.getZ());
                 u.wedgeAt=mob.getPos();u.wedgeTime=time;
-                int what=DETOUR?Wedge.next(u.wedgeRepeats,time,u.detourRetryAt,searchesAt(time)):Wedge.FIRST;
+                if(forceDetour&&u.wedgeRepeats<1)u.wedgeRepeats=1; // the ladder's detour rung searches the wide path even at a first stall
+                int what=DETOUR&&!forceSide?Wedge.next(u.wedgeRepeats,time,u.detourRetryAt,searchesAt(time)):Wedge.FIRST;
                 Vec3d out=null;
                 if(what==Wedge.SEARCH){out=detour(battle,u,routed,u.wedgeRepeats,time);if(out==null){u.detourRetryAt=time+Wedge.RETRY_TICKS;detourMisses++;}
                     if(TRACE_HOPS)System.out.println("[Graves and Glory] detour search of slot "+u.slot+" toward ("+String.format("%.1f,%.1f",routed.x,routed.z)+") "+(out==null?"found no path":"found a path")+" in "+String.format("%.2f",lastSearchNanos/1e6)+" ms");}
@@ -654,7 +721,7 @@ final class Tactics {
                     u.detour=out;u.detourFor=routed;u.detourUntil=time+Wedge.ticks(Wedge.steps(u.wedgeRepeats));goal=out;onDetour=true;detours++;u.stuckTicks=0;u.nextPath=0;
                 }else{
                     sidesteps++;if(TRACE_HOPS)System.out.println("[Graves and Glory] sidestep of slot "+u.slot+" at ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+") on its way to ("+String.format("%.1f,%.1f",routed.x,routed.z)+"), stuck again "+u.wedgeRepeats+" times at this wedge ("+(!DETOUR?"detours off":what==Wedge.SEARCH?"no path to look at, not searched again for "+Wedge.RETRY_TICKS+" ticks":Wedge.WHY[what])+")");
-                    double sign=(u.slot%2==0?1:-1);Vec3d sideways=new Vec3d(-delta.z,0,delta.x).normalize().multiply(3*sign);
+                    double sign=(u.slot%2==0?1:-1)*(u.stall.sidesteps++%2==0?1:-1);Vec3d sideways=new Vec3d(-delta.z,0,delta.x).normalize().multiply(3*sign);
                     goal=mob.getPos().add(delta.normalize().multiply(4)).add(sideways);u.stuckTicks=0;u.nextPath=0;
                     if(mob.isOnGround())mob.getJumpControl().setActive();
                 }
