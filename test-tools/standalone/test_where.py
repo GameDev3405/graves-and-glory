@@ -35,10 +35,10 @@ class Where(unittest.TestCase):
         self.assertIn('skipped', self.extract_out)
 
     def test_rules_key_returns_spec_line_and_java_reader(self):
-        out, secs = where('squadSize')
+        out, secs = where('maxTroops')
         self.assertRegex(out, r'Spec\.java:\d+')
         self.assertRegex(out, r'sheets/design\.json:\d+')
-        self.assertRegex(out, r'src/main/java/\S+\.java:\d+\s+reads rules\.squadSize')
+        self.assertRegex(out, r'src/main/java/\S+\.java:\d+\s+reads rules\.maxTroops')
         self.assertLess(secs, 3)
 
     def test_sample_troop_returns_design_row_and_animation_file(self):

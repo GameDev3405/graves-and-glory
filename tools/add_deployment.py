@@ -25,7 +25,7 @@ p.write_text(s)
 p=b/'GravesAndGlory.java';s=p.read_text().replace('Vec3d lastPosition,lastGoal;','Vec3d lastPosition,lastGoal,deployed;');s=s.replace('lastPosition=m.getPos();','lastPosition=m.getPos();deployed=m.getPos();')
 start=s.index('            for(var spec:Spec.TROOPS)if(spec.faction()',s.index('        void reinforce(Squad s){'));end=s.index('\n        Unit spawn(',start)
 s=s[:start]+'''            List<String> line;if(s.bot){line=new ArrayList<>();for(var t:Spec.TROOPS)if(t.faction().equals(Spec.FACTIONS[s.team].id()))for(int n=0;n<t.count();n++)line.add(t.id());}else line=campaign.profile(s.owner).lineup(s.team);
-            for(String id:line){final String type=id;int position=slot++;if(position>=R.squadSize()||occupied.contains(position)||id.equals("empty")||!campaign.unlocked(s,id))continue;
+            for(String id:line){final String type=id;int position=slot++;if(position>=RosterMath.LEGACY_BANNER_SIZE||occupied.contains(position)||id.equals("empty")||!campaign.unlocked(s,id))continue;
                 var spec=Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(type)).findFirst().orElse(null);if(spec==null)continue;
                 double x=base(s.team).x+(s.team==0?1:-1)*(20-position/5*3),z=base(s.team).z+(index-1.5)*22+(position%5-2)*2.5;
                 spawn(s,spec,position,new Vec3d(x,Arena.ground((int)x,(int)z)+1,z));

@@ -5879,7 +5879,7 @@ public final class Phase2Checks implements ClientModInitializer {
             String[] ids = null;
             for (var h : Spec.HOUSES) if (h.id().equals(BANNER_HOUSE)) ids = h.troops().split(",");
             List<String> banner = new ArrayList<>();
-            int size = RosterMath.bannerSize();
+            int size = RosterMath.LEGACY_BANNER_SIZE;
             while (banner.size() < size) banner.add(ids[banner.size() < 12 ? 0 : 1]);
             pr.owned.putIfAbsent(ids[0], new Profile.Owned());
             pr.owned.putIfAbsent(ids[1], new Profile.Owned());

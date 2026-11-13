@@ -168,7 +168,7 @@ final class BarracksPage {
         UiTex.draw(g, "table/frame-ornate-184", x + 60, y + 28);
         String name = UiMath.trim(t.name(), lw, s -> font.getWidth(DarkUi.focal(s)));
         WarTableHome.centred(g, DarkUi.focal(name), cx, y + NAME_Y, DarkUi.INK_TEXT); drawn.add(name);
-        String kind = Morale.label(t.group()) + ", " + t.slotWeight() + (t.slotWeight() == 1 ? " army slot" : " army slots");
+        String kind = Morale.label(t.group()) + ", " + "counts as " + t.slotWeight() + (t.slotWeight() == 1 ? " troop" : " troops") + " for its House";
         WarTableHome.centred(g, body(kind), cx, y + KIND_Y, DarkUi.SEPIA); drawn.add(kind);
         String stats = "Health " + t.health() + "    Damage " + t.damage();
         WarTableHome.centred(g, body(stats), cx, y + STATS_Y, DarkUi.INK_TEXT); drawn.add(stats);

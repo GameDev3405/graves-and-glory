@@ -84,8 +84,8 @@ public final class RosterMath {
         return null;
     }
 
-    /** Slots in a banner (rules.squadSize). */
-    static int bannerSize() { return Spec.RULES[0].squadSize(); }
+    /** Entries in the old dense banner line (v1 to v3 profiles, the migration and the starter line); the war table itself is WarGrid.cells() cells under maxTroops(). */
+    public static final int LEGACY_BANNER_SIZE = 20;
     static int maxStars() { return Spec.RECRUITMENT[0].maxStars(); }
     static Spec.RaritiesRow rarityRow(String id) {
         for (var r : Spec.RARITIES) if (r.id().equals(id)) return r;
@@ -119,13 +119,13 @@ public final class RosterMath {
     }
 
     /**
-     * Null when a banner is valid, else the first rule it breaks, checked in this order: size (not rules.squadSize
+     * Null when a banner is valid, else the first rule it breaks, checked in this order: size (not LEGACY_BANNER_SIZE
      * entries), unknown (an entry that is not a troop, ^ or empty), not_owned, orphan_marker (a ^ no unit needs),
      * missing_marker (an Epic or Legendary followed by fewer than weight-1 markers), then the rarities.bannerMax limits,
      * rarest first (legendary_limit, epic_limit).
      */
     public static String validBanner(List<String> banner, Catalog c, Set<String> owned) {
-        if (banner == null || banner.size() != bannerSize()) return "size";
+        if (banner == null || banner.size() != LEGACY_BANNER_SIZE) return "size";
         for (String id : banner) if (!MARKER.equals(id) && !EMPTY.equals(id) && !c.known(id)) return "unknown";
         for (String id : banner) if (c.known(id) && !owned.contains(id)) return "not_owned";
         int pending = 0;
@@ -151,10 +151,10 @@ public final class RosterMath {
     /**
      * Rebuilds a banner from entries, in order. It skips empty slots, markers, unknown and unowned ids, and a unit past its
      * rarity's bannerMax (a Legendary after the first, an Epic after the second). Each other unit is appended with its
-     * weight-1 markers when it still fits; then the banner is padded with empty to rules.squadSize.
+     * weight-1 markers when it still fits; then the banner is padded with empty to LEGACY_BANNER_SIZE.
      */
     public static List<String> repack(List<String> entries, Catalog c, Set<String> owned) {
-        int size = bannerSize();
+        int size = LEGACY_BANNER_SIZE;
         List<String> out = new ArrayList<>(size);
         Map<String, Integer> units = new HashMap<>();
         if (entries != null) for (String id : entries) {
@@ -170,9 +170,9 @@ public final class RosterMath {
         return out;
     }
 
-    /** The banner of a new profile, and of a migrated one with no usable v1 line: 12 Order Squires, then Order Archers (8 at rules.squadSize 20). */
+    /** The banner of a new profile, and of a migrated one with no usable v1 line: 12 Order Squires, then Order Archers (8 of 20). */
     public static List<String> starterBanner() {
-        int size = bannerSize();
+        int size = LEGACY_BANNER_SIZE;
         List<String> out = new ArrayList<>(size);
         while (out.size() < Math.min(12, size)) out.add("knight");
         while (out.size() < size) out.add("archer");

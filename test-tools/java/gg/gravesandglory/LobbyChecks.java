@@ -203,7 +203,7 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
             }
             case 21->{if(k<2)return;shot(c,"lobby-1080-host-no-house");press(c,"house-gilded");next();}
             case 22->{if(!WarTableLobby.myHouse().equals("gilded")||WarTableLobby.myTroops()<=0||k<10){if(k>100)fail(c,"p1-lobby-house-gilded","house "+WarTableLobby.myHouse()+", troops "+WarTableLobby.myTroops());return;}
-                report("p1-lobby-house-gilded",active(c,"ready")&&WarTableLobby.myTroops()==RosterMath.bannerSize()-1,"Gilded fields "+WarTableLobby.myTroops()+" troops (want "+(RosterMath.bannerSize()-1)+"), Ready "+(active(c,"ready")?"live":"dull"));
+                report("p1-lobby-house-gilded",active(c,"ready")&&WarTableLobby.myTroops()==RosterMath.LEGACY_BANNER_SIZE-1,"Gilded fields "+WarTableLobby.myTroops()+" troops (want "+(RosterMath.LEGACY_BANNER_SIZE-1)+"), Ready "+(active(c,"ready")?"live":"dull"));
                 map0=num("map");press(c,"map-next");stage=7;}
             case 7->{ // the host's map pick reaches the snapshot
                 if(num("map")==map0){if(k>100)fail(c,"p1-lobby-host-map","map still "+map0+" 100 ticks after Next map");return;}
@@ -369,7 +369,7 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
             case 17->{ // the countdown runs out and the round starts with bots in the five empty seats
                 if(!serverRunning||botsDawn<0){if(k>900)fail(c,"p1-lobby-bot-fill-on","no round 900 ticks after the last Ready (countdown "+num("countdown")+", notice \""+CampaignClient.notice+"\")");return;}
                 var f=fielded;int units=f==null?-1:RosterMath.units(f,RosterMath.Catalog.fromSpec());
-                report("p1-lobby-house-fielded",f!=null&&!f.contains("revenant")&&f.contains("knight")&&units==RosterMath.bannerSize()-1,"the Gilded pick fields "+units+" units, revenant "+(f!=null&&f.contains("revenant")?"fielded":"left home")+" (want "+(RosterMath.bannerSize()-1)+" Gilded, no revenant)");
+                report("p1-lobby-house-fielded",f!=null&&!f.contains("revenant")&&f.contains("knight")&&units==RosterMath.LEGACY_BANNER_SIZE-1,"the Gilded pick fields "+units+" units, revenant "+(f!=null&&f.contains("revenant")?"fielded":"left home")+" (want "+(RosterMath.LEGACY_BANNER_SIZE-1)+" Gilded, no revenant)");
                 report("p1-lobby-bot-fill-on",botsDawn==2&&botsDusk==3&&seatedHumans==1,"the round the countdown started fields "+seatedHumans+" commander and bots Dawn "+botsDawn+", Dusk "+botsDusk+" (want 1, 2, 3), "+k+" ticks after Ready");
                 end(c);
             }

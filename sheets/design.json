@@ -1263,7 +1263,6 @@
       "id": "domination",
       "maxPlayers": 8,
       "playersPerTeam": 4,
-      "squadSize": 20,
       "bannerCols": 9,
       "bannerRows": 6,
       "musterAllowance": 640,
