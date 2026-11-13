@@ -132,6 +132,12 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     int toggleWidth() { return textRenderer.getWidth("Parchment | Real") + 12; }
 
     void fit() { view.fit(); }
+    /** The look toggle's key: the player's own map_look binding, or while that is unbound (the default) the chat key, T unless rebound. A
+     *  binding of its own on T would take T from chat, since a key drives only one binding. */
+    static net.minecraft.client.option.KeyBinding lookKey() {
+        var k = GravesAndGloryClient.mapLook;
+        return k != null && !k.isUnbound() ? k : MinecraftClient.getInstance().options.chatKey;
+    }
     void toggleLook() { setLook(!lookParchment()); }
 
     // ---------------------------------------------------------------- input
@@ -141,7 +147,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     @Override public boolean keyPressed(int key, int scan, int mods) {
         if (GravesAndGloryClient.mapKey.matchesKey(key, scan)) { client.setScreen(parent); return true; }
         if (key == GLFW.GLFW_KEY_ESCAPE && (popup != null || attackArmy != null || !pingMode.isEmpty())) { popup = null; attackArmy = null; pingMode = ""; return true; }
-        if (key == GLFW.GLFW_KEY_T) { toggleLook(); return true; }
+        if (lookKey().matchesKey(key, scan)) { toggleLook(); return true; }
         if (key == GLFW.GLFW_KEY_HOME) { fit(); return true; }
         return super.keyPressed(key, scan, mods);
     }
@@ -366,10 +372,14 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             double r = p.radius() * view.scale();
             if (r >= 14) dottedCircle(g, x, y, (int) r, 0x99241a10);
             // the capture rings: progress in the challenger's colour, a hatched ring while contested
-            if (progress > 0 && p.captureSeconds() > 0) arc(g, x, y, 9, Math.min(1, progress / (double) p.captureSeconds()), DarkUi.teamColor(ch), false);
+            if (progress > 0 && p.captureSeconds() > 0) {
+                arc(g, x, y, 9, Math.min(1, progress / (double) p.captureSeconds()), DarkUi.teamColor(ch), false);
+                DarkUi.teamMark(g, ch, x - 19, y - 3); // the challenger's mark left of the ring
+            }
             if (contested) arc(g, x, y, 10, 1, DarkUi.CONTEST, true);
             disc(g, x, y, 7, INK);
             disc(g, x, y, 6, owner < 0 ? NEUTRAL : DarkUi.teamColor(owner));
+            if (owner >= 0) DarkUi.teamMark(g, owner, x + 12, y - 3); // and the owner's right of it
             String id = p.id();
             g.drawText(textRenderer, id, x - textRenderer.getWidth(id) / 2 + 1, y - 3, INK, false);
             String name = p.name();
@@ -519,12 +529,12 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         x += 9;
         g.drawText(textRenderer, a, x, 6, DarkUi.IVORY, true);
         x += textRenderer.getWidth(a) + 2;
-        if (pips) for (int i = 0; i < heldA; i++) { plus(g, x + 2, 9, DarkUi.teamColor(0)); x += 6; }
+        if (pips) for (int i = 0; i < heldA; i++) { plus(g, x + 2, 9, DarkUi.IVORY); x += 6; } // beside the side's own mark
         g.fill(x + 3, 4, x + wc - 3, 16, 0xff120c08);
         g.drawBorder(x + 3, 4, wc - 6, 12, BRASS_LO);
         g.drawText(textRenderer, clock, x + 8, 6, PARCH, false);
         x += wc;
-        if (pips) for (int i = 0; i < heldB; i++) { plus(g, x + 2, 9, DarkUi.teamColor(1)); x += 6; }
+        if (pips) for (int i = 0; i < heldB; i++) { plus(g, x + 2, 9, DarkUi.IVORY); x += 6; }
         if (pips && heldB > 0) x += 2;
         g.drawText(textRenderer, b, x, 6, DarkUi.IVORY, true);
         x += textRenderer.getWidth(b) + 2;

@@ -79,7 +79,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 screen.mouseReleased(cx + 50, cy, 0);
                 dragMoved = Math.abs(v.worldX(cx) - wx) > 1 && screen.popup == null;
                 viewWhy += "a 50 px drag moved the centre " + r(wx - v.worldX(cx)) + " blocks (no popup: " + (screen.popup == null) + "); ";
-                screen.keyPressed(GLFW.GLFW_KEY_T, 0, 0);
+                pressLook(screen);
                 next(5, tick);
             }
             case 5 -> {
@@ -94,7 +94,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 if (waited < 3) return;
                 var v = screen.view;
                 homeFit = Math.abs(v.scale() - v.fitScale()) < 1e-9 && !v.moved();
-                screen.keyPressed(GLFW.GLFW_KEY_T, 0, 0); // back to parchment
+                pressLook(screen); // back to parchment
                 saved = BattleMapClient.grid;
                 BattleMapClient.grid = null; // a late joiner: the screen draws the fallback
                 next(7, tick);
@@ -193,6 +193,12 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
     }
 
     BattleMapGrid saved;
+
+    /** The look key as the player has it bound (T by default, through the chat key). */
+    static void pressLook(BattleMapScreen s) {
+        var k = net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.getBoundKeyOf(BattleMapScreen.lookKey());
+        s.keyPressed(k.getCode(), 0, 0);
+    }
 
     void resetFindings() {
         fitOpen = zoomUp = zoomKept = dragMoved = toggled = homeFit = noGridOk = false;

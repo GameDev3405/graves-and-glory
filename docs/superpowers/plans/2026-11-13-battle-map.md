@@ -185,7 +185,7 @@ final class BattleMapScan { static BattleMapGrid scan(net.minecraft.server.world
 - `battlemap_grid_v1`: `int length`, then the bytes of `BattleMapGrid.encode()`.
 - `battlemap_v1`:
   - The tick.
-  - Ally armies: `n`, then per army: id string(36), name string(32), bot bool, retreating bool, group count `g`, and per group: kind id string(16), cx float, cz float, count int, health float 0..1, order string(16), tx float, tz float, fighting bool, plus an assignment (job byte, -1 for none, point int, x float, z float, direct bool).
+  - Ally armies: `n`, then per army: id string(36), name string(32), bot bool, retreating bool, aimed bool (the mode sets this bot's goal, so the map offers it no order: call 11; added in Task 6), group count `g`, and per group: kind id string(16), cx float, cz float, count int, health float 0..1, order string(16), tx float, tz float, fighting bool, plus an assignment (job byte, -1 for none, point int, x float, z float, direct bool).
   - Plans: `m` × (point int, job byte, setter string(32)).
   - Orders: `k` × (army string(36), job byte, point int, x float, z float, setter string(32)).
   - Ally groups come from `b.units` grouped by squad and group id, team-filtered. Own groups are sent too, so one source serves all.

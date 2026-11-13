@@ -50,7 +50,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static int[] owners={-1,-1,-1},progress={0,0,0},challengers={-1,-1,-1},roster=new int[Spec.TROOPS.length],pending=new int[Spec.TROOPS.length];
     static List<Marker> markers=List.of();
     record Marker(float x,float z,boolean fighting,boolean own,String name){}
-    static KeyBinding playAgain,panelEdit,menu,attack,charge,followMe,retreat,formation,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,hints,armoury,banner,gearKey;
+    static KeyBinding playAgain,mapLook,panelEdit,menu,attack,charge,followMe,retreat,formation,mapKey,rotateLeft,rotateRight,confirmOrder,cancelOrder,hints,armoury,banner,gearKey;
     static Path runtime;
     static String join="",error="";
     static boolean attempted,opened,joined,shareCamp,launcherContext,connectingInvitation;
@@ -83,7 +83,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type,renderer,helper,context)->{
             if(renderer instanceof net.minecraft.client.render.entity.PlayerEntityRenderer player)helper.register(new CommanderGearFeature(player));
         });
-        menu=key("menu",GLFW.GLFW_KEY_R);attack=key("attack",GLFW.GLFW_KEY_Z);charge=key("charge",GLFW.GLFW_KEY_X);followMe=key("follow",GLFW.GLFW_KEY_C);retreat=key("retreat",GLFW.GLFW_KEY_V);formation=key("formation",GLFW.GLFW_KEY_B);mapKey=key("map",GLFW.GLFW_KEY_M);
+        menu=key("menu",GLFW.GLFW_KEY_R);attack=key("attack",GLFW.GLFW_KEY_Z);charge=key("charge",GLFW.GLFW_KEY_X);followMe=key("follow",GLFW.GLFW_KEY_C);retreat=key("retreat",GLFW.GLFW_KEY_V);formation=key("formation",GLFW.GLFW_KEY_B);mapKey=key("map",GLFW.GLFW_KEY_M);mapLook=key("map_look",GLFW.GLFW_KEY_UNKNOWN); // unbound: inside the map T comes through the chat key (BattleMapScreen.lookKey), so chat keeps T
         rotateLeft=key("rotate_left",GLFW.GLFW_KEY_LEFT_BRACKET);rotateRight=key("rotate_right",GLFW.GLFW_KEY_RIGHT_BRACKET);
         hints=key("hints",GLFW.GLFW_KEY_LEFT_ALT); // held, the battle HUD shows every key hint (BattleHud.altLayer)
         armoury=key("armoury",GLFW.GLFW_KEY_U); // opens the barracks screen on its Armoury tab, anywhere in a battle (ArmouryTab)
