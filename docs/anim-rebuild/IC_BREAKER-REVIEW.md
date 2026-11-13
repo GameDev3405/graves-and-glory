@@ -261,3 +261,20 @@ is inside the helm down to its base.
   (fullbody._plates_yield reads the plate's spikes) keeps left_pauldron slid down its arm a little longer after the
   wind-up, at most 0.15 px (t4.25). Timing fields unchanged on all 55 clips.
 - Scorecard exit 0, identical to before. Focus check 0 FAIL rows, 131 WARN rows as before.
+
+### Round 1: right row mirrored (2026-11-13)
+
+- Hand builder: the right row now mirrors the left (1, 2, 3 px rising to the back, on the back half of the plate). From the
+  front each row still shows one 3 px spike.
+- Rows naming right_spikes, new clips: jab helm 3.40 -> 1.10 (t13); hew helm 1.83 -> 1.26 (t12), fur_collar 0.95 -> 0.02;
+  stance_wall 1.80 -> 0; stun_upper 1.25 -> 0.12; hit_medium_left 1.07 -> 0; stun_out 0.91 -> 0; all others now 0.
+  Left rows unchanged (jab helm into left_spikes 1.89).
+- Clips: cold rebuild (empty cache). Two clips changed, one bone each, both because the plate yield reads the right
+  spikes and its slide feeds plate_clear's turn: attack_side_hew right_pauldron (largest 2.25 px at t11, 10.0 deg at
+  t11.25) and attack_haft_jab right_pauldron (1.36 px at t13.25, 8.8 deg at t12.75). Body and weapon identical; only
+  the right plate's tilt differs. Timing fields unchanged on all 55 clips.
+- Scorecard exit 0, identical. Focus check 0 FAIL rows, 131 WARN before and after. stance_wall_upper armour_clip went
+  WARN 1.80 -> pass 1.65. death_back floor went pass 0.02 -> WARN 0.95 (t10.75, right_spikes under the ground while
+  he lies on his back; the clip itself is unchanged).
+- The jab armour_clip exemption stays (helm into left_pauldron 2.26 at t5.5 and four rows 1.92-2.00 remain); its reason
+  is reworded to name what is left under it.

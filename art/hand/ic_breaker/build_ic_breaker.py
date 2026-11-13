@@ -212,10 +212,11 @@ def bones():
         B.append(Bone(f"{side}_greave", f"{side}_shin", stages=[3], boxes=[Box((-2.4, 2, -2.4), (4.8, 1.5, 4.8), IT.P("bgv" + side, 3), dil=0.1)]))
         B.append(Bone(f"{side}_boot", f"{side}_shin", boxes=[Box((-2.5, 3, -3), (5, 3, 5), IT.T(boot(), top=False))]))
         B.append(Bone(f"{side}_boss", f"{side}_pauldron", stages=[2, 3], boxes=[Box((-1.5, -2.5, -1.5), (3, 1, 3), IT.brass(3))]))
-        # the left row stands on the back half of its plate, rising 1-2-3 px to the back (model fix 2026-11-13): in the
-        # haft jab's shove the raised left shoulder sits under the helm's front, which covers the plate's front half
-        # (helm into left_spikes 3.52 -> 1.89). From the front the row still shows one 3 px spike, as on the right.
-        rows = ((-2.5, 3), (0, 3), (2.5, 3)) if side == "right" else ((0.5, 1), (2, 2), (3.5, 3))
+        # each row stands on the back half of its plate, rising 1-2-3 px to the back (model fix 2026-11-13): in the
+        # haft jab the raised shoulder sits under the helm's front, which covers the plate's front half (helm into
+        # left_spikes 3.52 -> 1.89 at the shove; the right row mirrors it, fix round 1). From the front each row still
+        # shows one 3 px spike.
+        rows = ((0.5, 1), (2, 2), (3.5, 3))
         B.append(Bone(f"{side}_spikes", f"{side}_pauldron", stages=[3], boxes=[Box((-0.5 + 2.5 * c, -1.5 - h, -0.5 + dz), (1, h, 1), IT.spike(IT.IRON, 3, 3)) for dz, h in rows]))
         B.append(Bone(f"{side}_tasset", "body", stages=[2, 3], boxes=[Box((-5.4 if side == "right" else 4.4, -2, -2.6), (1, 5, 5.2), IT.P("bts" + side, 3, ember=True))]))
         inner = 3 if side == "right" else 0
