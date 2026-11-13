@@ -644,7 +644,8 @@ final class Tactics {
         }
         // A detour point is a node of a path: it is used as it is (its own height; no move off the river bank, no search for another column, which could land behind the wall it leads round).
         int x=(int)Math.floor(goal.x),z=(int)Math.floor(goal.z),y=onDetour?(int)Math.floor(goal.y):Arena.ground(x,z)+1;
-        if(!onDetour&&!wade&&Arena.river(x,z)&&Arena.ground(x,z)<64){x=(int)Arena.riverX(z)+(x>Arena.riverX(z)?11:-11);y=Arena.ground(x,z)+1;}
+        if(!onDetour&&!wade&&Arena.river(x,z)&&Arena.ground(x,z)<64){int[] dry=EngineMaps.active()?Arena.dryNear(battle.world,x,z,mob.getX(),Integer.MAX_VALUE):null; // an engine map's river need not run north-south (new Rivergate): the nearest dry column
+            if(dry!=null){x=dry[0];z=dry[1];}else x=(int)Arena.riverX(z)+(x>Arena.riverX(z)?11:-11);y=Arena.ground(x,z)+1;}
         // Keep local waypoints out of tree trunks, flagpoles and walls.
         if(!onDetour&&!(wade&&Arena.river(x,z))&&(!battle.world.getBlockState(new BlockPos(x,y,z)).isAir()||!battle.world.getBlockState(new BlockPos(x,y+1,z)).isAir())){
             boolean found=false;

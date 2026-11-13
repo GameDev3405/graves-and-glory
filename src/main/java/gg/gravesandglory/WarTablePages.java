@@ -2170,12 +2170,14 @@ final class WarTablePages {
         return out;
     }
 
+    /** The map rows' pitch: MAP_STEP, closed up so every map's 28-high row ends 12 above the status line (seven maps: 30). */
+    static int mapStep() { return Math.min(MAP_STEP, (STATUS_Y - 12 - MAP_Y) / Math.max(1, Spec.MAPS.length)); }
     void initField() {
         int[] o = fieldCol();
         int ox = o[0], oy = o[1];
         for (int i = 0; i < Spec.MAPS.length; i++) {
             final int index = i;
-            int y = oy + MAP_Y + MAP_STEP * i;
+            int y = oy + MAP_Y + mapStep() * i;
             add("map-" + i, new UiButton(ox + MAP_X, y, MAP_W, 28, Text.literal(Spec.MAPS[i].name()), b -> viewed = index, (g, x, by, w, h, hot) -> paintMapRow(g, index, x, by)));
         }
         for (int i = 0; i < TIER_IDS.length; i++) {

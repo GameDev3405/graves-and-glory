@@ -193,20 +193,29 @@ public final class Arena {
     static double climb(double beyond,int elevation){double t=MathHelper.clamp(1-beyond/CLIMB,0,1);t=t*t*(3-2*t);return Y+(elevation-Y)*t;}
     /** One end of the road is the cell (x, z). */
     static boolean endsAt(CampaignMaps.Road r,int x,int z){return r.ax()==x&&r.az()==z||r.bx()==x&&r.bz()==z;}
-    /** Where a troop lined up at (x, z) stands: on the ground there, one block up. A spot over deep water (below 64, as GravesAndGlory.Battle.wet) moves to
-     *  the nearest column within 16 that is dry, no higher than one block over the deep water's banks' floor, and has two free cells to stand in: new Rivergate's
-     *  river runs through each base at z 0, under the middle army's lineup. On dry ground (every other map) the spot is as before. */
-    public static Vec3d standing(ServerWorld w,double x,double z){
+    /** Deep water: river below 64, as GravesAndGlory.Battle.wet. */
+    public static boolean deep(int x,int z){return river(x,z)&&ground(x,z)<64;}
+    /** Where a troop lined up at (x, z) stands: on the ground there, one block up. A spot over deep water moves to the nearest dry column (dryNear) no higher
+     *  than the floor (a parapet or roof is not a lineup spot): new Rivergate's river runs through each base at z 0, under the middle army's lineup.
+     *  On dry ground (every other map) the spot is as before. */
+    public static Vec3d standing(ServerWorld w,double x,double z,double homeX){
         int ix=(int)Math.floor(x),iz=(int)Math.floor(z);
-        if(!(river(ix,iz)&&ground(ix,iz)<64))return new Vec3d(x,ground(ix,iz)+1,z);
-        var pos=new BlockPos.Mutable();
-        for(int r=1;r<=16;r++)for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
-            if(Math.max(Math.abs(dx),Math.abs(dz))!=r)continue;int cx=ix+dx,cz=iz+dz,g=ground(cx,cz);
-            if(river(cx,cz)&&g<64||g>Y)continue;
-            boolean open=true;for(int y=g+1;y<=g+2&&open;y++)open=w.getBlockState(pos.set(cx,y,cz)).getCollisionShape(w,pos).isEmpty();
-            if(open)return new Vec3d(cx+.5,g+1,cz+.5);
+        if(!deep(ix,iz))return new Vec3d(x,ground(ix,iz)+1,z);
+        int[] c=dryNear(w,ix,iz,homeX,Y);
+        return c==null?new Vec3d(x,ground(ix,iz)+1,z):new Vec3d(c[0]+.5,ground(c[0],c[1])+1,c[1]+.5);
+    }
+    /** The nearest column to (x, z) within 16 that is not deep water, whose ground is at most maxGround, with two free cells above it (w null: not tested);
+     *  of equally near ones, the one nearest towardX. Null when there is none. */
+    public static int[] dryNear(ServerWorld w,int x,int z,double towardX,int maxGround){
+        var pos=new BlockPos.Mutable();int[] best=null;double bestD=Double.MAX_VALUE,bestT=Double.MAX_VALUE;
+        for(int dx=-16;dx<=16;dx++)for(int dz=-16;dz<=16;dz++){
+            int d=dx*dx+dz*dz;if(d>256||d>bestD)continue;int cx=x+dx,cz=z+dz;double t=Math.abs(cx+.5-towardX);
+            if(d==bestD&&t>=bestT)continue;
+            int g=ground(cx,cz);if(deep(cx,cz)||g>maxGround)continue;
+            boolean open=true;if(w!=null)for(int y=g+1;y<=g+2&&open;y++)open=w.getBlockState(pos.set(cx,y,cz)).getCollisionShape(w,pos).isEmpty();
+            if(open){best=new int[]{cx,cz};bestD=d;bestT=t;}
         }
-        return new Vec3d(x,ground(ix,iz)+1,z);
+        return best;
     }
     public static int ground(int x,int z){var e=EngineMaps.current();if(e!=null)return e.solid(x,z);for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2)return s.elevation();return river(x,z)?Y-3:height(x,z);}
     public static int mapColor(int x,int z){

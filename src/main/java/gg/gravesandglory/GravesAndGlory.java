@@ -994,7 +994,8 @@ public final class GravesAndGlory implements ModInitializer {
                     HitResult hit=p.raycast(R.orderRange(),0,false);
                     Vec3d target=hit.getType()==HitResult.Type.MISS?p.getPos().add(p.getRotationVec(1).multiply(32)):hit.getPos();
                     int tx=MathHelper.clamp((int)target.x,-Field.halfX()+10,Field.halfX()-10),tz=MathHelper.clamp((int)target.z,-Field.halfZ()+10,Field.halfZ()-10);
-                    if(Arena.river(tx,tz)&&Arena.ground(tx,tz)<64)tx=(int)Arena.riverX(tz)+(tx>Arena.riverX(tz)?12:-12);
+                    if(Arena.river(tx,tz)&&Arena.ground(tx,tz)<64){int[] dry=EngineMaps.active()?Arena.dryNear(world,tx,tz,p.getX(),Integer.MAX_VALUE):null; // an engine map's river need not run north-south (new Rivergate): the nearest dry column
+                        if(dry!=null){tx=dry[0];tz=dry[1];}else tx=(int)Arena.riverX(tz)+(tx>Arena.riverX(tz)?12:-12);}
                     s.target=new Vec3d(tx,Arena.ground(tx,tz)+1,tz);
                 }else s.target=p.getPos();
                 if(id.equals("charge")||id.equals("retreat")){ // a Charge keeps its run direction and a Retreat turns to Follow me, as a player's tactical order (OrderRules; final review M4)
@@ -1240,7 +1241,7 @@ public final class GravesAndGlory implements ModInitializer {
                 var spec=Campaign.troop(line.get(position));if(spec==null)continue;
                 int r=position/cols;double row=BattleMath.deployRow(Arrays.copyOfRange(cells,r*cols,r*cols+cols))[position%cols];
                 double side=s.team==0?1:-1,x=from.x+side*(20-depth[r]),z=from.z+side*((index-(count-1)/2.0)*22+row); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
-                spawn(s,spec,position,Arena.standing(world,x,z),false);
+                spawn(s,spec,position,Arena.standing(world,x,z,from.x),false);
             }
             Houses.recompute(s); // once for the whole line (spawn(...,false) skips the per-troop pass: same traits, a fraction of the round-start tick)
         }
