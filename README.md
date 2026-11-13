@@ -28,7 +28,7 @@ only a legacy Bannerbound world exists, it is copied before opening; the origina
 is retained. Close that world normally before upgrading, keep a backup, and allow
 disk space for the copy. If both world folders exist, the current world wins.
 
-Collect soldiers, arrange a twenty-unit army and lead it across five large fantasy battlefields inside Minecraft: Java Edition. Play 1vAI practice, 1v1, 2v2, 3v3 or 4v4, with optional bots filling empty team slots.
+Collect soldiers, arrange an army of up to 40 troops and lead it across five large fantasy battlefields inside Minecraft: Java Edition. Play 1vAI practice, 1v1, 2v2, 3v3 or 4v4, with optional bots filling empty team slots.
 
 ## Camp, friends and permanent armies
 
@@ -88,7 +88,7 @@ Requires an account owning Minecraft: Java Edition. Built for Minecraft 1.20.1, 
 
 Three pack formats and a server kit are prepared locally, none published: a Modrinth .mrpack (for Prism Launcher or any launcher that imports .mrpack), a CurseForge modpack zip (`tools/export_curseforge.py`, with `tools/verify_curseforge.py` as its readback check), and a plain zip. The dedicated-server zip is the one way to run a server: it is `tools/server-kit/` (see docs/SERVER-RUNBOOK.md) plus the mod jars, with setup, start, stop, backup, restore and update scripts, a version gate and a whitelist-on configuration on port 25580; it never writes the EULA for you, so you set `eula=true` yourself. The server kit booted, saved and stopped cleanly in a scratch test on 2026-11-02 with no clients. The title menu works with no launcher-specific runtime files. The Modrinth .mrpack install test in a launcher passed. Dedicated-server and real launcher checks are tracked in the work log; they do not establish Internet reachability. It is not yet a published Modrinth or CurseForge release.
 
-Up to eight human commanders, four per faction, each with twenty troops (160 total). A client can host a local-network camp and stay open, or players can join a separately configured dedicated server. Practice stays private. If a launcher supplies an invitation file, it adds an optional action under Play with friends and never starts a connection automatically; an ordinary Prism or Modrinth install has no such file. Remote friends need a reachable server. Direct Internet reachability and an eight-human Internet match have not been independently tested.
+Up to eight human commanders, four per faction, each with up to 40 troops (320 total). A client can host a local-network camp and stay open, or players can join a separately configured dedicated server. Practice stays private. If a launcher supplies an invitation file, it adds an optional action under Play with friends and never starts a connection automatically; an ordinary Prism or Modrinth install has no such file. Remote friends need a reachable server. Direct Internet reachability and an eight-human Internet match have not been independently tested.
 
 ## Verification
 
