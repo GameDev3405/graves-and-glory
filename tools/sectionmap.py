@@ -2,11 +2,13 @@
 
     python tools/sectionmap.py SETTINGS SECTIONS_DIR OUT_DIR
     python tools/sectionmap.py docs/maps/kingsfield/game.json <export dir> src/main/resources/data/gravesandglory/sectionmaps/kingsfield_cq
+    python tools/sectionmap.py nav src/main/resources/data/gravesandglory/sectionmaps/kingsfield_cq    # (re)bakes nav.bin.gz from a packed map's own tiles
 
 SETTINGS (for example docs/maps/kingsfield/game.json) names the section grid, the field (playable half sizes), the
 spawns and the capture points. SECTIONS_DIR holds the section templates (Kingsfield: kfmap.py export). OUT_DIR gets:
   map.json        the EngineMap manifest (points and spawns with their standing y, walking routes, tiles) plus "field"
   columns.bin.gz  solid and water heights per column, little-endian int16, the mod's read-back rule (as mapengine build)
+  nav.bin.gz      the floors of every column (floors_of), for the mod's route field (NavField): written by pack and by `python tools/sectionmap.py nav MAPDIR`
   <section>.stk   one gzip nbt per section: size, palette, and "stack" (big-endian int16 palette index per cell, -1 none,
                   cell (z*sx + x)*sy + y), the layout EngineMaps keeps in memory. A structure template of the same
                   section is ~20 times larger (a compound per block).
@@ -82,6 +84,47 @@ def floor_distances(floors, w, d, start, near_y):
                     dist[(nx, nz, ny)] = nd
                     q.append((nx, nz, ny))
     return dist
+
+
+NAV = 'nav.bin.gz'
+
+
+def write_nav(out, floors, w, d, floor, sha):
+    """nav.bin.gz: b'NAV1', the map's design_sha256 (64 ascii bytes, so a stale file is seen), width, depth, floorY (int32 LE), then per column (z*w + x) the
+    number of floors (uint8), then every floor's y minus floorY (uint8) in column order, lowest first. Deterministic."""
+    counts = np.zeros(w * d, dtype=np.uint8)
+    ys = []
+    for (z, x), fl in sorted(floors.items()):
+        counts[z * w + x] = len(fl)
+        for y in sorted(fl):
+            if not 0 <= y - floor < 256:
+                raise SystemExit(f'floor y {y} at column {x},{z} is outside floorY {floor} + 0..255')
+            ys.append(y - floor)
+    body = b'NAV1' + sha.encode('ascii') + struct.pack('<iii', w, d, floor) + counts.tobytes() + bytes(ys)
+    pathlib.Path(out).write_bytes(gzip.compress(body, mtime=0))
+
+
+def floors_from_tiles(mapdir):
+    """The floors dict of a packed map, read back from its own .stk tiles (the same floors_of the packer ran)."""
+    mapdir = pathlib.Path(mapdir)
+    m = json.loads((mapdir / 'map.json').read_text(encoding='utf-8'))
+    floors = {}
+    for t in m['tiles']:
+        _, root = nbt.read_file(mapdir / t['file'])
+        plain = root.value
+        sx, sy, sz = [int(v.value) for v in plain['size'].value]
+        palette = [e.value['Name'].value for e in plain['palette'].value]
+        raw = plain['stack'].value
+        stack = np.frombuffer(raw if isinstance(raw, (bytes, bytearray)) else bytes(b & 255 for b in raw), dtype='>i2').reshape(sz, sx, sy)
+        for (z, x), ys in floors_of(stack, palette, m['floorY']).items():
+            floors[(t['z'] + z, t['x'] + x)] = ys
+    return m, floors
+
+
+def bake_nav(mapdir):
+    m, floors = floors_from_tiles(mapdir)
+    write_nav(pathlib.Path(mapdir) / NAV, floors, m['width'], m['depth'], m['floorY'], m['design_sha256'])
+    print(f"{NAV}: {len(floors)} columns with floors, {(pathlib.Path(mapdir) / NAV).stat().st_size // 1024} KiB in {mapdir}")
 
 
 def pack_tile(path, size, palette, stack):
@@ -179,6 +222,9 @@ def main(settings_path, sections_dir, out_dir):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 4:
+    if len(sys.argv) == 3 and sys.argv[1] == 'nav':
+        bake_nav(sys.argv[2])
+    elif len(sys.argv) != 4:
         raise SystemExit(__doc__)
-    main(*sys.argv[1:])
+    else:
+        main(*sys.argv[1:])
