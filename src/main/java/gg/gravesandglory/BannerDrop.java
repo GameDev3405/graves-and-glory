@@ -34,7 +34,7 @@ final class BannerDrop {
         if (!WarGrid.inRange(cell)) return new Plan(false, why("range"), command, same);
         String b = brush == null ? ERASE : brush;
         SortedMap<Integer, String> next = new TreeMap<>(table);
-        if (b.equals(ERASE) || b.equals(table.get(cell))) { next.remove(cell); command = command(0, cell, b.equals(ERASE) ? ERASE : b); }
+        if (b.equals(ERASE) || b.equals(table.get(cell))) { next.remove(cell); command = command(0, cell, ERASE); } // taking off always sends the ERASE id, so the same troop clicked twice is two different commands
         else {
             if (!r.c().known(b)) return new Plan(false, why("unknown"), command, same);
             next.put(cell, b);

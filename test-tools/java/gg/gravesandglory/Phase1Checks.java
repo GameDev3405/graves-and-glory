@@ -3547,11 +3547,11 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(CampaignClient.map==Math.max(0,origMap)&&at(tick)>=3){window(c,960,540,1);report("p1-ui-page-cards",cardsOk,"home's field card at 1920x1080 GUI 2: "+cardsWhy+"; the camp's map put back ("+Spec.MAPS[Math.max(0,origMap)].name()+")");stage=10;}
                     else if(at(tick)>100){window(c,960,540,1);report("p1-ui-page-cards",false,cardsWhy+"; the camp's map not put back WRONG");stage=10;}
                 }
-                case 10->{ // p1-ui-page-focus: Tab to Remove on the Banner's row 0; a rebuild, then a change of the camp state, leave the focus there
+                case 10->{ // p1-ui-page-focus: Tab through the Banner's 9 x 6 grid and its tabs to Rename; a rebuild, then a change of the camp state, leave the focus there
                     int k=since(tick);var s=screen(c);
                     if(k==0){CampScreen.open("banner");return;}
-                    if(k==5){UiRecruitChecks.park(c);for(int i=0;i<24&&!focused(c).equals("remove-0");i++)UiRecruitChecks.tap(c,GLFW.GLFW_KEY_TAB);focusName=focused(c);
-                        why="Tab to "+focusName;if(s!=null)s.rebuild();String again=focused(c);ok=focusName.equals("remove-0")&&again.equals(focusName);why+=", a rebuild: "+again+(ok?"":" WRONG");return;}
+                    if(k==5){UiRecruitChecks.park(c);for(int i=0;i<150&&!focused(c).equals("rename");i++)UiRecruitChecks.tap(c,GLFW.GLFW_KEY_TAB);focusName=focused(c);
+                        why="Tab to "+focusName;if(s!=null)s.rebuild();String again=focused(c);ok=focusName.equals("rename")&&again.equals(focusName);why+=", a rebuild: "+again+(ok?"":" WRONG");return;}
                     if(k==7){boolean hot=WarTablePages.underlined().contains(focusName);ok&=hot;why+=", drawn underlined "+WarTablePages.underlined()+(hot?"":" WRONG");gold=CampaignClient.profile.troopWrits;
                         server(c,b->{b.campaign.profile(player).troopWrits+=1;b.campaign.save(player);});return;}
                     if(k>7&&gold>=0&&CampaignClient.profile.troopWrits!=gold){gold=-1;landedAt=tick;return;}

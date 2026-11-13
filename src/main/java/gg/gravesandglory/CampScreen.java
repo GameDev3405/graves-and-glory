@@ -20,6 +20,10 @@ final class CampScreen extends ArmyScreen {
     /** The commands the 300 ms throttle held back, oldest first (at most QUEUE_MAX); tick() sends one each time the throttle allows. */
     final ArrayDeque<String> queue=new ArrayDeque<>();
     static final int QUEUE_MAX=8;
+    /** The most banner strokes (cell:) that may wait: a whole 9 x 6 banner (54 cells), each cell once. */
+    static final int CELL_QUEUE_MAX=54;
+    /** When a command last went, strokes included (requestAt, the throttle's clock, counts only the throttled ones). */
+    long sentAt;
     /** state() as last built, and what it was built from: a snapshot revision and the running and ready flags. */
     String stateCache="";int stateRev=-1;boolean stateRunning,stateReady;
     /** The War Table home (page home), kept while this screen lives so its focus and animation survive a rebuild. */
@@ -64,9 +68,21 @@ final class CampScreen extends ArmyScreen {
     String value(String name){return social().has(name)?social().get(name).getAsString():"";}
     int number(String name,int fallback){return social().has(name)?social().get(name).getAsInt():fallback;}
     JsonArray rows(String name){return social().has(name)?social().getAsJsonArray(name):new JsonArray();}
-    /** Sends cmd to the server unless a command went less than 300 ms ago; true when it went or was queued, false when the queue is full. A command the throttle holds back waits in order and goes from tick() as the throttle allows, so quick clicks are delayed, not lost; the same command twice in a row in the queue counts once. */
-    boolean action(String cmd){long now=System.currentTimeMillis();if(!queue.isEmpty()||now-requestAt<300){if(cmd.equals(queue.peekLast()))return true;if(queue.size()>=QUEUE_MAX)return false;queue.add(cmd);return true;}transmit(cmd,now);return true;}
-    void transmit(String cmd,long now){requestAt=now;CampaignClient.notice="";CampaignClient.dismissed="";send(cmd);} // what the player does next speaks anew: a notice he left behind by changing page shows again if the server answers with the same words (review fix round 2)
+    /** Sends cmd to the server unless a command went less than 300 ms ago; true when it went or was queued, false when the queue is full. A command the throttle holds back waits in order and goes from tick() as the throttle allows, so quick clicks are delayed, not lost; the same command twice in a row in the queue counts once.
+     *  A banner stroke (cell:) is not throttled: it goes at once when nothing waits, else it queues behind what waits, and a queued stroke on a cell already queued is replaced by the newer one (the last word on a cell wins), so a long drag loses no cell. */
+    boolean action(String cmd){
+        long now=System.currentTimeMillis();
+        if(cmd.startsWith("cell:")){
+            String cell=cmd.substring(0,cmd.lastIndexOf(':')+1); // cell:<banner>:<col>:<row>:
+            boolean queued=queue.removeIf(q->q.startsWith(cell)); // the older stroke on this cell goes; the newer joins the end, where it keeps its order against banner commands
+            if(queue.isEmpty()){sentAt=now;CampaignClient.notice="";CampaignClient.dismissed="";send(cmd);return true;}
+            if(!queued&&queue.size()>=CELL_QUEUE_MAX)return false;
+            queue.add(cmd);return true;
+        }
+        if(!queue.isEmpty()||now-requestAt<300){if(cmd.equals(queue.peekLast()))return true;if(queue.size()>=QUEUE_MAX)return false;queue.add(cmd);return true;}
+        transmit(cmd,now);return true;
+    }
+    void transmit(String cmd,long now){requestAt=now;sentAt=now;CampaignClient.notice="";CampaignClient.dismissed="";send(cmd);} // what the player does next speaks anew: a notice he left behind by changing page shows again if the server answers with the same words (review fix round 2)
     /** Turns the table to another page (an old name goes through alias); the keyboard's focus starts afresh there. */
     void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;if("forge".equals(next))gearTab="forge";page=alias(next);if(!page.equals("gear"))arsenal=null;offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("troop"))troopSheet=null;if(!page.equals("lobby"))lobby=null;if(!page.equals("results"))report=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
     void rebuild(){clearAndInit();}
@@ -124,8 +140,8 @@ final class CampScreen extends ArmyScreen {
         }
     }
     @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(troopSheet!=null&&page.equals("troop"))troopSheet.tick();if(lobby!=null&&page.equals("lobby"))lobby.tick();if(report!=null&&page.equals("results"))report.tick();if(arsenal!=null&&page.equals("gear"))arsenal.tick();if(pages!=null&&pages.page.equals(page))pages.tick();if(!key.equals(state()))clearAndInit();flushPending();if(running&&!CampaignClient.waiting)close();}
-    /** Sends the oldest queued command once 300 ms have passed since the last. */
-    void flushPending(){long now=System.currentTimeMillis();if(!queue.isEmpty()&&now-requestAt>=300)transmit(queue.poll(),now);}
+    /** Sends the queued banner strokes at once, and the oldest other command once 300 ms have passed since the last. */
+    void flushPending(){long now=System.currentTimeMillis();while(!queue.isEmpty()&&queue.peek().startsWith("cell:")){sentAt=now;send(queue.poll());} if(!queue.isEmpty()&&now-requestAt>=300)transmit(queue.poll(),now);}
     /** The troops one recruitment roll in this House can give: its Commons, Rares and Epic in sheet order (Legendaries come from Pacts). */
     static List<Spec.TroopsRow> pool(String house){return Arrays.stream(Spec.TROOPS).filter(t->t.house().equals(house)&&!t.rarity().equals("legendary")).toList();}
     static int weight(Spec.TroopsRow t){var r=RosterMath.rarityRow(t.rarity());return r==null?0:r.rollWeight();}
@@ -252,8 +268,8 @@ final class CampScreen extends ArmyScreen {
     @Override public boolean mouseScrolled(double x,double y,double amount){if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);if(page.equals("gear")&&arsenal!=null&&arsenal.mouseScrolled(x,y,amount))return true;return super.mouseScrolled(x/scale,y/scale,amount);}
     @Override public boolean mouseReleased(double x,double y,int button){boolean drop=pages!=null&&pages.page.equals(page)&&pages.released(x,y,button);return super.mouseReleased(x/scale,y/scale,button)||drop;}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){if(button==GLFW.GLFW_MOUSE_BUTTON_LEFT&&pages!=null&&pages.page.equals(page)&&pages.dragged(x,y))return true;return super.mouseDragged(x/scale,y/scale,button,dx/scale,dy/scale);}
-    /** A key's press: the room code being written takes its keys first (so Backspace repeats as it is held); then a held key's repeats stop here (see held); then the page shown, whose keys count as held until released. */
-    @Override public boolean keyPressed(int key,int scan,int mods){boolean onPages=pages!=null&&pages.page.equals(page);if(page.equals("lobby")&&lobby!=null&&lobby.typing(key))return true;if(held.contains(key))return true;if(page.equals("home")&&home!=null&&home.keyPressed(key)){held.add(key);return true;}if(page.equals("recruit")&&recruit!=null&&recruit.keyPressed(key)){held.add(key);return true;}if(page.equals("troop")&&troopSheet!=null&&troopSheet.keyPressed(key)){held.add(key);return true;}if(page.equals("lobby")&&lobby!=null&&lobby.keyPressed(key)){held.add(key);return true;}if(page.equals("results")&&report!=null&&report.keyPressed(key)){held.add(key);return true;}if(page.equals("gear")&&arsenal!=null&&arsenal.keyPressed(key,scan)){held.add(key);return true;}if(onPages&&pages.keyPressed(key)){held.add(key);return true;}if(key==77)return true;return super.keyPressed(key,scan,mods);}
+    /** A key's press: the room code being written takes its keys first (so Backspace repeats as it is held), and so does a banner name being written (every key: R and Space are letters of it; the key that ends it, Enter or Esc, goes into held so it does not ride again); then a held key's repeats stop here (see held); then the page shown, whose keys count as held until released. */
+    @Override public boolean keyPressed(int key,int scan,int mods){boolean onPages=pages!=null&&pages.page.equals(page);if(page.equals("lobby")&&lobby!=null&&lobby.typing(key))return true;if(held.contains(key))return true;if(onPages&&pages.renaming!=null){pages.keyPressed(key);if(pages.renaming==null)held.add(key);return true;}if(page.equals("home")&&home!=null&&home.keyPressed(key)){held.add(key);return true;}if(page.equals("recruit")&&recruit!=null&&recruit.keyPressed(key)){held.add(key);return true;}if(page.equals("troop")&&troopSheet!=null&&troopSheet.keyPressed(key)){held.add(key);return true;}if(page.equals("lobby")&&lobby!=null&&lobby.keyPressed(key)){held.add(key);return true;}if(page.equals("results")&&report!=null&&report.keyPressed(key)){held.add(key);return true;}if(page.equals("gear")&&arsenal!=null&&arsenal.keyPressed(key,scan)){held.add(key);return true;}if(onPages&&pages.keyPressed(key)){held.add(key);return true;}if(key==77)return true;return super.keyPressed(key,scan,mods);}
     @Override public boolean charTyped(char ch,int mods){if(page.equals("lobby")&&lobby!=null&&lobby.charTyped(ch))return true;if(pages!=null&&pages.charTyped(ch))return true;return super.charTyped(ch,mods);}
     /** A held key's release lets its presses through again (see held). */
     @Override public boolean keyReleased(int key,int scan,int mods){if(held.remove(key))return true;return super.keyReleased(key,scan,mods);}

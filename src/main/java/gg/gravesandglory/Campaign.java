@@ -208,8 +208,7 @@ public final class Campaign {
         if(ending()){skipped.put(p.getUuid(),MatchEnding.Step.DONE);endingDone.add(p.getUuid());toLobby(p);return;} // joining during the ending: to camp, no step; a participant's reward and report are already settled
         if(b.running&&squad!=null&&squad.seated){returned(p.getUuid());b.toBase(p,squad.team);}else toLobby(p);
         if(b.running&&(squad==null||!squad.seated))notice(p.getUuid(),WELCOME_WAIT); // true for the moments he reads it, and gone with the round (returnLobby) or after NOTICE_TICKS: no standing line, which the round's end would leave false
-        else standing(p.getUuid(),WELCOME);
-        showNotice(p.getUuid());}
+        else standing(p.getUuid(),WELCOME);} // the profile's one-time notice waits for the War Table's "notice" command: shown at join, the client is not ready and the text is spent unseen
     /** Shows the profile's one-time notice (Profile.notice, set when a banner was trimmed on load) as a normal notice, then clears it and saves; nothing when there is none. */
     void showNotice(UUID id){var pr=profile(id);if(pr.notice==null)return;String text=pr.notice;pr.notice=null;if(save(id))notice(id,text);else pr.notice=text;}
     void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();GearCombat.clear(p);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
@@ -275,7 +274,7 @@ public final class Campaign {
         if(BannerCommands.handles(cmd)){ // cell:<banner>:<col>:<row>:<id|-> and banner:new/rename/copy/delete/use: the same paint rules the page previews with; a refusal changes and saves nothing
             var before=JSON.toJson(pr);String refusal=BannerCommands.apply(pr,cmd,RosterMath.Catalog.fromSpec(),RosterMath.fieldableHouses());
             if(refusal!=null){notice(p.getUuid(),refusal);return true;}
-            if(!save(p.getUuid())){profiles.put(p.getUuid(),JSON.fromJson(before,Profile.class));return true;}
+            if(!save(p.getUuid())){profiles.put(p.getUuid(),Profile.restored(JSON.fromJson(before,Profile.class)));return true;}
             var room=social.room(p.getUuid()); // a banner change that leaves the lobby's House pick no troop takes back the Ready
             if(room!=null&&!room.playing&&room.ready.contains(p.getUuid())&&!houseRefusal(room,p.getUuid()).isEmpty()){room.ready.remove(p.getUuid());social.revision++;notice(p.getUuid(),houseRefusal(room,p.getUuid()));}
             return true;

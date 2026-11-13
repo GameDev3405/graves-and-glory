@@ -39,7 +39,7 @@ public final class BannerDropCheck {
     static void samebrushRemoves(String common) {
         SortedMap<Integer, String> t = new TreeMap<>(Map.of(5, common, 6, common));
         var p = BannerDrop.paint(t, 5, common, ALL);
-        check(p.ok() && p.result().equals(Map.of(6, common)) && p.command().endsWith(":" + common), "The same brush on its own troop removes it");
+        check(p.ok() && p.result().equals(Map.of(6, common)) && p.command().endsWith(":-"), "The same brush on its own troop removes it, and sends the erase id so it is not the place command twice");
         var e = BannerDrop.paint(t, 6, "-", ALL);
         check(e.ok() && e.result().equals(Map.of(5, common)) && e.command().endsWith(":-"), "The brush - removes whatever stands there");
         check(BannerDrop.paint(t, 20, "-", ALL).ok(), "Removing from an empty cell is allowed and changes nothing");

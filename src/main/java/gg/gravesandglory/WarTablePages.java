@@ -236,6 +236,8 @@ final class WarTablePages {
     boolean stroking, strokeErase;
     int strokeCell = -1, refusedCell = -1, showLastFrom = -1;
     long refusedAt = -1000, deleteArmed;
+    /** The banner Delete is armed on (-1: none): a second press deletes only that banner. */
+    int deleteArmedBanner = -1;
     String renaming;
     static final int NAME_MAX = 16;
     /** Friends: the first commander of the camp's list shown. */
@@ -340,7 +342,7 @@ final class WarTablePages {
      *  While the room code is being written Enter joins with it and Space does nothing. Left and Right on the Chapter turn the
      *  track a page, as its arrows do. */
     boolean keyPressed(int key) {
-        if (renaming != null && renameKey(key)) return true;
+        if (renaming != null) { renameKey(key); return true; } // every key belongs to the name while it is written
         if (key == GLFW.GLFW_KEY_ESCAPE) {
             if (renaming != null) renameKey(key);
             else if (stroking) cancelDrag();
@@ -543,6 +545,8 @@ final class WarTablePages {
     private static SortedMap<Integer, String> planned;
     private static int plannedBanner = -1;
     private static long plannedAt;
+    /** The screen whose queue carries the planned strokes: the plan stays while it has strokes waiting. */
+    private static CampScreen plannedScreen;
     private static final long PLANNED_MS = 2500;
     private static String parsedCells;
     private static SortedMap<Integer, String> parsedTable = new TreeMap<>();
@@ -562,10 +566,18 @@ final class WarTablePages {
         return parsedTable;
     }
 
+    /** Whether the planned table has outlived its strokes: PLANNED_MS after the last one was sent, and never while some wait in the screen's queue (a hard stop at 30 s keeps a closed screen's from sticking). */
+    private static boolean plannedLapsed() {
+        long now = System.currentTimeMillis();
+        if (now - plannedAt > 30000) return true;
+        if (plannedScreen != null && !plannedScreen.queue.isEmpty()) return false;
+        return now - Math.max(plannedAt, plannedScreen == null ? 0 : plannedScreen.sentAt) > PLANNED_MS;
+    }
+
     /** The table the page draws and paints against: the planned one while strokes are in flight, else the saved one. */
     static SortedMap<Integer, String> table() {
         var snap = savedTable();
-        if (planned != null && (plannedBanner != shownBanner() || planned.equals(snap) || System.currentTimeMillis() - plannedAt > PLANNED_MS)) planned = null;
+        if (planned != null && (plannedBanner != shownBanner() || planned.equals(snap) || plannedLapsed())) planned = null;
         return planned != null ? planned : snap;
     }
 
@@ -653,14 +665,14 @@ final class WarTablePages {
         for (int i = 0; i < RosterMath.maxBanners(); i++) {
             final int b = i;
             add("tab-" + i, new UiButton(sh[0] + SHEET_X + TABS_X + i * (TAB_W + TAB_GAP), sh[1] + SHEET_Y + TABS_Y, TAB_W, TAB_H, Text.literal("Banner " + (i + 1)),
-                bb -> { shownBanner = b; planned = null; refresh(); }, (g, x, y, w, h, hot) -> tab(g, b, x, y, w, h)));
+                bb -> { shownBanner = b; planned = null; deleteArmed = 0; deleteArmedBanner = -1; refresh(); }, (g, x, y, w, h, hot) -> tab(g, b, x, y, w, h)));
         }
         String[][] acts = {{"new", "New", "Start a new empty banner"}, {"rename", "Rename", "Give this banner a new name"}, {"copy", "Copy", "Copy this banner into a new one"},
             {"delete", "Delete", "Delete this banner (press twice)"}, {"use", "Use", "Take this banner into battle"}};
         for (int i = 0; i < acts.length; i++) {
             final String name = acts[i][0], label = acts[i][1];
             var b = add(name, new UiButton(sh[0] + SHEET_X + TABS_X + i * (TAB_W + TAB_GAP), sh[1] + SHEET_Y + ACTS_Y, TAB_W, TAB_H, Text.literal(label), bb -> act(name),
-                (g, x, y, w, h, hot) -> vellum(g, name, x, y, w, h, name.equals("delete") && deleteArmed > ticks ? "Sure?" : label, false)));
+                (g, x, y, w, h, hot) -> vellum(g, name, x, y, w, h, name.equals("delete") && deleteArmed > ticks && deleteArmedBanner == shownBanner() ? "Sure?" : label, false)));
             b.setTooltip(Tooltip.of(Text.literal(acts[i][2])));
         }
     }
@@ -736,7 +748,8 @@ final class WarTablePages {
         if (brush == null || !battleFree() || renaming != null) return null;
         var plan = BannerDrop.paint(table(), cell, brush, rules());
         if (!plan.ok()) { refuse(cell, plan.why()); return plan; }
-        if (send(plan.withBanner(shownBanner()).command())) { planned = plan.result(); plannedBanner = shownBanner(); plannedAt = System.currentTimeMillis(); }
+        if (send(plan.withBanner(shownBanner()).command())) { planned = plan.result(); plannedBanner = shownBanner(); plannedAt = System.currentTimeMillis(); plannedScreen = screen; }
+        else refuse(cell, "Too many strokes waiting. Let the banner catch up, then go on."); // the queue is full: the stroke was not sent and the cell stays as it is
         return plan;
     }
 
@@ -753,7 +766,7 @@ final class WarTablePages {
             case "new" -> { if (send("banner:new:Banner " + roman(n + 1))) showLastFrom = n; }
             case "copy" -> { if (send("banner:copy:" + b)) showLastFrom = n; }
             case "rename" -> renaming = CampaignClient.profile.banners.get(b).name;
-            case "delete" -> { if (deleteArmed > ticks) { deleteArmed = 0; send("banner:delete:" + b); } else deleteArmed = ticks + 60; }
+            case "delete" -> { if (deleteArmed > ticks && deleteArmedBanner == b) { deleteArmed = 0; deleteArmedBanner = -1; planned = null; send("banner:delete:" + b); } else { deleteArmed = ticks + 60; deleteArmedBanner = b; } }
             default -> send("banner:use:" + b);
         }
         refresh();
@@ -773,9 +786,10 @@ final class WarTablePages {
         return true;
     }
 
-    /** A key while Rename is open: Enter sends the name, Esc drops it, Backspace takes a character off. */
+    /** A key while Rename is open: Enter sends the name, Esc drops it, Backspace takes a character off, Space is taken (the space itself arrives as a typed character). */
     boolean renameKey(int key) {
         if (key == GLFW.GLFW_KEY_ESCAPE) { renaming = null; refresh(); return true; }
+        if (key == GLFW.GLFW_KEY_SPACE) return true; // charTyped writes the space; the key must not press the focused button
         if (key == GLFW.GLFW_KEY_BACKSPACE) { if (!renaming.isEmpty()) renaming = renaming.substring(0, renaming.length() - 1); return true; }
         if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
             String name = renaming.strip();

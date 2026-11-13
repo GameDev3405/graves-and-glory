@@ -222,8 +222,57 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
             }
             case 9->{
                 boolean used=CampaignClient.profile.activeBanner==1;
-                if(used||d>120){report("p1-bf-paint-switch",used&&!note.endsWith("WRONG"),note+"; Use made the active banner "+CampaignClient.profile.activeBanner+" (want 1)");note="";scene++;go(0,tick);}
+                if(used||d>120){report("p1-bf-paint-switch",used&&!note.endsWith("WRONG"),note+"; Use made the active banner "+CampaignClient.profile.activeBanner+" (want 1)");note="";st=10;stAt=k+1;}
             }
+            case 10->{if(d==0)UiPagesChecks.click(c,row(c,"knight"));if(d>=4){st=11;stAt=k+1;}}
+            case 11->{ // a double click on one cell: the place and the take-off are two different commands, so the second is not dropped as a repeat of the first
+                if(d==0){sent0=WarTablePages.sent().size();var b=UiPagesChecks.box(c,"cell-5");UiPagesChecks.click(c,b);UiPagesChecks.click(c,b);}
+                if(d>=80){
+                    var mine=new ArrayList<>(WarTablePages.sent().subList(Math.min(sent0,WarTablePages.sent().size()),WarTablePages.sent().size()));
+                    String place=BannerDrop.command(1,5,"knight"),off=BannerDrop.command(1,5,BannerDrop.ERASE);
+                    boolean empty=!WarGrid.parse(CampaignClient.profile.banners.get(1).cells).containsKey(5);
+                    report("p1-bf-paint-double",mine.equals(List.of(place,off))&&empty,"two quick clicks on cell 5 sent "+mine+" (want ["+place+", "+off+"]), and the server's banner 1 holds cell 5 "+!empty+" (want empty)");
+                    st=12;stAt=k+1;}
+            }
+            case 12->{ // a fast drag over 12 cells in one tick: every one reaches the server
+                if(d==0){
+                    sent0=WarTablePages.sent().size();var s=UiPagesChecks.screen(c);var b=UiPagesChecks.box(c,"cell-9");
+                    double x=UiHomeChecks.gui(c,b[0]+b[2]/2.0),y=UiHomeChecks.gui(c,b[1]+b[3]/2.0);s.mouseMoved(x,y);s.mouseClicked(x,y,0);
+                    for(int i=10;i<=20;i++){var q=UiPagesChecks.box(c,"cell-"+i);double qx=UiHomeChecks.gui(c,q[0]+q[2]/2.0),qy=UiHomeChecks.gui(c,q[1]+q[3]/2.0);s.mouseDragged(qx,qy,0,qx-x,qy-y);x=qx;y=qy;}
+                    s.mouseReleased(x,y,0);
+                }
+                if(d>=120){
+                    var held=WarGrid.parse(CampaignClient.profile.banners.get(1).cells);List<Integer> missing=new ArrayList<>();for(int i=9;i<=20;i++)if(!"knight".equals(held.get(i)))missing.add(i);
+                    report("p1-bf-paint-drag",missing.isEmpty(),"a fast drag over cells 9 to 20 sent "+(WarTablePages.sent().size()-sent0)+" commands; the server's banner 1 lacks cells "+missing+" (want none); notice \""+WarTablePages.texts().get("notice")+"\"");
+                    st=13;stAt=k+1;}
+            }
+            case 13->{ // Delete armed on one banner does not delete another: switching tabs disarms
+                var pg=UiPagesChecks.pages(c);
+                if(d==0){sent0=WarTablePages.sent().size();UiPagesChecks.click(c,UiPagesChecks.box(c,"delete"));}
+                if(d==2){boolean armed=pg!=null&&pg.deleteArmedBanner==1;note="Delete armed on banner "+(pg==null?-2:pg.deleteArmedBanner)+" (want 1)"+(armed?"":" WRONG");UiPagesChecks.click(c,UiPagesChecks.box(c,"tab-0"));}
+                if(d==4){note+="; after tab-0 it is armed on "+(pg==null?-2:pg.deleteArmedBanner)+" (want -1)"+(pg!=null&&pg.deleteArmedBanner==-1?"":" WRONG");UiPagesChecks.click(c,UiPagesChecks.box(c,"delete"));}
+                if(d==8){
+                    var mine=WarTablePages.sent().subList(Math.min(sent0,WarTablePages.sent().size()),WarTablePages.sent().size());
+                    boolean deleted=mine.stream().anyMatch(m->m.startsWith("banner:delete:"));
+                    report("p1-bf-paint-delete-guard",!note.contains("WRONG")&&!deleted&&CampaignClient.profile.banners.size()==2&&pg!=null&&pg.deleteArmedBanner==0,note+"; the first Delete on banner 0 only armed it: sent "+mine+", banners "+CampaignClient.profile.banners.size()+" (want 2)");
+                    note="";UiPagesChecks.click(c,UiPagesChecks.box(c,"tab-1"));st=14;stAt=k+1;}
+            }
+            case 14->{ // renaming: R (the menu key) and Space are letters of the name, Backspace repeats, the screen stays open
+                var s=UiPagesChecks.screen(c);
+                if(d==2)UiPagesChecks.click(c,UiPagesChecks.box(c,"rename"));
+                if(d==4){
+                    var pg=UiPagesChecks.pages(c);String start=pg==null?"":String.valueOf(pg.renaming);
+                    UiRecruitChecks.press(c,org.lwjgl.glfw.GLFW.GLFW_KEY_R);if(c.currentScreen!=null)c.currentScreen.charTyped('R',0);UiRecruitChecks.release(c,org.lwjgl.glfw.GLFW.GLFW_KEY_R);
+                    UiRecruitChecks.press(c,org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE);if(c.currentScreen!=null)c.currentScreen.charTyped(' ',0);UiRecruitChecks.release(c,org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE);
+                    boolean open=UiPagesChecks.screen(c)==s&&s!=null&&UiPagesChecks.pages(c)!=null;String typed=open?String.valueOf(UiPagesChecks.pages(c).renaming):"(closed)";
+                    UiRecruitChecks.press(c,org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE);UiRecruitChecks.press(c,org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE);UiRecruitChecks.press(c,org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE);UiRecruitChecks.release(c,org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE);
+                    boolean still=UiPagesChecks.screen(c)==s&&UiPagesChecks.pages(c)!=null;String after=still?String.valueOf(UiPagesChecks.pages(c).renaming):"(closed)";
+                    String wantTyped=start+"R ",wantAfter=wantTyped.substring(0,Math.max(0,wantTyped.length()-3));
+                    report("p1-bf-rename-keys",open&&still&&typed.equals(wantTyped)&&after.equals(wantAfter),"renaming \""+start+"\": R then Space typed \""+typed+"\" with the screen "+(open?"open":"closed")+" (want \""+wantTyped+"\"), three held Backspaces left \""+after+"\" (want \""+wantAfter+"\")");
+                    UiRecruitChecks.tap(c,org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE);
+                    st=15;stAt=k+1;}
+            }
+            case 15->{if(d>=4){var pg=UiPagesChecks.pages(c);report("p1-bf-rename-esc",pg!=null&&pg.renaming==null&&UiPagesChecks.screen(c)!=null,"Esc drops the name being written and keeps the table open: renaming "+(pg==null?"(no page)":String.valueOf(pg.renaming))+" (want null)");scene++;go(0,tick);}}
             default->{}
         }
     }
