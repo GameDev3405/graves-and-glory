@@ -220,7 +220,13 @@ if BREAKER:
 
 
 def attack_clip(name):
-    keys, legs = ATTACKS[name], K.attack_legs(ATTACK_LEGS[name], ticks=ATTACK_TICKS)
+    return attack_solve(name, ATTACKS[name], ATTACK_LEGS[name])
+
+
+def attack_solve(name, keys, legs_spec):
+    """One attack's samples solved from its keys and its legs plan (attack_clip; its own step so the solve cache keys it
+    on this attack's keys alone)."""
+    legs = K.attack_legs(legs_spec, ticks=ATTACK_TICKS)
     sol = SP.Solver()
     out, hits = [], 0
     for i in range(ATTACK_TICKS * SUB + 1):
@@ -2053,6 +2059,24 @@ def write_layers():
     print("layered clips:", ", ".join(clips), "->", K.OUT)
 
 
+# ----------------------------------------------------------------------------------- the solve cache (fix round 2)
+# A full build solved every sample of every clip again (about two hours). The slow, pure steps go through solve_cache.memo:
+# a step called with the same inputs, read by the same code, as in an earlier build returns that build's result
+# (work/anim-cache/<troop>/, gitignored; GG_BREAKER_CACHE=0 builds without it). It changes no output: see solve_cache.py.
+import solve_cache   # noqa: E402
+
+if REVIEW:
+    def _memo(fn, step):
+        return solve_cache.memo(fn, SP.TROOP, step)
+    for _n in ("attack_solve", "right_clear", "clear_helm", "depop_left_arm", "left_chest_final", "soften", "soft_additive",
+               "haft_offsets", "hips_lift", "legs_raise", "head_clear_loop", "soft_loop", "soft_offsets", "_hit_clips"):
+        globals()[_n] = _memo(globals()[_n], _n)
+    for _n in ("idle_clips", "stance_clips", "death_clips"):
+        setattr(SP, _n, _memo(getattr(SP, _n), "SP." + _n))
+    for _m, _tag in ((LS, "LS"), (LC, "LC"), (LR, "LR")):
+        _m.build_all = _memo(_m.build_all, _tag + ".build_all")
+
+
 if __name__ == "__main__":
     if os.environ.get("GREATAXE_PROBE"):
         probe()
@@ -2060,3 +2084,5 @@ if __name__ == "__main__":
         SP.main()
         if BREAKER and os.environ.get("GG_BREAKER_LAYERS") != "0":
             write_layers()
+        if REVIEW and solve_cache.ENABLED:
+            print("solve cache: %(hit)d steps reused, %(miss)d solved" % solve_cache.STATS)
