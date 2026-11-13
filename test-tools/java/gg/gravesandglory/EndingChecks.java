@@ -602,14 +602,14 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             if (podiumRows) { String top = res.getAsJsonArray("podium").get(0).getAsJsonObject().get("uuid").getAsString();
                 for (var r : res.getAsJsonArray("squads")) { var o = r.getAsJsonObject(); if (o.get("uuid").getAsString().equals(top)) mvpFirst = o.get("mvp").getAsBoolean() && o.get("rank").getAsInt() == 1; } }
             boolean goldRow = false;
-            if (res != null && res.has("rewards")) for (var r : res.getAsJsonArray("rewards")) if (r.getAsJsonObject().get("label").getAsString().equals("Gold") && r.getAsJsonObject().get("amount").getAsInt() > 0) goldRow = true;
+            if (res != null && res.has("rewards")) for (var r : res.getAsJsonArray("rewards")) if (r.getAsJsonObject().get("label").getAsString().equals("Gear shards") && r.getAsJsonObject().get("amount").getAsInt() > 0) goldRow = true;
             boolean you = res != null && res.has("you") && res.getAsJsonObject("you").has("commander") && res.getAsJsonObject("you").has("economy");
             boolean line = res != null && res.has("line") && res.get("line").getAsString().contains(" · ");
             progressCheck(c, res);
             { boolean none = res != null && res.has("bests") && res.getAsJsonArray("bests").isEmpty(); bests0 = new LinkedHashMap<>(c.profile(player).bests);
               boolean set = bests0.containsKey("armyKills") && bests0.containsKey("score");
               bestsOk &= none && set; bestsWhy += "first match: bests " + (res == null ? "none" : res.get("bests")) + ", records set quietly " + bests0 + (none && set ? "" : " WRONG") + "; "; }
-            report("ending-report", podiumRows && mvpFirst && goldRow && you && line && res.has("claimable"), "podium=" + podiumRows + " mvp rank 1=" + mvpFirst + " gold row=" + goldRow + " you=" + you + " line=" + (res == null ? "" : res.get("line")));
+            report("ending-report", podiumRows && mvpFirst && goldRow && you && line && res.has("claimable"), "podium=" + podiumRows + " mvp rank 1=" + mvpFirst + " gear shards row=" + goldRow + " you=" + you + " line=" + (res == null ? "" : res.get("line")));
             // the freeze: a forced hit on the commander and on a troop, and an order
             float before = p.getHealth();
             var enemy = b.units.stream().filter(u -> u.squad.team != s.team && u.mob.isAlive()).findFirst().orElse(null);

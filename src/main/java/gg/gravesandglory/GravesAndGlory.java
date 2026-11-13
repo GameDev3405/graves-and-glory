@@ -1266,7 +1266,7 @@ public final class GravesAndGlory implements ModInitializer {
             Unit u=new Unit(mob,s,spec,slot);u.stance=Tactics.stance(this,u);
             spawning=u;try{world.spawnEntity(mob);}finally{spawning=null;} // the players in range start tracking it here (its stance goes with that)
             joinSide(mob,s.team);
-            units.add(u);if(slot<R.squadSize())s.stats.fielded.merge(spec.id(),1,Integer::sum); // a temporary troop takes a slot past the squad's own
+            units.add(u);if(u.hasCell())s.stats.fielded.merge(spec.id(),1,Integer::sum); // a cell-less troop (temporary, wave) is not counted as fielded
             if(recompute)Houses.recompute(s);return u;
         }
         /**

@@ -410,18 +410,18 @@ final class EndingPanels {
     /** "+120", or "" for a title (a row whose label carries the thing). */
     static String amountText(Reward w, int amount) { return w.label().startsWith("New title") ? "" : "+" + UiMath.thousands(amount); }
 
-    /** The total, summed by kind: "150 gold · 100 Forge marks · 250 XP · 24 shards · 10 Renown · 1 Pact · 1 new title". */
+    /** The total, summed by kind: "1 writ · 250 gear shards · 250 XP · 24 shards · 10 Renown · 1 Pact · 1 new title". */
     static String totalText(List<Reward> rows) {
         Map<String, Integer> sum = new LinkedHashMap<>();
         for (var w : rows) {
-            String l = w.label(), kind = l.equals("Gold") ? "gold" : l.equals("XP") ? "XP" : l.equals("Forge marks") ? "Forge marks" : l.endsWith(" shards") ? "shards"
+            String l = w.label(), kind = l.equals("Troop writs") ? "writs" : l.equals("XP") ? "XP" : l.equals("Gear shards") ? "gear shards" : l.endsWith(" shards") ? "shards"
                 : l.endsWith(" Renown") ? "Renown" : l.startsWith("Pact") ? "Pact" : l.startsWith("New title") ? "new title" : l;
             sum.merge(kind, l.startsWith("New title") ? 1 : w.amount(), Integer::sum);
         }
         List<String> parts = new ArrayList<>();
         for (var e : sum.entrySet()) {
             String k = e.getKey(); int n = e.getValue();
-            parts.add(UiMath.thousands(n) + " " + (n != 1 && (k.equals("Pact") || k.equals("new title")) ? k + "s" : k));
+            parts.add(UiMath.thousands(n) + " " + (n != 1 && (k.equals("Pact") || k.equals("new title")) ? k + "s" : n == 1 && k.equals("writs") ? "writ" : k));
         }
         return String.join(" · ", parts);
     }

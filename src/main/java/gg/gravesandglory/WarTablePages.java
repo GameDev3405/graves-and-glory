@@ -281,7 +281,7 @@ final class WarTablePages {
     void init() {
         buttons.clear();
         claimTip = rareTip = ""; // the new widgets carry no tooltip yet: refresh sets each again (an empty why needs none)
-        Arrays.fill(addTips, null);
+        Arrays.fill(rowTips, null); Arrays.fill(tabTips, null);
         builtContracts = WarTableHome.contractsBadge();
         builtFriends = WarTableHome.friendsBadge();
         add("back", WarTable.backPlaque(b -> back()));
