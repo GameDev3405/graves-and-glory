@@ -129,3 +129,5 @@ Agreed with the AI lead (2026-11-13), the hook keeps the bot behaviour around it
 8. Zoom runs from the fitted view up to 8 screen pixels per block; parchment is drawn at 3 texels per block.
 9. Bot lines are rate-limited to one per bot every 5 s.
 10. No corner minimap (Kort).
+11. Deviation from 5.1, 5.2 and call 7 (found in build, 2026-11-13): Siege's `botTarget` and Convoy/Survival's `botGoal` override any plan. So the server refuses a direct order or point plan for a bot the mode aims ("Bots follow the mode's own plan here."), and the map offers no order popup for those bots. Direct orders work only for bots the mode leaves free.
+12. Bot lines name the point ("on it, taking Trade Crossing") rather than its letter, and each bot is named "<tier> bot <n>" so lines from different bots can be told apart.
