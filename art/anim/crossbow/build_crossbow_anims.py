@@ -13,8 +13,8 @@ The draw channel: the crossbow is three sibling bones (weapon_t<n>_rest / pull_0
 bone's position x picks one (0 rest: spanned with a bolt on the rail, 1 pull_0: the string forward, spent, 2 pull_1: spanned, no
 bolt). GeoTroopRenderer reads it after the controllers.
 
-The shot (attack_loose, impactTicks 4): the crossbow snaps from the low guard to the shoulder and looses on the server's impact
-tick; the kick throws it up off the cheek. Then the reload: the stock swings across the body, prod high at the left, the left fist
+The shot (attack_loose, impactTicks 8 since 2026-11-13, was 4): the crossbow snaps from the low guard to the shoulder by tick 3,
+holds the aim (the sight settles, a breath, the cheek on the stock) and looses on the server's impact tick; the kick throws it up off the cheek. Then the reload: the stock swings across the body, prod high at the left, the left fist
 takes the string and hauls it down into the nut with the hips sunk and the back twisted into it, reaches over the left shoulder
 to the quiver, lays the bolt on the rail, and both hands bring the crossbow back down to the guard.
 
@@ -234,7 +234,25 @@ LOAD_IN = nudge(LOAD, Lw=(RAIL[0], RAIL[1] + 2.5, RAIL[2]), O=(0.0, 0.0, 0.4))
 
 QUIVER_HEAD = (0.0, -10.0, -6.0)    # the head's turn to the quiver eased (added to QUIVER_K's) while the fist passes the helm
 ATTACK_TICKS = 50
-IMPACT = 4          # crossbow_loose impactTicks: the bolt leaves
+IMPACT = 8          # crossbow_loose impactTicks: the bolt leaves (Kort 2026-11-13, "Add an aim hold": 4 -> 8)
+SNAP = 3.0          # the crossbow is on the shoulder; from here to IMPACT the aim is held
+
+
+# The aim hold (2026-11-13) moved everything after the loose 4 ticks later. The whole reload, from the kick to the bolt pressed
+# home, keeps its speed (a plain shift: squeezed 3% the haul put the bevor 1.93 px into the left bracer, and squeezed 8% the bolt
+# carry put the helm 1.92 px into it, both over focus_check's limit); the slow settle back into the guard gives up the 4 ticks
+# (13 -> 9). Every time after the loose that was authored on the old clock goes through this one map.
+RETIME = [(4.0, IMPACT), (37.0, IMPACT + 33.0), (50.0, ATTACK_TICKS)]
+STEP_HOME = (41.0, 44.5)    # the left foot's step home keeps a step's own length (3.5 ticks, as the step out), not the squeezed 2.8
+HIPS_HOME = 45.0
+
+
+def w(t):
+    """An old-clock tick (the clip as it was with the loose at tick 4) on the new clock."""
+    for (a0, b0), (a1, b1) in zip(RETIME, RETIME[1:]):
+        if t <= a1:
+            return b0 + (t - a0) * (b1 - b0) / (a1 - a0)
+    return float(ATTACK_TICKS)
 
 
 def blend(a, b, k):
@@ -279,20 +297,31 @@ def attack_keys():
     swing_in = nudge(blend(lower, span, 0.5), O=(-1.5, 0.0, 2.0), lm=0.0, lp=(-60, -10, 0, -50))
     swing_in["d"], swing_in["u"] = blend(lower, span, 0.6)["d"], blend(lower, span, 0.6)["u"]   # the stock turns early
     swing_out = nudge(blend(nudge(haul_b, torso=(-1, 1, 1)), reach_q, 0.5), O=(-1.5, 0.0, 2.0))
-    return [(0, READY), (2.6, AIM), (IMPACT, tense),                                  # snap to the shoulder, loose
-            (5.2, kick), (7.0, kick2), (9.6, lower), (11.8, swing_in),               # the kick off the cheek, the stock lowered
-            (14.0, span), (16.0, nudge(span, Lw=(STRING_SIDE, 28.0, 0.6))),           # swung across, the fist hooks the string
-            (19.0, haul_a), (21.0, haul_b), (22.5, nudge(haul_b, torso=(-1, 1, 1))),  # the haul; the string drops into the nut
-            (24.25, swing_out), (26.0, reach_q), (28.0, take_q), (30.0, draw_q),                        # over the shoulder, a bolt drawn up
-            (31.8, nudge(blend(draw_q, load, 0.5), rp=(-25.0, -20.0, 0.0, -80.0), pw=0.15)),
-            (33.5, load), (35.0, load_in), (36.0, nudge(blend(load_in, home, 0.5), rp=(-35.0, -25.0, 0.0, -65.0), pw=0.15)),
-            (37.0, home),                              # laid on the rail, pressed home
-            (40.0, settle), (44.0, nudge(READY, O=(0.0, -0.3, -0.2))), (ATTACK_TICKS, READY)]
+    # The aim hold (Kort 2026-11-13, "Add an aim hold"): the snap brings the stock onto the shoulder by tick 3 a touch high (the
+    # prod rides 1.5 degrees over the line from the lift); by 4.6 the sight has settled onto the target and the cheek has dropped
+    # onto the stock; a breath goes in and out (the chest and the crossbow rise and fall a quarter pixel); at 6.6 the breath is
+    # held and the shoulders tighten into the stock; the loose at IMPACT. The stock never leaves the line by more than the 1.5
+    # degrees of the snap, so it reads as aimed, not as still rising.
+    snap = nudge(pitched(AIM, 1.5), O=(0.0, 0.15, 0.0), head=(-1.0, 0.0, 0.0))
+    sight = nudge(AIM, head=(2.0, 0.0, 0.0))
+    breath = nudge(AIM, O=(0.0, 0.25, 0.0), torso=(-0.8, 0.0, 0.0), head=(1.6, 0.0, 0.0))
+    held = nudge(AIM, O=(0.0, 0.05, -0.15), torso=(0.3, 0.6, 0.0), head=(2.2, 0.0, 0.0))
+    tense = nudge(AIM, torso=(0.5, 1.0, 0.0), head=(1.0, 0.0, 0.0))
+    return [(0, READY), (SNAP, snap), (4.6, sight), (5.6, breath), (6.6, held),        # snap to the shoulder, the aim held
+            (IMPACT, tense),                                                          # loose
+            (w(5.2), kick), (w(7.0), kick2), (w(9.6), lower), (w(11.8), swing_in),   # the kick off the cheek, the stock lowered
+            (w(14.0), span), (w(16.0), nudge(span, Lw=(STRING_SIDE, 28.0, 0.6))),     # swung across, the fist hooks the string
+            (w(19.0), haul_a), (w(21.0), haul_b), (w(22.5), nudge(haul_b, torso=(-1, 1, 1))),  # the haul; the string into the nut
+            (w(24.25), swing_out), (w(26.0), reach_q), (w(28.0), take_q), (w(30.0), draw_q),   # over the shoulder, a bolt drawn up
+            (w(31.8), nudge(blend(draw_q, load, 0.5), rp=(-25.0, -20.0, 0.0, -80.0), pw=0.15)),
+            (w(33.5), load), (w(35.0), load_in), (w(36.0), nudge(blend(load_in, home, 0.5), rp=(-35.0, -25.0, 0.0, -65.0), pw=0.15)),
+            (w(37.0), home),                              # laid on the rail, pressed home
+            (w(40.0), settle), (w(44.0), nudge(READY, O=(0.0, -0.3, -0.2))), (ATTACK_TICKS, READY)]
 
 
 # The draw frame: loaded until the loose; spent through the span; spanned once the string drops into the nut; loaded again
 # when the bolt is pressed home.
-DRAW_STEPS = [(0, "rest"), (IMPACT, "pull_0"), (21.0, "pull_1"), (34.6, "rest")]
+DRAW_STEPS = [(0, "rest"), (IMPACT, "pull_0"), (w(21.0), "pull_1"), (w(34.6), "rest")]
 
 
 def draw_at(t):
@@ -309,14 +338,17 @@ def attack_legs():
     R0, R1 = K.READY_HIPS
     # batch review 2026-11-11: the kick rocks the hips back off the shot (0.45 px) and the haul sinks them deeper and over the
     # stepped-out left foot, so the hips travel the 2 px a shot is driven by (they moved 1.6)
-    spec = {"hips": [(0, R0, R1), (2.6, (0.0, 9.0, 0.0), (0.0, -1.3, 0.1)), (IMPACT, (0.0, 9.0, 0.0), (0.0, -1.35, 0.1)),
-                     (5.4, (-2.5, 10.0, 0.0), (0.0, -1.1, 0.65)), (8.0, (0.0, 8.0, 0.0), (0.0, -1.2, 0.1)),
-                     (14.0, (2.0, -6.0, 0.0), (0.2, -1.7, -0.2)), (19.0, (4.0, -9.0, -1.0), (0.45, -2.5, -0.5)),
-                     (21.0, (5.0, -11.0, -1.5), (0.55, -2.85, -0.65)), (23.0, (3.0, -9.0, -1.0), (0.4, -2.35, -0.45)),
-                     (28.0, (1.0, 2.0, 0.0), (0.0, -1.4, 0.0)), (34.0, (2.0, 4.0, 0.0), (0.0, -1.3, 0.1)),
-                     (42.0, R0, R1), (ATTACK_TICKS, R0, R1)],
+    # the aim hold (2026-11-13): the hips settle into the shot by the snap, sink a touch with the breath and come back up as it
+    # is held; the rest on the old clock through w()
+    spec = {"hips": [(0, R0, R1), (SNAP, (0.0, 9.0, 0.0), (0.0, -1.3, 0.1)), (5.6, (0.0, 9.5, 0.0), (0.0, -1.42, 0.12)),
+                     (IMPACT, (0.0, 9.0, 0.0), (0.0, -1.35, 0.1)),
+                     (w(5.4), (-2.5, 10.0, 0.0), (0.0, -1.1, 0.65)), (w(8.0), (0.0, 8.0, 0.0), (0.0, -1.2, 0.1)),
+                     (w(14.0), (2.0, -6.0, 0.0), (0.2, -1.7, -0.2)), (w(19.0), (4.0, -9.0, -1.0), (0.45, -2.5, -0.5)),
+                     (w(21.0), (5.0, -11.0, -1.5), (0.55, -2.85, -0.65)), (w(23.0), (3.0, -9.0, -1.0), (0.4, -2.35, -0.45)),
+                     (w(28.0), (1.0, 2.0, 0.0), (0.0, -1.4, 0.0)), (w(34.0), (2.0, 4.0, 0.0), (0.0, -1.3, 0.1)),
+                     (HIPS_HOME, R0, R1), (ATTACK_TICKS, R0, R1)],
             # the lead (left) foot steps out wide for the haul (it already leads, so the step is mostly sideways), then home
-            "steps": [("left", 10.5, 14.0, (5.0, 2.0, 2.4), 18.0)] + rehome([("left", 37.0, 41.0, (3.2, 2.0, -2.0), 7.0)])}
+            "steps": [("left", w(10.5), w(14.0), (5.0, 2.0, 2.4), 18.0)] + rehome([("left", *STEP_HOME, (3.2, 2.0, -2.0), 7.0)])}
     return K.attack_legs(spec, ticks=ATTACK_TICKS)
 
 
@@ -431,7 +463,7 @@ def solve_keys(keys, legs_at, t):
 # ticks 22.5-24 and out over 31.5-33, so the forearm passes outside the helm's cheek instead of through it (the bracer sat 1.9 to
 # 2.4 px in the helm on 7 of the 8 ticks from 24 to 31; with it the deepest is 1.7 px)
 LEFT_OUT = 30.0
-CARRY_OUT = (22.5, 24.0, 31.5, 33.0)
+CARRY_OUT = tuple(w(t) for t in (22.5, 24.0, 31.5, 33.0))
 
 
 def carry_out(t):
@@ -481,7 +513,8 @@ def attack_clips():
     # the quiver jolts at the kick and as the bolt is pulled from it
     for i, s in enumerate(upper):
         t = i / SUB
-        j = 3.0 * math.exp(-max(0.0, t - IMPACT) / 1.5) * (t >= IMPACT) + 4.0 * math.sin(math.pi * K.np.clip((t - 27.5) / 4.0, 0, 1))
+        q0, q1 = w(27.5), w(31.5)
+        j = 3.0 * math.exp(-max(0.0, t - IMPACT) / 1.5) * (t >= IMPACT) + 4.0 * math.sin(math.pi * K.np.clip((t - q0) / (q1 - q0), 0, 1))
         s["quiver"] = ((j, 0.0, 0.4 * j), None)
     upper = gear(upper, legs)
     # the whole unit (batch review 2026-11-11): the fur mantle, the leg skirts and the shoulder plates trail the shot and the
@@ -491,7 +524,8 @@ def attack_clips():
         s["quiver"] = (Z3, None)
     u0, l0 = [dict(s) for s in upper], [dict(s) for s in legs]
     upper, legs = soft(upper, legs, "attack_loose")
-    upper, legs = fade_soft(u0, upper, 42.0, 46.0), fade_soft(l0, legs, 42.0, 46.0)
+    f0, f1 = w(42.0), w(46.0)
+    upper, legs = fade_soft(u0, upper, f0, f1), fade_soft(l0, legs, f0, f1)
     for s, j in zip(upper, jolt):
         r, q = s.get("quiver", (Z3, None))
         s["quiver"] = (tuple(a + b for a, b in zip(r, j)), q)

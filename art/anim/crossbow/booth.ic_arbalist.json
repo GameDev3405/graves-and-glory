@@ -16,7 +16,7 @@
    "base": [
     "attack_loose_legs"
    ],
-   "impact_tick": 4
+   "impact_tick": 8
   },
   {
    "name": "death_back"
