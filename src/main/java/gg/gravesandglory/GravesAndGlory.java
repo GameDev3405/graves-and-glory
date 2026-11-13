@@ -161,6 +161,7 @@ public final class GravesAndGlory implements ModInitializer {
         // (and Campaign.joined) waits for the arena, and a profile sent while it builds would otherwise be refused and marked ready.
         ServerPlayConnectionEvents.JOIN.register((handler,sender,server)->{if(battle!=null)battle.campaign.grantImport(handler.player.getUuid());});
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            Tactics.cameras.remove(handler.player.getUuid()); // a player who left has no camera out
             if(battle!=null) battle.leave(handler.player.getUuid());
         });
         net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register(GearCombat::useItem); // a staff's heal

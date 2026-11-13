@@ -105,7 +105,7 @@ public final class FileThroughCheck {
         long now = FileThrough.FILE_STALL + FileThrough.OPEN + FileThrough.TURN + 70;
         int firstPlace = -1;
         for (int i = 0; i < 4; i++) { var v = FileThrough.beat(og, now, 10 + i, 3 - i, 1, 10); if (v.go) firstPlace = 10 + i; }
-        check(firstPlace == 13 || firstPlace == -1, "of those that wait, the front rank (id 13, row 0) goes first, not the first to arrive (id 10): " + firstPlace);
+        check(firstPlace == 13, "of those that wait, the front rank (id 13, row 0) goes first, not the first to arrive (id 10): " + firstPlace);
 
         // 5. the queue test: a friend ahead, near, going the same way; not one behind, far off, still, or going the other way
         check(Stall.queueing(0, 0, 1, 0, 2, 0.3, 1.2, 0), "a friend 2 blocks ahead walking on: queueing");

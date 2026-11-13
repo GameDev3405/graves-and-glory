@@ -82,14 +82,28 @@ final class Tactics {
      */
     static void show(GravesAndGlory.Battle b,GravesAndGlory.Unit u,GravesAndGlory.Assignment a,boolean aiming,float pitch){
         boolean shield=u.tags.contains("shield"),spear=u.tags.contains("spear");
-        boolean formed=GravesAndGlory.Battle.walls(u,a.order)&&GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(),slotOf(b,u))<=N.arrivalTolerance()*N.arrivalTolerance();
+        boolean formed=formedAt(b,u,a,u.mob.getPos());
         String stance=BattleMath.stance(a.order,shield,spear,u.spec.ranged(),formed,aiming,shield&&u.mob.isUsingItem());
         u.orderStance=stance;u.orderPitch=stance.equals("ranged_aim")?pitch:0;
         String shown=BattleMath.shownStance(u.orderStance,b.time,u.stunnedUntil);
         set(u,shown,shown.equals("stunned")?0:u.orderPitch);
     }
-    /** The place the troop forms on: the one its slot walk keeps (u.place: its slot, or the dry cell a slot in water is moved to), else its slot. */
-    static Vec3d slotOf(GravesAndGlory.Battle b,GravesAndGlory.Unit u){return u.place!=null?u.place:b.formation(u);}
+    /** The place the troop forms on: its slot, or the dry cell a slot in water is moved to (dryCell, cached). */
+    /** Whether a wall troop at pos stands on its place (within the arrival tolerance): the test of show's stance. */
+    static boolean formedAt(GravesAndGlory.Battle b,GravesAndGlory.Unit u,GravesAndGlory.Assignment a,Vec3d pos){return GravesAndGlory.Battle.walls(u,a.order)&&GravesAndGlory.Battle.horizontalDistance(pos,slotOf(b,u,a))<=N.arrivalTolerance()*N.arrivalTolerance();}
+    /** The harness's probe of the blocker of fix round 2: for every troop whose slot was moved off water (dryCell), with u.place cleared as at the top of a beat, a troop standing on its dry cell counts as formed (when its order is a wall). probeMoved: troops with a moved slot seen; probeBad: those for which the answer was wrong. */
+    static int probeMoved,probeBad;
+    static void probeFormed(GravesAndGlory.Battle b){
+        for(var u:b.units){
+            if(!u.mob.isAlive())continue;var a=b.assignment(u);if(a==null)continue;
+            Vec3d wet=b.formation(u);u.place=null;Vec3d dry=slotOf(b,u,a);
+            if(dry.equals(wet))continue;
+            probeMoved++;
+            boolean walls=GravesAndGlory.Battle.walls(u,a.order);
+            if(formedAt(b,u,a,dry)!=walls)probeBad++;
+        }
+    }
+    static Vec3d slotOf(GravesAndGlory.Battle b,GravesAndGlory.Unit u,GravesAndGlory.Assignment a){return dryCell(b,u,a,b.formation(u));} // u.place is cleared at the top of every beat and set again by toSlot, which comes after the stance and the hold distance: ask dryCell (cached)
     /**
      * A stunned troop (Unit.stunnedUntil: a Shield bash, Rise Again, a bear's roar) shows "stunned" over its order's stance, sent the tick the stun begins (this runs
      * every tick, not only on the beat) and replaced by the order's stance (the last one a beat chose, orderStance) the tick it ends. A commander is never a Unit,
@@ -327,7 +341,7 @@ final class Tactics {
         double engage=holdSiege?Abilities.range(battle,u):engageRadius(battle,u,hunt?Spec.SCOUTING[0].range():order.engageRadius()); // the order's radius, widened to the weapon's reach for a siege troop; on Hold the weapon's reach as it is now
         if(volley)engage=Math.min(engage,Abilities.range(battle,u));
         boolean slotted=a.order.equals("hold")&&a.holdSlots&&placed(battle,u); // a player's Formation in place: melee keep their slots, ranged shoot anything in reach
-        Vec3d slot=slotted?slotOf(battle,u):null;double keep=Abilities.range(battle,u);
+        Vec3d slot=slotted?slotOf(battle,u,a):null;double keep=Abilities.range(battle,u);
         if(slotted&&u.spec.ranged())engage=keep;
         boolean holdRanged=hold&&!holdSiege&&u.spec.ranged(); // a ranged troop on Hold (or arrived) shoots any enemy it sees within its weapon's reach, from its slot: it never walks out after one
         if(holdRanged)engage=Math.max(engage,keep);
@@ -434,10 +448,12 @@ final class Tactics {
         int gx=(int)Math.floor(slot.x),gz=(int)Math.floor(slot.z);
         int[] f=Arena.floor(w,gx,gz,mob.getX(),mob.getZ());
         if(f[0]==gx&&f[1]==gz&&!wetAt(w,gx,f[2],gz))return slot; // the column is a floor of the field and dry
-        if(dryOf!=battle){DRY.clear();dryOf=battle;}
-        long key=(((long)gx*1_000_003L+gz)<<12)^(u.slot&0xfff);
+        if(dryOf!=battle){DRY.clear();NO_ROUTE.clear();dryOf=battle;}
+        long key=((((long)gx*1_000_003L+gz)<<12)^(u.slot&0xfff))*4+(u.squad.team&3); // the cell, the troop's slot and its side: a cell is no place for the other side's route
         var cached=DRY.get(key);
         if(cached!=null){movedSlots++;return cached;}
+        var failed=NO_ROUTE.get(key);
+        if(failed!=null&&battle.time-failed<NO_ROUTE_TICKS)return slot; // no route from this troop to any dry cell a moment ago: asked again after a while
         int radius=u.squad.bot?DRY_RADIUS:DRY_RADIUS_PLAYER;
         java.util.List<int[]> cells=new java.util.ArrayList<>();
         for(int dx=-radius;dx<=radius;dx++)for(int dz=-radius;dz<=radius;dz++){
@@ -452,9 +468,12 @@ final class Tactics {
             if(tried++>=DRY_TRIES)break;
             if(nav.distance(mob.getX(),mob.getY(),mob.getZ(),c[0]+.5,c[2],c[1]+.5)>=0){out=new Vec3d(c[0]+.5,c[2],c[1]+.5);break;}
         }
-        DRY.put(key,out);movedSlots++;
+        if(out==slot){NO_ROUTE.put(key,battle.time);return slot;} // not kept for the battle: the field may know a way later (the troop has moved, a door opened)
+        NO_ROUTE.remove(key);DRY.put(key,out);movedSlots++;
         return out;
     }
+    /** Wet slots for which no dry cell had a route from the troop, by key, and the tick it was found; tried again after NO_ROUTE_TICKS. */
+    static final Map<Long,Long> NO_ROUTE=new java.util.concurrent.ConcurrentHashMap<>();static final long NO_ROUTE_TICKS=200;
     /** How many of the nearest dry cells are tried for a route from the troop before the slot is left as it is. */
     static final int DRY_TRIES=6;
     /** How far (columns) a wet slot looks for dry ground: a bot's, a player's squad (which keeps nearer to the slot the player picked). */
@@ -718,8 +737,10 @@ final class Tactics {
     static final java.util.Map<java.util.UUID,double[]> cameras=new java.util.concurrent.ConcurrentHashMap<>();
     /** A camera message is a viewer for this many ticks after it arrives (the client sends every 10). */
     static final long CAMERA_FRESH=30;
+    /** A camera further than this (blocks) from its player is not believed: the overhead camera hangs above the player, so a far position is a client lying about where it looks. */
+    static final double CAMERA_REACH=64;
     static void camera(net.minecraft.server.network.ServerPlayerEntity p,double x,double y,double z,long tick){
-        if(Double.isFinite(x)&&Double.isFinite(y)&&Double.isFinite(z)&&Math.abs(x)<30000&&Math.abs(z)<30000)cameras.put(p.getUuid(),new double[]{x,y,z,tick});
+        if(Double.isFinite(x)&&Double.isFinite(y)&&Double.isFinite(z)&&Math.abs(x)<30000&&Math.abs(z)<30000&&Math.sqrt(p.squaredDistanceTo(x,y,z))<=CAMERA_REACH)cameras.put(p.getUuid(),new double[]{x,y,z,tick});
     }
     /** Whether a player watches the troop or the spot it would be put on (Stall.watched): any player of the troop's world who is not a spectator, within 24 blocks of either (the player, or the overhead camera it has out), or with a clear visual line
      *  (no block in the way, no fluid test) to the feet or the head of either, within the server's view distance (beyond it the chunks are not sent). */

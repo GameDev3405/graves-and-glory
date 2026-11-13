@@ -190,7 +190,7 @@ public final class BotSimulation implements ModInitializer {
         var b=GravesAndGlory.battle;if(done)return;
         if(b==null){if(++waited==200){System.out.println("[botsim] no battle on this world (level-name must be Graves and Glory); stopping");done=true;server.stop(false);}return;}
         if(playing){
-            if(b.running){scan(b);ledger.tick(b);progress(b);long elapsed=b.time-b.roundStarted;metrics.tick(b);if(elapsed>0&&elapsed%20==0)metrics.second(b);if(overlayCheck)overlayCheck(b,elapsed);if(elapsed>0&&elapsed%SAMPLE_TICKS==0)sample(b,elapsed/20);
+            if(b.running){scan(b);ledger.tick(b);progress(b);long elapsed=b.time-b.roundStarted;metrics.tick(b);if(elapsed>0&&elapsed%200==0)Tactics.probeFormed(b);if(elapsed>0&&elapsed%20==0)metrics.second(b);if(overlayCheck)overlayCheck(b,elapsed);if(elapsed>0&&elapsed%SAMPLE_TICKS==0)sample(b,elapsed/20);
                 if(siegeCsv!=null&&elapsed>0&&elapsed%SIEGE_TICKS==0)siegeSample(b,elapsed/20);
                 if(convoyCsv!=null&&elapsed>0&&elapsed%SIEGE_TICKS==0)convoyTrace(b,elapsed/20);
                 if(dominationCsv!=null&&elapsed>0&&elapsed%SIEGE_TICKS==0)dominationTrace(b,elapsed/20);
