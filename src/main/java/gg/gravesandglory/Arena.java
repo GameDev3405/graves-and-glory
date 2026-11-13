@@ -193,6 +193,21 @@ public final class Arena {
     static double climb(double beyond,int elevation){double t=MathHelper.clamp(1-beyond/CLIMB,0,1);t=t*t*(3-2*t);return Y+(elevation-Y)*t;}
     /** One end of the road is the cell (x, z). */
     static boolean endsAt(CampaignMaps.Road r,int x,int z){return r.ax()==x&&r.az()==z||r.bx()==x&&r.bz()==z;}
+    /** Where a troop lined up at (x, z) stands: on the ground there, one block up. A spot over deep water (below 64, as GravesAndGlory.Battle.wet) moves to
+     *  the nearest column within 16 that is dry, no higher than one block over the deep water's banks' floor, and has two free cells to stand in: new Rivergate's
+     *  river runs through each base at z 0, under the middle army's lineup. On dry ground (every other map) the spot is as before. */
+    public static Vec3d standing(ServerWorld w,double x,double z){
+        int ix=(int)Math.floor(x),iz=(int)Math.floor(z);
+        if(!(river(ix,iz)&&ground(ix,iz)<64))return new Vec3d(x,ground(ix,iz)+1,z);
+        var pos=new BlockPos.Mutable();
+        for(int r=1;r<=16;r++)for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
+            if(Math.max(Math.abs(dx),Math.abs(dz))!=r)continue;int cx=ix+dx,cz=iz+dz,g=ground(cx,cz);
+            if(river(cx,cz)&&g<64||g>Y)continue;
+            boolean open=true;for(int y=g+1;y<=g+2&&open;y++)open=w.getBlockState(pos.set(cx,y,cz)).getCollisionShape(w,pos).isEmpty();
+            if(open)return new Vec3d(cx+.5,g+1,cz+.5);
+        }
+        return new Vec3d(x,ground(ix,iz)+1,z);
+    }
     public static int ground(int x,int z){var e=EngineMaps.current();if(e!=null)return e.solid(x,z);for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2)return s.elevation();return river(x,z)?Y-3:height(x,z);}
     public static int mapColor(int x,int z){
         int h=height(x,z),color=river(x,z)?0x416d88:road(x,z)?0xa79b75:h>79?0x687270:h>72?0x68815a:0x507b49;

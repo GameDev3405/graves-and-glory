@@ -1240,7 +1240,7 @@ public final class GravesAndGlory implements ModInitializer {
                 var spec=Campaign.troop(line.get(position));if(spec==null)continue;
                 int r=position/cols;double row=BattleMath.deployRow(Arrays.copyOfRange(cells,r*cols,r*cols+cols))[position%cols];
                 double side=s.team==0?1:-1,x=from.x+side*(20-depth[r]),z=from.z+side*((index-(count-1)/2.0)*22+row); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
-                spawn(s,spec,position,new Vec3d(x,Arena.ground((int)x,(int)z)+1,z),false);
+                spawn(s,spec,position,Arena.standing(world,x,z),false);
             }
             Houses.recompute(s); // once for the whole line (spawn(...,false) skips the per-troop pass: same traits, a fraction of the round-start tick)
         }
