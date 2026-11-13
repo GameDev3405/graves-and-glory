@@ -2,6 +2,7 @@ package gg.gravesandglory;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -30,6 +31,9 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     // per round
     final Map<MobEntity, Vec3d> pos = new HashMap<>(); final Map<MobEntity, Float> hp = new HashMap<>();
     int gold1, xp1; String resultId; boolean froze, podium, stats, rewards, stopped;
+    // ending-freeze-push: a player pressed into a frozen troop from the first tick of RESULT (nits 2026-11-13)
+    MobEntity pushMob; Vec3d pushAt; int pushTicks, pushPressed, pushSamples; double pushWorst; ServerPlayerEntity pushPlayer; boolean pushHooked; double pushVelSet, pushEndDrift, pushEndVel; final Map<MobEntity,Vec3d> pushAll = new IdentityHashMap<>(); int pushMounted;
+    static final int PUSH_TICKS = 46;
     Entity arrow; Vec3d arrowAt; // an arrow in flight when the match ends (review 2026-11-12: shots must freeze too)
 
     public int limit() { return 30000; }
@@ -622,6 +626,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         }
         long elapsed = b.time - c.endingStart;
         if (b.running && c.ending()) {
+            if (elapsed >= 1 && pushTicks < PUSH_TICKS) pushTick(b, p);
             if (elapsed >= 40 && !stopped) { stopped = true;
                 double worst = 0; int changed = 0;
                 for (var e : pos.entrySet()) if (!e.getKey().isRemoved()) { worst = Math.max(worst, e.getKey().getPos().distanceTo(e.getValue())); if (e.getKey().getHealth() != hp.get(e.getKey())) changed++; }
@@ -647,6 +652,43 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         next();
     }
 
+    /**
+     * ending-freeze-push: the player is put overlapping one frozen troop on every tick of RESULT, and at the start of every server tick (before the troops' own ticks, the worst order) the collision push of a player is
+     * applied by hand to every troop; each troop's drift from where it froze is read at the start of the next tick (after all end-of-tick work): at least 40 ticks of pressing, no sample over 0.05 blocks.
+     * Evidence 2026-11-13 (jobs 20261113-113120-607-9ef5, 20261113-113708-127-ca94): the push puts 0.03 to 0.07 of velocity on a troop and the troop still does not move: a troop with its AI disabled is not carried by velocity,
+     * so Campaign.beginEnding's freeze already holds it. This stays as a guard against a later change to the freeze.
+     */
+    void pushTick(GravesAndGlory.Battle b, ServerPlayerEntity p) {
+        if (!pushHooked) { pushHooked = true; ServerTickEvents.START_SERVER_TICK.register(s -> pushStart()); }
+        if (pushMob == null) {
+            var u = b.units.stream().filter(v -> v.mob.isAlive() && !v.mob.hasPassengers() && !v.mob.hasVehicle()).findFirst().orElse(null);
+            if (u == null) { pushTicks = PUSH_TICKS; report("ending-freeze-push", false, "no troop to press into"); return; }
+            pushMob = u.mob; pushAt = u.mob.getPos();
+            for (var v : b.units) if (v.mob.isAlive()) { pushAll.put(v.mob, v.mob.getPos()); if (v.mob.hasPassengers() || v.mob.hasVehicle()) pushMounted++; }
+        } else {
+            if (pushMob.getBoundingBox().intersects(p.getBoundingBox())) pushPressed++;
+            for (var e : pushAll.entrySet()) pushEndDrift = Math.max(pushEndDrift, e.getKey().getPos().distanceTo(e.getValue())); for (var e : pushAll.keySet()) pushEndVel = Math.max(pushEndVel, e.getVelocity().length());
+        }
+        pushPlayer = p;
+        pushTicks++;
+        if (pushTicks >= PUSH_TICKS) {
+            pushPlayer = null;
+            report("ending-freeze-push", pushPressed >= 40 && pushSamples >= 40 && pushWorst <= 0.05, "a player pressed into a frozen troop for " + pushPressed + " of " + (PUSH_TICKS - 1) + " ticks, " + pushSamples + " tick-start samples: worst drift "
+                + String.format(Locale.ROOT, "%.3f", pushWorst) + " blocks (limit 0.05; at least 40 pressed ticks); " + pushAll.size() + " troops pushed, " + pushMounted + " mounted or riding; diagnostics: velocity after the push " + String.format(Locale.ROOT, "%.4f", pushVelSet) + ", at the end of the tick " + String.format(Locale.ROOT, "%.4f", pushEndVel) + ", end-of-tick drift " + String.format(Locale.ROOT, "%.4f", pushEndDrift));
+            return;
+        }
+        b.relocate(p, pushAt.x + 0.35, pushAt.y, pushAt.z, 90f, 0);
+    }
+    /** The start of each server tick (after every end-of-tick callback of the last one, so the state a client sees): the troop's drift is read, then the collision push of a player ticking
+     *  before the troop is put on it, so the velocity is there when the troop's own tick moves it. */
+    void pushStart() {
+        if (pushMob == null || pushPlayer == null || pushTicks >= PUSH_TICKS) return;
+        pushSamples++;
+        for (var e : pushAll.entrySet()) {
+            pushWorst = Math.max(pushWorst, e.getKey().getPos().distanceTo(e.getValue()));
+            e.getKey().pushAwayFrom(pushPlayer); pushVelSet = Math.max(pushVelSet, e.getKey().getVelocity().length());
+        }
+    }
     /** ending-progress (pass 2): the report's progress rows against the profile before and after the match: XP from the set-up 720 to the saved XP, crossing tier 3
      *  at 750; each Renown row from the profile's Renown before to after; a contract row one battle on. */
     void progressCheck(Campaign c, JsonObject res) {
