@@ -2317,18 +2317,20 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 18->{if(tick>=seen+20){c.setScreen(new BattleMapScreen(null));seen=tick;stage=19;}}
                 case 19->{ // p1-ui-map-glyphs
                     if(tick>=seen+5){
-                        String legend=BattleMapScreen.legend(),lower=" "+legend.toLowerCase(Locale.ROOT)+" ";
+                        String legend=BattleMapScreen.legend(),lower=" "+(legend+" "+String.join(" ",BattleMapScreen.KEY_WORDS)).toLowerCase(Locale.ROOT)+" ";
                         List<String> colours=COLOURS.stream().filter(word->java.util.regex.Pattern.compile("[^a-z]"+word+"[^a-z]").matcher(lower).find()).toList();
                         var ms=GravesAndGloryClient.markers;long own=ms.stream().filter(GravesAndGloryClient.Marker::own).count(),ally=ms.size()-own;
                         var ss=GravesAndGloryClient.sightings;long fresh=ss.stream().filter(v->v.age()<20).count(),old=ss.size()-fresh;
                         boolean open=c.currentScreen instanceof BattleMapScreen;
-                        // Revision 2: no look toggle, the real texture or its dimmed fallback; troops as square icons (13 px hit boxes)
+                        // Revision 2: no look toggle, the real texture or its dimmed fallback; troops as icons with 13 px hit boxes (own squares, ally rings);
+                        // the follow-up: the controls as key chips, the glyph key a panel in the map's corner with the same icons
                         var ms2=open?(BattleMapScreen)c.currentScreen:null;
                         String drawn=ms2==null?"none":ms2.drawnTexture;
                         long icons=ms2==null?0:ms2.hits.stream().filter(h->(h.kind().equals("own")||h.kind().equals("ally"))&&h.x1()-h.x0()==2*BattleMapScreen.ICON+1&&h.y1()-h.y0()==2*BattleMapScreen.ICON+1).count();
                         boolean look=List.of("real","fallback","plain").contains(drawn);
+                        boolean key=ms2!=null&&(!BattleMapScreen.keyOpen||ms2.keyBox[3]>BattleMapScreen.KEY_HEAD)&&ms2.keyBox[2]>0&&ms2.inMap(ms2.keyBox[0],ms2.keyBox[1])&&ms2.inMap(ms2.keyBox[0]+ms2.keyBox[2]-1,ms2.keyBox[1]+ms2.keyBox[3]-1);
                         shot(c,"ui-map");
-                        report("p1-ui-map-glyphs",open&&look&&icons>0&&legend.equals("LMB select or plan / RMB to move / scroll to zoom / drag to pan")&&colours.isEmpty()&&own>0&&ally>0&&fresh>0&&old>0,"legend '"+legend+"' (colour words in it: "+colours+"); the map (open: "+open+", GUI 2, drew "+drawn+") marks "+own+" own troops, "+ally+" allied ("+icons+" square icons drawn), "+fresh+" fresh sightings and "+old+" remembered; "+fixture);
+                        report("p1-ui-map-glyphs",open&&look&&icons>0&&key&&legend.equals("[LMB] Select/plan  [RMB] Move  [Wheel] Zoom  [Drag] Pan")&&java.util.Arrays.equals(BattleMapScreen.KEY_WORDS,new String[]{"You","Yours","Ally","Enemy","Fight","Plan"})&&colours.isEmpty()&&own>0&&ally>0&&fresh>0&&old>0,"legend '"+legend+"', key "+java.util.Arrays.toString(BattleMapScreen.KEY_WORDS)+" in a panel inside the map: "+key+" (colour words in them: "+colours+"); the map (open: "+open+", GUI 2, drew "+drawn+") marks "+own+" own troops, "+ally+" allied ("+icons+" square icons drawn), "+fresh+" fresh sightings and "+old+" remembered; "+fixture);
                         c.setScreen(null);mapMarks=false;window(c,960,540,1);restart(c,2,30);
                     }
                 }

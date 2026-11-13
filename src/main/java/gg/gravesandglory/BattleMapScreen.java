@@ -15,9 +15,10 @@ import java.util.List;
 /** The battle map (spec 2026-11-13 sections 0, 2, 4, 5 and 6; it replaces MapScreen): the whole field under a {@link MapView}, in the real
  *  look toned down ({@link BattleMapArt}), between two dark wood bars with brass edges (the War Table direction). Revision 2 (Kort,
  *  work/map-declutter-mockup.png): points are large lettered discs in the owner's colour with the name under them as outlined text; troops
- *  are one small square type icon per group with its count beside it, filled for your own, outlined for allies; names, jobs and health
- *  live in the hover tooltip; order arrows show only for selected own groups and the hovered group. The top bar holds the mode, both
- *  scores with the held-point pips and the clock; the bottom bar the ping buttons, Fit and the legend. A left click without a drag picks, in
+ *  are one small type icon per group with its count beside it, a square filled in the team colour for your own, a dark ring for allies;
+ *  names, jobs and health live in the hover tooltip; order arrows show only for selected own groups and the hovered group. The top bar
+ *  holds the mode, both scores labelled "Your team" and "Enemy" with the held-point pips, and the clock; the bottom bar a row of the ping
+ *  buttons and Fit over a row of control key chips; the glyph key is a foldable panel in the map's bottom-left corner. A left click without a drag picks, in
  *  order: a popup row, an armed ping or attack target, a point disc (the plan popup), an ally bot's icon (the order popup), an own group's
  *  icon (select). Right click moves the selected own groups. Scroll zooms, a drag past 4 px pans, Home fits, M and Esc close. */
 public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
@@ -39,9 +40,12 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     private int viewHx, viewHz;
     /** The map area: the screen between the bars. */
     int ax, ay, aw, ah, bottom;
-    /** Rows of the legend: 1 when the controls and the glyph key share a line, else 2; and the controls text that fits. */
-    int legendRows;
-    String legendText = "";
+    /** The glyph key panel in the map area's bottom-left corner as the last frame drew it {x, y, w, h}; open or folded to its header. */
+    int[] keyBox = {0, 0, 0, 0};
+    static boolean keyOpen = true;
+    /** The x of the brass rule between the ping buttons and Fit; the top bar's side labels as last drawn ("left|right"). */
+    int fitRule;
+    String drawnSides = "";
     /** The ping kind armed by a ping button ("" none), and the army whose Attack waits for a point or a place (null none). */
     String pingMode = "", attackArmy;
     String attackName = "";
@@ -83,29 +87,35 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
 
     // ---------------------------------------------------------------- layout
 
-    /** The map's controls, named by the player's own bindings (a mouse button as LMB, RMB or MMB). */
-    public static String legend() { return GravesAndGloryClient.hint("hit") + " select or plan / " + GravesAndGloryClient.hint("use") + " to move / scroll to zoom / drag to pan"; }
-    /** The same controls, shorter, for a window where the long line and the glyph key do not share a row. */
-    public static String legendShort() { return GravesAndGloryClient.hint("hit") + " select/plan, " + GravesAndGloryClient.hint("use") + " move, scroll zoom, drag pan"; }
-    static final String[] KEY_WORDS = {"Yours", "Ally", "Enemy", "Fight", "Plan"};
-    static final int KEY_GAP = 7, KEY_SEP = 10;
+    /** The map's controls as key chips {key, word}, the keys named by the player's own bindings (a mouse button as LMB, RMB or MMB). */
+    public static String[][] chips() { return new String[][] {{GravesAndGloryClient.hint("hit"), "Select/plan"}, {GravesAndGloryClient.hint("use"), "Move"}, {"Wheel", "Zoom"}, {"Drag", "Pan"}}; }
+    /** The controls row as text, as the bottom bar draws it: "[LMB] Select/plan  [RMB] Move  [Wheel] Zoom  [Drag] Pan". */
+    public static String legend() {
+        StringBuilder b = new StringBuilder();
+        for (var c : chips()) b.append(b.length() == 0 ? "" : "  ").append('[').append(c[0]).append("] ").append(c[1]);
+        return b.toString();
+    }
+    /** The glyph key's rows, top to bottom, each beside the map's own icon at map size; and each row's height. */
+    static final String[] KEY_WORDS = {"You", "Yours", "Ally", "Enemy", "Fight", "Plan"};
+    static final int[] KEY_ROWS = {14, 16, 16, 11, 11, 18};
+    static final int KEY_HEAD = 12, CHIP_H = 11, CHIP_PAD = 3, CHIP_GAP = 4, CHIP_SEP = 11, FIT_SEP = 11;
 
-    int keyWidth() { int w = 9; for (String s : KEY_WORDS) w += 10 + textRenderer.getWidth(s) + KEY_GAP; return w - KEY_GAP; } // 9: your mark after Yours
+    int chipsWidth() {
+        int w = -CHIP_SEP;
+        for (var c : chips()) w += textRenderer.getWidth(c[0]) + 2 * CHIP_PAD + CHIP_GAP + textRenderer.getWidth(c[1]) + CHIP_SEP;
+        return w;
+    }
 
     @Override protected void init() {
-        int keyW = keyWidth(), room = width - 6;
-        if (textRenderer.getWidth(legend()) + KEY_SEP + keyW <= room) { legendText = legend(); legendRows = 1; }
-        else if (textRenderer.getWidth(legendShort()) + KEY_SEP + keyW <= room) { legendText = legendShort(); legendRows = 1; }
-        else { legendText = legend(); legendRows = 2; }
-        bottom = 3 + BUTTON_H + 3 + legendRows * 10 + 2;
+        bottom = 3 + BUTTON_H + 4 + CHIP_H + 4; // the buttons' row, then the key chips' row
         ax = 0; ay = TOP; aw = width; ah = Math.max(20, height - TOP - bottom);
         popup = null; // a resize moves everything under it
         ensureView();
-        // the bottom bar's buttons: the pings, then Fit, centred
+        // the bottom bar's buttons in one row: the pings, a brass rule, then Fit, centred
         List<String> labels = new ArrayList<>();
         for (var p : Spec.PINGS) labels.add(p.label());
         labels.add("Fit");
-        int gap = 4, total = -gap;
+        int gap = 4, total = -gap + FIT_SEP - gap;
         for (String l : labels) total += textRenderer.getWidth(l) + 12 + gap;
         int x = Math.max(4, (width - total) / 2), y = height - bottom + 3;
         for (int i = 0; i < labels.size(); i++) {
@@ -114,6 +124,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             if (i < Spec.PINGS.length) { String id = Spec.PINGS[i].id(); addDrawableChild(new WoodButton(x, y, w, BUTTON_H, l, () -> id.equals(pingMode), b -> { pingMode = pingMode.equals(id) ? "" : id; attackArmy = null; popup = null; })); }
             else addDrawableChild(new WoodButton(x, y, w, BUTTON_H, l, () -> false, b -> fit()));
             x += w + gap;
+            if (i == Spec.PINGS.length - 1) { fitRule = x + (FIT_SEP - gap) / 2 - 1; x += FIT_SEP - gap; }
         }
     }
 
@@ -131,6 +142,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     // ---------------------------------------------------------------- input
 
     boolean inMap(double x, double y) { return x >= ax && x < ax + aw && y >= ay && y < ay + ah; }
+    boolean inKey(double x, double y) { return x >= keyBox[0] && x < keyBox[0] + keyBox[2] && y >= keyBox[1] && y < keyBox[1] + keyBox[3]; }
 
     @Override public boolean keyPressed(int key, int scan, int mods) {
         if (GravesAndGloryClient.mapKey.matchesKey(key, scan)) { client.setScreen(parent); return true; }
@@ -148,6 +160,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
 
     @Override public boolean mouseClicked(double mx, double my, int button) {
         if ((popup == null || !popup.has(mx, my)) && super.mouseClicked(mx, my, button)) { popup = null; return true; } // a bar button acts, and closes an open popup
+        if (popup == null && inKey(mx, my)) { if (button == 0 && my < keyBox[1] + KEY_HEAD) keyOpen = !keyOpen; return true; } // the key's header folds it; the key hides the map under it
         if (!inMap(mx, my) && popup == null) return false;
         if (button == 1) {
             if (popup != null || attackArmy != null || !pingMode.isEmpty()) { popup = null; attackArmy = null; pingMode = ""; return true; } // only cancels
@@ -344,7 +357,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         ensureView(); // re-clamps when the window changed under a live screen; rebuilt for another field
         clipX0 = ax; clipY0 = ay; clipX1 = ax + aw; clipY1 = ay + ah;
         hoverOwn = hoverArmy = hoverAllyGroup = null;
-        if (popup == null && pressButton < 0 && inMap(mx, my)) { // what the mouse is over, by the last frame's boxes
+        if (popup == null && pressButton < 0 && inMap(mx, my) && !inKey(mx, my)) { // what the mouse is over, by the last frame's boxes
             Hit h = top(mx, my);
             if (h != null && h.kind().equals("own")) hoverOwn = h.group();
             if (h != null && h.kind().equals("ally")) { hoverArmy = h.army(); hoverAllyGroup = h.group(); }
@@ -359,10 +372,12 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             drawOrderLines(g);
             drawPoints(g);
             drawSightings(g);
+            keepYouClear();
             drawAllies(g);
             drawOwn(g);
             drawPings(g);
             drawYou(g);
+            drawKey(g);
         } finally { g.disableScissor(); }
         drawTopBar(g);
         drawBottomBar(g);
@@ -370,7 +385,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         if (attackArmy != null) banner(g, "Click a point or a place for " + attackName + " to attack / Esc cancels");
         else if (!pingMode.isEmpty()) banner(g, "Click the map to ping / Esc cancels");
         if (popup != null) drawPopup(g, mx, my);
-        else if (inMap(mx, my) && pressButton < 0) tooltip(g, mx, my);
+        else if (inMap(mx, my) && !inKey(mx, my) && pressButton < 0) tooltip(g, mx, my);
     }
 
     @Override public void renderBackground(DrawContext g) {}
@@ -412,7 +427,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     int sy(double wz) { return (int) Math.round(view.screenY(wz)); }
 
     /** Your side's colour for the troop icons, pennants and arrows. There colour carries no meaning alone: everything on that layer is
-     *  your side and the shape says the rest (filled yours, outlined ally); the legend shows your side's mark after "Yours" (oursMark),
+     *  your side and the shape says the rest (a filled square yours, a ring an ally); the legend shows your side's mark after "Yours" (oursMark),
      *  and a point's owner and challenger, where colour is the state, get their marks beside the disc (drawPoints). */
     int ours() { return DarkUi.teamColor(GravesAndGloryClient.team); }
     /** Your side's 7x7 mark. */
@@ -506,7 +521,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         if (BattleMapClient.current() == null) { // no battlemap_v1 yet: the state_v10 marks, as outlined icons with no type
             for (var m : GravesAndGloryClient.markers) if (!m.own()) {
                 int[] c = nudge(sx(m.x()), sy(m.z()), 0);
-                icon(g, c[0], c[1], DOT, col, false, false);
+                allyIcon(g, c[0], c[1], DOT, col);
                 if (m.fighting()) glyph(g, SWORDS, c[0] + ICON + 2, c[1] - ICON - 5, DarkUi.WARN, INK);
                 hits.add(new Hit("ally", c[0] - ICON, c[1] - ICON, c[0] + ICON + 1, c[1] + ICON + 1, -1, null, null, List.of("Allied troops")));
             }
@@ -519,7 +534,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
                 if (gr.count() <= 0) continue;
                 int[] c = nudge(sx(gr.x()), sy(gr.z()), textRenderer.getWidth(String.valueOf(gr.count())));
                 int x = c[0], y = c[1];
-                icon(g, x, y, typeGlyph(gr.group()), col, false, false);
+                allyIcon(g, x, y, typeGlyph(gr.group()), col);
                 countLabel(g, x, y, gr.count());
                 if (gr.fighting()) glyph(g, SWORDS, x + ICON + 2, y - ICON - 5, DarkUi.WARN, INK);
                 List<String> tip = new ArrayList<>();
@@ -541,7 +556,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             int[] c = nudge(sx(gr.cx()), sy(gr.cz()), textRenderer.getWidth(String.valueOf(gr.count())));
             int x = c[0], y = c[1];
             boolean selected = CommandSelection.isSelected(gr.id());
-            icon(g, x, y, typeGlyph(gr.id()), col, true, selected);
+            icon(g, x, y, typeGlyph(gr.id()), col, selected);
             countLabel(g, x, y, gr.count());
             float hp = Math.max(0, Math.min(1, gr.health()));
             if (hp < .95f) { // a thin health bar under a hurt group only
@@ -561,7 +576,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     /** Where a troop icon goes: its own spot, or the nearest step off the icons and counts already drawn (up, down, then aside, then
      *  further), else its own spot anyway. The box is the icon with its count label (labelW px) beside it. */
     int[] nudge(int x, int y, int labelW) {
-        int l = ICON + 1, r = ICON + 4 + labelW, t = ICON + 1, b = ICON + 2, dy = 2 * ICON + 3, dx = l + r + 2;
+        int l = ICON + 1, r = ICON + 5 + labelW, t = ICON + 1, b = ICON + 2, dy = 2 * ICON + 3, dx = l + r + 2;
         int[][] tries = {{0, 0}, {0, -dy}, {0, dy}, {dx, 0}, {-dx, 0}, {0, -2 * dy}, {0, 2 * dy}, {dx, -dy}, {dx, dy}, {-dx, -dy}, {-dx, dy}, {dx, -2 * dy}, {dx, 2 * dy}, {0, -3 * dy}, {0, 3 * dy}};
         int[] at = {x, y};
         for (int[] tr : tries) {
@@ -575,13 +590,29 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         return at;
     }
 
-    /** A troop icon: an ink square; your own filled with the team colour and an ink glyph, an ally's a team-colour outline and glyph; a
-     *  selected one gets a light edge with a gap. */
-    void icon(DrawContext g, int x, int y, String[] glyph, int color, boolean own, boolean selected) {
+    /** Your own troop icon: an ink square filled with the team colour and an ink glyph; a selected one gets a light edge with a gap. */
+    void icon(DrawContext g, int x, int y, String[] glyph, int color, boolean selected) {
         if (selected) g.drawBorder(x - ICON - 2, y - ICON - 2, 2 * ICON + 5, 2 * ICON + 5, SELECTED);
         g.fill(x - ICON, y - ICON, x + ICON + 1, y + ICON + 1, INK);
-        if (own) { g.fill(x - ICON + 1, y - ICON + 1, x + ICON, y + ICON, color); glyph(g, glyph, x - 3, y - 3, INK, 0); }
-        else { g.drawBorder(x - ICON + 1, y - ICON + 1, 2 * ICON - 1, 2 * ICON - 1, color); glyph(g, glyph, x - 3, y - 3, color, 0); }
+        g.fill(x - ICON + 1, y - ICON + 1, x + ICON, y + ICON, color);
+        glyph(g, glyph, x - 3, y - 3, INK, 0);
+    }
+
+    /** An ally's troop icon, round where yours is square (Revision 2 follow-up): an ink rim, a thin team-colour ring, a dark inside and the
+     *  same type glyph in the team colour. Its hit box is the same 13 px as yours. */
+    void allyIcon(DrawContext g, int x, int y, String[] glyph, int color) {
+        disc(g, x, y, ICON + 1, INK);
+        disc(g, x, y, ICON, color);
+        disc(g, x, y, ICON - 1, INK);
+        glyph(g, glyph, x - 3, y - 3, color, 0);
+    }
+
+    /** Reserves the "you" arrow's box before the troop icons are placed, so no icon or count sits on it. */
+    void keepYouClear() {
+        var p = client.player;
+        if (p == null) return;
+        int x = sx(p.getX()), y = sy(p.getZ());
+        icons.add(new int[] {x - 8, y - 8, x + 9, y + 9});
     }
 
     void countLabel(DrawContext g, int x, int y, int n) { outlined(g, String.valueOf(n), x + ICON + 3, y - 1, LABEL); }
@@ -620,17 +651,22 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         String mode = CampaignClient.text(CampaignClient.battleMode, "name");
         if (mode.isEmpty()) mode = "Battle";
         g.drawText(textRenderer, mode, 6, 6, DarkUi.BRASS_HI, true);
-        // the ledger: mark, score and held pips for each side about the clock
+        // the ledger about the clock: for each side a plain label (Your team / Enemy), its mark, score and held pips
         boolean pips = CampaignClient.showsPoints();
+        int mine = GravesAndGloryClient.team;
+        String la = mine == 0 ? "Your team" : mine == 1 ? "Enemy" : "", lb = mine == 1 ? "Your team" : mine == 0 ? "Enemy" : "";
+        drawnSides = la + "|" + lb;
         String a = ModeMath.ledgerText(CampaignClient.ledgerFormat(0), GravesAndGloryClient.dawn, CampaignClient.ledgerMax(0));
         String b = ModeMath.ledgerText(CampaignClient.ledgerFormat(1), GravesAndGloryClient.dusk, CampaignClient.ledgerMax(1));
         String clock = UiMath.clock(CommandMode.seconds);
         int heldA = 0, heldB = 0;
         for (int i = 0; i < Spec.POINTS.length; i++) { int o = GravesAndGloryClient.ownerAt(i); if (o == 0) heldA++; else if (o == 1) heldB++; }
-        int wa = 9 + textRenderer.getWidth(a) + (pips ? heldA * 6 + 2 : 0), wb = 9 + textRenderer.getWidth(b) + (pips ? heldB * 6 + 2 : 0), wc = textRenderer.getWidth(clock) + 16;
+        int lwa = la.isEmpty() ? 0 : textRenderer.getWidth(la) + 5, lwb = lb.isEmpty() ? 0 : textRenderer.getWidth(lb) + 5;
+        int wa = lwa + 9 + textRenderer.getWidth(a) + (pips ? heldA * 6 + 2 : 0), wb = 9 + textRenderer.getWidth(b) + (pips ? heldB * 6 + 2 : 0) + lwb, wc = textRenderer.getWidth(clock) + 16;
         int x = width / 2 - wc / 2 - wa;
         int maxRight = width - 6;
         if (x + wa + wc + wb > maxRight) x = Math.max(textRenderer.getWidth(mode) + 14, maxRight - (wa + wc + wb));
+        if (lwa > 0) { g.drawText(textRenderer, la, x, 6, mine == 0 ? DarkUi.BRASS_HI : DarkUi.MUTED, true); x += lwa; }
         DarkUi.teamMark(g, 0, x, 6);
         x += 9;
         g.drawText(textRenderer, a, x, 6, DarkUi.IVORY, true);
@@ -645,40 +681,61 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         g.drawText(textRenderer, b, x, 6, DarkUi.IVORY, true);
         x += textRenderer.getWidth(b) + 2;
         DarkUi.teamMark(g, 1, x, 6);
+        if (lwb > 0) g.drawText(textRenderer, lb, x + 7 + 5, 6, mine == 1 ? DarkUi.BRASS_HI : DarkUi.MUTED, true);
     }
 
+    /** The bottom bar: the buttons' row (drawn as widgets) with a brass rule before Fit, then the controls as key chips, centred. */
     void drawBottomBar(DrawContext g) {
         int y0 = height - bottom;
         wood(g, 0, y0, width, bottom);
         g.fill(0, y0, width, y0 + 1, BRASS_LO);
         g.fill(0, y0 + 1, width, y0 + 2, DarkUi.BRASS);
-        int lw = textRenderer.getWidth(legendText), kw = keyWidth();
-        int ly = y0 + 3 + BUTTON_H + 4;
-        if (legendRows == 1) {
-            int x = (width - lw - KEY_SEP - kw) / 2;
-            g.drawText(textRenderer, legendText, x, ly, DarkUi.MUTED, false);
-            key(g, x + lw + KEY_SEP, ly);
-        } else {
-            g.drawText(textRenderer, legendText, (width - lw) / 2, ly, DarkUi.MUTED, false);
-            key(g, (width - kw) / 2, ly + 10);
+        g.fill(fitRule, y0 + 5, fitRule + 1, y0 + 3 + BUTTON_H - 2, BRASS_LO);
+        int y = y0 + 3 + BUTTON_H + 4, x = (width - chipsWidth()) / 2;
+        for (var c : chips()) {
+            int kw = textRenderer.getWidth(c[0]) + 2 * CHIP_PAD;
+            g.fill(x, y, x + kw, y + CHIP_H, 0xff120c08);
+            g.drawBorder(x, y, kw, CHIP_H, BRASS_LO);
+            g.drawText(textRenderer, c[0], x + CHIP_PAD, y + 2, DarkUi.BRASS_HI, false);
+            x += kw + CHIP_GAP;
+            g.drawText(textRenderer, c[1], x, y + 2, DarkUi.IVORY, false);
+            x += textRenderer.getWidth(c[1]) + CHIP_SEP;
         }
     }
 
-    /** The glyph key, matching the map: a filled square for Yours (then your side's mark), an outlined one for Ally, the enemy triangle,
-     *  the swords, the pennant. */
-    void key(DrawContext g, int x, int y) {
-        int col = ours();
+    /** The glyph key: a wood panel with a brass edge in the map area's bottom-left corner, each row the map's own icon at map size and a
+     *  word. Its header ("Key", with - or +) folds it away and back. */
+    void drawKey(DrawContext g) {
+        int tw = 0;
+        for (int i = 0; i < KEY_WORDS.length; i++) tw = Math.max(tw, textRenderer.getWidth(KEY_WORDS[i]) + (i == 1 ? 10 : 0)); // 10: your mark after Yours
+        int rows = 0;
+        for (int h : KEY_ROWS) rows += h;
+        int w = keyOpen ? 4 + 15 + 4 + tw + 5 : textRenderer.getWidth("Key") + 20, h = KEY_HEAD + (keyOpen ? rows + 3 : 0);
+        int x = ax + 4, y = ay + ah - 4 - h;
+        keyBox = new int[] {x, y, w, h};
+        g.fill(x + 2, y + 2, x + w + 2, y + h + 2, 0x66000000);
+        wood(g, x, y, w, h);
+        g.drawBorder(x, y, w, h, DarkUi.BRASS);
+        g.drawText(textRenderer, "Key", x + 5, y + 2, DarkUi.BRASS_HI, false);
+        String fold = keyOpen ? "-" : "+";
+        g.drawText(textRenderer, fold, x + w - 5 - textRenderer.getWidth(fold), y + 2, DarkUi.MUTED, false);
+        taken.add(new int[] {x, y, w + 2, h + 2});
+        if (!keyOpen) return;
+        g.fill(x + 3, y + KEY_HEAD - 1, x + w - 3, y + KEY_HEAD, BRASS_LO);
+        int col = ours(), cx = x + 4 + 7, tx = x + 4 + 15 + 4, ry = y + KEY_HEAD + 1;
         for (int i = 0; i < KEY_WORDS.length; i++) {
+            int rh = KEY_ROWS[i], my = ry + rh / 2;
             switch (i) {
-                case 0 -> { g.fill(x, y - 1, x + 8, y + 7, INK); g.fill(x + 1, y, x + 7, y + 6, col); }
-                case 1 -> { g.fill(x, y - 1, x + 8, y + 7, INK); g.drawBorder(x + 1, y, 6, 6, col); }
-                case 2 -> glyph(g, TRI, x, y - 1, DarkUi.MAP_ENEMY, 0);
-                case 3 -> glyph(g, SWORDS, x, y - 1, DarkUi.WARN, 0);
-                default -> { g.fill(x + 1, y - 1, x + 2, y + 7, PARCH); g.fill(x + 2, y - 1, x + 8, y + 4, col); }
+                case 0 -> { triangle(g, cx, my + 1, 0, -1, 7.5, 4.5, INK); triangle(g, cx, my + 1, 0, -1, 5.5, 3, DarkUi.MAP_YOU); }
+                case 1 -> icon(g, cx, my, SHIELD, col, false);
+                case 2 -> allyIcon(g, cx, my, SHIELD, col);
+                case 3 -> glyph(g, TRI, cx - 3, my - 4, DarkUi.MAP_ENEMY, INK);
+                case 4 -> glyph(g, SWORDS, cx - 3, my - 3, DarkUi.WARN, INK);
+                default -> pennant(g, cx - 8, ry + rh - 1, 0, col);
             }
-            g.drawText(textRenderer, KEY_WORDS[i], x + 10, y, DarkUi.MUTED, false);
-            x += 10 + textRenderer.getWidth(KEY_WORDS[i]) + KEY_GAP;
-            if (i == 0) { oursMark(g, x - KEY_GAP + 2, y - 1); x += 9; }
+            g.drawText(textRenderer, KEY_WORDS[i], tx, my - 3, DarkUi.IVORY, false);
+            if (i == 1) oursMark(g, tx + textRenderer.getWidth(KEY_WORDS[i]) + 3, my - 3);
+            ry += rh;
         }
     }
 
@@ -883,6 +940,15 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         if (popup == null) return null;
         int i = popup.rows().indexOf(row);
         return i < 0 ? null : new int[] {popup.x() + popup.w() / 2, popup.rowY(i) + ROW / 2};
+    }
+    /** True when the key chips fit the bar's width, the buttons' row does not run into them, and the drawn key panel sits inside the map
+     *  area with room left above it. */
+    boolean barFits() {
+        int cw = chipsWidth();
+        boolean buttons = true;
+        for (var w : children()) if (w instanceof ButtonWidget b && (b.getX() < 2 || b.getX() + b.getWidth() > width - 2 || b.getY() + b.getHeight() > height - bottom + 3 + BUTTON_H)) buttons = false;
+        boolean key = keyBox[2] > 0 && keyBox[0] >= ax && keyBox[1] >= ay + 20 && keyBox[0] + keyBox[2] <= ax + aw && keyBox[1] + keyBox[3] <= ay + ah;
+        return cw <= width - 8 && buttons && key;
     }
     /** A whole left click (press and release in place) as the mouse would give it. */
     void clickAt(double x, double y) { mouseClicked(x, y, 0); mouseReleased(x, y, 0); }

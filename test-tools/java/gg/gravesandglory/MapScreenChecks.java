@@ -12,7 +12,8 @@ import java.util.UUID;
  *  old map) and then New Kingsfield (an engine map), each a skirmish with bot fill.
  *  - view: BattleMapScreen opens at the fit scale and draws the real texture (the only look since Revision 2); a scroll of +3 at the map's
  *    centre zooms and keeps the centre's world point; a 50 px drag moves the view; Home fits again; with no grid the screen still draws
- *    (fallback). A point's hit target is its disc (the centre hits, the box corner does not).
+ *    (fallback). A point's hit target is its disc (the centre hits, the box corner does not). The top bar labels the player's side
+ *    "Your team" and the other "Enemy"; the bottom bar's buttons and key chips and the glyph key panel fit the window.
  *  - plan: a click on point B's disc opens its popup; Attack puts ATTACK on B in battlemap_v1 and a bot says "on it, taking"; a click on an
  *    ally bot's square icon (13 px, not a plaque) opens its popup; Hold here puts a direct HOLD for that army in battlemap_v1. With the screen closed and the player
  *    moved 100 blocks from point B and facing it, PlanMarkers drew point B's own world flag (Task 7), and the popup methods
@@ -29,7 +30,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
     String id = "";
     BattleMapScreen screen;
     // the view check's findings
-    boolean fitOpen, realDrawn, discHit, zoomUp, zoomKept, dragMoved, homeFit, noGridOk;
+    boolean fitOpen, realDrawn, discHit, zoomUp, zoomKept, dragMoved, homeFit, noGridOk, sidesOk;
     String viewWhy = "";
     // the plan check's
     boolean pointPopup, planInState, ackHeard, armyPopup, orderInState, flagDrawn, aimedNoPopup, noPointsOk;
@@ -69,6 +70,9 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 var b = screen.pointHit(1);
                 discHit = b != null && b.x1() - b.x0() == 2 * BattleMapScreen.DISC + 3 && b.has(b.cx(), b.cy()) && !b.has(b.x0(), b.y0()) && !b.has(b.x1() - 1, b.y1() - 1);
                 viewWhy += "B's hit target " + (b == null ? "none" : (b.x1() - b.x0()) + " px, a disc: " + discHit) + "; ";
+                String want = GravesAndGloryClient.team == 0 ? "Your team|Enemy" : "Enemy|Your team";
+                sidesOk = want.equals(screen.drawnSides) && screen.barFits();
+                viewWhy += "top bar sides '" + screen.drawnSides + "' (team " + GravesAndGloryClient.team + ", wanted '" + want + "'), bottom bar and key fit: " + screen.barFits() + "; ";
                 Phase4Checks.shot(c, "ui-map-fit-" + id);
                 double cx = screen.ax + screen.aw / 2.0, cy = screen.ay + screen.ah / 2.0, wx = v.worldX(cx), wz = v.worldZ(cy), before = v.scale();
                 screen.mouseScrolled(cx, cy, 3);
@@ -109,7 +113,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 noGridOk = c.currentScreen == screen && ("fallback".equals(screen.drawnTexture) || "plain".equals(screen.drawnTexture)) && screen.pointAt(0) != null;
                 viewWhy += "Home: scale " + r(screen.view.scale()) + " (fit " + r(screen.view.fitScale()) + "); with no grid drew " + screen.drawnTexture + " and the points; ";
                 BattleMapClient.grid = saved;
-                Phase4Checks.report("p4-map-view-" + id, fitOpen && realDrawn && discHit && zoomUp && zoomKept && dragMoved && homeFit && noGridOk, viewWhy);
+                Phase4Checks.report("p4-map-view-" + id, fitOpen && realDrawn && discHit && sidesOk && zoomUp && zoomKept && dragMoved && homeFit && noGridOk, viewWhy);
                 next(10, tick);
             }
             // ---- plan
@@ -216,7 +220,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 Phase4Checks.shot(c, "ui-map-fit-" + id + "-small");
                 boolean inside = true;
                 for (var w : screen.children()) if (w instanceof net.minecraft.client.gui.widget.ClickableWidget b && (b.getX() < 0 || b.getX() + b.getWidth() > screen.width || b.getY() + b.getHeight() > screen.height)) inside = false;
-                Phase4Checks.report("p4-map-small-" + id, inside && screen.ah >= 120, "at 854x480 GUI 2 the screen is " + screen.width + "x" + screen.height + ", the map area " + screen.aw + "x" + screen.ah + ", the bar buttons inside: " + inside);
+                Phase4Checks.report("p4-map-small-" + id, inside && screen.barFits() && screen.ah >= 120, "at 854x480 GUI 2 the screen is " + screen.width + "x" + screen.height + ", the map area " + screen.aw + "x" + screen.ah + ", the bar buttons inside: " + inside + ", the chips and the key panel fit: " + screen.barFits());
                 c.setScreen(null);
                 Phase1Checks.window(c, 960, 540, 2);
                 at++;
@@ -261,7 +265,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
     }
 
     void resetFindings() {
-        fitOpen = realDrawn = discHit = zoomUp = zoomKept = dragMoved = homeFit = noGridOk = false;
+        fitOpen = realDrawn = discHit = sidesOk = zoomUp = zoomKept = dragMoved = homeFit = noGridOk = false;
         pointPopup = planInState = ackHeard = armyPopup = orderInState = flagDrawn = aimedNoPopup = noPointsOk = false;
         planClickTime = orderClickTime = -1;
         viewWhy = ""; planWhy = ""; ally = ""; setter = ""; heard.clear();
