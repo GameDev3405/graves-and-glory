@@ -686,7 +686,7 @@ final class Tactics {
     static Vec3d jumpSpot(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time){
         var mob=u.mob;var nav=field();
         if(nav==null)return null; // no route field (an old map): nothing knows where a floor with a way on is, so no jump (step 3 adds the queue test)
-        var wp=nav.rescue(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z,time);return wp==null?null:new Vec3d(wp.x(),wp.y(),wp.z());
+        var w=battle.world;var wp=nav.rescue(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z,time,(sx,sy,sz)->w.getFluidState(BlockPos.ofFloored(sx,sy+.1,sz)).isEmpty()&&!enemyNear(battle,u,new Vec3d(sx,sy,sz)));return wp==null?null:new Vec3d(wp.x(),wp.y(),wp.z());
     }
     /** The last rung: the troop is put on its jump spot, unless a player watches it or the spot, or the spot is not free for its body. True when it was moved. */
     static boolean jumpFree(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time){

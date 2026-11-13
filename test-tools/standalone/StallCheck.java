@@ -179,6 +179,10 @@ public final class StallCheck {
         var offField = new Walker();
         offField.x = 31.5; offField.z = 10.5;
         check(!yard.onField(31.5, 65, 10.5) && yard.rescue(31.5, 65, 10.5, gx, 65, gz, 0) != null, "a troop in the wall is off the field and has a rescue spot");
+        var filtered = yard.rescue(31.5, 65, 10.5, gx, 65, gz, 0, (sx, sy, sz) -> sx >= 36);
+        check(filtered != null && filtered.x() >= 36, "a rescue skips the spots the filter turns down (water, an enemy beside): " + filtered);
+        var hopFiltered = yard.rescue(29.5, 65, 20.5, gx, 65, gz, 0, (sx, sy, sz) -> sx >= 33);
+        check(hopFiltered != null && hopFiltered.x() >= 33, "and so do the hops along the route: " + hopFiltered);
 
         // 8. every squad: the ladder is one call in Tactics.walk (toSlot, the enemy chase and backOff all end there, a player's and a bot's alike) and the block has no squad test
         Path src = Path.of("src/main/java/gg/gravesandglory/Tactics.java");

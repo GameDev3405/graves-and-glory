@@ -506,7 +506,13 @@ public final class NavField {
     /** Where a troop that has been stuck for good is put (the stall ladder's last rung): a standing point on a floor of the field, as a waypoint (feet y), or null when there is none to give (the goal has no floor, no route to it from anywhere near).
      *  A troop on a floor with a way to the goal goes RESCUE_HOPS hops along that way (past whatever the field does not know holds it); a troop off the field (water, a roof, a wall top) or on a piece of floor cut off from the goal
      *  goes to the nearest floor, within RESCUE_RADIUS columns, from which the goal can be reached, ties toward the goal. Builds the goal's field if it must (it is asked for after half a minute of standing still, not every tick). */
-    public synchronized Waypoint rescue(double x, double y, double z, double gx, double gy, double gz, long tick) {
+    public synchronized Waypoint rescue(double x, double y, double z, double gx, double gy, double gz, long tick) { return rescue(x, y, z, gx, gy, gz, tick, null); }
+
+    /** A place the caller will accept for a troop (not in water, not beside an enemy): (x, feet y, z). */
+    public interface SpotFilter { boolean ok(double x, double y, double z); }
+
+    /** rescue, skipping every spot the filter turns down (null: none): the route's hops go on past one, the nearest-floor search takes the next nearest. */
+    public synchronized Waypoint rescue(double x, double y, double z, double gx, double gy, double gz, long tick, SpotFilter ok) {
         int to = cellNear(gx, gy, gz, GOAL_RADIUS, false);
         if (to < 0) return null;
         Field f = fieldFor(nodeOf[to], tick, true);
@@ -520,7 +526,7 @@ public final class NavField {
                 n = arcTo[a];
                 if (hop + 1 >= RESCUE_HOPS) {
                     int col = colOf[cell];
-                    if (Math.hypot(col % w + ox + .5 - x, col / w + oz + .5 - z) >= RESCUE_MIN) break; // far enough to be a real move, not a step into the same wedge
+                    if (Math.hypot(col % w + ox + .5 - x, col / w + oz + .5 - z) >= RESCUE_MIN && (ok == null || ok.ok(col % w + ox + .5, ys[cell] + 1, col / w + oz + .5))) break; // far enough to be a real move, not a step into the same wedge
                 }
             }
             if (cell < 0) cell = to; // already in the goal's node: the goal's own floor
@@ -538,6 +544,7 @@ public final class NavField {
                 int c = cz * w + cx;
                 for (int i = start[c]; i < start[c + 1]; i++) {
                     if (f.dist[nodeOf[i]] == FAR || width(i) < 2) continue;
+                    if (ok != null && !ok.ok(cx + ox + .5, ys[i] + 1, cz + oz + .5)) continue;
                     double score = (double) dx * dx + (double) dz * dz + 1e-3 * Math.hypot(cx + ox + .5 - gx, cz + oz + .5 - gz);
                     if (score < bestScore) { bestScore = score; best = i; }
                 }
