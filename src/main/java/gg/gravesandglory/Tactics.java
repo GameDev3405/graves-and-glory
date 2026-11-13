@@ -422,19 +422,20 @@ final class Tactics {
         if(a.order.equals("hold")&&!mob.getNavigation().isIdle())FormationRules.shove(battle,u,a); // a Formation's troops walking into place make room (Task 6's rule)
     }
     /** Slot cells moved out of water, by cell (dryCells is for the battle in play), and how many beats a troop's slot was moved. */
-    static final Map<Long,Vec3d> DRY=new java.util.concurrent.ConcurrentHashMap<>();static GravesAndGlory.Battle dryOf;static int wetSlots;
-    /** A slot cell in water is not a place to stand (the pond near (-43, 72) on New Kingsfield: a formation's cells fell in it, the troops crowded its shore and stood there until the stall ladder jumped them out): on an engine map with a route field the troop forms on
-     *  the nearest dry floor instead, one of those at the least distance chosen by its slot so that the troops of a wet row do not all take the same cell. Any other slot comes back as it is (the same object: walk compares it by identity). */
+    static final Map<Long,Vec3d> DRY=new java.util.concurrent.ConcurrentHashMap<>();static GravesAndGlory.Battle dryOf;static int movedSlots;
+    /** A slot cell that is no place to stand (in a pond, in a wall, on a column with no floor the route field keeps) is not walked to: on an engine map with a route field the troop forms on the nearest dry floor instead, one of those at the least distance
+     *  chosen by its slot so that the troops of a bad row do not all take the same cell. The pond near (-43, 76) on New Kingsfield was the case that showed it: the field once counted its bed as floor, and the troops walked up to its shore and stood there until the stall
+     *  ladder jumped them out (the bake no longer counts a floor under water; the slots of a formation that fall in the pond are what this moves). Any other slot comes back as it is (the same object: walk compares it by identity). */
     static Vec3d dryCell(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d slot){
         var nav=field();if(nav==null)return slot;
         var w=battle.world;var mob=u.mob;
         int gx=(int)Math.floor(slot.x),gz=(int)Math.floor(slot.z);
         int[] f=Arena.floor(w,gx,gz,mob.getX(),mob.getZ());
-        if(!wetAt(w,f[0],f[2],f[1]))return slot;
+        if(f[0]==gx&&f[1]==gz&&!wetAt(w,gx,f[2],gz))return slot; // the column is a floor of the field and dry
         if(dryOf!=battle){DRY.clear();dryOf=battle;}
         long key=((long)gx*1_000_003L+gz)*8+(u.slot&7);
         var cached=DRY.get(key);
-        if(cached!=null){wetSlots++;return cached;}
+        if(cached!=null){movedSlots++;return cached;}
         java.util.List<int[]> best=new java.util.ArrayList<>();int bestR=-1;
         for(int r=1;r<=DRY_RADIUS&&(bestR<0||r<=bestR+1);r++)for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
             if(Math.max(Math.abs(dx),Math.abs(dz))!=r)continue;
@@ -444,7 +445,7 @@ final class Tactics {
         }
         Vec3d out=slot;
         if(!best.isEmpty()){var c=best.get(Math.floorMod(u.slot,best.size()));out=new Vec3d(c[0]+.5,c[2],c[1]+.5);}
-        DRY.put(key,out);wetSlots++;
+        DRY.put(key,out);movedSlots++;
         return out;
     }
     /** How far (columns) a wet slot looks for dry ground. */

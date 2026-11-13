@@ -32,10 +32,11 @@ from mapengine.build import ground_state  # noqa: E402
 from mapengine.walk import NONE  # noqa: E402
 
 # Walking over floors (a column can hold several: the ground under a gatehouse and its roof). A floor is a block a troop collides with, not a
-# fence, wall, bar or gate (1.5 high), with two cells above it free of such blocks and not both water. Steps of at most 1 up or down between
+# fence, wall, bar or gate (1.5 high), with two cells above it free of such blocks and the lower of them not water (a troop wades no pond: its pathfinder
+# will not lead it through water, so a lake bed is no floor, and the pond on New Kingsfield at (-43, 76) was the dead pocket troops crowded at). Steps of at most 1 up or down between
 # 4-neighbour columns, as mapengine.walk does over the top block only.
 PASS = ('air', 'grass', 'fern', 'azure_bluet', 'cornflower', 'dandelion', 'oxeye_daisy', 'poppy', 'wheat', 'carrots', 'potatoes', 'beetroots',
-        'dead_bush', 'brown_mushroom', 'red_mushroom', 'rail', 'fire', 'ladder', 'structure_void', 'cave_air', 'void_air')
+        'dead_bush', 'brown_mushroom', 'red_mushroom', 'rail', 'fire', 'ladder', 'structure_void', 'cave_air', 'void_air', 'lily_pad')
 TALL = ('_fence', '_wall', 'iron_bars', '_fence_gate')
 
 
@@ -56,7 +57,7 @@ def floors_of(stack, palette, floor):
     sz, sx, sy = k.shape
     pad = np.concatenate([k, np.zeros((sz, sx, 2), dtype=k.dtype)], axis=2)
     a1, a2 = pad[:, :, 1:sy + 1], pad[:, :, 2:sy + 2]
-    stand = (k == 1) & (a1 != 1) & (a1 != 3) & (a2 != 1) & (a2 != 3) & ~((a1 == 2) & (a2 == 2))
+    stand = (k == 1) & (a1 != 1) & (a1 != 3) & (a2 != 1) & (a2 != 3) & (a1 != 2)
     out = {}
     for z, x, y in zip(*np.nonzero(stand)):
         out.setdefault((int(z), int(x)), []).append(floor + int(y))
