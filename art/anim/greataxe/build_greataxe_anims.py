@@ -689,6 +689,7 @@ if REVIEW_FIX:
         SP.HIT_PEAK["back"] = K.off(torso=(12, 0, 0), head=(-6, 0, 0), rarm=(-12, 0, 4), larm=(-12, 0, -4))
 
 FIX1 = REVIEW_FIX and os.environ.get("GG_BREAKER_FIX1") != "0"   # fix round 1 (2026-11-12); =0 rebuilds the reviewed clips
+FIX2 = FIX1 and os.environ.get("GG_BREAKER_FIX2") != "0"   # fix round 2 (2026-11-12): round2_fixes; =0 leaves it out
 if FIX1:
     # ---- overhead_chop, the heave (t4-10.75). The fists were held before the brow at shoulder height: the left gauntlet sank
     # into the helm (2.27 px at t8.5) and the haft stood straight up before the helm's face as the drop began (weapon into
@@ -1866,7 +1867,7 @@ def hips_lift(upper, legs, margin=0.3, report="", guard=False):
     return legs
 
 
-LOOP_SWAY = 3.0   # deg
+LOOP_SWAY = 5.0 if FIX2 else 3.0   # deg (fix round 2: 5, so the right tasset swings past 4 deg in the stun)
 
 
 def loop_sway(frames, entry, loop_ticks):
@@ -2032,6 +2033,180 @@ def fix_layered(tr, clips):
         clips[name + "_legs"] = _rebake(o_l, tl, clips[name + "_legs"]["loop"])
 
 
+# ------------------------------------------------------------------------------------------ fix round 2 (2026-11-12)
+# Late, cheap fixes keyed on the finished clip file (the upstream solves stay cached). Each one was measured with
+# tools/anim/focus_check.py on the exported clips before it went in (IC_BREAKER-REVIEW.md, fix round 2).
+R2_SKIRT_K = 0.2   # the run's skirts trail the thighs: rotation x = -0.2 * the leg's x
+R2_CHARGE_HAND = (12.0, 4.0)   # charge_run: the axe tipped forward off the helm (right_hand x, y deg); the left fist follows
+R2_TABARD_K = 0.5   # hit_knockback: the tabard's forward swing halved (it swung 22 deg into the right forearm)
+R2_OFFSETS = (   # (clip, bone, (dx, dy, dz) deg, (in from, in to, out from, out to) ticks): eased in and out with smoothstep
+    # hit_pulled: the cape lifts off the legs as the body is yanked forward (cape into the legs, 2.28)
+    ("hit_pulled", "cape", (6.0, 0.0, 0.0), (0.5, 2.5, 6.0, 9.0)),
+    # hit_knockback: the head tips back with the blow, off the right gauntlet (limb_in_body)
+    ("hit_knockback", "head", (-10.0, 0.0, 0.0), (0.0, 1.0, 2.5, 4.5)),
+    # hit_medium_front: the cape cloth flicks with the blow (it hung still); the head leans off the apron
+    ("hit_medium_front", "cape_cloth", (6.0, 0.0, 0.0), (0.5, 3.0, 5.0, 10.0)),
+    ("hit_medium_front", "head", (0.0, 0.0, -3.0), (5.0, 7.5, 9.5, 12.0)),
+    # stun: the right arm hangs wider of the tassets (axe and forearm into the hips), the head and left arm clear the
+    # spikes in the snap, the head tips off the left plate and the cape cloth lifts off the legs for the loop
+    ("stun_upper", "right_arm", (0.0, 0.0, 14.0), (1.5, 4.0, 1e9, 1e9)),
+    ("stun_upper", "head", (0.0, 0.0, -5.0), (0.0, 0.75, 2.5, 4.0)),
+    ("stun_upper", "left_arm", (0.0, 0.0, 8.0), (0.0, 0.5, 2.5, 4.0)),
+    ("stun_upper", "head", (0.0, 0.0, -4.0), (2.0, 4.0, 1e9, 1e9)),
+    ("stun_upper", "cape_cloth", (4.0, 0.0, 0.0), (2.0, 4.0, 1e9, 1e9)),
+    # stun: the right tasset swings out and back once a loop (it moved 3.5 deg; loop_sway skips it, its x and z already
+    # span 9 deg); both swings sit inside the loop (t4-t24), so the seam is untouched
+    ("stun_legs", "right_tasset", (4.0, 0.0, 0.0), (5.0, 9.0, 11.0, 15.0)),
+    ("stun_legs", "right_tasset", (-3.0, 0.0, 0.0), (15.0, 18.0, 20.0, 23.5)),
+    # attack_side_hew: the plates and head ride clear of the haft and arms through the windup and the follow-through
+    ("attack_side_hew", "head", (0.0, -6.0, -12.0), (8.5, 9.5, 10.5, 11.25)),
+    ("attack_side_hew", "left_pauldron", (0.0, 0.0, 12.0), (8.5, 9.5, 10.5, 11.25)),
+    ("attack_side_hew", "right_pauldron", (-6.0, 0.0, 16.0), (10.5, 11.5, 13.0, 14.0)),
+    ("attack_side_hew", "head", (10.0, 0.0, 16.0), (10.5, 11.5, 13.0, 14.0)),
+    ("attack_side_hew", "left_pauldron", (8.0, 0.0, 0.0), (14.5, 16.0, 18.0, 20.0)),
+)
+
+
+def _r2_smooth(x):
+    x = min(1.0, max(0.0, x))
+    return x * x * (3.0 - 2.0 * x)
+
+
+def _r2_keys(doc, clip, bone):
+    """The bone's rotation keys in a clip (keyed at every sample, all zero, when the clip did not key it)."""
+    a = doc["animations"][clip]
+    m = a["bones"].setdefault(bone, {}).setdefault("rotation", {})
+    if not m:
+        n = int(round(a["animation_length"] * 20 * SUB))
+        m.update({"%g" % (i / (20.0 * SUB)): [0.0, 0.0, 0.0] for i in range(n + 1)})
+    return m
+
+
+def _r2_map(m, fn):
+    for t in list(m):
+        v = m[t]["post"] if isinstance(m[t], dict) else m[t]
+        nv = [round(float(x), 3) for x in fn(float(t) * 20.0, v)]
+        if isinstance(m[t], dict):
+            m[t] = dict(m[t], post=nv) if "pre" not in m[t] else {"pre": nv, "post": nv}
+        else:
+            m[t] = nv
+
+
+def _r2_offset(doc, clip, bone, off, win):
+    a, b, c, d = win
+    def f(tk, v):
+        w = _r2_smooth((tk - a) / max(b - a, 1e-6)) * _r2_smooth((d - tk) / max(d - c, 1e-6))
+        return [x + w * o for x, o in zip(v, off)]
+    _r2_map(_r2_keys(doc, clip, bone), f)
+
+
+def _r2_scale(doc, clip, bone, k):
+    m = _r2_keys(doc, clip, bone)
+    v0 = m[min(m, key=float)]
+    r0 = list(v0["post"] if isinstance(v0, dict) else v0)
+    _r2_map(m, lambda tk, v: [x0 + k * (x - x0) for x, x0 in zip(v, r0)])
+
+
+def _r2_run_skirts(doc):
+    B = doc["animations"]["run_legs"]["bones"]
+    for side in ("left", "right"):
+        leg = B[side + "_leg"]["rotation"]
+        B[side + "_skirt"] = {"rotation": {t: [round(-R2_SKIRT_K * v[0], 3), 0.0, 0.0] for t, v in leg.items()}}
+
+
+def _r2_charge_hand(doc):
+    """charge_run_upper: right_hand turned by R2_CHARGE_HAND, the left fist solved back onto the haft at its slide."""
+    A = doc["animations"]
+    up, t = _unbake(A["charge_run_upper"])
+    run, _ = _unbake(A["run_legs"])
+    dx, dy = R2_CHARGE_HAND
+    for i in range(len(up)):
+        lr = _at(run, i)
+        s = dict(up[i])
+        h = s["right_hand"]
+        sl = _slide(SP.fk_pose(s, lr))
+        s["right_hand"] = ((h[0][0] + dx, h[0][1] + dy, h[0][2]), h[1])
+        p = SP.fk_pose(s, lr)
+        a0 = np.r_[np.asarray(s["left_arm"][0], float), s["left_forearm"][0][0]]
+
+        def f(x, p=p, sl=sl, a0=a0):
+            qq = SP._arm("left", p, x)
+            return np.concatenate([4.0 * (K.point(K.world(qq, "left_forearm"), SP.FIST_L) - SP.wpoint(qq, SP.S(sl))),
+                                   0.05 * (x - a0)])
+        x = SP.gn(f, a0, iters=30)
+        s["left_arm"] = (tuple(float(v) for v in x[:3]), s["left_arm"][1])
+        s["left_forearm"] = ((float(x[3]), s["left_forearm"][0][1], s["left_forearm"][0][2]), s["left_forearm"][1])
+        up[i] = s
+    A["charge_run_upper"] = _rebake(up, t, A["charge_run_upper"]["loop"])
+
+
+def _r2_foot_raise(doc, keep=0.8, over=0.92):
+    """stun_legs: where a boot (or knee wing) dips more than `over` px under the ground (the check fails at 1), its ankle is
+    lifted until it dips `keep` px, eased over a tick; the leg is solved again to the raised ankle (as high as it still
+    reaches) and the foot keeps its world turn. A full lift to the ground bent the knee to 100 deg (scorecard knee_bend
+    limit 93.9) and opened the loop seam (loop_pose 29.7): the stun's legs hang nearly straight."""
+    A = doc["animations"]
+    upper, _ = _unbake(A["stun_upper"])
+    legs, tl = _unbake(A["stun_legs"])
+    n = len(legs)
+    z3 = (0.0, 0.0, 0.0)
+
+    def depth(i, side):
+        pose = SP.fk_pose(_at(upper, i), legs[i])
+        return floor_depth(pose, tuple(b for b in FLOOR_PARTS if b.startswith(side)))[0]
+    for _ in range(3):
+        moved = False
+        for side in ("right", "left"):
+            d = [depth(i, side) for i in range(n)]
+            need = [max(0.0, x - keep) if x > over else 0.0 for x in d]
+            if not any(need):
+                continue
+            moved = True
+            for i, dh in enumerate(_smooth_series(need, SUB)):
+                if dh <= 0:
+                    continue
+                pose = SP.fk_pose(_at(upper, i), legs[i])
+                Mf = K.world(pose, side + "_foot")
+                tgt = K.point(Mf, K.ankle_px(side)) + np.array([0.0, dh, 0.0])
+                g = legs[i]
+                guess = (g[side + "_leg"][0][0], g[side + "_leg"][0][2], g[side + "_shin"][0][0])
+                got, lo, hi = None, 0.0, dh
+                try:
+                    got = K.leg_pose(pose, side, tgt, 0.0, guess=guess)
+                except ValueError:      # out of reach: raise as far as the leg still reaches
+                    for _ in range(6):
+                        mid = 0.5 * (lo + hi)
+                        try:
+                            got = K.leg_pose(pose, side, tgt - np.array([0.0, dh - mid, 0.0]), 0.0, guess=guess)
+                            lo = mid
+                        except ValueError:
+                            hi = mid
+                if got is None:
+                    continue
+                lr, sr, _ = got
+                q = dict(pose)
+                q[side + "_leg"], q[side + "_shin"] = (lr, z3), (sr, z3)
+                fr = K.decompose_zyx(K.world(q, side + "_shin")[:3, :3].T @ Mf[:3, :3])
+                new = dict(g)
+                new[side + "_leg"], new[side + "_shin"], new[side + "_foot"] = (lr, None), (sr, None), (fr, None)
+                if side + "_boot" in new:
+                    new[side + "_boot"] = (fr, new[side + "_boot"][1])
+                legs[i] = new
+        if not moved:
+            break
+    A["stun_legs"] = _rebake(legs, tl, A["stun_legs"]["loop"])
+
+
+def round2_fixes(doc):
+    """The fix round 2 steps on the finished clip file (write_layers)."""
+    _r2_run_skirts(doc)
+    _r2_charge_hand(doc)
+    for clip, bone, off, win in R2_OFFSETS:
+        _r2_offset(doc, clip, bone, off, win)
+    _r2_scale(doc, "hit_knockback", "tabard", R2_TABARD_K)
+    _r2_foot_raise(doc)
+
+
 def write_layers():
     """Adds the layered clips to this build's clip file, in the exported file's clip order, and keeps the exported file's
     death clips (the approved ones: heldprop.py's data-level polish of 2026-11-07, which no builder reproduces for this
@@ -2051,6 +2226,8 @@ def write_layers():
     doc["animations"] = ordered
     import hang_swing   # noqa: E402  (as stances.merge does; no hanging part on this troop)
     hang_swing.key_doc(SP.TROOP, doc, log=False)
+    if FIX2:
+        round2_fixes(doc)
     for n in doc["animations"]:
         if n.startswith("death_") and n in shipped:
             doc["animations"][n] = shipped[n]

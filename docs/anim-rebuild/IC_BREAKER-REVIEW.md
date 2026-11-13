@@ -156,3 +156,79 @@ Ten of the 28 rows are `secondary_life: helm_plume` (the crest, which must not s
 - In-game reel (checkq 20261112-081504-306-4018, root `ic_breaker-review1`, geo-knight): 22 `[p1] p1-` lines, 20 true.
   `attack-sync-walk=false` with 3/3 walking swings matched (one under the check's floor of 4, as in both lane runs of
   2026-11-07) and the suite roll-up. Stand sync 26/26, attack frames 81/81, stances, hits, pulls and deaths all true.
+
+## Fix round 2 (2026-11-12)
+
+### Solve cache
+
+The builder's slow, pure steps (attack solve, helm and chest clearances, soft motion, the hit and layered fixes, and the
+spear builder's idle, stance, death and LS/LC/LR clips) go through `art/anim/greataxe/solve_cache.py`. A step's key is a
+sha256 over its arguments and a fingerprint of the code and data it reads, recursively (its source, defaults, constants,
+the globals and module attributes it reads, every project function it reaches). A hit returns the stored result and
+replays the in-place changes the step made to its arguments. The cache lives in `work/anim-cache/ic_breaker/`
+(gitignored). `GG_BREAKER_CACHE=0` turns it off and `GG_BREAKER_CACHE_DIR` moves it.
+
+- Proof, before any fix: a full build with an empty cache (95 min) and two warm rebuilds (73 s each) left `out/` and the
+  exported asset byte-identical to the committed files (commit 45d3777b).
+- One `soften` call misses on every build because its arguments hash differently from run to run. The output is still
+  identical. It costs a few seconds and adds one small file to the cache per build.
+- Final proof, with the fixes: a full build from an empty cache (`GG_BREAKER_CACHE_DIR` pointing at a new, empty folder;
+  101 min, 75 steps solved, 0 reused) wrote the same bytes as the last warm build (about 2 min) for all 55 ic_breaker
+  files in `out/` and the exported assets. The clip file's sha256 starts 31e8b4d3f8829e8f.
+
+### Fixes (late steps on the finished clip file: `round2_fixes` in `write_layers`; `GG_BREAKER_FIX2=0` leaves them out)
+
+| Row (focus check) | Before | After | How |
+|---|---|---|---|
+| run_upper armour_clip (right_skirt into tabard_skirt) | FAIL 1.97 | WARN 1.88 | Run skirts trail the thighs: x = -0.2 x leg x on `run_legs` |
+| charge_run_upper armour_clip (left_skirt) | FAIL 1.97 | WARN 1.84 | The same `run_legs` skirts |
+| charge_run_upper weapon_in_body (axe into helm) | FAIL 1.81 | WARN 1.18 | right_hand turned (+12, +4) and the left fist solved back onto the haft at the same slide (miss under 0.1 px); limb_in_body 1.76 -> 1.85 WARN |
+| attack_side_hew armour_clip (helm into right_spikes) | FAIL 3.03 | WARN 1.92 (apron into left_leg, inherited from the stance) | Five eased offsets on the head and both pauldrons in t8.5-20. The right pauldron turns 16 deg, past the kit's 10 deg plate lag |
+| hit_pulled armour_clip (cape_cloth into tabard) | FAIL 2.28 | WARN 1.92 (helm into left_pauldron, inherited) | Cape x +6, eased over t0.5-2.5 / t6-9 |
+| hit_knockback limb_in_body (left_gauntlet into helm) | FAIL 2.04 | WARN 1.88 | Head x -10 over t0-1 / t2.5-4.5 |
+| hit_knockback armour_clip (right_forearm into tabard) | FAIL 2.08 | WARN 1.91 (helm into torso, inherited) | Tabard swing halved (it swung 22 deg forward) |
+| hit_medium_front armour_clip (helm into left_pauldron) | FAIL 1.93 | WARN 1.84 | Head z -3 over t5-7.5 / t9.5-12; cape_cloth x +6 over t0.5-3 / t5-10, so the cape moves |
+| stun_upper weapon_in_body (into hips) | FAIL 1.87 | WARN 0.93 | right_arm z +14, eased in over t1.5-4 and held; the loop seam t4 = t24 is exact |
+| stun_upper limb_in_body (right_gauntlet into hips) | FAIL 2.01 | WARN 1.83 | The same arm offset |
+| stun_upper armour_clip (helm into left_spikes) | FAIL 2.16 | WARN 1.86 | Head z -5 and left_arm z +8 in the snap (t0-4), head z -4 held from t4 |
+| stun_upper floor (right_boot) | FAIL 1.68 | WARN 0.89 | Boots that dip more than 0.92 px are lifted to 0.8 px, with the leg solved again. A full lift bent the knee to 100 deg (scorecard knee_bend, limit 93.9) and opened the loop (loop_pose 29.7) |
+| stun_upper secondary_life: right_tasset | still | moves | One swing out and back inside the loop (+4 / -3 deg x); `LOOP_SWAY` 3 -> 5 |
+| stun_out_upper weapon_in_body | FAIL 1.80 (into hips, t2.25) | FAIL 1.79 (into right_leg, t5) | Not fixed, see Open |
+
+### Open after fix round 2 (6 FAIL rows in 4 clips, was 17 rows in 9 clips)
+
+- **secondary_life helm_plume:** stun_upper, stun_out_upper and hit_medium_front. The crest is fixed and never moves.
+  - stun_upper and stun_out_upper have no exemption.
+  - hit_medium_front's exemption was removed in this round, as the brief asked. The cape now moves, but the row FAILs on
+    the plume alone. This conflicts with "never turn a passing row into a FAIL": the lead should either re-add the
+    exemption (whose reason is true again) or accept the row.
+- **attack_haft_jab armour_clip, helm into left_spikes, 3.52 at t7.5:** not fixed. None of these took the depth below 2.3:
+  - head turns of up to ±20 deg
+  - pauldron turns of up to 70 deg
+  - key edits: shoulder, height, offsets, torso, elbow swivel
+  - re-solving the left arm at every sample
+
+  At the shove the left arm is raised and out to the side, so the left shoulder sits just under the helm. Squaring the
+  haft does not help: at the shove the haft points 20.7 deg off straight ahead (18.0 at t7, 22.6 at t8.25), but relative
+  to the chest it is already square (about -4 deg). Turning it square to the world pushes the spikes further in.
+- **attack_haft_jab weapon_in_body, weapon_t3 into left_forearm, 1.64 at t2.75:** not fixed. The haft's ferrule cubes sit
+  next to the left fist.
+  - Tilting the hand ±10 deg leaves 1.6.
+  - Re-solving the arm leaves 1.5.
+  - Sliding the fist 4 px up the haft gives 1.15 at t2.75. Over t3-5 a constrained re-solve gives 1.0-1.5, but the left
+    forearm then presses into the chest at 1.1-1.4 px (scorecard pen_limb limit 1.39).
+- **stun_out_upper weapon_in_body, 1.79 at t5:** not fixed. This is the 8-tick handover from the stun to the ready stance.
+  - Pushing the arm out or in moves the haft from the right leg into the hips (1.56-1.94).
+  - Turning the hand gives 1.55-1.78 with grip_roll warnings.
+  - Re-keying the handover is a stance and controller change, outside this round.
+
+### Checks
+
+- The scorecard passes: exit 0, 32 clips, 0 fail.
+- Focus check: 6 FAIL rows in 4 clips, and 131 WARN rows (119 before). No passing row became a FAIL, except
+  hit_medium_front secondary_life after its exemption was removed.
+- Lengths, loop flags, timelines and impact markers match 9539667f on all 55 clips (chop 12, hew 12, jab 7).
+- Changed clips against 9539667f: run_legs, attack_side_hew, hit_pulled, charge_run_upper, stun_upper, stun_legs,
+  hit_knockback, hit_medium_front.
+- Renders: `work/render/r2_*`, near and game16, front, side and three_quarter, with the rig and tier 3. Hits are added
+  onto the ready stance. There is also a top view of the jab over t2-9.
