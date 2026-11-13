@@ -26,6 +26,10 @@ import java.util.Map;
  * ({@link #matchPhase}), and this controller blends the idle pose it was holding into the moving clip itself, over {@code startBlend} ticks, with the clip already
  * running on the stride clock. Stopping is blended by hand the same way, straight over GeckoLib's transition length: its transition would land on the idle loop's
  * first frame, and the loop is already running somewhere else.
+ * <p>
+ * GeckoLib puts a controller's clip pose on the bones after {@link #process} returns, so a blend written inside it is overwritten. The hand blends therefore run in
+ * {@link #after}, which {@link After}, registered behind both gait layers, calls once their poses are on the bones. Until 2026-11-12 the setting-off blend ran inside
+ * {@code process} and so never showed in play: a troop setting off cut to the matched phase. {@link #START_BLEND} keeps that as it was approved.
  */
 final class GaitController extends AnimationController<GeoTroop> {
     /** Reference speed of each gait clip (blocks per tick) as built by art/anim/knight/build_anims.py; the clip name is its key prefix. */
@@ -40,6 +44,15 @@ final class GaitController extends AnimationController<GeoTroop> {
     private final double startBlend;
     /** What this controller last wrote to the bones its clip keys (rotation xyz, position xyz), and the idle pose being blended out of while a start blend runs. */
     private final Map<String, float[]> out = new HashMap<>();
+    /** What this controller's own clip, and its hand blend, put on its bones last frame: the pose under the stance, attack and hit layers, which a stop blends out of. */
+    private final Map<String, float[]> wrote = new HashMap<>();
+    /**
+     * Whether a troop setting off shows the blend out of its idle pose. Off: that blend never showed in play before {@link #after} existed (see the class comment), and
+     * the knight was approved without it; turning it on is a change to how a troop sets off, for Kort to look at.
+     */
+    static final boolean START_BLEND = false;
+    /** The world clock (ticks) the idle loop is read on, as StanceController reads its loops: it runs on when a troop is tracked anew, which the animation time does not. */
+    private double standingClock = Double.NaN;
     private Map<String, float[]> from;
     private double fromAt, fromLength;
     /** Whether the blend out of {@link #from} is eased (setting off) or straight (stopping, as GeckoLib's own transition was). */
@@ -66,29 +79,27 @@ final class GaitController extends AnimationController<GeoTroop> {
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e != null) gait.update(e, seekTime, state.getPartialTick());
+        standingClock = e != null && e.getWorld() != null ? e.getWorld().getTime() + state.getPartialTick() : seekTime;
         Gait.Mode m = gait.mode;
         if (m != lastMode && m != Gait.Mode.IDLE && lastMode != Gait.Mode.IDLE) { transitionLength = 0; keepPhase = true; }
         else if (m != lastMode && m != Gait.Mode.IDLE && !out.isEmpty()) {
             // setting off from a standstill: straight into the moving clip on the phase that matches the idle pose, blended by hand
             transitionLength = 0; keepPhase = true;
-            from = copy(out); fromAt = seekTime; fromLength = startBlend; fromEased = true;
+            if (START_BLEND && !wrote.isEmpty()) { from = copy(wrote); fromAt = seekTime; fromLength = startBlend; fromEased = true; }
+            else from = null;
             if (owner) gait.phase = matchPhase(model, bones, m == Gait.Mode.RUN ? "run_legs" : "walk_legs");
         }
-        else if (m != lastMode && m == Gait.Mode.IDLE && !out.isEmpty()) {
+        else if (m != lastMode && m == Gait.Mode.IDLE && !wrote.isEmpty()) {
             // stopping: the idle loop is already running at this troop's own point in it (Gait.standingTime), so GeckoLib's transition, which lands on the loop's
             // first frame, would cut to that point when it ends; the pose held is blended into the running loop by hand instead, over the same ticks
             transitionLength = 0; keepPhase = true;
-            from = copy(out); fromAt = seekTime; fromLength = blend; fromEased = false;
+            from = copy(wrote); fromAt = seekTime; fromLength = blend; fromEased = false;
         }
         else if (out.isEmpty()) { transitionLength = 0; keepPhase = true; }   // first drawn: straight into its loop, no blend out of the bind pose
         else if (!keepPhase) transitionLength = blend;
         lastMode = m;
         super.process(model, state, bones, snapshots, seekTime, crashWhenCantFindBone);
         if (keepPhase && !shouldResetTick && getAnimationState() == State.RUNNING) keepPhase = false;
-        if (from != null) {
-            double k = fromLength <= 0 ? 1 : Math.min(1, Math.max(0, (seekTime - fromAt) / fromLength));
-            blendFrom(bones, fromEased ? AttackController.smooth(k) : k, k >= 1);
-        }
         capture(bones);
         if (owner) {
             double ref = getAnimationState() == State.RUNNING ? playingRef() : 0;
@@ -108,6 +119,43 @@ final class GaitController extends AnimationController<GeoTroop> {
             float[] a = en.getValue();
             a[0] = bone.getRotX(); a[1] = bone.getRotY(); a[2] = bone.getRotZ();
             a[3] = bone.getPosX(); a[4] = bone.getPosY(); a[5] = bone.getPosZ();
+        }
+    }
+
+    /**
+     * Runs once this controller's clip pose is on the bones (see the class comment): blends the pose held when the troop stopped (or set off, with {@link #START_BLEND})
+     * into it, then keeps what the layer now shows for the next blend to start from.
+     */
+    void after(Map<String, CoreGeoBone> bones, double seekTime) {
+        if (from != null && seekTime < fromAt) from = null;   // the animation time went back (the troop was tracked anew): nothing to finish
+        if (from != null) {
+            double k = fromLength <= 0 ? 1 : Math.min(1, (seekTime - fromAt) / fromLength);
+            blendFrom(bones, fromEased ? AttackController.smooth(k) : k, k >= 1);
+        }
+        for (String name : out.keySet()) {
+            CoreGeoBone bone = bones.get(name);
+            if (bone == null) continue;
+            float[] a = wrote.computeIfAbsent(name, n -> new float[6]);
+            a[0] = bone.getRotX(); a[1] = bone.getRotY(); a[2] = bone.getRotZ();
+            a[3] = bone.getPosX(); a[4] = bone.getPosY(); a[5] = bone.getPosZ();
+        }
+    }
+
+    /** The stage behind both gait layers: by the time it runs GeckoLib has put their clip poses on the bones, so their hand blends hold ({@link GaitController#after}). */
+    static final class After extends AnimationController<GeoTroop> {
+        private final GaitController legs, upper;
+
+        After(GeoTroop troop, GaitController legs, GaitController upper) {
+            super(troop, "gait_after", 0, s -> software.bernie.geckolib.core.object.PlayState.STOP);
+            this.legs = legs;
+            this.upper = upper;
+        }
+
+        @Override
+        public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
+                            Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
+            legs.after(bones, seekTime);
+            upper.after(bones, seekTime);
         }
     }
 
@@ -178,8 +226,9 @@ final class GaitController extends AnimationController<GeoTroop> {
     protected double adjustTick(double tick) {
         if (getAnimationState() == State.RUNNING && idling()) {
             // The idle loop runs on a free clock at this troop's own point in the loop (Gait.standingTime), never from its first frame: a rank does not breathe as one.
-            if (shouldResetTick) { super.adjustTick(tick); keepPhase = false; }
-            return gait.standingTime(tick, currentAnimation.animation().length());
+            // keepPhase is left for process to clear: a troop that stops and sets off again on the next frame still needs it for the moving clip
+            if (shouldResetTick) super.adjustTick(tick);
+            return gait.standingTime(Double.isNaN(standingClock) ? tick : standingClock, currentAnimation.animation().length());
         }
         double ref = playingRef();
         if (ref <= 0 || getAnimationState() != State.RUNNING) return super.adjustTick(tick);

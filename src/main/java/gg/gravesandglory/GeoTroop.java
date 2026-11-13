@@ -47,8 +47,11 @@ final class GeoTroop implements GeoReplacedEntity {
         double speed = 0;
         for (Spec.TroopsRow r : Spec.TROOPS) if (r.id().equals(troop)) { speed = r.speed(); break; }
         Gait gait = new Gait(speed);
-        controllers.add(new GaitController(this, "legs", BLEND, LEGS_START_BLEND, gait, true, s -> s.setAndContinue(LEGS[gait.mode.ordinal()])));
-        controllers.add(new GaitController(this, "upper", BLEND, UPPER_START_BLEND, gait, false, s -> s.setAndContinue(UPPER[gait.mode.ordinal()])));
+        GaitController legs = new GaitController(this, "legs", BLEND, LEGS_START_BLEND, gait, true, s -> s.setAndContinue(LEGS[gait.mode.ordinal()]));
+        GaitController upper = new GaitController(this, "upper", BLEND, UPPER_START_BLEND, gait, false, s -> s.setAndContinue(UPPER[gait.mode.ordinal()]));
+        controllers.add(legs);
+        controllers.add(upper);
+        controllers.add(new GaitController.After(this, legs, upper));
         StanceController stance = new StanceController(this, gait);
         controllers.add(stance);
         controllers.add(new AttackController(this, stance));
