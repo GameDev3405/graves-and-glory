@@ -2015,13 +2015,15 @@ final class HoldLineChecks {
                     for (int cell : new int[]{4, 0, 13, 2, 3}) knights.add(spawn(b, own, "knight", cell));
                     bannerUnit = spawn(b, own, "archer", 20);
                     b.issue(own, "infantry", "hold", "banner", bannerPoint, -90, -1); // facing east
-                    var want = new int[][]{{0, 0}, {-4, 0}, {0, 1}, {-2, 0}, {-1, 0}}; // {column - 4, row} of cells 4, 0, 13, 2, 3
+                    var want = new int[][]{{0, 0}, {4, 0}, {0, 1}, {2, 0}, {1, 0}}; // {places to the facing's left, row} of cells 4, 0, 13, 2, 3: column 0 stands on the left (north, facing east), as at deployment
                     boolean pass = true; var why = new ArrayList<String>();
                     for (int i = 0; i < knights.size(); i++) {
                         var u = knights.get(i); double[] got = bannerOffset(b.formation(u), bannerPoint, -90);
                         boolean ok = at(got, want[i][0] * 2.5, want[i][1] * 3.0); pass &= ok;
                         why.add("cell " + u.slot + " stands " + fmt(got[0]) + " along the rank and " + fmt(got[1]) + " back (want " + fmt(want[i][0] * 2.5) + ", " + fmt(want[i][1] * 3.0) + ")=" + ok);
                     }
+                    double northOf = bannerPoint.z - b.formation(knights.get(1)).z; boolean left = northOf > 9.5; pass &= left; // in world terms, not through the formula: facing east, the left is north (-z)
+                    why.add("cell 0 stands " + fmt(northOf) + " blocks north of the point (want 10, the left of a troop facing east)=" + left);
                     report("hl-banner-places", pass, "Hold in Banner at a point facing east: " + String.join("; ", why));
                     bannerBefore2 = b.formation(knights.get(3));
                     knights.get(4).mob.kill(); // the troop of cell 3 falls

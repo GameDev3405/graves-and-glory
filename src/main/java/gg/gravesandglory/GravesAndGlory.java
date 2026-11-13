@@ -1039,7 +1039,7 @@ public final class GravesAndGlory implements ModInitializer {
         /** The Banner shape's place for a troop: its own war table cell round the order's point (no role depth, no closing up), or a row behind the table when it has no cell. */
         Vec3d bannerPlace(Unit u,Assignment a){
             double[] place;
-            if(u.hasCell())place=BattleMath.tableOffset(u.slot,BattleMath.BANNER_COL,BattleMath.BANNER_ROW);
+            if(u.hasCell())place=BattleMath.bannerOffset(u.slot);
             else{
                 List<Unit> loose=new ArrayList<>();String key=CustomGroups.stateKey(u);
                 for(Unit other:units)if(other.squad==u.squad&&other.mob.isAlive()&&!other.hasCell()&&(other.musterSince<0)==(u.musterSince<0)&&CustomGroups.stateKey(other).equals(key))loose.add(other);

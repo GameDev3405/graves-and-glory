@@ -579,6 +579,14 @@ public final class BattleMath {
     /** The room between banner columns and rows on the field, in blocks (the Banner shape: tableOffset at these gaps). */
     public static final double BANNER_COL = 2.5, BANNER_ROW = 3;
     /**
+     * A cell's Banner-shape place, {side, back} in the formation frame, where +side is the facing's left: column 0 stands on the left as on
+     * the war table and at deployment (Battle.reinforce), so the side is tableOffset's column offset negated.
+     */
+    public static double[] bannerOffset(int cell) {
+        double[] at = tableOffset(cell, BANNER_COL, BANNER_ROW);
+        return new double[]{-at[0], at[1]};
+    }
+    /**
      * The Banner shape's places for a group of `count` troops, {side, back} from the order's point before facing. `cells` are the war table
      * cells the group's living-or-not troops hold, in order: each stands at its own cell (tableOffset), so a fallen troop leaves a gap and
      * nobody closes up. Troops past the cells (no cell of their own) stand in one row behind the last table row, BANNER_COL apart, centred.
@@ -587,7 +595,7 @@ public final class BattleMath {
         double[][] out = new double[count][];
         int extra = Math.max(0, count - cells.size()), seen = 0;
         for (int i = 0; i < count; i++) {
-            if (i < cells.size()) out[i] = tableOffset(cells.get(i), BANNER_COL, BANNER_ROW);
+            if (i < cells.size()) out[i] = bannerOffset(cells.get(i));
             else out[i] = new double[]{(seen++ - (extra - 1) / 2.0) * BANNER_COL, WarGrid.rows() * BANNER_ROW};
         }
         return out;

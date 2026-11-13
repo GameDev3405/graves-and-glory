@@ -138,7 +138,7 @@ final class WarTableGear {
         add("dupes", new UiButton(bx, r[1] + 104, bw, 24, Text.literal("Break down all duplicates"), b -> { dupesConfirm = true; UiSounds.deny(); }, (g, x, y, ww, hh, hot) -> service(g, "dupes", dupesLabel(), x, y, ww, hh, hot)));
         add("dupes-yes", new UiButton(bx + 6, r[1] + 156, 88, 24, Text.literal("Break down"), b -> { dupesConfirm = false; if (screen.action("forge:breakdown-duplicates")) UiSounds.play(AudioCues.Cue.BREAK_DOWN); }, (g, x, y, ww, hh, hot) -> tag(g, "Break down", x, y, ww, hh, hot)));
         add("dupes-no", new UiButton(bx + 100, r[1] + 156, 80, 24, Text.literal("Keep"), b -> dupesConfirm = false, (g, x, y, ww, hh, hot) -> tag(g, "Keep", x, y, ww, hh, hot)));
-        add("repair-all", new UiButton(bx, r[1] + 200, bw, 24, Text.literal("Repair all"), b -> { if (screen.action("forge:repair-all")) UiSounds.play(AudioCues.Cue.REPAIR_HAMMER); }, (g, x, y, ww, hh, hot) -> service(g, "repair-all", "Repair all (" + GearView.repairAllCost(view()) + " gold)", x, y, ww, hh, hot)));
+        add("repair-all", new UiButton(bx, r[1] + 200, bw, 24, Text.literal("Repair all"), b -> { if (screen.action("forge:repair-all")) UiSounds.play(AudioCues.Cue.REPAIR_HAMMER); }, (g, x, y, ww, hh, hot) -> service(g, "repair-all", "Repair all (" + GearView.repairAllCost(view()) + " gear shards)", x, y, ww, hh, hot)));
         add("expand", new UiButton(bx, r[1] + 234, bw, 24, Text.literal("Add a row"), b -> screen.action("forge:expand"), (g, x, y, ww, hh, hot) -> service(g, "expand", expandLabel(), x, y, ww, hh, hot)));
     }
 
@@ -147,7 +147,7 @@ final class WarTableGear {
         GearWire.View v = view();
         if (v == null) return "Add a row";
         if (v.inventorySize() >= Gear.forge().maxSlots()) return "Inventory at its largest";
-        return "Add a row (" + Forge.expandCost(GearView.asProfile(v)) + " gold)";
+        return "Add a row (" + Forge.expandCost(GearView.asProfile(v)) + " gear shards)";
     }
     void roll() { if (screen.action("forge:roll:" + forgeSlot)) UiSounds.play(AudioCues.Cue.BLACKSMITH_ROLL); }
 
