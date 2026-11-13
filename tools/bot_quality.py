@@ -136,9 +136,10 @@ def main(argv):
         return f"{st:.0f}", f"{sums(by('dawn'), 'stuck30'):.0f}", f"{sums(by('dusk'), 'stuck30'):.0f}", "PASS" if st == 0 else "FAIL"
 
     metric("troops stuck over 30 s", "0", stuck)
-    metric("no-progress share, 10 s+ (troop-seconds)", "<= 6%", lambda: share3("stuck10Share", lambda x: x <= 0.06))
-    metric("no-progress share, 30 s+ (troop-seconds)", "<= 2%", lambda: share3("stuck30Share", lambda x: x <= 0.02))
-    metric("no-progress share, 60 s+ (troop-seconds)", "0 (no stretch over 60 s)", lambda: share3("stuck60Share", lambda x: x == 0))
+    # rolling 10 s window (under 2 blocks toward the spot), whole stretches bucketed; baseline re-run 2026-11-13 on 8d579205 (see AiMetrics.stuckRead)
+    metric("no-progress share, 10 s+ (troop-seconds)", "<= 6% (New Kingsfield before step 1: 29%)", lambda: share3("stuck10Share", lambda x: x <= 0.06))
+    metric("no-progress share, 30 s+ (troop-seconds)", "<= 2% (before step 1: 20%)", lambda: share3("stuck30Share", lambda x: x <= 0.02))
+    metric("no-progress share, 60 s+ (troop-seconds)", "0 (before step 1: 14%)", lambda: share3("stuck60Share", lambda x: x == 0))
 
     def retreats():
         need("retreats")
