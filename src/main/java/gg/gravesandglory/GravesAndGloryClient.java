@@ -69,6 +69,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(BattleHud.RELOADER); // the battle HUD's lesson wrap and texture stop
         // Event feed lines from the server (FeedEvents); only a running round shows them.
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.FEED,(client,handler,buf,responder)->{String kind=buf.readString(16);int team=buf.readInt();String text=buf.readString(FeedEvents.MAX_TEXT);client.execute(()->{if(running)EventFeed.push(kind,team,text,net.minecraft.util.Util.getMeasuringTimeMs());});});
+        BattleMapClient.register(); // battlemap_grid_v1 and battlemap_v1 (the battle map's field and live state)
         ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.IMPACT,(client,handler,buf,responder)->{float strength=buf.readFloat();client.execute(()->{Presentation.receivedImpacts++;Presentation.impact(strength);});});
         // The troops' own models (Phase 2 Task 5): one renderer per sheet entity type, the models reloaded with the resources.
         TroopRenderers.register();
