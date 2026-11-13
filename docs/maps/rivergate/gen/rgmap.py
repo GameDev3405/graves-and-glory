@@ -471,6 +471,8 @@ class Map:
             elif ax <= 113: g = 'mossy_stone_brick_wall' if r < 0.15 else 'stone_brick_wall'
             else: g = 'spruce_fence'
             self.extra[(x, h + 1, z)] = g
+            if 57 <= ax <= 65 and 18 <= az <= 47:                  # the landings by point B: a solid kerb two high; crowded troops were pushed through thin fence bars here
+                for y in (h + 1, h + 2): self.extra[(x, y, z)] = 'spruce_log[axis=y]'
             if ax in (252, 253) and az == 10:                      # wing walls where the base wall meets the river: nobody drops from the wall top to the bank rail
                 for y in range(65, 72): self.extra[(x, y, z)] = 'stone_bricks' if (x + y) % 3 else 'mossy_stone_bricks'
             if ax <= 113 and h == 64 and (ax * 7 + az * 3) % 13 == 0: self.extra[(x, h + 2, z)] = 'lantern[hanging=false]'
