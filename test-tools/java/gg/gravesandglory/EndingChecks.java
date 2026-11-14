@@ -465,9 +465,6 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             if (b.time - at > 2400) { report("ending-play-again", false, "no room match within 2400 ticks; notice=" + c.notices.getOrDefault(player, "")); c.handle(p, "social:exit"); next(); return; }
             if (!b.running || b.time < c.introUntil + 20) return;
             p.changeGameMode(GameMode.ADVENTURE); p.setHealth(p.getMaxHealth());
-            var led = AdminCommands.ledger().get(player); // admin tools phase A: the join ledger. A joins.json left by an earlier run may hold a stamp, so this check starts from none
-            report("ending-ledger-login-stamp", led != null && led.firstSeenAt > 0 && !led.lastName.isEmpty(), "ledger entry " + (led == null ? "missing" : led.firstSeenAt + " " + led.lastName));
-            if (led != null) led.firstMatchAt = 0;
             b.roundStarted = b.time - 181 * 20; c.joinedAt.put(player, b.roundStarted);
             c.profile(player).bests = new LinkedHashMap<>(Map.of("armyKills", 1, "score", 1)); b.squads.get(player).stats.kills += 14; // two bests on REWARDS (ending-client-bests)
             stage = 2; return;
@@ -476,9 +473,6 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             var room = c.social.room(player);
             againServerWhy = "room " + (room == null ? "none" : room.code + " playing=" + room.playing) + "; ";
             c.finish(b.squads.get(player).team);
-            var led = AdminCommands.ledger().get(player); String snap = Campaign.forClient(c.profile(player)).toString();
-            report("ending-ledger-first-match", led != null && led.firstMatchAt > 0, "finishing a full-length match stamps firstMatchAt: " + (led == null ? "no entry" : led.firstMatchAt));
-            report("ending-ledger-not-in-snapshot", snap.contains("troopWrits") && !snap.contains("firstMatchAt") && !snap.contains("firstSeenAt") && !snap.contains("lastName"), "the client snapshot carries no ledger keys");
             againRound = true; skips = 3; // the client skips RESULT, PODIUM and STATS
             stage = 3; at = b.time; return;
         }
@@ -595,8 +589,14 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             { var pr0 = c.profile(player); pr0.progression.xp = Progression.XP_PER_TIER * 3 - 30; xpSet = pr0.progression.xp; renownSet = new HashMap<>(pr0.renown); } // pass 2: 30 XP short of tier 3 (ending-progress, ending-client-bars)
             c.profile(player).bests.clear(); // pass 3: the first match with bests (ending-bests)
             graphShape(b, c); // pass 3: a score race for the graph's shot (ending-client-graph); ending-timeline reads the real samples of the next round
+            var led = AdminCommands.ledger().get(player); // admin tools phase A: the join ledger. A joins.json left by an earlier run may hold a stamp, so this check starts from none
+            report("ending-ledger-login-stamp", led != null && led.firstSeenAt > 0 && !led.lastName.isEmpty(), "ledger entry " + (led == null ? "missing" : led.firstSeenAt + " " + led.lastName));
+            if (led != null) led.firstMatchAt = 0;
             finishServer = b.time; finishNanos = System.nanoTime(); finishSerial++;
             c.finish(s.team);
+            report("ending-ledger-first-match", led != null && led.firstMatchAt > 0, "finishing a full-length match stamps firstMatchAt: " + (led == null ? "no entry" : led.firstMatchAt));
+            String snap = Campaign.forClient(c.profile(player)).toString();
+            report("ending-ledger-not-in-snapshot", snap.contains("troopWrits") && !snap.contains("firstMatchAt") && !snap.contains("firstSeenAt") && !snap.contains("lastName"), "the client snapshot carries no ledger keys");
             var pr = c.profile(player); gold1 = purse(pr); xp1 = pr.progression.xp;
             var res = c.results.get(player); resultId = res == null ? "" : res.get("id").getAsString();
             JsonObject sn = snap(c, p);
