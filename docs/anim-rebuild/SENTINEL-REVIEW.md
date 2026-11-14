@@ -141,3 +141,53 @@ asset byte for byte and the export leaves it unchanged. Never run stances/reacti
 - In-game reel `sentinel-review3` (job 20261112-033758-640-5886): 22 `[p1] p1-` checks plus the suite line, 0 `=false`.
   Two earlier runs each failed one lag-timed row on clips this batch did not change (review1: stance_ready shield_move;
   review2: march walk/run sampled IDLE at speed 0).
+
+## Own moves 2026-11-13
+
+Kort's decision "Own moves for all three": the Templar no longer swings the knight's cuts. Source
+`art/anim/sentinel/build_own_attacks.py` (fullbody.py); `art/anim/knight/rebuild_out.py` step 8 swaps the six clips into
+out/ in both modes. Gameplay unchanged: 22 ticks, not looping, impact 7 / 10 / 8, guard at both ends (unit test
+`tools/anim/test_own_attacks_sentinel.py`).
+
+- **attack_thrust (body), a covered stab.** 0-1.8 tell (shield fist closes up); 1.8-5 draw (sword level beside the
+  shield's right edge, hips sink back, square); 4.6-6.8 short lead step, shield first; 5.6-7 stab past the shield rim,
+  hips square; 7-8 carry; 8-10.5 snap back behind the shield; 9-11.5 rear foot drags up; 12-22 walk home.
+- **attack_overhead (head), a hammer chop.** 0-2.6 brace (rear foot out wide, shield low and forward); 1.5-6 sword raised
+  upright beside the helm; 6-8 hold; 8-10 weight drops through both knees, blade falls in its own vertical plane; 10-13.8
+  controlled stop at waist height in front (decelerates over three ticks); 13.8-15 settle; 15-22 recover.
+- **attack_low_cut (legs), a shield check and reap.** 0-1.5 tell; 1.5-5.4 shield presses forward and up, sword hand drops
+  to the right hip with the blade held upright; 5.4-8 long reaching step, knee dip (pelvis down 3 px), blade falls
+  forward off the hip into a low cut under the shield's lower edge; 8-10.5 carries across; 10.5-13 back behind the shield;
+  13-22 walk home. Departure from the brief's wording: the Templar's hilt is 9 px long (a 5x5 pommel 4-9 px behind the
+  grip), so any blade laid level and pointing outward beside the body puts the pommel in the hip or chest (focus FAIL
+  1.9-2.0 px in every level variant tried). The wind-up therefore holds the blade upright, not laid back.
+
+Impact point vs the present clip (exported file, probe): thrust t7 z 32.3 vs 31.6 (y 14.1 vs 14.3); overhead t10 z 30.6
+vs 30.9 (y 17.7, head line; the present clip's tip is already at 6.9); low cut t8 z 32.9 vs 33.6 (y 10.0 vs 9.7).
+
+Difference from the present clip (2 of 4 must reach 15 deg or 2 px):
+
+| attack | phase (tick) | hips px / yaw deg | torso yaw / lean deg | weapon dir deg | lead foot px | differ |
+|---|---|---|---|---|---|---|
+| thrust | wind-up (5) | 1.1 / 12 | 23 / 12 | 44 | 0.1 | 2/4 |
+| thrust | impact (7) | 1.1 / 6 | 31 / 4 | 21 | 0.8 | 2/4 |
+| thrust | follow (8) | 2.3 / 8 | 34 / 6 | 25 | 0.8 | 3/4 |
+| overhead | wind-up (8) | 1.1 / 12 | 19 / 10 | 71 | 1.8 | 2/4 |
+| overhead | impact (10) | 1.1 / 6 | 17 / 0 | 30 | 3.1 | 3/4 |
+| overhead | follow (12) | 1.4 / 8 | 22 / 5 | 18 | 3.1 | 3/4 |
+| low_cut | wind-up (5) | 0.7 / 11 | 23 / 17 | 32 | 0.6 | 2/4 |
+| low_cut | impact (8) | 2.0 / 8 | 21 / 4 | 4 | 3.8 | 3/4 |
+| low_cut | follow (10) | 1.1 / 10 | 33 / 3 | 27 | 3.8 | 3/4 |
+
+Checks: scorecard --troop sentinel exit 0 (41 clips, 0 fail; arms 121 / 116 / 122 of 136.2 deg/100ms). focus_check
+--troop sentinel exit 0, 0 FAIL; `python -m unittest discover -s tools/anim` 161 tests OK; no row on any other clip added, removed or changed against the committed asset. Six-clip
+WARNs: thrust weapon_in_body 1.3 t6 (helm), phases 7.44 (stops at the impact), secondary_life 3.01; overhead
+weapon_in_body 1.13 t18.25 (helm), limb_in_body 1.32 t8, floor 0.79 t11, armour_clip 1.76 t7.5; low cut weapon_in_body
+0.78 t9.75 (shin), floor 0.74 t8.25, secondary_life 3.73. Baseline drift: a whole-file rebuild with no edits changes
+only the cape rotation of hit_pulled, stun_upper, hit_medium_back and hit_block (reproduced twice); the committed out/ was
+kept for those and the six clips were rebuilt with `--only`. A whole-file run with step 8 gives the same six clips.
+
+Open items: right pauldron slides 2.5 px off the helm around overhead t9.5-11 (its dark underside shows in the front and
+three-quarter views at t10-11); thrust has no follow-through by focus_check's phases rule (the snap back is the
+character); cape still on thrust and low cut (secondary_life WARN, cape keys are not authored); the low-cut wind-up holds
+the blade upright rather than laid back (hilt length, above).
