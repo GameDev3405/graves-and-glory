@@ -1,0 +1,55 @@
+note Ironhold camp tents
+mc time set 3000
+mc execute as @a at @s run forceload add -288 -128 -225 -65
+mc execute as @a at @s run place template ggmaps:ih/sec/ih_a2 -288 195 -128
+props -288 195 -128 -225 275 -65
+wait 10
+mc execute as @a at @s run forceload add -288 -64 -225 -1
+mc execute as @a at @s run place template ggmaps:ih/sec/ih_a3 -288 195 -64
+props -288 195 -64 -225 275 -1
+wait 10
+mc execute as @a at @s run forceload add -288 0 -225 63
+mc execute as @a at @s run place template ggmaps:ih/sec/ih_a4 -288 195 0
+props -288 195 0 -225 275 63
+wait 10
+mc execute as @a at @s run forceload add -288 64 -225 127
+mc execute as @a at @s run place template ggmaps:ih/sec/ih_a5 -288 195 64
+props -288 195 64 -225 275 127
+wait 10
+mc execute as @a at @s run forceload add -224 -128 -161 -65
+mc execute as @a at @s run place template ggmaps:ih/sec/ih_b2 -224 195 -128
+props -224 195 -128 -161 275 -65
+wait 10
+mc execute as @a at @s run forceload add -224 -64 -161 -1
+mc execute as @a at @s run place template ggmaps:ih/sec/ih_b3 -224 195 -64
+props -224 195 -64 -161 275 -1
+wait 10
+mc execute as @a at @s run forceload add -224 0 -161 63
+mc execute as @a at @s run place template ggmaps:ih/sec/ih_b4 -224 195 0
+props -224 195 0 -161 275 63
+wait 10
+mc execute as @a at @s run forceload add -224 64 -161 127
+mc execute as @a at @s run place template ggmaps:ih/sec/ih_b5 -224 195 64
+props -224 195 64 -161 275 127
+wait 10
+mc execute as @a at @s run forceload add -160 -128 -97 -65
+mc execute as @a at @s run place template ggmaps:ih/sec/ih_c2 -160 195 -128
+props -160 195 -128 -97 275 -65
+wait 10
+mc execute as @a at @s run forceload add -160 -64 -97 -1
+mc execute as @a at @s run place template ggmaps:ih/sec/ih_c3 -160 195 -64
+props -160 195 -64 -97 275 -1
+wait 10
+mc execute as @a at @s run forceload add -160 0 -97 63
+mc execute as @a at @s run place template ggmaps:ih/sec/ih_c4 -160 195 0
+props -160 195 0 -97 275 63
+wait 10
+mc execute as @a at @s run forceload add -160 64 -97 127
+mc execute as @a at @s run place template ggmaps:ih/sec/ih_c5 -160 195 64
+props -160 195 64 -97 275 127
+wait 10
+shot camp-props -226 214 2 -262 201 -12
+shot pavilion -252 206 10 -273 204 0
+shot tents-n -258 208 -8 -258 201 -27
+shot tents-s -258 208 8 -258 201 27
+shot pavilion-front -255 205 0 -273 202 0

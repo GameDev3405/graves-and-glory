@@ -283,8 +283,8 @@ class Map:
         wing = works.palisade(25, gate=False)
         P('camp wing n', wing, -233, -33, 1, chk=False); P('camp wing s', wing, -233, 9, 1, chk=False)
         for i, x in enumerate((-276, -264, -252, -240)):                                   # real props from here on (gg_props): tents, pavilion, engines, wagons
-            self.prop('tent_soldier_large', x, -27, 180, 'tent n%d' % i); self.prop('tent_soldier_large', x, 27, 0, 'tent s%d' % i)
-        self.prop('tent_pavilion_large', -273, 0, 90, 'pavilion')
+            self.prop('tent_soldier_large_weathered', x, -27, 180, 'tent n%d' % i); self.prop('tent_soldier_large_weathered', x, 27, 0, 'tent s%d' % i)
+        self.prop('tent_pavilion_large_dawn', -273, 0, 90, 'pavilion')
         self.prop('trebuchet', -218, -30, 90, 'trebuchet n'); self.prop('trebuchet', -218, 30, 90, 'trebuchet s')
         self.prop('supply_wagon_covered', -242, -17, 90, 'wagon camp n'); self.prop('supply_wagon_hay', -242, 17, 270, 'wagon camp s'); self.prop('supply_wagon_shot', -218, -21, 90, 'wagon shot')
         self.prop('supply_wagon_barrels', -20, 24, 0, 'wagon yard'); self.prop('supply_wagon', 124, 30, 90, 'wagon court'); self.prop('handcart_ore', -127, -83, 90, 'cart mine')
