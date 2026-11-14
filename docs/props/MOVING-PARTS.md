@@ -21,9 +21,9 @@ A def gets an optional `motion` list. A def without it behaves exactly as before
 | `part` | a def part's `model`; the whole part turns as one rigid piece |
 | `kind` | `sway`: `bias + amplitude*sin(2πu)`. `swing`: the same range, eased so it rests at both ends (an idle arm). `rotate`: `bias + 360u`, a full turn per period (a spit) |
 | `axis` | `x`, `y`, `z` or `-x`, `-y`, `-z`, in the prop frame at facing 0 (x east, y up, z south). Positive turns are right-handed |
-| `pivot` | the point the part turns about, model px in the prop frame (`art/props/README.md`): the same numbers you read in `model.py` |
+| `pivot` | the point the part turns about, model px in the prop frame (`art/props/README.md`): the same numbers you read in `model.py`. Finite, and at most 32 px outside the prop's cells |
 | `amplitude`, `bias` | degrees (amplitude 0 < a <= 90; \|bias\| <= 90) |
-| `period` | ticks per cycle, 20..2400 (rotate: 40..2400, so a keyframe turns at most a quarter) |
+| `period` | whole ticks per cycle, at most 2400. Sway and swing: at least 60 (6 keyframes; the per-anchor scale can shorten it to 0.92x), and `2*pi*amplitude*10/(0.92*period)` at most 45 degrees a keyframe. Rotate: at least 40 (a quarter turn a keyframe) with the pivot on the part's entity origin `[8+ox, 8+oy, 8+oz]`, else at least 120 (30 degrees a keyframe), because the client moves the translation in a straight line while it turns |
 | `phase` | 0..1, a share of the period; added to the per-anchor phase |
 
 Several entries on one part compose (first entry outermost). The banner uses two: a forward billow about the crossbar (biased so the cloth
@@ -58,7 +58,8 @@ twice a second and the client draws smooth motion at its frame rate.
 - **Remove** discards the parts as before and also forgets the ticker's motion state (`PropTicker.forget`); a chunk unload forgets its
   props' state too. `ensureParts` and the scanner are unchanged: they match parts by CMD, position and yaw, never by transformation.
 - **Map templates** hold only the anchor; parts are respawned at rest by the scanner, so nothing changes for generators or `ANCHOR-NBT.md`.
-- **Data reload**: a changed def is picked up when the ticker sees a new `Live.def` (it re-finds the part entities).
+- **Data reload**: the ticker reads the current def each run. If a reload changes or drops a prop's motion, its old moving parts are eased
+  to rest and its motion state is dropped; the new def's moving parts are found again.
 
 ## 4. Cost
 
@@ -92,7 +93,8 @@ set can halve the cost by raising `KEY` to 20 for slow motion, at the price of a
 
 - **Spit (`rotate`).** The spit and its roast are one part turning about the axle. Put the part's entity on the axle with the def
   `offset` (model the spit in the real frame; the offset is subtracted when it is stored, as for split props), so the pivot is the entity
-  origin and the client's slerp alone turns it with no translation drift. Period about 80-120 ticks; a keyframe turns at most a quarter.
+  origin and the client's slerp alone turns it with no translation drift. Period 40 ticks or more (a quarter turn a keyframe) with the pivot on the entity origin; a pivot
+  off the origin wobbles (straight-line translation tween) and needs a period of 120 or more.
 - **Trebuchet arm (`swing`, idle).** The arm (and its sling, if separate) is a part pivoting on the axle, `axis` across the frame,
   `swing` with a small amplitude for an idle creak, or `bias` to park it cocked. A big prop's arm crosses split regions; give the arm its
   own part(s) with the same motion entry per part (each turns about the same pivot, so they stay joined). A one-shot throw (fast release,

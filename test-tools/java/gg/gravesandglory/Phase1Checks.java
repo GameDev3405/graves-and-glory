@@ -227,62 +227,110 @@ public final class Phase1Checks implements ClientModInitializer {
             }
         }
 
-        /** p1-prop-motion (docs/props/MOVING-PARTS.md): a great_banner placed 40 blocks over the player (within PropMotion.RANGE) sways: its cloth's
-         *  transformation changes over 60 ticks and is never the rest pose for long, the pole never moves, a moving cloth is written to NBT at
-         *  rest (a chunk or structure save), and Props.remove takes every part and the ticker's motion state. On a buried platform, put back. */
-        net.minecraft.util.math.BlockPos motionCell;Map<net.minecraft.util.math.BlockPos,net.minecraft.block.BlockState> motionSaved;
-        final List<float[]> motionPoses=new ArrayList<>();int motionPoleMoved;
+        /** p1-prop-motion (docs/props/MOVING-PARTS.md): two great_banners 40 blocks over the player (within PropMotion.RANGE), one facing north
+         *  and one facing east, sway: the north cloth's transformation changes over 60 ticks and is never the rest pose for long, its pole never
+         *  moves, and the east cloth's hem swings out east (its front), as the pose maths says. A moving cloth is written to NBT at rest (a chunk
+         *  or structure save). The player then moves over 48 blocks away: within 15 ticks both banners are dropped from the ticker and their
+         *  cloths are at rest. Props.remove takes every part and the motion state. On a buried platform, put back, the player put back. */
+        net.minecraft.util.math.BlockPos motionCell,motionEast;Map<net.minecraft.util.math.BlockPos,net.minecraft.block.BlockState> motionSaved;
+        final List<float[]> motionPoses=new ArrayList<>();int motionPoleMoved,motionEastSamples,motionEastOut,motionEastWrong;double motionEastMost;
+        Vec3d motionFrom;float motionYaw,motionPitch;boolean motionOk;String motionWhy="";
         boolean propMotionStart(GravesAndGlory.Battle b){
             var p=sp(b);var w=b.world;
             if(p==null){report("p1-prop-motion",false,"no player");return false;}
             int x0=(int)Math.floor(p.getX())+8,z0=(int)Math.floor(p.getZ()),oy=Math.min(w.getTopY()-16,(int)Math.floor(p.getY())+40);
-            motionCell=new net.minecraft.util.math.BlockPos(x0,oy,z0);
-            var box=net.minecraft.util.math.BlockBox.create(motionCell.add(-4,-4,-3),motionCell.add(4,8,3));
+            motionCell=new net.minecraft.util.math.BlockPos(x0,oy,z0);motionEast=motionCell.add(0,0,5);
+            var box=net.minecraft.util.math.BlockBox.create(motionCell.add(-4,-4,-3),motionCell.add(4,8,8));
             motionSaved=new HashMap<>();
             for(var q:net.minecraft.util.math.BlockPos.iterate(box.getMinX(),box.getMinY(),box.getMinZ(),box.getMaxX(),box.getMaxY(),box.getMaxZ()))motionSaved.put(q.toImmutable(),w.getBlockState(q));
             for(var q:motionSaved.keySet())w.setBlockState(q,(q.getY()>=oy?net.minecraft.block.Blocks.AIR:q.getY()==oy-1?net.minecraft.block.Blocks.GRASS_BLOCK:net.minecraft.block.Blocks.DIRT).getDefaultState(),2);
             String why=Props.place(w,"great_banner",motionCell,0);
-            if(!why.isEmpty()){report("p1-prop-motion",false,"place: "+why);propMotionEnd(b);return false;}
-            motionPoses.clear();motionPoleMoved=0;return true;
+            String why90=why.isEmpty()?Props.place(w,"great_banner",motionEast,90):"not tried";
+            if(!why.isEmpty()||!why90.isEmpty()){report("p1-prop-motion",false,"place north: '"+why+"', east: '"+why90+"'");propMotionEnd(b);return false;}
+            motionPoses.clear();motionPoleMoved=motionEastSamples=motionEastOut=motionEastWrong=0;motionEastMost=0;motionOk=false;motionWhy="";
+            return true;
         }
-        net.minecraft.entity.decoration.DisplayEntity motionPart(GravesAndGlory.Battle b,String model){
+        net.minecraft.entity.decoration.DisplayEntity motionPart(GravesAndGlory.Battle b,net.minecraft.util.math.BlockPos cell,String model){
             var d=Props.DEFS.get("great_banner");if(d==null)return null;
             int cmd=-1;for(var part:d.parts())if(part.model().equals(model))cmd=part.cmd();
-            for(var e:Props.parts(b.world,motionCell))if(Props.partCmd(e)==cmd&&e instanceof net.minecraft.entity.decoration.DisplayEntity de)return de;
+            for(var e:Props.parts(b.world,cell))if(Props.partCmd(e)==cmd&&e instanceof net.minecraft.entity.decoration.DisplayEntity de)return de;
             return null;
         }
+        /** World offset (blocks, from the part entity) of model point (x,y,z) of the part under its current pose: the pose in the entity frame, then
+         *  the entity yaw (DisplayEntityRenderer turns by -yaw about y). */
+        static double[] motionWorld(net.minecraft.entity.decoration.DisplayEntity e,PropDef.Part part,double x,double y,double z){
+            double[] l=PropMotion.apply(PropTicker.pose(e),part,x,y,z);
+            double t=Math.toRadians(-e.getYaw()),c=Math.cos(t),s=Math.sin(t);
+            return new double[]{l[0]*c+l[2]*s,l[1],-l[0]*s+l[2]*c};
+        }
+        /** Stage 30: 60 ticks of samples, the save check, then the player moves away. */
         boolean propMotionStep(GravesAndGlory.Battle b){
-            var cloth=motionPart(b,"great_banner_cloth");var pole=motionPart(b,"great_banner");
+            var cloth=motionPart(b,motionCell,"great_banner_cloth");var pole=motionPart(b,motionCell,"great_banner");var east=motionPart(b,motionEast,"great_banner_cloth");
             if(cloth!=null)motionPoses.add(PropTicker.pose(cloth));
             if(pole!=null&&!Arrays.equals(PropTicker.pose(pole),PropMotion.REST))motionPoleMoved++;
+            var d=Props.DEFS.get("great_banner");
+            if(east!=null&&d!=null&&!Arrays.equals(PropTicker.pose(east),PropMotion.REST)){ // the hem's world move from rest: out east, hardly along z
+                var part=d.parts().get(2);motionEastSamples++;
+                double[] now=motionWorld(east,part,8,32,5);
+                double rx,rz;{double[] l=PropMotion.apply(PropMotion.REST,part,8,32,5);double t=Math.toRadians(-east.getYaw()),c=Math.cos(t),s=Math.sin(t);rx=l[0]*c+l[2]*s;rz=-l[0]*s+l[2]*c;}
+                double out=(now[0]-rx)*16,side=Math.abs(now[2]-rz)*16;motionEastMost=Math.max(motionEastMost,out);
+                if(out>0.1)motionEastOut++;
+                if(out<-0.1||side>out+3)motionEastWrong++;
+            }
             if(b.time-stageAt<60)return false;
             var w=b.world;
             try{
                 int distinct=0,rest=0;float[] last=null;
                 for(float[] q:motionPoses){if(last==null||!Arrays.equals(q,last))distinct++;if(Arrays.equals(q,PropMotion.REST))rest++;last=q;}
                 double maxAngle=0;for(float[] q:motionPoses)maxAngle=Math.max(maxAngle,Math.toDegrees(2*Math.acos(Math.min(1,Math.abs(q[6])))));
-                boolean moving=PropTicker.moving(w,motionCell);
+                boolean moving=PropTicker.moving(w,motionCell)&&PropTicker.moving(w,motionEast);
                 NbtCompound saved=new NbtCompound();if(cloth!=null)cloth.writeNbt(saved);
                 float[] live=cloth==null?null:PropTicker.pose(cloth);
                 var tr=saved.getCompound(net.minecraft.entity.decoration.DisplayEntity.TRANSFORMATION_NBT_KEY);
                 var savedPose=net.minecraft.util.math.AffineTransformation.ANY_CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE,tr).result().orElse(null);
                 boolean savedRest=savedPose!=null&&savedPose.equals(net.minecraft.util.math.AffineTransformation.identity());
                 boolean liveMoved=live!=null&&!Arrays.equals(live,PropMotion.REST);
-                boolean removed=Props.remove(w,motionCell);
-                int parts=Props.parts(w,motionCell).size();boolean forgotten=!PropTicker.moving(w,motionCell);
-                boolean ok=cloth!=null&&pole!=null&&distinct>=5&&rest<=2&&maxAngle>1&&maxAngle<12&&motionPoleMoved==0&&moving&&liveMoved&&savedRest&&removed&&parts==0&&forgotten;
-                report("p1-prop-motion",ok,"cloth poses over 60 ticks: "+motionPoses.size()+" samples, "+distinct+" distinct, "+rest+" at rest, largest turn "+String.format("%.1f",maxAngle)
-                    +" deg; pole moved "+motionPoleMoved+"; ticker moving="+moving+"; live pose off rest="+liveMoved+", saved NBT at rest="+savedRest+"; removed="+removed+", parts left "+parts+", motion state forgotten="+forgotten);
-            }catch(Exception e){report("p1-prop-motion",false,"threw "+e);e.printStackTrace();}
+                boolean eastOk=east!=null&&Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(east.getYaw()-270))<1&&motionEastSamples>=40&&motionEastOut>=motionEastSamples-2&&motionEastWrong==0;
+                motionOk=cloth!=null&&pole!=null&&distinct>=5&&rest<=2&&maxAngle>1&&maxAngle<12&&motionPoleMoved==0&&moving&&liveMoved&&savedRest&&eastOk;
+                motionWhy="cloth poses over 60 ticks: "+motionPoses.size()+" samples, "+distinct+" distinct, "+rest+" at rest, largest turn "+String.format("%.1f",maxAngle)
+                    +" deg; pole moved "+motionPoleMoved+"; facing 90 (yaw "+(east==null?"none":east.getYaw())+"): "+motionEastSamples+" posed samples, hem out east in "+motionEastOut+", wrong way "+motionEastWrong+", most "+String.format("%.1f",motionEastMost)
+                    +" px; ticker moving="+moving+"; live pose off rest="+liveMoved+", saved NBT at rest="+savedRest;
+            }catch(Exception e){motionWhy="threw "+e;e.printStackTrace();}
+            var p=sp(b);
+            if(p==null){report("p1-prop-motion",false,motionWhy+"; no player to move away");propMotionEnd(b);return true;}
+            motionFrom=p.getPos();motionYaw=p.getYaw();motionPitch=p.getPitch();
+            p.teleport(b.world,motionCell.getX()+70.5,p.getY(),motionCell.getZ()+.5,motionYaw,motionPitch); // over 48 blocks from both banners
+            next(b,31);
+            return false;
+        }
+        /** Stage 31: 15 ticks after the player left range, both banners rest and are out of the ticker; then remove and report. */
+        void propMotionAway(GravesAndGlory.Battle b){
+            if(b.time-stageAt<15)return;
+            var w=b.world;
+            try{
+                var cloth=motionPart(b,motionCell,"great_banner_cloth");var east=motionPart(b,motionEast,"great_banner_cloth");
+                boolean paused=!PropTicker.moving(w,motionCell)&&!PropTicker.moving(w,motionEast);
+                boolean atRest=cloth!=null&&east!=null&&Arrays.equals(PropTicker.pose(cloth),PropMotion.REST)&&Arrays.equals(PropTicker.pose(east),PropMotion.REST);
+                boolean removed=Props.remove(w,motionCell)&&Props.remove(w,motionEast);
+                int parts=Props.parts(w,motionCell).size()+Props.parts(w,motionEast).size();boolean forgotten=!PropTicker.moving(w,motionCell)&&!PropTicker.moving(w,motionEast);
+                report("p1-prop-motion",motionOk&&paused&&atRest&&removed&&parts==0&&forgotten,motionWhy+"; player 70 blocks off for 15 ticks: paused="+paused+", both cloths at rest="+atRest
+                    +"; removed="+removed+", parts left "+parts+", motion state forgotten="+forgotten);
+            }catch(Exception e){report("p1-prop-motion",false,motionWhy+"; away stage threw "+e);e.printStackTrace();}
             propMotionEnd(b);
-            return true;
+            next(b,14);
         }
         void propMotionEnd(GravesAndGlory.Battle b){
             var w=b.world;
-            if(Props.readAnchor(w,motionCell)!=null)Props.remove(w,motionCell);
-            for(var e:new ArrayList<>(Props.parts(w,motionCell)))e.discard();
+            for(var cell:new net.minecraft.util.math.BlockPos[]{motionCell,motionEast}){
+                if(cell==null)continue;
+                if(Props.readAnchor(w,cell)!=null)Props.remove(w,cell);
+                for(var e:new ArrayList<>(Props.parts(w,cell)))e.discard();
+            }
             if(motionSaved!=null)motionSaved.forEach((q,st)->w.setBlockState(q,st,2));
             motionSaved=null;
+            var p=sp(b);
+            if(p!=null&&motionFrom!=null)p.teleport(b.world,motionFrom.x,motionFrom.y,motionFrom.z,motionYaw,motionPitch);
+            motionFrom=null;
         }
 
         public void step(MinecraftClient c,int tick){
@@ -387,6 +435,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     next(b,13);}}
                 case 13->{int left=tagged(b);report("p1-shot-orphan",orphanError==null&&Projectiles.inFlight(b)==0&&left==0&&!b.running,"error="+orphanError+" inFlight="+Projectiles.inFlight(b)+" taggedArrows="+left+" running="+b.running);reloadArrow(b);propWalkIn(b);next(b,propMotionStart(b)?30:14);}
                 case 30->{if(propMotionStep(b))next(b,14);}
+                case 31->propMotionAway(b);
                 case 14->{ // tick cost: eight bot armies fighting around the centre point
                     var p=sp(b);if(p==null||!skirmish(b,p,0,4,"normal"))return;
                     var own=b.squads.get(player);own.bot=true;own.order="attack";b.reinforce(own);

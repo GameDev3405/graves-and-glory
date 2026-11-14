@@ -53,6 +53,13 @@ public record PropDef(String id,String category,String name,int sx,int sy,int sz
      *  {@code bias+360u} (a full turn per period). Several entries on one part compose, in def order. */
     public record Motion(String part,String kind,int axis,int sign,double px,double py,double pz,double amplitude,double bias,int period,double phase){}
     public static final List<String> MOTION_KINDS=List.of("sway","rotate","swing");
+    /** How far (model px) a motion pivot may lie outside the prop's cells. */
+    public static final int PIVOT_MARGIN=32;
+    /** The most a sway or swing may turn between two keyframes, degrees. */
+    public static final double MAX_STEP=45;
+    static int ox(List<Part> parts,String model){for(Part p:parts)if(p.model().equals(model))return p.ox();return 0;}
+    static int oy(List<Part> parts,String model){for(Part p:parts)if(p.model().equals(model))return p.oy();return 0;}
+    static int oz(List<Part> parts,String model){for(Part p:parts)if(p.model().equals(model))return p.oz();return 0;}
     /**
      * A gameplay prop's rules (stake barricade, Kort 2026-11-09), read by {@link PropGameplay}. Destructible when hp > 0: a heavy melee hit (a
      * player's full swing with a weapon of at least heavyDamage attack damage, a troop's slam or trample splash) takes heavyHit, siege fire (a siege
@@ -155,15 +162,35 @@ public record PropDef(String id,String category,String name,int sx,int sy,int sz
             JsonElement pv=m.get("pivot");
             if(pv==null||!pv.isJsonArray()||pv.getAsJsonArray().size()!=3)throw bad(id,"motion.pivot","must be [x,y,z] px");
             double[] pivot=new double[3];
-            for(int i=0;i<3;i++){JsonElement c=pv.getAsJsonArray().get(i);if(!c.isJsonPrimitive()||!c.getAsJsonPrimitive().isNumber())throw bad(id,"motion.pivot","not a number");pivot[i]=c.getAsDouble();}
+            for(int i=0;i<3;i++){
+                JsonElement c=pv.getAsJsonArray().get(i);
+                if(!c.isJsonPrimitive()||!c.getAsJsonPrimitive().isNumber())throw bad(id,"motion.pivot","not a number");
+                pivot[i]=c.getAsDouble();
+                if(!Double.isFinite(pivot[i]))throw bad(id,"motion.pivot","not a finite number");
+            }
+            // the pivot lies within the prop's cells (model px, anchor cell min corner at 0) or at most PIVOT_MARGIN px outside them
+            int px0=-16*((sx-1)/2),pz0=-16*((sz-1)/2);
+            double[] lo={px0-PIVOT_MARGIN,-PIVOT_MARGIN,pz0-PIVOT_MARGIN},hi={px0+16*sx+PIVOT_MARGIN,16*sy+PIVOT_MARGIN,pz0+16*sz+PIVOT_MARGIN};
+            for(int i=0;i<3;i++)if(pivot[i]<lo[i]||pivot[i]>hi[i])
+                throw bad(id,"motion.pivot","("+pivot[0]+","+pivot[1]+","+pivot[2]+") px is more than "+PIVOT_MARGIN+" px outside the prop");
             double amplitude=mnum(m,"amplitude",0,id),bias=mnum(m,"bias",0,id),phase=mnum(m,"phase",0,id);
-            int period=(int)mnum(m,"period",0,id);
+            int period=num(m.get("period"),id,"motion.period");
             if(!kind.equals("rotate")&&(amplitude<=0||amplitude>90))throw bad(id,"motion.amplitude",amplitude+" must be over 0 and at most 90 degrees");
             if(Math.abs(bias)>90)throw bad(id,"motion.bias",bias+" must be within 90 degrees");
-            // a keyframe is a client tween over PropMotion.KEY ticks; a rotate must turn less than half a turn per keyframe, a sway needs a few per swing
-            int least=kind.equals("rotate")?4*PropMotion.KEY:2*PropMotion.KEY;
-            if(period<least||period>2400)throw bad(id,"motion.period",period+" must be "+least+".."+2400+" ticks");
             if(phase<0||phase>=1)throw bad(id,"motion.phase",phase+" must be 0..1 (a share of the period)");
+            // a keyframe is a straight client tween over PropMotion.KEY ticks. The per-anchor period scale goes down to 0.92, so a sway or swing
+            // needs 6 keyframes a cycle (5.5 after the scale) and at most MAX_STEP degrees a keyframe. A rotate turns at most a quarter a keyframe,
+            // and since the client moves the translation in a straight line while it turns, a pivot off the entity origin wobbles: off the origin
+            // a rotate needs 12 keyframes a turn (30 degrees each).
+            boolean rotate=kind.equals("rotate");
+            boolean atOrigin=rotate&&Math.abs(pivot[0]-8-ox(parts,part))<1e-6&&Math.abs(pivot[1]-8-oy(parts,part))<1e-6&&Math.abs(pivot[2]-8-oz(parts,part))<1e-6;
+            int least=rotate?(atOrigin?4:12)*PropMotion.KEY:6*PropMotion.KEY;
+            if(period<least||period>2400)throw bad(id,"motion.period",period+" must be "+least+"..2400 ticks"
+                +(rotate&&!atOrigin?" (a rotate whose pivot is not the part's entity origin [8+ox,8+oy,8+oz] needs 12 keyframes a turn)":""));
+            if(!rotate){
+                double step=2*Math.PI*amplitude*PropMotion.KEY/(0.92*period);
+                if(step>MAX_STEP)throw bad(id,"motion.amplitude",String.format(java.util.Locale.ROOT,"%.0f degrees in %d ticks turns up to %.0f degrees a keyframe (at most %.0f): lower the amplitude or lengthen the period",amplitude,period,step,MAX_STEP));
+            }
             motion.add(new Motion(part,kind,axis,sign,pivot[0],pivot[1],pivot[2],amplitude,bias,period,phase));
         }
         return new PropDef(id,category,name,sx,sy,sz,List.copyOf(parts),List.copyOf(solid),List.copyOf(lights),List.copyOf(effects),gameplay,List.copyOf(motion));

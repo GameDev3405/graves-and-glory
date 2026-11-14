@@ -83,14 +83,37 @@ public final class PropMotionCheck {
 
   // refusals
   String head="{\"id\":\"t\",\"category\":\"c\",\"name\":\"T\",\"size\":[1,1,1],\"parts\":[{\"model\":\"t\",\"cmd\":7319990}],\"solid\":[],\"motion\":[";
-  check(!refused(head+"{\"part\":\"t\",\"kind\":\"sway\",\"axis\":\"-y\",\"pivot\":[8,8,8],\"amplitude\":5,\"period\":40}]}"),"a good entry parses");
-  check(refused(head+"{\"part\":\"u\",\"kind\":\"sway\",\"axis\":\"x\",\"pivot\":[8,8,8],\"amplitude\":5,\"period\":40}]}"),"an unknown part is refused");
-  check(refused(head+"{\"part\":\"t\",\"kind\":\"wobble\",\"axis\":\"x\",\"pivot\":[8,8,8],\"amplitude\":5,\"period\":40}]}"),"an unknown kind is refused");
-  check(refused(head+"{\"part\":\"t\",\"kind\":\"sway\",\"axis\":\"w\",\"pivot\":[8,8,8],\"amplitude\":5,\"period\":40}]}"),"a bad axis is refused");
-  check(refused(head+"{\"part\":\"t\",\"kind\":\"sway\",\"axis\":\"x\",\"pivot\":[8,8],\"amplitude\":5,\"period\":40}]}"),"a short pivot is refused");
-  check(refused(head+"{\"part\":\"t\",\"kind\":\"sway\",\"axis\":\"x\",\"pivot\":[8,8,8],\"amplitude\":5,\"period\":10}]}"),"a period under two keyframes is refused");
-  check(refused(head+"{\"part\":\"t\",\"kind\":\"rotate\",\"axis\":\"x\",\"pivot\":[8,8,8],\"period\":30}]}"),"a rotate of a quarter turn or more per keyframe is refused");
-  check(refused(head+"{\"part\":\"t\",\"kind\":\"sway\",\"axis\":\"x\",\"pivot\":[8,8,8],\"amplitude\":0,\"period\":40}]}"),"a sway without amplitude is refused");
+  String ok="\"part\":\"t\",\"kind\":\"sway\",\"axis\":\"x\",\"pivot\":[8,8,8],\"amplitude\":5,\"period\":60";
+  java.util.function.Function<String,String> entry=extra->head+"{"+extra+"}]}";
+  check(!refused(entry.apply(ok)),"a good entry parses");
+  check(!refused(entry.apply(ok.replace("\"x\"","\"-y\"")+",\"phase\":0.99,\"bias\":-90")),"axis -y, phase 0.99 and bias -90 parse");
+  check(refused(entry.apply(ok.replace("\"part\":\"t\"","\"part\":\"u\""))),"an unknown part is refused");
+  check(refused(entry.apply(ok.replace("sway","wobble"))),"an unknown kind is refused");
+  check(refused(entry.apply(ok.replace("\"x\"","\"w\""))),"a bad axis is refused");
+  check(refused(entry.apply(ok.replace("[8,8,8]","[8,8]"))),"a short pivot is refused");
+  check(refused(entry.apply(ok.replace("[8,8,8]","[8,\"up\",8]"))),"a pivot that is not a number is refused");
+  check(refused(entry.apply(ok.replace("[8,8,8]","[8,8,200]"))),"a pivot far outside the prop is refused");
+  check(!refused(entry.apply(ok.replace("[8,8,8]","[-32,48,48]"))),"a pivot 32 px outside the prop parses");
+  check(refused(entry.apply(ok+",\"phase\":1")),"phase 1 is refused");
+  check(refused(entry.apply(ok+",\"bias\":91")),"bias over 90 is refused");
+  check(refused(entry.apply(ok+",\"bias\":-91")),"bias under -90 is refused");
+  check(refused(entry.apply(ok.replace("\"amplitude\":5","\"amplitude\":91").replace("60","2400"))),"amplitude over 90 is refused");
+  check(refused(entry.apply(ok.replace("\"amplitude\":5","\"amplitude\":0"))),"a sway without amplitude is refused");
+  check(refused(entry.apply(ok.replace("60","2401"))),"a period over 2400 is refused");
+  check(refused(entry.apply(ok.replace("60","59"))),"a sway period under 6 keyframes is refused");
+  check(refused(entry.apply(ok.replace("60","60.5"))),"a fractional period is refused");
+  check(refused(entry.apply(ok.replace(",\"period\":60",""))),"a missing period is refused");
+  check(refused(entry.apply(ok.replace("\"amplitude\":5","\"amplitude\":45"))),"45 degrees in 60 ticks (51 degrees a keyframe) is refused");
+  check(!refused(entry.apply(ok.replace("\"amplitude\":5","\"amplitude\":39"))),"39 degrees in 60 ticks (44 degrees a keyframe) parses");
+  String rj="\"part\":\"t\",\"kind\":\"rotate\",\"axis\":\"y\",\"pivot\":[8,8,8],\"period\":40";
+  check(!refused(entry.apply(rj)),"a rotate about the entity origin with period 40 parses");
+  check(refused(entry.apply(rj.replace("40","39"))),"a rotate of a quarter turn or more per keyframe is refused");
+  check(refused(entry.apply(rj.replace("[8,8,8]","[8,8,4]"))),"a rotate off the entity origin with period 40 is refused");
+  check(refused(entry.apply(rj.replace("[8,8,8]","[8,8,4]").replace("40","119"))),"a rotate off the entity origin under 12 keyframes is refused");
+  check(!refused(entry.apply(rj.replace("[8,8,8]","[8,8,4]").replace("40","120"))),"a rotate off the entity origin with period 120 parses");
+  String offs=head.replace("\"cmd\":7319990}","\"cmd\":7319990,\"offset\":[0,16,0]}");
+  check(!refused(offs+"{"+rj.replace("[8,8,8]","[8,24,8]")+"}]}"),"a rotate about an offset part's entity origin parses");
+  check(refused(offs+"{"+rj+"}]}"),"an offset part's [8,8,8] is not its entity origin");
   System.out.println("PropMotionCheck: "+count+" checks pass; hem forward "+String.format("%.2f..%.2f",minFwd,maxFwd)+" px, sideways up to "+String.format("%.2f",maxSide)+" px");
  }
 }

@@ -80,7 +80,7 @@ public final class PropTicker {
                 if(d2<=m2)inSight=true;
                 if(d2<=r2){near=true;break;}
             }
-            if(PropMotion.moves(l.def()))moved+=motion(w,l,tick,inSight);
+            if(PropMotion.moves(Props.DEFS.getOrDefault(l.def().id(),l.def()))||moving(w,l.anchor()))moved+=motion(w,l,tick,inSight); // the current def: a reload may add or drop motion
             if(!near){gated++;continue;}
             if(l.def().effects().isEmpty())continue;
             Props.Live now=Props.readAnchor(w,l.anchor()); // an anchor erased by hand stops playing at once
@@ -105,6 +105,13 @@ public final class PropTicker {
     static int motion(ServerWorld w,Props.Live l,long tick,boolean inSight){
         Map<BlockPos,Moving> m=MOVING.computeIfAbsent(w,k->new HashMap<>());
         Moving mv=m.get(l.anchor());
+        PropDef now=Props.DEFS.getOrDefault(l.def().id(),l.def()); // a data reload may have changed or dropped the motion
+        if(mv!=null&&mv.def!=now){ // ease the old moving parts to rest; the new def's moving parts are found again below
+            int sent=rest(mv);m.remove(l.anchor());mv=null;
+            if(!PropMotion.moves(now))return sent;
+        }
+        if(!PropMotion.moves(now))return 0;
+        if(now!=l.def())l=new Props.Live(l.anchor(),now,l.facing());
         if(!inSight&&mv==null)return 0;   // at rest and nobody near: nothing to do
         long seed=PropEffects.seed(l.anchor().getX(),l.anchor().getY(),l.anchor().getZ());
         if(inSight&&!PropMotion.keyframe(tick,seed))return 0;
@@ -121,6 +128,12 @@ public final class PropTicker {
             setPose(e,p,PropMotion.KEY);sent++;
         }
         if(!inSight)m.remove(l.anchor());
+        return sent;
+    }
+    /** Sends the rest pose to every moving part of mv that is still there; returns how many. */
+    static int rest(Moving mv){
+        int sent=0;
+        for(DisplayEntity e:mv.parts)if(e!=null&&!e.isRemoved()){setPose(e,PropMotion.REST,PropMotion.KEY);sent++;}
         return sent;
     }
     static boolean valid(Moving mv){
