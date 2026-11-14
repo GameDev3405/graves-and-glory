@@ -532,7 +532,9 @@ public final class Campaign {
         syncGear(p);
     }
     /** Shows a Forge roll's card: it takes the next n and becomes the commander's last Forge roll. */
-    void forgeCard(UUID id,JsonObject card){var last=forgeResults.get(id);card.addProperty("n",last==null?1:last.get("n").getAsInt()+1);forgeResults.put(id,card);}
+    /** Numbers the Forge cards for the whole run of the server, so a card is never taken for one the client has already shown (a count per commander began again at 1 when his last card was dropped, and the next roll then showed no reveal). */
+    private int forgeSerial;
+    void forgeCard(UUID id,JsonObject card){card.addProperty("n",++forgeSerial);forgeResults.put(id,card);}
     void unsaved(UUID id,String before,String what){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));notice(id,what+" was not saved, so nothing changed. Check disk space and try again.");}
     /**
      * A chosen recruit (buy:<troop>, spec 4.2): a Common or Rare of any House for recruitment.chosenCost gold, as a new troop or a copy toward its
