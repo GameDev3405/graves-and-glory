@@ -28,7 +28,7 @@ that is not 1 texel per model px).
 CMD = `7310001 + 10*propIndex + partIndex` (SYSTEMS `PropDef`, agreed 2026-11-08): forge hearth/hood/coals
 7310001..7310003, anvil 7310011, weapon_rack 7310021, shield_rack 7310031, quench_trough 7310041, grindstone_bench
 7310051. The pack builder assigns CMDs from the defs; the models carry no numbers.
-The valid range is `7310001..7319999` (blocks 0-999; widened from `..7310999` / blocks 0-99 once blocks 0-99 were all allocated; no existing number changed).
+The valid range is `7310001..7319999` (blocks 0-998: a block needs room for parts 0-9, so block 999 would end at 7320000; widened from `..7310999` / blocks 0-99 once blocks 0-99 were all allocated; no existing number changed).
 It was checked clear of every `custom_model_data` predicate in the mod's resource packs and in the Excalibur pack.
 
 ## Shape helpers (`from proplib import *`)
