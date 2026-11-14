@@ -1,0 +1,14 @@
+{
+  "id": "archery_target",
+  "category": "dressing",
+  "name": "Archery Target",
+  "size": [1, 2, 1],
+  "parts": [
+    {"model": "archery_target", "cmd": 7310861, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

@@ -1,0 +1,14 @@
+{
+  "id": "training_dummy",
+  "category": "dressing",
+  "name": "Training Dummy",
+  "size": [1, 2, 1],
+  "parts": [
+    {"model": "training_dummy", "cmd": 7310851, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}
