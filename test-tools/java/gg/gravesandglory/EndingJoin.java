@@ -70,7 +70,9 @@ public final class EndingJoin implements ClientModInitializer {
     }
 
     /** Starts the second client as a clone of this JVM's command line. Returns null (how says why) when it cannot. */
-    static Process spawn(Path dir) {
+    static Process spawn(Path dir) { return spawn(dir, "-Dgravesandglory.endingJoin=", "EndJoiner"); }
+    /** The same clone for another suite's second client: prop is the system property that names its folder, name its username. */
+    static Process spawn(Path dir, String prop, String name) {
         try {
             String cl = ProcessHandle.current().info().commandLine().orElse(null);
             List<String> a;
@@ -91,7 +93,9 @@ public final class EndingJoin implements ClientModInitializer {
             props.put("-Dgravesandglory.runtime=", dir.resolve("runtime").toString());
             props.put("-Dgravesandglory.localChecks=", dir.resolve("local-checks.txt").toString());
             props.put("-Dgravesandglory.phase4Checks=", "");
-            props.put("-Dgravesandglory.endingJoin=", dir.toString());
+            props.put("-Dgravesandglory.endingJoin=", "");
+            props.put("-Dgravesandglory.dropJoin=", "");
+            props.put(prop, dir.toString());
             props.put("-Dgravesandglory.phase1Checks=", "");
             Set<String> seen = new HashSet<>();
             boolean gameDir = false, user = false;
@@ -99,12 +103,12 @@ public final class EndingJoin implements ClientModInitializer {
                 String s = a.get(i);
                 for (var e : props.entrySet()) if (s.startsWith(e.getKey())) { a.set(i, e.getKey() + e.getValue()); seen.add(e.getKey()); }
                 if (s.equals("--gameDir") && i + 1 < a.size()) { a.set(i + 1, dir.resolve("run").toString()); gameDir = true; }
-                if (s.equals("--username") && i + 1 < a.size()) { a.set(i + 1, "EndJoiner"); user = true; }
+                if (s.equals("--username") && i + 1 < a.size()) { a.set(i + 1, name); user = true; }
                 if (s.equals("--uuid") && i + 1 < a.size()) a.set(i + 1, "00000000-0000-0000-0000-00000000e0d1");
             }
             // Loom's launch has no --gameDir: the game directory is the working directory, which is set to dir/run below.
             for (var e : props.entrySet()) if (!seen.contains(e.getKey())) a.add(1, e.getKey() + e.getValue());
-            if (!user) { a.add("--username"); a.add("EndJoiner"); }
+            if (!user) { a.add("--username"); a.add(name); }
             Path opts = dir.resolve("run").resolve("options.txt");
             if (!Files.exists(opts)) Files.writeString(opts, "pauseOnLostFocus:false\nonboardAccessibility:false\nrenderDistance:6\nsimulationDistance:5\nguiScale:2\nresourcePacks:[\"fabric\",\"gravesandglory:armory\"]\n");
             ProcessBuilder pb = new ProcessBuilder(a).directory(dir.resolve("run").toFile()).redirectErrorStream(true).redirectOutput(dir.resolve("join-console.log").toFile());

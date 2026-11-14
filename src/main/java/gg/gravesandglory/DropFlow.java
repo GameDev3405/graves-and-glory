@@ -19,7 +19,7 @@ final class DropFlow {
         double x = DropSim.WIDTH / 2.0;
         long aimEnds, ends;
         /** The tick the watchers were last told where the coin is, and the tick its path was asked for. */
-        long toldAim = Long.MIN_VALUE, searchAt;
+        long toldAim = -1000, searchAt;
         DropSim.Path path;
         Drop(int id, UUID who, String name, String what, int slot, String card, String notice, long now) { this.id = id; this.who = who; this.name = name; this.what = what; this.slot = slot; this.card = card; this.notice = notice; this.began = now; }
     }
