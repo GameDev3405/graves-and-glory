@@ -50,8 +50,7 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==280){press(c,"Start together");}
    if(tick==310){check("room-started",GravesAndGloryClient.battleActive());server(c,b->{var p=b.server.getPlayerManager().getPlayer(c.player.getUuid());check("room-seat",b.squads.get(p.getUuid()).seated&&!b.campaign.activeRoom.isEmpty());check("room-bot-count",b.squads.values().stream().filter(s->s.seated).count()==4);});}
    if(tick==440)shot(c,"battle-hud");
-   if(tick==450)server(c,b->{var e=AdminCommands.ledger().get(c.player.getUuid());check("join-stamped-on-login",e!=null&&e.firstSeenAt>0&&e.lastName.equals(c.player.getName().getString()));check("no-match-stamp-before-the-ending",e.firstMatchAt==0);});
-   if(tick==460)server(c,b->{var id=c.player.getUuid();b.roundStarted=b.time-181*20;b.campaign.joinedAt.put(id,b.roundStarted);b.campaign.finish(b.squads.get(id).team);check("party-survives-results",b.campaign.social.party(id)!=null);check("room-survives-results",b.campaign.social.room(id)!=null&&!b.campaign.social.room(id).playing);check("progress-earned",b.campaign.profile(id).progression.xp==150);var e=AdminCommands.ledger().get(id);check("finished-match-stamps-first-match",e!=null&&e.firstMatchAt>0);check("ledger-not-in-snapshots",!Campaign.forClient(b.campaign.profile(id)).toString().contains("firstMatchAt")&&!Campaign.forClient(b.campaign.profile(id)).toString().contains("firstSeenAt"));});
+   if(tick==460)server(c,b->{var id=c.player.getUuid();b.roundStarted=b.time-181*20;b.campaign.joinedAt.put(id,b.roundStarted);b.campaign.finish(b.squads.get(id).team);check("party-survives-results",b.campaign.social.party(id)!=null);check("room-survives-results",b.campaign.social.room(id)!=null&&!b.campaign.social.room(id).playing);check("progress-earned",b.campaign.profile(id).progression.xp==150);});
    if(tick==480){check("results-screen",c.currentScreen instanceof CampScreen s&&s.page.equals("results"));check("results-confirmed-rewards",CampaignClient.result.get("gold").getAsInt()==120&&CampaignClient.result.get("xp").getAsInt()==150&&CampaignClient.result.get("saved").getAsBoolean());shot(c,"results");}
    if(tick==490){check("hud-clears-after-match",GravesAndGloryClient.inCamp());CampScreen.open("contracts");}
    if(tick==510){shot(c,"contracts");press(c,"Claim");}
@@ -59,7 +58,7 @@ public final class CampRedesignChecks implements ClientModInitializer {
    if(tick==560)CampScreen.open("chapter");if(tick==580)shot(c,"chapter");
    if(tick==600){CampScreen.open("room");toggleReady(c);}
    if(tick==625){press(c,"Start together");}
-   if(tick==655){check("rematch-with-same-room",GravesAndGloryClient.battleActive());server(c,b->{var e=AdminCommands.ledger().get(c.player.getUuid());e.firstMatchAt=0;b.campaign.finish(-1);check("short-match-does-not-stamp",e.firstMatchAt==0);});}
+   if(tick==655){check("rematch-with-same-room",GravesAndGloryClient.battleActive());server(c,b->b.campaign.finish(-1));}
    if(tick==680){org.lwjgl.glfw.GLFW.glfwSetWindowSize(c.getWindow().getHandle(),854,480);CampScreen.open("home");}
    if(tick==710){shot(c,"small-guide");CampScreen.open("recruit");}
    if(tick==730){shot(c,"small-recruitment");CampScreen.open("results");check("short-match-no-rewards-report",CampaignClient.result.get("gold").getAsInt()==0&&CampaignClient.result.get("xp").getAsInt()==0);}

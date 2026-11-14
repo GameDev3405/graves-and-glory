@@ -465,6 +465,9 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             if (b.time - at > 2400) { report("ending-play-again", false, "no room match within 2400 ticks; notice=" + c.notices.getOrDefault(player, "")); c.handle(p, "social:exit"); next(); return; }
             if (!b.running || b.time < c.introUntil + 20) return;
             p.changeGameMode(GameMode.ADVENTURE); p.setHealth(p.getMaxHealth());
+            var led = AdminCommands.ledger().get(player); // admin tools phase A: the join ledger. A joins.json left by an earlier run may hold a stamp, so this check starts from none
+            report("ending-ledger-login-stamp", led != null && led.firstSeenAt > 0 && !led.lastName.isEmpty(), "ledger entry " + (led == null ? "missing" : led.firstSeenAt + " " + led.lastName));
+            if (led != null) led.firstMatchAt = 0;
             b.roundStarted = b.time - 181 * 20; c.joinedAt.put(player, b.roundStarted);
             c.profile(player).bests = new LinkedHashMap<>(Map.of("armyKills", 1, "score", 1)); b.squads.get(player).stats.kills += 14; // two bests on REWARDS (ending-client-bests)
             stage = 2; return;
@@ -473,6 +476,9 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             var room = c.social.room(player);
             againServerWhy = "room " + (room == null ? "none" : room.code + " playing=" + room.playing) + "; ";
             c.finish(b.squads.get(player).team);
+            var led = AdminCommands.ledger().get(player); String snap = Campaign.forClient(c.profile(player)).toString();
+            report("ending-ledger-first-match", led != null && led.firstMatchAt > 0, "finishing a full-length match stamps firstMatchAt: " + (led == null ? "no entry" : led.firstMatchAt));
+            report("ending-ledger-not-in-snapshot", snap.contains("troopWrits") && !snap.contains("firstMatchAt") && !snap.contains("firstSeenAt") && !snap.contains("lastName"), "the client snapshot carries no ledger keys");
             againRound = true; skips = 3; // the client skips RESULT, PODIUM and STATS
             stage = 3; at = b.time; return;
         }

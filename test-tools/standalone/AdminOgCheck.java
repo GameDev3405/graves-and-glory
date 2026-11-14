@@ -121,13 +121,77 @@ public final class AdminOgCheck {
         Files.writeString(lf, "{\"" + A + "\":{\"firstSeenAt\":-5,\"firstMatchAt\":3}}");
         check(JoinLedger.load(lf).get(A).firstSeenAt == 0, "negative stamps read as 0");
 
-        // What counts as finishing a match.
+        // What counts as finishing a match: present at the end and his own seated seconds reach the reward minimum.
         int min = Spec.CAMPAIGN[0].minimumRewardSeconds();
-        check(JoinLedger.finished(true, 100, min + 60, min), "present, seated, long enough");
-        check(!JoinLedger.finished(false, 100, min + 60, min), "dropped and not back: no");
-        check(!JoinLedger.finished(true, 0, min + 60, min), "no seated time: no");
-        check(!JoinLedger.finished(true, 100, min - 1, min), "ended before the reward minimum: no");
-        check(JoinLedger.finished(true, min, min) && !JoinLedger.finished(true, min - 1, min) && !JoinLedger.finished(false, min, min), "crash recovery: played the minimum and present");
+        check(JoinLedger.finished(true, min, min) && JoinLedger.finished(true, min + 600, min), "present and seated the minimum");
+        check(!JoinLedger.finished(true, min - 1, min), "a late joiner seated less than the minimum is not stamped, however long the match ran");
+        check(!JoinLedger.finished(false, min + 600, min), "dropped and never returned: no");
+        check(!JoinLedger.finished(true, 0, min), "no seated time: no");
+
+        // The crash path: players away at the checkpoint, or a checkpoint with no away list, stamp nobody.
+        Map<UUID, Long> played = new LinkedHashMap<>(); played.put(A, (long) min + 5); played.put(B, (long) min + 5);
+        check(JoinLedger.crashStamps(played, Set.of(B), min).equals(Set.of(A)), "crash: the player who was away is not stamped");
+        check(JoinLedger.crashStamps(played, Set.of(), min).equals(Set.of(A, B)), "crash: present players are stamped");
+        check(JoinLedger.crashStamps(played, null, min).isEmpty(), "crash: an old checkpoint without the away list stamps nobody");
+        played.put(A, (long) min - 1);
+        check(JoinLedger.crashStamps(played, Set.of(), min).equals(Set.of(B)), "crash: played less than the minimum is not stamped");
+
+        // The gate: console only when the output is the server and no entity runs it; else an owner uuid.
+        var gate = new AdminOg.Config();
+        check(AdminOg.allowed(gate, true, false, null), "console: output is the server, no entity");
+        check(!AdminOg.allowed(gate, false, false, null), "a command block (entity-less, other output), even one renamed Server, is refused");
+        check(!AdminOg.allowed(gate, true, true, null), "an entity-run source is not the console");
+        check(!AdminOg.allowed(gate, false, true, A), "a player who is not an owner is refused");
+        gate.owners.add(A.toString());
+        check(AdminOg.allowed(gate, false, true, A) && !AdminOg.allowed(gate, false, true, B), "a listed owner passes, another player does not");
+
+        // admin.json through the store: cached by modification time, .bad once, no write while damaged, unknown keys kept.
+        Path sd = Files.createTempDirectory("adminstore");
+        Path af = sd.resolve("admin.json");
+        var store = new AdminOg.Store(af);
+        check(store.get().ogAdded.isEmpty() && store.problem() == null && store.reads == 1, "missing file: empty, one read");
+        store.get(); store.get();
+        check(store.reads == 1, "an unchanged file is not read again");
+        Files.writeString(af, "{\"ogAdded\":[\"" + A + "\"],\"keepMe\":{\"x\":1}}");
+        Files.setLastModifiedTime(af, java.nio.file.attribute.FileTime.fromMillis(1_000_000));
+        check(store.get().ogAdded.size() == 1 && store.reads == 2, "a changed file is read again");
+        var edit = store.copy(); edit.add(B);
+        store.save(edit);
+        check(Files.readString(af).contains("keepMe") && store.get().ogAdded.contains(B.toString()), "a command write keeps unknown keys");
+        Files.writeString(af, "{oops");
+        Files.setLastModifiedTime(af, java.nio.file.attribute.FileTime.fromMillis(2_000_000));
+        int bads = 0;
+        for (int n = 0; n < 5; n++) { store.get(); store.problem(); }
+        try (Stream<Path> st = Files.list(sd)) { bads = (int) st.filter(p -> p.getFileName().toString().contains(".bad")).count(); }
+        check(store.problem() != null && store.get().ogAdded.isEmpty() && bads == 1, "malformed: read as empty, one .bad copy however often it is asked");
+        boolean refused = false;
+        try { store.save(new AdminOg.Config()); } catch (IllegalStateException refuse) { refused = refuse.getMessage().contains("damaged"); }
+        check(refused && Files.readString(af).equals("{oops"), "a write is refused while the file is damaged, and the file is untouched");
+        Files.writeString(af, "{}");
+        Files.setLastModifiedTime(af, java.nio.file.attribute.FileTime.fromMillis(3_000_000));
+        check(store.problem() == null, "fixed file is accepted");
+
+        // joins.json: damaged or blank existing file is never overwritten; a missing one starts empty.
+        for (String bad : new String[] {"{broken", "", "   ", "[]", "{\"zzz\":{}}"}) {
+            Path jf = sd.resolve("joins-" + Math.abs(bad.hashCode()) + ".json");
+            Files.writeString(jf, bad);
+            var bl = JoinLedger.load(jf);
+            check(bl.broken && bl.entries.isEmpty(), "damaged ledger is broken: '" + bad + "'");
+            bl.seen(A, "Alice", 5);
+            boolean no = false;
+            try { bl.save(jf); } catch (IllegalStateException refuse) { no = true; }
+            check(no && Files.readString(jf).equals(bad), "a broken ledger refuses to save and leaves the file: '" + bad + "'");
+        }
+        check(!JoinLedger.load(sd.resolve("nothing.json")).broken, "a missing ledger file starts empty and is not broken");
+        Path fixed = sd.resolve("fixable.json");
+        Files.writeString(fixed, "{x");
+        var fl = JoinLedger.load(fixed); fl.matched(A, "Alice", 77);
+        Files.writeString(fixed, "{\"" + B + "\":{\"firstSeenAt\":9,\"firstMatchAt\":0,\"lastName\":\"Bob\"}}");
+        var fresh = JoinLedger.load(fixed);
+        check(!fresh.broken && fl.broken, "a repaired file loads clean");
+        fresh.absorb(fl);
+        check(fresh.get(A).firstMatchAt == 77 && fresh.get(B).firstSeenAt == 9, "stamps taken while damaged are kept after the repair");
+        check(JoinLedger.limited("t", 1_000_000) && !JoinLedger.limited("t", 1_030_000) && JoinLedger.limited("t", 1_061_000), "the save error logs at most once a minute");
 
         // Admin data never reaches a client: the snapshot code lives in Campaign (Minecraft), so the source is read.
         Path src = Paths.get("").toAbsolutePath();
@@ -135,7 +199,11 @@ public final class AdminOgCheck {
         src = src.resolve("src/main/java/gg/gravesandglory");
         String commands = Files.readString(src.resolve("AdminCommands.java"));
         check(!Files.readString(src.resolve("Profile.java")).contains("firstMatchAt"), "the profile carries no stamps");
-        check(commands.contains("mayAdmin") && !commands.contains("hasPermissionLevel"), "commands gate on the owner rule, not the permission level");
+        check(commands.contains("AdminOg.allowed") && commands.contains("ServerCommandSourceAccessor") && !commands.contains("hasPermissionLevel") && !commands.contains("\"Server\""), "commands gate on the owner rule and the real console output, not a name or the permission level");
+        check(!commands.contains("getUserCache"), "no user cache lookup");
+        String mixins = Files.readString(src.getParent().getParent().getParent().resolve("resources/gravesandglory.mixins.json"));
+        check(mixins.substring(0, mixins.indexOf("\"client\"")).contains("ServerCommandSourceAccessor"), "the accessor mixin is registered for the server side (before the client list)");
+        check(Files.readString(src.resolve("Campaign.java")).contains("\"away\"") && Files.readString(src.resolve("Campaign.java")).contains("crashStamps"), "the crash checkpoint records who was away");
         System.out.println("AdminOgCheck: " + checks + " checks passed");
     }
 }

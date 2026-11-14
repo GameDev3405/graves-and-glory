@@ -28,14 +28,26 @@ public final class AdminCommands {
     static Path joinsFile() { return dir().resolve("joins.json"); }
 
     private static JoinLedger ledger;
-    /** The ledger, read once per server run. */
+    private static AdminOg.Store store;
+    /** admin.json as the server sees it (cached by modification time). */
+    static synchronized AdminOg.Store admin() {
+        if (store == null) store = new AdminOg.Store(adminFile());
+        return store;
+    }
+    /** The ledger, read once per server run; a damaged file is read again once it changes, and the stamps taken meanwhile are kept. */
     static synchronized JoinLedger ledger() {
         if (ledger == null) ledger = JoinLedger.load(joinsFile());
+        else if (ledger.broken && JoinLedger.keyOf(joinsFile()) != ledger.brokenKey) {
+            JoinLedger fresh = JoinLedger.load(joinsFile());
+            if (!fresh.broken) { fresh.absorb(ledger); ledger = fresh; } else ledger.brokenKey = fresh.brokenKey;
+        }
         return ledger;
     }
     private static synchronized void saveLedger() {
         try { ledger().save(joinsFile()); }
-        catch (IOException | RuntimeException e) { System.err.println("[Graves and Glory] joins.json could not be saved: " + e); }
+        catch (IOException | RuntimeException e) {
+            if (JoinLedger.limited("joins-save", System.currentTimeMillis())) System.err.println("[Graves and Glory] ERROR: joins.json could not be saved (stamps are kept in memory only): " + e.getMessage());
+        }
     }
 
     /** A login: stamps firstSeenAt once and keeps the name current. Never throws. */
@@ -50,7 +62,7 @@ public final class AdminCommands {
     }
 
     public static void register() {
-        ServerLifecycleEvents.SERVER_STOPPED.register(s -> { synchronized (AdminCommands.class) { ledger = null; } });
+        ServerLifecycleEvents.SERVER_STOPPED.register(s -> { synchronized (AdminCommands.class) { ledger = null; store = null; } });
         CommandRegistrationCallback.EVENT.register((d, access, env) -> d.register(CommandManager.literal("gg").requires(AdminCommands::allowed)
             .then(CommandManager.literal("og")
                 .then(CommandManager.literal("window")
@@ -62,12 +74,11 @@ public final class AdminCommands {
                 .then(CommandManager.literal("check").then(CommandManager.argument("player", StringArgumentType.word()).executes(c -> check(c)))))));
     }
 
-    /** True for the server console: no entity and the console's name, "Server" (rcon is "Rcon", a command block "@" unless an op renames it). */
-    static boolean console(ServerCommandSource s) { return s.getEntity() == null && "Server".equals(s.getName()); }
-
+    /** The gate (AdminOg.allowed): the console is a source with no entity whose output is the server itself; anyone else must be an owner in admin.json. */
     static boolean allowed(ServerCommandSource s) {
+        boolean outputIsServer = ((gg.gravesandglory.mixin.ServerCommandSourceAccessor) s).gravesandgloryOutput() instanceof net.minecraft.server.MinecraftServer;
         ServerPlayerEntity p = s.getPlayer();
-        return AdminOg.mayAdmin(AdminOg.load(adminFile()), console(s), p == null ? null : p.getUuid());
+        return AdminOg.allowed(admin().get(), outputIsServer, s.getEntity() != null, p == null ? null : p.getUuid());
     }
 
     static int fail(ServerCommandSource s, String text) { s.sendError(Text.literal(text)); return 0; }
@@ -76,31 +87,30 @@ public final class AdminCommands {
     static int setWindow(ServerCommandSource s, String range) {
         String[] parts = range.trim().split("\\s+");
         Instant a = parts.length == 2 ? AdminOg.parseBound(parts[0], false) : null, b = parts.length == 2 ? AdminOg.parseBound(parts[1], true) : null;
-        if (a == null || b == null) return fail(s, "Usage: /gg og window <start> <end>, each an ISO-8601 instant (2026-12-01T00:00:00Z) or a date (2026-12-01).");
+        if (a == null || b == null) return fail(s, "Usage: /gg og window <start> <end>, each an ISO-8601 instant (2026-12-01T00:00:00Z) or a date (2026-12-01: a start date is 00:00:00 UTC, an end date is the end of that UTC day).");
         if (b.isBefore(a)) return fail(s, "The end is before the start.");
-        var c = AdminOg.load(adminFile());
+        var c = admin().copy();
         c.ogWindow = new AdminOg.Window(); c.ogWindow.start = a.toString(); c.ogWindow.end = b.toString();
-        return store(s, c, "OG window set: " + a + " to " + b + " (inclusive).");
+        return store(s, c, "OG window set: " + a + " to " + b + " (UTC, both inclusive).");
     }
 
     static int clearWindow(ServerCommandSource s) {
-        var c = AdminOg.load(adminFile());
+        var c = admin().copy();
         c.ogWindow = null;
         return store(s, c, "OG window cleared: only players added by hand are OG.");
     }
 
     static int store(ServerCommandSource s, AdminOg.Config c, String done) {
-        try { AdminOg.save(adminFile(), c); return say(s, done); }
-        catch (IOException | RuntimeException e) { return fail(s, "admin.json could not be saved: " + e.getMessage()); }
+        try { admin().save(c); return say(s, done); }
+        catch (IOException | RuntimeException e) { return fail(s, "admin.json was not changed: " + e.getMessage()); }
     }
 
-    /** An online player, a name the ledger has seen, or a name the server's user cache knows; null when none. A bare uuid is accepted when the ledger knows it. */
+    /** An online player, or a name or uuid the join ledger has seen; null when none (the user cache is not asked: it can block on Mojang and accepts accounts that never joined). */
     static UUID resolve(ServerCommandSource s, String name) {
         var online = s.getServer().getPlayerManager().getPlayer(name);
         if (online != null) return online.getUuid();
         UUID id = ledger().byName(name);
         if (id != null) return id;
-        try { var u = s.getServer().getUserCache().findByName(name); if (u.isPresent()) return u.get().getId(); } catch (RuntimeException ignored) {}
         try { UUID u = UUID.fromString(name); if (ledger().get(u) != null) return u; } catch (IllegalArgumentException ignored) {}
         return null;
     }
@@ -111,19 +121,26 @@ public final class AdminCommands {
         var s = c.getSource(); String name = StringArgumentType.getString(c, "player");
         UUID id = resolve(s, name);
         if (id == null) return fail(s, "No player named " + name + ": the server has not seen them.");
-        var cfg = AdminOg.load(adminFile());
+        var cfg = admin().copy();
         if (add) cfg.add(id); else cfg.remove(id);
         return store(s, cfg, nameOf(id) + (add ? " is now OG by hand." : " is now removed from OG by hand."));
     }
 
     static int list(ServerCommandSource s) {
-        var cfg = AdminOg.load(adminFile());
+        var cfg = admin().get();
+        warnDamaged(s);
         var w = AdminOg.window(cfg);
         say(s, "OG window: " + (w == null ? "none" : w[0] + " to " + w[1]));
         say(s, "Added by hand (" + cfg.ogAdded.size() + "): " + names(cfg.ogAdded));
         say(s, "Removed by hand (" + cfg.ogRemoved.size() + "): " + names(cfg.ogRemoved));
         long byDate = ledger().all().entrySet().stream().filter(e -> AdminOg.isOg(cfg, UUID.fromString(e.getKey()), e.getValue().firstMatchAt)).count();
         return say(s, "OG in total: " + byDate + " of " + ledger().all().size() + " players in the join ledger.");
+    }
+
+    static void warnDamaged(ServerCommandSource s) {
+        String p = admin().problem();
+        if (p != null) s.sendError(Text.literal("admin.json is damaged (" + p + "): it reads as empty and commands will not change it. A copy is kept as admin.json.bad."));
+        if (ledger().broken) s.sendError(Text.literal("joins.json is damaged (" + ledger().brokenReason + "): stamps are not being saved."));
     }
 
     static String names(List<String> ids) {
@@ -139,7 +156,7 @@ public final class AdminCommands {
         var s = c.getSource(); String name = StringArgumentType.getString(c, "player");
         UUID id = resolve(s, name);
         if (id == null) return fail(s, "No player named " + name + ": the server has not seen them.");
-        var cfg = AdminOg.load(adminFile()); var e = ledger().get(id);
+        var cfg = admin().get(); warnDamaged(s); var e = ledger().get(id);
         long seen = e == null ? 0 : e.firstSeenAt, match = e == null ? 0 : e.firstMatchAt;
         say(s, nameOf(id) + ": first seen " + stamp(seen) + ", first match " + stamp(match));
         return say(s, AdminOg.reason(cfg, id, match));

@@ -600,7 +600,7 @@ public final class Campaign {
     /** Every 30 seconds of a running match: what a crash would owe each player, written atomically under the world save. */
     void checkpoint(){
         JsonObject j=new JsonObject();j.addProperty("matchId",matchId);j.addProperty("practice",practice);j.addProperty("roundSeconds",b.roundSeconds);
-        JsonObject played=new JsonObject();playedNow().forEach((id,sec)->played.addProperty(id.toString(),sec));j.add("played",played);
+        JsonObject played=new JsonObject();playedNow().forEach((id,sec)->played.addProperty(id.toString(),sec));j.add("played",played);JsonArray awayList=new JsonArray();for(UUID id:participants)if(away(id))awayList.add(id.toString());j.add("away",awayList);
         SafeFiles.tryWrite(progressFile(),JSON.toJson(j),"The match progress");
     }
     /** A crash left a progress file (a clean end or stop deletes it): pay each player the pro-rated share it recorded, then delete it. */
@@ -612,7 +612,8 @@ public final class Campaign {
             for(var e:j.getAsJsonObject("played").entrySet())played.put(UUID.fromString(e.getKey()),e.getValue().getAsLong());
             System.err.println("[Graves and Glory] Match "+j.get("matchId").getAsString()+" was interrupted by a crash: partial participation gold for "+played.size()+" player(s).");
             payPartial(played,j.get("roundSeconds").getAsInt(),j.get("practice").getAsBoolean());
-            for(var e:played.entrySet())if(JoinLedger.finished(true,e.getValue(),Spec.CAMPAIGN[0].minimumRewardSeconds()))AdminCommands.matched(e.getKey(),nameOf(e.getKey())); // a crash after the reward minimum still counts as a match played
+            Set<UUID> away=null;if(j.has("away")){away=new HashSet<>();for(var a:j.getAsJsonArray("away"))away.add(UUID.fromString(a.getAsString()));} // an older checkpoint has no list: nobody is stamped
+            for(UUID id:JoinLedger.crashStamps(played,away,Spec.CAMPAIGN[0].minimumRewardSeconds()))AdminCommands.matched(id,nameOf(id)); // a crash after the reward minimum still counts as a match played, for players who were present
         }catch(Exception e){System.err.println("[Graves and Glory] The match progress file could not be read; no partial reward: "+e);}
         deleteProgress();
     }
@@ -650,7 +651,7 @@ public final class Campaign {
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
             List<String> titles=eligible?ledger(p,s):List.of();List<Integer> pactChapters=pacts(p);int pacts=pactChapters.size();
             List<MatchEnding.Best> bests=eligible?MatchEnding.bests(p.bests,bestValues(liveSquad(id,s))):List.of(); // pass 3: personal bests, in the same save as the rewards
-            if(JoinLedger.finished(present,seated,seconds,Spec.CAMPAIGN[0].minimumRewardSeconds()))AdminCommands.matched(id,nameOf(id)); // admin tools phase A: the first finished match, in the server's join ledger (never the profile)
+            if(JoinLedger.finished(present,seated,Spec.CAMPAIGN[0].minimumRewardSeconds()))AdminCommands.matched(id,nameOf(id)); // admin tools phase A: the first finished match, in the server's join ledger (never the profile)
             boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("writs",saved?p.troopWrits-writs0:0);report.addProperty("gearShards",saved?p.gearShards-shards0:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pactChapters));results.put(id,report);
             // match ending (2026-11-12 spec): a loss reads DEFEAT, plus the banner line, podium, your groups, rewards rows and what is ready to claim
             if(winner>=0&&s.team!=winner)report.addProperty("outcome","DEFEAT");report.addProperty("line",endingLine);

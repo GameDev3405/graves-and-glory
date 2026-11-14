@@ -58,13 +58,41 @@ public final class JoinLedger {
         return null;
     }
 
-    /** A player counts as having finished a match when he was present at its end (a dropped player who came back is; one who never returned is not), was seated for some time, and the match lasted the reward minimum (Campaign.finish's eligible). */
-    public static boolean finished(boolean presentAtEnd, long seatedSeconds, long matchSeconds, int minimumRewardSeconds) {
-        return presentAtEnd && seatedSeconds > 0 && matchSeconds >= minimumRewardSeconds;
-    }
-    /** The crash-recovery form: the seconds he had played (Campaign.payInterrupted) against the reward minimum. */
+    /**
+     * A player finished a match when he was present at its end (a dropped player who came back is; one who never returned is not) and his own seated seconds reach the reward
+     * minimum: a late joiner who sat less than that is not stamped, however long the match ran.
+     */
     public static boolean finished(boolean presentAtEnd, long playedSeconds, int minimumRewardSeconds) {
         return presentAtEnd && playedSeconds > 0 && playedSeconds >= minimumRewardSeconds;
+    }
+
+    /**
+     * Who a crash-recovered match stamps: players who had played the minimum and were not away when the checkpoint was written. A checkpoint without the away list (written by
+     * an older build) stamps nobody: absence cannot be told.
+     */
+    public static Set<UUID> crashStamps(Map<UUID, Long> played, Set<UUID> away, int minimumRewardSeconds) {
+        Set<UUID> out = new LinkedHashSet<>();
+        if (away == null) return out;
+        for (var e : played.entrySet()) if (finished(!away.contains(e.getKey()), e.getValue(), minimumRewardSeconds)) out.add(e.getKey());
+        return out;
+    }
+
+    /** True when an existing file could not be read (damaged or blank): the ledger then refuses every save, so the stamps in the file are never overwritten. */
+    boolean broken;
+    String brokenReason;
+    long brokenKey;
+    /** Why a save was refused, to log at most once a minute (limited). */
+    private static final Map<String, Long> lastLogged = new HashMap<>();
+    /** True when this message may be logged now: at most once per 60 s per key. */
+    static synchronized boolean limited(String key, long nowMillis) {
+        Long last = lastLogged.get(key);
+        if (last != null && nowMillis - last < 60_000 && nowMillis >= last) return false;
+        lastLogged.put(key, nowMillis);
+        return true;
+    }
+
+    static long keyOf(Path file) {
+        try { return Files.getLastModifiedTime(file).toMillis() * 31 + Files.size(file); } catch (IOException e) { return -2; }
     }
 
     static JoinLedger parse(String text) {
@@ -84,24 +112,44 @@ public final class JoinLedger {
         return l;
     }
 
-    /** Reads the file; never throws (see the class comment). */
+    /** Reads the file; never throws. A missing file starts empty. An existing file that is blank or damaged also reads as empty but the ledger is marked broken and refuses saves; a copy is kept as joins.json.bad. */
     public static JoinLedger load(Path file) {
+        JoinLedger l = new JoinLedger();
         try {
-            if (!Files.isRegularFile(file)) return new JoinLedger();
+            if (!Files.isRegularFile(file)) return l;
             String text = Files.readString(file);
-            if (text.isBlank()) return new JoinLedger();
-            try { return parse(text); }
-            catch (RuntimeException bad) {
+            try {
+                if (text.isBlank()) throw new IllegalArgumentException("the file is blank");
+                return parse(text);
+            } catch (RuntimeException bad) {
                 Path kept = AdminOg.keepBad(file);
-                SafeFiles.warn.accept("joins.json could not be read (" + bad.getMessage() + "); treated as empty. A copy is kept as " + (kept == null ? "(could not be copied)" : kept.getFileName()) + ".");
-                return new JoinLedger();
+                l.markBroken(file, String.valueOf(bad.getMessage()));
+                SafeFiles.warn.accept("joins.json could not be read (" + l.brokenReason + "); no stamp will be saved until it is fixed, and the file is left as it is. A copy is kept as " + (kept == null ? "(could not be copied)" : kept.getFileName()) + ".");
             }
         } catch (IOException | RuntimeException e) {
-            SafeFiles.warn.accept("joins.json could not be opened (" + e + "); treated as empty.");
-            return new JoinLedger();
+            l.markBroken(file, "could not be opened: " + e);
+            SafeFiles.warn.accept("joins.json could not be opened (" + e + "); no stamp will be saved until it is fixed.");
         }
+        return l;
+    }
+
+    void markBroken(Path file, String reason) { broken = true; brokenReason = reason; brokenKey = keyOf(file); }
+
+    /** Stamps this ledger lacks, taken from another (the one read after a fixed file). */
+    void absorb(JoinLedger other) {
+        for (var e : other.entries.entrySet()) {
+            Entry mine = entries.computeIfAbsent(e.getKey(), k -> new Entry());
+            if (mine.firstSeenAt <= 0 && e.getValue().firstSeenAt > 0) { mine.firstSeenAt = e.getValue().firstSeenAt; }
+            if (mine.firstMatchAt <= 0 && e.getValue().firstMatchAt > 0) { mine.firstMatchAt = e.getValue().firstMatchAt; }
+            if (mine.lastName.isEmpty()) mine.lastName = e.getValue().lastName;
+        }
+        dirty = true;
     }
 
     /** Atomic write (temp file then move). */
-    public void save(Path file) throws IOException { SafeFiles.write(file, GSON.toJson(entries)); dirty = false; }
+    public void save(Path file) throws IOException {
+        if (broken) throw new IllegalStateException("joins.json is damaged (" + brokenReason + "); not overwriting it");
+        SafeFiles.writeWithBackup(file, GSON.toJson(entries));
+        dirty = false;
+    }
 }
