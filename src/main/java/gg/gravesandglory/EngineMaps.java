@@ -204,10 +204,9 @@ public final class EngineMaps {
    System.out.println("[Graves and Glory] "+head);for(String s:lastIssues)System.out.println("[Graves and Glory]   "+s);
    try{Files.writeString(Path.of("engine-map-check.txt"),head+"\n"+String.join("\n",lastIssues)+(lastIssues.isEmpty()?"":"\n"),StandardCharsets.UTF_8);}catch(Exception e){System.out.println("[Graves and Glory] engine-map-check.txt not written: "+e.getMessage());}
    Diagnostics.report("engine-map-check",lastIssues.isEmpty(),lastIssues.isEmpty()?null:String.join("; ",lastIssues.subList(0,Math.min(5,lastIssues.size()))));
-   if(!anchors.isEmpty()){ // the props: every anchor gets its parts once the ground is placed and read back (the light blocks it restores must not read as ground)
+   { // the props (always: a map without anchors still clears the parts a previous build left; scanBox walks block entities per chunk): every anchor gets its parts once the ground is placed and read back (the light blocks it restores must not read as ground)
     lastProps=Props.scanBox(w,new BlockBox(map.ox,w.getBottomY(),map.oz,map.ox+map.width-1,w.getTopY()-1,map.oz+map.depth-1));
     System.out.println("[Graves and Glory] engine map "+map.id+": props "+lastProps+" found by Props.scanBox over "+anchors.size()+" anchors");}
-   else lastProps=0;
    anchors.clear();
    stacks=null;tileOf=null;readSolid=null;readWater=null;phase=0;map=null;return true;}
   phase=0;return false;

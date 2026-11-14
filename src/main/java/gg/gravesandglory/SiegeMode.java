@@ -519,6 +519,12 @@ public final class SiegeMode extends BattleMode {
      * under PLUG_TAG and listed in the crash marker) and filled with the row's block. False, with nothing shut, when a box cannot be saved.
      */
     boolean plug(GravesAndGlory.Battle b, Sites st) {
+        var states = new java.util.ArrayList<net.minecraft.block.BlockState>();
+        for (var p : st.plugs) { // every plug's block first: a bad id shuts nothing (preflight checks the ids too)
+            var id = net.minecraft.util.Identifier.tryParse(p.piece());
+            if (id == null || !net.minecraft.registry.Registries.BLOCK.containsId(id)) { System.err.println("[Graves and Glory] siege plug " + p.id() + ": " + p.piece() + " is not a block; nothing shut"); return false; }
+            states.add(net.minecraft.registry.Registries.BLOCK.get(id).getDefaultState());
+        }
         var saved = new java.util.ArrayList<Structures.Saved>();
         for (var p : st.plugs) {
             int x0 = (int) p.x() - p.seconds() / 2, z0 = (int) p.z() - (int) p.radius(), y0 = (int) p.y() + 1;
@@ -526,16 +532,20 @@ public final class SiegeMode extends BattleMode {
             if (snap == null) { for (var s : saved) Structures.restore(b.world, s); return false; }
             saved.add(snap);
         }
+        b.saves.addAll(saved); // saved and in the crash marker before a block changes
+        mark(b);
         for (var p : st.plugs) clearPassage(b, p.x() + .5, p.z() + .5, (int) p.y(), p.seconds() / 2 + 1, (int) p.radius(), (int) p.hp());
         for (int i = 0; i < st.plugs.size(); i++) {
             var p = st.plugs.get(i);
-            var block = net.minecraft.registry.Registries.BLOCK.get(new net.minecraft.util.Identifier(p.piece())).getDefaultState();
+            var block = states.get(i);
             var o = saved.get(i).origin();
             for (int x = 0; x < p.seconds(); x++) for (int y = 0; y < (int) p.hp(); y++) for (int z = 0; z <= (int) p.radius() * 2; z++)
                 b.world.setBlockState(o.add(x, y, z), block);
+            for (int x = 0; x < p.seconds(); x++) for (int y = 0; y < (int) p.hp(); y++) for (int z = 0; z <= (int) p.radius() * 2; z++) { // bars and panes join their neighbours
+                var at = o.add(x, y, z);
+                b.world.setBlockState(at, net.minecraft.block.Block.postProcessState(b.world.getBlockState(at), b.world, at));
+            }
         }
-        b.saves.addAll(saved);
-        mark(b);
         return true;
     }
 

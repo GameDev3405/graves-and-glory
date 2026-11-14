@@ -187,7 +187,14 @@ for (mode,m),nodes in roads.items():
         near=min(seg_distance(b['x'],b['z'],pts[i],pts[i+1]) for i in range(len(pts)-1))
         if near<=b['radius']+8: errors.append(f'modeSites/{b["id"]}: base {near:.1f} blocks from the road, it must stand off it')
 # Siege: the three stages in order (a ring each for the yard and the keep, the gate between them) and the wards' rows.
-for m in {s['map'] for s in data.get('modeSites',[]) if s['mode']=='siege'}:
+siege_hosts={int(x) for r in data.get('modes',[]) if r['id']=='siege' for x in str(r['maps']).split(',') if x.strip()}
+for m in {s['map'] for s in data.get('modeSites',[]) if s['mode']=='siege'}|siege_hosts:
+    if m in range(len(data['maps'])) and data['maps'][m].get('source','-')!='-':  # an engine map: its passages are plug rows, one at the gate, posts on a team
+        g=[s for s in data['modeSites'] if s['mode']=='siege' and s['map']==m and s['kind']=='gate']
+        if g and not any(q['kind']=='plug' and q['mode']=='siege' and q['map']==m and (q['x'],q['z'])==(g[0]['x'],g[0]['z']) for q in data['modeSites']): errors.append(f'modeSites siege map {m}: an engine map needs a plug row at its gate ({g[0]["x"]}, {g[0]["z"]})')
+        for q in data['modeSites']:
+            if q['mode']=='siege' and q['map']==m and q['kind']=='plug' and not re.fullmatch(r'(minecraft:)?[a-z0-9_]+',q['piece']): errors.append(f'modeSites/{q["id"]}: plug block {q["piece"]} is not a block id')
+            if q['mode']=='siege' and q['map']==m and q['kind']=='post' and q['stage'] not in (0,1): errors.append(f'modeSites/{q["id"]}: a post stage is its team, 0 or 1')
     st=sorted((s['stage'],s['kind']) for s in data['modeSites'] if s['mode']=='siege' and s['map']==m and s['kind'] in ('stage','gate'))
     if st!=[(0,'stage'),(1,'gate'),(2,'stage')]: errors.append(f'modeSites siege map {m}: the stages must be a stage row 0, the gate row 1 and a stage row 2, found {st}')
     for s in data['modeSites']:
