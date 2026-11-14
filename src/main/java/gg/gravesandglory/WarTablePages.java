@@ -714,7 +714,7 @@ final class WarTablePages {
             if (row == null) continue;
             row.visible = shown;
             row.setMessage(Text.literal(shown ? roll.get(i).name() : ""));
-            String tip = !shown ? "" : rarityWord(roll.get(i).troopId()) + ", " + cost(roll.get(i).troopId()) + " gold" + (blockedWhy(roll.get(i).troopId()).isEmpty() ? "" : ". " + blockedWhy(roll.get(i).troopId()));
+            String tip = !shown ? "" : rarityWord(roll.get(i).troopId()) + ", " + cost(roll.get(i).troopId()) + " gold" + (blockedWhy(roll.get(i).troopId()).isEmpty() ? "" : "\n" + blockedWhy(roll.get(i).troopId()));
             if (!tip.equals(rowTips[i])) { rowTips[i] = tip; row.setTooltip(tip.isEmpty() ? null : Tooltip.of(Text.literal(tip))); }
         }
         for (int i = 0; i < WarGrid.cells(); i++) { var c = buttons.get("cell-" + i); if (c != null) { c.active = free; c.visible = true; } }
@@ -1192,7 +1192,7 @@ final class WarTablePages {
         String[] kinds = {"Shield", "Melee", "Ranged", "Caster"};
         for (var id : table().values()) for (int k = 0; k < kinds.length; k++) if (kinds[k].equals(kindOf(id))) by[k]++;
         for (int k = 0; k < kinds.length; k++)
-            stat(g, "army-" + kinds[k].toLowerCase(), kinds[k], Integer.toString(by[k]), x + (k % 2) * (BONUS_W / 2 - 2), y + 28 + 12 * (k / 2), BONUS_W / 2 - 2, DarkUi.IVORY);
+            stat(g, "army-" + kinds[k].toLowerCase(), kinds[k], Integer.toString(by[k]), x + (k % 2) * (BONUS_W / 2 + 4), y + 28 + 12 * (k / 2), BONUS_W / 2 - 10, DarkUi.IVORY);
         int limit = colourTop() - 6;
         traits(g, x, top + ARMY_H, limit);
     }
