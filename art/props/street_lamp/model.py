@@ -9,21 +9,10 @@ Build:  python art/props/build_props.py street_lamp      Card:  python tools/pro
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE   # noqa: F401
+from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE, Anim   # noqa: F401
 
-GLASS = fixed("B8641A", "E0962A", "F6C448", "FFE27A", "FFF4B8")      # lantern glass, warm yellow (full-bright part)
-
-
-def _glass(face, P, c, r, w, h):
-    """Frosted pane: a brighter heart, a darker rim; the top and bottom faces stay mid."""
-    if face in ("up", "down"): return GLASS[2]
-    d = min(c, w - 1 - c, r, h - 1 - r)
-    return GLASS[2] if d == 0 else GLASS[3] if d == 1 else GLASS[4]
-
-
-def glass_mat():
-    m = Mat(GLASS, 2, _glass, edges=False, lit=False); m.ramps = (GLASS,)
-    return m
+# candle flicker behind the glass (proplib lamp_glass): four frames blended, played in an irregular order
+LAMP_FLICKER = Anim(frames=4, frametime=3, interpolate=True, order=[0, 0, 1, 0, 2, 0, 0, 3, 1, 0, 2, 2, 0, 3])
 
 
 def build():
@@ -48,7 +37,8 @@ def build():
         E((7, 47, 7), (9, 48, 9), "steel", name="cap tip"),
     ]
     g = [
-        E((5, 36, 5), (11, 44, 11), glass_mat(), skip="down up", name="lantern glass"),
+        E((5, 36, 5), (11, 44, 11), "lamp_glass", skip="down up", name="lantern glass"),
     ]
     return Prop("street_lamp", {"street_lamp": b, "street_lamp_glass": g}, glow=("street_lamp_glass",),
+                anim={"street_lamp_glass": LAMP_FLICKER},
                 shift={"street_lamp": (0, 16, 0), "street_lamp_glass": (0, 16, 0)})

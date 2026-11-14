@@ -1,6 +1,6 @@
 """In-game prop shots (docs/props/WORKFLOW.md, step 4): one real client, props placed through Props.place.
 
-    python tools/prop_shot.py <id>[,<id>...] [--compare <id>=<group/name> ...] [--compare-all] [--offline] [--timeout 1500]
+    python tools/prop_shot.py <id>[,<id>...] [--compare <id>=<group/name> ...] [--compare-all] [--offline] [--frames] [--timeout 1500]
 
 Builds the prop pack (tools/build_prop_pack.py) into an isolated run root work/props/shotrun/<stamp>/, enables it as a client
 resource pack, runs `gradlew runClient` with the prop-look suite (GRAVES_PHASE1_CHECKS=prop-look, GRAVES_PROPLOOK=<ids>) and copies
@@ -56,6 +56,7 @@ def compare_pairs(specs, ids):
 
 def main(argv=None):
     a = argparse.ArgumentParser(); a.add_argument('ids'); a.add_argument('--offline', action='store_true')
+    a.add_argument('--frames', action='store_true', help='also shoot near-day 3, 6 and 9 ticks later (-t3/-t6/-t9) to see animated textures move')
     a.add_argument('--timeout', type=int, default=1500)
     a.add_argument('--compare-all', action='store_true',
                    help='pair every id with the plain-block fixture of the maps (tools/compare_templates.py); ids without one are shot alone')
@@ -86,7 +87,7 @@ def main(argv=None):
                                      'guiScale:3\nresourcePacks:["fabric","gravesandglory:armory","file/gg-props.zip"]\n', encoding='utf8')
     env = dict(os.environ, JAVA_HOME=str(jdk), PATH=str(jdk / 'bin') + os.pathsep + os.environ['PATH'],
                GRAVES_ROADMAP_TEST_ROOT=str(root), GRAVES_PHASE1_CHECKS='prop-look', GRAVES_PROPLOOK=','.join(ids),
-               GRAVES_PROPCMP=';'.join('%s=%s' % kv for kv in cmp),
+               GRAVES_PROPCMP=';'.join('%s=%s' % kv for kv in cmp), GRAVES_PROPFRAMES='1' if o.frames else '',
                GRAVES_PROPEXAMPLE=str(ROOT / 'docs' / 'props' / 'examples' / 'prop_facings.nbt'))
     gradle = [str(ROOT / ('gradlew.bat' if os.name == 'nt' else 'gradlew')), '--no-daemon'] + (['--offline'] if o.offline else [])
     log = root / 'game.log'

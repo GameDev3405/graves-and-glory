@@ -260,13 +260,21 @@ class E:
         return MAT[m] if isinstance(m, str) else m
 
 class Prop:
-    """A prop: {part: [E]}. `shift` {part: (dx,dy,dz)} stores a part moved by -shift (inside -16..32). A split prop
+    """A prop: {part: [E]}. `shift` {part: (dx,dy,dz)} stores a part moved by -shift (inside -16..32). `anim` {part: Anim} gives
+    a part an animated texture of its own. A split prop
     (Prop.split) carries `offsets`: its shifts go to the def's part `offset` (the game moves the part entity) instead of
     the model's display translation, which Minecraft clamps to +-80 px."""
-    def __init__(s, pid, parts, glow=(), shift=None, note=""):
+    def __init__(s, pid, parts, glow=(), shift=None, note="", anim=None):
         s.id, s.parts, s.glow, s.shift, s.note = pid, parts, set(glow), shift or {}, note
         s.offsets = False
         s.regions = None
+        s.anim = dict(anim or {})   # {part: Anim}: animated parts, each on its own texture strip (see Anim)
+        for p in s.anim: assert p in s.parts, "%s: anim part %s is not a part" % (pid, p)
+        for p, els in s.parts.items():
+            for e in els:
+                for f in FACES:
+                    if getattr(e.mat_for(f), "animated", False) and p not in s.anim:
+                        raise SystemExit("%s: element %r on part %s uses an AnimMat but the part has no Anim" % (pid, e.name, p))
 
     @classmethod
     def split(cls, pid, els, size, glow=(), note=""):
@@ -282,6 +290,100 @@ class Prop:
         p = cls(pid, parts, glow=gnames, shift=shift, note=note)
         p.offsets, p.regions = True, total
         return p
+
+class Anim:
+    """Marks a part as animated: the part gets its own texture `gravesandglory:prop/<part>_anim`, a vertical strip of
+    `frames` square frames (vanilla .mcmeta animation; a .mcmeta animates a whole texture, so the part leaves the prop's
+    static sheet). `frametime` is game ticks a frame, `interpolate` blends between frames, `order` an optional frame
+    sequence (indices, may repeat) for an irregular flicker. Static materials on the part repeat in every frame;
+    AnimMat materials are painted once per frame."""
+    def __init__(s, frames=6, frametime=3, interpolate=False, order=None):
+        assert 2 <= frames <= 16, "frames %d: 2..16" % frames
+        assert frametime >= 1, frametime
+        assert order is None or all(0 <= i < frames for i in order), order
+        s.frames, s.frametime, s.interpolate, s.order = frames, frametime, interpolate, list(order) if order else None
+
+    def mcmeta(s):
+        a = {"frametime": s.frametime, "interpolate": bool(s.interpolate)}
+        if s.order: a["frames"] = s.order
+        return {"animation": a}
+
+class AnimMat(Mat):
+    """A material painted per frame: pattern(face, P, c, r, w, h, frame, frames) -> tone delta or colour tuple
+    (alpha 0 = see-through, for flame tongues on flat planes). Only on parts marked with Anim."""
+    animated = True
+    def __call__(s, face, P, c, r, w, h, frame=0, frames=1):
+        t = s.base + ((s.top if face == "up" else LIT[face]) if s.lit else 0)
+        if s.pattern:
+            d = s.pattern(face, P, c, r, w, h, frame, frames)
+            if isinstance(d, tuple): return d
+            t += d
+        return s.ramp[max(0, min(4, t))]
+
+# ---- live fire (animated parts: Anim, AnimMat) ----------------------------------------------------------------
+# Flames and embers for braziers, cauldrons and lamps. Each is an AnimMat: put it on a part marked with Anim (the part gets
+# its own animated strip). FIRE_ANIM is the house timing: 8 frames, 2 ticks each, no blending (crisp like vanilla fire).
+FIRE_ANIM = dict(frames=8, frametime=2, interpolate=False)
+LAMP_GLASS = fixed("B8641A", "E0962A", "F6C448", "FFE27A", "FFF4B8")   # street lamps' warm lantern glass
+
+def _wave(k, n, phase):
+    return math.sin(2 * math.pi * (k / n + phase))
+
+def _flame(face, P, c, r, w, h, k, n):
+    """Flame tongues on a flat upright plane (a zero-thickness element: two faces back to back). Tongues 2 px wide, each
+    rising and falling on its own phase; hot yellow at the root and the middle, orange, then red tips; see-through above."""
+    if face in ("up", "down"): return (0, 0, 0, 0)
+    x, y, z = P
+    u = math.floor(x if face in ("north", "south") else z)    # world column: both faces of a plane agree
+    d = abs(c + 0.5 - w / 2) / (w / 2)                        # 0 centre .. 1 edge (symmetric, so mirrored faces agree)
+    j = math.floor(u / 2)                                     # tongue
+    top = h * (0.30 + 0.70 * (1 - d ** 1.4)) * (0.78 + 0.22 * _wave(k, n, h3(j, 5)))
+    if d > 0.6 and _wave(k, n, h3(j, 9)) < -0.3: top *= 0.55  # an outer tongue ducks now and then
+    b = h - 1 - r                                             # rows from the bottom
+    if b >= round(top):
+        # one loose lick above the tallest tongue, on its rising frames only
+        if d < 0.3 and b == round(top) + 1 and _wave(k, n, h3(j, 5)) > 0.55: return HOT[2]
+        return (0, 0, 0, 0)
+    f = b / max(1.0, top)
+    if f < 0.5 and d < 0.45: return HOT[4]
+    if f < 0.72 and d < 0.8: return HOT[3]
+    if f < 0.9: return HOT[2]
+    return HOT[1]
+
+def _embers(face, P, c, r, w, h, k, n):
+    """pat_coal with the glow breathing: each 2 px lump of the hot gaps brightens and dims on its own phase."""
+    x, y, z = P
+    lump = (math.floor(x / 2), math.floor(z / 2), math.floor(y / 2))
+    kk = h3(*lump, 13); s = _wave(k, n, h3(*lump, 17))
+    if face == "up":
+        if kk < 0.38: return HOT[4] if s > -0.2 else HOT[3]
+        if kk < 0.55: return HOT[3] if s > 0.6 else HOT[2]
+        return COAL[3] if (x + z) % 3 == 0 else COAL[2]
+    if kk < 0.45: return (HOT[2] if s > -0.4 else HOT[1]) if r < h - 1 else HOT[1]
+    return COAL[2] if r == 0 else COAL[1]
+
+def _lamp_glass(face, P, c, r, w, h, k, n):
+    """Frosted lantern pane with a candle behind it: a darker rim, a bright heart that dips, flares and sways a column."""
+    G = LAMP_GLASS
+    if face in ("up", "down"): return G[2]
+    sway = 1 if k == 3 and c >= w // 2 else (-1 if k == 3 else 0)
+    cc = c - sway if 0 <= c - sway < w else c
+    d = min(cc, w - 1 - cc, r, h - 1 - r)
+    if d == 0: return G[2]
+    if k == 1 and r < h // 2: return G[3]           # the flame dips: the upper heart cools
+    if k == 2 and d == 1 and r >= h // 2: return G[4]   # the flame flares: the lower ring warms
+    return G[3] if d == 1 else G[4]
+
+def flame_mat(): m = AnimMat(HOT, 2, _flame, edges=False, lit=False); m.ramps = (HOT,); return m
+def ember_mat(): m = AnimMat(COAL, 2, _embers, edges=False, lit=False); m.ramps = (HOT, COAL); return m
+def lamp_glass_mat(): m = AnimMat(LAMP_GLASS, 2, _lamp_glass, edges=False, lit=False); m.ramps = (LAMP_GLASS,); return m
+MAT["flame"] = flame_mat(); MAT["embers"] = ember_mat(); MAT["lamp_glass"] = lamp_glass_mat()
+
+def flames(cx, cz, y0, y1, half, name="flame"):
+    """Two crossed flame planes (one along x, one along z) centred on (cx, cz), from y0 (bury it in the coals) to y1,
+    `half` px each side of the centre. 2 elements; the part must carry Anim (e.g. Anim(**FIRE_ANIM))."""
+    return [E((cx - half, y0, cz), (cx + half, y1, cz), "flame", name=name + " x"),
+            E((cx, y0, cz - half), (cx, y1, cz + half), "flame", name=name + " z")]
 
 # ---- shape helpers (each returns a list of E) -------------------------------------------------------------------
 # All coordinates must come out whole px (the density check); shapes are stepped like everything else at 16 px a block.
@@ -569,10 +671,13 @@ def pack(rects, size):
         pos[k] = (x, y); x += w; shelf = max(shelf, h)
     return pos
 
-def build_sheet(prop):
+def build_sheet(prop, parts=None, anim=None):
+    """Pack and paint the faces of `parts` (default: every part not animated) on one square sheet. With `anim`, paint
+    one frame per Anim frame and stack them in a vertical strip (size x size*frames); pos is in frame space."""
+    parts = [p for p in prop.parts if p not in prop.anim] if parts is None else parts
     rects = []
-    for pname, els in prop.parts.items():
-        for i, e in enumerate(els):
+    for pname in parts:
+        for i, e in enumerate(prop.parts[pname]):
             for f in visible_faces(e):
                 w, h = face_dims(f, e.frm, e.to)
                 assert w == int(w) and h == int(h), (prop.id, pname, i, f, w, h)
@@ -581,16 +686,27 @@ def build_sheet(prop):
         pos = pack(rects, size)
         if pos is not None: break
     else: raise SystemExit("%s: faces don't fit a %d sheet" % (prop.id, SHEETS[-1]))
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0)); px = img.load()
-    for (pname, i, f), w, h in rects:
-        e = prop.parts[pname][i]; x0, y0 = pos[(pname, i, f)]; m = e.mat_for(f)
-        W, H = (face_dims(f, *e.whole) if e.whole else (w, h))
-        for r in range(h):
-            for c in range(w):
-                P = texel_point(f, e.frm, e.to, c, r)
-                C, R = whole_texel(f, e.whole, P) if e.whole else (c, r)
-                px[x0 + c, y0 + r] = m(f, P, C, R, W, H) if not callable(getattr(m, "paint", None)) else m.paint(f, P, C, R, W, H)
+    n = anim.frames if anim else 1
+    img = Image.new("RGBA", (size, size * n), (0, 0, 0, 0)); px = img.load()
+    for k in range(n):
+        for (pname, i, f), w, h in rects:
+            e = prop.parts[pname][i]; x0, y0 = pos[(pname, i, f)]; m = e.mat_for(f); y0 += k * size
+            W, H = (face_dims(f, *e.whole) if e.whole else (w, h))
+            for r in range(h):
+                for c in range(w):
+                    P = texel_point(f, e.frm, e.to, c, r)
+                    C, R = whole_texel(f, e.whole, P) if e.whole else (c, r)
+                    if getattr(m, "animated", False): px[x0 + c, y0 + r] = m(f, P, C, R, W, H, k, n)
+                    else: px[x0 + c, y0 + r] = m(f, P, C, R, W, H) if not callable(getattr(m, "paint", None)) else m.paint(f, P, C, R, W, H)
     return img, size, pos
+
+def anim_sheets(prop):
+    """{part: (strip image, frame size, pos)} for every animated part."""
+    return {p: build_sheet(prop, [p], a) for p, a in prop.anim.items()}
+
+def texture_of(prop, pname):
+    """Texture id of a part: the prop's sheet, or `<part>_anim` for an animated part."""
+    return "gravesandglory:prop/%s" % (pname + "_anim" if pname in prop.anim else prop.id)
 
 SHEETS = (32, 64, 128, 256, 512, 1024)   # 1024: the most a prop sheet may take in the block atlas (prop_card caps it)
 
@@ -643,7 +759,7 @@ def item_model(prop, pname, size, pos):
         els.append(el)
     return {"credit": "Graves and Glory prop kit, art/props/build_props.py",
             "texture_size": [size, size],
-            "textures": {"0": "gravesandglory:prop/%s" % prop.id, "particle": "gravesandglory:prop/%s" % prop.id},
+            "textures": {"0": texture_of(prop, pname), "particle": texture_of(prop, pname)},
             "elements": els,
             "display": {"fixed": {"translation": [0, 0, 0] if prop.offsets else list(shift)}, "gui": gui_display(prop.parts[pname], shift)}}
 
@@ -651,7 +767,9 @@ def part_offsets(prop):
     """{part: [dx, dy, dz]} px the game moves each part entity by (split props; the def's part `offset`)."""
     return {p: list(prop.shift.get(p, (0, 0, 0))) for p in prop.parts} if prop.offsets else {}
 
-def bbmodel(prop, img, size, pos):
+def bbmodel(prop, img, size, pos, anims=None):
+    anims = anims or {}
+    tex_index = {p: 1 + j for j, p in enumerate(anims)}   # texture 0 the sheet, then one per animated part
     buf = io.BytesIO(); img.save(buf, "PNG")
     u = lambda *a: str(uuid.uuid5(uuid.NAMESPACE_URL, "gg-prop/" + "/".join(map(str, a))))
     elements, outliner = [], []
@@ -659,10 +777,11 @@ def bbmodel(prop, img, size, pos):
         kids = []
         for i, e in enumerate(els):
             faces = {}
+            ppos, ti = (anims[pname][2], tex_index[pname]) if pname in anims else (pos, 0)
             for f in FACES:
-                if (pname, i, f) in pos:
-                    w, h = face_dims(f, e.frm, e.to); x0, y0 = pos[(pname, i, f)]
-                    faces[f] = {"uv": [x0, y0, x0 + w, y0 + h], "texture": 0}
+                if (pname, i, f) in ppos:
+                    w, h = face_dims(f, e.frm, e.to); x0, y0 = ppos[(pname, i, f)]
+                    faces[f] = {"uv": [x0, y0, x0 + w, y0 + h], "texture": ti}
                 else:
                     faces[f] = {"uv": [0, 0, 0, 0], "texture": None}
             rot = [0, 0, 0]; org = [(e.frm[j] + e.to[j]) / 2 for j in range(3)]
@@ -675,6 +794,13 @@ def bbmodel(prop, img, size, pos):
             kids.append(uid)
         outliner.append({"name": pname, "origin": [0, 0, 0], "uuid": u(prop.id, pname), "export": True,
                          "isOpen": True, "visibility": True, "children": kids})
+    anim_tex = []
+    for pname, (aimg, asize, _) in anims.items():
+        ab = io.BytesIO(); aimg.save(ab, "PNG"); a = prop.anim[pname]
+        anim_tex.append({"path": "", "name": pname + "_anim.png", "folder": "prop", "namespace": "gravesandglory", "id": str(tex_index[pname]),
+                         "width": asize, "height": aimg.size[1], "uv_width": asize, "uv_height": asize, "particle": False,
+                         "mode": "bitmap", "saved": True, "uuid": u(prop.id, "tex", pname), "frame_time": a.frametime,
+                         "frame_interpolate": bool(a.interpolate), "source": "data:image/png;base64," + base64.b64encode(ab.getvalue()).decode()})
     return {"meta": {"format_version": "4.10", "model_format": "java_block", "box_uv": False},
             "name": prop.id, "parent": "", "ambientocclusion": False, "front_gui_light": False,
             "visible_box": [1, 1, 0], "resolution": {"width": size, "height": size},
@@ -682,21 +808,30 @@ def bbmodel(prop, img, size, pos):
             "textures": [{"path": "", "name": prop.id + ".png", "folder": "prop", "namespace": "gravesandglory", "id": "0",
                           "width": size, "height": size, "uv_width": size, "uv_height": size, "particle": True,
                           "mode": "bitmap", "saved": True, "uuid": u(prop.id, "tex"),
-                          "source": "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()}]}
+                          "source": "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()}] + anim_tex}
 
 def write(prop, root):
     d = os.path.join(root, prop.id); os.makedirs(d, exist_ok=True)
     img, size, pos = build_sheet(prop)
     img.save(os.path.join(d, prop.id + ".png"))
+    anims = anim_sheets(prop)
     for f in os.listdir(d):   # part models of an earlier build that the prop no longer has (a split prop's emptied region)
         if f.endswith(".json") and f[:-5] not in prop.parts:
             try: old = json.load(open(os.path.join(d, f), encoding="utf8"))
             except (OSError, ValueError): continue
             if str(old.get("credit", "")).startswith("Graves and Glory prop kit"): os.remove(os.path.join(d, f))
+        for ext in ("_anim.png", "_anim.png.mcmeta"):   # a part that is no longer animated
+            if f.endswith(ext) and f[:-len(ext)] in prop.parts and f[:-len(ext)] not in anims: os.remove(os.path.join(d, f))
+    for pname, (aimg, asize, _) in anims.items():
+        aimg.save(os.path.join(d, pname + "_anim.png"))
+        with open(os.path.join(d, pname + "_anim.png.mcmeta"), "w", newline="\n") as f:
+            json.dump(prop.anim[pname].mcmeta(), f, indent=1)
     for pname in prop.parts:
+        psize, ppos = (anims[pname][1], anims[pname][2]) if pname in anims else (size, pos)
         with open(os.path.join(d, pname + ".json"), "w", newline="\n") as f:
-            json.dump(item_model(prop, pname, size, pos), f, indent=1)
+            json.dump(item_model(prop, pname, psize, ppos), f, indent=1)
     with open(os.path.join(d, prop.id + ".bbmodel"), "w", newline="\n") as f:
-        json.dump(bbmodel(prop, img, size, pos), f)
+        json.dump(bbmodel(prop, img, size, pos, anims), f)
     n = sum(len(v) for v in prop.parts.values())
-    print("%-17s sheet %3dx%-3d parts %-40s elements %d" % (prop.id, size, size, ",".join(prop.parts), n))
+    print("%-17s sheet %3dx%-3d parts %-40s elements %d%s" % (prop.id, size, size, ",".join(prop.parts), n,
+          "".join("  anim %s %dx%d x%d" % (p, a[1], a[1], prop.anim[p].frames) for p, a in anims.items())))

@@ -3,12 +3,13 @@
 Frame (art/props/README.md): model px, 16 = 1 block, origin = min corner of the anchor cell, x east, y up, z south,
 FRONT FACES NORTH (-z). The footprint runs x 0..16, y 0..32, z 0..16 px.
 An iron basket of glowing coals on three legs (one leg to the front, two behind), a ring brace between the legs,
-a bowl of eight upright bars with the coals showing between them. The coals are a glow part (full-bright).
+a bowl of eight upright bars with the coals showing between them. The coals and flames are a glow part (full-bright)
+with an animated texture of its own (proplib Anim): embers breathe, flame tongues flicker.
 Build:  python art/props/build_props.py brazier      Card:  python tools/prop_card.py brazier
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE, cylinder   # noqa: F401
+from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE, Anim, FIRE_ANIM, flames, cylinder   # noqa: F401
 
 
 def build():
@@ -36,9 +37,10 @@ def build():
         E((1, 23, 7), (2, 26, 9), "iron", name="ring west"), E((14, 23, 7), (15, 26, 9), "iron", name="ring east"),
     ]
     c = [
-        E((4, 14, 4), (12, 20, 12), "coal", skip="down", name="coal bed"),
-        E((5, 20, 5), (11, 22, 11), "coal", skip="down", name="coal heap"),
-        E((6, 22, 6), (10, 23, 10), "coal", skip="down", name="coal crest"),
-        E((7, 23, 7), (9, 24, 9), "coal", skip="down", name="ember"),
-    ]
-    return Prop("brazier", {"brazier": b, "brazier_coals": c}, glow=("brazier_coals",))
+        E((4, 14, 4), (12, 20, 12), "embers", skip="down", name="coal bed"),
+        E((5, 20, 5), (11, 22, 11), "embers", skip="down", name="coal heap"),
+        E((6, 22, 6), (10, 23, 10), "embers", skip="down", name="coal crest"),
+        E((7, 23, 7), (9, 24, 9), "embers", skip="down", name="ember"),
+    ] + flames(8, 8, 20, 32, 4)   # live fire: two crossed flame planes rising out of the heap
+    return Prop("brazier", {"brazier": b, "brazier_coals": c}, glow=("brazier_coals",),
+                anim={"brazier_coals": Anim(**FIRE_ANIM)})

@@ -1,5 +1,5 @@
 """Prop server resource pack (prop kit plan task S2, tools/build_prop_pack.py): placeholders when art is missing, art used when present,
-paper keeps its vanilla look, CMD clash and element range refusals, byte-reproducible zips, pack_format 15. Builds only into temp dirs."""
+paper keeps its vanilla look, animated parts (proplib Anim: own strip + .mcmeta), CMD clash and element range refusals, byte-reproducible zips, pack_format 15. Builds only into temp dirs."""
 import json
 import pathlib
 import subprocess
@@ -144,6 +144,52 @@ class PropPack(unittest.TestCase):
         with self.pack(out) as z:
             atlas = json.loads(z.read('assets/minecraft/atlases/blocks.json'))
             self.assertEqual(atlas, {'sources': [{'type': 'directory', 'source': 'prop', 'prefix': 'prop/'}]})
+
+    def test_animated_part(self):
+        """proplib Anim: the part leaves the static sheet for its own strip (frame size x size*frames) and .mcmeta; the pack ships both."""
+        sys.path.insert(0, str(ROOT / 'art' / 'props'))
+        import proplib
+        from PIL import Image
+        art = self.dir / 'art'
+        prop = proplib.Prop('brazier', {
+            'brazier': [proplib.E((4, 0, 4), (12, 12, 12), 'iron', name='body')],
+            'brazier_coals': [proplib.E((4, 12, 4), (12, 16, 12), 'embers', skip='down', name='coals')]
+                             + proplib.flames(8, 8, 14, 26, 4)},
+            glow=('brazier_coals',), anim={'brazier_coals': proplib.Anim(frames=6, frametime=2, order=[0, 1, 2, 3, 4, 5, 3])})
+        proplib.write(prop, str(art))
+        d = art / 'brazier'
+        strip = Image.open(d / 'brazier_coals_anim.png')
+        size = strip.width
+        self.assertEqual(strip.height, size * 6)
+        frames = [strip.crop((0, k * size, size, (k + 1) * size)).tobytes() for k in range(6)]
+        self.assertGreater(len(set(frames)), 3, 'flame frames should differ')
+        self.assertTrue(any(a == 0 for a in strip.getchannel('A').getdata()), 'flame planes need see-through texels')
+        meta = json.loads((d / 'brazier_coals_anim.png.mcmeta').read_text())
+        self.assertEqual(meta, {'animation': {'frametime': 2, 'interpolate': False, 'frames': [0, 1, 2, 3, 4, 5, 3]}})
+        coals = json.loads((d / 'brazier_coals.json').read_text())
+        self.assertEqual(coals['textures']['0'], 'gravesandglory:prop/brazier_coals_anim')
+        self.assertEqual(coals['texture_size'], [size, size])
+        self.assertEqual(json.loads((d / 'brazier.json').read_text())['textures']['0'], 'gravesandglory:prop/brazier')
+        self.assertFalse((d / 'brazier_anim.png').exists())
+        # a part that stops being animated loses its strip on the next build (built in a copy of the folder)
+        art2 = self.dir / 'art2'
+        proplib.write(prop, str(art2))
+        proplib.write(proplib.Prop('brazier', {'brazier': prop.parts['brazier'],
+                                              'brazier_coals': [proplib.E((4, 12, 4), (12, 16, 12), 'coal', name='coals')]},
+                                   glow=('brazier_coals',)), str(art2))
+        self.assertFalse((art2 / 'brazier' / 'brazier_coals_anim.png').exists())
+        self.assertFalse((art2 / 'brazier' / 'brazier_coals_anim.png.mcmeta').exists())
+        with self.assertRaises(SystemExit):   # an AnimMat on a part without Anim is refused
+            proplib.Prop('x', {'x': prop.parts['brazier_coals']})
+        r, out = self.build(art=art)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        with self.pack(out) as z:
+            model = json.loads(z.read('assets/gravesandglory/models/prop/brazier_coals.json'))
+            self.assertEqual(model['textures']['0'], 'gravesandglory:prop/brazier_coals_anim')
+            self.assertEqual(json.loads(z.read('assets/gravesandglory/models/prop/brazier.json'))['textures']['0'], 'gravesandglory:prop/brazier')
+            self.assertEqual(z.read('assets/gravesandglory/textures/prop/brazier_coals_anim.png'), (d / 'brazier_coals_anim.png').read_bytes())
+            self.assertEqual(json.loads(z.read('assets/gravesandglory/textures/prop/brazier_coals_anim.png.mcmeta')), meta)
+            self.assertIn('assets/gravesandglory/textures/prop/brazier.png', z.namelist())
 
     def test_element_range(self):
         r, out = self.build(art=self.art_fixture(element_from=(-20, 0, 0)))

@@ -8,20 +8,10 @@ Build:  python art/props/build_props.py street_lamp_wall      Card:  python tool
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE   # noqa: F401
+from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE, Anim   # noqa: F401
 
-GLASS = fixed("B8641A", "E0962A", "F6C448", "FFE27A", "FFF4B8")      # same warm yellow ramp as street_lamp
-
-
-def _glass(face, P, c, r, w, h):
-    if face in ("up", "down"): return GLASS[2]
-    d = min(c, w - 1 - c, r, h - 1 - r)
-    return GLASS[2] if d == 0 else GLASS[3] if d == 1 else GLASS[4]
-
-
-def glass_mat():
-    m = Mat(GLASS, 2, _glass, edges=False, lit=False); m.ramps = (GLASS,)
-    return m
+# candle flicker behind the glass (proplib lamp_glass): four frames blended, played in an irregular order
+LAMP_FLICKER = Anim(frames=4, frametime=3, interpolate=True, order=[0, 0, 1, 0, 2, 0, 0, 3, 1, 0, 2, 2, 0, 3])
 
 
 def build():
@@ -42,5 +32,6 @@ def build():
         E((4, 3, 1), (6, 9, 3), "iron", name="corner nw"), E((10, 3, 1), (12, 9, 3), "iron", name="corner ne"),
         E((4, 3, 7), (6, 9, 9), "iron", name="corner sw"), E((10, 3, 7), (12, 9, 9), "iron", name="corner se"),
     ]
-    g = [E((5, 3, 2), (11, 9, 8), glass_mat(), skip="down up", name="lantern glass")]
-    return Prop("street_lamp_wall", {"street_lamp_wall": b, "street_lamp_wall_glass": g}, glow=("street_lamp_wall_glass",))
+    g = [E((5, 3, 2), (11, 9, 8), "lamp_glass", skip="down up", name="lantern glass")]
+    return Prop("street_lamp_wall", {"street_lamp_wall": b, "street_lamp_wall_glass": g}, glow=("street_lamp_wall_glass",),
+                anim={"street_lamp_wall_glass": LAMP_FLICKER})

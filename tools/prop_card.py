@@ -149,7 +149,7 @@ def main(argv=None):
     if defglow != set(prop.glow): chk("def", "FAIL", "glow parts: def %s, model.py %s" % (sorted(defglow), sorted(prop.glow)))
 
     bad = []
-    for n, m in parts: bad += ps.check_density("%s/%s" % (pid, n), m, tex.size)
+    for n, m in parts: bad += ps.check_density("%s/%s" % (pid, n), m, m.get("_tex", tex).size)
     chk("density", "FAIL" if bad else "OK", "; ".join(bad[:4]) if bad else "1 texel per model px on every face")
 
     out_frame = []
@@ -185,7 +185,8 @@ def main(argv=None):
 
     allowed = all_ramp_colours(prop)
     import numpy as np
-    A = np.asarray(tex); A = A[A[..., 3] > 0][:, :3]
+    A = np.concatenate([np.asarray(t).reshape(-1, 4) for t in [tex] + [m["_strip"] for _, m in parts if "_strip" in m]])   # every frame of an animated part
+    A = A[A[..., 3] > 0][:, :3]
     used = {tuple(int(v) for v in c) for c in np.unique(A, axis=0)}
     off = [c for c in used if c not in allowed]
     chk("palette", "FAIL" if off else "OK", ("%d off-ramp colours, e.g. %s" % (len(off), ["#%02X%02X%02X" % c for c in off[:4]])) if off

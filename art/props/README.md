@@ -55,3 +55,16 @@ Each part is stored inside -16..32 and placed by an entity offset from the def (
   side faces get a lit top row on the lit faces and a dark bottom seam. Patterns are world-aligned (stone courses line up
   across boxes), one pattern a material, marks placed sparsely, no noise or gradients.
 - Stone is close to vanilla stone bricks (8×4 courses) so a forge sits in a vanilla wall without a seam in style.
+
+## Animated parts (live fire)
+A vanilla `.mcmeta` animates a whole texture, so an animated part leaves the prop's sheet for a strip of its own:
+`Prop(..., anim={"<part>": Anim(frames=8, frametime=2, interpolate=False, order=None)})`. The build writes
+`<id>/<part>_anim.png` (frame size x size*frames, frames stacked top to bottom), `<part>_anim.png.mcmeta` and points the
+part model at `gravesandglory:prop/<part>_anim`; `tools/build_prop_pack.py` ships both. Static materials on the part repeat
+in every frame; an `AnimMat` (pattern `(face, P, c, r, w, h, frame, frames)`, alpha 0 = see-through) is painted per frame.
+Ready-made: materials `"embers"` (breathing coals), `"flame"` (tongues on a flat plane), `"lamp_glass"` (candle behind
+frosted glass); `flames(cx, cz, y0, y1, half)` = two crossed flame planes; `FIRE_ANIM` = the house fire timing (8 frames,
+2 ticks, no blending). A fire prop: put its coals and `flames(...)` in the glow part and add
+`anim={"<glow part>": Anim(**FIRE_ANIM)}` (see `brazier/model.py`). `prop_card` checks every frame's palette; the card and
+sheet show frame 0. `python tools/prop_shot.py <ids> --frames` adds near-day shots 3, 6 and 9 ticks later to see it move.
+Effects (flame, smoke, lava pops, crackle) go in the def's `effects`; braziers are the reference numbers.

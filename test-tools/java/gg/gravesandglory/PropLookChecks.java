@@ -13,7 +13,8 @@ import java.util.*;
  * from the front-left at about 3 m and 15 m, by day and lantern-lit night, then a lineup. Needs the prop pack enabled as a client resource pack
  * (tools/prop_shot.py does it). Compare: GRAVES_PROPCMP=<id>=<group/name>;... places that structure template (data/gravesandglory/structures/
  * group/name.nbt, the maps' plain-block version, through {@link Structures#place}) 2 blocks east of the prop and takes the same four views of
- * the pair, p1-prop-<id>-cmp-<near|far>-<day|night>.png; an id without a template is skipped with a line saying so. Never shipped.
+ * the pair, p1-prop-<id>-cmp-<near|far>-<day|night>.png; an id without a template is skipped with a line saying so. GRAVES_PROPFRAMES=1 adds
+ * p1-prop-<id>-near-day-t3/t6/t9.png, the near-day view 3, 6 and 9 ticks later (animated flame and lamp textures). Never shipped.
  */
 final class PropLookChecks implements Phase1Checks.Suite {
     /** id, size x y z, pivot cell x z. */
@@ -243,6 +244,8 @@ final class PropLookChecks implements Phase1Checks.Suite {
     }
 
     static final String[] VIEWS = {"near-day", "far-day", "near-night", "far-night"};
+    /** GRAVES_PROPFRAMES=1: three extra near-day shots 3, 6 and 9 ticks after the first (p1-prop-<id>-near-day-t<n>.png), to see animated textures move. */
+    static final boolean FRAMES = "1".equals(System.getenv("GRAVES_PROPFRAMES"));
 
     public void step(MinecraftClient c, int tick) {
         if (tick > 30000 && stage < 9) { Phase1Checks.report("p1-prop-look-timeout", false, "stuck at stage " + stage); next(tick, 9); }
@@ -267,7 +270,9 @@ final class PropLookChecks implements Phase1Checks.Suite {
                 }
                 if (k == 2) { c.setScreen(null); c.options.hudHidden = true; }
                 if (k == 60) Phase1Checks.shot(c, "prop-" + PROPS.get(pi).id() + "-" + v);
-                if (k == 62) {
+                boolean frames = FRAMES && v.equals("near-day");   // animated-texture check: the same view a few ticks later
+                if (frames && (k == 63 || k == 66 || k == 69)) Phase1Checks.shot(c, "prop-" + PROPS.get(pi).id() + "-" + v + "-t" + (k - 60));
+                if (k == (frames ? 71 : 62)) {
                     if (++pi < PROPS.size()) next(tick, 2);
                     else if (++vi < VIEWS.length) { pi = 0; next(tick, 2); }
                     else { Phase1Checks.report("p1-prop-look", true, PROPS.size() * VIEWS.length + " shots"); next(tick, 3); }

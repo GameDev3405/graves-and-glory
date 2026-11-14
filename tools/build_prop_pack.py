@@ -8,6 +8,7 @@ Writes dist/props/gg-props-<sha8>.zip (byte-reproducible: sorted entries, fixed 
   assets/minecraft/models/item/paper.json            vanilla paper look + one override per part, ascending custom_model_data
   assets/gravesandglory/models/prop/<model>.json     each part
   assets/gravesandglory/textures/prop/<id>.png       one sheet per prop
+  assets/gravesandglory/textures/prop/<part>_anim.png(.mcmeta)  an animated part's own frame strip and its vanilla animation (proplib Anim)
   assets/minecraft/atlases/blocks.json               adds textures/prop to the block atlas (else the parts render magenta-black)
   pack.mcmeta                                        pack_format 15 (1.20.1)
 
@@ -158,11 +159,20 @@ def placeholder(d, index):
 
 # ---- art ----
 
-def from_art(model, pid):
+def from_art(model, pid, folder=None):
+    """The part model with every texture pointed at the prop's sheet, except a texture `gravesandglory:prop/<name>` whose
+    <name>.png is in the prop's art folder (an animated part's own strip, proplib Anim), which is kept. Returns (model, kept names)."""
     tex = 'gravesandglory:prop/' + pid
     model = dict(model)
-    model['textures'] = {k: tex for k in model.get('textures', {'0': tex})} or {'0': tex}
-    return model
+    kept, out = set(), {}
+    for k, v in (model.get('textures') or {'0': tex}).items():
+        name = v.split('gravesandglory:prop/', 1)[1] if isinstance(v, str) and v.startswith('gravesandglory:prop/') else None
+        if folder is not None and name and name != pid and '/' not in name and (pathlib.Path(folder) / (name + '.png')).is_file():
+            out[k] = v; kept.add(name)
+        else:
+            out[k] = tex
+    model['textures'] = out or {'0': tex}
+    return model, kept
 
 
 def check_elements(name, model):
@@ -182,7 +192,12 @@ def build(defs, art):
             if src.is_file():
                 if not sheet.is_file():
                     raise BuildError('model %s: art %s has no texture %s' % (p['model'], src, sheet))
-                model = from_art(json.loads(src.read_text(encoding='utf8')), pid)
+                model, kept = from_art(json.loads(src.read_text(encoding='utf8')), pid, art / pid)
+                for name in sorted(kept):
+                    files['assets/gravesandglory/textures/prop/%s.png' % name] = (art / pid / (name + '.png')).read_bytes()
+                    meta = art / pid / (name + '.png.mcmeta')
+                    if meta.is_file():
+                        files['assets/gravesandglory/textures/prop/%s.png.mcmeta' % name] = json.dumps(json.loads(meta.read_text(encoding='utf8')), indent=1).encode()
             else:
                 model = placeholder(d, i)
                 placeholders += 1

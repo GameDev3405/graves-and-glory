@@ -28,7 +28,12 @@ def load_prop(art, pid):
     for path in sorted(glob.glob(os.path.join(d, "*.json"))):
         m = json.load(open(path))
         if "elements" not in m: continue
-        parts.append((os.path.splitext(os.path.basename(path))[0], m))
+        name = os.path.splitext(os.path.basename(path))[0]
+        t = str(m.get("textures", {}).get("0", "")).rsplit("/", 1)[-1]
+        if t and t != pid and os.path.isfile(os.path.join(d, t + ".png")):   # an animated part's own strip (proplib Anim): frame 0
+            strip = Image.open(os.path.join(d, t + ".png")).convert("RGBA")
+            m["_strip"] = strip; m["_tex"] = strip.crop((0, 0, strip.width, strip.width))
+        parts.append((name, m))
     dpath = os.path.join(ROOT, "src", "main", "resources", "data", "gravesandglory", "gg_props", pid + ".json")
     if os.path.exists(dpath):   # a big prop's parts are moved by the def's part offset (the game moves the entity)
         off = {q["model"]: q["offset"] for q in json.load(open(dpath, encoding="utf8")).get("parts", []) if "offset" in q}
@@ -58,7 +63,8 @@ def rot_matrix(axis, ang):
     return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
 
 def elements_of(parts):
-    """Flatten parts into elements in the prop frame (shift added back): (from, to, rot, faces, shade, part)."""
+    """Flatten parts into elements in the prop frame (shift added back): (from, to, rot, faces, shade, part, texture).
+    texture is the part's own image (an animated part's frame 0) or None for the prop's sheet."""
     out = []
     for pname, m in parts:
         sh = np.array(m.get("display", {}).get("fixed", {}).get("translation", [0, 0, 0]), float) + m.get("_offset", [0, 0, 0])
@@ -66,12 +72,15 @@ def elements_of(parts):
             frm = np.array(e["from"], float) + sh; to = np.array(e["to"], float) + sh
             r = e.get("rotation")
             rot = (r["axis"], r["angle"], np.array(r["origin"], float) + sh) if r and r.get("angle") else None
-            out.append((frm, to, rot, e.get("faces", {}), e.get("shade", True), pname))
+            out.append((frm, to, rot, e.get("faces", {}), e.get("shade", True), pname, m.get("_tex")))
     return out
 
 def render(els, tex, yaw=0.0, pitch=0.0, k=1, bg=None):
     """Orthographic ray cast. yaw 0 looks south at the front (north face); +yaw swings the camera toward the east."""
-    T = np.asarray(tex, dtype=np.float32) / 255.0; TS = tex.size
+    cache = {}
+    def arr(t):
+        if id(t) not in cache: cache[id(t)] = (np.asarray(t, dtype=np.float32) / 255.0, t.size)
+        return cache[id(t)]
     a, p = math.radians(yaw), math.radians(pitch)
     d = np.array([-math.sin(a) * math.cos(p), -math.sin(p), math.cos(a) * math.cos(p)])
     rgt = np.cross(d, [0, 1, 0]); rgt /= np.linalg.norm(rgt); up = np.cross(rgt, d)
@@ -95,7 +104,8 @@ def render(els, tex, yaw=0.0, pitch=0.0, k=1, bg=None):
     O = (U[..., None] * rgt + V[..., None] * up - d * 1000.0).reshape(-1, 3)
     N = O.shape[0]
     best = np.full(N, np.inf); col = np.zeros((N, 4), np.float32)
-    for (frm, to, rot, faces, shade, _), (smin, smax, tmin_, tmax_) in zip(els, spans):
+    for (frm, to, rot, faces, shade, _, *etex), (smin, smax, tmin_, tmax_) in zip(els, spans):
+        T, TS = arr(etex[0] if etex and etex[0] is not None else tex)
         # only the rays inside the element's screen box can hit it (same picture, far less work on big props)
         i0, i1 = max(0, int(math.floor((smin - x0) * k)) - 1), min(W, int(math.ceil((smax - x0) * k)) + 1)
         j0, j1 = max(0, int(math.floor((y1 - tmax_) * k)) - 1), min(H, int(math.ceil((y1 - tmin_) * k)) + 1)
@@ -203,7 +213,7 @@ def main(argv=None):
         tex, parts = load_prop(a.art, pid)
         if not parts: bad.append("%s: no part models" % pid); continue
         for pname, m in parts:
-            bad += check_density("%s/%s" % (pid, pname), m, tex.size)
+            bad += check_density("%s/%s" % (pid, pname), m, m.get("_tex", tex).size)
             n = sum(len(e.get("faces", {})) for e in m["elements"])
             print("%-28s elements %3d faces %4d  1 texel/px %s" % (pid + "/" + pname, len(m["elements"]), n,
                   "ok" if not [b for b in bad if b.startswith(pid + "/" + pname + " ")] else "FAIL"))

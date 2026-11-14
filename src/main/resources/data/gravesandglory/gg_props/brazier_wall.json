@@ -9,5 +9,10 @@
   ],
   "solid": [],
   "lights": [{"x": 0, "y": 0, "z": 0, "level": 11}],
-  "effects": []
+  "effects": [
+    {"kind": "particle", "id": "minecraft:flame", "x": 0.5, "y": 1.0, "z": 0.44, "spread": 0.06, "count": 1, "every": 10, "chance": 0.5},
+    {"kind": "particle", "id": "minecraft:smoke", "x": 0.5, "y": 1.0, "z": 0.44, "spread": 0.08, "count": 1, "every": 15, "chance": 0.5},
+    {"kind": "particle", "id": "minecraft:lava", "x": 0.5, "y": 0.95, "z": 0.44, "spread": 0.08, "count": 1, "every": 80, "chance": 0.25},
+    {"kind": "sound", "id": "minecraft:block.campfire.crackle", "x": 0.5, "y": 0.9, "z": 0.44, "every": 60, "chance": 0.3, "volume": 0.25}
+  ]
 }
