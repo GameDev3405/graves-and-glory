@@ -145,8 +145,8 @@ def placeholder(d, index):
         if not elements:  # no solid cell (a wall-hung or overhead prop): a small cube in the anchor cell
             elements.append(element([4, 4, 4], [12, 12, 12]))
     else:
-        y = 2 + 6 * (index % 5)  # a prop has up to 10 parts; stacked markers stay inside -16..32, the second five a column over
-        x = 2 + 8 * (index // 5)
+        y = 2 + 6 * (index % 5)  # stacked markers stay inside -16..32: five to a column, four columns, then they wrap (a split prop has up to 100 parts)
+        x = 2 + 8 * ((index // 5) % 4)
         elements.append(element([x, y, -2], [x + 6, y + 4, 0]))
     lo = [min(e['from'][i] for e in elements) for i in range(3)]
     hi = [max(e['to'][i] for e in elements) for i in range(3)]
