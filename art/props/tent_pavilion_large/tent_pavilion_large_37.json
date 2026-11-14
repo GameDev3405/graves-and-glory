@@ -1,0 +1,90 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  1024,
+  1024
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/tent_pavilion_large",
+  "particle": "gravesandglory:prop/tent_pavilion_large"
+ },
+ "elements": [
+  {
+   "from": [
+    4,
+    -16,
+    4
+   ],
+   "to": [
+    12,
+    32,
+    12
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      15.4375,
+      0.0,
+      15.5625,
+      0.75
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      15.5625,
+      0.0,
+      15.6875,
+      0.75
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      15.6875,
+      0.0,
+      15.8125,
+      0.75
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      15.8125,
+      0.0,
+      15.9375,
+      0.75
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "centre pole"
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    -0.0,
+    -0.0,
+    -0.0
+   ],
+   "scale": [
+    0.3307,
+    0.3307,
+    0.3307
+   ]
+  }
+ }
+}
