@@ -15,16 +15,16 @@ from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE, Anim, LAMP_F
 
 def build():
     b = [
-        # wall plate (never seen from behind), four 2x2 rivets, a boss where the arm grows out
-        E((2, 3, 15), (14, 16, 16), "iron", skip="south", name="wall plate"),
-        E((3, 4, 14), (5, 6, 15), "steel", skip="south", name="rivet"), E((11, 4, 14), (13, 6, 15), "steel", skip="south", name="rivet"),
-        E((3, 13, 14), (5, 15, 15), "steel", skip="south", name="rivet"), E((11, 13, 14), (13, 15, 15), "steel", skip="south", name="rivet"),
-        E((6, 11, 14), (10, 16, 15), "iron", skip="south", name="boss"),
-        # the arm, steel-topped, and its 45-degree stepped brace down to the plate
-        E((7, 14, 5), (9, 16, 14), "iron", faces={"up": "steel"}, name="arm"),
-        E((7, 7, 13), (9, 10, 15), "iron", name="brace"),
-        E((7, 10, 11), (9, 12, 13), "iron", name="brace"),
-        E((7, 12, 9), (9, 14, 11), "iron", name="brace"),
+        # steel wall plate (never seen from behind; lighter than the lantern iron so the bracket separates), four dark 2x2 rivets, a boss where the arm grows out
+        E((2, 3, 15), (14, 16, 16), "steel", skip="south", name="wall plate"),
+        E((3, 4, 14), (5, 6, 15), "iron", skip="south", name="rivet"), E((11, 4, 14), (13, 6, 15), "iron", skip="south", name="rivet"),
+        E((3, 13, 14), (5, 15, 15), "iron", skip="south", name="rivet"), E((11, 13, 14), (13, 15, 15), "iron", skip="south", name="rivet"),
+        E((6, 11, 14), (10, 16, 15), "steel", skip="south", name="boss"),
+        # the steel arm and its 45-degree stepped brace down to the plate
+        E((7, 14, 5), (9, 16, 14), "steel", name="arm"),
+        E((7, 7, 13), (9, 10, 15), "steel", name="brace"),
+        E((7, 10, 11), (9, 12, 13), "steel", name="brace"),
+        E((7, 12, 9), (9, 14, 11), "steel", name="brace"),
         # two chain links from the arm tip down to the lantern's ring, alternating tones
         E((7, 13, 5), (9, 14, 7), "steel", name="chain link"),
         E((7, 12, 5), (9, 13, 7), "iron", name="chain link"),
