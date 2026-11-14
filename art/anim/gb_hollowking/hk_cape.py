@@ -52,6 +52,8 @@ STIFF_X, STIFF_Z = 0.3, 0.6      # of the way back to its modelled hang the clot
 REACH = 30.0          # degrees at most a panel is turned off its spring to clear something (a fall: REACH_DEATH); what
 REACH_DEATH = 75.0    # is left after that is the hinge's slide's or is reported, never a flung flag
 SLIDE_MAX = 2.5       # px a panel's hinge slides off a plate at most
+CAP = 5.0             # degrees a sample (20 a tick) a panel turns at most in any clip, after every pass
+DEV_MAX = 40.0        # degrees a hit turns a panel off its stance at most (the clear may still need more)
 SLIDE_RATE = 0.2      # px per sample it slides or settles at most
 CLEAR = 0.25          # px a panel may lie in another piece beyond its rest fit
 SPIKE, SPIKE_TOL = 6.0, 0.75    # degrees a lone quarter-tick sample may stand off both neighbours; px it may then leave
@@ -138,15 +140,17 @@ class Cape:
             return {}
         out = {}
         for k, d in enumerate(self.slide[p]):
-            for x in np.arange(0.25, SLIDE_MAX + 1e-6, 0.25):
+            smax = getattr(self, "slide_max", SLIDE_MAX)
+            for x in np.arange(0.25, smax + 1e-6, 0.25):
                 if any(self.cost(fr, p, a, floor_tol, d * x, pool=self.upper) <= 0.0 for a in angs):
                     out[k] = float(x)
                     break
         if not out and c0 > SHALLOW:     # no slide clears it: the one that leaves least, if it helps at all
             for k, d in enumerate(self.slide[p]):
-                c = min(self.cost(fr, p, a, floor_tol, d * SLIDE_MAX, pool=self.upper) for a in angs)
+                smax = getattr(self, "slide_max", SLIDE_MAX)
+                c = min(self.cost(fr, p, a, floor_tol, d * smax, pool=self.upper) for a in angs)
                 if c < c0 - 0.1:
-                    out[k] = SLIDE_MAX
+                    out[k] = smax
         return out
 
     def hem(self, M, p, ang):
@@ -271,7 +275,9 @@ def _tent(x, rate, loop):
     return v
 
 
-def solve(cape, frames, loop, x0=None, speed=None, breath=False, floor_tol=0.0, seam=None, additive=False):
+def solve(cape, frames, loop, x0=None, speed=None, breath=False, floor_tol=0.0, seam=None, additive=False,
+          slide_max=SLIDE_MAX):
+    cape.slide_max = slide_max
     """{panel: (n+1 x 2 array of (x, z) turns, n+1 x 3 array of hinge slides in px)} for the frames (rig.fk of each
     sample, the cape stripped)."""
     n = len(frames) - 1
@@ -383,6 +389,29 @@ def solve(cape, frames, loop, x0=None, speed=None, breath=False, floor_tol=0.0, 
                     cur[i] = cur[i + 1] + d * (max(LAND, rate[i + 1]) / s)
         out[p] = (cur, off)
     return out
+
+
+def rate_cap(cur, lim=CAP, fixed_end=True, force=False):
+    """Caps a panel's turn at lim degrees a sample (CAP: 20 a tick) where its turn over any tick goes past 4 * lim:
+    forward and backward passes, the first and (fixed_end) last sample held. Untouched (same array) when it never goes
+    past; True when it bit."""
+    n = len(cur) - 1
+    if n < SUB or not force and max(np.linalg.norm(cur[i + SUB] - cur[i]) for i in range(n - SUB + 1)) <= SUB * lim + 1e-6:
+        return False
+    for _ in range(6):
+        for i in range(1, n + 1):
+            d = cur[i] - cur[i - 1]
+            s = float(np.linalg.norm(d))
+            if s > lim:
+                cur[i] = cur[i - 1] + d * (lim / s)
+        if not fixed_end:
+            break
+        for i in range(n - 1, -1, -1):
+            d = cur[i] - cur[i + 1]
+            s = float(np.linalg.norm(d))
+            if s > lim:
+                cur[i] = cur[i + 1] + d * (lim / s)
+    return True
 
 
 def _smooth(t):

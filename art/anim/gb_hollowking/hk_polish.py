@@ -1200,6 +1200,13 @@ for _c in ("attack_overhead_cleave", "attack_side_cut", "attack_thrust", "stance
     CAPE_HOW[_c] = (None, False, "stance_ready_upper")
 
 
+CAPE_HOME = {"stance_rally_upper"}
+CAPE_HOME_TOL = 2.0     # deg its first and last key may stand off the ready stance's cape
+CAPE_FOLLOW = {"hit_pulled": ("cloak_a", {"cloak_b": (0.45, 4), "cloak_c": (0.2, 8)})}   # lead; panel: (share, samples late)
+CAPE_CAP = {"hit_knockback": 6.3}   # deg a sample: the kicked-back boot meets cloak_b faster than 20 a tick
+CAPE_SLIDE = {"hit_pulled": 1.2}     # px: the pulled panel's top stays on the collar
+
+
 def fix_cape(rig, B, anims, name, partner, base, log):
     """The cape's three panels in motion (hk_cape.py): solved on the pose the game shows, keyed on cloak_a/b/c; the
     container held at rest in an absolute clip and left out of an additive one."""
@@ -1230,7 +1237,8 @@ def fix_cape(rig, B, anims, name, partner, base, log):
     seam = (int(STUN_LOOP[0] * SUB), int(STUN_LOOP[1] * SUB)) if name == "stun_upper" else None
     floor = HC.FLOOR_DEATH if name in DEATHS else 0.0
     solved = HC.solve(cape, frames, ctx.loop, x0=x0, speed=speed, breath=breath, floor_tol=floor, seam=seam,
-                      additive=base is not None or name.startswith("attack"))
+                      additive=base is not None or name.startswith("attack"),
+                      slide_max=CAPE_SLIDE.get(name, HC.SLIDE_MAX))
     curves = {p: c for p, (c, _) in solved.items()}
     left = HC.final_clear(cape, frames, solved, floor)
     if base is not None:          # HitController adds a hit's turns: only what the stance does not give, back to it by the end
@@ -1247,6 +1255,36 @@ def fix_cape(rig, B, anims, name, partner, base, log):
             for i in range(n - m, n + 1):
                 f = B.smooth((i - (n - m)) / float(m))
                 cur[i] = cur[i] * (1.0 - f) + cur[0] * f
+    if name in CAPE_HOME and x0 is not None:     # starts on the ready stance's cape and hands back to it
+        m = min(n // 2, HC.END_EASE * SUB)
+        for p in HC.PANELS:
+            cur = curves[p]
+            a = x0[p] + np.clip(cur[0] - x0[p], -CAPE_HOME_TOL, CAPE_HOME_TOL)    # within 2 degrees, nearest clear
+            b = x0[p] + np.clip(cur[n] - x0[p], -CAPE_HOME_TOL, CAPE_HOME_TOL)
+            for i in range(m + 1):
+                f = B.smooth(i / float(m))
+                cur[i] = a * (1.0 - f) + cur[i] * f
+                j = n - i
+                cur[j] = b * (1.0 - f) + cur[j] * f
+    if name in CAPE_FOLLOW:     # the others follow the lead panel's turn off the stance, later and smaller
+        lead, follow = CAPE_FOLLOW[name]
+        dev = curves[lead] - xt[lead]
+        for p, (k, lag) in follow.items():
+            sh = np.concatenate([np.zeros((lag, 2)), dev[:len(dev) - lag]])
+            curves[p] += k * sh
+            for i in range(n + 1):
+                curves[p][i], _ = cape.clear(frames[i], p, curves[p][i], floor, solved[p][1][i], HC.REACH)
+    if base is not None:        # a hit turns a panel at most DEV_MAX off its stance
+        for p in HC.PANELS:
+            d = curves[p] - xt[p]
+            if np.abs(d).max() > HC.DEV_MAX:
+                curves[p][:] = xt[p] + np.clip(d, -HC.DEV_MAX, HC.DEV_MAX)
+                for i in range(n + 1):      # unless the legs need more
+                    curves[p][i], _ = cape.clear(frames[i], p, curves[p][i], floor, solved[p][1][i], HC.REACH)
+            curves[p][0], curves[p][-1] = xt[p][0], xt[p][-1]     # it is zero at both ends: no jump off the stance
+    lim = CAPE_CAP.get(name, HC.CAP)
+    fol = set(CAPE_FOLLOW[name][1]) if name in CAPE_FOLLOW else set()   # their re-clear can step: always capped
+    capped = [p for p in HC.PANELS if not ctx.loop and HC.rate_cap(curves[p], lim, force=p in fol)]
     msg = []
     for p in HC.PANELS:
         cur = curves[p] - (xt[p] if base is not None else 0.0)
@@ -1268,7 +1306,7 @@ def fix_cape(rig, B, anims, name, partner, base, log):
                                                                + (" (%.2f px left)" % left[p] if left.get(p) else "")))
     if base is None:
         ctx.clip["bones"]["cape"] = {"rotation": {"0.0": [0.0, 0.0, 0.0]}}
-    log("  cape %-28s %s" % (name, "; ".join(msg)))
+    log("  cape %-28s %s%s" % (name, "; ".join(msg), " capped %s" % ",".join(capped) if capped else ""))
 
 
 FIXES = (("floor", fix_floor), ("cuisse", fix_cuisse), ("thigh", fix_thigh), ("rags", fix_rags), ("weapon", fix_weapon),
