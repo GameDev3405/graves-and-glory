@@ -212,3 +212,35 @@ on the model's lowest points. A rebuild on the new model changes 16 clips (timin
 stun_upper (cowl and wrap_tails spring keys) and the 4 deaths (left_hand up to 92 deg, death_right root up to 10.8 px).
 The committed clips are kept, as in the bonebow fix: the death changes are unreviewed motion and the shots and clip
 timing stay as approved. A future clip rebuild will pick these up and needs its own review.
+
+## Model rebuild 2026-11-13 (hooded skeleton)
+
+Kort's direction, three rounds on https://claude.ai/artifact/JCL18haaPEwwJJRNfVUsCN : "just make a skeleton but with some
+features like ribcage showing, skull showing ... a dark cloak on it with a hood"; then "a cloak not a cape, make it wrap";
+then "Remove cape/cloak, keep hood", approved. Hand builder rewritten (`art/hand/stalker/build_stalker.py`); atlas and all
+18 tier/colour textures rebuilt (new UV); clips unchanged (byte-identical, not re-keyed).
+
+Bone changes (geo; every keyed bone keeps its name, parent, pivot and rest turn unless listed):
+- head: 7 px skull raised 3 px on a 2x3.2x2 bone neck (was an 8 px skull at the pivot).
+- fur_cowl (the hood): 8x6x8, bottom 4.6 px above the neck pivot, open at the face and underneath, plus a crown point
+  and a 6x2x3 drape over the nape (was the 10 px fur cowl with lappets).
+- knee_mantle, mantle_back, mantle_back_l, mantle_back_r, mantle_front_l, mantle_front_r, pelt_tail: kept, now EMPTY
+  (no cubes). Keys on them move nothing; drop them or keep them, either is safe.
+- wrap, wrap_tails: same bones, now a sash round the pelvis with two tails in front; the rig hangs them on hips (was
+  torso). wrap_tails still sways.
+- left/right_pauldron: rest turn z 12 -> 6 (and -12 -> -6), lower plate, one tine (was 3 cubes).
+- Removed: belt, crest_tine0..2. Added (unkeyed, ride the torso/hips): ribcage, pelvis.
+- Bracers 3x3x3 inflate 0.25, from the elbow (were 3.6x3.5x3.6 inflate 0.5). Greaves 3x3x3. Breastplate is a gorget.
+- Feet: boot 3x2x4 plus a violet ankle wrap; *_foot_gear stays on the shin as before.
+- Torso and hips boxes (rig) are unchanged in size but draw nothing: the skeleton parts show instead.
+
+Rows on the committed clips:
+- Scorecard: 0 failing rows (shots print APPROVED as before).
+- Focus: FAIL rows 17 -> 3, clips with a FAIL 13 -> 3; WARN 48, exempt 11. Left: head_turn on aim_up (123 deg) and
+  aim_down (115 deg), stun bow_t3_rest into left_greave 1.55. All three are clip motion.
+- Clearance probe (work/stalker_model/probe.py, half-tick): arms into the head assembly worst -0.98 px (volley,
+  right forearm at the jaw anchor; was -4.02), pauldron into hood -1.0 (brace; was -4.53), arms into hanging cloth +1.5
+  (clear; was -2.8).
+- For the animation session: the draw arm passes 2-3.7 px into the (now invisible) torso in volley, direct and brace;
+  at the end of attack_direct the right bracer goes through the chest to z +3.4. Nothing on the model shows it now, but
+  a cloak or chest piece there would.

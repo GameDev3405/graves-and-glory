@@ -19,21 +19,7 @@
     3
    ]
   },
-  "crest_tine0": {
-   "stages": [
-    3
-   ]
-  },
-  "crest_tine1": {
-   "stages": [
-    3
-   ]
-  },
-  "crest_tine2": {
-   "stages": [
-    3
-   ]
-  },
+  "ribcage": {},
   "right_arm": {},
   "right_forearm": {},
   "right_hand": {},
@@ -73,14 +59,7 @@
   "mantle_back_r": {},
   "mantle_front_l": {},
   "mantle_front_r": {},
-  "belt": {},
   "pelt_tail": {},
-  "wrap": {
-   "team": true
-  },
-  "wrap_tails": {
-   "team": true
-  },
   "breastplate": {
    "stages": [
     2,
@@ -98,6 +77,7 @@
     3
    ]
   },
+  "pelvis": {},
   "right_leg": {},
   "right_shin": {},
   "right_foot": {},
@@ -117,6 +97,12 @@
     2,
     3
    ]
+  },
+  "wrap": {
+   "team": true
+  },
+  "wrap_tails": {
+   "team": true
   },
   "weapon_t1": {
    "stages": [
