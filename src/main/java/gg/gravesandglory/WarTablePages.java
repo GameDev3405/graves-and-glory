@@ -2426,15 +2426,17 @@ final class WarTablePages {
         return out;
     }
 
-    /** The map rows' pitch: MAP_STEP, closed up so every map's 28-high row ends 12 above the status line (seven maps: 30). */
+    /** The map rows' pitch: MAP_STEP, closed up so the last row ends 12 above the status line (seven maps: 30, eight: 26). */
     static int mapStep() { return Math.min(MAP_STEP, (STATUS_Y - 12 - MAP_Y) / Math.max(1, Spec.MAPS.length)); }
+    /** A map row's height: 28, or 2 px less than the pitch when the pitch closes up (eight maps: 24), so no two rows meet. */
+    static int mapRowH() { return Math.min(28, mapStep() - 2); }
     void initField() {
         int[] o = fieldCol();
         int ox = o[0], oy = o[1];
         for (int i = 0; i < Spec.MAPS.length; i++) {
             final int index = i;
             int y = oy + MAP_Y + mapStep() * i;
-            add("map-" + i, new UiButton(ox + MAP_X, y, MAP_W, 28, Text.literal(Spec.MAPS[i].name()), b -> viewed = index, (g, x, by, w, h, hot) -> paintMapRow(g, index, x, by)));
+            add("map-" + i, new UiButton(ox + MAP_X, y, MAP_W, mapRowH(), Text.literal(Spec.MAPS[i].name()), b -> viewed = index, (g, x, by, w, h, hot) -> paintMapRow(g, index, x, by)));
         }
         for (int i = 0; i < TIER_IDS.length; i++) {
             String id = TIER_IDS[i], key = "bots-" + id, label = CampaignClient.tierName(id);
@@ -2518,7 +2520,7 @@ final class WarTablePages {
         String name = UiMath.trim(Spec.MAPS[i].name(), MAP_W - 20, s -> font.getWidth(DarkUi.heading(s)));
         g.drawText(font, DarkUi.heading(name), x + 14, y + 8, ink, false);
         if (i != viewed && hot(b)) underline(g, "map-" + i, x + 14, y + 20, font.getWidth(DarkUi.heading(name)), ink);
-        rectsDrawn.put("map-" + i, new int[]{x, y, MAP_W, 28});
+        rectsDrawn.put("map-" + i, new int[]{x, y, MAP_W, mapRowH()});
         textsDrawn.put("map-" + i, name);
         colorsDrawn.put("map-" + i, ink);
     }

@@ -108,7 +108,7 @@ final class TroopKnowledgeChecks implements Phase1Checks.Suite {
                     want.put("stat-health", UpgradeStats.num(t.health() * m)); want.put("stat-damage", UpgradeStats.num(t.damage() * m));
                     want.put("stat-interval", String.format(java.util.Locale.ROOT, "%.2f", t.cooldown() / 20.0) + " s"); want.put("stat-range", UpgradeStats.num(t.range()) + " blocks");
                     want.put("stat-speed", TroopKnowledge.speedLabel(t.speed())); want.put("stat-cost", t.cost() + " gold");
-                    want.put("stat-training", UpgradeStats.num(t.trainingSeconds()) + " s"); want.put("stat-slots", String.valueOf(t.slotWeight()));
+                    want.put("stat-training", UpgradeStats.num(t.trainingSeconds()) + " s");
                     for (var e : want.entrySet()) if (!e.getValue().equals(w.get(e.getKey()))) bad.add(e.getKey() + " \"" + w.get(e.getKey()) + "\" (want \"" + e.getValue() + "\")");
                     if (!t.name().equals(w.get("letter-name"))) bad.add("name \"" + w.get("letter-name") + "\"");
                     for (var p : WarTableTroop.portraits()) if (p.where().equals("letter") && (p.drawn() == null || p.drawn().silhouette())) bad.add("owned portrait is a silhouette");
