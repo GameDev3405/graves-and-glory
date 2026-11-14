@@ -174,3 +174,10 @@ every slot, 100k drops match the table within tolerance from 9 starts, duration 
 
 1. Slot table A bell. 2. Spot A, east of the hearth court. 3. Giant board (11 x 13). 4. Standard timing (5 s drop, 8 s aim timer).
 5. No queue. 6. Relic rolls use the board; the multiplier scales the duplicate refund by m / mean. New drop packets and the roll-code change approved.
+
+## 11. Build notes
+
+- 2026-11-13, DropSim: a peg half a block from a wall wedges the coin against it (36% of plain drops from the far left never
+  finished). Each odd peg row therefore has a wall buttress: a ramp from the wall, 0.6 above the row, down to the outermost
+  peg. The altar prop models these buttresses. Measured over 20,000 plain drops a start: none unfinished, mean 5.2 s, about
+  23 peg hits; 40 of 324 searched drops needed the lean (far corners only).

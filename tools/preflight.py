@@ -478,6 +478,19 @@ else:
     bad=[k for k,v in en.items() if k!='id' and (isinstance(v,bool) or not isinstance(v,int) or v<0)]
     if bad: errors.append(f'ending: {", ".join(bad)} must be whole numbers, 0 or more')
     elif en['rewardsMaxSeconds']<en['rewardsSeconds']: errors.append('ending: rewardsMaxSeconds must be at least rewardsSeconds')
+# Drop board (design 2026-11-14): nine slots, chances in thousandths summing to 1000 and mirrored left to right; the mean multiplier must keep
+# every boosted roll at or under 100% (the boosted share of a pool times the top multiplier over the mean).
+ds=data.get('dropSlots',[]); db=data.get('dropBoard',[])
+if len(db)!=1: errors.append('dropBoard: exactly one row')
+if len(ds)!=9: errors.append('dropSlots: exactly nine rows')
+elif any(isinstance(r['chance'],bool) or not isinstance(r['chance'],int) or r['chance']<=0 or not isinstance(r['multiplier'],int) or r['multiplier']<1 for r in ds): errors.append('dropSlots: chance and multiplier must be whole numbers over 0')
+elif sum(r['chance'] for r in ds)!=1000: errors.append('dropSlots: chances must sum to 1000')
+elif any(ds[i]['chance']!=ds[8-i]['chance'] or ds[i]['multiplier']!=ds[8-i]['multiplier'] for i in range(4)): errors.append('dropSlots: the table must mirror left to right')
+elif len(db)==1:
+    boostedTiers=set(db[0]['boosted'].split(','))
+    gearTotal=sum(r['rollWeight'] for r in data['gearRarities']); gearHigh=sum(r['rollWeight'] for r in data['gearRarities'] if r['id'] in boostedTiers)
+    top=max(r['multiplier'] for r in ds); meanK=sum(r['chance']*r['multiplier'] for r in ds)
+    if gearHigh*top*1000>gearTotal*meanK: errors.append('dropSlots: the top multiplier would push a gear roll over 100% rare or better; raise the mean multiplier')
 cap=data['recruitment'][0]['capPct']
 for r in rarities.values():
     if not 0<=r['starPct2']<=r['starPct3']<=cap+1e-9: errors.append(f'rarities/{r["id"]}: star bonuses must rise and stay within recruitment.capPct')

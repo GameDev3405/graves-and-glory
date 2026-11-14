@@ -14178,5 +14178,79 @@
       "objectiveWeight": 1,
       "survivalMax": 100
     }
+  ],
+  "dropSlots": [
+    {
+      "id": "slot0",
+      "multiplier": 10,
+      "chance": 10,
+      "colour": "#ffecaa"
+    },
+    {
+      "id": "slot1",
+      "multiplier": 5,
+      "chance": 40,
+      "colour": "#b078ff"
+    },
+    {
+      "id": "slot2",
+      "multiplier": 3,
+      "chance": 100,
+      "colour": "#5adcc8"
+    },
+    {
+      "id": "slot3",
+      "multiplier": 2,
+      "chance": 200,
+      "colour": "#78bee6"
+    },
+    {
+      "id": "slot4",
+      "multiplier": 1,
+      "chance": 300,
+      "colour": "#96969e"
+    },
+    {
+      "id": "slot5",
+      "multiplier": 2,
+      "chance": 200,
+      "colour": "#78bee6"
+    },
+    {
+      "id": "slot6",
+      "multiplier": 3,
+      "chance": 100,
+      "colour": "#5adcc8"
+    },
+    {
+      "id": "slot7",
+      "multiplier": 5,
+      "chance": 40,
+      "colour": "#b078ff"
+    },
+    {
+      "id": "slot8",
+      "multiplier": 10,
+      "chance": 10,
+      "colour": "#ffecaa"
+    }
+  ],
+  "dropBoard": [
+    {
+      "id": "altar",
+      "boosted": "rare,epic,legendary",
+      "aimSeconds": 8,
+      "flyTenths": 16,
+      "flareTenths": 10,
+      "revealTenths": 25,
+      "returnTenths": 8,
+      "dropMinTenths": 40,
+      "dropMaxTenths": 60,
+      "watchRadius": 48,
+      "originDx": 34,
+      "originDz": -16,
+      "facing": "west",
+      "pegRows": 8
+    }
   ]
 }
