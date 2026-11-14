@@ -191,6 +191,42 @@ public final class Phase1Checks implements ClientModInitializer {
             if(back!=null&&!back.isRemoved())back.discard(); // a stray must not fail the checks after this one
         }
 
+        /** p1-prop-walkin-anchor (Props.owner fix 8e35fec7): a walk-in prop (tent_soldier_large) has open floor at its anchor cell, yet
+         *  Props.owner finds it there and Props.remove(anchor cell) takes it whole. A giant_rib anchored one cell east puts its solid cell in
+         *  the tent's anchor cell; that solid cell wins, though the rib's anchor block is scanned after the tent's. On a buried platform
+         *  40 blocks over the camera, put back as it was. */
+        void propWalkIn(GravesAndGlory.Battle b){
+            var p=sp(b);var w=b.world;
+            if(p==null){report("p1-prop-walkin-anchor",false,"no player");return;}
+            int x0=(int)Math.floor(p.getX()),z0=(int)Math.floor(p.getZ()),oy=Math.min(w.getTopY()-16,(int)Math.floor(p.getY())+40);
+            var cell=new net.minecraft.util.math.BlockPos(x0,oy,z0);var rib=cell.east();
+            var box=net.minecraft.util.math.BlockBox.create(cell.add(-6,-4,-6),cell.add(6,8,6));
+            Map<net.minecraft.util.math.BlockPos,net.minecraft.block.BlockState> saved=new HashMap<>();
+            for(var q:net.minecraft.util.math.BlockPos.iterate(box.getMinX(),box.getMinY(),box.getMinZ(),box.getMaxX(),box.getMaxY(),box.getMaxZ()))saved.put(q.toImmutable(),w.getBlockState(q));
+            try{
+                for(var q:saved.keySet())w.setBlockState(q,(q.getY()>=oy?net.minecraft.block.Blocks.AIR:q.getY()==oy-1?net.minecraft.block.Blocks.GRASS_BLOCK:net.minecraft.block.Blocks.DIRT).getDefaultState(),2);
+                String placed=Props.place(w,"tent_soldier_large",cell,0);
+                var alone=Props.owner(w,cell);
+                String ribPlaced=placed.isEmpty()?Props.place(w,"giant_rib",rib,0):"not tried";
+                var shared=Props.owner(w,cell);var ribOwn=Props.owner(w,rib);
+                boolean ribGone=Props.remove(w,rib);var after=Props.owner(w,cell);
+                boolean removed=Props.remove(w,cell);
+                int barriers=0;for(var q:net.minecraft.util.math.BlockPos.iterate(box.getMinX(),box.getMinY(),box.getMinZ(),box.getMaxX(),box.getMaxY(),box.getMaxZ()))if(w.getBlockState(q).isOf(net.minecraft.block.Blocks.BARRIER))barriers++;
+                int parts=Props.parts(w,cell).size()+Props.parts(w,rib).size();
+                boolean floor=w.getBlockState(cell.down()).isOf(net.minecraft.block.Blocks.GRASS_BLOCK)&&w.getBlockState(cell.down(2)).isOf(net.minecraft.block.Blocks.DIRT);
+                boolean ok=placed.isEmpty()&&cell.equals(alone)&&ribPlaced.isEmpty()&&rib.equals(shared)&&rib.equals(ribOwn)&&ribGone&&cell.equals(after)
+                    &&removed&&Props.readAnchor(w,cell)==null&&barriers==0&&parts==0&&floor;
+                report("p1-prop-walkin-anchor",ok,"tent place '"+placed+"', owner(anchor cell)="+alone+"; rib place '"+ribPlaced+"', owner(tent anchor cell)="+shared+" (want the rib "+rib.toShortString()+"), owner(rib anchor cell)="+ribOwn
+                    +"; rib removed="+ribGone+", then owner(tent anchor cell)="+after+"; remove(tent anchor cell)="+removed+", barriers left "+barriers+", parts left "+parts+", floor back="+floor);
+            }catch(Exception e){report("p1-prop-walkin-anchor",false,"threw "+e);e.printStackTrace();}
+            finally{ // a failed run still takes both props out (by a solid cell, which owner found before the fix) so no stale prop is left
+                if(Props.readAnchor(w,rib)!=null)Props.remove(w,cell.up());
+                if(Props.readAnchor(w,cell)!=null)Props.remove(w,cell.add(-3,0,-3));
+                for(var e:new ArrayList<>(Props.parts(w,cell)))e.discard();for(var e:new ArrayList<>(Props.parts(w,rib)))e.discard();
+                saved.forEach((q,s)->w.setBlockState(q,s,2));
+            }
+        }
+
         public void step(MinecraftClient c,int tick){
             if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
             if(wantShot!=null&&!shotTaken&&++shotDelay>=2){c.setScreen(null);shot(c,wantShot);shotTaken=true;}
@@ -291,7 +327,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 12->{if(b.time-stageAt>=2){
                     try{Projectiles.fire(b,orphanShooter,orphanSecond.mob,"arrow",4);System.out.println("[p1] orphan: "+Projectiles.inFlight(b)+" in flight at finish");saveArrow(b);b.campaign.finish(-1);}catch(Exception e){orphanError=e;e.printStackTrace();}
                     next(b,13);}}
-                case 13->{int left=tagged(b);report("p1-shot-orphan",orphanError==null&&Projectiles.inFlight(b)==0&&left==0&&!b.running,"error="+orphanError+" inFlight="+Projectiles.inFlight(b)+" taggedArrows="+left+" running="+b.running);reloadArrow(b);next(b,14);}
+                case 13->{int left=tagged(b);report("p1-shot-orphan",orphanError==null&&Projectiles.inFlight(b)==0&&left==0&&!b.running,"error="+orphanError+" inFlight="+Projectiles.inFlight(b)+" taggedArrows="+left+" running="+b.running);reloadArrow(b);propWalkIn(b);next(b,14);}
                 case 14->{ // tick cost: eight bot armies fighting around the centre point
                     var p=sp(b);if(p==null||!skirmish(b,p,0,4,"normal"))return;
                     var own=b.squads.get(player);own.bot=true;own.order="attack";b.reinforce(own);
