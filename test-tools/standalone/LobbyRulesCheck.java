@@ -49,6 +49,31 @@ public final class LobbyRulesCheck {
   check(run(p,"banner:delete:1")==null&&run(p,"banner:delete:1")==null&&p.banners.size()==1&&run(p,"banner:delete:0")!=null&&p.banners.size()==1,"The last banner cannot be deleted");
   check(run(p,"banner:bogus")!=null&&run(p,"banner:use:x")!=null,"Unknown banner commands are refused");
  }
+ /** Take to battle ("banner:use") switches the banner that goes to battle; painting, renaming or clearing a spare never does. */
+ static void battleBanner(){
+  Profile p=fresh();check(run(p,"banner:new:Spare")==null&&p.activeBanner==0,"A new banner does not take the battle place");
+  check(run(p,"cell:1:3:2:knight")==null&&p.activeBanner==0&&WarGrid.parse(p.banners.get(1).cells).containsKey(WarGrid.index(3,2)),"Painting the spare banner leaves the battle banner alone");
+  check(run(p,"banner:rename:1:Wing")==null&&run(p,"banner:copy:1")==null&&p.activeBanner==0,"Renaming or copying a spare leaves the battle banner alone");
+  check(run(p,"banner:arrange:1")==null&&run(p,"banner:move:1:"+WarGrid.index(WarGrid.centreOut().get(0),0)+":0")==null&&run(p,"banner:clear:1")==null&&p.activeBanner==0,"Arrange, move and clear on a spare leave the battle banner alone");
+  check(run(p,"banner:use:1")==null&&p.activeBanner==1,"Take to battle switches the battle banner");
+ }
+ /** Auto-arrange, Clear and Move on any banner of the profile: validated on the server, every refusal leaves the profile as it was. */
+ static void fastTools(){
+  Profile p=fresh();p.setTable(0,new TreeMap<>());
+  String shield=CAT.rarity().keySet().stream().filter(id->CAT.rarityOf(id).equals("common")&&p.owned.containsKey(id)&&WarGrid.role(id)==0).sorted().findFirst().get();
+  String ranged=CAT.rarity().keySet().stream().filter(id->CAT.rarityOf(id).equals("common")&&p.owned.containsKey(id)&&WarGrid.role(id)==2).sorted().findFirst().get();
+  check(run(p,"cell:0:0:5:"+ranged)==null&&run(p,"cell:0:8:4:"+shield)==null,"Two troops, the ranged one in front");
+  check(run(p,"banner:arrange:0")==null,"Arrange is accepted");
+  var t=WarGrid.parse(p.banners.get(0).cells);int mid=WarGrid.centreOut().get(0);
+  check(shield.equals(t.get(WarGrid.index(mid,0)))&&ranged.equals(t.get(WarGrid.index(mid,1)))&&t.size()==2,"Arrange puts the shield in front and the ranged troop behind, centred: "+t);
+  String saved=json(p);
+  check(run(p,"banner:arrange:0")!=null&&json(p).equals(saved),"Arranging an arranged banner is refused and changes nothing");
+  String[] bad={"banner:arrange:7","banner:arrange:x","banner:arrange","banner:clear:9","banner:move:0:3","banner:move:0:a:b","banner:move:0:40:2","banner:move:0:"+WarGrid.index(mid,0)+":999","banner:move:0:"+WarGrid.index(mid,0)+":"+WarGrid.index(mid,0),"banner:move:0:50:51","banner:move:0:1:2:3"};
+  for(String cmd:bad){String why=run(p,cmd);check(why!=null&&!why.isEmpty()&&json(p).equals(saved),"Refused and unchanged: "+cmd+" ("+why+")");}
+  check(run(p,"banner:move:0:"+WarGrid.index(mid,0)+":0")==null&&shield.equals(WarGrid.parse(p.banners.get(0).cells).get(0))&&!WarGrid.parse(p.banners.get(0).cells).containsKey(WarGrid.index(mid,0)),"Move takes the troop to another cell");
+  check(run(p,"banner:move:0:0:"+WarGrid.index(mid,1))==null&&ranged.equals(WarGrid.parse(p.banners.get(0).cells).get(0))&&shield.equals(WarGrid.parse(p.banners.get(0).cells).get(WarGrid.index(mid,1))),"Move onto a troop swaps the two");
+  check(run(p,"banner:clear:0")==null&&p.banners.get(0).cells.isEmpty()&&run(p,"banner:clear:0")!=null,"Clear empties the banner; a second clear is refused");
+ }
  /** The one-time notice: set, saved, kept through a reload until shown, null once shown and saved. Campaign.showNotice is this clear-and-save. */
  static void noticeOnce(){
   Profile p=fresh();p.notice="Your banner cost more than the table allows; 2 troops were taken off the back rows.";
@@ -58,7 +83,7 @@ public final class LobbyRulesCheck {
   check(shown!=null&&b.notice==null,"Once shown and saved the notice is null after a reload");
  }
  public static void main(String[] args){
-  cellCommandRefusals();bannerCommands();noticeOnce();
+  cellCommandRefusals();bannerCommands();battleBanner();fastTools();noticeOnce();
   long now=1_000_000;
   // seat assignment
   SocialHub h=new SocialHub();UUID a=id(),b=id(),c=id(),d=id(),e=id(),f=id(),g=id(),k=id(),x=id();

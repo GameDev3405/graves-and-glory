@@ -18,7 +18,7 @@ final class BannerDrop {
      *  string a client sends, banner 0 here (withBanner sets another); result: the table after the stroke (the table as it was when refused). */
     record Plan(boolean ok, String why, String command, SortedMap<Integer, String> result) {
         /** The same plan with its command addressed to another banner number. */
-        Plan withBanner(int banner) { return new Plan(ok, why, command.replaceFirst("^cell:[0-9]+:", "cell:" + banner + ":"), result); }
+        Plan withBanner(int banner) { return new Plan(ok, why, command.replaceFirst("^(cell|banner:move|banner:arrange|banner:clear):[0-9]+", "$1:" + banner), result); }
     }
 
     /** The command a stroke on cell sends: "cell:(banner):(col):(row):(id or -)". */
@@ -49,6 +49,38 @@ final class BannerDrop {
             }
             return new Plan(false, reason, command, same);
         }
+        return new Plan(true, "", command, next);
+    }
+
+    /** Auto-arrange: the table's troops set out by the bots' rule (WarGrid.arrange). Refused with a short reason when the banner is empty or already in that order.
+     *  Same troops, same cost, so the result needs no validTable. Command "banner:arrange:(banner)". */
+    static Plan arrange(SortedMap<Integer, String> table, Rules r) {
+        SortedMap<Integer, String> same = new TreeMap<>(table);
+        String command = "banner:arrange:0";
+        if (table.isEmpty()) return new Plan(false, "Nothing to arrange", command, same);
+        SortedMap<Integer, String> next = WarGrid.arrange(table);
+        if (next.equals(table)) return new Plan(false, "Already in order", command, same);
+        return new Plan(true, "", command, next);
+    }
+
+    /** Clear: every troop taken off the banner. Refused when it is already empty. Command "banner:clear:(banner)". */
+    static Plan clear(SortedMap<Integer, String> table, Rules r) {
+        SortedMap<Integer, String> same = new TreeMap<>(table);
+        if (table.isEmpty()) return new Plan(false, "Nothing to clear", "banner:clear:0", same);
+        return new Plan(true, "", "banner:clear:0", new TreeMap<>());
+    }
+
+    /** Move: the troop on cell from goes to cell to; a troop already there swaps places with it. Refused when from holds no troop, to is off the table or is from itself.
+     *  Troops and cost do not change, so the result needs no validTable. Command "banner:move:(banner):(from):(to)". */
+    static Plan move(SortedMap<Integer, String> table, int from, int to, Rules r) {
+        SortedMap<Integer, String> same = new TreeMap<>(table);
+        String command = "banner:move:0:" + from + ":" + to;
+        if (!WarGrid.inRange(from) || !WarGrid.inRange(to)) return new Plan(false, why("range"), command, same);
+        if (!table.containsKey(from)) return new Plan(false, "No troop there to move", command, same);
+        if (from == to) return new Plan(false, "Already there", command, same);
+        SortedMap<Integer, String> next = new TreeMap<>(table);
+        String moving = next.remove(from), there = next.put(to, moving);
+        if (there != null) next.put(from, there);
         return new Plan(true, "", command, next);
     }
 

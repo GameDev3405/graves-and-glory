@@ -3,7 +3,7 @@ package gg.gravesandglory;
 import java.util.*;
 
 /** The server's half of the War Table's banner commands, apart from Minecraft so a check can drive it: "cell:(banner):(col):(row):(troop id or -)",
- *  "banner:new:(name)", "banner:rename:(banner):(name)", "banner:copy:(banner)", "banner:delete:(banner)" and "banner:use:(banner)". A command is decided with the same
+ *  "banner:new:(name)", "banner:rename:(banner):(name)", "banner:copy:(banner)", "banner:delete:(banner)", "banner:use:(banner)", "banner:arrange:(banner)", "banner:clear:(banner)" and "banner:move:(banner):(from cell):(to cell)". A command is decided with the same
  *  BannerDrop.paint and RosterMath.validTable the client previews with. */
 final class BannerCommands {
     private BannerCommands() {}
@@ -52,6 +52,7 @@ final class BannerCommands {
                 p.activeBanner = i;
                 return null;
             }
+            case "arrange": case "clear": case "move": return tool(p, a[1], cmd.split(":", -1), c, houses);
             default: return "That banner command is not understood.";
         }
     }
@@ -59,6 +60,26 @@ final class BannerCommands {
     /** A banner number as an index into the profile's banners, or -1 when it is not a number or no banner has it. */
     private static int index(Profile p, String s) {
         try { int i = Integer.parseInt(s.trim()); return i >= 0 && i < p.banners.size() ? i : -1; } catch (NumberFormatException e) { return -1; }
+    }
+
+    /** banner:arrange:(banner), banner:clear:(banner) and banner:move:(banner):(from):(to): the fast tools, worked out by BannerDrop on any banner of the profile. */
+    private static String tool(Profile p, String kind, String[] a, RosterMath.Catalog c, Set<String> houses) {
+        if (a.length != (kind.equals("move") ? 5 : 3)) return "That banner command is not understood.";
+        int banner = index(p, a[2]);
+        if (banner < 0) return "That banner does not exist.";
+        var rules = new BannerDrop.Rules(c, p.owned.keySet(), houses);
+        var table = WarGrid.parse(p.banners.get(banner).cells);
+        BannerDrop.Plan plan;
+        if (kind.equals("arrange")) plan = BannerDrop.arrange(table, rules);
+        else if (kind.equals("clear")) plan = BannerDrop.clear(table, rules);
+        else {
+            int from, to;
+            try { from = Integer.parseInt(a[3].trim()); to = Integer.parseInt(a[4].trim()); } catch (NumberFormatException e) { return "That banner command is not understood."; }
+            plan = BannerDrop.move(table, from, to, rules);
+        }
+        if (!plan.ok()) return plan.why();
+        p.setTable(banner, plan.result());
+        return null;
     }
 
     /** cell:(banner):(col):(row):(id or -): one cell painted on a banner (not only the active one). */

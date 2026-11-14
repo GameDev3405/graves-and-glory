@@ -138,6 +138,34 @@ public final class WarGrid {
     }
 
     /**
+     * Packed placement: the same order as place (stably by rank, rows from the front, each row centre-out) but a new rank does not start a new row,
+     * so every troop up to cells() finds a cell. Auto-arrange falls back to it when role placement would run out of rows.
+     */
+    static SortedMap<Integer, String> packed(List<String> ordered, ToIntFunction<String> rank) {
+        List<String> sorted = new ArrayList<>(ordered);
+        sorted.sort(Comparator.comparingInt(rank::applyAsInt));
+        SortedMap<Integer, String> out = new TreeMap<>();
+        List<Integer> order = centreOut();
+        int i = 0;
+        for (String id : sorted) {
+            if (i >= cells()) break;
+            out.put(index(order.get(i % order.size()), i / order.size()), id);
+            i++;
+        }
+        return out;
+    }
+
+    /**
+     * Auto-arrange: the troops of a table (taken in cell order) set out by the bots' rule, shields in front, then other melee, then ranged and casters
+     * behind, each row centred. When role placement would drop a troop (a banner of 40 can need a seventh row), the packed placement is used, so no troop is ever lost.
+     */
+    public static SortedMap<Integer, String> arrange(Map<Integer, String> table) {
+        List<String> troops = new ArrayList<>(table.values());
+        SortedMap<Integer, String> out = place(troops, WarGrid::role);
+        return out.size() == troops.size() ? out : packed(troops, WarGrid::role);
+    }
+
+    /**
      * A bot's buy priority: each troop's count on its table, keyed in the order its ordered line first names it, then any troop the
      * line does not name in cell order. Role placement can put a later troop in a lower cell (graveborn_normal's reapers take
      * column 0), so buying in cell order would change what a bot trains first; spec 6 says bots field the same troops as before.

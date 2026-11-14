@@ -163,6 +163,23 @@ public final class WarGridCheck {
         starterValid();
         botBannersValid();
         buyOrderFollowsLine();
+        packedKeepsEveryTroop();
         System.out.println("WarGridCheck ok: " + checks + " checks");
+    }
+
+    /** Auto-arrange's fallback: seven ranks of one troop each would need seven rows, so role placement drops troops; packed placement keeps all, in rank order, centre-out. */
+    static void packedKeepsEveryTroop() {
+        List<String> ids = new ArrayList<>();
+        for (int i = 0; i < 40; i++) ids.add("t" + i);
+        java.util.function.ToIntFunction<String> rank = id -> Integer.parseInt(id.substring(1)) % 7;
+        check(WarGrid.place(ids, rank).size() < 40, "Seven ranks do not fit the rows of role placement");
+        SortedMap<Integer, String> packed = WarGrid.packed(ids, rank);
+        check(packed.size() == 40 && new HashSet<>(packed.values()).equals(new HashSet<>(ids)), "Packed placement keeps all 40 troops, one per cell");
+        check(packed.get(WarGrid.index(WarGrid.centreOut().get(0), 0)).equals("t0"), "Packed placement starts at the front centre with the lowest rank");
+        for (int row = 0; row + 1 < WarGrid.rows(); row++) {
+            int max = -1, min = Integer.MAX_VALUE;
+            for (var e : packed.entrySet()) { int r = rank.applyAsInt(e.getValue()); if (WarGrid.row(e.getKey()) == row) max = Math.max(max, r); if (WarGrid.row(e.getKey()) == row + 1) min = Math.min(min, r); }
+            check(max <= min, "Packed placement keeps rank order front to back at row " + row);
+        }
     }
 }

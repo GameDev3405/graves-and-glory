@@ -52,7 +52,8 @@ final class WarTablePages {
     /** Under the grid, "Rear" and the placing hint share one line; then the tabs and their actions (18 tall, so the sheet's torn foot stays clear). */
     static final int REAR_DY = 300, SUB_DY = 48;
     static final int TABS_X = 20, TABS_Y = 313, ACTS_Y = 336, TAB_W = 68, TAB_H = 18, TAB_GAP = 6,
-        GROUP_W = 50, GROUP_GAP = 4, MAIN_W = 124, MAIN_H = 24;
+        GROUP_W = 50, GROUP_GAP = 4, MAIN_W = 124, MAIN_H = 24,
+        TOOL_Y = 30, TOOL_H = 16, ARRANGE_W = 88, CLEAR_W = 52, TOOL_GAP = 4;
     static final int CLASS_X = 760, CLASS_Y = 140, CLASS_STEP = 40, CLASS_W = 120, BONUS_Y = 374, BONUS_W = 144;
     /** What a seat click places when the Clear tag is armed: the server's word for an empty seat. */
     static final String EMPTY = "empty";
@@ -243,6 +244,12 @@ final class WarTablePages {
      *  troop off (it began on a cell that held it) or places it; the cell last refused and when; the new name being written while Rename is
      *  open (null when not); the tick a first Delete press lapses; and, after New or Copy, the banner count to wait past before showing the new one. */
     boolean stroking, strokeErase;
+    /** Banner: a drag that began on a placed troop (see press): the cell it began on (-1: none), whether the pointer has left that cell, and the cell it is over now. */
+    int lift = -1, moveTarget = -1;
+    boolean moving;
+    /** The tick a first Clear press lapses, and the banner it is armed on (-1: none): the second press within three seconds empties only that banner. */
+    long clearArmed;
+    int clearArmedBanner = -1;
     int strokeCell = -1, refusedCell = -1, showLastFrom = -1;
     long refusedAt = -1000, deniedAt = -1000, deleteArmed;
     /** The words of the last refused stroke: said once, in the strip beside the cell, for REFUSED_TICKS (never in the notice line). */
@@ -357,7 +364,7 @@ final class WarTablePages {
         if (renaming != null) { renameKey(key); return true; } // every key belongs to the name while it is written
         if (key == GLFW.GLFW_KEY_ESCAPE) {
             if (renaming != null) renameKey(key);
-            else if (stroking) cancelDrag();
+            else if (stroking || lift >= 0) cancelDrag();
             else back();
             return true;
         }
@@ -377,7 +384,7 @@ final class WarTablePages {
     /** A click with the other mouse button: on a seat of the Banner it empties the seat. */
     boolean secondaryClick(double x, double y) {
         if (!page.equals("banner")) return false;
-        if (stroking) { cancelDrag(); return true; }
+        if (stroking || lift >= 0) { cancelDrag(); return true; }
         if (renaming != null || !battleFree()) return false;
         int i = cellAt(x, y);
         if (i < 0) return false;
@@ -707,7 +714,7 @@ final class WarTablePages {
         for (int i = 0; i < RosterMath.maxBanners(); i++) {
             final int b = i;
             add("tab-" + i, new UiButton(sh[0] + SHEET_X + TABS_X + i * (TAB_W + TAB_GAP), sh[1] + SHEET_Y + TABS_Y, TAB_W, TAB_H, Text.literal("Banner " + (i + 1)),
-                bb -> { shownBanner = b; planned = null; deleteArmed = 0; deleteArmedBanner = -1; refresh(); }, (g, x, y, w, h, hot) -> tab(g, b, x, y, w, h)));
+                bb -> { shownBanner = b; planned = null; deleteArmed = 0; deleteArmedBanner = -1; clearArmed = 0; clearArmedBanner = -1; cancelDrag(); refresh(); }, (g, x, y, w, h, hot) -> tab(g, b, x, y, w, h)));
         }
         String[][] acts = {{"new", "New", "Start a new empty banner"}, {"rename", "Rename", "Give this banner a new name"}, {"copy", "Copy", "Copy this banner into a new one"},
             {"delete", "Delete", "Delete this banner (press twice)"}};
@@ -717,6 +724,14 @@ final class WarTablePages {
                 (g, x, y, w, h, hot) -> vellum(g, name, x, y, w, h, name.equals("delete") && deleteArmed > ticks && deleteArmedBanner == shownBanner() ? "Sure?" : label, false)));
             b.setTooltip(Tooltip.of(Text.literal(acts[i][2])));
         }
+        // The fast tools, right-aligned in the sheet's header row: Auto-arrange and Clear (two presses, like Delete).
+        int toolsRight = sh[0] + SHEET_X + TABS_X + BANNER_PAPER_W, toolsY = sh[1] + SHEET_Y + TOOL_Y;
+        var arrange = add("arrange", new UiButton(toolsRight - CLEAR_W - TOOL_GAP - ARRANGE_W, toolsY, ARRANGE_W, TOOL_H, Text.literal("Auto-arrange"), bb -> act("arrange"),
+            (g, x, y, w, h, hot) -> vellum(g, "arrange", x, y, w, h, "Auto-arrange", false)));
+        arrange.setTooltip(Tooltip.of(Text.literal("Set the troops out: shields in front, then melee, then ranged and casters behind")));
+        var clear = add("clear", new UiButton(toolsRight - CLEAR_W, toolsY, CLEAR_W, TOOL_H, Text.literal("Clear"), bb -> act("clear"),
+            (g, x, y, w, h, hot) -> vellum(g, "clear", x, y, w, h, clearArmed > ticks && clearArmedBanner == shownBanner() ? "Sure?" : "Clear", false)));
+        clear.setTooltip(Tooltip.of(Text.literal("Take every troop off this banner (press twice)")));
         // The main button, set apart on the right: Take to battle. The banner already going to battle reads "Going to battle" with the tick and takes no press.
         var use = add("use", new UiButton(sh[0] + SHEET_X + TABS_X + BANNER_PAPER_W - MAIN_W, sh[1] + SHEET_Y + ACTS_Y, MAIN_W, MAIN_H, Text.literal("Take to battle"), bb -> act("use"),
             (g, x, y, w, h, hot) -> mainButton(g, x, y, w, h, hot)));
@@ -845,13 +860,21 @@ final class WarTablePages {
         return plan;
     }
 
+    /** Sends a whole-banner plan (Auto-arrange, Clear, a move) the server decides again, drawing its result at once as a stroke does. A refused plan is said in the strip when it names a cell. */
+    boolean submit(BannerDrop.Plan plan, int cell) {
+        if (!plan.ok()) { refuse(cell, plan.why()); return false; }
+        if (send(plan.withBanner(shownBanner()).command())) { planned = plan.result(); plannedBanner = shownBanner(); plannedAt = System.currentTimeMillis(); plannedScreen = screen; return true; }
+        refuse(cell, "Slow down a moment.");
+        return false;
+    }
+
     /** A refused stroke: the cell is marked for a moment and its words are kept for the strip beside it (overlay), once: no notice line. */
     void refuse(int cell, String why) {
         refusedCell = cell; refusedAt = ticks; refusedWhy = why;
         if (ticks - deniedAt > 20) { deniedAt = ticks; UiSounds.play(AudioCues.Cue.UI_DENY); }
     }
 
-    /** A banner action: new, rename, copy, delete (a second press within three seconds) or use, on the shown banner. */
+    /** A banner action: new, rename, copy, delete or clear (a second press within three seconds), use, or the Auto-arrange tool, on the shown banner. */
     void act(String name) {
         int b = shownBanner(), n = CampaignClient.profile.banners.size();
         switch (name) {
@@ -859,6 +882,11 @@ final class WarTablePages {
             case "copy" -> { if (send("banner:copy:" + b)) showLastFrom = n; }
             case "rename" -> renaming = CampaignClient.profile.banners.get(b).name;
             case "delete" -> { if (deleteArmed > ticks && deleteArmedBanner == b) { deleteArmed = 0; deleteArmedBanner = -1; planned = null; send("banner:delete:" + b); } else { deleteArmed = ticks + 60; deleteArmedBanner = b; } }
+            case "arrange" -> submit(BannerDrop.arrange(table(), rules()), -1);
+            case "clear" -> {
+                if (clearArmed > ticks && clearArmedBanner == b) { clearArmed = 0; clearArmedBanner = -1; submit(BannerDrop.clear(table(), rules()), -1); }
+                else { clearArmed = ticks + 60; clearArmedBanner = b; }
+            }
             default -> send("banner:use:" + b);
         }
         refresh();
@@ -869,6 +897,11 @@ final class WarTablePages {
         int n = CampaignClient.profile.banners == null ? 0 : CampaignClient.profile.banners.size();
         if (showLastFrom >= 0 && n > showLastFrom) { shownBanner = n - 1; planned = null; showLastFrom = -1; }
         if (renaming != null && !battleFree()) renaming = null;
+        if (!page.equals("banner")) return;
+        boolean free = battleFree() && renaming == null;
+        setActive("arrange", free && BannerDrop.arrange(table(), rules()).ok()); // only a banner that would change takes it
+        setActive("clear", free && !table().isEmpty());
+        if (!free && lift >= 0) cancelDrag();
     }
 
     /** A typed character goes into the new name while Rename is open (at most 16 characters). */
@@ -904,21 +937,36 @@ final class WarTablePages {
         return -1;
     }
 
-    /** A left press (GUI px) on the Banner page: on a cell it paints the brush there and starts a stroke a drag carries on. Returns whether the press is taken. */
+    /** A left press (GUI px) on the Banner page. What a drag does depends on where it starts (one rule, so painting and moving never fight):
+     *  a drag that starts on a placed troop MOVES it when the brush is empty or a different troop (the troop is lifted, the cell it is let go over takes it, and a troop already
+     *  there swaps places; a plain click without a drag still paints the brush over it, as before); a drag that starts on an empty cell, or on a cell holding the brush's own
+     *  troop, PAINTS (places the brush along the way, or takes it off, as the first cell did). Returns whether the press is taken. */
     boolean press(double x, double y) {
         if (!page.equals("banner") || !battleFree() || renaming != null) return false;
         int i = cellAt(x, y);
         if (i < 0) return false;
+        String here = table().get(i);
+        if (here != null && !here.equals(armed)) { // lift: nothing is painted until the button comes up
+            lift = i; moving = false; moveTarget = -1;
+            UiSounds.play(AudioCues.Cue.BANNER_DRAG);
+            return true;
+        }
         if (armed == null) return true;
-        stroking = true; strokeCell = i; strokeErase = armed.equals(table().get(i));
+        stroking = true; strokeCell = i; strokeErase = armed.equals(here);
         UiSounds.play(AudioCues.Cue.BANNER_DRAG); // the brush touches the table
         paint(i, armed);
         return true;
     }
 
-    /** The pointer moved with the left button down: each new cell under it is painted as the stroke began (placing where the brush's troop is not,
-     *  or taking it off where it is). Returns whether the move is taken. */
+    /** The pointer moved with the left button down: a lifted troop follows it (the cell under it is the one it would go to); otherwise each new cell under it is painted as the
+     *  stroke began (placing where the brush's troop is not, or taking it off where it is). Returns whether the move is taken. */
     boolean dragged(double x, double y) {
+        if (lift >= 0) {
+            int i = cellAt(x, y);
+            if (i >= 0 && i != lift) moving = true;
+            moveTarget = moving ? i : -1;
+            return true;
+        }
         if (!stroking) return false;
         int i = cellAt(x, y);
         if (i < 0 || i == strokeCell) return true;
@@ -928,15 +976,24 @@ final class WarTablePages {
         return true;
     }
 
-    /** The button came up: the stroke ends. */
+    /** The button came up: a stroke ends; a lifted troop is moved to the cell it was let go over (a swap when one stands there), or stays when let go on its own cell or off the table,
+     *  and a lift that never left its cell was a click, so the brush is painted over it. */
     boolean released(double x, double y, int button) {
-        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT || !stroking) return false;
+        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT || !stroking && lift < 0) return false;
+        if (lift >= 0) {
+            int from = lift, to = cellAt(x, y);
+            boolean dragged = moving;
+            cancelDrag();
+            if (!dragged) { if (armed != null) paint(from, armed); }
+            else if (to >= 0 && to != from && battleFree()) submit(BannerDrop.move(table(), from, to, rules()), to);
+            return true;
+        }
         cancelDrag();
         return true;
     }
 
-    /** Ends a stroke. */
-    void cancelDrag() { stroking = false; strokeCell = -1; }
+    /** Ends a stroke or a lift. */
+    void cancelDrag() { stroking = false; strokeCell = -1; lift = -1; moving = false; moveTarget = -1; }
 
     /** The troop's House colour (its accent), or brass. */
     static int accentOf(String troop) {
@@ -962,6 +1019,14 @@ final class WarTablePages {
         return here != null ? placedWord(here) : "Place " + troopName(armed) + ", " + cost(armed) + " gold";
     }
 
+    /** What the strip says of the cell a lifted troop is over: "Move here", "Swap with (troop)", or why it cannot go. */
+    String moveWord(int to) {
+        var plan = BannerDrop.move(table(), lift, to, rules());
+        if (!plan.ok()) return to == lift ? "" : plan.why();
+        String there = table().get(to);
+        return there == null ? "Move here" : "Swap with " + troopName(there);
+    }
+
     /** "Templar \u00b7 Shield \u00b7 40 gold". */
     static String placedWord(String id) { return troopName(id) + " \u00b7 " + kindOf(id) + " \u00b7 " + cost(id) + " gold"; }
 
@@ -981,12 +1046,13 @@ final class WarTablePages {
         if (!page.equals("banner") || renaming != null) return;
         int hot = -1;
         for (int i = 0; i < WarGrid.cells(); i++) { var b = buttons.get("cell-" + i); if (b != null && b.visible && b.active && hot(b)) hot = i; }
+        if (lift >= 0) hot = moving ? moveTarget : -1; // a lifted troop: the strip follows the cell it would go to
         boolean refused = refusedCell >= 0 && !refusedWhy.isEmpty() && ticks - refusedAt < REFUSED_TICKS && (hot < 0 || hot == refusedCell);
         int at = refused ? refusedCell : hot;
         if (at < 0) return;
-        String word = refused ? refusedWhy : cellWord(hot);
+        String word = refused ? refusedWhy : lift >= 0 ? moveWord(hot) : cellWord(hot);
         if (word.isEmpty()) return;
-        boolean legal = !refused && (armed == null || BannerDrop.paint(table(), hot, armed, rules()).ok());
+        boolean legal = !refused && (lift >= 0 ? BannerDrop.move(table(), lift, hot, rules()).ok() : armed == null || BannerDrop.paint(table(), hot, armed, rules()).ok());
         UiCanvas.begin(g);
         try {
             var font = font();
@@ -1101,7 +1167,7 @@ final class WarTablePages {
         var bs = CampaignClient.profile.banners;
         int sb = shownBanner();
         String saved = bs != null && sb < bs.size() ? bs.get(sb).name : Spec.FACTIONS[t].name();
-        String name = UiMath.trim(saved, BANNER_PAPER_W - 16, s -> font.getWidth(DarkUi.heading(s)));
+        String name = UiMath.trim(saved, BANNER_PAPER_W - 16 - (ARRANGE_W + CLEAR_W + 2 * TOOL_GAP), s -> font.getWidth(DarkUi.heading(s)));
         text(g, "banner-name", DarkUi.heading(name), saved, x + BANNER_PAPER_X + 14, hy, DarkUi.INK_TEXT);
         rectsDrawn.put("banner-name", new int[]{x + BANNER_PAPER_X + 14, hy, font.getWidth(DarkUi.heading(name)), 9});
         int gx0 = x + GRID_X - SHEET_X;
@@ -1161,7 +1227,10 @@ final class WarTablePages {
             g.drawBorder(x + 1, y + 1, CELL - 2, CELL - 2, accentOf(id));
         }
         var b = buttons.get("cell-" + i);
-        if (hot(b)) {
+        if (lift >= 0) { // a troop is lifted: its cell is veiled and the cell it is over is ringed, brass when the move is allowed and red when not
+            if (i == lift) DarkUi.disabledVeil(g, x, y, CELL, CELL);
+            if (moving && i == moveTarget && i != lift) ring(g, x, y, CELL, CELL, BannerDrop.move(table(), lift, i, rules()).ok() ? DarkUi.BRASS_HI : DarkUi.ALARM_TEXT, 2);
+        } else if (hot(b)) {
             boolean legal = armed != null && BannerDrop.paint(table(), i, armed, rules()).ok();
             ring(g, x, y, CELL, CELL, legal ? DarkUi.BRASS_HI : DarkUi.ALARM_TEXT, 2);
             if (!legal) g.fill(x, y, x + CELL, y + CELL, DarkUi.REFUSE_HOVER);
