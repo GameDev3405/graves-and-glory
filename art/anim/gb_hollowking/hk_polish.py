@@ -121,6 +121,15 @@ BUILT = {
     "soft": [("attack_overhead_cleave", "attack_overhead_cleave_legs", None),
              ("attack_side_cut", "attack_side_cut_legs", None), ("attack_thrust", "attack_thrust_legs", None)]
             + [(h, h + "_legs", READY) for h in HITS if "light" not in h],
+    # the ready stance first: the attacks start from it and the hits are added onto it
+    "cape": [("stance_ready_upper", "stance_ready_legs", None), ("idle_upper", "idle_legs", None),
+             ("walk_upper", "walk_legs", None), ("run_upper", "run_legs", None),
+             ("stance_brace_upper", "stance_brace_legs", None), ("stance_brace_up_upper", "stance_brace_legs", None),
+             ("stance_wall_upper", "stance_wall_legs", None), ("stance_wall_up_upper", "stance_wall_legs", None),
+             ("stance_shield_up_upper", "idle_legs", None), ("stance_ward_upper", "idle_legs", None),
+             ("attack_overhead_cleave", "attack_overhead_cleave_legs", None),
+             ("attack_side_cut", "attack_side_cut_legs", None), ("attack_thrust", "attack_thrust_legs", None)]
+            + [(h, h + "_legs", READY) for h in HITS] + [(d, None, None) for d in DEATHS],
 }
 STUN = ("stun_upper", None, 4.0 / TPS)    # stun_out adds onto the stun's upper body where its loop starts; legs play on
 LATE = {
@@ -136,6 +145,10 @@ LATE = {
     "seam": [("stun_legs", "stun_upper", None), ("stun_upper", "stun_legs", None)],
     "soft": [("hit_pulled", "hit_pulled_legs", READY), ("hit_knockback", "hit_knockback_legs", READY),
              ("stun_upper", "stun_legs", None), ("stun_out_upper", "stun_legs", STUN)],
+    "cape": [("stance_hold_upper", "stance_hold_legs", None), ("stance_fallback_upper", "stance_fallback_legs", None),
+             ("stance_rally_upper", "idle_legs", None), ("charge_run_upper", "run_legs", None),
+             ("stun_upper", "stun_legs", None), ("stun_out_upper", "stun_legs", STUN),
+             ("hit_knockback", "hit_knockback_legs", READY), ("hit_pulled", "hit_pulled_legs", READY)],
 }
 STUN_LOOP = (4.0, 24.0)     # reactions.py: the stun clip plays its entry once, then loops ticks 4-24
 START = {}     # group -> {clip: forward turn its first sample starts from} (none yet: plumb)
@@ -1179,8 +1192,88 @@ def fix_seam(rig, B, anims, name, partner, base, log):
     log("  seam %-28s tick 24 = tick 4 on every channel (largest change %.3f, %s)" % (name, worst[0], worst[1] or "none"))
 
 
+# The cape (2026-11-14, hk_cape.py): clip -> (gait speed for the head wind or None, the holds' breath, the clip whose
+# first sample it starts from or None). Additive clips start from their base; the rest not named start hanging plumb.
+CAPE_HOW = {"idle_upper": (None, True, None), "walk_upper": ("walk", False, None), "run_upper": ("run", False, None),
+            "charge_run_upper": ("charge", False, None), "stance_fallback_upper": ("back", False, None)}
+for _c in ("attack_overhead_cleave", "attack_side_cut", "attack_thrust", "stance_rally_upper"):
+    CAPE_HOW[_c] = (None, False, "stance_ready_upper")
+
+
+def fix_cape(rig, B, anims, name, partner, base, log):
+    """The cape's three panels in motion (hk_cape.py): solved on the pose the game shows, keyed on cloak_a/b/c; the
+    container held at rest in an absolute clip and left out of an additive one."""
+    import hk_cape as HC
+    if not hasattr(rig, "_cape"):
+        rig._cape = HC.Cape(rig)
+    cape = rig._cape
+    ctx = Ctx(anims, name, partner, base)
+    for b in HC.CAPE_BONES:
+        ctx.clip["bones"].pop(b, None)
+    ts, n = _times(ctx)
+    frames = [rig.fk(ctx.pose(t, strip=HC.CAPE_BONES)) for t in ts]
+    speed, breath, start = CAPE_HOW.get(name, (None, name.startswith("stance_") and ctx.loop, None))
+    x0 = None
+    if base is not None:
+        x0 = {p: np.array([ctx.base_of(p)[0][0], ctx.base_of(p)[0][2]]) for p in HC.PANELS}
+        xt = {p: np.tile(x0[p], (n + 1, 1)) for p in HC.PANELS}
+        bc = anims.get(base[0])
+        if bc is not None and bc.get("loop") is True:   # the stance runs on under the hit (the checks play them together
+            L = float(bc["animation_length"])           # from its start): the hit adds what the stance does not give
+            for p in HC.PANELS:
+                if p in clip_pose(bc, 0.0):
+                    xt[p] = np.array([[clip_pose(bc, (base[2] + t) % L)[p][0][0],
+                                       clip_pose(bc, (base[2] + t) % L)[p][0][2]] for t in ts])
+    elif start is not None and start in anims:
+        sp = clip_pose(anims[start], 0.0)
+        x0 = {p: np.array([sp[p][0][0], sp[p][0][2]]) for p in HC.PANELS if p in sp}
+    seam = (int(STUN_LOOP[0] * SUB), int(STUN_LOOP[1] * SUB)) if name == "stun_upper" else None
+    floor = HC.FLOOR_DEATH if name in DEATHS else 0.0
+    solved = HC.solve(cape, frames, ctx.loop, x0=x0, speed=speed, breath=breath, floor_tol=floor, seam=seam,
+                      additive=base is not None or name.startswith("attack"))
+    curves = {p: c for p, (c, _) in solved.items()}
+    left = HC.final_clear(cape, frames, solved, floor)
+    if base is not None:          # HitController adds a hit's turns: only what the stance does not give, back to it by the end
+        m = min(n, HC.END_EASE * SUB)
+        for p in HC.PANELS:
+            cur = curves[p]
+            for i in range(n - m, n + 1):
+                f = B.smooth((i - (n - m)) / float(m))
+                cur[i] = cur[i] * (1.0 - f) + xt[p][i] * f
+    if base is None and name.startswith("attack"):    # an attack hands back to the guard: it ends on the pose it began on
+        m = min(n, HC.END_EASE * SUB)
+        for p in HC.PANELS:
+            cur = curves[p]
+            for i in range(n - m, n + 1):
+                f = B.smooth((i - (n - m)) / float(m))
+                cur[i] = cur[i] * (1.0 - f) + cur[0] * f
+    msg = []
+    for p in HC.PANELS:
+        cur = curves[p] - (xt[p] if base is not None else 0.0)
+        if base is not None:
+            cur[0] = cur[-1] = 0.0
+        vals = [[round(float(c[0]), 3), 0.0, round(float(c[1]), 3)] for c in cur]
+        keys = sorted(set(B.thin(vals, B.ROT_TOL)) | (set(seam) if seam else set()))
+        ctx.clip["bones"][p] = {"rotation": {_ft(i / SUB / TPS): vals[i] for i in keys}}
+        off = solved[p][1]
+        if np.abs(off).max() > 1e-3:
+            pv = [[round(float(c), 4) for c in o] for o in off]
+            pk = sorted(set(B.thin(pv, B.POS_TOL)) | (set(seam) if seam else set()))
+            ctx.clip["bones"][p]["position"] = {_ft(i / SUB / TPS): pv[i] for i in pk}
+        u = cape.sx * curves[p][:, 0]
+        msg.append("%s out %+.0f..%+.0f side %+.0f..%+.0f%s" % (p, u.min(), u.max(), curves[p][:, 1].min(),
+                                                               curves[p][:, 1].max(),
+                                                               (" slide %.1f px" % np.abs(off).max(axis=1).max()
+                                                                if np.abs(off).max() > 1e-3 else "")
+                                                               + (" (%.2f px left)" % left[p] if left.get(p) else "")))
+    if base is None:
+        ctx.clip["bones"]["cape"] = {"rotation": {"0.0": [0.0, 0.0, 0.0]}}
+    log("  cape %-28s %s" % (name, "; ".join(msg)))
+
+
 FIXES = (("floor", fix_floor), ("cuisse", fix_cuisse), ("thigh", fix_thigh), ("rags", fix_rags), ("weapon", fix_weapon),
-         ("edge", fix_edge), ("head", fix_head), ("plate", fix_plate), ("soft", fix_soft), ("seam", fix_seam))
+         ("edge", fix_edge), ("head", fix_head), ("plate", fix_plate), ("soft", fix_soft), ("cape", fix_cape),
+         ("seam", fix_seam))
 
 
 def _hash(clip):

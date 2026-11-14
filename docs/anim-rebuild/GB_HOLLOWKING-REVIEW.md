@@ -241,3 +241,46 @@ Proof:
   left_foot_gear -1.7 (hit_knockback t3), cloak_a into belt -0.85 (attack_side_cut t15). Before: legs -2.48, sword -0.64,
   hem 8.87 px through the ground.
 - Open for animation: the cloak_a/b/c and cape keys were tuned for the old cape; those last 1-2 px are the cape's motion.
+
+## Cape motion 2026-11-14
+
+Kort's cape note, second half: the knee cape (model rebuild 2026-11-13) had no keys of its own. New
+`art/anim/gb_hollowking/hk_cape.py` solves cloak_a/b/c as three damped springs hung from the collar (each panel its own
+period 0.52-0.64 s and damping, so they lag the torso and each other), driven by gravity less the hinge's acceleration,
+a head wind with gait speed and, in holds, a slow breath. Every quarter-tick sample is then cleared off the body: the
+nearest turn that leaves the panel out of the armour, and where a plate sweeps the panel's top (no turn clears that) a
+small eased slide of the hinge (position keys, at most 2.5 px). `hk_polish.py` stage `cape` (after soft, before seam)
+keys it on every clip: BUILT and LATE lists, `fix_cape`. Only `cape`, `cloak_a/b/c` keys are written; `cape` is held at
+rest in absolute clips and left out of additive ones. No body key, model, rig, Java or other troop touched.
+
+- Idle and the stances (ready, brace, brace_up, wall, wall_up, shield_up, ward, hold, fallback): a 2.6 s breath sway,
+  out 2.8 deg and side 1.6 deg, the three panels a third of a cycle apart; clean loop seams (four solver passes).
+- Walk, run, charge_run_upper: trail back with speed (walk about +7, run +16, charge +21 deg out), the stride's beat
+  twice a cycle out/in and once side to side, panels a step apart (b 0.7, c 1.3 rad later). Fallback trails forward a
+  little (walking backward).
+- Attacks: start from the ready stance's cape, follow the swing (peaks after the torso) and ease back to their first
+  pose over the last 4 ticks (settle check). Rally is solved the same way.
+- Hits, knockback, pulled, stun_out: solved on the stance they are added to, played with it from its start (as the
+  checks and the HitController play them); the written key is what the stance does not give, zero at both ends.
+- Deaths, fake_death, rise: gravity with the ground 1.2 px below the floor line allowed; the cape falls with the body
+  and lies on it (forward, left, right) or under it (back).
+
+Contacts (work/hk_model probe, signed px, every quarter tick; negative is inside):
+- cloak_a into right_pauldron, attack_overhead_cleave: -1.60 -> arms -0.36 (t0.5, the stance's own graze).
+- cloak_b into left_foot_gear, hit_knockback: -1.70 -> legs -0.42 (t9, cloak_a into right_foot_gear).
+- cloak_a into belt, attack_side_cut: -0.85 -> waist -0.32 (t0, hip_l, the rest fit).
+- Worst of all non-death clips: arms -0.60 (rally t0.5), legs -0.42, waist -0.32, weapon +1.45, back +1.49, hem +4.0
+  over the feet (before: arms -1.60, legs -1.70, waist -0.85).
+
+Checks: scorecard 44 clips 0 failing (4 rise exemptions as before); focus_check 44 clips 0 FAIL; unittest discover
+tools/anim OK; test_hk_polish OK; a second hk_polish run is a no-op. Focus rows new on the cape: pop cloak_c 9.4
+(hit_knockback t13.5) and 10.0 (hit_medium_right t7.75), WARN (limit 14). Gone: settle cape (cleave, side cut),
+secondary_life cloak_a (medium_back, pulled).
+
+Build: `python art/anim/gb_hollowking/hk_build.py` runs the whole chain (build_anims -> export -> stances -> reactions
+-> charge -> hk_polish late) and checks that out/ (54 clips) and the asset (67) agree. export.py alone drops the 13
+clips stances/reactions/charge add to the asset only.
+
+Open: the two pop WARNs (a panel meeting a plate in one quarter tick); a hit added to the stance at another phase than
+its start can lie up to the stance's breath (about 8 deg) further in or out; hit_pulled_legs' rags and cuisse keys moved
+up to 3.75 deg because those late stages measure the whole pose, cape included.
