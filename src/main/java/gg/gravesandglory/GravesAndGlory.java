@@ -64,6 +64,8 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier FEED = Identifier.of("gravesandglory", "feed_v1");
     /** Server to client: the commander's gear as one GearWire string, sent when it changes (kept out of the camp snapshot, which has a client size limit). */
     public static final Identifier GEAR = Identifier.of("gravesandglory", "gear_v1");
+    /** Server to client: the drop board's coin (DropBoard): a byte kind (begin, aim, path, end) and its fields. */
+    public static final Identifier DROP = Identifier.of("gravesandglory", "drop_v1");
     /** Server to client: the commander's relic slots (gear-combat Task 5), sent with each state and on a relic's start: a byte n, then per slot String relic id ("" empty), int ticks until ready (-1: empty or no behaviour), int ticks left running. */
     public static final Identifier RELICS = Identifier.of("gravesandglory", "relics_v1");
     public static Battle battle;
@@ -816,7 +818,7 @@ public final class GravesAndGlory implements ModInitializer {
             server.setDifficulty(Difficulty.NORMAL,true);
             clearOldUnits();
             // Only inhabited chunks tick. Unit navigation tickets are maintained below.
-            CampaignMaps.lobby(world);PodiumStage.build(world);if(campaign.cached()){System.out.println("[Graves and Glory] Cached map ready.");mapReady();}
+            CampaignMaps.lobby(world);PodiumStage.build(world);DropStage.build(world);if(campaign.cached()){System.out.println("[Graves and Glory] Cached map ready.");mapReady();}
         }
         /**
          * The arena is ready, built or cached: read back what an interrupted round changed, then open the camp. Called after

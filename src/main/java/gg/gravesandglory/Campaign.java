@@ -88,6 +88,8 @@ public final class Campaign {
     final Map<UUID,JsonObject> results=new HashMap<>();
     /** Per commander, the last roll or chosen buy (the snapshot's lastRoll, for the camp's roll result card): {n, troop, duplicate, starsBefore, starsAfter, shards}; n counts up so the client tells a new one from the same. Not saved. */
     final Map<UUID,JsonObject> lastRolls=new HashMap<>();
+    /** The drop board: rolls that go through the altar (design 2026-11-14). */
+    final DropBoard drops=new DropBoard(this);
     private int rollSerial;
     /** The shortened forms each commander's camp snapshot has been sent in: each form is logged once, until he leaves. */
     final Map<UUID,Set<String>> snapshotForms=new HashMap<>();
@@ -239,7 +241,7 @@ public final class Campaign {
         if(ArenaAutosave.settle()&&b.server.isRunning()){long at=System.nanoTime();b.server.saveAll(true,false,false);System.out.println("[Graves and Glory] Saved the world after the battle ("+(System.nanoTime()-at)/1_000_000+" ms).");}
     }
     /** Leaving frees any seat in the solo-start group, and forgets which snapshot forms were logged for him. */
-    void left(UUID id){newerSaveTold.remove(id);gearSent.remove(id);forgeResults.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
+    void left(UUID id){drops.left(id);newerSaveTold.remove(id);gearSent.remove(id);forgeResults.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
     boolean handle(ServerPlayerEntity p,String cmd){
         if(cmd.startsWith("group:"))return CustomGroups.command(this,b,p,cmd); // custom group edits from the Armoury (command UI Task 12)
         if(cmd.startsWith("social:"))return socialCommand(p,cmd);
@@ -265,7 +267,7 @@ public final class Campaign {
         if(b.running){
             var current=b.squads.get(p.getUuid());
             boolean global=cmd.startsWith("map:")||cmd.startsWith("mode:")||cmd.equals("fill")||cmd.equals("start")||cmd.startsWith("difficulty:");
-            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||BannerCommands.handles(cmd)||cmd.startsWith("colour:")||GearCommands.arsenal(cmd);
+            boolean personal=cmd.equals("roll")||cmd.startsWith("roll:")||cmd.startsWith("buy:")||cmd.startsWith("star:")||cmd.startsWith("legendary:")||cmd.startsWith("unlock:")||cmd.startsWith("army:")||BannerCommands.handles(cmd)||cmd.startsWith("colour:")||GearCommands.arsenal(cmd)||cmd.startsWith("drop:roll:")||cmd.startsWith("drop:forge:");
             if(global||personal&&current!=null&&current.seated){notice(p.getUuid(),"Active battle choices are locked until the match ends.");return true;}
         }
         if(cmd.startsWith("difficulty:")){
@@ -275,6 +277,7 @@ public final class Campaign {
         }
         Profile pr=profile(p.getUuid());var squad=b.squads.get(p.getUuid());if(squad==null)return false;
         if(cmd.equals("roll")||cmd.startsWith("roll:")){roll(p,pr,cmd.equals("roll")?RosterMath.rollHouse(pr.line()):cmd.substring(5));return true;}
+        if(DropBoard.handles(cmd)){drops.command(p,pr,cmd);return true;}
         if(cmd.startsWith("buy:")){buy(p,pr,cmd.substring(4));return true;}
         if(GearCommands.arsenal(cmd)){gear(p,pr,cmd);return true;}
         if(cmd.startsWith("star:")){star(p,pr,cmd.substring(5));return true;}
@@ -465,7 +468,9 @@ public final class Campaign {
      * rarities.rollWeight odds, the Epic forced at recruitment.epicPity. A new troop joins the collection; a duplicate counts
      * toward its next star, and past the last star it is dismantled into that House's shards. A failed save undoes it all.
      */
-    void roll(ServerPlayerEntity p,Profile pr,String house){
+    void roll(ServerPlayerEntity p,Profile pr,String house){roll(p,pr,house,-1);}
+    /** The same through the drop board (design 2026-11-14): slot is the slot the coin will land in (drawn by DropBoard; -1: no board). The roll is paid, drawn on that slot's odds and saved here and now; only the result card, the notice and the reveal wait for the coin (DropBoard.begin). */
+    void roll(ServerPlayerEntity p,Profile pr,String house,int slot){
         var row=Arrays.stream(Spec.HOUSES).filter(h->h.id().equals(house)).findFirst().orElse(null);if(row==null)return;
         int cost=ROLL_WRITS;
         if(pr.troopWrits<cost){notice(p.getUuid(),"A recruitment roll costs "+cost+" troop writ"+(cost==1?"":"s")+". Earn writs by completing battles.");return;}
@@ -474,11 +479,12 @@ public final class Campaign {
         var common=RosterMath.rarityRow("common");var rare=RosterMath.rarityRow("rare");var epicRow=RosterMath.rarityRow("epic");
         if(commons.isEmpty()||rares.isEmpty()||epic==null||common==null||rare==null||epicRow==null)return;
         String before=JSON.toJson(pr);
-        var drawn=RosterMath.roll(commons,rares,epic,common.rollWeight(),rare.rollWeight(),epicRow.rollWeight(),pr.pity.getOrDefault(house,0),Spec.RECRUITMENT[0].epicPity(),rollRng);
+        var drawn=RosterMath.roll(commons,rares,epic,common.rollWeight(),rare.rollWeight(),epicRow.rollWeight(),pr.pity.getOrDefault(house,0),Spec.RECRUITMENT[0].epicPity(),slot<0?0:DropMath.multiplier(slot),rollRng);
         pr.troopWrits-=cost;pr.pity.put(house,drawn.pityAfter());
         var got=troop(drawn.troop());var card=rollCard(pr,got);
         String result=receive(pr,got);
         if(!save(p.getUuid())){profiles.put(p.getUuid(),Profile.restored(JSON.fromJson(before,Profile.class)));return;}
+        if(slot>=0){drops.begin(p,"unit",slot,rolled(card,pr,got),result);return;}
         lastRolls.put(p.getUuid(),rolled(card,pr,got));notice(p.getUuid(),result);reveal(p);
     }
     /** One copy of a troop joins the collection (spec 4.2): a new troop, a copy toward its next star, or past the last star its House's shards (RosterMath.addCopy). Returns what happened, for the notice. Rolls, chosen buys and the Founders Rare use it. */
@@ -505,20 +511,26 @@ public final class Campaign {
     /** Per commander, the last Forge roll (the snapshot's "forge"): {n, item, rarity, relic, duplicate, refund}; n counts up so the client tells a new roll from the same. Not saved. */
     final Map<UUID,JsonObject> forgeResults=new HashMap<>();
     /** One gear or forge request (spec 2026-11-03-commander-gear-design): GearCommands validates and applies it, a refusal changes nothing, and a profile that will not save is put back. */
-    void gear(ServerPlayerEntity p,Profile pr,String cmd){
+    void gear(ServerPlayerEntity p,Profile pr,String cmd){gear(p,pr,cmd,-1);}
+    /** The same with a Forge roll going through the drop board (slot as in roll; -1: no board): the roll is paid, drawn and saved now, its card and notice wait for the coin. */
+    void gear(ServerPlayerEntity p,Profile pr,String cmd,int slot){
         UUID id=p.getUuid();String before=JSON.toJson(pr);
-        var outcome=GearCommands.apply(pr,cmd,rollRng);
+        var outcome=GearCommands.apply(pr,cmd,rollRng,slot<0?0:DropMath.multiplier(slot));
         if(!outcome.ok()){notice(id,outcome.refusal());return;}
         if(!save(id)){unsaved(id,before,"That gear change");return;}
         var rolled=outcome.rolled();
         if(rolled!=null){
-            JsonObject card=new JsonObject();var last=forgeResults.get(id);card.addProperty("n",last==null?1:last.get("n").getAsInt()+1);
+            JsonObject card=new JsonObject();
             card.addProperty("item",rolled.piece()==null?"":rolled.piece().item);card.addProperty("rarity",rolled.piece()==null?"":rolled.piece().rarity);card.addProperty("relic",rolled.relic()==null?"":rolled.relic());
-            card.addProperty("duplicate",rolled.duplicate());card.addProperty("refund",rolled.refund());forgeResults.put(id,card);
+            card.addProperty("duplicate",rolled.duplicate());card.addProperty("refund",rolled.refund());
+            if(slot>=0){syncGear(p);drops.begin(p,rolled.relic()!=null?"relic":"gear",slot,card,outcome.notice());return;}
+            forgeCard(id,card);
         }
         notice(id,outcome.notice());
         syncGear(p);
     }
+    /** Shows a Forge roll's card: it takes the next n and becomes the commander's last Forge roll. */
+    void forgeCard(UUID id,JsonObject card){var last=forgeResults.get(id);card.addProperty("n",last==null?1:last.get("n").getAsInt()+1);forgeResults.put(id,card);}
     void unsaved(UUID id,String before,String what){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));notice(id,what+" was not saved, so nothing changed. Check disk space and try again.");}
     /**
      * A chosen recruit (buy:<troop>, spec 4.2): a Common or Rare of any House for recruitment.chosenCost gold, as a new troop or a copy toward its
@@ -975,6 +987,7 @@ public final class Campaign {
     /** Harness cameras: while false, the lobby leashes here and in the build tick leave every player where he stands. Always true in play. */
     boolean leash=true;
     void tick(){
+        drops.tick();
         if(b.time%20==0)expireNotices();
         if(b.running&&!ending()){BattleEffects.flickers(b);if(b.time%20==0)releaseExpiredHolds();if(b.time%600==0)checkpoint();} // the ending is settled: no checkpoint, so a crash in it pays nothing twice
         if(pendingBattle!=null&&b.ready){ // the map of a campaign battle is built: it starts unless something changed meanwhile
