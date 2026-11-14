@@ -341,6 +341,9 @@ final class WarTablePages {
         if (CampaignClient.noticeSerial != noticeSerialSeen) {
             noticeSerialSeen = CampaignClient.noticeSerial;
             noticeText = CampaignClient.notice;
+            if (page.equals("banner") && planned != null && plannedBanner == shownBanner() && BannerDrop.refusedBySnapshot(planned, savedTable(), noticeText)) { // the server refused a stroke or tool the page had planned: said once in the strip, by the cell, not in the notice line
+                refuse(plannedCell, noticeText); planned = null; noticeText = "";
+            }
             if (!noticeText.isEmpty()) noticeAt = ticks;
         }
         if (page.equals("chapter")) slide();
@@ -598,6 +601,8 @@ final class WarTablePages {
     private static SortedMap<Integer, String> planned;
     private static int plannedBanner = -1;
     private static long plannedAt;
+    /** The cell of the last stroke sent (-1 for a tool that names none): where the strip says a server refusal of it. */
+    private static int plannedCell = -1;
     /** The screen whose queue carries the planned strokes: the plan stays while it has strokes waiting. */
     private static CampScreen plannedScreen;
     private static final long PLANNED_MS = 2500;
@@ -863,7 +868,7 @@ final class WarTablePages {
         if (brush == null || !battleFree() || renaming != null) return null;
         var plan = BannerDrop.paint(table(), cell, brush, rules());
         if (!plan.ok()) { refuse(cell, plan.why()); return plan; }
-        if (send(plan.withBanner(shownBanner()).command())) { planned = plan.result(); plannedBanner = shownBanner(); plannedAt = System.currentTimeMillis(); plannedScreen = screen; }
+        if (send(plan.withBanner(shownBanner()).command())) { planned = plan.result(); plannedBanner = shownBanner(); plannedAt = System.currentTimeMillis(); plannedScreen = screen; plannedCell = cell; }
         else refuse(cell, "Slow down a moment."); // the queue is full: the stroke was not sent and the cell stays as it is
         return plan;
     }
@@ -871,7 +876,7 @@ final class WarTablePages {
     /** Sends a whole-banner plan (Auto-arrange, Clear, a move) the server decides again, drawing its result at once as a stroke does. A refused plan is said in the strip when it names a cell. */
     boolean submit(BannerDrop.Plan plan, int cell) {
         if (!plan.ok()) { refuse(cell, plan.why()); return false; }
-        if (send(plan.withBanner(shownBanner()).command())) { planned = plan.result(); plannedBanner = shownBanner(); plannedAt = System.currentTimeMillis(); plannedScreen = screen; return true; }
+        if (send(plan.withBanner(shownBanner()).command())) { planned = plan.result(); plannedBanner = shownBanner(); plannedAt = System.currentTimeMillis(); plannedScreen = screen; plannedCell = cell; return true; }
         refuse(cell, "Slow down a moment.");
         return false;
     }
@@ -1050,16 +1055,16 @@ final class WarTablePages {
         g.drawBorder(x - 1 - thick, y - 1 - thick, w + 2 + 2 * thick, h + 2 + 2 * thick, DarkUi.OAK0);
     }
 
-    /** What the strip says of a hovered cell: the reason when the brush would be refused there, a placed troop named with its kind and price,
-     *  else what the brush would place. Empty with no brush over an empty cell. */
+    /** What the strip says of a hovered cell: a placed troop named with its kind and price (whatever the brush), else the reason when the brush would be
+     *  refused there, else what the brush would place. Empty with no brush over an empty cell. */
     String cellWord(int i) {
         if (i < 0) return "";
         var t = table();
         String here = t.get(i);
-        if (armed == null) return here == null ? "" : placedWord(here);
+        if (here != null) return placedWord(here); // a placed troop is named whatever the brush, so the strip says what is there
+        if (armed == null) return "";
         var plan = BannerDrop.paint(t, i, armed, rules());
-        if (!plan.ok()) return plan.why();
-        return here != null ? placedWord(here) : "Place " + troopName(armed) + ", " + cost(armed) + " gold";
+        return !plan.ok() ? plan.why() : "Place " + troopName(armed) + ", " + cost(armed) + " gold";
     }
 
     /** What the strip says of the cell a lifted troop is over: "Move here", "Swap with (troop)", or why it cannot go. */

@@ -28,6 +28,12 @@ final class BannerDrop {
 
     /** Paints brush on cell of table: a troop id places it there (replacing what stands there), the same troop already there takes it off, ERASE takes off whatever
      *  stands there. The result must pass RosterMath.validTable for the rules, else the plan is refused with the reason. */
+    /** Whether a server notice is the refusal of the strokes still in flight: some wait (planned, what the page drew from them), the saved table the snapshot carries is not that plan,
+     *  and the snapshot spoke. An accepted stroke's snapshot matches its plan, so only a refusal (or a stale plan) reads as one; the page then says it in the strip, not the notice line. */
+    static boolean refusedBySnapshot(SortedMap<Integer, String> planned, SortedMap<Integer, String> saved, String notice) {
+        return planned != null && saved != null && notice != null && !notice.isEmpty() && !planned.equals(saved);
+    }
+
     static Plan paint(SortedMap<Integer, String> table, int cell, String brush, Rules r) {
         SortedMap<Integer, String> same = new TreeMap<>(table);
         String command = command(0, Math.max(0, cell), brush == null ? ERASE : brush);

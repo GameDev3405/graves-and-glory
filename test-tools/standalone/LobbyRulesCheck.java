@@ -83,9 +83,19 @@ public final class LobbyRulesCheck {
   p.notice=note;
   check("Your banner was changed for the new war table. Open Banner to see it.".equals(p.pointer()),"The join pointer reads the agreed line while a notice is unread");
   Profile a=GSON.fromJson(json(p),Profile.class);a.sanitize();
-  check(note.equals(a.notice)&&Profile.NOTICE_POINTER.equals(a.pointer()),"The notice and its pointer survive a save and reload");
+  check(note.equals(a.notice)&&"Your banner was changed for the new war table. Open Banner to see it.".equals(a.pointer()),"The notice and its pointer survive a save and reload");
   Profile again=GSON.fromJson(json(a),Profile.class);again.sanitize();
-  check(note.equals(again.notice),"A second relog keeps it as well: joining and opening the page never clear it");
+  check(note.equals(again.notice),"A second relog keeps it as well (JSON round trip and sanitize; the in-game banner-notice and notice-persists checks drive Campaign.joined and the page open)");
+  // the join line (Campaign.welcome) and Understood (Campaign.understood) post and restore through these two: the welcome and its menu hint always stay
+  for(String base:new String[]{"Welcome to Graves and Glory. {key:menu} opens your war council.","Battle in progress. Wait in camp for the next round. {key:menu} opens your war council."}){
+   String joined=Profile.withPointer(base,note);
+   check(joined.startsWith(base+" ")&&joined.endsWith(p.pointer())&&joined.contains("{key:menu}"),"The pointer shows beside the line, which keeps its menu hint: "+joined);
+   check(base.equals(Profile.withoutPointer(joined,note))&&base.equals(Profile.withPointer(base,null))&&base.equals(Profile.withoutPointer(base,note)),"Understood puts the welcome back; with no notice the line is untouched");
+  }
+  check(RosterMath.troopsOf(6,"gilded").equals("6 Gilded Order troops")&&RosterMath.troopsOf(1,"gilded").equals("1 Gilded Order troop")&&!RosterMath.troopsOf(6,"gilded").contains("slot"),"The battle report's House reward reason reads in troops, not slots: "+RosterMath.troopsOf(6,"gilded"));
+  // a server refusal of a planned stroke goes to the strip (WarTablePages.tick): only while the plan differs from the snapshot that came with the notice
+  SortedMap<Integer,String> plan=new TreeMap<>(Map.of(3,"knight")),snap=new TreeMap<>(),same=new TreeMap<>(plan);
+  check(BannerDrop.refusedBySnapshot(plan,snap,"1 Legendary per banner")&&!BannerDrop.refusedBySnapshot(plan,same,"Take it back")&&!BannerDrop.refusedBySnapshot(null,snap,"x")&&!BannerDrop.refusedBySnapshot(plan,snap,""),"A notice that answers a stroke the snapshot did not take reads as its refusal; an accepted stroke's, none in flight, or no words do not");
   String cleared=again.understood();
   check(note.equals(cleared)&&again.notice==null&&again.pointer()==null,"Understood clears it and says what it held");
   Profile b=GSON.fromJson(json(again),Profile.class);b.sanitize();
