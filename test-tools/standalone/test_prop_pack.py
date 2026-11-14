@@ -109,6 +109,16 @@ class PropPack(unittest.TestCase):
         self.assertIn('7310005', r.stdout + r.stderr)
         self.assertFalse((out / 'gg-props-latest.sha1').exists())
 
+    def test_clash_in_upper_range_exits_2(self):
+        clash = self.dir / 'excalibur_hi.zip'
+        with zipfile.ZipFile(clash, 'w') as z:
+            z.writestr('assets/minecraft/models/item/paper.json', json.dumps(
+                {'parent': 'minecraft:item/generated', 'textures': {'layer0': 'minecraft:item/paper'},
+                 'overrides': [{'predicate': {'custom_model_data': 7319998}, 'model': 'x:a'}]}))
+        r, out = self.build(excalibur=clash)
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn('7319998', r.stdout + r.stderr)
+
     def test_reproducible(self):
         r1, a = self.build('a')
         r2, b = self.build('b')

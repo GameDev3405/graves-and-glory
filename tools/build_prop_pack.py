@@ -11,7 +11,7 @@ Writes dist/props/gg-props-<sha8>.zip (byte-reproducible: sorted entries, fixed 
   assets/minecraft/atlases/blocks.json               adds textures/prop to the block atlas (else the parts render magenta-black)
   pack.mcmeta                                        pack_format 15 (1.20.1)
 
-Exit 1: a bad def, or a model element outside -16..32 (named). Exit 2: a paper custom_model_data in 7310001..7310999 already used by the
+Exit 1: a bad def, or a model element outside -16..32 (named). Exit 2: a paper custom_model_data in 7310001..7319999 already used by the
 Excalibur pack or by one of the mod's own resource packs (src/main/resources/resourcepacks/*).
 """
 import argparse
@@ -28,7 +28,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 DEFS = ROOT / 'src' / 'main' / 'resources' / 'data' / 'gravesandglory' / 'gg_props'
 PACKS = ROOT / 'src' / 'main' / 'resources' / 'resourcepacks'
 EXCALIBUR = ROOT / 'dependencies' / 'resourcepacks' / 'Excalibur_V1.20.zip'
-CMD_MIN, CMD_MAX = 7310001, 7310999
+CMD_MIN, CMD_MAX = 7310001, 7319999
 LO, HI = -16, 32
 DATE = (1980, 1, 1, 0, 0, 0)
 PAPER = 'assets/minecraft/models/item/paper.json'

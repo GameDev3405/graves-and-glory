@@ -5,7 +5,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 /** Prop defs (prop kit plan task S2): every shipped def parses with the contract table's size, parts and CMD numbers, and parse refuses a cell
- *  outside the size, an empty solid list, a light on a solid cell, a CMD outside 7310001..7310999 and a duplicate part model, naming the field. */
+ *  outside the size, an empty solid list, a light on a solid cell, a CMD outside 7310001..7319999 and a duplicate part model, naming the field. */
 public final class PropDefCheck {
  static int count;static void check(boolean pass,String text){count++;if(!pass)throw new AssertionError(text);}
  static final String DIR="src/main/resources/data/gravesandglory/gg_props/";
@@ -60,8 +60,10 @@ public final class PropDefCheck {
   check(r!=null&&r.contains("lights"),"A light on a solid cell is refused naming lights: "+r);
   r=refusal(def("[{\"model\":\"a\",\"cmd\":7310000}]","[[0,0,0]]","[]"));
   check(r!=null&&r.contains("cmd"),"CMD 7310000 is refused naming cmd: "+r);
-  r=refusal(def("[{\"model\":\"a\",\"cmd\":7311000}]","[[0,0,0]]","[]"));
-  check(r!=null&&r.contains("cmd"),"CMD 7311000 is refused naming cmd: "+r);
+  check(refusal(def("[{\"model\":\"a\",\"cmd\":7311000}]","[[0,0,0]]","[]"))==null,"CMD 7311000 (block 100) is accepted");
+  check(refusal(def("[{\"model\":\"a\",\"cmd\":7319999}]","[[0,0,0]]","[]"))==null,"CMD 7319999 (the new max) is accepted");
+  r=refusal(def("[{\"model\":\"a\",\"cmd\":7320000}]","[[0,0,0]]","[]"));
+  check(r!=null&&r.contains("cmd"),"CMD 7320000 (just past the max) is refused naming cmd: "+r);
   r=refusal(def("[{\"model\":\"a\",\"cmd\":7310001},{\"model\":\"a\",\"cmd\":7310002}]","[[0,0,0]]","[]"));
   check(r!=null&&r.contains("model"),"A duplicate part model is refused naming model: "+r);
   r=refusal(def("[{\"model\":\"a\",\"cmd\":7310001}]","[[0,0,0]]","[{\"x\":3,\"y\":0,\"z\":0,\"level\":9}]"));

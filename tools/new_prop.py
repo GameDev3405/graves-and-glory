@@ -31,7 +31,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 ART = ROOT / 'art' / 'props'
 DEFS = ROOT / 'src' / 'main' / 'resources' / 'data' / 'gravesandglory' / 'gg_props'
-CMD_MIN, CMD_MAX = 7310001, 7310999
+CMD_MIN, CMD_MAX = 7310001, 7319999
 USES = {
     'dressing': 'map dressing (battle maps): read at 15-40 m, silhouette first, never blocks a lane by accident',
     'lobby': 'lobby / Old Hold hub: seen up close (2-6 m) and lingered on, so detail and story carry',

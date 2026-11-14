@@ -32,11 +32,11 @@ import java.util.Set;
  * <p>Custom model data: parts are {@code minecraft:paper} items keyed by CMD = {@link #cmd}{@code (propIndex, partIndex)} =
  * {@code 7310001 + 10*propIndex + partIndex}, propIndex in the contract table's order (forge 0, anvil 1, weapon_rack 2, shield_rack 3,
  * quench_trough 4, grindstone_bench 5). The plan's {@code 7310000 + ...} would give the forge hearth 7310000, outside the prop range
- * {@code 7310001..7310999}, so numbering starts at 7310001 (forge hearth 7310001, hood 7310002, coals 7310003, anvil 7310011, ...). A prop's
+ * {@code 7310001..7319999}, so numbering starts at 7310001 (forge hearth 7310001, hood 7310002, coals 7310003, anvil 7310011, ...). A prop's
  * menu icon is its first part.
  */
 public record PropDef(String id,String category,String name,int sx,int sy,int sz,List<Part> parts,List<int[]> solid,List<Light> lights,List<Effect> effects,Gameplay gameplay){
-    public static final int CMD_MIN=7310001,CMD_MAX=7310999;
+    public static final int CMD_MIN=7310001,CMD_MAX=7319999;
     /** A display part; {@code ox,oy,oz} (optional {@code "offset":[x,y,z]}, model px in the prop frame) move its entity, for big props whose parts
      *  sit further from the anchor than a model's display translation reaches (Minecraft clamps that to 80 px). */
     public record Part(String model,int cmd,boolean glow,int ox,int oy,int oz){
