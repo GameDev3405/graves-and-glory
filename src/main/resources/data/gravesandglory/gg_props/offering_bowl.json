@@ -1,0 +1,24 @@
+{
+  "id": "offering_bowl",
+  "category": "relics",
+  "name": "Giant's Offering Bowl",
+  "size": [3, 3, 3],
+  "parts": [
+    {"model": "offering_bowl", "cmd": 7311561, "glow": false},
+    {"model": "offering_bowl_flames", "cmd": 7311562, "glow": true}
+  ],
+  "solid": [
+    [1, 0, 0],
+    [0, 0, 1],
+    [1, 0, 1],
+    [2, 0, 1],
+    [1, 0, 2],
+    [1, 1, 0],
+    [0, 1, 1],
+    [1, 1, 1],
+    [2, 1, 1],
+    [1, 1, 2]
+  ],
+  "lights": [{"x": 1, "y": 2, "z": 0, "level": 7}],
+  "effects": []
+}
