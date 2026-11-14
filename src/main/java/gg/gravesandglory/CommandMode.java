@@ -128,7 +128,7 @@ public final class CommandMode {
         var hit=c.player.raycast(Spec.COMMANDINTERFACE[0].targetRange(),1,false);destination=hit.getType()==HitResult.Type.MISS?null:hit.getPos();enemy=-1;
         // Entity targeting is an aim cone, not an omniscient enemy lookup.
         Vec3d eye=c.player.getEyePos(),look=c.player.getRotationVec(1);double best=destination==null?64:eye.distanceTo(destination);
-        for(var e:c.world.getEntities())if(e instanceof LivingEntity living&&e!=c.player&&e.isAlive()&&e.hasCustomName()&&c.player.canSee(e)){
+        for(var e:c.world.getEntities())if(e instanceof LivingEntity living&&e!=c.player&&e.isAlive()&&e.hasCustomName()&&MapBlockRules.canSee(c.player,e)){
             Vec3d v=e.getPos().add(0,1,0).subtract(eye);double along=v.dotProduct(look);
             // Both teams can field the same House, so the side comes from the name colour the server gives every unit.
             boolean foe=false;int side=nameTeam(e);if(ArmyMobs.named(e.getCustomName().getString())!=null&&GravesAndGloryClient.team>=0&&side>=0&&side!=GravesAndGloryClient.team)foe=true;

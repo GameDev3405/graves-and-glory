@@ -162,7 +162,7 @@ final class Tactics {
         double range=Spec.SCOUTING[0].range(),best=range*range;LivingEntity seen=null;
         for(var other:b.units)if(other.squad.team!=u.squad.team&&other.mob.isAlive()){double d=u.mob.squaredDistanceTo(other.mob);if(d<best){best=d;seen=other.mob;}}
         for(ServerPlayerEntity p:b.server.getPlayerManager().getPlayerList()){var other=b.squads.get(p.getUuid());if(other!=null&&other.team!=u.squad.team&&!p.isSpectator()&&p.isAlive()){double d=u.mob.squaredDistanceTo(p);if(d<best){best=d;seen=p;}}}
-        return seen!=null&&u.mob.canSee(seen)?best:-1;
+        return seen!=null&&MapBlockRules.canSee(u.mob,seen)?best:-1;
     }
     /** Raises or lowers a shield troop's shield (the off hand: Combat counts it raised while the item is in use). */
     static void shield(MobEntity mob,boolean up){if(up&&!mob.isUsingItem())mob.setCurrentHand(Hand.OFF_HAND);else if(!up&&mob.isUsingItem())mob.stopUsingItem();}
@@ -252,13 +252,13 @@ final class Tactics {
     }
     /** How far a troop picks its targets: the order's engage radius, or for a siege troop (tag siege) at least its weapon's reach (Entrench's bonus included), so artillery shoots what it can reach and not only what the order's leash allows. The sheet's order radii are untouched. */
     static double engageRadius(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,double order){return u.tags.contains("siege")?Math.max(order,Abilities.range(battle,u)):order;}
-    /** Line of sight for targeting (AI fix 2026-11-11): whether the troop sees the entity now. One raycast (LivingEntity.canSee) per troop and entity
+    /** Line of sight for targeting (AI fix 2026-11-11): whether the troop sees the entity now. One raycast (MapBlockRules.canSee: LivingEntity.canSee with troop_fence and still_water seen through) per troop and entity
      *  a beat at most: a result read within SIGHT_REFRESH ticks is reused (Unit.sight, keyed by UUID). Old entries are dropped once the cache grows past SIGHT_KEEP. */
     static boolean sees(GravesAndGlory.Unit u,Entity e,long time){
         long[] r=u.sight.get(e.getUuid());
         if(r==null||time-r[0]>=SIGHT_REFRESH||time<r[0]){
             if(r==null){if(u.sight.size()>=SIGHT_KEEP)u.sight.values().removeIf(v->time-v[0]>SIGHT_REFRESH*4||time<v[0]);r=new long[]{0,Long.MIN_VALUE/2};u.sight.put(e.getUuid(),r);}
-            r[0]=time;sightRays++;if(u.mob.canSee(e))r[1]=time;
+            r[0]=time;sightRays++;if(MapBlockRules.canSee(u.mob,e))r[1]=time;
         }
         return r[1]==r[0];
     }
@@ -759,7 +759,7 @@ final class Tactics {
             public boolean live(){return !p.isSpectator()&&p.getWorld()==world;}
             public double dist(double x,double y,double z){return eye.distanceTo(new Vec3d(x,y,z));}
             public boolean line(double x,double y,double z){Vec3d t=new Vec3d(x,y,z);return eye.squaredDistanceTo(t)<=range*range
-                &&world.raycast(new net.minecraft.world.RaycastContext(eye,t,net.minecraft.world.RaycastContext.ShapeType.VISUAL,net.minecraft.world.RaycastContext.FluidHandling.NONE,p)).getType()==net.minecraft.util.hit.HitResult.Type.MISS;}
+                &&MapBlockRules.clear(world,eye,t,net.minecraft.world.RaycastContext.ShapeType.VISUAL,p);} // the same VISUAL line as before, with troop_fence and still_water seen through (a player sees through the invisible fence; the full cube would hide a troop it would otherwise watch)
         };
     }
     /** Where a troop stalled for 30 s is put: on a map with a route field the field's rescue point (NavField.rescue: a way ahead on the route, or the nearest floor from which its goal can be reached), else a standable cell six blocks toward the goal. Null: none. */
@@ -935,7 +935,7 @@ final class Tactics {
      */
     static void looseLate(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,long time){
         LivingEntity t=u.looseTarget;u.looseAt=-1;u.looseTarget=null;
-        if(t==null||!u.mob.isAlive()||time<u.stunnedUntil||!t.isAlive()||t.isRemoved()||t.getWorld()!=battle.world||t instanceof net.minecraft.entity.player.PlayerEntity p&&p.isSpectator()||!u.mob.canSee(t)){looseLost++;u.nextAttack=Math.min(u.nextAttack,time);return;} // the lost shot's cooldown is given back // nor through a wall the target stepped behind since the beat
+        if(t==null||!u.mob.isAlive()||time<u.stunnedUntil||!t.isAlive()||t.isRemoved()||t.getWorld()!=battle.world||t instanceof net.minecraft.entity.player.PlayerEntity p&&p.isSpectator()||!MapBlockRules.canSee(u.mob,t)){looseLost++;u.nextAttack=Math.min(u.nextAttack,time);return;} // the lost shot's cooldown is given back // nor through a wall the target stepped behind since the beat
         shoot(battle,u,t,time,true);
     }
     /** Late shots lost (looseLate) since the server started. */

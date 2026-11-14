@@ -76,7 +76,7 @@ final class OrderRules {
         String order = loadOrder(action);
         if (!order.equals("attack") && !order.equals("charge")) enemyId = -1;
         Entity enemy = enemyId >= 0 ? b.world.getEntityById(enemyId) : null;
-        if (enemyId >= 0 && (enemy == null || !enemy.isAlive() || b.teamOf(enemy) < 0 || b.teamOf(enemy) == s.team || !p.canSee(enemy))) { p.sendMessage(Text.literal("Target lost. Aim again or issue an attack-move."), true); return; }
+        if (enemyId >= 0 && (enemy == null || !enemy.isAlive() || b.teamOf(enemy) < 0 || b.teamOf(enemy) == s.team || !MapBlockRules.canSee(p, enemy))) { p.sendMessage(Text.literal("Target lost. Aim again or issue an attack-move."), true); return; }
         if (order.equals("charge") && !chargeReady(b, s)) {
             int left = (int) (s.chargeReadyAt - b.time);
             CommandNet.cooldown(p, left);

@@ -1420,8 +1420,8 @@ public final class GravesAndGlory implements ModInitializer {
         final Map<Integer,Map<UUID,Sight>> sightings=new HashMap<>();
         void updateSight(){for(int team=0;team<2;team++){var memory=sightings.computeIfAbsent(team,k->new HashMap<>());memory.values().removeIf(v->time-v.seen>Spec.SCOUTING[0].memorySeconds()*20);
             for(Unit enemy:units)if(enemy.squad.team!=team&&enemy.mob.isAlive()){
-                boolean visible=false;for(Unit ally:units)if(ally.squad.team==team&&ally.mob.isAlive()&&ally.mob.squaredDistanceTo(enemy.mob)<Spec.SCOUTING[0].range()*Spec.SCOUTING[0].range()&&ally.mob.canSee(enemy.mob)){visible=true;break;}
-                if(!visible)for(var player:server.getPlayerManager().getPlayerList()){var s=squads.get(player.getUuid());if(s!=null&&s.seated&&s.team==team&&!player.isSpectator()&&player.squaredDistanceTo(enemy.mob)<Spec.SCOUTING[0].range()*Spec.SCOUTING[0].range()&&player.canSee(enemy.mob)){visible=true;break;}}
+                boolean visible=false;for(Unit ally:units)if(ally.squad.team==team&&ally.mob.isAlive()&&ally.mob.squaredDistanceTo(enemy.mob)<Spec.SCOUTING[0].range()*Spec.SCOUTING[0].range()&&MapBlockRules.canSee(ally.mob,enemy.mob)){visible=true;break;}
+                if(!visible)for(var player:server.getPlayerManager().getPlayerList()){var s=squads.get(player.getUuid());if(s!=null&&s.seated&&s.team==team&&!player.isSpectator()&&player.squaredDistanceTo(enemy.mob)<Spec.SCOUTING[0].range()*Spec.SCOUTING[0].range()&&MapBlockRules.canSee(player,enemy.mob)){visible=true;break;}}
                 if(visible)memory.put(enemy.mob.getUuid(),new Sight((float)enemy.mob.getX(),(float)enemy.mob.getZ(),time));
             }
         }}
