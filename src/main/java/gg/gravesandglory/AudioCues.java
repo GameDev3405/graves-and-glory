@@ -136,6 +136,15 @@ public final class AudioCues {
         TITLE_MUSIC("title_music", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
         OVERTIME_MUSIC("overtime_music", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
         // Streamed music (client only, MusicDirector): the category is music, so the player's Music slider governs it and no subtitle shows.
+        // The drop board (DropRender; client side). Pixabay recordings, tools/audio/import_dropboard.py; docs/AUDIO-CREDITS.md, Drop board.
+        DROP_FLY("drop_fly", null, .7f, 1f, "players", Scope.LOCAL, 0, "The altar draws near"),
+        DROP_RELEASE("drop_release", null, .8f, 1f, "players", Scope.LOCAL, 0, "A coin is let go"),
+        DROP_PEG("drop_peg", null, .7f, 1f, "players", Scope.LOCAL, 0, "A coin strikes a peg"),
+        DROP_WALL("drop_wall", null, .6f, 1f, "players", Scope.LOCAL, 0, "A coin strikes the frame"),
+        DROP_LAND("drop_land", null, .8f, 1f, "players", Scope.LOCAL, 0, "A coin lands"),
+        DROP_FLARE("drop_flare", null, .8f, 1f, "players", Scope.LOCAL, 0, "The altar flares"),
+        DROP_JACKPOT("drop_jackpot", null, .9f, 1f, "players", Scope.LOCAL, 0, "The altar's greatest gift"),
+        DROP_REVEAL("drop_reveal", null, .8f, 1f, "players", Scope.LOCAL, 0, "The altar's gift is shown"),
         MUSIC_CALM("music.calm", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
         MUSIC_EPIC("music.epic", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),
         MUSIC_BATTLE_GRIM("music.battle_grim", null, .8f, 1f, "music", Scope.LOCAL, 0, ""),

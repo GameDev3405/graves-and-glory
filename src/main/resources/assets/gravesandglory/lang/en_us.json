@@ -117,5 +117,13 @@
   "subtitles.gravesandglory.level_up": "A new level is reached",
   "subtitles.gravesandglory.award": "A horn honours the best",
   "block.gravesandglory.troop_fence": "Troop Fence",
-  "block.gravesandglory.still_water": "Still Water"
+  "block.gravesandglory.still_water": "Still Water",
+  "subtitles.gravesandglory.drop_fly": "The altar draws near",
+  "subtitles.gravesandglory.drop_release": "A coin is let go",
+  "subtitles.gravesandglory.drop_peg": "A coin strikes a peg",
+  "subtitles.gravesandglory.drop_wall": "A coin strikes the frame",
+  "subtitles.gravesandglory.drop_land": "A coin lands",
+  "subtitles.gravesandglory.drop_flare": "The altar flares",
+  "subtitles.gravesandglory.drop_jackpot": "The altar's greatest gift",
+  "subtitles.gravesandglory.drop_reveal": "The altar's gift is shown"
 }

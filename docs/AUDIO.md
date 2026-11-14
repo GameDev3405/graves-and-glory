@@ -76,6 +76,10 @@ The theme is `Spec.MAPS[CampaignClient.map].theme()`.
 
 Protocol: the `battleMode` object in the campaign snapshot (STATE packet) gains a boolean `overtime`, true while a Convoy round's clock is out and the wagon holds it open (`Battle.inOvertime()`, which the overtime drum pulse also uses). It is additive, so PROTOCOL stays 1 and an older client ignores it. AudioCuesCheck and test_audio_events.py prove every event but the five below has a play site.
 
+## Drop board (2026-11-13)
+
+Eight client-side cues the altar plays itself (`DropRender.sound`, positional at the board): drop_fly, drop_release, drop_peg (three variants; pitch and volume follow the coin's speed), drop_wall, drop_land, drop_flare (pitch falls as the multiplier rises), drop_jackpot (x10 only), drop_reveal (pitch by rarity). Pixabay recordings, converted by `tools/audio/import_dropboard.py <folder>`; credits in docs/AUDIO-CREDITS.md, Drop board. Chosen from names and measured waveforms, not by ear: Kort's ear decides.
+
 ## Round 2 (Kort's picks, 2026-11-04)
 
 Installed by `tools/install_audio.py` from `work/audio-cues/picks/round2`; credits in docs/AUDIO-CREDITS.md. `ui_back_7`, `gate_shut_8` and `gate_breach_5` replace the generated files (removed). `defeat_music_5` (35.7 s, streamed) is now the only variant of `defeat`, replacing the 5 s sting `defeat_4`; `AudioCues.DEFEAT_STING_TICKS` went from 100 to 714 so the music waits it out (AudioCuesCheck holds it within 1 tick of the file). `GATE_SHUT_LEAD_TICKS` went from 7 to 46 so the slam in `gate_shut_8` (peak 2.3 s in) lands as the portcullis meets the ground.

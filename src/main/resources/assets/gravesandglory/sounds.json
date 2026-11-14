@@ -1117,5 +1117,85 @@
         "stream": false
       }
     ]
+  },
+  "drop_fly": {
+    "subtitle": "subtitles.gravesandglory.drop_fly",
+    "sounds": [
+      {
+        "name": "gravesandglory:drop_fly_1",
+        "stream": false
+      }
+    ]
+  },
+  "drop_release": {
+    "subtitle": "subtitles.gravesandglory.drop_release",
+    "sounds": [
+      {
+        "name": "gravesandglory:drop_release_1",
+        "stream": false
+      }
+    ]
+  },
+  "drop_peg": {
+    "subtitle": "subtitles.gravesandglory.drop_peg",
+    "sounds": [
+      {
+        "name": "gravesandglory:drop_peg_1",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:drop_peg_2",
+        "stream": false
+      },
+      {
+        "name": "gravesandglory:drop_peg_3",
+        "stream": false
+      }
+    ]
+  },
+  "drop_wall": {
+    "subtitle": "subtitles.gravesandglory.drop_wall",
+    "sounds": [
+      {
+        "name": "gravesandglory:drop_wall_1",
+        "stream": false
+      }
+    ]
+  },
+  "drop_land": {
+    "subtitle": "subtitles.gravesandglory.drop_land",
+    "sounds": [
+      {
+        "name": "gravesandglory:drop_land_1",
+        "stream": false
+      }
+    ]
+  },
+  "drop_flare": {
+    "subtitle": "subtitles.gravesandglory.drop_flare",
+    "sounds": [
+      {
+        "name": "gravesandglory:drop_flare_1",
+        "stream": false
+      }
+    ]
+  },
+  "drop_jackpot": {
+    "subtitle": "subtitles.gravesandglory.drop_jackpot",
+    "sounds": [
+      {
+        "name": "gravesandglory:drop_jackpot_1",
+        "stream": false
+      }
+    ]
+  },
+  "drop_reveal": {
+    "subtitle": "subtitles.gravesandglory.drop_reveal",
+    "sounds": [
+      {
+        "name": "gravesandglory:drop_reveal_1",
+        "stream": false
+      }
+    ]
   }
 }

@@ -175,6 +175,23 @@ Source: pixabay.com, downloaded 2026-11-02 (Pixabay Content Licence). Author is 
 | magic.impact | magic_impact_4.ogg | EminYILDIRIM | CC-BY 4.0 | https://freesound.org/people/EminYILDIRIM/sounds/541478 | "Magic Fire Spell Impact & Punch" by EminYILDIRIM, freesound, CC-BY 4.0 |
 | combat.bow_shoot | bow_shoot_2.ogg | saturdaysoundguy | CC0 1.0 | https://freesound.org/people/saturdaysoundguy/sounds/394178 | No credit required (CC0). |
 
+## Drop board (Kort allowed the download 2026-11-13)
+
+Source: pixabay.com, downloaded 2026-11-13 (Pixabay Content Licence: free to use in a game, no attribution required; credited here anyway). Author is the Pixabay account named in the source filename. Converted by `tools/audio/import_dropboard.py`; the picks were made from the names and the measured waveforms, not by ear, so each is open to a swap.
+
+| Author | Source file | Used as |
+| --- | --- | --- |
+| freesound_community | freesound_community-metal-ping-192khz-2-105051.mp3 | drop_peg_1 |
+| freesound_community | freesound_community-metal-ping-192khz-86912.mp3 | drop_peg_2 |
+| freesound_community | freesound_community-ting-61753.mp3 | drop_peg_3 (one strike cut from it, 0.47 s in) |
+| freesound_community | freesound_community-high-clank-86142.mp3 | drop_wall_1 |
+| freesound_community | freesound_community-coin-flip-88793.mp3 | drop_release_1 |
+| bfcmusic | bfcmusic-coin-drop-in-slot-3-sfx-330556.mp3 | drop_land_1 (cut from 0.54 s) |
+| dragon-studio | dragon-studio-whoosh-cinematic-376875.mp3 | drop_fly_1 |
+| freesound_gamestudio | freesound_gamestudio-hero-skill-attack-reveal-13-388903.mp3 | drop_flare_1 |
+| universfield | universfield-bell-logo-reveal-147350.mp3 | drop_jackpot_1 |
+| universfield | universfield-clear-bell-chime-487898.mp3 | drop_reveal_1 |
+
 ## Generated audio: Stable Audio 3 (read 2026-11-12, Kort allowed it 2026-11-11)
 
 Some sounds may be made with Stability AI's Stable Audio 3 `small-sfx` model (generated with prompts, then trimmed and levelled by `tools/audio/mixfix.py`-style steps). Nothing generated has shipped yet; every shipped file gets its own row below with its prompt and seed.

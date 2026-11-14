@@ -20,7 +20,6 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.Registries;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
-import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
@@ -44,20 +43,23 @@ final class DropRender {
 
     enum Sound { FLY, RELEASE, PEG, WALL, LAND, FLARE, JACKPOT, REVEAL }
 
-    /** The sounds are the game's own (amethyst and copper suit the giants' crystal and bronze); the audio lead may swap cues in later. */
+    /** The altar's own cues (AudioCues DROP_*; Pixabay recordings, docs/AUDIO-CREDITS.md). The table's volume scales the one asked for. */
     static void sound(MinecraftClient c, Sound s, float volume, float pitch) { sound(c, s, volume, pitch, DropLayout.world(4.5, 5, 0)); }
     static void sound(MinecraftClient c, Sound s, float volume, float pitch, double[] at) {
         if (c.world == null) return;
-        SoundEvent e = switch (s) {
-            case FLY -> SoundEvents.BLOCK_BEACON_AMBIENT;
-            case RELEASE -> SoundEvents.BLOCK_AMETHYST_BLOCK_BREAK;
-            case PEG -> SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME;
-            case WALL -> SoundEvents.BLOCK_COPPER_HIT;
-            case LAND -> SoundEvents.BLOCK_AMETHYST_CLUSTER_BREAK;
-            case FLARE -> SoundEvents.BLOCK_RESPAWN_ANCHOR_CHARGE;
-            case JACKPOT -> SoundEvents.UI_TOAST_CHALLENGE_COMPLETE;
-            case REVEAL -> SoundEvents.BLOCK_BEACON_POWER_SELECT;
+        AudioCues.Cue cue = switch (s) {
+            case FLY -> AudioCues.Cue.DROP_FLY;
+            case RELEASE -> AudioCues.Cue.DROP_RELEASE;
+            case PEG -> AudioCues.Cue.DROP_PEG;
+            case WALL -> AudioCues.Cue.DROP_WALL;
+            case LAND -> AudioCues.Cue.DROP_LAND;
+            case FLARE -> AudioCues.Cue.DROP_FLARE;
+            case JACKPOT -> AudioCues.Cue.DROP_JACKPOT;
+            case REVEAL -> AudioCues.Cue.DROP_REVEAL;
         };
+        SoundEvent e = Audio.event(cue);
+        if (e == null) return;
+        volume *= cue.volume;
         c.world.playSound(at[0], at[1], at[2], e, SoundCategory.PLAYERS, volume, pitch, false);
     }
 

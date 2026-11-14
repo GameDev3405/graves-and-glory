@@ -189,5 +189,5 @@ every slot, 100k drops match the table within tolerance from 9 starts, duration 
   own assets (DropAltar, tools/dropboard_assets.py), because the prop resource pack only reaches the builder server's clients. The
   props' defs are kept beside the art (def.json), not in gg_props, so they take no CustomModelData block. The server keeps the
   altar's space solid with barriers.
-- 2026-11-13, sounds: vanilla sound events for now (amethyst chimes on the pegs, copper on the walls); imported sounds need Kort's
-  word on the download.
+- 2026-11-13, sounds: eight cues of its own (AudioCues DROP_*; three peg variants), free Pixabay recordings Kort allowed that day,
+  converted by tools/audio/import_dropboard.py and credited in docs/AUDIO-CREDITS.md. Picked from names and waveforms, not by ear.
