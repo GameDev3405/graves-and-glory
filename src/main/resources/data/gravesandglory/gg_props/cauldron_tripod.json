@@ -1,0 +1,15 @@
+{
+  "id": "cauldron_tripod",
+  "category": "camp",
+  "name": "Cauldron Tripod",
+  "size": [1, 2, 1],
+  "parts": [
+    {"model": "cauldron_tripod", "cmd": 7310901, "glow": false},
+    {"model": "cauldron_tripod_embers", "cmd": 7310902, "glow": true}
+  ],
+  "solid": [
+    [0, 0, 0]
+  ],
+  "lights": [{"x": 0, "y": 1, "z": 0, "level": 12}],
+  "effects": []
+}

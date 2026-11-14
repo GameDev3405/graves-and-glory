@@ -1,0 +1,161 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  64,
+  64
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/cauldron_tripod",
+  "particle": "gravesandglory:prop/cauldron_tripod"
+ },
+ "elements": [
+  {
+   "from": [
+    4,
+    0,
+    4
+   ],
+   "to": [
+    12,
+    3,
+    12
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      10.5,
+      6.0,
+      12.5,
+      6.75
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      12.5,
+      6.0,
+      14.5,
+      6.75
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      0.0,
+      7.0,
+      2.0,
+      7.75
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      2.0,
+      7.0,
+      4.0,
+      7.75
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      4.0,
+      0.0,
+      6.0,
+      2.0
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "ember bed",
+   "shade": false
+  },
+  {
+   "from": [
+    5,
+    3,
+    5
+   ],
+   "to": [
+    11,
+    4,
+    11
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      4.5,
+      10.75,
+      6.0,
+      11.0
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      6.0,
+      10.75,
+      7.5,
+      11.0
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      7.5,
+      10.75,
+      9.0,
+      11.0
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      9.0,
+      10.75,
+      10.5,
+      11.0
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      11.0,
+      0.0,
+      12.5,
+      1.5
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "ember heap",
+   "shade": false
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    -0.0,
+    10.309,
+    5.952
+   ],
+   "scale": [
+    1.984,
+    1.984,
+    1.984
+   ]
+  }
+ }
+}
