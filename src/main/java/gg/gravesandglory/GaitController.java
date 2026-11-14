@@ -11,7 +11,9 @@ import software.bernie.geckolib.core.keyframe.BoneAnimation;
 import software.bernie.geckolib.core.state.BoneSnapshot;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A GeckoLib controller whose walk and run loops are driven by ground distance, not time (see {@link Gait}). The idle loop runs on
@@ -45,9 +47,13 @@ final class GaitController extends AnimationController<GeoTroop> {
     private final int blend;
     /** Ticks the idle pose is blended into a moving clip after setting off from a standstill (see the class comment). */
     private final double startBlend;
-    /** What this controller last wrote to the bones its clip keys (rotation xyz, position xyz), and the idle pose being blended out of while a start blend runs. */
-    private final Map<String, float[]> out = new HashMap<>();
-    /** What this controller's own clip, and its hand blend, put on its bones last frame: the pose under the stance, attack and hit layers, which a stop blends out of. */
+    /** Every bone a clip of this controller has keyed so far: the bones {@link #after} keeps the pose of. Empty until the troop is first drawn. */
+    private final Set<String> keyed = new HashSet<>();
+    /**
+     * What this controller's own clip, and its hand blend, put on its bones last frame (rotation xyz, position xyz): this troop's pose under the stance, attack and hit
+     * layers. A stop blends out of it and a set-off matches its stride to it ({@link #matchPhase}). Read from the bones in {@link #after}, once this frame's pose is on
+     * them: what they hold when {@link #process} starts is the last draw of the model, which may be another troop's.
+     */
     private final Map<String, float[]> wrote = new HashMap<>();
     /**
      * Whether a troop setting off shows the blend out of its idle pose. Off: that blend never showed in play before {@link #after} existed (see the class comment), and
@@ -82,13 +88,13 @@ final class GaitController extends AnimationController<GeoTroop> {
         if (e != null) gait.update(e, seekTime, state.getPartialTick());
         Gait.Mode m = gait.mode;
         if (m != lastMode && m != Gait.Mode.IDLE && lastMode != Gait.Mode.IDLE) { transitionLength = 0; keepPhase = true; }
-        else if (m != lastMode && m != Gait.Mode.IDLE && !out.isEmpty()) {
-            // setting off from a standstill: straight into the moving clip on the phase that matches the idle pose, blended by hand
+        else if (m != lastMode && m != Gait.Mode.IDLE && !keyed.isEmpty()) {
+            // setting off from a standstill: straight into the moving clip on the phase that matches the idle pose this troop held, blended by hand
             transitionLength = 0; keepPhase = true;
             if (START_BLEND && !wrote.isEmpty()) { from = copy(wrote); fromAt = seekTime; fromLength = startBlend; fromEased = true; }
             else from = null;
             Animation legs = owner ? model.getAnimation(animatable, m == Gait.Mode.RUN ? "run_legs" : "walk_legs") : null;
-            if (owner) gait.phase = legs == null ? 0 : matchPhase(legs, bones, out);
+            if (owner) gait.phase = legs == null ? 0 : matchPhase(legs, bones, wrote);
         }
         else if (m != lastMode && m == Gait.Mode.IDLE && !wrote.isEmpty()) {
             // stopping: the idle loop is already running at this troop's own point in it (Gait.standingTime), so GeckoLib's transition, which lands on the loop's
@@ -96,12 +102,12 @@ final class GaitController extends AnimationController<GeoTroop> {
             transitionLength = 0; keepPhase = true;
             from = copy(wrote); fromAt = seekTime; fromLength = blend; fromEased = false;
         }
-        else if (out.isEmpty()) { transitionLength = 0; keepPhase = true; }   // first drawn: straight into its loop, no blend out of the bind pose
+        else if (keyed.isEmpty()) { transitionLength = 0; keepPhase = true; }   // first drawn: straight into its loop, no blend out of the bind pose
         else if (!keepPhase) transitionLength = blend;
         lastMode = m;
         super.process(model, state, bones, snapshots, seekTime, crashWhenCantFindBone);
         if (keepPhase && !shouldResetTick && getAnimationState() == State.RUNNING) keepPhase = false;
-        capture(bones);
+        if (currentAnimation != null) for (BoneAnimation b : currentAnimation.animation().boneAnimations()) keyed.add(b.boneName());
         if (owner) {
             double ref = getAnimationState() == State.RUNNING ? playingRef() : 0;
             gait.stride = ref > 0 ? ref * currentAnimation.animation().length() : 0;
@@ -109,23 +115,9 @@ final class GaitController extends AnimationController<GeoTroop> {
     }
 
     /**
-     * What this controller's bones read now, kept for the next start. Every bone it has ever keyed is read, not only those of the clip playing: a bone the idle clip leaves unkeyed
-     * would otherwise keep the stale mid-stride value of the moving clip, and the next start would blend out of a pose the troop never held.
-     */
-    private void capture(Map<String, CoreGeoBone> bones) {
-        if (currentAnimation != null) for (BoneAnimation b : currentAnimation.animation().boneAnimations()) out.computeIfAbsent(b.boneName(), k -> new float[6]);
-        for (Map.Entry<String, float[]> en : out.entrySet()) {
-            CoreGeoBone bone = bones.get(en.getKey());
-            if (bone == null) continue;
-            float[] a = en.getValue();
-            a[0] = bone.getRotX(); a[1] = bone.getRotY(); a[2] = bone.getRotZ();
-            a[3] = bone.getPosX(); a[4] = bone.getPosY(); a[5] = bone.getPosZ();
-        }
-    }
-
-    /**
      * Runs once this controller's clip pose is on the bones (see the class comment): blends the pose held when the troop stopped (or set off, with {@link #START_BLEND})
-     * into it, then keeps what the layer now shows for the next blend to start from.
+     * into it, then keeps what the layer now shows for the next blend, or the next set-off, to start from. Every bone it has ever keyed is kept, not only those of the
+     * clip playing: a bone the idle clip leaves unkeyed would otherwise keep the stale mid-stride value of the moving clip, a pose the troop no longer holds.
      */
     void after(Map<String, CoreGeoBone> bones, double seekTime) {
         if (from != null && seekTime < fromAt) from = null;   // the animation time went back (the troop was tracked anew): nothing to finish
@@ -133,7 +125,7 @@ final class GaitController extends AnimationController<GeoTroop> {
             double k = fromLength <= 0 ? 1 : Math.min(1, (seekTime - fromAt) / fromLength);
             blendFrom(bones, fromEased ? AttackController.smooth(k) : k, k >= 1);
         }
-        for (String name : out.keySet()) {
+        for (String name : keyed) {
             CoreGeoBone bone = bones.get(name);
             if (bone == null) continue;
             float[] a = wrote.computeIfAbsent(name, n -> new float[6]);
@@ -211,7 +203,9 @@ final class GaitController extends AnimationController<GeoTroop> {
 
     /**
      * The phase (0..1) of the gait clip {@code clip} whose leg rotations lie nearest {@code pose} (each bone's rotation xyz first), so a troop that sets off steps out of
-     * the stance it held without its planted foot jumping. 0 when the pose holds none of the clip's leg bones.
+     * the stance it held without its planted foot jumping. 0 when the pose holds none of the clip's leg bones. The pose given is the troop's own gait layer
+     * ({@link #wrote}), under its stance: the stance's footwork is added onto the moving clip as it was onto the idle one, so matching the layers under it keeps the
+     * drawn legs in place. Until 2026-11-14 it was what the bones held when {@link #process} began, the last draw of the model: in a battle another troop's legs.
      */
     static double matchPhase(Animation clip, Map<String, CoreGeoBone> bones, Map<String, float[]> pose) {
         final int steps = 48;
