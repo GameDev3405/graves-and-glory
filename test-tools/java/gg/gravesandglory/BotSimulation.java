@@ -463,7 +463,8 @@ public final class BotSimulation implements ModInitializer {
         try{if(!Files.exists(f))Files.writeString(f,"match,team,army,group,slot,x,y,z,top,walkable,stands,ok\n",StandardCharsets.UTF_8);}catch(java.io.IOException x){throw new RuntimeException(x);}
         for(var u:b.units){if(!u.mob.isAlive())continue;int x=(int)Math.floor(u.mob.getX()),z=(int)Math.floor(u.mob.getZ());
             var home=e.home(b.fieldBase(u.squad.team).x);
-            boolean stands=e.stands(x,z,home.y())&&e.nearHome(home,x,z),ok=stands&&Math.abs(u.mob.getY()-(e.solid(x,z)+1))<0.6;n++;if(!ok)bad++;
+            var pt=e.nearestPoint(x,z);boolean forward=!e.inYard(home,x,z)&&pt!=null; // a mode's forward field base (Siege's yard lineup): ground no higher than its nearest point's, as Arena.forward
+            boolean stands=forward?e.stands(x,z,e.solid((int)Math.floor(pt.x()),(int)Math.floor(pt.z()))+1):e.stands(x,z,home.y())&&e.nearHome(home,x,z),ok=stands&&Math.abs(u.mob.getY()-(e.solid(x,z)+1))<0.6;n++;if(!ok)bad++;
             rows.append(String.format(Locale.ROOT,"%d,%d,%d,%s,%d,%.1f,%.1f,%.1f,%d,%s,%s,%s%n",match+1,u.squad.team,armies.indexOf(u.squad),u.spec.group(),u.slot,u.mob.getX(),u.mob.getY(),u.mob.getZ(),e.solid(x,z),e.walkable(x,z),stands,ok));}
         append(f,rows.toString());
         System.out.println("[botsim] spawn ground match "+(match+1)+": "+n+" troops placed, "+bad+" off the ground or above the yard");
