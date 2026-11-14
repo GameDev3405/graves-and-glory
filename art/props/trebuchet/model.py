@@ -179,14 +179,17 @@ def build():
         E((-14, 120, -77), (30, 124, -25), "iron", name="box band"),
         E((-6, 132, -53), (-2, 181, -49), "iron", name="hanger"),
         E((18, 132, -53), (22, 181, -49), "iron", name="hanger"),
-        # ballast stones heaped in the box
-        E((-7, 132, -70), (4, 140, -60), FSTONE, skip="down", name="ballast stone"),
-        E((5, 132, -69), (14, 139, -58), FSTONE, skip="down", name="ballast stone"),
-        E((15, 132, -62), (23, 141, -52), FSTONE, skip="down", name="ballast stone"),
+        # hemp lashings down the side walls, seen from the side
+        E((-15, 96, -63), (-12, 140, -60), HEMP, name="box lashing"), E((-15, 96, -42), (-12, 140, -39), HEMP, name="box lashing"),
+        E((28, 96, -63), (31, 140, -60), HEMP, name="box lashing"), E((28, 96, -42), (31, 140, -39), HEMP, name="box lashing"),
+        # ballast stones heaped in the box, standing proud of the rim
+        E((-7, 132, -70), (4, 145, -60), FSTONE, skip="down", name="ballast stone"),
+        E((5, 132, -69), (14, 144, -58), FSTONE, skip="down", name="ballast stone"),
+        E((15, 132, -62), (23, 146, -52), FSTONE, skip="down", name="ballast stone"),
         E((-7, 132, -56), (5, 138, -46), FSTONE, skip="down", name="ballast stone"),
-        E((7, 132, -47), (17, 140, -37), FSTONE, skip="down", name="ballast stone"),
+        E((7, 132, -47), (17, 145, -37), FSTONE, skip="down", name="ballast stone"),
         E((17, 132, -45), (23, 137, -33), FSTONE, skip="down", name="ballast stone"),
-        E((-7, 132, -42), (4, 139, -32), FSTONE, skip="down", name="ballast stone"),
+        E((-7, 132, -42), (4, 143, -32), FSTONE, skip="down", name="ballast stone"),
     ]
 
     # ---- winch at the back: drum on the posts, hemp wound on it, handspikes on both ends -----------------------

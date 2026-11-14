@@ -10,7 +10,13 @@ Build:  python art/props/build_props.py brazier_tall      Card:  python tools/pr
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE, HOT   # noqa: F401  (materials: proplib.MAT keys)
+from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE, HOT, IRON, pat_iron, pat_brick   # noqa: F401
+
+# dark slate iron and stone so the stand reads as dark metal against deepslate; the rim keeps a pale iron highlight
+DIRON = Mat(make_ramp("3A3D45"), 2, pat_iron)
+DSTONE = Mat(make_ramp("4A4C52"), 2, pat_brick, top=0)
+DSTONE_TOP = Mat(DSTONE.ramp, 2, lambda f, P, c, r, w, h: (-1 if h3(*P, 41) < 0.05 else 0), top=0)
+RIM = Mat(IRON, 3, pat_iron)
 
 # flames: the coals' HOT ramp, unlit (a glow part). Orange tongues darken a step at their roots; the yellow core is
 # the brightest tone with an orange foot.
@@ -21,23 +27,23 @@ CORE = Mat(HOT, 4, lambda f, P, c, r, w, h: -1 if f not in ("up", "down") and h 
 def build():
     b = [
         # stone pedestal: a plinth, a step, a square column with two iron bands
-        E((1, 0, 1), (15, 4, 15), "stone", skip="down", name="plinth", faces={"up": "stone_top"}),
-        E((2, 4, 2), (14, 6, 14), "stone", skip="down", name="plinth step", faces={"up": "stone_top"}),
-        E((4, 6, 4), (12, 21, 12), "stone", skip="down up", name="column"),
-        E((3, 8, 3), (13, 10, 13), "iron", name="column band"),
-        E((3, 17, 3), (13, 19, 13), "iron", name="column band"),
+        E((1, 0, 1), (15, 4, 15), DSTONE, skip="down", name="plinth", faces={"up": DSTONE_TOP}),
+        E((2, 4, 2), (14, 6, 14), DSTONE, skip="down", name="plinth step", faces={"up": DSTONE_TOP}),
+        E((4, 6, 4), (12, 21, 12), DSTONE, skip="down up", name="column"),
+        E((3, 8, 3), (13, 10, 13), DIRON, name="column band"),
+        E((3, 17, 3), (13, 19, 13), DIRON, name="column band"),
         # iron cap and four claws holding the bowl
-        E((3, 21, 3), (13, 23, 13), "iron", name="cap"),
-        E((1, 22, 6), (3, 27, 10), "iron", name="claw west"), E((13, 22, 6), (15, 27, 10), "iron", name="claw east"),
-        E((6, 22, 1), (10, 27, 3), "iron", name="claw front"), E((6, 22, 13), (10, 27, 15), "iron", name="claw back"),
+        E((3, 21, 3), (13, 23, 13), DIRON, name="cap"),
+        E((1, 22, 6), (3, 27, 10), DIRON, name="claw west"), E((13, 22, 6), (15, 27, 10), DIRON, name="claw east"),
+        E((6, 22, 1), (10, 27, 3), DIRON, name="claw front"), E((6, 22, 13), (10, 27, 15), DIRON, name="claw back"),
         # the bowl: a base, a lower course, four walls, a heavy rim, two carrying rings
-        E((2, 23, 2), (14, 25, 14), "iron", name="bowl base"),
-        E((1, 25, 1), (15, 28, 15), "iron", skip="up", name="bowl course"),
-        E((0, 28, 0), (16, 32, 2), "iron", name="bowl wall"), E((0, 28, 14), (16, 32, 16), "iron", name="bowl wall"),
-        E((0, 28, 2), (2, 32, 14), "iron", name="bowl wall"), E((14, 28, 2), (16, 32, 14), "iron", name="bowl wall"),
-        E((-1, 32, -1), (17, 34, 2), "iron", name="rim"), E((-1, 32, 14), (17, 34, 17), "iron", name="rim"),
-        E((-1, 32, 2), (2, 34, 14), "iron", name="rim"), E((14, 32, 2), (17, 34, 14), "iron", name="rim"),
-        E((-1, 28, 7), (0, 32, 9), "iron", name="ring west"), E((16, 28, 7), (17, 32, 9), "iron", name="ring east"),
+        E((2, 23, 2), (14, 25, 14), DIRON, name="bowl base"),
+        E((1, 25, 1), (15, 28, 15), DIRON, skip="up", name="bowl course"),
+        E((0, 28, 0), (16, 32, 2), DIRON, name="bowl wall"), E((0, 28, 14), (16, 32, 16), DIRON, name="bowl wall"),
+        E((0, 28, 2), (2, 32, 14), DIRON, name="bowl wall"), E((14, 28, 2), (16, 32, 14), DIRON, name="bowl wall"),
+        E((-1, 32, -1), (17, 34, 2), RIM, name="rim"), E((-1, 32, 14), (17, 34, 17), RIM, name="rim"),
+        E((-1, 32, 2), (2, 34, 14), RIM, name="rim"), E((14, 32, 2), (17, 34, 14), RIM, name="rim"),
+        E((-1, 28, 7), (0, 32, 9), DIRON, name="ring west"), E((16, 28, 7), (17, 32, 9), DIRON, name="ring east"),
     ]
     f = [
         E((2, 28, 2), (14, 32, 14), "coal", skip="down", name="coal bed"),
