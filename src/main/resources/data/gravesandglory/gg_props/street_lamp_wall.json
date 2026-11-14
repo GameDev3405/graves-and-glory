@@ -1,0 +1,32 @@
+{
+  "id": "street_lamp_wall",
+  "category": "yard",
+  "name": "Wall Lamp",
+  "size": [
+    1,
+    1,
+    1
+  ],
+  "parts": [
+    {
+      "model": "street_lamp_wall",
+      "cmd": 7310831,
+      "glow": false
+    },
+    {
+      "model": "street_lamp_wall_glass",
+      "cmd": 7310832,
+      "glow": true
+    }
+  ],
+  "solid": [],
+  "lights": [
+    {
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "level": 13
+    }
+  ],
+  "effects": []
+}
