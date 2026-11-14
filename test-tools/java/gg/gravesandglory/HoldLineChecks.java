@@ -66,7 +66,7 @@ import static gg.gravesandglory.Phase2Checks.server;
  * attitude is also within 2 degrees of the next one's start, and on the client against the move it drew, nose up while it climbs and down while
  * it falls. The last place the client draws the arrow is within 0.3 of where it landed (N7). An untagged no-clip, no-gravity arrow that no battle
  * fired keeps vanilla's attitude (N8). Then six Dusk Order Archers (AI on, pinned, on Attack) shoot a line of six frozen dummies 20 blocks
- * off: their damage a second over ticks 40-440 is within 3% of ARC_DPS_BASE, which this stage measured at BASE (straight shots) on the same
+ * off: their damage a second over ticks 40-440, over the hit rate of the arrows that came down in it, is within 3% of ARC_DPS_BASE, which this stage measured at BASE (straight shots, bow cooldown 40; x 40/50 since b711c5f3) on the same
  * world seed. The screenshot, hl-arc.png, is the bow's arrow near its peak, seen from the side.</li>
  * <li>hl-impact (Task 5): on the same patch, a Dusk Order Squire (AI on, pinned, on Attack) 1.8 east of a frozen dummy of the commander's army.
  * Each of three swings hurts the dummy exactly its swing's impactTicks (attackVariants) after the swing tick, never on the swing tick, and no
@@ -188,7 +188,10 @@ final class HoldLineChecks {
          * The damage a second six Dusk Order Archers deal to the six-dummy line of hl-arc's volley stage at BASE 2cc6d9a (Projectiles before Task 4:
          * straight shots), measured by this check on the same world seed before the arc went in; the arc must leave it within 3%.
          */
-        static final double ARC_DPS_BASE = 10.560; // 211.20 over the 400 ticks in both BASE runs, test-tools/work/t4/base-1 and base-2
+        // 211.20 over the 400 ticks in both BASE runs (test-tools/work/t4/base-1 and base-2, bow cooldown 40) was 10.560; b711c5f3 raised the bow
+        // cooldown to 50 (Kort, DECISIONS.md 2026-11-03: bow damage a second -20%), so 10.560 x 40/50. Scatter (c53a1bf9, 9ac2d05b) lets arrows
+        // miss at random, so the check judges the damage a second every arrow would have dealt: the measured one over the window's hit rate
+        static final double ARC_DPS_BASE = 8.448;
         final List<String> arcWhy = new ArrayList<>();
         boolean arcPass = true;
         GravesAndGlory.Unit arcTarget, arcShooter;
@@ -1215,6 +1218,11 @@ final class HoldLineChecks {
         }
         /** The health the volley's dummies have lost so far. */
         double arcLost() {double sum = 0; for (var u : arcDummies) sum += u.mob.getMaxHealth() - u.mob.getHealth(); return sum;}
+        /** One of Projectiles' arrow counters, summed over both teams and every range bin. */
+        static long arrows(long[][] counter) {long sum = 0; for (long[] team : counter) for (long n : team) sum += n; return sum;}
+        /** Every archer's arrow that has come down: hit, missed or lost. */
+        static long landed() {return arrows(Projectiles.ARROWS_HIT) + arrows(Projectiles.ARROWS_MISSED) + arrows(Projectiles.ARROWS_LOST);}
+        long arcHitAt, arcLandedAt;
 
         /** hl-arc (stages 70-77, Task 4): one shot from each of ARC_CASES at a pinned dummy, an untagged decoy arrow, then a six-archer volley's damage a second. */
         void arcStages(GravesAndGlory.Battle b) {
@@ -1343,12 +1351,13 @@ final class HoldLineChecks {
                 }
                 case 77 -> { // damage a second over ticks 40-440 of the volley, against the baseline measured at BASE
                     long t = since(b);
-                    if (t == 40) arcLostAt = arcLost();
+                    if (t == 40) {arcLostAt = arcLost(); arcHitAt = arrows(Projectiles.ARROWS_HIT); arcLandedAt = landed();}
                     if (t < 440) return;
                     double dps = (arcLost() - arcLostAt) / 20.0;
+                    long hit = arrows(Projectiles.ARROWS_HIT) - arcHitAt, came = landed() - arcLandedAt; double rate = came == 0 ? 0 : hit / (double) came, full = hit == 0 ? 0 : dps / rate;
                     long alive = arcDummies.stream().filter(u -> u.mob.isAlive()).count();
-                    boolean steady = dps > 0 && alive == arcDummies.size() && Math.abs(dps - ARC_DPS_BASE) <= 0.03 * ARC_DPS_BASE; arcPass &= steady;
-                    arcWhy.add(String.format(Locale.ROOT, "six Dusk Order Archers (AI on, pinned, on Attack) shooting six frozen dummies 20 blocks off (%d of 6 alive) deal %.3f damage a second over ticks 40-440 (%.2f in all; want the BASE baseline %.3f +/- 3%%, from %.3f to %.3f)", alive, dps, dps * 20, ARC_DPS_BASE, ARC_DPS_BASE * 0.97, ARC_DPS_BASE * 1.03) + "=" + steady);
+                    boolean steady = dps > 0 && alive == arcDummies.size() && rate >= 0.75 && Math.abs(full - ARC_DPS_BASE) <= 0.03 * ARC_DPS_BASE; arcPass &= steady;
+                    arcWhy.add(String.format(Locale.ROOT, "six Dusk Order Archers (AI on, pinned, on Attack) shooting six frozen dummies 20 blocks off (%d of 6 alive) deal %.3f damage a second over ticks 40-440 (%.2f in all) with %d of %d arrows down hitting (%.3f, want 0.75 or more: scatter lets some miss), so %.3f a second had every arrow hit (want the baseline %.3f +/- 3%%, from %.3f to %.3f: BASE's 10.560 at the bow cooldown of 40, x 40/50 since b711c5f3)", alive, dps, dps * 20, hit, came, rate, full, ARC_DPS_BASE, ARC_DPS_BASE * 0.97, ARC_DPS_BASE * 1.03) + "=" + steady);
                     report("hl-arc", arcPass, String.join("; ", arcWhy));
                     unpin(b, archers); archers.clear(); unpin(b, arcDummies); arcDummies.clear(); Projectiles.clear(b);
                     next(b, 60);
