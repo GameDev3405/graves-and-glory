@@ -51,7 +51,8 @@ final class WarTablePages {
     static final int GRID_X = SHEET_X + 31, GRID_Y = SHEET_Y + 71, CELL = 36, CELL_PITCH = 38, FRONT_DY = 59, BAR_W = 80, BAR_H = 7;
     /** Under the grid, "Rear" and the placing hint share one line; then the tabs and their actions (18 tall, so the sheet's torn foot stays clear). */
     static final int REAR_DY = 300, SUB_DY = 48;
-    static final int TABS_X = 20, TABS_Y = 313, ACTS_Y = 336, TAB_W = 68, TAB_H = 18, TAB_GAP = 6;
+    static final int TABS_X = 20, TABS_Y = 313, ACTS_Y = 336, TAB_W = 68, TAB_H = 18, TAB_GAP = 6,
+        GROUP_W = 50, GROUP_GAP = 4, MAIN_W = 124, MAIN_H = 24;
     static final int CLASS_X = 760, CLASS_Y = 140, CLASS_STEP = 40, CLASS_W = 120, BONUS_Y = 374, BONUS_W = 144;
     /** What a seat click places when the Clear tag is armed: the server's word for an empty seat. */
     static final String EMPTY = "empty";
@@ -445,6 +446,32 @@ final class WarTablePages {
         colorsDrawn.put(widget, ink);
     }
 
+    /** The main button of the action row, drawn in brass (the brass plate PNG is a fixed 240 x 40, so this one is filled): "Take to battle" while the shown banner is a spare,
+     *  "Going to battle" with the tick when it already is the battle banner (brass still, not a dead grey button), veiled while a battle locks the banner. */
+    void mainButton(DrawContext g, int x, int y, int w, int h, boolean hot) {
+        var font = font();
+        var b = buttons.get("use");
+        boolean going = shownBanner() == CampaignClient.profile.activeBanner;
+        String label = going ? "Going to battle" : "Take to battle";
+        boolean live = b != null && b.active;
+        g.fill(x, y, x + w, y + h, DarkUi.OAK0);
+        g.fill(x + 1, y + 1, x + w - 1, y + h - 1, hot && live ? DarkUi.BRASS_HI : DarkUi.BRASS);
+        g.fill(x + 1, y + 1, x + w - 1, y + 2, DarkUi.BRASS_HI);
+        if (!live && !going) DarkUi.disabledVeil(g, x + 1, y + 1, w - 2, h - 2);
+        Text t = DarkUi.heading(label);
+        int tw = font.getWidth(t), top = y + (h - 12) / 2, lx;
+        if (going) {
+            int span = 10 + tw;
+            UiTex.draw(g, "table/ready-check", x + (w - span) / 2, y + (h - 8) / 2);
+            lx = x + (w - span) / 2 + 10;
+            g.drawText(font, t, lx, top, DarkUi.PLATE_INK, false);
+        } else lx = WarTableHome.centred(g, t, x + w / 2, top, DarkUi.PLATE_INK);
+        if (hot(b) && live) underline(g, "use", lx, top + 12, tw, DarkUi.PLATE_INK);
+        rectsDrawn.put("use", new int[]{x, y, w, h});
+        textsDrawn.put("use", label);
+        colorsDrawn.put("use", DarkUi.PLATE_INK);
+    }
+
     /** A vellum tag widget, 24 tall, that runs press. */
     UiButton tag(String name, int x, int y, int w, String label, Runnable press) {
         return add(name, new UiButton(x, y, w, 24, Text.literal(label), b -> press.run(), (g, bx, by, bw, bh, hot) -> vellum(g, name, bx, by, bw, bh, label, false)));
@@ -683,13 +710,17 @@ final class WarTablePages {
                 bb -> { shownBanner = b; planned = null; deleteArmed = 0; deleteArmedBanner = -1; refresh(); }, (g, x, y, w, h, hot) -> tab(g, b, x, y, w, h)));
         }
         String[][] acts = {{"new", "New", "Start a new empty banner"}, {"rename", "Rename", "Give this banner a new name"}, {"copy", "Copy", "Copy this banner into a new one"},
-            {"delete", "Delete", "Delete this banner (press twice)"}, {"use", "Use", "Take this banner into battle"}};
-        for (int i = 0; i < acts.length; i++) {
+            {"delete", "Delete", "Delete this banner (press twice)"}};
+        for (int i = 0; i < acts.length; i++) { // the small group on the left: Delete is the last of it, a gap away from the main button
             final String name = acts[i][0], label = acts[i][1];
-            var b = add(name, new UiButton(sh[0] + SHEET_X + TABS_X + i * (TAB_W + TAB_GAP), sh[1] + SHEET_Y + ACTS_Y, TAB_W, TAB_H, Text.literal(label), bb -> act(name),
+            var b = add(name, new UiButton(sh[0] + SHEET_X + TABS_X + i * (GROUP_W + GROUP_GAP), sh[1] + SHEET_Y + ACTS_Y + (MAIN_H - TAB_H) / 2, GROUP_W, TAB_H, Text.literal(label), bb -> act(name),
                 (g, x, y, w, h, hot) -> vellum(g, name, x, y, w, h, name.equals("delete") && deleteArmed > ticks && deleteArmedBanner == shownBanner() ? "Sure?" : label, false)));
             b.setTooltip(Tooltip.of(Text.literal(acts[i][2])));
         }
+        // The main button, set apart on the right: Take to battle. The banner already going to battle reads "Going to battle" with the tick and takes no press.
+        var use = add("use", new UiButton(sh[0] + SHEET_X + TABS_X + BANNER_PAPER_W - MAIN_W, sh[1] + SHEET_Y + ACTS_Y, MAIN_W, MAIN_H, Text.literal("Take to battle"), bb -> act("use"),
+            (g, x, y, w, h, hot) -> mainButton(g, x, y, w, h, hot)));
+        use.setTooltip(Tooltip.of(Text.literal("Take this banner into battle")));
         var rec = add("roll-recruit", new UiButton(r[0] + ROLL_X, r[1] + ROW_TOP, 80, 24, Text.literal("Recruit"), bb -> screen.page("recruit"),
             (g, x, y, w, h, hot) -> vellum(g, "roll-recruit", x, y, w, h, "Recruit", false)));
         rec.setTooltip(Tooltip.of(Text.literal("Open the Recruit page")));
@@ -732,10 +763,14 @@ final class WarTablePages {
         setActive("rename", free);
         setActive("delete", free && n > 1);
         setActive("use", free && shown != CampaignClient.profile.activeBanner);
+        var use = buttons.get("use");
+        String useWords = shown == CampaignClient.profile.activeBanner ? "This banner goes into battle" : "Take this banner into battle";
+        if (use != null && !useWords.equals(useTip)) { useTip = useWords; use.setTooltip(Tooltip.of(Text.literal(useWords))); }
         for (var side : Spec.FACTIONS) { var chip = buttons.get("colour-" + side.id()); if (chip != null) chip.active = free; } // the server holds colour: too while a battle is on
     }
 
     private final String[] rowTips = new String[ROWS], tabTips = new String[8];
+    private String useTip = "";
 
     /** Sets whether a named widget takes a press. */
     void setActive(String name, boolean on) { var b = buttons.get(name); if (b != null) b.active = on; }

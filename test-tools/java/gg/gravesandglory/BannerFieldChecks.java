@@ -205,7 +205,9 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
     }
 
     // ============================================================================================================ the paint proof
-    int st,stAt,sent0;String expect="",why="";
+    int st,stAt,sent0;String expect="",why="";boolean ok16;
+    /** The page's widgets by name. */
+    static Map<String,UiButton> buttonsOf(MinecraftClient c){var pg=UiPagesChecks.pages(c);return pg==null?Map.of():pg.buttons;}
 
     /** banner-paint, by real clicks on the page: a place the server takes, a refusal in words, then another banner shown and made the one
      *  that goes into battle. */
@@ -236,15 +238,30 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                 int more=WarTablePages.sent().size()-sent0;String said=WarTablePages.texts().get("cell-word");boolean ok=!why.isEmpty()&&more==0&&p!=null&&why.equals(said)&&!why.equals(p.noticeText)&&!WarTablePages.table().containsKey(20);
                 report("p1-bf-paint-refused",ok,"a second Legendary on cell 20: why \""+why+"\", the strip beside the cell \""+said+"\", commands sent "+more+" (want 0), bottom notice \""+(p==null?"":p.noticeText)+"\" (want none), cell 20 "+WarTablePages.table().get(20));st=7;stAt=k+1;}}
             case 7->{if(d==0)UiPagesChecks.click(c,UiPagesChecks.box(c,"tab-1"));if(d>=6){st=8;stAt=k+1;}}
-            case 8->{
+            case 8->{ // banner 1 is a spare: editing it must not move the battle banner, and its main button offers to take it
                 var bs=CampaignClient.profile.banners;
                 boolean shows=WarTablePages.shownBanner()==1&&bs.size()>1&&WarTablePages.table().equals(WarGrid.parse(bs.get(1).cells))&&"Banner II".equals(WarTablePages.texts().get("tab-shown"));
                 note="tab-1 shows banner "+WarTablePages.shownBanner()+" (want 1), its table "+WarTablePages.table()+", shown tab \""+WarTablePages.texts().get("tab-shown")+"\""+(shows?"":" WRONG");
-                UiPagesChecks.click(c,UiPagesChecks.box(c,"use"));st=9;stAt=k+1;
+                if(d==0)UiPagesChecks.click(c,row(c,"knight"));
+                if(d==4){sent0=WarTablePages.sent().size();UiPagesChecks.click(c,UiPagesChecks.box(c,"cell-7"));}
+                if(d>=10){
+                    boolean edited="knight".equals(WarGrid.parse(bs.get(1).cells).get(7));String label=WarTablePages.texts().get("use");
+                    report("p1-bf-spare-edit",edited&&CampaignClient.profile.activeBanner==0&&"Take to battle".equals(label),"painting cell 7 of the spare banner 1: the server holds it "+edited+", the battle banner is "+CampaignClient.profile.activeBanner+" (want 0), the main button reads \""+label+"\" (want \"Take to battle\")");
+                    shot(c,"bf-banner-buttons-spare-1080");
+                    UiPagesChecks.click(c,UiPagesChecks.box(c,"use"));st=9;stAt=k+1;}
             }
             case 9->{
                 boolean used=CampaignClient.profile.activeBanner==1;
-                if(used||d>120){report("p1-bf-paint-switch",used&&!note.endsWith("WRONG"),note+"; Use made the active banner "+CampaignClient.profile.activeBanner+" (want 1)");note="";st=10;stAt=k+1;}
+                if(used||d>120){report("p1-bf-paint-switch",used&&!note.endsWith("WRONG"),note+"; Take to battle made the active banner "+CampaignClient.profile.activeBanner+" (want 1)");note="";st=16;stAt=k+1;}
+            }
+            case 16->{ // the active banner reads "Going to battle" with the tick, still the brass button, and a press does nothing
+                if(d==2){
+                    String label=WarTablePages.texts().get("use");var ub=buttonsOf(c).get("use");boolean dead=ub!=null&&!ub.active;
+                    sent0=WarTablePages.sent().size();UiPagesChecks.click(c,UiPagesChecks.box(c,"use"));
+                    note="the active banner's main button reads \""+label+"\" (want \"Going to battle\"), "+(dead?"takes no press":"WRONG: still takes a press");
+                    ok16=("Going to battle".equals(label))&&dead;
+                    shot(c,"bf-banner-buttons-active-1080");}
+                if(d>=6){report("p1-bf-going-to-battle",ok16&&WarTablePages.sent().size()==sent0,note+"; commands sent by pressing it "+(WarTablePages.sent().size()-sent0)+" (want 0)");note="";st=10;stAt=k+1;}
             }
             case 10->{if(d==0)UiPagesChecks.click(c,row(c,"knight"));if(d>=4){st=11;stAt=k+1;}}
             case 11->{ // a double click on one cell: the place and the take-off are two different commands, so the second is not dropped as a repeat of the first
