@@ -285,7 +285,7 @@ public final class Campaign {
         if(cmd.startsWith("colour:")){ // the side row this commander asks to fly (spec 1.1); chooseSides settles it as the round is prepared
             String side=cmd.substring(7);var row=Arrays.stream(Spec.FACTIONS).filter(f->f.id().equals(side)).findFirst().orElse(null);if(row==null)return true;
             String before=pr.bannerColour;pr.bannerColour=side;if(!save(p.getUuid())){pr.bannerColour=before;return true;}
-            notice(p.getUuid(),"You fly the "+row.name()+", unless the other team flies it first.");return true;
+            notice(p.getUuid(),"Team colour: "+row.name()+". First team to pick it keeps it.");return true;
         }
         if(cmd.startsWith("mode:")){
             if(!leader(p))return true;

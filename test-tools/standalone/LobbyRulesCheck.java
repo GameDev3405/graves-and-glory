@@ -22,11 +22,11 @@ public final class LobbyRulesCheck {
   p.owned.put(legendary,new Profile.Owned());p.owned.put(second,new Profile.Owned());p.setTable(0,new TreeMap<>()); // an empty banner, so the cost allowance cannot refuse first
   String saved=json(p);
   String[] bad={"cell:5:0:0:knight","cell:0:9:0:knight","cell:0:-1:0:knight","cell:0:0:-1:knight","cell:0:0:6:knight","cell:0:0:0:"+unowned,"cell:0:0:0:no_such","cell:0:x:0:knight","cell:0:0:0","cell:0:0:0:knight:extra"};
-  for(String cmd:bad){String why=run(p,cmd);check(why!=null&&why.endsWith(".")&&json(p).equals(saved),"Refused and unchanged: "+cmd+" ("+why+")");}
+  for(String cmd:bad){String why=run(p,cmd);check(why!=null&&!why.isEmpty()&&json(p).equals(saved),"Refused and unchanged: "+cmd+" ("+why+")");}
   check(run(p,"cell:0:0:5:"+legendary)==null,"A first Legendary is accepted");
   String after=json(p);
   String why=run(p,"cell:0:1:5:"+second);
-  check("Only one Legendary troop can stand in a banner.".equals(why)&&json(p).equals(after),"A second Legendary is refused and the profile is unchanged");
+  check("1 Legendary per banner".equals(why)&&json(p).equals(after),"A second Legendary is refused and the profile is unchanged");
   check(run(p,"cell:0:2:5:knight")==null&&p.table().get(WarGrid.index(2,5)).equals("knight"),"A good cell command paints");
   check(run(p,"cell:0:2:5:-")==null&&!p.table().containsKey(WarGrid.index(2,5)),"The brush - clears the cell");
  }

@@ -20,8 +20,10 @@ public final class BannerDropCheck {
         refusesOverCost();
         refusesSecondLegendary();
         refusesOutOfRange(common);
-        check(BannerDrop.why("legendary_limit").equals("Only one Legendary troop can stand in a banner."), "The Legendary limit reads as a sentence");
-        for (String f : List.of("range", "unknown", "not_owned", "house", "count", "cost", "epic_limit", "rare_limit", "common_limit")) check(!BannerDrop.why(f).isEmpty() && BannerDrop.why(f).endsWith("."), f + " has a sentence");
+        check(BannerDrop.why("legendary_limit").equals("1 Legendary per banner"), "The Legendary limit reads short: " + BannerDrop.why("legendary_limit"));
+        check(BannerDrop.why("house").equals("This House is not playable yet") && BannerDrop.why("count").equals(RosterMath.maxTroops() + " troops max"), "The House and count refusals read short");
+        check(BannerDrop.costWhy(22, 10).equals("Need 22 gold, 10 left"), "The cost reason names the price and the gold left");
+        for (String f : List.of("range", "unknown", "not_owned", "house", "count", "cost", "epic_limit", "rare_limit", "common_limit")) check(!BannerDrop.why(f).isEmpty() && !BannerDrop.why(f).endsWith(".") && !BannerDrop.why(f).toLowerCase().contains("war table"), f + " is a short reason: " + BannerDrop.why(f));
         System.out.println("BannerDropCheck passed: " + count + " checks");
     }
 
@@ -55,7 +57,7 @@ public final class BannerDropCheck {
             t = last.result();
         }
         check(last != null && !last.ok(), "Painting the dearest Common everywhere is refused before the table is full");
-        check(last.why().startsWith("That is more than the banner's") || last.why().startsWith("A banner holds at most"), "The refusal says why: " + last.why());
+        check(last.why().startsWith("Need ") && last.why().contains(" gold, ") && last.why().endsWith(" left") || last.why().endsWith(" troops max"), "The refusal says why: " + last.why());
         check(last.result().equals(t) && RosterMath.validTable(t, C, ALL.owned(), ALL.houses()) == null, "A refusal leaves the table as it was, still valid");
     }
 
@@ -64,7 +66,7 @@ public final class BannerDropCheck {
         String second = C.rarity().keySet().stream().filter(id -> C.rarityOf(id).equals("legendary") && !id.equals(leg)).sorted().findFirst().orElseThrow();
         SortedMap<Integer, String> t = new TreeMap<>(Map.of(0, leg));
         var p = BannerDrop.paint(t, 1, second, ALL);
-        check(!p.ok() && p.why().equals("Only one Legendary troop can stand in a banner.") && p.result().equals(t), "A second Legendary is refused in words");
+        check(!p.ok() && p.why().equals("1 Legendary per banner") && p.result().equals(t), "A second Legendary is refused in words");
         check(BannerDrop.paint(t, 0, second, ALL).ok(), "A Legendary may replace the Legendary on its own cell");
     }
 
@@ -72,10 +74,10 @@ public final class BannerDropCheck {
         SortedMap<Integer, String> t = new TreeMap<>();
         for (int cell : new int[]{-1, WarGrid.cells(), 99}) {
             var p = BannerDrop.paint(t, cell, common, ALL);
-            check(!p.ok() && p.why().equals("That cell is not on the war table.") && p.result().isEmpty(), "Cell " + cell + " is refused");
+            check(!p.ok() && p.why().equals("That cell is not on the table") && p.result().isEmpty(), "Cell " + cell + " is refused");
         }
         check(!BannerDrop.paint(t, 0, "no_such_troop", ALL).ok(), "An unknown troop is refused");
         var unowned = new BannerDrop.Rules(C, Set.of(), ALL.houses());
-        check(BannerDrop.paint(t, 0, common, unowned).why().equals("You do not own that troop yet."), "An unowned troop is refused in words");
+        check(BannerDrop.paint(t, 0, common, unowned).why().equals("You do not own that troop yet"), "An unowned troop is refused in words");
     }
 }

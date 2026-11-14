@@ -40,28 +40,39 @@ final class BannerDrop {
             next.put(cell, b);
         }
         String refusal = RosterMath.validTable(next, r.c(), r.owned(), r.houses());
-        if (refusal != null) return new Plan(false, why(refusal), command, same);
+        if (refusal != null) {
+            String reason = why(refusal);
+            if (refusal.equals("cost") && !b.equals(ERASE)) { // say the price against what is left, "Need 22 gold, 10 left"
+                SortedMap<Integer, String> without = new TreeMap<>(table);
+                without.remove(cell);
+                reason = costWhy(r.c().cost(b), RosterMath.allowance() - WarGrid.cost(without, r.c()));
+            }
+            return new Plan(false, reason, command, same);
+        }
         return new Plan(true, "", command, next);
     }
 
-    /** The plain-words sentence for a RosterMath.validTable failure name. */
+    /** The cost refusal: the troop's price against the gold still free ("Need 22 gold, 10 left"). */
+    static String costWhy(int price, int left) { return "Need " + price + " gold, " + Math.max(0, left) + " left"; }
+
+    /** The short reason for a RosterMath.validTable failure name: a few words, no full stop, as the cell strip and a row's tooltip show it. */
     static String why(String failure) {
         if (failure == null) return "";
         switch (failure) {
-            case "range": return "That cell is not on the war table.";
-            case "unknown": return "That is not a troop.";
-            case "not_owned": return "You do not own that troop yet.";
-            case "house": return "That troop's House has not joined the war.";
-            case "count": return "A banner holds at most " + RosterMath.maxTroops() + " troops.";
-            case "cost": return "That is more than the banner's " + RosterMath.allowance() + " gold allows.";
+            case "range": return "That cell is not on the table";
+            case "unknown": return "That is not a troop";
+            case "not_owned": return "You do not own that troop yet";
+            case "house": return "This House is not playable yet";
+            case "count": return RosterMath.maxTroops() + " troops max";
+            case "cost": return "Over the " + RosterMath.allowance() + " gold limit";
             default:
                 if (failure.endsWith("_limit")) {
                     String rarity = failure.substring(0, failure.length() - 6);
                     int max = RosterMath.bannerMax(rarity);
                     String name = rarity.isEmpty() ? rarity : Character.toUpperCase(rarity.charAt(0)) + rarity.substring(1);
-                    return max == 1 ? "Only one " + name + " troop can stand in a banner." : "Only " + max + " " + name + " troops can stand in a banner.";
+                    return max + " " + name + " per banner";
                 }
-                return "That does not fit the war table.";
+                return "That does not fit your banner";
         }
     }
 }
