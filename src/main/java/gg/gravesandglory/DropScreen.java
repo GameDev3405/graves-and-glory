@@ -31,8 +31,8 @@ final class DropScreen extends Screen {
 
     @Override public boolean keyPressed(int key, int scan, int modifiers) {
         if (key == GLFW.GLFW_KEY_SPACE || key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_ESCAPE || GravesAndGloryClient.menu != null && GravesAndGloryClient.menu.matchesKey(key, scan)) { press(); return true; }
-        if (key == GLFW.GLFW_KEY_LEFT || key == GLFW.GLFW_KEY_A) { var v = DropClient.mine; if (v != null) DropClient.aim(v.targetX - 0.5); return true; }
-        if (key == GLFW.GLFW_KEY_RIGHT || key == GLFW.GLFW_KEY_D) { var v = DropClient.mine; if (v != null) DropClient.aim(v.targetX + 0.5); return true; }
+        if (key == GLFW.GLFW_KEY_LEFT || client.options.leftKey.matchesKey(key, scan)) { var v = DropClient.mine; if (v != null) DropClient.aim(v.targetX - 0.5); return true; }
+        if (key == GLFW.GLFW_KEY_RIGHT || client.options.rightKey.matchesKey(key, scan)) { var v = DropClient.mine; if (v != null) DropClient.aim(v.targetX + 0.5); return true; }
         return true;
     }
 
