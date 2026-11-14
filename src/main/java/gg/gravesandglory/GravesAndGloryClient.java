@@ -113,6 +113,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             if(CommandSelection.panelOpen()){boolean shift=CommandSelection.shiftHeld(client);for(int i=0;i<4;i++)while(client.options.hotbarKeys[i].wasPressed())CommandSelection.pick(i+1,shift,shift);return;}
             for(int i=0;i<3;i++)while(client.options.hotbarKeys[i].wasPressed())send("relic:"+i);});
         ClientPlayNetworking.registerGlobalReceiver(Payloads.GearPayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();String text=buf.readString(GearWire.LIMIT);client.execute(()->CampaignClient.gear=GearWire.decode(text));});
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.DropPayload.ID,(payload,context)->DropClient.receive(context.client(),payload.buf()));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.CampPayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
         ClientPlayNetworking.registerGlobalReceiver(Payloads.OpenBarracksPayload.ID,(payload,context)->{MinecraftClient client=context.client();client.execute(()->client.setScreen(running?new BarracksScreen():new CampScreen("home")));});
         ClientPlayNetworking.registerGlobalReceiver(Payloads.EndingBeginPayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();String outcome=buf.readString(16),line=buf.readString(512);client.execute(()->EndingClient.beginEnding(client,outcome,line));});
@@ -172,7 +173,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
                 client.setScreen(error.isEmpty()?new FrontMenuScreen():new FailureScreen(error));
             }
             if(client.player!=null){
-                worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);EndingClient.tick(client);MusicDirector.tick(client);Diagnostics.tick(client);
+                worldTicks++;if(ready&&worldTicks%20==0)client.getToastManager().clear();prepareMap(client);CampaignClient.tick(client);EndingClient.tick(client);DropClient.tick(client);MusicDirector.tick(client);Diagnostics.tick(client);
                 while(panelEdit.wasPressed())CommandPanel.toggleEdit(client);
                 CommandPanel.editTick(client);
                 if(CommandPanel.editing()){for(KeyBinding k:new KeyBinding[]{menu,attack,charge,followMe,retreat,formation,confirmOrder,cancelOrder})while(k.wasPressed()){}} // no orders while the panel is being arranged
@@ -199,6 +200,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         HudRenderCallback.EVENT.register(GravesAndGloryClient::renderHud);
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(CommandMode::renderWorld);
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(PlanMarkers::render); // the plan flags over planned points (battle map spec 5.4)
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(DropRender::world); // the drop board's coins, flares and risers
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(EndingClient::renderFigures); // the match ending's podium figures
         ChargeCamera.register(); // the overhead charge camera: its option, its toggle binding and the ground arrow
         OrderOutlines.register(); // formation outlines, pulses and the rally pose; registered after the tick handler above so it reads the aim that handler left

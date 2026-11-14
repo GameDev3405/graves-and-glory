@@ -251,7 +251,7 @@ final class WarTableRecruit {
         return true;
     }
 
-    void enlist() { if (canEnlist()) send("roll:" + house); }
+    void enlist() { if (canEnlist()) send((DropClient.enabled ? "drop:roll:" : "roll:") + house); } // through the altar (the server rolls plainly where it cannot be seen)
 
     /** The action tag: sends what RecruitPages.action gives for the troop shown (buy:, star: or legendary:), once; the page never sends unlock: or army:. A second press waits for the camp's answer (pending). */
     void chooseTroop() {

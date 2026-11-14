@@ -17,10 +17,12 @@ abstract class EndingViewMixin {
     @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
     private void graves$podiumFov(Camera camera, float tickDelta, boolean changingFov, CallbackInfoReturnable<Double> cir) {
         if (changingFov && EndingClient.cinematic()) cir.setReturnValue(EndingClient.FOV);
+        else if (changingFov && gg.gravesandglory.DropClient.cinematic()) cir.setReturnValue(gg.gravesandglory.DropClient.fov(cir.getReturnValue())); // the drop board's shot, eased from and to the commander's own
     }
 
     @Inject(method = "renderHand", at = @At("HEAD"), cancellable = true)
     private void graves$endingHand(Camera camera, float tickDelta, Matrix4f matrix, CallbackInfo ci) {
         if (EndingClient.step() != null) { EndingClient.handsHidden++; ci.cancel(); }
+        else if (gg.gravesandglory.DropClient.cinematic()) ci.cancel();
     }
 }

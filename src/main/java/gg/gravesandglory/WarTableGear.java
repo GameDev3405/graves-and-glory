@@ -150,7 +150,7 @@ final class WarTableGear {
         if (v.inventorySize() >= Gear.forge().maxSlots()) return "Inventory at its largest";
         return "Add a row (" + Forge.expandCost(GearView.asProfile(v)) + " gear shards)";
     }
-    void roll() { if (screen.action("forge:roll:" + forgeSlot)) UiSounds.play(AudioCues.Cue.BLACKSMITH_ROLL); }
+    void roll() { if (screen.action((DropClient.enabled ? "drop:forge:" : "forge:roll:") + forgeSlot)) UiSounds.play(AudioCues.Cue.BLACKSMITH_ROLL); }
 
     /** Shows and greys the widgets for this frame's state: nothing acts until the gear view arrives. */
     void sync() {

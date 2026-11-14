@@ -139,7 +139,7 @@ public final class Phase1Checks implements ClientModInitializer {
             listenSounds(c);
             if(current==null){
                 if(queue.isEmpty())return;
-                currentName=queue.poll();failed=false;tick=0;var make=SUITES.get(currentName);
+                currentName=queue.poll();failed=false;tick=0;DropClient.enabled=currentName.startsWith("drop-board");/* the other suites test the plain roll */var make=SUITES.get(currentName);
                 if(make==null){report("p1-"+currentName+"-suite",false,"unknown suite");if(queue.isEmpty())c.scheduleStop();return;}
                 current=make.get();
             }
