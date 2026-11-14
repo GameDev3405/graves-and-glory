@@ -612,6 +612,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         var p = b.server.getPlayerManager().getPlayer(player);
         if (p == null) return;
         p.setNoGravity(true);
+        // The camera is a seated commander: a thrower's or crossbow's own shot at it (the three-quarter eye stands in their range) downed it mid stage,
+        // the game sent it to its base as a spectator (Battle.allowCommanderDeath), and the case being shot saw nothing (tc_harpooner-lb2 and -lb3: one hit case 0 frames).
+        p.setInvulnerable(true);
         p.networkHandler.requestTeleport(x, cy - .45, z, yaw, pitch);
     }
 
