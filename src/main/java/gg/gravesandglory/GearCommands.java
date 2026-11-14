@@ -27,13 +27,15 @@ final class GearCommands {
     }
 
     /** Applies the request to the profile. Never throws; a refusal leaves the profile as it was. */
-    static Outcome apply(Profile p, String cmd, RandomGenerator rng) {
+    static Outcome apply(Profile p, String cmd, RandomGenerator rng) { return apply(p, cmd, rng, 0); }
+    /** The same with a drop-board multiplier for forge:roll (Forge.roll; under 1: no board). */
+    static Outcome apply(Profile p, String cmd, RandomGenerator rng, int multiplier) {
         try {
             if (p == null || cmd == null) return Outcome.refused(INVALID);
             String[] part = cmd.split(":", -1);
             if (part.length < 2) return Outcome.refused(INVALID);
             if (part[0].equals("gear")) return gear(p, part);
-            if (part[0].equals("forge")) return forge(p, part, rng);
+            if (part[0].equals("forge")) return forge(p, part, rng, multiplier);
             return Outcome.refused(INVALID);
         } catch (RuntimeException e) {
             return Outcome.refused(INVALID);
@@ -83,11 +85,11 @@ final class GearCommands {
         }
     }
 
-    private static Outcome forge(Profile p, String[] part, RandomGenerator rng) {
+    private static Outcome forge(Profile p, String[] part, RandomGenerator rng, int multiplier) {
         switch (part[1]) {
             case "roll": {
                 if (part.length != 3 || !Gear.ROLL_SLOTS.contains(part[2])) return Outcome.refused(INVALID);
-                Forge.Rolled r = Forge.roll(p, part[2], rng);
+                Forge.Rolled r = Forge.roll(p, part[2], rng, multiplier);
                 if (!r.refusal().isEmpty()) return Outcome.refused(r.refusal());
                 String line;
                 if (r.relic() != null) {

@@ -28,7 +28,14 @@ final class Forge {
      * Armour and weapons draw an item of the slot (weapon = main or off), a rarity by rollWeight (only epic and legendary once gearPity
      * has reached the pity count), a quality 0 to 100 and full durability. gearPity resets on an epic or better, else rises; a relic roll leaves it.
      */
-    static Rolled roll(Profile p, String slot, RandomGenerator rng) {
+    static Rolled roll(Profile p, String slot, RandomGenerator rng) { return roll(p, slot, rng, 0); }
+    /**
+     * The same roll after a drop-board landing on a multiplier (design 2026-11-14; under 1: no board). Rare, epic and legendary chances are
+     * multiplied by multiplier / the table's mean and common and uncommon take the rest; on a pity roll (epic or legendary only) legendary is
+     * the boosted one. A relic is drawn as ever and the multiplier scales its duplicate refund by multiplier / mean (DropMath.scale), so the
+     * average refund is unchanged. Averaged over the slots every chance is the one with no board.
+     */
+    static Rolled roll(Profile p, String slot, RandomGenerator rng, int multiplier) {
         var f = Gear.forge();
         if (slot == null || !Gear.ROLL_SLOTS.contains(slot)) return Rolled.refused("No such forge slot.");
         int cost = rollCost(slot);
@@ -41,6 +48,7 @@ final class Forge {
             int refund = 0;
             if (dupe) {
                 refund = (int) Math.floor(cost * f.relicDuplicatePct() + 1e-9);
+                if (multiplier >= 1) refund = DropMath.scale(refund, multiplier, rng);
                 p.gearShards += refund;
             } else {
                 p.relics.add(id);
@@ -56,15 +64,24 @@ final class Forge {
         }
         var item = pool.get(rng.nextInt(pool.size()));
         boolean pity = p.gearPity >= f.pity();
-        int total = 0;
-        for (var r : Spec.GEARRARITIES) if (!pity || isTop(r.id())) total += r.rollWeight();
-        int pick = rng.nextInt(total);
         Spec.GearRaritiesRow rarity = null;
-        for (var r : Spec.GEARRARITIES) {
-            if (pity && !isTop(r.id())) continue;
-            rarity = r;
-            if (pick < r.rollWeight()) break;
-            pick -= r.rollWeight();
+        if (multiplier >= 1) {
+            List<Spec.GearRaritiesRow> rows = new ArrayList<>();
+            for (var r : Spec.GEARRARITIES) if (!pity || isTop(r.id())) rows.add(r);
+            long[] w = new long[rows.size()];
+            boolean[] boosted = new boolean[rows.size()];
+            for (int i = 0; i < w.length; i++) { w[i] = rows.get(i).rollWeight(); boosted[i] = pity ? rows.get(i).id().equals("legendary") : DropMath.boosted(rows.get(i).id()); }
+            rarity = rows.get(DropMath.pick(DropMath.boost(w, boosted, multiplier), rng));
+        } else {
+            int total = 0;
+            for (var r : Spec.GEARRARITIES) if (!pity || isTop(r.id())) total += r.rollWeight();
+            int pick = rng.nextInt(total);
+            for (var r : Spec.GEARRARITIES) {
+                if (pity && !isTop(r.id())) continue;
+                rarity = r;
+                if (pick < r.rollWeight()) break;
+                pick -= r.rollWeight();
+            }
         }
         Gear.Piece piece = new Gear.Piece(p.nextGearUid++, item.id(), rarity.id(), rng.nextInt(101), f.maxDurability());
         p.gearPity = isTop(rarity.id()) ? 0 : p.gearPity + 1;

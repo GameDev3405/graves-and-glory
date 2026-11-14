@@ -268,6 +268,21 @@ public final class RosterMath {
     }
 
     /**
+     * The same roll after a drop-board landing on a multiplier (design 2026-11-14): the Rare and Epic tiers' chances are multiplied by
+     * multiplier / the table's mean and the Commons take the rest (DropMath.boost), then a troop of the drawn tier is picked evenly. The
+     * pity rule is unchanged: the Epic is still forced at epicPity. A multiplier under 1 is the roll with no board.
+     */
+    public static Roll roll(List<String> commons, List<String> rares, String epic, int wCommon, int wRare, int wEpic, int pity, int epicPity, int multiplier, RandomGenerator rng) {
+        if (multiplier < 1) return roll(commons, rares, epic, wCommon, wRare, wEpic, pity, epicPity, rng);
+        if ((long) pity + 1 >= epicPity) return new Roll(epic, 0);
+        long[] w = DropMath.boost(new long[]{(long) commons.size() * wCommon, (long) rares.size() * wRare, wEpic}, new boolean[]{false, true, true}, multiplier);
+        int tier = DropMath.pick(w, rng);
+        if (tier == 0) return new Roll(commons.get(rng.nextInt(commons.size())), pity + 1);
+        if (tier == 1) return new Roll(rares.get(rng.nextInt(rares.size())), pity + 1);
+        return new Roll(epic, 0);
+    }
+
+    /**
      * Stars from copies alone: star 1 for the first copy, star 2 after dupsStar2 more and star 3 after dupsStar3 more,
      * capped at recruitment.maxStars. A rarity with 0 duplicates there (Legendary) earns its stars with shards only.
      */
