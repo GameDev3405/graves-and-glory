@@ -45,7 +45,19 @@
    0.03,
    0.0
   ],
-  "left_shoulder_tusks|4,25,-0.5|1,3,1": [
+  "left_shoulder_tusks|4,23,-0.5|1,3,1": [
+   0.03,
+   0.0
+  ],
+  "left_shoulder_tusks|7,23,-0.5|1,2,1": [
+   0.03,
+   0.0
+  ],
+  "right_shoulder_tusks|-5,23,-0.5|1,2,1": [
+   0.03,
+   0.0
+  ],
+  "right_shoulder_tusks|-8,23,-0.5|1,3,1": [
    0.03,
    0.0
   ],
