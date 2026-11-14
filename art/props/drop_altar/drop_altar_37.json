@@ -1,0 +1,195 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  512,
+  512
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/drop_altar",
+  "particle": "gravesandglory:prop/drop_altar"
+ },
+ "elements": [
+  {
+   "from": [
+    27,
+    0,
+    2
+   ],
+   "to": [
+    32,
+    4,
+    14
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      8.3125,
+      10.03125,
+      8.46875,
+      10.15625
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      8.46875,
+      10.03125,
+      8.625,
+      10.15625
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      3.5625,
+      9.65625,
+      3.9375,
+      9.78125
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "glimpur crystal",
+   "shade": false
+  },
+  {
+   "from": [
+    25,
+    4,
+    0
+   ],
+   "to": [
+    32,
+    12,
+    16
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      12.375,
+      9.03125,
+      12.59375,
+      9.28125
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      12.59375,
+      9.03125,
+      12.8125,
+      9.28125
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      11.375,
+      9.03125,
+      11.875,
+      9.28125
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      9.0,
+      7.0625,
+      9.21875,
+      7.5625
+     ],
+     "texture": "#0"
+    },
+    "down": {
+     "uv": [
+      9.21875,
+      7.0625,
+      9.4375,
+      7.5625
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "glimpur crystal",
+   "shade": false
+  },
+  {
+   "from": [
+    28,
+    12,
+    3
+   ],
+   "to": [
+    32,
+    16,
+    13
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      9.1875,
+      10.03125,
+      9.3125,
+      10.15625
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      9.3125,
+      10.03125,
+      9.4375,
+      10.15625
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      6.1875,
+      10.03125,
+      6.5,
+      10.15625
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      15.125,
+      8.71875,
+      15.25,
+      9.03125
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "glimpur crystal",
+   "shade": false
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    14.38,
+    7.19,
+    -12.453
+   ],
+   "scale": [
+    0.992,
+    0.992,
+    0.992
+   ]
+  }
+ }
+}

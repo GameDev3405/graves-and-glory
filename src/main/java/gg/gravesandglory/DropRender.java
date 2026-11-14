@@ -38,7 +38,7 @@ final class DropRender {
     private DropRender() {}
 
     /** The coin's model (the drop_coin prop's part) and its size on the board. */
-    static int COIN_CMD = 0; static float COIN_SCALE = 1f;
+    static float COIN_SCALE = 1f;
     /** How far the coin's centre stands out of the back plate's plane. */
     static final double COIN_FORWARD = 0.375;
 
@@ -222,13 +222,11 @@ final class DropRender {
                 double[] at = DropLayout.world(q[0], q[1], COIN_FORWARD);
                 m.push();
                 m.translate(at[0], at[1], at[2]);
-                m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180 - DropLayout.viewYaw()));
+                m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-DropAltar.facing()));
                 double roll = v.path == null ? (v.x - 4.5) / DropSim.COIN : v.roll[Math.min(v.roll.length - 1, Math.max(0, (int) ((now - v.pathAt) / DropSim.SAMPLE)))];
                 m.multiply(RotationAxis.POSITIVE_Z.rotation((float) roll));
                 m.scale(COIN_SCALE * coinScale, COIN_SCALE * coinScale, COIN_SCALE * coinScale);
-                ItemStack coin = new ItemStack(Items.PAPER);
-                if (COIN_CMD != 0) coin.getOrCreateNbt().putInt("CustomModelData", COIN_CMD);
-                c.getItemRenderer().renderItem(coin, ModelTransformationMode.FIXED, LightmapTextureManager.MAX_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, m, consumers, c.world, v.id);
+                DropAltar.draw(c, m, consumers, DropAltar.COIN, LightmapTextureManager.MAX_LIGHT_COORDINATE);
                 m.pop();
             }
             // the roller's name over a coin that is not this client's own

@@ -1,0 +1,12 @@
+{
+  "id": "drop_coin",
+  "category": "lobby",
+  "name": "Drop Coin",
+  "size": [1, 1, 1],
+  "parts": [
+    {"model": "drop_coin", "cmd": 7310941, "glow": false}
+  ],
+  "solid": [],
+  "lights": [],
+  "effects": []
+}

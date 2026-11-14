@@ -1,0 +1,91 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  512,
+  512
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/drop_altar",
+  "particle": "gravesandglory:prop/drop_altar"
+ },
+ "elements": [
+  {
+   "from": [
+    -1,
+    0,
+    -9
+   ],
+   "to": [
+    1,
+    32,
+    -8
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      14.375,
+      6.0,
+      14.4375,
+      7.0
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      14.5,
+      6.0,
+      14.53125,
+      7.0
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      14.53125,
+      6.0,
+      14.5625,
+      7.0
+     ],
+     "texture": "#0"
+    },
+    "down": {
+     "uv": [
+      5.625,
+      10.5,
+      5.6875,
+      10.53125
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "glimpur vein",
+   "shade": false
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    -8.593,
+    -1.946,
+    -4.566
+   ],
+   "scale": [
+    0.496,
+    0.496,
+    0.496
+   ]
+  }
+ }
+}

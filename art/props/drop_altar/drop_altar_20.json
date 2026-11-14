@@ -1,0 +1,152 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  512,
+  512
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/drop_altar",
+  "particle": "gravesandglory:prop/drop_altar"
+ },
+ "elements": [
+  {
+   "from": [
+    26,
+    -14,
+    3
+   ],
+   "to": [
+    32,
+    1,
+    4
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      12.125,
+      7.0625,
+      12.3125,
+      7.53125
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      13.25,
+      7.0625,
+      13.28125,
+      7.53125
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      3.375,
+      10.5,
+      3.5625,
+      10.53125
+     ],
+     "texture": "#0"
+    },
+    "down": {
+     "uv": [
+      3.5625,
+      10.5,
+      3.75,
+      10.53125
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "rune plaque x5",
+   "shade": false
+  },
+  {
+   "from": [
+    10,
+    -14,
+    3
+   ],
+   "to": [
+    22,
+    1,
+    4
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      9.875,
+      7.0625,
+      10.25,
+      7.53125
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      13.28125,
+      7.0625,
+      13.3125,
+      7.53125
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      13.3125,
+      7.0625,
+      13.34375,
+      7.53125
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      14.875,
+      10.4375,
+      15.25,
+      10.46875
+     ],
+     "texture": "#0"
+    },
+    "down": {
+     "uv": [
+      15.25,
+      10.4375,
+      15.625,
+      10.46875
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "rune plaque x10",
+   "shade": false
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    4.337,
+    13.524,
+    -2.501
+   ],
+   "scale": [
+    0.7215,
+    0.7215,
+    0.7215
+   ]
+  }
+ }
+}

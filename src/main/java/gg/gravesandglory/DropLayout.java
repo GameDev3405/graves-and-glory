@@ -11,7 +11,7 @@ final class DropLayout {
     /** The court: this many blocks across the altar's width and from back to front. */
     static final int COURT_WIDTH = 15, COURT_DEPTH = 8;
     /** The coin's plane, in blocks behind the court's centre line (toward the altar's back), and the height of the rail (DropSim y = 0) over the court floor's top. */
-    static final double PLANE_BACK = 2.15, RAIL_UP = 12.0;
+    static final double PLANE_BACK = 2.875, RAIL_UP = 12.0;
 
     /** The centre floor block {x, y, z}. */
     static int[] origin() {

@@ -14,6 +14,10 @@ final class DropStage {
     private DropStage() {}
     /** Buried under the court's centre: its presence means the court stands. */
     static final Block MARKER = Blocks.CRYING_OBSIDIAN;
+    /** The court's floor inside its rim. */
+    static final Block FLOOR = Blocks.POLISHED_DEEPSLATE;
+    /** The altar's front row of cells, in blocks out from the court's centre (it is two deep, on the plinth). */
+    static final int ALTAR_FRONT = -DropLayout.COURT_DEPTH / 2 + 1;
 
     static BlockPos markerPos() {
         int[] o = DropLayout.origin();
@@ -44,7 +48,7 @@ final class DropStage {
         if (w.getBlockState(markerPos()).isOf(MARKER)) { System.out.println("[Graves and Glory] drop board court present"); return; }
         long started = System.nanoTime();
         int half = DropLayout.COURT_WIDTH / 2, back = -DropLayout.COURT_DEPTH / 2, front = DropLayout.COURT_DEPTH / 2 - 1;
-        Block tiles = Blocks.DEEPSLATE_TILES, floor = Blocks.POLISHED_DEEPSLATE, bricks = Blocks.DEEPSLATE_BRICKS;
+        Block tiles = Blocks.DEEPSLATE_TILES, floor = FLOOR, bricks = Blocks.DEEPSLATE_BRICKS;
         for (int s = -half; s <= half; s++) for (int f = back; f <= front; f++) {
             for (int up = 1; up <= 18; up++) set(w, at(s, f, up), Blocks.AIR);
             for (int up = -3; up <= -1; up++) set(w, at(s, f, up), bricks);
@@ -53,13 +57,11 @@ final class DropStage {
         }
         // the altar's plinth: two courses under the slots, across the altar's width, at the back
         for (int s = -5; s <= 5; s++) for (int f = back; f <= back + 1; f++) for (int up = 1; up <= 2; up++) set(w, at(s, f, up), up == 2 ? tiles : bricks);
-        placeProps(w);
+        // the altar itself is drawn by the client (DropAltar); its space is kept solid
+        for (int s = -5; s <= 5; s++) for (int f = back; f <= back + 1; f++) for (int up = 3; up <= 15; up++) set(w, at(s, f, up), Blocks.BARRIER);
         set(w, markerPos(), MARKER);
         System.out.println("[Graves and Glory] drop board court built at " + markerPos().toShortString() + " in " + (System.nanoTime() - started) / 1000000 + " ms");
     }
-
-    /** The altar, its braziers: placed by the prop system (the props arrive with the art). */
-    static void placeProps(ServerWorld w) {}
 
     private static void set(ServerWorld w, BlockPos p, Block b) { w.setBlockState(p, b.getDefaultState(), 2); }
 }

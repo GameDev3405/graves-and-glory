@@ -1,0 +1,297 @@
+{
+ "size": [
+  11,
+  14,
+  2
+ ],
+ "parts": [
+  {
+   "model": "drop_altar_0",
+   "glow": false,
+   "offset": [
+    -72,
+    16,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_1",
+   "glow": false,
+   "offset": [
+    -24,
+    16,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_2",
+   "glow": false,
+   "offset": [
+    24,
+    16,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_3",
+   "glow": false,
+   "offset": [
+    72,
+    16,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_4",
+   "glow": false,
+   "offset": [
+    -72,
+    64,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_5",
+   "glow": false,
+   "offset": [
+    -24,
+    64,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_6",
+   "glow": false,
+   "offset": [
+    24,
+    64,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_7",
+   "glow": false,
+   "offset": [
+    72,
+    64,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_8",
+   "glow": false,
+   "offset": [
+    -72,
+    112,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_9",
+   "glow": false,
+   "offset": [
+    -24,
+    112,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_10",
+   "glow": false,
+   "offset": [
+    24,
+    112,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_11",
+   "glow": false,
+   "offset": [
+    72,
+    112,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_12",
+   "glow": false,
+   "offset": [
+    -72,
+    160,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_13",
+   "glow": false,
+   "offset": [
+    -24,
+    160,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_14",
+   "glow": false,
+   "offset": [
+    24,
+    160,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_15",
+   "glow": false,
+   "offset": [
+    72,
+    160,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_16",
+   "glow": false,
+   "offset": [
+    -72,
+    208,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_17",
+   "glow": false,
+   "offset": [
+    -24,
+    208,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_18",
+   "glow": false,
+   "offset": [
+    24,
+    208,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_19",
+   "glow": false,
+   "offset": [
+    72,
+    208,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_20",
+   "glow": true,
+   "offset": [
+    -72,
+    16,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_21",
+   "glow": true,
+   "offset": [
+    -24,
+    16,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_22",
+   "glow": true,
+   "offset": [
+    24,
+    16,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_23",
+   "glow": true,
+   "offset": [
+    72,
+    16,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_24",
+   "glow": true,
+   "offset": [
+    -72,
+    64,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_27",
+   "glow": true,
+   "offset": [
+    72,
+    64,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_28",
+   "glow": true,
+   "offset": [
+    -72,
+    112,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_31",
+   "glow": true,
+   "offset": [
+    72,
+    112,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_36",
+   "glow": true,
+   "offset": [
+    -72,
+    208,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_37",
+   "glow": true,
+   "offset": [
+    -24,
+    208,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_38",
+   "glow": true,
+   "offset": [
+    24,
+    208,
+    8
+   ]
+  },
+  {
+   "model": "drop_altar_39",
+   "glow": true,
+   "offset": [
+    72,
+    208,
+    8
+   ]
+  }
+ ]
+}

@@ -1,0 +1,100 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  512,
+  512
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/drop_altar",
+  "particle": "gravesandglory:prop/drop_altar"
+ },
+ "elements": [
+  {
+   "from": [
+    13,
+    4,
+    5
+   ],
+   "to": [
+    19,
+    8,
+    11
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      7.5625,
+      10.03125,
+      7.75,
+      10.15625
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      7.75,
+      10.03125,
+      7.9375,
+      10.15625
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      7.9375,
+      10.03125,
+      8.125,
+      10.15625
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      8.125,
+      10.03125,
+      8.3125,
+      10.15625
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      12.6875,
+      9.34375,
+      12.875,
+      9.53125
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "glimpur stud",
+   "shade": false
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    14.964,
+    12.064,
+    -10.314
+   ],
+   "scale": [
+    2.6453,
+    2.6453,
+    2.6453
+   ]
+  }
+ }
+}
