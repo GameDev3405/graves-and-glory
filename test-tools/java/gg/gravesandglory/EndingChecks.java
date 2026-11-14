@@ -592,6 +592,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             var led = AdminCommands.ledger().get(player); // admin tools phase A: the join ledger. A joins.json left by an earlier run may hold a stamp, so this check starts from none
             report("ending-ledger-login-stamp", led != null && led.firstSeenAt > 0 && !led.lastName.isEmpty(), "ledger entry " + (led == null ? "missing" : led.firstSeenAt + " " + led.lastName));
             if (led != null) led.firstMatchAt = 0;
+            report("ending-gate-accessor", AdminCommands.allowed(b.server.getCommandSource()) && !AdminCommands.allowed(p.getCommandSource()), "the server console passes the /gg gate (ServerCommandSourceAccessor applied) and a player who is not an owner does not");
             finishServer = b.time; finishNanos = System.nanoTime(); finishSerial++;
             c.finish(s.team);
             report("ending-ledger-first-match", led != null && led.firstMatchAt > 0, "finishing a full-length match stamps firstMatchAt: " + (led == null ? "no entry" : led.firstMatchAt));
