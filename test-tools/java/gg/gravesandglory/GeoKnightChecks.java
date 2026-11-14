@@ -434,7 +434,12 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
 
     @Override public void cleanup(MinecraftClient c) {
         c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;
-        if (c.getServer() != null) Phase1Checks.server(c, b -> { if (b.running) b.campaign.returnLobby(); });
+        if (c.getServer() != null) Phase1Checks.server(c, b -> {
+            // eye() makes the camera player invulnerable for this suite only: suites queued after it in the same client hurt the player on purpose
+            ServerPlayerEntity p = b.server.getPlayerManager().getPlayer(player);
+            if (p != null) p.setInvulnerable(false);
+            if (b.running) b.campaign.returnLobby();
+        });
     }
 
     /** Clears the field and stands the six knights in a line 7 blocks south of the player. */
