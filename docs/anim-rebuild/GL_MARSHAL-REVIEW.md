@@ -130,3 +130,75 @@ asset byte for byte and the export leaves it unchanged. Never run stances/reacti
 - In-game reel `gl_marshal-review2` (job 20261112-034324-299-560f): 22 `[p1] p1-` checks plus the suite line, 0 `=false`.
   The first run (review1) failed march-run-front alone (client speed 0.273 against 0.255; side and three-quarter passed;
   the run clip is unchanged in this batch).
+
+# Own moves 2026-11-13
+
+Kort (2026-11-13): "Own moves for all three". The Marshal no longer swings the knight's choreography: his three attacks
+are authored whole-body in `art/anim/gl_marshal/build_own_attacks.py` (fullbody kit, phases in its docstring) and
+`art/anim/knight/rebuild_out.py` step 8 puts them in out/. Name, length (22 ticks), play-once and the impact marker
+(thrust 0.35, overhead 0.5, low cut 0.4) are unchanged; first and last keys equal the present clips' (legs within
+0.001 deg). Every other clip is byte-identical (only the six attack clips differ from c1f97231, in out/ and the asset).
+
+## The moves
+
+- **Thrust, a passing lunge (impact 7, body).** 0-3.6 the rear foot draws back and turns out, chest side-on, hand drawn
+  back low along the line; 3.6-5.6 hold; 5.6-7 the arm leads, then the lead foot shoots 7 px forward into a deep lunge,
+  rear leg straight, shield arm out to the side; 7-9.6 locked out and held; 9.6-22 pushes back and walks home.
+- **Overhead, a descending diagonal cleave with a step through (impact 10, head).** 0-5 the blade rises on the sword
+  side to a high guard (no roll), chest coiled 47 deg; 5-7.4 hold, the pelvis rocks back onto the rear foot; 7.4-10.2
+  the rear foot passes 9 px forward as the chest uncoils and the edge comes down from high sword side; 10-15 on through
+  low to the shield side, upright over the passed foot; 14-22 the foot walks back.
+- **Low cut, an offline backhand (impact 8, legs).** 0.8-4 the shield-side foot steps out and forward off the line,
+  hips turning; 1.2-5.6 the sword crosses over the tucked shield and stands upright on the shield side; 5.6-8 he drops
+  onto the stepped foot and cuts down and outward across the legs; 8-10.5 on out to the sword side, hand wide of the
+  hip; 10.5-22 both feet walk home.
+
+## How different (present clip against own)
+
+Hips: yaw difference (pelvis distance px); torso: yaw difference; weapon: angle between blade directions; lead foot:
+distance between the most forward ankles. A column counts at 15 deg or 2 px (`work/ownmoves/difftable.py`).
+
+| Attack | Phase (present t / own t) | Hips yaw deg (pelvis px) | Torso yaw deg | Weapon dir deg | Lead foot px | Differ (of 4) |
+|---|---|---|---|---|---|---|
+| thrust | wind-up 5 / 5.6 | 26 (0.7) | 70 | 47 | 0.7 | 3 |
+| thrust | impact 7 / 7 | 12 (1.6) | 17 | 20 | 3.8 | 3 |
+| thrust | follow-through 9 / 9 | 11 (1.8) | 16 | 25 | 3.8 | 3 |
+| overhead | wind-up 8 / 7.4 | 1 (0.9) | 16 | 55 | 1.8 | 2 |
+| overhead | impact 10 / 10 | 20 (2.4) | 2 | 26 | 7.2 | 3 |
+| overhead | follow-through 12 / 12.5 | 25 (3.1) | 2 | 31 | 7.2 | 3 |
+| low_cut | wind-up 6 / 5.6 | 43 (3.1) | 104 | 25 | 11.1 | 4 |
+| low_cut | impact 8 / 8 | 20 (4.2) | 14 | 25 | 12.0 | 3 |
+| low_cut | follow-through 10 / 10.5 | 10 (4.2) | 35 | 99 | 12.0 | 4 |
+
+The weakest separation is the overhead wind-up (2 of 4): both versions carry the blade up and back on the sword side.
+Its impact and follow-through differ in 3 of 4 (the passed foot, 7.2 px).
+
+## Checks
+
+- Impact (point/edge along the facing axis, present -> own): thrust z 32.5 -> 33.2 at y 14.7 (body); overhead
+  31.7 -> 32.5 at y 21.8 (head); low cut 35.3 -> 36.0 at y 6.4 (legs). All within 1.5 px.
+- `scorecard.py --troop gl_marshal`: exit 0, 41 clips, 0 fails. (A first pass failed elbow_bend on the thrust 140.2 and
+  the overhead 117.7, and ang_speed_legs on the low cut 54.95: the thrust's drawn-back hand and shield fist, the
+  overhead's finishing shield fist and the low cut's step yaw were opened or eased.)
+- `focus_check.py --troop gl_marshal`: 41 clips, 0 FAIL. Other clips: the same 55 rows as before, none new. Attacks,
+  WARN only: thrust weapon_in_body 1.27 t6.25, prop_in_body 1.94 t7.0 (shield into torso), limb_in_body 1.21 t6.75,
+  floor 0.57 t9.5 (left knee), phases 3.87 (load held 1.00 tick, needs 2), point_lead 32.66 t6.75 (present 28.66);
+  overhead armour_clip 1.78 t12.5 (cape_t3 into hips); low cut weapon_in_body 1.03 t2.25 (pommel by the head),
+  prop_in_body 1.58 t5.75 (shield into left shin), limb_in_body 1.05 t8.0, armour_clip 1.85 t1.5. The present attacks
+  had 6 WARN rows including "stops at the impact" phases on the overhead and the low cut; both now carry through.
+- fullbody worst between-key error: thrust 0.17, overhead 0.91 (was 6.0: the upper arm swivels 14 deg after the impact),
+  low cut 0.22 deg.
+- Baseline rebuild before any edit drifted only the `cape` bone (0.77-2.54 deg) on the three attacks, stun_upper and
+  the four hit_medium clips, probably from 1f485170 (shield_face pivot) feeding soft_motion. Not shipped: out/ was made
+  by `rebuild_out.py --only <six clips>` over the committed out/, so every other clip stays byte-identical. A whole-file
+  rebuild would still carry that cape drift.
+- `python -m unittest discover -s tools/anim`: OK (`work/ownmoves/unittest.log`), with the new
+  `tools/anim/test_own_attacks_gl_marshal.py` (timing, ends equal the c1f97231 clips', shipped equals `clips()`).
+- Renders: every tick, front, side and three-quarter, near and game16, tier 3 (`work/ownmoves/final/`), looked at.
+
+## Open
+
+- Thrust load hold is 1 tick (phases WARN); the shield sits 1.94 px into the torso at the lunge (limit 2.0).
+- The overhead wind-up reads close to the family's at 16 blocks; the difference is in the pass and the finish.
+- Whole-file rebuild cape drift (above) on stun_upper and hit_medium_*: for whoever owns soft_layers / the pivot change.
+- Not seen in game; no Gradle, harness or verify.py run (the lead runs those).
