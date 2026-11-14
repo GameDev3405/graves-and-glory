@@ -96,7 +96,18 @@ def pity_rate(q_top, pity):
     return 1 / length
 
 
+def sheet():
+    """The table the game uses: sheets/design.json dropSlots (chances in thousandths), checked against the board's multipliers."""
+    rows = json.loads((ROOT / "sheets/design.json").read_text(encoding="utf-8")).get("dropSlots", [])
+    if not rows:
+        return
+    if [r["multiplier"] for r in rows] != MULTS:
+        sys.exit("dropSlots multipliers %s are not the board's %s" % ([r["multiplier"] for r in rows], MULTS))
+    TABLES["the sheet's dropSlots (in the game)"] = [F(r["chance"], 10) for r in rows]
+
+
 def main():
+    sheet()
     check = "--check" in sys.argv
     gear, units, gear_pity, epic_pity = today()
     good = True

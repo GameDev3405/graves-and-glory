@@ -181,3 +181,13 @@ every slot, 100k drops match the table within tolerance from 9 starts, duration 
   finished). Each odd peg row therefore has a wall buttress: a ramp from the wall, 0.6 above the row, down to the outermost
   peg. The altar prop models these buttresses. Measured over 20,000 plain drops a start: none unfinished, mean 5.2 s, about
   23 peg hits; 40 of 324 searched drops needed the lean (far corners only).
+- 2026-11-13, path samples: 60 a second with straight-line blending between them (not 30 with a curve): a bounce is a corner, and a
+  curve through it rounds the hit away.
+- 2026-11-13, commands: the War Table sends `drop:roll:<house>` and `drop:forge:<slot>`; the old `roll:` and `forge:roll:` still roll
+  with no board (the existing suites use them, and the server falls back to them where the altar cannot be seen).
+- 2026-11-13, the altar's art: made with the prop workflow (art/props/drop_altar, drop_coin) but drawn by the client from the mod's
+  own assets (DropAltar, tools/dropboard_assets.py), because the prop resource pack only reaches the builder server's clients. The
+  props' defs are kept beside the art (def.json), not in gg_props, so they take no CustomModelData block. The server keeps the
+  altar's space solid with barriers.
+- 2026-11-13, sounds: vanilla sound events for now (amethyst chimes on the pegs, copper on the walls); imported sounds need Kort's
+  word on the download.
