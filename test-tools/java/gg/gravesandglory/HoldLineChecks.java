@@ -337,6 +337,19 @@ final class HoldLineChecks {
             if (t != null && !t.isBlank() && ArmyCards.spec(t.trim()) != null) return t.trim();
             return GeoDraws.legacy(CP_LEGACY);
         }
+        /**
+         * hl-corpse's cache and fade body (Kort 2026-11-14: another old-model troop within the knight's 2% and 0.5% caps): the Reaper, which has no
+         * GeckoLib rebuild, measured 0.617% z-fight-unstable and 0.000% cached against normal (run ct-reaper); tc_brute 0.881%, ic_hearthguard 0.849%
+         * and gl_marshal 0.998% also fit, the Sentinel did not (2.06% to 4.55%). Then CP_LEGACY's, should the Reaper ever be drawn by GeckoLib.
+         */
+        static final String[] CP_CACHE = {"reaper", "tc_brute"};
+        /** hl-corpse's cache and fade body: GRAVES_CACHE_TROOP when it names a troop drawn the legacy way, else the first of CP_CACHE, then CP_LEGACY, drawn so (null: none). */
+        static String cpCacheTroop() {
+            String t = System.getenv("GRAVES_CACHE_TROOP");
+            if (t != null && !t.isBlank() && ArmyCards.spec(t.trim()) != null && !GeoDraws.geo(t.trim())) return t.trim();
+            String c = GeoDraws.legacy(CP_CACHE);
+            return c != null ? c : GeoDraws.legacy(CP_LEGACY);
+        }
         /** The cache and fade body's troop, and hl-corpse-load's (set when each starts). */
         String cpCacheTroop, cpLoadTroop;
         /** What a BodyCache report says of its troop. */
@@ -2201,7 +2214,7 @@ final class HoldLineChecks {
                 }
                 case 128 -> { // Task 8 fix 1 (R39): a settled body the client draws from the buffers it recorded looks as the normal draw does
                     long n = since(b);
-                    if (n == 1 && (cpCacheTroop = GeoDraws.legacy(CP_LEGACY)) == null) { // every candidate is GeckoLib: nothing draws from BodyCache's buffers
+                    if (n == 1 && (cpCacheTroop = cpCacheTroop()) == null) { // every candidate is GeckoLib: nothing draws from BodyCache's buffers
                         cpCacheBody = null; cpShotDone = true; cpFadeDone = true; cpShotPass = false; cpFadePass = false;
                         cpShotWhy = cpFadeWhy = "not run: " + String.join(", ", CP_LEGACY) + " are all drawn by GeckoLib, which never draws from BodyCache (legacy-only)"; return;
                     }
