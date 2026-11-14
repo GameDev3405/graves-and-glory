@@ -491,6 +491,10 @@ elif len(db)==1:
     gearTotal=sum(r['rollWeight'] for r in data['gearRarities']); gearHigh=sum(r['rollWeight'] for r in data['gearRarities'] if r['id'] in boostedTiers)
     top=max(r['multiplier'] for r in ds); meanK=sum(r['chance']*r['multiplier'] for r in ds)
     if gearHigh*top*1000>gearTotal*meanK: errors.append('dropSlots: the top multiplier would push a gear roll over 100% rare or better; raise the mean multiplier')
+    unitW={r['id']:r['rollWeight'] for r in data['rarities']}
+    for h in sorted({t['house'] for t in data['troops']}):
+        pool=[unitW[t['rarity']] for t in data['troops'] if t['house']==h]; high=sum(unitW[t['rarity']] for t in data['troops'] if t['house']==h and t['rarity'] in boostedTiers)
+        if high*top*1000>sum(pool)*meanK: errors.append(f'dropSlots: the top multiplier would push a {h} unit roll over 100% rare or better; raise the mean multiplier')
 cap=data['recruitment'][0]['capPct']
 for r in rarities.values():
     if not 0<=r['starPct2']<=r['starPct3']<=cap+1e-9: errors.append(f'rarities/{r["id"]}: star bonuses must rise and stay within recruitment.capPct')

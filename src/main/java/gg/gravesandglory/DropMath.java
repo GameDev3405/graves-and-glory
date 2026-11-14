@@ -51,7 +51,7 @@ public final class DropMath {
         long s = chanceSum(), t = meanK();
         // chance of a boosted tier: (w / total) x (m s / t); of a low tier: (1 - (high / total) (m s / t)) x w / low. Common denominator total x t x low.
         long rest = total * t - high * m * s;
-        if (rest < 0) throw new IllegalStateException("drop board: multiplier " + m + " boosts a pool past 100%");
+        if (rest < 0) rest = 0; // a pool the sheet check let through too rich: the boosted tiers take the whole roll, nothing breaks
         long[] out = new long[weights.length];
         for (int i = 0; i < weights.length; i++) out[i] = boosted[i] ? weights[i] * m * s * low : rest * weights[i];
         return out;

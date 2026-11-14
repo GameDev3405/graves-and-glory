@@ -275,7 +275,7 @@ public final class RosterMath {
     public static Roll roll(List<String> commons, List<String> rares, String epic, int wCommon, int wRare, int wEpic, int pity, int epicPity, int multiplier, RandomGenerator rng) {
         if (multiplier < 1) return roll(commons, rares, epic, wCommon, wRare, wEpic, pity, epicPity, rng);
         if ((long) pity + 1 >= epicPity) return new Roll(epic, 0);
-        long[] w = DropMath.boost(new long[]{(long) commons.size() * wCommon, (long) rares.size() * wRare, wEpic}, new boolean[]{false, true, true}, multiplier);
+        long[] w = DropMath.boost(new long[]{(long) commons.size() * wCommon, (long) rares.size() * wRare, wEpic}, new boolean[]{DropMath.boosted("common"), DropMath.boosted("rare"), DropMath.boosted("epic")}, multiplier);
         int tier = DropMath.pick(w, rng);
         if (tier == 0) return new Roll(commons.get(rng.nextInt(commons.size())), pity + 1);
         if (tier == 1) return new Roll(rares.get(rng.nextInt(rares.size())), pity + 1);

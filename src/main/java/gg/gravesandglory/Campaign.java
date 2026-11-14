@@ -473,6 +473,7 @@ public final class Campaign {
     void roll(ServerPlayerEntity p,Profile pr,String house,int slot){
         var row=Arrays.stream(Spec.HOUSES).filter(h->h.id().equals(house)).findFirst().orElse(null);if(row==null)return;
         int cost=ROLL_WRITS;
+        drops.left(p.getUuid()); // a coin still falling for him: its card is shown now, before this roll's
         if(pr.troopWrits<cost){notice(p.getUuid(),"A recruitment roll costs "+cost+" troop writ"+(cost==1?"":"s")+". Earn writs by completing battles.");return;}
         List<String> commons=new ArrayList<>(),rares=new ArrayList<>();String epic=null;
         for(var t:Spec.TROOPS)if(t.house().equals(house)){if(t.rarity().equals("common"))commons.add(t.id());else if(t.rarity().equals("rare"))rares.add(t.id());else if(t.rarity().equals("epic"))epic=t.id();}
@@ -515,6 +516,7 @@ public final class Campaign {
     /** The same with a Forge roll going through the drop board (slot as in roll; -1: no board): the roll is paid, drawn and saved now, its card and notice wait for the coin. */
     void gear(ServerPlayerEntity p,Profile pr,String cmd,int slot){
         UUID id=p.getUuid();String before=JSON.toJson(pr);
+        if(cmd.startsWith("forge:roll:"))drops.left(id); // a coin still falling for him: its card is shown now, before this roll's
         var outcome=GearCommands.apply(pr,cmd,rollRng,slot<0?0:DropMath.multiplier(slot));
         if(!outcome.ok()){notice(id,outcome.refusal());return;}
         if(!save(id)){unsaved(id,before,"That gear change");return;}

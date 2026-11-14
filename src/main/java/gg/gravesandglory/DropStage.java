@@ -49,6 +49,13 @@ final class DropStage {
         long started = System.nanoTime();
         int half = DropLayout.COURT_WIDTH / 2, back = -DropLayout.COURT_DEPTH / 2, front = DropLayout.COURT_DEPTH / 2 - 1;
         Block tiles = Blocks.DEEPSLATE_TILES, floor = FLOOR, bricks = Blocks.DEEPSLATE_BRICKS;
+        // what the court replaces, by block, for the log: the spot is meant to be bare ground
+        java.util.Map<String, Integer> replaced = new java.util.TreeMap<>();
+        for (int s = -half; s <= half; s++) for (int f = back; f <= front; f++) for (int up = 0; up <= 18; up++) {
+            var st = w.getBlockState(at(s, f, up));
+            if (!st.isAir()) replaced.merge(net.minecraft.registry.Registries.BLOCK.getId(st.getBlock()).getPath(), 1, Integer::sum);
+        }
+        System.out.println("[Graves and Glory] drop board court replaces " + replaced);
         for (int s = -half; s <= half; s++) for (int f = back; f <= front; f++) {
             for (int up = 1; up <= 18; up++) set(w, at(s, f, up), Blocks.AIR);
             for (int up = -3; up <= -1; up++) set(w, at(s, f, up), bricks);

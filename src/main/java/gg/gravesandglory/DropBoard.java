@@ -22,6 +22,8 @@ import java.util.concurrent.CompletableFuture;
  */
 final class DropBoard {
     static final byte BEGIN = 0, AIM = 1, PATH = 2, END = 3;
+    /** How long a released coin may wait for its path. */
+    static final long SEARCH_TICKS = 100;
     final Campaign c;
     final DropFlow flow = new DropFlow();
     /** Drops in the pegs whose landing may be told to the whole camp: drop id to the tick it lands. */
@@ -42,7 +44,8 @@ final class DropBoard {
         if (cmd.startsWith("drop:forge:")) { c.gear(p, pr, "forge:roll:" + cmd.substring(11), available(p) ? DropMath.drawSlot(c.rollRng) : -1); return; }
         if (cmd.startsWith("drop:aim:")) {
             var d = flow.of(id);
-            if (d != null && flow.aim(id, number(cmd.substring(9)))) { var buf = PacketByteBufs.create(); buf.writeByte(AIM); buf.writeVarInt(d.id); buf.writeFloat((float) d.x); send(d, buf, false); }
+            // the coin follows every word; the watchers hear of it at most ten times a second
+            if (d != null && flow.aim(id, number(cmd.substring(9))) && c.b.time - d.toldAim >= 2) { d.toldAim = c.b.time; var buf = PacketByteBufs.create(); buf.writeByte(AIM); buf.writeVarInt(d.id); buf.writeFloat((float) d.x); send(d, buf, false); }
             return;
         }
         if (cmd.startsWith("drop:place:")) { var d = flow.release(id, number(cmd.substring(11))); if (d != null) search(d); return; }
@@ -67,6 +70,8 @@ final class DropBoard {
         if (flow.active().isEmpty()) return;
         for (var d : flow.overdue(now)) search(d);
         for (var d : flow.finished(now)) publish(d);
+        // a path that never came (the search failed without a word): the drop ends and its card is shown
+        for (var d : new ArrayList<>(flow.active())) if (d.stage == DropFlow.Stage.SEARCH && now - d.searchAt > SEARCH_TICKS) { System.out.println("[Graves and Glory] drop board: no path within " + SEARCH_TICKS + " ticks, the drop is ended"); end(flow.end(d.who)); }
         // a match that seats the roller cuts his drop; a roller who has gone is ended by left
         for (var d : new ArrayList<>(flow.active())) {
             var sq = c.b.squads.get(d.who);
@@ -83,10 +88,11 @@ final class DropBoard {
 
     /** Finds the coin's bounces off the server thread (the search can take some tens of milliseconds) and starts the fall when they are found. */
     private void search(DropFlow.Drop d) {
+        d.searchAt = c.b.time;
         long seed = c.rollRng.nextLong();
         double x = d.x; int slot = d.slot;
         CompletableFuture.supplyAsync(() -> DropSim.find(x, slot, seed)).whenComplete((path, error) -> c.b.server.execute(() -> {
-            if (error != null || path == null) { System.out.println("[Graves and Glory] drop board: no path, the drop is ended: " + error); end(flow.end(d.who)); return; }
+            if (error != null || path == null) { System.out.println("[Graves and Glory] drop board: no path, the drop is ended: " + error); var now = flow.of(d.who); if (now != null && now.id == d.id) end(flow.end(d.who)); return; }
             if (!flow.falling(d.who, d.id, path, c.b.time)) return;
             lands.put(d.id, c.b.time + (long) Math.ceil(path.seconds() * 20));
             var buf = PacketByteBufs.create();
