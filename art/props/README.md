@@ -64,7 +64,9 @@ part model at `gravesandglory:prop/<part>_anim`; `tools/build_prop_pack.py` ship
 in every frame; an `AnimMat` (pattern `(face, P, c, r, w, h, frame, frames)`, alpha 0 = see-through) is painted per frame.
 Ready-made: materials `"embers"` (breathing coals), `"flame"` (tongues on a flat plane), `"lamp_glass"` (candle behind
 frosted glass); `flames(cx, cz, y0, y1, half)` = two crossed flame planes; `FIRE_ANIM` = the house fire timing (8 frames,
-2 ticks, no blending). A fire prop: put its coals and `flames(...)` in the glow part and add
+2 ticks, no blending). `lantern(x0, y0, z0, w, d, gh)` = a hanging lantern (body and glow elements) with lamp_glass panes;
+`LAMP_FLICKER` / `LAMP_FLICKER_WALL` = the lantern timing (4 frames, 6 ticks, blended, 5.4 s loop, steady most of the time; only
+the candle heart moves, never near-white); give each new lantern type its own `order` so lamps do not pulse in step. A fire prop: put its coals and `flames(...)` in the glow part and add
 `anim={"<glow part>": Anim(**FIRE_ANIM)}` (see `brazier/model.py`). `prop_card` checks every frame's palette; the card and
 sheet show frame 0. `python tools/prop_shot.py <ids> --frames` adds near-day shots 3, 6 and 9 ticks later to see it move.
 Effects (flame, smoke, lava pops, crackle) go in the def's `effects`; braziers are the reference numbers.

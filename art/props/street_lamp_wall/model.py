@@ -2,36 +2,33 @@
 
 Frame (art/props/README.md): model px, 16 = 1 block, origin = min corner of the anchor cell, x east, y up, z south,
 FRONT FACES NORTH (-z). The footprint runs x 0..16, y 0..16, z 0..16 px. The back (south, z 16) sits flush on a wall.
-An iron wall plate with rivets, a braced arm reaching out over the room, and a boxy iron lantern hanging from the arm
-tip on a short chain. The lantern glass is a glow part (full-bright). Same lantern as `street_lamp`.
+Rework 2026-11-14 (Kort: "heavy rework"): three parts that read apart from the side. A riveted iron wall plate with a
+boss; a braced iron arm reaching north; a two-link chain from the arm's tip to the lantern (proplib `lantern`, the same
+anatomy as the street lamp's: corner posts, amber glass on all four faces, pyramid cap, ring). The glass and its lit sill
+are a glow part (full-bright, slow candle flicker on its own order so it never blinks in step with the street lamps).
 Build:  python art/props/build_props.py street_lamp_wall      Card:  python tools/prop_card.py street_lamp_wall
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE, Anim   # noqa: F401
-
-# candle flicker behind the glass (proplib lamp_glass): four frames blended, in an irregular order that leaves the steady frame often
-LAMP_FLICKER = Anim(frames=4, frametime=2, interpolate=True, order=[0, 1, 2, 0, 3, 1, 1, 0, 2, 3, 0, 1, 2, 2])
+from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE, Anim, LAMP_FLICKER_WALL, lantern   # noqa: F401
 
 
 def build():
     b = [
-        # wall plate with rivets, the arm and its stepped brace
-        E((5, 6, 15), (11, 16, 16), "iron", skip="south", name="wall plate"),
-        E((6, 14, 14), (7, 15, 15), "steel", name="rivet"), E((9, 14, 14), (10, 15, 15), "steel", name="rivet"),
-        E((6, 7, 14), (7, 8, 15), "steel", name="rivet"), E((9, 7, 14), (10, 8, 15), "steel", name="rivet"),
-        E((7, 13, 3), (9, 15, 15), "iron", name="arm"),
-        E((7, 11, 13), (9, 13, 15), "iron", name="brace top"), E((7, 9, 14), (9, 11, 15), "iron", name="brace low"),
-        E((7, 12, 11), (9, 13, 13), "iron", name="brace tip"),
-        # arm tip hook, chain, lantern: top ring, cap, corner posts, base
-        E((7, 15, 3), (9, 16, 5), "iron", name="arm cap"),
-        E((7, 11, 3), (9, 13, 5), "iron", name="chain"),
-        E((4, 9, 1), (12, 11, 9), "iron", name="cap eaves"),
-        E((6, 11, 3), (10, 12, 7), "iron", name="cap crown"),
-        E((4, 2, 1), (12, 3, 9), "iron", skip="down", name="lantern base"),
-        E((4, 3, 1), (6, 9, 3), "iron", name="corner nw"), E((10, 3, 1), (12, 9, 3), "iron", name="corner ne"),
-        E((4, 3, 7), (6, 9, 9), "iron", name="corner sw"), E((10, 3, 7), (12, 9, 9), "iron", name="corner se"),
+        # wall plate (never seen from behind), four 2x2 rivets, a boss where the arm grows out
+        E((2, 3, 15), (14, 16, 16), "iron", skip="south", name="wall plate"),
+        E((3, 4, 14), (5, 6, 15), "steel", skip="south", name="rivet"), E((11, 4, 14), (13, 6, 15), "steel", skip="south", name="rivet"),
+        E((3, 13, 14), (5, 15, 15), "steel", skip="south", name="rivet"), E((11, 13, 14), (13, 15, 15), "steel", skip="south", name="rivet"),
+        E((6, 11, 14), (10, 16, 15), "iron", skip="south", name="boss"),
+        # the arm, steel-topped, and its 45-degree stepped brace down to the plate
+        E((7, 14, 5), (9, 16, 14), "iron", faces={"up": "steel"}, name="arm"),
+        E((7, 7, 13), (9, 10, 15), "iron", name="brace"),
+        E((7, 10, 11), (9, 12, 13), "iron", name="brace"),
+        E((7, 12, 9), (9, 14, 11), "iron", name="brace"),
+        # two chain links from the arm tip down to the lantern's ring, alternating tones
+        E((7, 13, 5), (9, 14, 7), "steel", name="chain link"),
+        E((7, 12, 5), (9, 13, 7), "iron", name="chain link"),
     ]
-    g = [E((5, 3, 2), (11, 9, 8), "lamp_glass", skip="down up", name="lantern glass")]
-    return Prop("street_lamp_wall", {"street_lamp_wall": b, "street_lamp_wall_glass": g}, glow=("street_lamp_wall_glass",),
-                anim={"street_lamp_wall_glass": LAMP_FLICKER})
+    body, glow = lantern(3, 0, 1, 10, 10, 6, crossbar=False)
+    return Prop("street_lamp_wall", {"street_lamp_wall": b + body, "street_lamp_wall_glass": glow}, glow=("street_lamp_wall_glass",),
+                anim={"street_lamp_wall_glass": Anim(**LAMP_FLICKER_WALL)})

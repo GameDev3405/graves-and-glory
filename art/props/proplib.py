@@ -364,23 +364,66 @@ def _embers(face, P, c, r, w, h, k, n, dark=False):
     return COAL[2] if r == 0 else COAL[1]
 
 def _lamp_glass(face, P, c, r, w, h, k, n):
-    """Frosted lantern pane with a candle behind it: rim, ring and heart (0, 1, 2+ texels in). Frame 0 steady, 1 a deep dip
-    (heart and ring two tones down, rim one), 2 a flare (rim and ring a tone up), 3 a sway (the heart one column over, its
-    top cooling). Strong steps on purpose: the glass is full-bright, so a one-tone flicker vanishes by day."""
+    """Lantern pane with a candle behind it (Kort 2026-11-14: a steady warm lantern, not a bulb on a dimmer). The pane is set
+    1 px behind the lantern's corner posts, so its outer column is hidden. Visible rim E0962A, ring F6C448, a 2 px wide heart
+    FFE27A low in the middle; bottom rows and the top row one tone darker so the pane reads as a lit volume. Only the heart
+    moves: frame 0 steady, 1 heart one tone down, 2 heart one row taller with the ring beside it warming, 3 heart one column
+    over with its top cooled. Never the top tone (no near-white), nothing darker than the steady rim."""
     G = LAMP_GLASS
-    if face in ("up", "down"): return G[1] if k == 1 else G[2]
-    cc = c
-    if k == 3: cc = min(w - 1, c + 1) if c >= w // 2 else max(0, c - 1)
-    d = min(min(cc, w - 1 - cc), r, h - 1 - r, 2)
-    t = ((2, 3, 4), (1, 1, 2), (3, 4, 4), (2, 3, 4))[k][d]   # steady, dip, flare, sway
-    if k == 3 and d == 2 and r < h // 2: t = 3
-    return G[max(0, min(4, t))]
+    if face in ("up", "down"): return G[2]
+    b = h - 1 - r                                   # rows from the bottom
+    low = 2 if h >= 8 else 1                        # darker oil/soot rows at the bottom
+    hh = 4 if h >= 8 else 3                         # heart height
+    dc = min(c, w - 1 - c) - 1                      # visible column distance from the posts (0 = first visible column)
+    t = 1 if dc <= 0 else 2                         # rim, ring
+    if b < low or r == 0: t -= 1                    # pane body: bottom rows and top row a tone down
+    cc = c + 1 if k == 3 else c                     # sway: the heart one column over
+    hc = min(cc, w - 1 - cc) - 1
+    top = low + hh + (1 if k == 2 else 0)           # flare: one row taller
+    if hc >= 2 and low <= b < top:
+        t = 3
+        if k == 1: t = 2                            # dip: one tone down, no lower
+        if k == 3 and b == top - 1: t = 2           # sway: the top of the heart cools
+    elif k == 2 and dc == 1 and low + 1 <= b < low + 3:
+        t = 3                                       # flare: the ring beside the heart's middle warms
+    return G[max(0, min(3, t))]
 
 def flame_mat(): m = AnimMat(HOT, 2, _flame, edges=False, lit=False); m.ramps = (HOT,); return m
 def ember_mat(dark=False):
     m = AnimMat(COAL, 2, (lambda *a: _embers(*a, dark=True)) if dark else _embers, edges=False, lit=False); m.ramps = (HOT, COAL); return m
 def lamp_glass_mat(): m = AnimMat(LAMP_GLASS, 2, _lamp_glass, edges=False, lit=False); m.ramps = (LAMP_GLASS,); return m
 MAT["flame"] = flame_mat(); MAT["embers"] = ember_mat(); MAT["embers_dark"] = ember_mat(True); MAT["lamp_glass"] = lamp_glass_mat()
+MAT["lamp_sill"] = Mat(LAMP_GLASS, 0, edges=False, lit=False)   # warm lit line under a lantern's glass (glow part)
+
+# Lantern flicker timing (frames of lamp_glass): 4 frames blended over 6 ticks, steady most of the time, one soft change
+# every ~1.5 s, never two quick steps in a row; 18 steps x 6 ticks = 5.4 s. Each lantern type gets its own order so a
+# row of lamps does not pulse in step.
+LAMP_FLICKER = dict(frames=4, frametime=6, interpolate=True, order=[0, 0, 0, 1, 0, 0, 2, 0, 0, 0, 3, 0, 0, 1, 0, 2, 0, 0])
+LAMP_FLICKER_WALL = dict(frames=4, frametime=6, interpolate=True, order=[0, 0, 2, 0, 0, 0, 1, 0, 0, 3, 0, 0, 0, 2, 0, 1, 0, 0])
+
+def lantern(x0, y0, z0, w=10, d=10, gh=8, crossbar=False, name="lantern"):
+    """A hanging iron lantern, min corner (x0, y0, z0), w x d px: base plate, a warm lit sill, four 2x2 corner posts, glass
+    `gh` px tall set 1 px behind the posts (w-4 x d-4 px visible on each face), eaves with a 1 px lip, a two-step pyramid
+    cap and a steel ring on top (the chain hangs from the ring at y0 + gh + 5). `crossbar`: a 1 px iron bar across each pane
+    on its lower third. Returns (body, glow): body elements and glow-part elements (sill, glass; glow part needs an Anim)."""
+    x1, z1 = x0 + w, z0 + d
+    yb, yg, ye = y0 + 1, y0 + 2, y0 + 2 + gh
+    body = [E((x0, y0, z0), (x1, yb, z1), "iron", name=name + " base")]
+    for px, pz in ((x0, z0), (x1 - 2, z0), (x0, z1 - 2), (x1 - 2, z1 - 2)):
+        body.append(E((px, yg, pz), (px + 2, ye, pz + 2), "iron", name=name + " post"))
+    if crossbar:
+        yc = yg + gh // 3
+        body += [E((x0 + 2, yc, z0), (x1 - 2, yc + 1, z0 + 1), "iron", skip="south", name=name + " bar n"),
+                 E((x0 + 2, yc, z1 - 1), (x1 - 2, yc + 1, z1), "iron", skip="north", name=name + " bar s"),
+                 E((x0, yc, z0 + 2), (x0 + 1, yc + 1, z1 - 2), "iron", skip="east", name=name + " bar w"),
+                 E((x1 - 1, yc, z0 + 2), (x1, yc + 1, z1 - 2), "iron", skip="west", name=name + " bar e")]
+    body += [E((x0 - 1, ye, z0 - 1), (x1 + 1, ye + 1, z1 + 1), "iron", name=name + " eaves"),
+             E((x0 + 1, ye + 1, z0 + 1), (x1 - 1, ye + 2, z1 - 1), "iron", skip="down", name=name + " roof"),
+             E((x0 + 3, ye + 2, z0 + 3), (x1 - 3, ye + 3, z1 - 3), "iron", skip="down", name=name + " roof top"),
+             E((x0 + w // 2 - 1, ye + 3, z0 + d // 2 - 1), (x0 + w // 2 + 1, ye + 4, z0 + d // 2 + 1), "steel", skip="down", name=name + " ring")]
+    glow = [E((x0, yb, z0), (x1, yg, z1), "lamp_sill", skip="down", name=name + " lit sill"),
+            E((x0 + 1, yg, z0 + 1), (x1 - 1, ye, z1 - 1), "lamp_glass", skip="down up", name=name + " glass")]
+    return body, glow
 
 def flames(cx, cz, y0, y1, half, name="flame"):
     """Two crossed flame planes (one along x, one along z) centred on (cx, cz), from y0 (bury it in the coals) to y1,

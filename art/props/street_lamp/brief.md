@@ -8,9 +8,9 @@ Fill every field before modelling. The reviewer checks the card against this pag
 - **Setting / House:** any
 - **Footprint (cells, x east * y up * z south):** 1 x 3 x 1. Front faces north. Anchor cell (0, 0, 0).
 - **Scale against a troop:** 48 px (3 blocks) tall, 1.4 Knights (35 px): the lantern sits at 36-44 px, just above a raised Knight's helm, so it lights a lane from head height up; the post is 4 px thick like a fence post.
-- **Silhouette at 15 m:** a thin dark post topped by a wider boxy lantern with a warm yellow glow and a small pyramid roof.
-- **Close-up story at 3 m:** four iron corbels under the lantern platform; two iron bands on the post; lantern corner posts with the glass seen between them; stone footing.
-- **Materials and ramps (proplib):** `wood_y` (post), `stone` (footing), `iron` (bands, corbels, lantern frame and roof), `steel` (rivets); one new fixed warm yellow ramp `GLASS` for the glow part `street_lamp_glass` (lantern glass, full-bright).
+- **Silhouette at 15 m:** a dark post with a crook arm and a warm amber lantern hanging off it toward the viewer (asymmetric, not a box on a stick).
+- **Close-up story at 3 m:** two-step stone footing with a chipped corner; three iron bands on the stained post; braced crook arm with a hook; two chain links; lantern with 2 px corner posts, a cross-bar, amber glass on all four faces with a slow candle heart, a lit sill, pyramid cap and ring.
+- **Materials and ramps (proplib):** `swood_y` (post), `stone` (footing), `iron` (bands, arm, brace, lantern frame and roof), `steel` (arm top, chain link, ring, finial); proplib `LAMP_GLASS` for the glow part `street_lamp_glass` (glass and lit sill, full-bright, `LAMP_FLICKER`).
 - **Budget:** at most 64 elements in total (hard limit 96); sheet at most 128 px (256 only for props over 8 cells).
 - **Collision:** the single ground cell (0,0,0) is solid: the post and footing fill about 4x4 of it (an arrow or a troop bumps the post); the two upper cells stay open (light cell at y=2 holds no block).
 - **Light and effects:** one light block, level 14, at (0,2,0) (the lantern cell); no particles, no sound.
