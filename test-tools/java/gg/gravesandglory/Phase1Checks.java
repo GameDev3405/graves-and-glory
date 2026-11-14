@@ -3524,8 +3524,8 @@ public final class Phase1Checks implements ClientModInitializer {
         // the server thread writes these, the client thread reads them
         volatile int stage;volatile UUID player;volatile boolean serverRoom;volatile String serverDifficulty="";
         // client thread only
-        int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1,origMap=-1,cardAsked=-1,fieldRow,goldBefore,writsBefore,writGoldBefore,xpBefore,pick;boolean finished,ok=true,slid,scalesOk=true,cardsOk=true;
-        String why="",before="",focusName="",scalesWhy="",cardsWhy="";List<String> roll=List.of();String at0="",at19="";CampScreen table;
+        int mark=-1,waitFrom,oldW,oldH,oldGui,index,sub,subAt,serial,serial1,serial2,menuCode=-1,gold=-1,landedAt=-1,origMap=-1,cardAsked=-1,fieldRow,goldBefore,writsBefore,writGoldBefore,xpBefore,pick;boolean finished,ok=true,slid,scalesOk=true,cardsOk=true,crowdOk=true;
+        String why="",before="",focusName="",scalesWhy="",cardsWhy="",crowdWhy="";List<String> roll=List.of();String at0="",at19="";CampScreen table;
         /** Claims with a House (War Table port Task 1): the House the banner leans on, the shards it held before a claim, and what the claims about to be pressed pay (worked out by the game's own rule, grant). */
         String house="";int shardsBefore;Progression.Grant gA,gW,gT;
         final Set<Integer> rollSeen=new TreeSet<>(),oathSeen=new TreeSet<>();
@@ -3592,7 +3592,7 @@ public final class Phase1Checks implements ClientModInitializer {
                 :WarTablePages.TITLES.get(name).equals(title)&&tr!=null&&Math.abs(tr[0]+tr[2]/2-(o[0]+480))<=1&&tr[1]==o[1]+84&&Integer.valueOf(DarkUi.IVORY).equals(WarTablePages.colors().get("title"));
             List<String> gloss=name.equals("field")?glossaryFaults(c):List.of();
             boolean pass=pages(c)!=null&&b.size()>=5&&out.isEmpty()&&over.isEmpty()&&art.isEmpty()&&ours&&back&&rail&&wood&&titled&&gloss.isEmpty();
-            ok&=pass;
+            ok&=pass;crowd(c,name,UiCanvas.width()+"x"+UiCanvas.height()+" k"+UiCanvas.k());
             return "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" (k "+UiCanvas.k()+"): "+b.size()+" widgets, within 12 px of the edge "+out+", overlapping "+over+", art within 12 px of the edge "+art
                 +(ours?", every widget the War Table's own":", a vanilla widget among them")+", back "+str(b.get("back"))+", the rail "+(rail?"as home's, this page's plaque lit":"WRONG:"+railWhy)
                 +", the oak "+table+", "+(name.equals("chapter")?"the chapter block \""+text("chapter")+"\"":"the title \""+title+"\" at "+str(tr))+(name.equals("field")?"; the Statuses glossary "+(gloss.isEmpty()?Statuses.Glossary.entries().size()+" rows drawn on the paper, apart":"WRONG: "+gloss):"")+(pass?"":" WRONG");
@@ -3618,6 +3618,24 @@ public final class Phase1Checks implements ClientModInitializer {
         }
         /** layout(c,name) for the scales: its line, clearing scalesOk (not ok) when wrong. */
         String scaled(MinecraftClient c,String name){boolean was=ok;ok=true;String line=layout(c,name);scalesOk&=ok;ok=was;return line;}
+        /** Crowding at the size now showing (p1-ui-page-crowd, its own line so the Field's known card failure cannot mask it): the Field's host line
+         *  (status) overlaps no map row; the Contracts' writ line (shards-weekly, or any note's second line) overlaps neither its bar nor its count,
+         *  and a shown Claim overlaps neither. Faults are named in crowdWhy under the label. */
+        /** After a bots' tier press the Field page draws no "Bots: Tier." echo (the notice the server sends lands in CampaignClient.notice and is withheld from the page). */
+        void echoClear(String tier,int serial){String n=text("notice");boolean echoed=n!=null&&n.startsWith("Bots: ");crowdOk&=!echoed;
+            crowdWhy+=(crowdWhy.isEmpty()?"":"; ")+"field after "+tier+": the server's notice \""+CampaignClient.notice+"\", the page's notice "+(n==null?"none":"\""+n+"\"")+(echoed?" WRONG":" (no echo)");}
+        void crowd(MinecraftClient c,String name,String label){
+            List<String> bad=new ArrayList<>();var b=boxes(c);
+            if(name.equals("field")){int[] st=rect("status");if(st==null)bad.add("no host line drawn");
+                else{int rows=0;for(var e:b.entrySet())if(e.getKey().startsWith("map-")){rows++;if(UiHomeChecks.overlap(st,e.getValue()))bad.add("the host line "+str(st)+" meets "+e.getKey()+" "+str(e.getValue()));}
+                    if(rows!=Spec.MAPS.length)bad.add(rows+" map rows for "+Spec.MAPS.length+" maps");
+                    for(var e:WarTablePages.rects().entrySet())if(!e.getKey().equals("status")&&e.getKey().startsWith("card")&&UiHomeChecks.overlap(st,e.getValue()))bad.add("the host line meets "+e.getKey());}
+                String n=text("notice");if(n!=null&&n.startsWith("Bots: "))bad.add("the bots echo \""+n+"\" is drawn");}
+            if(name.equals("contracts"))for(String id:new String[]{"0","1","2","weekly"}){int[] line=rect("shards-"+id);if(line==null)continue;
+                for(String other:new String[]{"bar-"+id,"progress-"+id,"claim-"+id}){int[] r=other.startsWith("claim-")?b.get(other):rect(other);if(r!=null&&UiHomeChecks.overlap(line,r))bad.add("note "+id+"'s second line "+str(line)+" meets "+other+" "+str(r));}
+                int[] bar=rect("bar-"+id),cl=b.get("claim-"+id);if(bar!=null&&cl!=null&&UiHomeChecks.overlap(bar,cl))bad.add("note "+id+"'s bar meets its Claim");}
+            crowdOk&=bad.isEmpty();crowdWhy+=(crowdWhy.isEmpty()?"":"; ")+name+" at "+label+(bad.isEmpty()?" clear":" WRONG "+bad);
+        }
         /** 1280x720 GUI 3: the page centred on a canvas of 1280x720 (origin 160,90), the table's planks covering it, and layout's rules. */
         /** The Banner page's House trait rows (Houses of the banner shown, T3): each House with slots has its row drawn with a progress text, on the canvas, apart from the sheet, the roll, the role plaques and every widget; at least one House is at a threshold. */
         List<String> traitFaults(MinecraftClient c){
@@ -3665,7 +3683,7 @@ public final class Phase1Checks implements ClientModInitializer {
             var bad=UiHomeChecks.fits(r,b);
             int[] title=rect("title"),back=b.get("back");String table=WarTable.drawnTable();
             boolean pass=pages(c)!=null&&WarTable.compact()&&w==854&&h==480&&UiCanvas.k()==1&&b.size()>=5&&out.isEmpty()&&over.isEmpty()&&bad.isEmpty()
-                &&Arrays.equals(back,new int[]{12,12,120,28})&&table.equals("table/oak-table-"+name);scalesOk&=pass;
+                &&Arrays.equals(back,new int[]{12,12,120,28})&&table.equals("table/oak-table-"+name);scalesOk&=pass;crowd(c,name,w+"x"+h+" k"+UiCanvas.k());
             return "canvas "+w+"x"+h+" (k "+UiCanvas.k()+", compact "+WarTable.compact()+"), "+b.size()+" widgets, outside the canvas "+out+", overlapping "+over+", not fitting "+bad+", back "+str(back)+", the title "+(title==null?"none (the chapter block)":str(title))+", the oak "+table+(pass?"":" WRONG")+traits(c,name);
         }
         /** 1920x974 GUI 1, a maximized window on a 1080p screen: the page stays centred on the big-canvas oak (UI Task 8b-2), which
@@ -3718,7 +3736,7 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==44){if(pages(c)!=null){ // the compact page at k 3 (853x480): every widget inside and fitting, the War Table's 3x
                         var bx=boxes(c);int w=UiCanvas.width(),h=UiCanvas.height();List<String> out=new ArrayList<>();for(var e:bx.entrySet())if(!UiHomeChecks.inside(e.getValue(),w,h))out.add(e.getKey());
                         var unfit=UiHomeChecks.fits(WarTablePages.rects(),bx);boolean pass=UiCanvas.k()==3&&WarTable.compact()&&out.isEmpty()&&unfit.isEmpty();ok&=pass;
-                        why+="; 2560x1440 auto: canvas "+w+"x"+h+" (k "+UiCanvas.k()+", compact "+WarTable.compact()+"), outside "+out+", not fitting "+unfit+(pass?"":" WRONG");shot(c,"ui-page-"+name+"-1440");}return;}
+                        crowd(c,name,w+"x"+h+" k"+UiCanvas.k());why+="; 2560x1440 auto: canvas "+w+"x"+h+" (k "+UiCanvas.k()+", compact "+WarTable.compact()+"), outside "+out+", not fitting "+unfit+(pass?"":" WRONG");shot(c,"ui-page-"+name+"-1440");}return;}
                     if(k==46){window(c,960,540,1);return;}
                     if(k==62){UiRecruitChecks.park(c);click(c,box(c,"back"));return;}
                     if(k==66){var s=screen(c);boolean home=s!=null&&s.page.equals("home")&&s.home!=null;ok&=home;why+="; the back plaque went "+(home?"home":"WRONG: "+(s==null?"the table closed":s.page));
@@ -3800,7 +3818,7 @@ public final class Phase1Checks implements ClientModInitializer {
                         else if(j>200){report("p1-ui-page-held-home",false,why+"; the room was not left WRONG");stage=13;}}
                 }
                 case 13->end(c);
-                case 99->{stage=100;finish(c,"ui-pages");}
+                case 99->{report("p1-ui-page-crowd",crowdOk,crowdWhy);stage=100;finish(c,"ui-pages");}
                 default->{}
             }
         }
@@ -4094,12 +4112,12 @@ public final class Phase1Checks implements ClientModInitializer {
                 // the tier lands in the client's tick and the page records its words only when a frame draws it: judged once the drawn
                 // words have caught up, or 20 ticks after the landing (a page that never redraws the tier fails there)
                 case 3->{boolean landed="hard".equals(serverDifficulty)&&"hard".equals(CampaignClient.difficulty);if(landed&&landedAt<0)landedAt=tick;
-                    if(landed&&k>=3&&("Hard".equals(text("bots-current"))||tick>=landedAt+20)){boolean pass="difficulty:hard".equals(lastSent())&&"Hard".equals(text("bots-current"));ok&=pass;
+                    if(landed&&k>=3&&("Hard".equals(text("bots-current"))||tick>=landedAt+20)){echoClear("hard",CampaignClient.noticeSerial);boolean pass="difficulty:hard".equals(lastSent())&&"Hard".equals(text("bots-current"));ok&=pass;
                         why+="; Hard sent "+lastSent()+": the server's bots "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");landedAt=-1;next(tick);}
                     else if(!landed&&k>100){ok=false;why+="; Hard sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";landedAt=-1;next(tick);}}
                 case 4->{if(k<8)return;landedAt=-1;click(c,box(c,"bots-normal"));next(tick);}
                 case 5->{boolean landed="normal".equals(serverDifficulty)&&"normal".equals(CampaignClient.difficulty);if(landed&&landedAt<0)landedAt=tick;
-                    if(landed&&k>=3&&("Normal".equals(text("bots-current"))||tick>=landedAt+20)){boolean pass="difficulty:normal".equals(lastSent())&&"Normal".equals(text("bots-current"));ok&=pass;
+                    if(landed&&k>=3&&("Normal".equals(text("bots-current"))||tick>=landedAt+20)){echoClear("normal",CampaignClient.noticeSerial);boolean pass="difficulty:normal".equals(lastSent())&&"Normal".equals(text("bots-current"));ok&=pass;
                         why+="; Normal sent "+lastSent()+": back to "+serverDifficulty+", the page reads "+text("bots-current")+(pass?"":" WRONG");landedAt=-1;next(tick);}
                     else if(!landed&&k>100){ok=false;why+="; Normal sent "+lastSent()+": the server's bots still "+serverDifficulty+" WRONG";landedAt=-1;next(tick);}}
                 case 6->{window(c,1920,1080,2,true);next(tick);}

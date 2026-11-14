@@ -6042,7 +6042,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     var claim = Phase1Checks.UiPagesChecks.button(c, "claim-2");
                     boolean live = claim != null && claim.visible && claim.active;
                     int[] cap = rect("chips-caption"), firstChip = box(c, "house-" + Spec.HOUSES[0].id());
-                    boolean caption = "Shards for".equals(text("chips-caption")) && cap != null && firstChip != null && cap[0] + cap[2] + 4 <= firstChip[0];
+                    boolean caption = "House shards go to".equals(text("chips-caption")) && cap != null && firstChip != null && cap[0] + cap[2] + 4 <= firstChip[0];
                     housePageOk = chosen && words && live && caption;
                     housePage = "Ironclad pressed: the chip pressed in " + tex("house-" + DAILY_HOUSE) + " and \"" + text("house-chosen") + "\" chosen=" + chosen + ", the third daily's second line \"" + line + "\" (want \"+ " + Progression.DAILY_SHARDS + " " + hn + " shards\")=" + words + ", its Claim " + (live ? "taking a press" : "not live") + ", the row's caption \"" + text("chips-caption") + "\" left of it=" + caption;
                     fits(c, "contracts", true);

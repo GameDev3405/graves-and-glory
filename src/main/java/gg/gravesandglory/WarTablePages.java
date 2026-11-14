@@ -71,6 +71,9 @@ final class WarTablePages {
     /** A daily note keeps a second reward line for the shards of the daily that completes all three, so its bar, count and Claim sit
      *  lower than the weekly's (which pays its shards on its one line): offsets from the note's top. */
     static final int DAILY_BAR_DY = 56, DAILY_STAMP_DY = 64, DAILY_CLAIM_DY = 66;
+    /** The weekly note: its bar and count sit at 52 and Claim at 64; while its "+ 1 troop writ" line shows (at 43, 11 tall) the bar drops one
+     *  line, 11 px, to 63 and Claim with it to 75, so the line, the bar and the count never meet. Offsets from the note's top. */
+    static final int WEEKLY_BAR_DY = 52, WEEKLY_CLAIM_DY = 64, WEEKLY_LINE_DROP = 11;
     /** The House row (claims with a House, War Table port Task 1): five chips 24 tall, seal then name, 3 px apart, the House the
      *  shards of the next claim go to pressed in with a tick, a rule under it and its word in the reward line. The Contracts row is
      *  centred on the page under the reset line, the Chapter's starts at the chapter block's text column under its name. */
@@ -496,9 +499,13 @@ final class WarTablePages {
 
     /** The server's notice (a refusal, a claim's reward) in IVORY, on two lines when one is too short, shown
      *  WarTableHome.NOTICE_TICKS and then faded over NOTICE_FADE_TICKS, as home's and the recruit page's are. */
+    /** The server's echo of a bots' tier change ("Bots: Normal."), which the Field page's tier tags make redundant. */
+    static final java.util.regex.Pattern BOTS_ECHO = java.util.regex.Pattern.compile("Bots: \\w+\\.");
+
     void notice(DrawContext g, int ox, int oy) {
         long age = ticks - noticeAt;
         if (noticeText.isEmpty() || age >= WarTableHome.NOTICE_TICKS + WarTableHome.NOTICE_FADE_TICKS) return;
+        if (page.equals("field") && BOTS_ECHO.matcher(noticeText).matches()) return; // the tier tags already show the tier: no "Bots: Normal." under them
         var font = font();
         int[] at = noticePlace(ox, oy); // {anchor x, top, width, lines, 0 centred / 1 right-aligned / -1 left from the anchor}
         float fade = age < WarTableHome.NOTICE_TICKS ? 1 : 1 - (age - WarTableHome.NOTICE_TICKS) / (float) WarTableHome.NOTICE_FADE_TICKS;
@@ -1434,6 +1441,18 @@ final class WarTablePages {
         if (on) textsDrawn.put("house-chosen", id);
     }
 
+    /** The weekly Claim's top at rest (no writ line); it drops by weeklyDrop() while the line shows. */
+    int weeklyClaimY;
+
+    /** The weekly note's "+ 1 troop writ" line: shown while the weekly is unclaimed and pays at least 100 gold (one writ). */
+    static String weeklyExtra(Progression.State p, String house) {
+        var pay = payOf("weekly", house);
+        return p.claims.contains("weekly") || pay.gold() < 100 ? "" : "+ " + Progression.writs(pay.gold() / 100);
+    }
+
+    /** How far the weekly bar, count and Claim drop to clear the writ line: one line while it shows, else none. */
+    int weeklyDrop() { return weeklyExtra(progression(), claimHouse()).isEmpty() ? 0 : WEEKLY_LINE_DROP; }
+
     void initContracts() {
         int[] o = col(C_CONTRACTS);
         int ox = o[0], oy = o[1];
@@ -1442,8 +1461,9 @@ final class WarTablePages {
             final int slot = i;
             tag("claim-" + i, ox + NOTE_X + NOTE_STEP * i + 124, oy + NOTE_Y + DAILY_CLAIM_DY, 64, "Claim", () -> claimDaily(slot));
         }
+        weeklyClaimY = oy + WEEKLY_Y + WEEKLY_CLAIM_DY;
         add("reroll", new UiButton(ox + REROLL_X, oy + REROLL_Y, 88, 24, Text.literal("Reroll"), b -> send("progress:reroll"), this::paintReroll));
-        tag("claim-weekly", ox + WEEKLY_X + 228, oy + WEEKLY_Y + 64, 64, "Claim", () -> send(RecruitPages.contractClaim("weekly", claimHouse())));
+        tag("claim-weekly", ox + WEEKLY_X + 228, oy + WEEKLY_Y + WEEKLY_CLAIM_DY + weeklyDrop(), 64, "Claim", () -> send(RecruitPages.contractClaim("weekly", claimHouse())));
     }
 
     /** A daily's Claim: the daily that completes all three names the House its shards go to (Progression.claim's rule, as RecruitPages.contractShards
@@ -1462,7 +1482,10 @@ final class WarTablePages {
             if (b != null) b.visible = b.active = Progression.claimable(p, "daily:" + i);
         }
         var w = buttons.get("claim-weekly");
-        if (w != null) w.visible = w.active = Progression.claimable(p, "weekly");
+        if (w != null) {
+            w.visible = w.active = Progression.claimable(p, "weekly");
+            w.cy = weeklyClaimY + weeklyDrop(); w.relayout(); // Claim follows the bar down while the writ line shows
+        }
         var r = buttons.get("reroll");
         if (r != null) r.active = !p.rerolled && !p.claims.contains("daily:2");
         for (var h : RecruitView.houses()) { // the row stays while a claim that pays shards is still to come
@@ -1488,13 +1511,13 @@ final class WarTablePages {
         int weekly = Progression.WEEKLY_BATTLES;
         boolean weeklyDone = p.claims.contains("weekly");
         note(g, "weekly", "table/note-weekly", ox + WEEKLY_X, oy + WEEKLY_Y, 292, "Complete " + weekly + " battles this week", words(payOf("weekly", house), true, weeklyDone ? null : houseName),
-            weeklyDone || payOf("weekly", house).gold() < 100 ? "" : "+ " + Progression.writs(payOf("weekly", house).gold() / 100), false,
+            weeklyExtra(p, house), false,
             Math.min(p.weeklyBattles, weekly), weekly, weeklyDone, "weekly", "progress-weekly", "table/stamp-hollow", "stamp-weekly");
         String reset = "Daily contracts reset at 00:00 UTC, the weekly on Monday";
         WarTableHome.centred(g, DarkUi.body(reset), ox + 480, oy + RESET_Y, DarkUi.MUTED);
         textsDrawn.put("reset", reset);
         if (shardsPending(p)) { // what the House row is for, left of it
-            String cap = "Shards for";
+            String cap = "House shards go to";
             int cw = font().getWidth(DarkUi.body(cap)), cx = ox + 480 - chipRowWidth() / 2 - CAPTION_GAP - cw;
             text(g, "chips-caption", DarkUi.body(cap), cap, cx, oy + CHIPS_Y + 6, DarkUi.MUTED);
             rectsDrawn.put("chips-caption", new int[]{cx, oy + CHIPS_Y + 6, cw, 11});
@@ -1518,8 +1541,9 @@ final class WarTablePages {
             text(g, "shards-" + id, DarkUi.body(extra), extra, x + 12, y + 43, DarkUi.SEPIA);
             rectsDrawn.put("shards-" + id, new int[]{x + 12, y + 43, font.getWidth(DarkUi.body(extra)), 11});
         }
-        int bar = y + (tall ? DAILY_BAR_DY : 52);
+        int bar = y + (tall ? DAILY_BAR_DY : WEEKLY_BAR_DY + (extra.isEmpty() ? 0 : WEEKLY_LINE_DROP));
         UiTex.draw(g, "hud/hp-channel", x + 12, bar);
+        rectsDrawn.put("bar-" + id, new int[]{x + 12, bar, 104, 5});
         UiTex.bar(g, "hud/hp-full-dawn", x + 13, bar + 1, UiMath.barWidth(target <= 0 ? 0 : done / (float) target), false);
         String count = claimed ? "Claimed" : done + " / " + target;
         int countW = font.getWidth(count);
@@ -1539,6 +1563,7 @@ final class WarTablePages {
         var label = DarkUi.heading("Reroll");
         UiTex.draw(g, "table/btn-vellum-88x24", x, y);
         UiTex.draw(g, "recruit/die", x + 12, y + 7);
+        if (b != null && !b.active) DarkUi.disabledVeil(g, x + 1, y + 1, w - 1, h); // spent, like every other tag that cannot be pressed (4F.5)
         g.drawText(font, label, x + 26, y + 6, ink, false);
         if (hot(b)) underline(g, "reroll", x + 26, y + 18, font.getWidth(label), ink);
         rectsDrawn.put("reroll", new int[]{x, y, w, h});
@@ -2212,6 +2237,7 @@ final class WarTablePages {
         for (int i = 0; i < desc.size(); i++) WarTableHome.centred(g, DarkUi.body(desc.get(i)), ox + CARD_CX, oy + CARD_Y + 110 + 13 * i, DarkUi.SEPIA);
         String status = GravesAndGloryClient.running ? "A battle is on: maps wait until it ends" : "The war council host picks the map";
         text(g, "status", DarkUi.body(status), status, ox + MAP_X, oy + STATUS_Y, DarkUi.INK_TEXT);
+        rectsDrawn.put("status", new int[]{ox + MAP_X, oy + STATUS_Y, font.getWidth(DarkUi.body(status)), 11});
         WarTableHome.centred(g, DarkUi.heading("Bots"), ox + CARD_CX, oy + BOTS_HEAD_Y, DarkUi.INK_TEXT);
         textsDrawn.put("bots-current", CampaignClient.tierName(CampaignClient.difficulty));
         statuses(g, ox, oy);
