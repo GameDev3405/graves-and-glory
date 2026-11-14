@@ -14247,8 +14247,8 @@
       "dropMinTenths": 40,
       "dropMaxTenths": 60,
       "watchRadius": 48,
-      "originDx": 34,
-      "originDz": -16,
+      "originDx": 38,
+      "originDz": -17,
       "facing": "west",
       "pegRows": 8
     }

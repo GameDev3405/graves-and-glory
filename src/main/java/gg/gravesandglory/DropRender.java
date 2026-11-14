@@ -150,7 +150,7 @@ final class DropRender {
             // the coin on the rail eases after the mouse (or the watcher's last word of it)
             if (v.path == null && !v.released) { double[] vel = {v.xVel}; v.x = DropClient.damp(v.x, v.targetX, vel, 0, v.mine ? 0.07 : 0.18, dt); v.xVel = vel[0]; }
             double[] q = v.coin(now);
-            if (v.lastCoin != null && v.path != null && phase == DropClient.Phase.DROP) v.maxStep = Math.max(v.maxStep, Math.hypot(q[0] - v.lastCoin[0], q[1] - v.lastCoin[1]));
+            if (v.lastCoin != null && v.path != null && phase == DropClient.Phase.DROP && dt <= 1 / 30.0) v.maxStep = Math.max(v.maxStep, Math.hypot(q[0] - v.lastCoin[0], q[1] - v.lastCoin[1]));
             v.lastCoin = q;
             double since = v.sinceLanding(now);
             int tint = slotColour(v.slot());

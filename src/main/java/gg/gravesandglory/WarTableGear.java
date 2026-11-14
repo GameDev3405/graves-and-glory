@@ -150,7 +150,9 @@ final class WarTableGear {
         if (v.inventorySize() >= Gear.forge().maxSlots()) return "Inventory at its largest";
         return "Add a row (" + Forge.expandCost(GearView.asProfile(v)) + " gear shards)";
     }
-    void roll() { if (screen.action((DropClient.enabled ? "drop:forge:" : "forge:roll:") + forgeSlot)) UiSounds.play(AudioCues.Cue.BLACKSMITH_ROLL); }
+    /** When the Roll button last rolled: a second press inside ROLL_GAP_MS is the same press (a double click must not pay twice). */
+    private long rolledAt; static final long ROLL_GAP_MS = 500;
+    void roll() { long now = System.currentTimeMillis(); if (now - rolledAt < ROLL_GAP_MS) return; rolledAt = now; if (screen.action((DropClient.enabled ? "drop:forge:" : "forge:roll:") + forgeSlot)) UiSounds.play(AudioCues.Cue.BLACKSMITH_ROLL); }
 
     /** Shows and greys the widgets for this frame's state: nothing acts until the gear view arrives. */
     void sync() {

@@ -34,7 +34,7 @@ public final class DropClient {
         int nextHit;
         /** What rises out of the slot: a LivingEntity or an ItemStack, built at the flare. */
         Object riser; boolean riserBuilt, landed, flared, revealed;
-        /** The largest move of the coin between two frames (blocks), for the smoothness check. */
+        /** The largest move of the coin between two frames no more than a thirtieth of a second apart (blocks), for the smoothness check: a frame the machine dropped is not the coin's doing. */
         double maxStep; double[] lastCoin;
 
         double length() { return path == null ? 0 : path.seconds(); }

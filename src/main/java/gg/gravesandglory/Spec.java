@@ -147,5 +147,5 @@ public static EndingRow[] ENDING = new EndingRow[] {new EndingRow("default",6,8,
 public record DropSlotsRow(String id,int multiplier,int chance,String colour) {}
 public static DropSlotsRow[] DROPSLOTS = new DropSlotsRow[] {new DropSlotsRow("slot0",10,10,"#ffecaa"),new DropSlotsRow("slot1",5,40,"#b078ff"),new DropSlotsRow("slot2",3,100,"#5adcc8"),new DropSlotsRow("slot3",2,200,"#78bee6"),new DropSlotsRow("slot4",1,300,"#96969e"),new DropSlotsRow("slot5",2,200,"#78bee6"),new DropSlotsRow("slot6",3,100,"#5adcc8"),new DropSlotsRow("slot7",5,40,"#b078ff"),new DropSlotsRow("slot8",10,10,"#ffecaa")};
 public record DropBoardRow(String id,String boosted,int aimSeconds,int flyTenths,int flareTenths,int revealTenths,int returnTenths,int dropMinTenths,int dropMaxTenths,int watchRadius,int originDx,int originDz,String facing,int pegRows) {}
-public static DropBoardRow[] DROPBOARD = new DropBoardRow[] {new DropBoardRow("altar","rare,epic,legendary",8,16,10,25,8,40,60,48,34,-16,"west",8)};
+public static DropBoardRow[] DROPBOARD = new DropBoardRow[] {new DropBoardRow("altar","rare,epic,legendary",8,16,10,25,8,40,60,48,38,-17,"west",8)};
 }
