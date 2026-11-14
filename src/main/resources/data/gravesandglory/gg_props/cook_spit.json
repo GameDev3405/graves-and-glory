@@ -1,0 +1,33 @@
+{
+  "id": "cook_spit",
+  "category": "camp",
+  "name": "Cook Spit",
+  "size": [2, 2, 1],
+  "parts": [
+    {"model": "cook_spit", "cmd": 7310931, "glow": false},
+    {"model": "cook_spit_fire", "cmd": 7310932, "glow": true},
+    {"model": "cook_spit_roast", "cmd": 7310933, "glow": false, "offset": [8, 14, 0]}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0]
+  ],
+  "lights": [{"x": 0, "y": 1, "z": 0, "level": 12}],
+  "effects": [
+    {"kind": "particle", "id": "minecraft:flame", "x": 1.0, "y": 0.6, "z": 0.5, "spread": 0.12, "count": 1, "every": 10, "chance": 0.6},
+    {"kind": "particle", "id": "minecraft:smoke", "x": 1.0, "y": 1.75, "z": 0.5, "spread": 0.12, "count": 1, "every": 10, "chance": 0.5},
+    {"kind": "particle", "id": "minecraft:lava", "x": 1.0, "y": 0.4, "z": 0.5, "spread": 0.15, "count": 1, "every": 60, "chance": 0.3},
+    {"kind": "sound", "id": "minecraft:block.campfire.crackle", "x": 1.0, "y": 0.4, "z": 0.5, "every": 40, "chance": 0.35, "volume": 0.35}
+  ],
+  "motion": [
+    {
+      "part": "cook_spit_roast",
+      "kind": "rotate",
+      "axis": "x",
+      "pivot": [16, 22, 8],
+      "bias": 0,
+      "period": 160,
+      "phase": 0
+    }
+  ]
+}

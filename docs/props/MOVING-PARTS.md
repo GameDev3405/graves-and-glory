@@ -1,7 +1,8 @@
 # Moving prop parts
 
 Kort approved moving parts on 2026-11-14 ("Yes, build moving parts"): swaying banners and pennants, a trebuchet arm, a turning spit.
-This page is the design. The first example is `great_banner` (its cloth sways in the wind). Code: `PropDef.Motion` (def schema),
+This page is the design. Moving now: `great_banner` (cloth sway), pennants on `spear_standard`, `tent_pavilion` and
+`tent_pavilion_large` (+ `_dawn`, `_dusk`, `_weathered`), the `trebuchet` arm creak with its hanging box, and the `cook_spit` roast (rotate). Code: `PropDef.Motion` (def schema),
 `PropMotion` (pure pose maths), `PropTicker.motion` (keyframes), `mixin/PropRestSaveMixin` (saves at rest). Checks: `PropMotionCheck`
 (standalone) and `p1-prop-motion` (combat game suite).
 
@@ -43,7 +44,9 @@ twice a second and the client draws smooth motion at its frame rate.
   map: paused, no more packets.
 - **Desync.** From the anchor's `PropEffects.seed` each entry gets a phase share and a period scale of 0.92..1.08, so a row of banners
   never sways in step and drifts further apart over time. The seed also picks the prop's keyframe slot (which of the two ticker runs in a
-  10-tick window it sends on), so 30 banners spread their packets over the ticks.
+  10-tick window it sends on), so 30 banners spread their packets over the ticks. Entries that are identical apart from `part`
+  share the desync of the first such entry (`PropMotion.jitter`), so the split pieces of one moving piece (the trebuchet arm's six
+  parts) stay joined; different entries (the banner's two) still get their own.
 - **Frames.** A part is an item_display at the anchor cell centre (plus its def `offset`) with yaw 180+facing, and the item renderer turns
   the model a half turn, so model point P sits at entity point `((8-P.x)/16, (P.y-8)/16, (8-P.z)/16)` (P minus the part offset) at every
   facing. `PropMotion.pose` turns about the mapped axis (x and z flip) through the mapped pivot: `translation = R(Q) - q*R(Q)`. One frame
@@ -70,6 +73,9 @@ and start_interpolation: about 45 bytes on the wire with framing.
 |---|---|---|
 | 1 banner (1 moving part) | 2 | ~90 |
 | 30 banners in range | 60 | ~2.7 KB |
+| 30 spear standards + 10 pavilions (1 pennant part each) | 80 | ~3.6 KB |
+| 1 trebuchet (arm 6 parts + box 3 parts) | 18 | ~0.8 KB |
+| 1 cook spit (roast) | 2 | ~90 |
 | for comparison: S5 effects, per effect prop | 0.02 (anvil) .. 5.7 (black smoke vent), mean 2.6 | particle packets ~40-60 B |
 
 So a swaying banner costs about what one smoking prop costs, and 30 of them about what 23 average effect props cost. Server time: a pose is
@@ -87,16 +93,36 @@ set can halve the cost by raising `KEY` to 20 for slow motion, at the price of a
   (1..7 degrees, hem 1-6 px out) because the pole is behind the cloth.
 - A real ripple (a wave running down the cloth) needs the cloth cut into 2-3 horizontal strips, each its own part with its pivot at the
   strip above's hem and a phase lag. That triples the packets; left out until Kort asks for it.
-- Pennants on a pole: the flag is its own part, pivot on the pole axis, `axis: y`, `sway` of 10-20 degrees.
+- **Split props: moving groups.** `Prop.split(pid, els, size, moving=[(name, elements, slots)])` packs each moving group into the
+  fewest 48 px cells (`pack_group` tries grid offsets) and names its parts `<id>_<slot>` (CMD = block base + slot). A slot must be an
+  index no static region uses: past the last region if the block has room, else an index left empty. `p.moving[name]` lists the part
+  names; `new_prop.py <id> --sync` rewrites the def parts and keeps `motion`. Each moving part is centred on its entity (item display
+  light is sampled there).
+- **Small props: `offsets=True`.** `Prop(..., shift={part: (dx,dy,dz)}, offsets=True)` stores a part shifted so its entity sits on a
+  chosen point (the spit's axle), writing the def `offset`.
+- **Clearance.** Sweep the moving part through its whole range against nearby static elements before committing (a scratch sweep did
+  it here); hidden contact inside a pole, drum or wound rope is fine.
 
-## 6. Later: trebuchet arm and spit
+## 6. Live examples
 
-- **Spit (`rotate`).** The spit and its roast are one part turning about the axle. Put the part's entity on the axle with the def
-  `offset` (model the spit in the real frame; the offset is subtracted when it is stored, as for split props), so the pivot is the entity
+- **Pennants** (spear_standard, the pavilions). The cloth is its own part (`spear_standard_pennant`, `tent_pavilion_27`,
+  `tent_pavilion_large*_88`), three entries: a y sway on the pole axis (14 deg, 84 ticks), a smaller y sway (6 deg, 66 ticks, phase 0.3)
+  and a z sway at the hoist top (2 deg, 74 ticks) with a bias: a 2 deg droop on the spear, a 2 deg lift on the tents (a droop touched
+  the tent's gilt collar). The hoist stays on the pole; the fly sweeps a few px.
+- **Trebuchet** (`swing`). Arm, pull rope and sling cord are six parts (slots 90-95), each `swing` about x at the axle [8,140,-12],
+  1.25 deg, 140 ticks. The counterweight box (slots 96-98) carries the same arm entry plus a `sway` about its pin [8,178.9,-50.9],
+  1.2 deg, 76 ticks, so it hangs from the arm and swings a little. The frame never moves.
+- **Cook spit** (`rotate`, block 93). Spit, roast, twine, bones and crank are `cook_spit_roast` with offset [8,14,0], so its entity sits
+  on the axle (pivot [16,22,8]); a turn every 160 ticks. Posts and fire are static; flames, smoke and crackle are the brazier's effects.
+
+## 7. Rules and later work
+
+- **Rotate pivots.** For a `rotate` part, put the part's entity on the axle with the def `offset`
+  (model the spit in the real frame; the offset is subtracted when it is stored, as for split props), so the pivot is the entity
   origin and the client's slerp alone turns it with no translation drift. Period 40 ticks or more (a quarter turn a keyframe) with the pivot on the entity origin; a pivot
   off the origin wobbles (straight-line translation tween) and needs a period of 120 or more.
-- **Trebuchet arm (`swing`, idle).** The arm (and its sling, if separate) is a part pivoting on the axle, `axis` across the frame,
-  `swing` with a small amplitude for an idle creak, or `bias` to park it cocked. A big prop's arm crosses split regions; give the arm its
-  own part(s) with the same motion entry per part (each turns about the same pivot, so they stay joined). A one-shot throw (fast release,
+- **Trebuchet throw.** A one-shot throw (fast release,
   slow settle) is a later kind (`throw` with keyframed angles) and needs a trigger from gameplay, which is Kort's call.
+- **Previews.** `tools/prop_shot.py <ids> --frames N[:TICKS[:FOCUS]]` shoots N frames TICKS apart and writes
+  `work/props/review/<id>-motion.gif`; FOCUS > 0 aims the camera at the mean motion pivot from FOCUS blocks (small cloth on a big tent).
 - Sounds stay vanilla (a `minecraft:block.wood.*` creak as an ordinary S5 effect on the same prop).

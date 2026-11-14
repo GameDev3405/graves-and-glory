@@ -56,7 +56,7 @@
     {"model": "tent_pavilion_large_67", "cmd": 7310768, "glow": false, "offset": [0, 112, 48]},
     {"model": "tent_pavilion_large_68", "cmd": 7310769, "glow": false, "offset": [48, 112, 48]},
     {"model": "tent_pavilion_large_87", "cmd": 7310788, "glow": false, "offset": [0, 160, 0]},
-    {"model": "tent_pavilion_large_88", "cmd": 7310789, "glow": false, "offset": [48, 160, 0]}
+    {"model": "tent_pavilion_large_88", "cmd": 7310789, "glow": false, "offset": [20, 160, 0]}
   ],
   "solid": [
     [5, 0, 3],
@@ -146,5 +146,37 @@
   "split": {
     "block": 70,
     "blocks": 10
-  }
+  },
+  "motion": [
+    {
+      "part": "tent_pavilion_large_88",
+      "kind": "sway",
+      "axis": "y",
+      "pivot": [8, 168, 8],
+      "amplitude": 14,
+      "bias": 0,
+      "period": 84,
+      "phase": 0
+    },
+    {
+      "part": "tent_pavilion_large_88",
+      "kind": "sway",
+      "axis": "y",
+      "pivot": [8, 168, 8],
+      "amplitude": 6,
+      "bias": 0,
+      "period": 66,
+      "phase": 0.3
+    },
+    {
+      "part": "tent_pavilion_large_88",
+      "kind": "sway",
+      "axis": "z",
+      "pivot": [8, 176, 8],
+      "amplitude": 2,
+      "bias": 2,
+      "period": 74,
+      "phase": 0.6
+    }
+  ]
 }

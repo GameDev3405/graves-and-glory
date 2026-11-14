@@ -253,10 +253,11 @@ def build(pid="tent_pavilion_large", pal=ORIGINAL):
     els.append(E((CX - 6, top, CZ - 6), (CX + 6, top + 3, CZ + 6), "gilt", name="gilt collar"))
     els.append(E((CX - 5, 178, CZ - 5), (CX + 5, 186, CZ + 5), "gilt", name="finial"))
     els.append(E((CX - 3, 186, CZ - 3), (CX + 3, 191, CZ + 3), "gilt", name="finial tip"))
+    flag = []   # the pennant: its own moving part, flutters about the pole (docs/props/MOVING-PARTS.md)
     pen = Mat(pal.dark, 2, lambda f, P, c, r, w, h: 2 if 6 <= P[1] - 160 < 9 and f in ("north", "south") else 0)
-    els.append(E((CX + 4, 160, CZ - 1), (CX + 26, 176, CZ + 1), pen, name="pennant"))
-    els.append(E((CX + 26, 160, CZ - 1), (CX + 36, 165, CZ + 1), pen, name="pennant tail"))
-    els.append(E((CX + 26, 171, CZ - 1), (CX + 36, 176, CZ + 1), pen, name="pennant tail"))
+    flag.append(E((CX + 4, 160, CZ - 1), (CX + 26, 176, CZ + 1), pen, name="pennant"))
+    flag.append(E((CX + 26, 160, CZ - 1), (CX + 36, 165, CZ + 1), pen, name="pennant tail"))
+    flag.append(E((CX + 26, 171, CZ - 1), (CX + 36, 176, CZ + 1), pen, name="pennant tail"))
 
     # ---- guy ropes (22.5 degrees off the vertical) to pegs, two a face on the four cardinal faces ----
     # Each rope is cut at y=48 (a region line) into two boxes turned about the same origin: one straight rope.
@@ -298,4 +299,4 @@ def build(pid="tent_pavilion_large", pal=ORIGINAL):
     els.append(E((-13, 9, cz0 - 1), (13, 12, cz0 + 13), "swood_x", name="chest lid"))
     for x0 in (-9, 6):
         els.append(E((x0, 0, cz0 - 1), (x0 + 3, 12, cz0), "iron", skip="down", name="chest strap"))
-    return Prop.split(pid, els, SIZE)
+    return Prop.split(pid, els, SIZE, moving=[("pennant", flag, (88,))])

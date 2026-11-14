@@ -8,6 +8,8 @@ import java.util.stream.Stream;
  *  behind its rest plane (the pole), with its pivot fixed; the entity-frame pose matches the same turn done in the prop frame; anchors desync;
  *  each prop sends one keyframe per KEY window; bad motion entries are refused. */
 public final class PropMotionCheck {
+ static final java.util.Set<String> MOVING=java.util.Set.of("great_banner","spear_standard","tent_pavilion","tent_pavilion_large","tent_pavilion_large_dawn",
+  "tent_pavilion_large_dusk","tent_pavilion_large_weathered","trebuchet","cook_spit");
  static int count;static void check(boolean pass,String text){count++;if(!pass)throw new AssertionError(text);}
  static PropDef def(String id)throws Exception{return PropDef.parse(Files.readString(Path.of("src/main/resources/data/gravesandglory/gg_props/"+id+".json")));}
  static boolean refused(String json){try{PropDef.parse(json);return false;}catch(IllegalArgumentException e){return true;}}
@@ -20,12 +22,103 @@ public final class PropMotionCheck {
   return new double[]{o[0]+Q[0],o[1]+Q[1],o[2]+Q[2]};
  }
 
+ static PropDef.Part part(PropDef d,String model){for(PropDef.Part p:d.parts())if(p.model().equals(model))return p;throw new AssertionError(d.id()+" has no part "+model);}
+ /** Where model point P (px) of part p lands under pose, in model px of the prop at facing 0 (the part entity sits at the anchor cell
+  *  centre plus its offset; the entity frame mirrors x and z, see PropMotion). */
+ static double[] world(float[] pose,PropDef.Part p,double x,double y,double z){
+  double[] l=PropMotion.apply(pose,p,x,y,z);
+  return new double[]{8+p.ox()-16*l[0],8+p.oy()+16*l[1],8+p.oz()-16*l[2]};
+ }
+ static double dist(double[] a,double[] b){return Math.sqrt((a[0]-b[0])*(a[0]-b[0])+(a[1]-b[1])*(a[1]-b[1])+(a[2]-b[2])*(a[2]-b[2]));}
+
+ /** Pennants (spear_standard, tent_pavilion, the large pavilions): the hoist stays on the pole, the fly flutters a few px, neighbours are
+  *  out of step, and world() is exact at rest. */
+ static void pennants()throws Exception{
+  // {id, part, pole x, pole z, hoist y bottom, hoist y top, tip x}
+  Object[][] all={{"spear_standard","spear_standard_pennant",4,8,24,36,18},{"tent_pavilion","tent_pavilion_27",8,8,102,112,31},
+   {"tent_pavilion_large","tent_pavilion_large_88",8,8,160,176,44},{"tent_pavilion_large_dawn","tent_pavilion_large_dawn_88",8,8,160,176,44},
+   {"tent_pavilion_large_dusk","tent_pavilion_large_dusk_88",8,8,160,176,44},{"tent_pavilion_large_weathered","tent_pavilion_large_weathered_88",8,8,160,176,44}};
+  for(Object[] r:all){
+   PropDef d=def((String)r[0]);PropDef.Part cloth=part(d,(String)r[1]);
+   int px=(int)r[2],pz=(int)r[3],y0=(int)r[4],y1=(int)r[5],tip=(int)r[6];
+   check(d.motion().size()==3&&d.motion().stream().allMatch(m->m.part().equals(cloth.model())),d.id()+": three entries, all on the pennant");
+   for(PropDef.Part p:d.parts())if(p!=cloth)check(!PropMotion.moves(d,p),d.id()+" part "+p.model()+" does not move");
+   check(dist(world(PropMotion.REST,cloth,tip,y1,pz),new double[]{tip,y1,pz})<1e-6,d.id()+": world() is exact at rest");
+   long seed=PropEffects.seed(3,70,-9);double hoist=0,most=0;
+   double mid=(y0+y1)/2.0;
+   for(int t=0;t<3000;t+=3){
+    float[] pose=PropMotion.pose(d,cloth,t,seed);
+    for(int y=y0;y<=y1;y++){double[] a=world(pose,cloth,px,y,pz);hoist=Math.max(hoist,Math.hypot(a[0]-px,a[2]-pz));}
+    most=Math.max(most,dist(world(pose,cloth,tip,mid,pz),new double[]{tip,mid,pz}));
+   }
+   check(hoist<1.3,d.id()+": the hoist stays on the pole axis (most "+hoist+" px off)");
+   double len=tip-px;
+   check(most>len*0.25&&most<len*0.55,d.id()+": the fly sweeps a gentle "+String.format("%.1f",most)+" px for a "+len+" px pennant");
+   check(!java.util.Arrays.equals(PropMotion.pose(d,cloth,500,seed),PropMotion.pose(d,cloth,500,PropEffects.seed(4,70,-9))),d.id()+": neighbours are out of step");
+  }
+ }
+
+ /** cook_spit: a rotate on its entity origin. No translation ever (the client slerp turns it in place), a quarter turn per quarter period,
+  *  the spit axis holds, the roast never dips into the flames (tips at y 14) and the rod turns clear of the forks. */
+ static void spit()throws Exception{
+  PropDef d=def("cook_spit");PropDef.Part roast=part(d,"cook_spit_roast");
+  check(d.motion().size()==1&&d.motion().get(0).kind().equals("rotate")&&PropMotion.moves(d,roast)&&!PropMotion.moves(d,part(d,"cook_spit"))&&!PropMotion.moves(d,part(d,"cook_spit_fire")),"cook_spit: only the roast turns");
+  PropDef.Motion m=d.motion().get(0);
+  check(m.px()==8+roast.ox()&&m.py()==8+roast.oy()&&m.pz()==8+roast.oz(),"cook_spit: the pivot is the roast's entity origin");
+  long seed=PropEffects.seed(-20,64,5);double low=1e9,axis=0,maxT=0,zr=0,yr=1e9;
+  for(int t=0;t<m.period();t++){
+   float[] pose=PropMotion.pose(d,roast,t,seed);
+   maxT=Math.max(maxT,Math.abs(pose[0])+Math.abs(pose[1])+Math.abs(pose[2]));
+   for(double[] P:new double[][]{{1,22,8},{31,22,8},{16,22,8}})axis=Math.max(axis,dist(world(pose,roast,P[0],P[1],P[2]),P));
+   for(double[] P:new double[][]{{13,17,3},{13,17,13},{13,27,3},{13,27,13},{11,18,4},{11,26,12}})low=Math.min(low,world(pose,roast,P[0],P[1],P[2])[1]);
+   for(double[] P:new double[][]{{4,21,7},{4,23,9},{4,21,9},{4,23,7}}){double[] w=world(pose,roast,P[0],P[1],P[2]);zr=Math.max(zr,Math.abs(w[2]-8));yr=Math.min(yr,w[1]);}
+  }
+  check(maxT<1e-5,"cook_spit: no translation, only rotation ("+maxT+")");
+  check(axis<1e-4,"cook_spit: the spit axis holds ("+axis+" px)");
+  check(low>14.2,"cook_spit: the roast's lowest corner stays above the flame tips: "+low+" px");
+  double a0=PropMotion.angle(m,0,0,seed),a1=PropMotion.angle(m,0,m.period()/4.0,seed);
+  check(Math.abs(((a1-a0)%360+360)%360-90)<1e-6,"cook_spit: a quarter turn per quarter period");
+  check(zr<2&&yr>20,"cook_spit: the rod turns clear of the fork (z within "+zr+" px of the axle, lowest y "+yr+")");
+ }
+
+ /** trebuchet: a multi-part moving piece. The arm is six parts and the hanging box three; each turns as one (a model point lands in the
+  *  same place under every part's pose), the box's pin stays on the arm's pin, the creak is a few px at the tip, the frame stays still. */
+ static void trebuchet()throws Exception{
+  PropDef d=def("trebuchet");
+  java.util.List<PropDef.Part> arm=new java.util.ArrayList<>(),box=new java.util.ArrayList<>();
+  for(int n=90;n<96;n++)arm.add(part(d,"trebuchet_"+n));
+  for(int n=96;n<99;n++)box.add(part(d,"trebuchet_"+n));
+  int moving=0;for(PropDef.Part p:d.parts())if(PropMotion.moves(d,p))moving++;
+  check(moving==9,"trebuchet: nine moving parts (arm 6, box 3): "+moving);
+  long seed=PropEffects.seed(100,64,100);double spread=0,pin=0,tipMost=0,boxMost=0;
+  double[][] pts={{8,140,-12},{8,60,40},{8,190,-50},{-10,195,-45},{8,30,90},{20,100,-60}};
+  double[] q={8,178.9,-50.9};
+  double[] tip0=world(PropMotion.REST,arm.get(0),8,42,86),boxLow0=world(PropMotion.REST,box.get(0),8,92,-51);
+  for(int t=0;t<1500;t+=5){
+   for(double[] P:pts){
+    double[] ref=world(PropMotion.pose(d,arm.get(0),t,seed),arm.get(0),P[0],P[1],P[2]);
+    for(PropDef.Part p:arm)spread=Math.max(spread,dist(world(PropMotion.pose(d,p,t,seed),p,P[0],P[1],P[2]),ref));
+    double[] bref=world(PropMotion.pose(d,box.get(0),t,seed),box.get(0),P[0],P[1],P[2]);
+    for(PropDef.Part p:box)spread=Math.max(spread,dist(world(PropMotion.pose(d,p,t,seed),p,P[0],P[1],P[2]),bref));
+   }
+   pin=Math.max(pin,dist(world(PropMotion.pose(d,arm.get(2),t,seed),arm.get(2),q[0],q[1],q[2]),world(PropMotion.pose(d,box.get(1),t,seed),box.get(1),q[0],q[1],q[2])));
+   tipMost=Math.max(tipMost,dist(world(PropMotion.pose(d,arm.get(0),t,seed),arm.get(0),8,42,86),tip0));
+   boxMost=Math.max(boxMost,dist(world(PropMotion.pose(d,box.get(0),t,seed),box.get(0),8,92,-51),boxLow0));
+  }
+  check(spread<1e-3,"trebuchet: the arm's parts (and the box's) turn as one piece: spread "+spread+" px");
+  check(pin<1e-3,"trebuchet: the box hangs on the arm's pin: "+pin+" px");
+  check(tipMost>1.5&&tipMost<4,"trebuchet: the arm tip creaks a few px ("+String.format("%.2f",tipMost)+")");
+  check(boxMost>1&&boxMost<6,"trebuchet: the box swings a little ("+String.format("%.2f",boxMost)+" px at its floor)");
+  for(PropDef.Part p:d.parts())if(!arm.contains(p)&&!box.contains(p))check(!PropMotion.moves(d,p),"trebuchet: "+p.model()+" (frame) stays still");
+  check(PropMotion.jitter(d.motion(),d.motion().size()-2)==0,"trebuchet: the box's arm entry shares the arm's desync");
+ }
+
  public static void main(String[] args)throws Exception{
   long seed=PropEffects.seed(10,64,-3);
   try(Stream<Path> files=Files.list(Path.of("src/main/resources/data/gravesandglory/gg_props"))){
    for(Path f:(Iterable<Path>)files.filter(p->p.toString().endsWith(".json"))::iterator){
     PropDef d=PropDef.parse(Files.readString(f));
-    if(d.id().equals("great_banner"))continue;
+    if(MOVING.contains(d.id())){check(!d.motion().isEmpty(),d.id()+" moves");continue;}
     check(d.motion().isEmpty()&&!PropMotion.moves(d),d.id()+" has no motion");
     for(PropDef.Part p:d.parts())check(java.util.Arrays.equals(PropMotion.pose(d,p,1234,seed),PropMotion.REST),d.id()+" part "+p.model()+" rests");
    }
@@ -114,6 +207,7 @@ public final class PropMotionCheck {
   String offs=head.replace("\"cmd\":7319990}","\"cmd\":7319990,\"offset\":[0,16,0]}");
   check(!refused(offs+"{"+rj.replace("[8,8,8]","[8,24,8]")+"}]}"),"a rotate about an offset part's entity origin parses");
   check(refused(offs+"{"+rj+"}]}"),"an offset part's [8,8,8] is not its entity origin");
+  pennants();spit();trebuchet();
   System.out.println("PropMotionCheck: "+count+" checks pass; hem forward "+String.format("%.2f..%.2f",minFwd,maxFwd)+" px, sideways up to "+String.format("%.2f",maxSide)+" px");
  }
 }

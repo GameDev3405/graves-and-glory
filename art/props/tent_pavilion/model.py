@@ -189,10 +189,11 @@ def build():
     els.append(E((CX - 4, top, CZ - 4), (CX + 4, top + 2, CZ + 4), "gilt", name="gilt collar"))
     els.append(E((CX - 3, 114, CZ - 3), (CX + 3, 119, CZ + 3), "gilt", name="finial"))
     els.append(E((CX - 2, 119, CZ - 2), (CX + 2, 122, CZ + 2), "gilt", name="finial tip"))
+    flag = []   # the pennant: its own moving part, flutters about the pole (docs/props/MOVING-PARTS.md)
     pen = Mat(RED, 2, lambda f, P, c, r, w, h: 2 if 3 <= P[1] - 104 < 5 and f in ("north", "south") else 0)
-    els.append(E((CX + 3, 102, CZ - 1), (CX + 17, 112, CZ + 1), pen, name="pennant"))
-    els.append(E((CX + 17, 102, CZ - 1), (CX + 23, 105, CZ + 1), pen, name="pennant tail"))
-    els.append(E((CX + 17, 109, CZ - 1), (CX + 23, 112, CZ + 1), pen, name="pennant tail"))
+    flag.append(E((CX + 3, 102, CZ - 1), (CX + 17, 112, CZ + 1), pen, name="pennant"))
+    flag.append(E((CX + 17, 102, CZ - 1), (CX + 23, 105, CZ + 1), pen, name="pennant tail"))
+    flag.append(E((CX + 17, 109, CZ - 1), (CX + 23, 112, CZ + 1), pen, name="pennant tail"))
 
     # ---- guy ropes (22.5 degrees off the vertical) to pegs, two a face on the four cardinal faces ----
     rope = Mat(ROPE_R, 2, edges=False)
@@ -229,4 +230,4 @@ def build():
     els.append(E((CX - 9, 8, cz0 - 1), (CX + 9, 11, cz0 + 11), "swood_x", name="chest lid"))
     for x0 in (CX - 6, CX + 4):
         els.append(E((x0, 0, cz0 - 1), (x0 + 2, 11, cz0), "iron", skip="down", name="chest strap"))
-    return Prop.split("tent_pavilion", els, SIZE)
+    return Prop.split("tent_pavilion", els, SIZE, moving=[("pennant", flag, (27,))])

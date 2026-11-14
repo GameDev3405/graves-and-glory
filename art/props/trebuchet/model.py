@@ -27,6 +27,9 @@ HEMP = Mat(HEMP_R, 2, lambda f, P, c, r, w, h: -1 if math.floor(P[0] + P[1] + P[
 FSTONE_R = make_ramp("8A8478", 0.20)
 FSTONE = Mat(FSTONE_R, 2, lambda f, P, c, r, w, h: -1 if h3(*P, 23) < 0.10 else 0)
 
+ARM_SLOTS = (90, 91, 92, 93, 94, 95)   # CMD indices past the 90 regions (split block 140..149): the arm and the box
+# are moving parts, packed by proplib.pack_group
+BOX_SLOTS = (96, 97, 98)
 AXLE = (140, -12)                # (y, z) of the arm's pivot; the axle runs along x
 # The arm is modelled standing upright (long end down, short end up) and turned -45 degrees about the axle: cocked,
 # the long end wound down to the winch at the back, the short end and the weight box raised at the front. Upright, the
@@ -161,10 +164,13 @@ def build():
         E((6, 2, -14), (10, 8, -10), "iron", name="sling hook"),
         E((-14, 192, -15), (30, 198, -9), "iron", name="weight pin"),
     ]
-    els += [E(e.frm, e.to, e.mat, skip=" ".join(sorted(e.skip)), rot=ARM, name=e.name, faces=e.faces) for e in arm]
+    # The arm is a moving part (docs/props/MOVING-PARTS.md): an idle creak about the axle. The pull rope and the sling's
+    # rising cord hang on its hook, so they turn with it (the rope's drum end runs on into the wound rope, hidden there).
+    moving_arm = [E(e.frm, e.to, e.mat, skip=" ".join(sorted(e.skip)), rot=ARM, name=e.name, faces=e.faces) for e in arm]
 
     # ---- weight box hanging from the pin (pin centre about y 179, z -51): plank walls, ballast on top ----------
-    els += [
+    # It hangs free: it follows the arm and swings a little on the pin (its own moving part).
+    box = [
         E((-12, 92, -75), (28, 136, -71), "plank_x", name="box wall"),
         E((-12, 92, -31), (28, 136, -27), "plank_x", name="box wall"),
         E((-12, 92, -71), (-8, 136, -31), "plank_z", name="box wall"),
@@ -202,13 +208,13 @@ def build():
     ]
     els += handspikes(-46, -42) + handspikes(58, 62)
     # the pull rope from the arm's hook to the drum
-    els.append(E((6, 45, 85), (9, 48, 108), HEMP, name="pull rope"))
+    moving_arm.append(E((6, 45, 85), (9, 48, 112), HEMP, name="pull rope"))
 
     # ---- sling: from the hook down to the trough, forward to the pouch with its stone --------------------------
-    els.append(E((6, 16, 71), (10, 47, 74), HEMP, rot=("x", 22.5, (6, 16, 71)), name="sling cord"))
+    moving_arm.append(E((6, 16, 71), (10, 47, 74), HEMP, rot=("x", 22.5, (6, 16, 71)), name="sling cord"))
     els.append(E((6, 16, -34), (10, 18, 74), HEMP, name="sling cord"))
     els.append(E((2, 16, -52), (14, 21, -34), "leather", name="sling pouch"))
     els += [E((4, 20, -49), (12, 30, -37), FSTONE, name="shot"), E((3, 21, -48), (13, 29, -38), FSTONE, name="shot")]
 
     els = cut(els)
-    return Prop.split("trebuchet", els, SIZE)
+    return Prop.split("trebuchet", els, SIZE, moving=[("arm", moving_arm, ARM_SLOTS), ("box", box, BOX_SLOTS)])

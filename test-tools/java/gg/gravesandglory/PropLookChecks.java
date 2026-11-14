@@ -290,19 +290,31 @@ final class PropLookChecks implements Phase1Checks.Suite {
         double h = d.sy();
         return new double[]{h, Math.max(2.0, 0.9 * h + 0.6), d.sx() / 2.0, h * 0.75, d.sz() / 2.0, 1.3};
     }
-    /** GRAVES_PROPMOTION=count,spacing (tools/prop_shot.py --motion): frames per prop and client ticks between them; 0 frames by default. */
+    /** GRAVES_PROPMOTION=count,spacing[,focus[,view]] (tools/prop_shot.py --motion): frames per prop, client ticks between them, an
+     *  optional close-up distance (blocks, 0 = whole prop) and the camera's bearing round the prop (degrees from straight in front, + toward
+     *  east; default 50, front-right); 0 frames by default. */
     static final int[] MOTION = motion();
     static int[] motion() {
         String[] v = System.getenv().getOrDefault("GRAVES_PROPMOTION", "").split(",");
-        try { return new int[]{Math.max(0, Math.min(200, Integer.parseInt(v[0].trim()))), v.length > 1 ? Math.max(1, Integer.parseInt(v[1].trim())) : 4}; }
-        catch (NumberFormatException e) { return new int[]{0, 4}; }
+        try { return new int[]{Math.max(0, Math.min(200, Integer.parseInt(v[0].trim()))), v.length > 1 ? Math.max(1, Integer.parseInt(v[1].trim())) : 4,
+                               v.length > 2 ? Math.max(0, Integer.parseInt(v[2].trim())) : 0, v.length > 3 ? Integer.parseInt(v[3].trim()) : 50}; }
+        catch (NumberFormatException e) { return new int[]{0, 4, 0, 50}; }
     }
-    /** The motion camera: front-right of prop i, far enough back for its full height, looking at its middle (moving parts show their sweep). */
+    /** The motion camera: front-right of prop i (or at the given bearing), far enough back for its full height, looking at its middle
+     *  (moving parts show their sweep). With a focus distance and a prop with motion, it looks at the mean of the motion pivots from that
+     *  distance instead (a pennant on a tall tent fills the frame). Props stand at facing 0, so model px P is at anchor + P/16. */
     void frameCamera(MinecraftClient c, int i) {
         var d = PROPS.get(i); int[] a = anchor(i);
         double cx = a[0] - d.px() + d.sx() / 2.0, cz = a[2] - d.pz() + d.sz() / 2.0, cy = oy + d.sy() * 0.55;
         double dist = Math.max(4.5, Math.max(d.sy(), Math.max(d.sx(), d.sz())) * 0.95 + 1);
-        double x = cx + dist * 0.77, z = cz - dist * 0.64, y = cy + 0.4;
+        var def = Props.DEFS.get(d.id());
+        if (MOTION[2] > 0 && def != null && !def.motion().isEmpty()) {
+            double sx = 0, sy = 0, sz = 0; for (var m : def.motion()) { sx += m.px(); sy += m.py(); sz += m.pz(); }
+            int n = def.motion().size();
+            cx = a[0] + sx / n / 16; cy = a[1] + sy / n / 16; cz = a[2] + sz / n / 16; dist = MOTION[2];
+        }
+        double bearing = Math.toRadians(MOTION[3]);
+        double x = cx + dist * Math.sin(bearing), z = cz - dist * Math.cos(bearing), y = cy + 0.4;
         double dx = cx - x, dy = cy - y, dz = cz - z;
         float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)), pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
         var id = c.player.getUuid();

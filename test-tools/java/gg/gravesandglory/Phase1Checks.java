@@ -230,28 +230,35 @@ public final class Phase1Checks implements ClientModInitializer {
         /** p1-prop-motion (docs/props/MOVING-PARTS.md): two great_banners 40 blocks over the player (within PropMotion.RANGE), one facing north
          *  and one facing east, sway: the north cloth's transformation changes over 60 ticks and is never the rest pose for long, its pole never
          *  moves, and the east cloth's hem swings out east (its front), as the pose maths says. A moving cloth is written to NBT at rest (a chunk
-         *  or structure save). The player then moves over 48 blocks away: within 15 ticks both banners are dropped from the ticker and their
-         *  cloths are at rest. Props.remove takes every part and the motion state. On a buried platform, put back, the player put back. */
-        net.minecraft.util.math.BlockPos motionCell,motionEast;Map<net.minecraft.util.math.BlockPos,net.minecraft.block.BlockState> motionSaved;
-        final List<float[]> motionPoses=new ArrayList<>();int motionPoleMoved,motionEastSamples,motionEastOut,motionEastWrong;double motionEastMost;
+         *  or structure save). A cook_spit beside them (a rotate) turns its roast in place: the pose is a pure rotation about the spit's
+         *  axis (x), it keeps changing, and the posts and fire never move. The player then moves over 48 blocks away: within 15 ticks every
+         *  prop is dropped from the ticker and its moving parts are at rest. Props.remove takes every part and the motion state. On a buried
+         *  platform, put back, the player put back. */
+        net.minecraft.util.math.BlockPos motionCell,motionEast,motionSpit;Map<net.minecraft.util.math.BlockPos,net.minecraft.block.BlockState> motionSaved;
+        final List<float[]> motionPoses=new ArrayList<>();int motionPoleMoved,motionEastSamples,motionEastOut,motionEastWrong,motionSpitStatic;double motionEastMost;
+        final List<float[]> motionSpitPoses=new ArrayList<>();
         Vec3d motionFrom;float motionYaw,motionPitch;boolean motionOk;String motionWhy="";
         boolean propMotionStart(GravesAndGlory.Battle b){
             var p=sp(b);var w=b.world;
             if(p==null){report("p1-prop-motion",false,"no player");return false;}
             int x0=(int)Math.floor(p.getX())+8,z0=(int)Math.floor(p.getZ()),oy=Math.min(w.getTopY()-16,(int)Math.floor(p.getY())+40);
-            motionCell=new net.minecraft.util.math.BlockPos(x0,oy,z0);motionEast=motionCell.add(0,0,5);
+            motionCell=new net.minecraft.util.math.BlockPos(x0,oy,z0);motionEast=motionCell.add(0,0,5);motionSpit=motionCell.add(2,0,2);
             var box=net.minecraft.util.math.BlockBox.create(motionCell.add(-4,-4,-3),motionCell.add(4,8,8));
             motionSaved=new HashMap<>();
             for(var q:net.minecraft.util.math.BlockPos.iterate(box.getMinX(),box.getMinY(),box.getMinZ(),box.getMaxX(),box.getMaxY(),box.getMaxZ()))motionSaved.put(q.toImmutable(),w.getBlockState(q));
             for(var q:motionSaved.keySet())w.setBlockState(q,(q.getY()>=oy?net.minecraft.block.Blocks.AIR:q.getY()==oy-1?net.minecraft.block.Blocks.GRASS_BLOCK:net.minecraft.block.Blocks.DIRT).getDefaultState(),2);
             String why=Props.place(w,"great_banner",motionCell,0);
             String why90=why.isEmpty()?Props.place(w,"great_banner",motionEast,90):"not tried";
-            if(!why.isEmpty()||!why90.isEmpty()){report("p1-prop-motion",false,"place north: '"+why+"', east: '"+why90+"'");propMotionEnd(b);return false;}
-            motionPoses.clear();motionPoleMoved=motionEastSamples=motionEastOut=motionEastWrong=0;motionEastMost=0;motionOk=false;motionWhy="";
+            String whySpit=why90.isEmpty()?Props.place(w,"cook_spit",motionSpit,0):"not tried";
+            if(!why.isEmpty()||!why90.isEmpty()||!whySpit.isEmpty()){report("p1-prop-motion",false,"place north: '"+why+"', east: '"+why90+"', spit: '"+whySpit+"'");propMotionEnd(b);return false;}
+            motionPoses.clear();motionSpitPoses.clear();motionPoleMoved=motionEastSamples=motionEastOut=motionEastWrong=motionSpitStatic=0;motionEastMost=0;motionOk=false;motionWhy="";
             return true;
         }
         net.minecraft.entity.decoration.DisplayEntity motionPart(GravesAndGlory.Battle b,net.minecraft.util.math.BlockPos cell,String model){
-            var d=Props.DEFS.get("great_banner");if(d==null)return null;
+            return motionPart(b,cell,"great_banner",model);
+        }
+        net.minecraft.entity.decoration.DisplayEntity motionPart(GravesAndGlory.Battle b,net.minecraft.util.math.BlockPos cell,String id,String model){
+            var d=Props.DEFS.get(id);if(d==null)return null;
             int cmd=-1;for(var part:d.parts())if(part.model().equals(model))cmd=part.cmd();
             for(var e:Props.parts(b.world,cell))if(Props.partCmd(e)==cmd&&e instanceof net.minecraft.entity.decoration.DisplayEntity de)return de;
             return null;
@@ -267,6 +274,9 @@ public final class Phase1Checks implements ClientModInitializer {
         boolean propMotionStep(GravesAndGlory.Battle b){
             var cloth=motionPart(b,motionCell,"great_banner_cloth");var pole=motionPart(b,motionCell,"great_banner");var east=motionPart(b,motionEast,"great_banner_cloth");
             if(cloth!=null)motionPoses.add(PropTicker.pose(cloth));
+            var roast=motionPart(b,motionSpit,"cook_spit","cook_spit_roast");
+            if(roast!=null)motionSpitPoses.add(PropTicker.pose(roast));
+            for(String m:new String[]{"cook_spit","cook_spit_fire"}){var e=motionPart(b,motionSpit,"cook_spit",m);if(e==null||!Arrays.equals(PropTicker.pose(e),PropMotion.REST))motionSpitStatic++;}
             if(pole!=null&&!Arrays.equals(PropTicker.pose(pole),PropMotion.REST))motionPoleMoved++;
             var d=Props.DEFS.get("great_banner");
             if(east!=null&&d!=null&&!Arrays.equals(PropTicker.pose(east),PropMotion.REST)){ // the hem's world move from rest: out east, hardly along z
@@ -291,10 +301,22 @@ public final class Phase1Checks implements ClientModInitializer {
                 boolean savedRest=savedPose!=null&&savedPose.equals(net.minecraft.util.math.AffineTransformation.identity());
                 boolean liveMoved=live!=null&&!Arrays.equals(live,PropMotion.REST);
                 boolean eastOk=east!=null&&Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(east.getYaw()-270))<1&&motionEastSamples>=40&&motionEastOut>=motionEastSamples-2&&motionEastWrong==0;
-                motionOk=cloth!=null&&pole!=null&&distinct>=5&&rest<=2&&maxAngle>1&&maxAngle<12&&motionPoleMoved==0&&moving&&liveMoved&&savedRest&&eastOk;
+                // the spit: a pure rotation about the entity's x axis (the spit), no translation, turning on (8 s a turn, 2.25 deg a tick)
+                int spitDistinct=0;double spitMove=0,spitOffAxis=0,spitTurn=0;float[] sl=null;
+                for(float[] q:motionSpitPoses){
+                    if(sl==null||!Arrays.equals(q,sl))spitDistinct++;
+                    spitMove=Math.max(spitMove,Math.abs(q[0])+Math.abs(q[1])+Math.abs(q[2]));
+                    spitOffAxis=Math.max(spitOffAxis,Math.abs(q[4])+Math.abs(q[5]));
+                    if(sl!=null){double dot=Math.abs(q[3]*sl[3]+q[4]*sl[4]+q[5]*sl[5]+q[6]*sl[6]);spitTurn+=Math.toDegrees(2*Math.acos(Math.min(1,dot)));}
+                    sl=q;
+                }
+                boolean spitOk=motionSpitPoses.size()>=50&&spitDistinct>=5&&spitMove<1e-4&&spitOffAxis<1e-4&&spitTurn>40&&spitTurn<400&&motionSpitStatic==0&&PropTicker.moving(w,motionSpit);
+                motionOk=cloth!=null&&pole!=null&&distinct>=5&&rest<=2&&maxAngle>1&&maxAngle<12&&motionPoleMoved==0&&moving&&liveMoved&&savedRest&&eastOk&&spitOk;
                 motionWhy="cloth poses over 60 ticks: "+motionPoses.size()+" samples, "+distinct+" distinct, "+rest+" at rest, largest turn "+String.format("%.1f",maxAngle)
                     +" deg; pole moved "+motionPoleMoved+"; facing 90 (yaw "+(east==null?"none":east.getYaw())+"): "+motionEastSamples+" posed samples, hem out east in "+motionEastOut+", wrong way "+motionEastWrong+", most "+String.format("%.1f",motionEastMost)
-                    +" px; ticker moving="+moving+"; live pose off rest="+liveMoved+", saved NBT at rest="+savedRest;
+                    +" px; ticker moving="+moving+"; live pose off rest="+liveMoved+", saved NBT at rest="+savedRest
+                    +"; spit: "+motionSpitPoses.size()+" samples, "+spitDistinct+" distinct, translation "+String.format("%.5f",spitMove)+", off the x axis "+String.format("%.5f",spitOffAxis)
+                    +", turned "+String.format("%.0f",spitTurn)+" deg, static parts moved "+motionSpitStatic;
             }catch(Exception e){motionWhy="threw "+e;e.printStackTrace();}
             var p=sp(b);
             if(p==null){report("p1-prop-motion",false,motionWhy+"; no player to move away");propMotionEnd(b);return true;}
@@ -309,11 +331,14 @@ public final class Phase1Checks implements ClientModInitializer {
             var w=b.world;
             try{
                 var cloth=motionPart(b,motionCell,"great_banner_cloth");var east=motionPart(b,motionEast,"great_banner_cloth");
-                boolean paused=!PropTicker.moving(w,motionCell)&&!PropTicker.moving(w,motionEast);
-                boolean atRest=cloth!=null&&east!=null&&Arrays.equals(PropTicker.pose(cloth),PropMotion.REST)&&Arrays.equals(PropTicker.pose(east),PropMotion.REST);
-                boolean removed=Props.remove(w,motionCell)&&Props.remove(w,motionEast);
-                int parts=Props.parts(w,motionCell).size()+Props.parts(w,motionEast).size();boolean forgotten=!PropTicker.moving(w,motionCell)&&!PropTicker.moving(w,motionEast);
-                report("p1-prop-motion",motionOk&&paused&&atRest&&removed&&parts==0&&forgotten,motionWhy+"; player 70 blocks off for 15 ticks: paused="+paused+", both cloths at rest="+atRest
+                var roast=motionPart(b,motionSpit,"cook_spit","cook_spit_roast");
+                boolean paused=!PropTicker.moving(w,motionCell)&&!PropTicker.moving(w,motionEast)&&!PropTicker.moving(w,motionSpit);
+                boolean atRest=cloth!=null&&east!=null&&roast!=null&&Arrays.equals(PropTicker.pose(cloth),PropMotion.REST)&&Arrays.equals(PropTicker.pose(east),PropMotion.REST)
+                    &&Arrays.equals(PropTicker.pose(roast),PropMotion.REST);
+                boolean removed=Props.remove(w,motionCell)&&Props.remove(w,motionEast)&&Props.remove(w,motionSpit);
+                int parts=Props.parts(w,motionCell).size()+Props.parts(w,motionEast).size()+Props.parts(w,motionSpit).size();
+                boolean forgotten=!PropTicker.moving(w,motionCell)&&!PropTicker.moving(w,motionEast)&&!PropTicker.moving(w,motionSpit);
+                report("p1-prop-motion",motionOk&&paused&&atRest&&removed&&parts==0&&forgotten,motionWhy+"; player 70 blocks off for 15 ticks: paused="+paused+", cloths and roast at rest="+atRest
                     +"; removed="+removed+", parts left "+parts+", motion state forgotten="+forgotten);
             }catch(Exception e){report("p1-prop-motion",false,motionWhy+"; away stage threw "+e);e.printStackTrace();}
             propMotionEnd(b);
@@ -321,7 +346,7 @@ public final class Phase1Checks implements ClientModInitializer {
         }
         void propMotionEnd(GravesAndGlory.Battle b){
             var w=b.world;
-            for(var cell:new net.minecraft.util.math.BlockPos[]{motionCell,motionEast}){
+            for(var cell:new net.minecraft.util.math.BlockPos[]{motionCell,motionEast,motionSpit}){
                 if(cell==null)continue;
                 if(Props.readAnchor(w,cell)!=null)Props.remove(w,cell);
                 for(var e:new ArrayList<>(Props.parts(w,cell)))e.discard();

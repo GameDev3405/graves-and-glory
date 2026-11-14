@@ -11,5 +11,37 @@
     [0, 0, 0]
   ],
   "lights": [],
-  "effects": []
+  "effects": [],
+  "motion": [
+    {
+      "part": "spear_standard_pennant",
+      "kind": "sway",
+      "axis": "y",
+      "pivot": [4, 30, 8],
+      "amplitude": 14,
+      "bias": 0,
+      "period": 84,
+      "phase": 0
+    },
+    {
+      "part": "spear_standard_pennant",
+      "kind": "sway",
+      "axis": "y",
+      "pivot": [4, 30, 8],
+      "amplitude": 6,
+      "bias": 0,
+      "period": 66,
+      "phase": 0.3
+    },
+    {
+      "part": "spear_standard_pennant",
+      "kind": "sway",
+      "axis": "z",
+      "pivot": [4, 36, 8],
+      "amplitude": 2,
+      "bias": -2,
+      "period": 74,
+      "phase": 0.6
+    }
+  ]
 }

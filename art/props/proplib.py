@@ -264,9 +264,11 @@ class Prop:
     a part an animated texture of its own. A split prop
     (Prop.split) carries `offsets`: its shifts go to the def's part `offset` (the game moves the part entity) instead of
     the model's display translation, which Minecraft clamps to +-80 px."""
-    def __init__(s, pid, parts, glow=(), shift=None, note="", anim=None):
+    def __init__(s, pid, parts, glow=(), shift=None, note="", anim=None, offsets=False):
+        """`offsets=True` (a small prop with a moving part that must turn about its entity origin, e.g. a spit): every part's
+        shift goes to the def's part `offset` (the game moves the entity) instead of the display translation, as for split props."""
         s.id, s.parts, s.glow, s.shift, s.note = pid, parts, set(glow), shift or {}, note
-        s.offsets = False
+        s.offsets = offsets
         s.regions = None
         s.anim = dict(anim or {})   # {part: Anim}: animated parts, each on its own texture strip (see Anim)
         for p in s.anim: assert p in s.parts, "%s: anim part %s is not a part" % (pid, p)
@@ -275,20 +277,35 @@ class Prop:
                 for f in FACES:
                     if getattr(e.mat_for(f), "animated", False) and p not in s.anim:
                         raise SystemExit("%s: element %r on part %s uses an AnimMat but the part has no Anim" % (pid, e.name, p))
+        s.moving = {}
 
     @classmethod
-    def split(cls, pid, els, size, glow=(), note=""):
+    def split(cls, pid, els, size, glow=(), note="", moving=()):
         """Big props: `els` (and `glow`, drawn full-bright) modelled in the real prop frame for a footprint `size`
         (sx, sy, sz cells) are cut into 3-cell regions; each non-empty region is a part `<id>_<n>` stored inside -16..32.
-        n = region index (glow regions after all plain ones), so part names and CMDs stay put while the model changes."""
+        n = region index (glow regions after all plain ones), so part names and CMDs stay put while the model changes.
+        `moving` [(name, elements, slots)]: pieces that turn (docs/props/MOVING-PARTS.md), each group packed into as few parts
+        as fit (its own 48 px grid, see `pack_group`), named `<id>_<slot>` with the slots given in order. A slot is a CMD index
+        of the prop's split block that no static region uses (a region the model leaves empty, or one past the regions);
+        `new_prop.py --sync` checks it fits the block. `prop.moving[name]` lists the group's part names for the def's motion."""
         parts, shift = split_elements(pid, els, size)
         total = region_count(size)
         gnames = []
         if glow:
             gp, gs = split_elements(pid, glow, size, first=total)
             parts.update(gp); shift.update(gs); gnames = list(gp)
+        mv = {}
+        for name, mels, slots in moving:
+            cells = pack_group(pid, mels)
+            if len(cells) > len(slots):
+                raise SystemExit("%s: moving group %r needs %d parts, %d slots given" % (pid, name, len(cells), len(slots)))
+            mv[name] = []
+            for (sh, pels), slot in zip(cells, slots):
+                pname = "%s_%d" % (pid, slot)
+                if pname in parts: raise SystemExit("%s: moving group %r slot %d is a part already (region %s holds elements)" % (pid, name, slot, pname))
+                parts[pname] = pels; shift[pname] = sh; mv[name].append(pname)
         p = cls(pid, parts, glow=gnames, shift=shift, note=note)
-        p.offsets, p.regions = True, total
+        p.offsets, p.regions, p.moving = True, total, mv
         return p
 
 class Anim:
@@ -704,6 +721,58 @@ def split_elements(pid, els, size, first=0):
                     shift[pname] = tuple(start[i] + REGION * idx[i] + 16 for i in range(3))
     order = sorted(parts, key=lambda p: int(p.rsplit("_", 1)[1]))
     return {p: parts[p] for p in order}, {p: shift[p] for p in order}
+
+def cut_box(e, axis, bounds):
+    """Pieces of element `e` cut at the planes `bounds` across `axis`. A rotated element keeps its rotation and origin in
+    every piece, so the pieces still render as one box (cut on any axis); cut faces are skipped, paint follows `whole`."""
+    cs = [b for b in bounds if e.frm[axis] < b < e.to[axis]]
+    if not cs: return [e]
+    edges = [e.frm[axis]] + cs + [e.to[axis]]; out = []
+    for a, b in zip(edges, edges[1:]):
+        f, t = list(e.frm), list(e.to); f[axis], t[axis] = a, b
+        sk = set(e.skip)
+        if a > e.frm[axis]: sk.add(FNEG[axis])
+        if b < e.to[axis]: sk.add(FPOS[axis])
+        out.append(E(f, t, e.mat, skip=" ".join(sorted(sk)), rot=e.rot, shade=e.shade, name=e.name, faces=e.faces,
+                     whole=e.whole or (list(e.frm), list(e.to))))
+    return out
+
+def pack_group(pid, els, step=2):
+    """A moving group (docs/props/MOVING-PARTS.md) as few parts as possible: the group gets its own grid of 48 px cells, its
+    start on each axis tried in `step` px steps for the fewest non-empty cells (first best wins, so it is deterministic);
+    elements are cut at the cell planes (`cut_box`). Returns [(shift, [E])] in cell order (the
+    part's def offset: the stored elements sit in -16..32, centred on the part's entity)."""
+    lo = [min(e.frm[i] for e in els) for i in range(3)]
+    best = None
+    for ox in range(0, REGION, step):
+        for oy in range(0, REGION, step):
+            for oz in range(0, REGION, step):
+                st = (lo[0] - ox, lo[1] - oy, lo[2] - oz); cells = set()
+                for e in els:
+                    rng = [range(int((e.frm[i] - st[i]) // REGION), int((e.to[i] - st[i] - 1e-9) // REGION) + 1) for i in range(3)]
+                    cells.update((a, b, c) for a in rng[0] for b in rng[1] for c in rng[2])
+                if best is None or len(cells) < best[0]: best = (len(cells), st)
+    st = best[1]; pieces = list(els)
+    for i in range(3):
+        hi = max(e.to[i] for e in pieces)
+        bounds = [st[i] + REGION * k for k in range(1, int((hi - st[i]) // REGION) + 2)]
+        pieces = [q for e in pieces for q in cut_box(e, i, bounds)]
+    cells = {}
+    for e in pieces:
+        idx = tuple(int((e.frm[i] - st[i]) // REGION) for i in range(3))
+        cells.setdefault(idx, []).append(e)
+    out = []
+    for idx in sorted(cells, key=lambda t: (t[1], t[2], t[0])):
+        # centre the part's pieces on its entity (the entity's cell sets the part's light), inside -16..32
+        sh = []
+        for i in range(3):
+            a, b = min(e.frm[i] for e in cells[idx]), max(e.to[i] for e in cells[idx])
+            sh.append(max(b - 32, min(a + 16, int(math.floor((a + b) / 2)) - 8)))
+        sh = tuple(sh)
+        for e in cells[idx]:
+            for i in range(3): assert -16 <= e.frm[i] - sh[i] and e.to[i] - sh[i] <= 32, (pid, e.name, e.frm, e.to, sh)
+        out.append((sh, cells[idx]))
+    return out
 
 def visible_faces(e):
     out = []

@@ -247,7 +247,7 @@ The worker and the stone hand both hit it before the fix.
 - Budget override (for big props agreed with the lead): brief line `Budget override: elements 300, sheet 512`, or def
   field `"budget": {"elements": 300, "sheet": 512}`. Sheets cap at 1024. Default budgets are unchanged.
 - Moving parts (swaying cloth, a spit, a trebuchet arm): the def's `motion` list, `docs/props/MOVING-PARTS.md`. Shoot them with
-  `python tools/prop_shot.py <id> --motion 24:4` (frames and a GIF in `work/props/review/<id>-sway.gif`).
+  `python tools/prop_shot.py <id> --motion 24:4[:FOCUS[:VIEW]]` (frames and a GIF in `work/props/review/<id>-motion.gif`; FOCUS blocks aims at the motion pivots, VIEW is the camera bearing from the front, default 50).
 - Effect-only props (smoke vents, sound spots): `new_prop.py <id> --effects-only` writes a part with no elements,
   `solid: []` and a sample effect. `Props.place` and the card accept them; the def must list at least one effect.
 

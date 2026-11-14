@@ -17,7 +17,7 @@ import java.util.List;
  * through {@code R(Q)}: rotation q and translation {@code R(Q)-q*R(Q)}.
  *
  * <p>Desync: each anchor gets a phase share and a period scale (0.92..1.08) from its {@link PropEffects#seed}, so a row of banners never sways in
- * step, and a keyframe slot (which of the two ticker runs in a KEY window it sends on), so the packets of many props spread over the ticks.
+ * step (entries that are the same motion on different parts share theirs, {@link #jitter}), and a keyframe slot (which of the two ticker runs in a KEY window it sends on), so the packets of many props spread over the ticks.
  */
 public final class PropMotion {
     private PropMotion(){}
@@ -51,6 +51,18 @@ public final class PropMotion {
         return (PropEffects.mix(seed^(0xD1B54A32D192ED03L*(index+1)))>>>11)*0x1.0p-53;
     }
 
+    /** The desync index of entry {@code i}: the first entry with the same motion (everything but the part). A piece split over several parts
+     *  (a trebuchet arm) carries the same entry on each part, and they must turn in step to stay joined. */
+    public static int jitter(List<PropDef.Motion> all,int i){
+        PropDef.Motion m=all.get(i);
+        for(int j=0;j<i;j++){
+            PropDef.Motion o=all.get(j);
+            if(o.kind().equals(m.kind())&&o.axis()==m.axis()&&o.sign()==m.sign()&&o.px()==m.px()&&o.py()==m.py()&&o.pz()==m.pz()
+                &&o.amplitude()==m.amplitude()&&o.bias()==m.bias()&&o.period()==m.period()&&o.phase()==m.phase())return j;
+        }
+        return i;
+    }
+
     /** The angle (degrees) of motion entry {@code index} at {@code tick} for the prop with this seed. */
     public static double angle(PropDef.Motion m,int index,double tick,long seed){
         double period=m.period()*(m.kind().equals("rotate")?1:periodScale(seed,index));
@@ -76,7 +88,7 @@ public final class PropMotion {
             PropDef.Motion m=all.get(i);
             if(!m.part().equals(p.model()))continue;
             any=true;
-            double a=Math.toRadians(angle(m,i,tick,seed))*m.sign();
+            double a=Math.toRadians(angle(m,jitter(all,i),tick,seed))*m.sign();
             double[] axis={0,0,0};axis[m.axis()]=1;
             axis[0]=-axis[0];axis[2]=-axis[2];                   // the item renderer's half turn about y
             double s=Math.sin(a/2);

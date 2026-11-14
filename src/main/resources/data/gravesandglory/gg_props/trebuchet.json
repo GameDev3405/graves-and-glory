@@ -28,7 +28,6 @@
     {"model": "trebuchet_22", "cmd": 7311423, "glow": false, "offset": [0, 64, -64]},
     {"model": "trebuchet_23", "cmd": 7311424, "glow": false, "offset": [48, 64, -64]},
     {"model": "trebuchet_24", "cmd": 7311425, "glow": false, "offset": [-48, 64, -16]},
-    {"model": "trebuchet_25", "cmd": 7311426, "glow": false, "offset": [0, 64, -16]},
     {"model": "trebuchet_26", "cmd": 7311427, "glow": false, "offset": [48, 64, -16]},
     {"model": "trebuchet_27", "cmd": 7311428, "glow": false, "offset": [-48, 64, 32]},
     {"model": "trebuchet_28", "cmd": 7311429, "glow": false, "offset": [0, 64, 32]},
@@ -42,7 +41,6 @@
     {"model": "trebuchet_36", "cmd": 7311437, "glow": false, "offset": [-48, 112, -112]},
     {"model": "trebuchet_38", "cmd": 7311439, "glow": false, "offset": [48, 112, -112]},
     {"model": "trebuchet_39", "cmd": 7311440, "glow": false, "offset": [-48, 112, -64]},
-    {"model": "trebuchet_40", "cmd": 7311441, "glow": false, "offset": [0, 112, -64]},
     {"model": "trebuchet_41", "cmd": 7311442, "glow": false, "offset": [48, 112, -64]},
     {"model": "trebuchet_42", "cmd": 7311443, "glow": false, "offset": [-48, 112, -16]},
     {"model": "trebuchet_43", "cmd": 7311444, "glow": false, "offset": [0, 112, -16]},
@@ -54,16 +52,22 @@
     {"model": "trebuchet_54", "cmd": 7311455, "glow": false, "offset": [-48, 160, -112]},
     {"model": "trebuchet_56", "cmd": 7311457, "glow": false, "offset": [48, 160, -112]},
     {"model": "trebuchet_57", "cmd": 7311458, "glow": false, "offset": [-48, 160, -64]},
-    {"model": "trebuchet_58", "cmd": 7311459, "glow": false, "offset": [0, 160, -64]},
     {"model": "trebuchet_59", "cmd": 7311460, "glow": false, "offset": [48, 160, -64]},
     {"model": "trebuchet_60", "cmd": 7311461, "glow": false, "offset": [-48, 160, -16]},
-    {"model": "trebuchet_61", "cmd": 7311462, "glow": false, "offset": [0, 160, -16]},
     {"model": "trebuchet_62", "cmd": 7311463, "glow": false, "offset": [48, 160, -16]},
     {"model": "trebuchet_63", "cmd": 7311464, "glow": false, "offset": [-48, 160, 32]},
     {"model": "trebuchet_65", "cmd": 7311466, "glow": false, "offset": [48, 160, 32]},
     {"model": "trebuchet_66", "cmd": 7311467, "glow": false, "offset": [-48, 160, 80]},
     {"model": "trebuchet_68", "cmd": 7311469, "glow": false, "offset": [48, 160, 80]},
-    {"model": "trebuchet_79", "cmd": 7311480, "glow": false, "offset": [0, 208, -16]}
+    {"model": "trebuchet_90", "cmd": 7311491, "glow": false, "offset": [0, 18, -20]},
+    {"model": "trebuchet_91", "cmd": 7311492, "glow": false, "offset": [0, 24, 83]},
+    {"model": "trebuchet_92", "cmd": 7311493, "glow": false, "offset": [0, 66, -20]},
+    {"model": "trebuchet_93", "cmd": 7311494, "glow": false, "offset": [0, 114, -20]},
+    {"model": "trebuchet_94", "cmd": 7311495, "glow": false, "offset": [0, 162, -20]},
+    {"model": "trebuchet_95", "cmd": 7311496, "glow": false, "offset": [0, 190, -20]},
+    {"model": "trebuchet_96", "cmd": 7311497, "glow": false, "offset": [0, 108, -61]},
+    {"model": "trebuchet_97", "cmd": 7311498, "glow": false, "offset": [0, 108, -35]},
+    {"model": "trebuchet_98", "cmd": 7311499, "glow": false, "offset": [0, 152, -59]}
   ],
   "solid": [
     [0, 0, 0],
@@ -198,5 +202,139 @@
   "split": {
     "block": 140,
     "blocks": 10
-  }
+  },
+  "motion": [
+    {
+      "part": "trebuchet_90",
+      "kind": "swing",
+      "axis": "x",
+      "pivot": [8, 140, -12],
+      "amplitude": 1.25,
+      "bias": 0,
+      "period": 140,
+      "phase": 0
+    },
+    {
+      "part": "trebuchet_91",
+      "kind": "swing",
+      "axis": "x",
+      "pivot": [8, 140, -12],
+      "amplitude": 1.25,
+      "bias": 0,
+      "period": 140,
+      "phase": 0
+    },
+    {
+      "part": "trebuchet_92",
+      "kind": "swing",
+      "axis": "x",
+      "pivot": [8, 140, -12],
+      "amplitude": 1.25,
+      "bias": 0,
+      "period": 140,
+      "phase": 0
+    },
+    {
+      "part": "trebuchet_93",
+      "kind": "swing",
+      "axis": "x",
+      "pivot": [8, 140, -12],
+      "amplitude": 1.25,
+      "bias": 0,
+      "period": 140,
+      "phase": 0
+    },
+    {
+      "part": "trebuchet_94",
+      "kind": "swing",
+      "axis": "x",
+      "pivot": [8, 140, -12],
+      "amplitude": 1.25,
+      "bias": 0,
+      "period": 140,
+      "phase": 0
+    },
+    {
+      "part": "trebuchet_95",
+      "kind": "swing",
+      "axis": "x",
+      "pivot": [8, 140, -12],
+      "amplitude": 1.25,
+      "bias": 0,
+      "period": 140,
+      "phase": 0
+    },
+    {
+      "part": "trebuchet_96",
+      "kind": "swing",
+      "axis": "x",
+      "pivot": [8, 140, -12],
+      "amplitude": 1.25,
+      "bias": 0,
+      "period": 140,
+      "phase": 0
+    },
+    {
+      "part": "trebuchet_96",
+      "kind": "sway",
+      "axis": "x",
+      "pivot": [
+        8,
+        178.9,
+        -50.9
+      ],
+      "amplitude": 1.2,
+      "bias": 0,
+      "period": 76,
+      "phase": 0.4
+    },
+    {
+      "part": "trebuchet_97",
+      "kind": "swing",
+      "axis": "x",
+      "pivot": [8, 140, -12],
+      "amplitude": 1.25,
+      "bias": 0,
+      "period": 140,
+      "phase": 0
+    },
+    {
+      "part": "trebuchet_97",
+      "kind": "sway",
+      "axis": "x",
+      "pivot": [
+        8,
+        178.9,
+        -50.9
+      ],
+      "amplitude": 1.2,
+      "bias": 0,
+      "period": 76,
+      "phase": 0.4
+    },
+    {
+      "part": "trebuchet_98",
+      "kind": "swing",
+      "axis": "x",
+      "pivot": [8, 140, -12],
+      "amplitude": 1.25,
+      "bias": 0,
+      "period": 140,
+      "phase": 0
+    },
+    {
+      "part": "trebuchet_98",
+      "kind": "sway",
+      "axis": "x",
+      "pivot": [
+        8,
+        178.9,
+        -50.9
+      ],
+      "amplitude": 1.2,
+      "bias": 0,
+      "period": 76,
+      "phase": 0.4
+    }
+  ]
 }
