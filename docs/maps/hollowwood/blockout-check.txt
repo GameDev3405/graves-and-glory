@@ -1,0 +1,22 @@
+point A floors [(78,)] kinds ['stump']
+point B floors [(62,)] kinds ['pit']
+point C floors [(78,)] kinds ['stump']
+columns that differ from their half-turn twin: 0
+floors with less than 3 clear above: 0
+walk from dawn to A: 267 | from dusk: 376
+walk from dawn to B: 354 | from dusk: 354
+walk from dawn to C: 376 | from dusk: 267
+walk from dawn to the other spawn: 584 | from dusk: 584
+walk from dawn to north bridge middle: 346 | from dusk: 351
+walk from dawn to south bridge middle: 351 | from dusk: 346
+escort start to stop 1: 79
+escort stop 1 to stop 2: 132
+escort stop 2 to stop 3: 132
+escort stop 3 to end: 79
+reachable cells on walls, bark or trunks: 0
+dawn to B by ramps only: 354
+dawn to B by Root Runs only: 361
+dawn to B by neither: None
+dawn to the dusk spawn with the bridges shut: 584
+trunks: 238
+OK

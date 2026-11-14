@@ -1,0 +1,29 @@
+# Hollowwood workshop: the Yoke and shrine
+note Hollowwood workshop
+mc execute as @a at @s run forceload add -64 -64 -1 -1
+mc execute as @a at @s run place template ggmaps:hw/ws_00 -64 194 -64
+wait 10
+mc execute as @a at @s run forceload add -64 0 -1 63
+mc execute as @a at @s run place template ggmaps:hw/ws_01 -64 194 0
+wait 10
+mc execute as @a at @s run forceload add 0 -64 63 -1
+mc execute as @a at @s run place template ggmaps:hw/ws_10 0 194 -64
+wait 10
+mc execute as @a at @s run forceload add 0 0 63 63
+mc execute as @a at @s run place template ggmaps:hw/ws_11 0 194 0
+wait 10
+mc time set 6000
+wait 20
+shot yoke-se-day 40 211 44 0 205 0
+shot yoke-eye-day 6 197 44 0 208 0
+shot yoke-foot-day -16 198 22 -32 200 0
+shot yoke-under-day -14 197 -14 8 213 6
+shot yoke-rim-day -46 217 -40 0 201 0
+mc time set 12800
+wait 20
+shot yoke-se-dusk 40 211 44 0 205 0
+shot yoke-eye-dusk 6 197 44 0 208 0
+shot yoke-foot-dusk -16 198 22 -32 200 0
+shot yoke-under-dusk -14 197 -14 8 213 6
+shot yoke-rim-dusk -46 217 -40 0 201 0
+shot yoke-top 0 255 0 0 90

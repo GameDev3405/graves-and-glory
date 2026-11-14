@@ -1,0 +1,46 @@
+# Hollowwood workshop 2: the two stumps
+note Hollowwood workshop 2
+mc execute as @a at @s run forceload add -128 -64 -65 -1
+mc execute as @a at @s run place template ggmaps:hw/ws2_00 -128 194 -64
+wait 10
+mc execute as @a at @s run forceload add -128 0 -65 63
+mc execute as @a at @s run place template ggmaps:hw/ws2_01 -128 194 0
+wait 10
+mc execute as @a at @s run forceload add -64 -64 -1 -1
+mc execute as @a at @s run place template ggmaps:hw/ws2_10 -64 194 -64
+wait 10
+mc execute as @a at @s run forceload add -64 0 -1 63
+mc execute as @a at @s run place template ggmaps:hw/ws2_11 -64 194 0
+wait 10
+mc execute as @a at @s run forceload add 0 -64 63 -1
+mc execute as @a at @s run place template ggmaps:hw/ws2_20 0 194 -64
+wait 10
+mc execute as @a at @s run forceload add 0 0 63 63
+mc execute as @a at @s run place template ggmaps:hw/ws2_21 0 194 0
+wait 10
+mc execute as @a at @s run forceload add 64 -64 127 -1
+mc execute as @a at @s run place template ggmaps:hw/ws2_30 64 194 -64
+wait 10
+mc execute as @a at @s run forceload add 64 0 127 63
+mc execute as @a at @s run place template ggmaps:hw/ws2_31 64 194 0
+wait 10
+mc time set 6000
+wait 20
+shot a-air-day -20 235 52 -64 201 0
+shot a-gate-day -6 199 -2 -34 203 -3
+shot a-in-day -42 204 6 -90 204 -4
+shot a-ground-day -84 198 54 -64 205 0
+shot c-air-day 108 235 52 64 201 0
+shot c-gate-day 122 199 -2 94 203 -3
+shot c-in-day 86 204 6 38 204 -4
+shot c-ground-day 44 198 54 64 205 0
+mc time set 12600
+wait 20
+shot a-air-dusk -20 235 52 -64 201 0
+shot a-gate-dusk -6 199 -2 -34 203 -3
+shot a-in-dusk -42 204 6 -90 204 -4
+shot a-ground-dusk -84 198 54 -64 205 0
+shot c-air-dusk 108 235 52 64 201 0
+shot c-gate-dusk 122 199 -2 94 203 -3
+shot c-in-dusk 86 204 6 38 204 -4
+shot c-ground-dusk 44 198 54 64 205 0
