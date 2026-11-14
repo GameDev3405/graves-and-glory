@@ -175,7 +175,7 @@ public final class Profile {
             trimmed += before - kept.size();
             b.cells = WarGrid.format(kept);
         }
-        if (trimmed > 0 && notice == null) notice = "Your banner no longer fits the war table; " + trimmedText(trimmed) + " taken off the back rows.";
+        if (trimmed > 0 && notice == null) notice = "Your banner no longer fits the table; " + trimmedText(trimmed) + " taken off the back rows.";
         activeBanner = clamp(activeBanner, 0, banners.size() - 1);
     }
     /** Removes, front to back, each troop past its rarity's rarities.bannerMax (a second Legendary), so trim never has to clear the rows behind it. */

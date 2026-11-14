@@ -51,7 +51,7 @@ public final class LobbyRulesCheck {
  }
  /** The one-time notice: set, saved, kept through a reload until shown, null once shown and saved. Campaign.showNotice is this clear-and-save. */
  static void noticeOnce(){
-  Profile p=fresh();p.notice="Your banner cost more than the war table allows; 2 troops were taken off the back rows.";
+  Profile p=fresh();p.notice="Your banner cost more than the table allows; 2 troops were taken off the back rows.";
   Profile a=GSON.fromJson(json(p),Profile.class);a.sanitize();
   check(p.notice.equals(a.notice),"The notice survives a save and reload until it is shown");
   String shown=a.notice;a.notice=null;Profile b=GSON.fromJson(json(a),Profile.class);b.sanitize();

@@ -27,7 +27,7 @@ public final class SnapshotSizeCheck {
         for (var e : p.owned.entrySet()) { e.getValue().copies = 99; e.getValue().stars = 3; e.getValue().kills = 99999; e.getValue().survived = 99999; e.getValue().mastery = 99999; }
         for (String id : c.house().keySet()) if (!p.owned.containsKey(id)) { var o = new Profile.Owned(); o.copies = 99; o.stars = 3; o.kills = 99999; o.survived = 99999; o.mastery = 99999; p.owned.put(id, o); }
         p.troopWrits = p.gearShards = 1_000_000; p.pacts = 99999; p.matches = 99999; p.wins = 99999;
-        p.notice = "Your banner no longer fits the war table; 40 troops were taken off the back rows.";
+        p.notice = "Your banner no longer fits the table; 40 troops were taken off the back rows.";
         int slots = Spec.FORGE[0].maxSlots();
         p.inventorySize = slots;
         String item = Spec.GEARITEMS[0].id(), rarity = Spec.GEARRARITIES[Spec.GEARRARITIES.length - 1].id();

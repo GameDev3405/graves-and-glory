@@ -62,7 +62,7 @@ final class BannerDrop {
             case "range": return "That cell is not on the table";
             case "unknown": return "That is not a troop";
             case "not_owned": return "You do not own that troop yet";
-            case "house": return "This House is not playable yet";
+            case "house": return "This House is not playable yet.";
             case "count": return RosterMath.maxTroops() + " troops max";
             case "cost": return "Over the " + RosterMath.allowance() + " gold limit";
             default:

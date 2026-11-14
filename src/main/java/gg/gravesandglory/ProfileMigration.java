@@ -186,7 +186,7 @@ public final class ProfileMigration {
             if (p.banner == null) table = Profile.starterTable();
             p.banners = new ArrayList<>(List.of(new Profile.Banner("Banner I", WarGrid.format(table))));
             p.activeBanner = 0;
-            if (moved.trimmed() > 0 && p.banner != null) p.notice = "Your banner cost more than the war table allows; " + Profile.trimmedText(moved.trimmed()) + " taken off the back rows.";
+            if (moved.trimmed() > 0 && p.banner != null) p.notice = "Your banner cost more than the table allows; " + Profile.trimmedText(moved.trimmed()) + " taken off the back rows.";
         }
         int gold = Profile.clamp(p.gold == null ? 0 : p.gold, 0, 1_000_000); // schema 6 clamped saved gold here
         p.pacts += p.writs == null ? 0 : p.writs;
