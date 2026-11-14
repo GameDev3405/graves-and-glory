@@ -76,6 +76,8 @@ public final class Phase4Checks implements ClientModInitializer {
                 currentName=queue.poll();failed=false;broken=false;tick=0;var make=SUITES.get(currentName);
                 if(make==null){report("p4-"+currentName+"-suite",false,"unknown suite");if(queue.isEmpty())c.scheduleStop();return;}
                 current=make.get();
+                // The ending suites need the sequence to play; the harness gradle defaults gravesandglory.instantEnding to true, so finish would go straight back to the lobby
+                if(currentName.startsWith("ending")&&Campaign.instantEnding()){report("p4-"+currentName+"-env",false,"not run: submit with --env GRAVES_INSTANT_ENDING=false (gravesandglory.instantEnding is true, so finish skips the ending sequence)");finish(c,currentName);return;}
             }
             if(broken){broken=false;finish(c,currentName);return;}
             try{
