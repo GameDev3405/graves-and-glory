@@ -2,17 +2,16 @@
 
 Frame (art/props/README.md): model px, 16 = 1 block, origin = min corner of the anchor cell, x east, y up, z south,
 FRONT FACES NORTH (-z). The footprint runs x 0..16, y 0..32, z 0..16 px.
-Three stepped timber poles (two in front, one behind) lean in to a rope lashing over the middle; an iron cauldron with a bail hangs from the lashing on a chain over a ring of fire stones. The embers are a glow
-part (cauldron_tripod_embers, full-bright).
+Three stepped timber poles (two in front, one behind) lean in to a rope lashing over the middle; an iron cauldron with a bail hangs from the lashing on a chain over a ring of fire stones. The embers and flames are a glow
+part (cauldron_tripod_embers, full-bright) with an animated texture of its own (proplib Anim).
 Build:  python art/props/build_props.py cauldron_tripod      Card:  python tools/prop_card.py cauldron_tripod
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOT   # noqa: F401
+from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOT, Anim, FIRE_ANIM   # noqa: F401
 
 MAT["rope"] = Mat(make_ramp("7A6038", 0.20), 2, edges=False, pattern=lambda f, P, c, r, w, h: -1 if int(P[1]) % 2 else 0)
 MAT["stew"] = Mat(make_ramp("5B4630"), 2, edges=False, pattern=lambda f, P, c, r, w, h: 1 if h3(*P, 71) < 0.12 else 0)
-FLAME = Mat(HOT, 3, edges=False, lit=False)
 MAT["pot"] = Mat(make_ramp("6E7380"), 2, pattern=lambda f, P, c, r, w, h: -1 if h3(*P, 73) < 0.06 else 0)
 
 
@@ -48,10 +47,11 @@ def build():
     t.append(E((6, 10, 6), (10, 11, 10), "stew", skip="down", name="stew"))
     # embers (glow part)
     embers = [
-        E((3, 0, 3), (13, 4, 13), "coal", skip="down", name="ember bed"),
-        E((5, 4, 5), (11, 5, 11), "coal", skip="down", name="ember heap"),
-        # flame tongues licking up the pot's sides, between the stones
-        E((6, 4, 3), (8, 7, 5), FLAME, name="flame front"), E((9, 4, 3), (10, 6, 5), FLAME, name="flame front small"),
-        E((3, 4, 6), (5, 7, 8), FLAME, name="flame west"), E((11, 4, 8), (13, 7, 10), FLAME, name="flame east"),
+        E((3, 0, 3), (13, 4, 13), "embers", skip="down", name="ember bed"),
+        E((5, 4, 5), (11, 5, 11), "embers", skip="down", name="ember heap"),
+        # live fire: flame planes licking up the pot's four sides, 1 px off the body, rising from between the stones
+        E((5, 2, 3), (11, 9, 3), "flame", name="flame front"), E((5, 2, 13), (11, 9, 13), "flame", name="flame back"),
+        E((3, 2, 5), (3, 9, 11), "flame", name="flame west"), E((13, 2, 5), (13, 9, 11), "flame", name="flame east"),
     ]
-    return Prop("cauldron_tripod", {"cauldron_tripod": t, "cauldron_tripod_embers": embers}, glow=("cauldron_tripod_embers",))
+    return Prop("cauldron_tripod", {"cauldron_tripod": t, "cauldron_tripod_embers": embers}, glow=("cauldron_tripod_embers",),
+                anim={"cauldron_tripod_embers": Anim(**FIRE_ANIM)})
