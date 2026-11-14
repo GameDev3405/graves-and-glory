@@ -78,6 +78,7 @@ def main():
     os.makedirs(os.path.join(out, "preview"), exist_ok=True)
     R = StalkerRig(); R.textures()
     json.dump(R.geo(), open(os.path.join(out, "wm_stalker.geo.json"), "w"), indent=1)
+    json.dump(R.settle_sidecar, open(os.path.join(out, "wm_stalker.settle.json"), "w"), indent=1)
     json.dump(R.meta(), open(os.path.join(out, "wm_stalker.rig.json"), "w"), indent=1)
     for t in R.tiers:
         for side in SIDES:
