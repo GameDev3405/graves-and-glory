@@ -116,8 +116,12 @@ final class WarTablePages {
         Map.entry(21, new String[]{"cloth-gold", "Banner", "cloth"}), Map.entry(23, new String[]{"pennant-gyronny", "Pennant", "pattern"}),
         Map.entry(25, new String[]{"cloth-crowns", "Banner", "cloth"}), Map.entry(27, new String[]{"pennant-pily", "Pennant", "pattern"}),
         Map.entry(29, new String[]{"cloth-night", "Banner", "cloth"}));
-    /** Under the Oath row while no House takes oaths (Phase 1): the honest line in place of the mock's "Swear to a House". */
-    static final String UNSWORN = "No House takes oaths yet";
+    /** Whether a House takes oaths yet: while none does the Oath row is hidden and the Chapter says so in one line (UNSWORN). */
+    static final boolean OATHS_OPEN = false;
+    /** The one line under the Roll while the Oath row is hidden (Kort 2026-11-13, season pass review item 16). */
+    static final String UNSWORN = "The Oath: coming with House oaths.";
+    /** The UiTex key of the picture on the gear-shard tiers of the Roll (the "Gear / 30" plaques): the one place it is named, so the gear-shard art lands with this one line. */
+    static final String GEAR_TIER_ICON = "chapter/ic-coins";
 
     // Friends: the camp's commanders on the left, the party's note in the middle with a seat for each of its four places, the
     // war council's short note on the right (the room itself is run from the war council page, WarTableLobby), with the tag that
@@ -344,7 +348,7 @@ final class WarTablePages {
         refresh();
     }
 
-    void back() { UiSounds.back(); screen.page("home"); }
+    void back() { UiSounds.back(); String to = screen.backPage; screen.page(to == null || !CampScreen.isWarTable(to) ? "home" : to); }
 
     /** Hands a command to the server through the screen's throttle; recorded, and true, when it goes. */
     boolean send(String cmd) {
@@ -1573,11 +1577,11 @@ final class WarTablePages {
     static String[] rewardPlaque(int t) {
         String[] w = Progression.reward(t).split(" ");
         String l1, l2;
-        if (w[0].matches("\\d+")) { l1 = Progression.cap(w.length > 2 && w[1].equals("gear") ? w[1] : w[w.length - 1]); l2 = w[0]; } // "30 gear shards" is Gear, 30; "10 House shards" is Shards, 10
+        if (w[0].matches("\\d+")) { l1 = Progression.cap(w.length > 2 ? w[1] : w[w.length - 1]); l2 = w[0]; } // "30 gear shards" is Gear, 30; "10 House shards" is House, 10
         else { int i = w[0].equals("a") || w[0].equals("an") ? 1 : 0; l1 = w[i]; l2 = w.length > i + 1 ? w[w.length - 1] : ""; }
-        String icon = Progression.GOLD_TIERS.contains(t) ? "chapter/ic-coins" : Progression.SHARD_TIERS.contains(t) ? "chapter/ic-shards"
+        String icon = Progression.GOLD_TIERS.contains(t) ? GEAR_TIER_ICON : Progression.SHARD_TIERS.contains(t) ? "chapter/ic-shards"
             : t == Progression.RARE_TIER ? "recruit/wax-star" : "pennant_pattern".equals(Progression.COSMETIC_TIERS.get(t)) ? "chapter/ic-pennant"
-            : Progression.COSMETIC_TIERS.containsKey(t) ? "chapter/ic-frame" : "chapter/ic-coins";
+            : Progression.COSMETIC_TIERS.containsKey(t) ? "chapter/ic-frame" : GEAR_TIER_ICON;
         return new String[]{icon, l1, l2};
     }
 
@@ -1913,8 +1917,10 @@ final class WarTablePages {
         g.drawText(font, DarkUi.heading("Tier"), lx, tr.rodY() + 2, DarkUi.BRASS, false);
         g.drawText(font, DarkUi.heading("The Roll"), lx, tr.rollTop() + 28, DarkUi.BRASS, false);
         g.drawText(font, "for all", lx, tr.rollTop() + 44, DarkUi.MUTED, false);
-        g.drawText(font, DarkUi.heading("The Oath"), lx, tr.oathTop() + 28, DarkUi.SEPIA_L, false);
-        if (!WarTable.compact()) g.drawText(font, "not sworn", lx, tr.oathTop() + 44, DarkUi.MUTED, false);
+        if (OATHS_OPEN) {
+            g.drawText(font, DarkUi.heading("The Oath"), lx, tr.oathTop() + 28, DarkUi.SEPIA_L, false);
+            if (!WarTable.compact()) g.drawText(font, "not sworn", lx, tr.oathTop() + 44, DarkUi.MUTED, false);
+        }
         var rodTex = UiTex.entry("chapter/track-rod");
         int rod = PITCH * tr.shown(), rodW = rodTex.w();
         if (rod >= rodW) UiTex.draw(g, "chapter/track-rod", tr.x0() - 6, tr.rodY());
@@ -1924,15 +1930,10 @@ final class WarTablePages {
         }
         rectsDrawn.put("rod", new int[]{tr.x0() - 6, tr.rodY(), Math.min(rod, rodW), rodTex.h()});
         track(g, tr, first, tier);
-        if (WarTable.compact()) { // in the label column, in place of "not sworn" (one fact said once), as two even lines
-            java.util.function.ToIntFunction<String> wide = t -> font.getWidth(DarkUi.body(t));
-            int uw = tr.x0() - 24 - lx, w = (wide.applyAsInt(UNSWORN) + 1) / 2;
-            while (w < uw && !String.join(" ", UiMath.lines(UNSWORN, w, 2, wide)).equals(UNSWORN)) w++;
-            var un = lines(g, UNSWORN, lx, tr.oathTop() + 44, w, 2, DarkUi.MUTED);
-            textsDrawn.put("unsworn", String.join(" ", un));
-            colorsDrawn.put("unsworn", DarkUi.MUTED);
-            rectsDrawn.put("unsworn", new int[]{lx, tr.oathTop() + 44, w, 13 * un.size() - 2});
-        } else text(g, "unsworn", DarkUi.body(UNSWORN), UNSWORN, tr.x0(), tr.oathTop() + 92, DarkUi.MUTED);
+        if (!OATHS_OPEN) { // the Oath row is hidden: one line where its heading stood, at the labels' edge (the same on both page sizes)
+            text(g, "unsworn", DarkUi.body(UNSWORN), UNSWORN, lx, tr.oathTop() + 4, DarkUi.MUTED);
+            rectsDrawn.put("unsworn", new int[]{lx, tr.oathTop() + 4, font.getWidth(DarkUi.body(UNSWORN)), 9});
+        }
         textsDrawn.put("tier", String.valueOf(tier));
         textsDrawn.put("first", String.valueOf(first));
     }
@@ -1951,7 +1952,7 @@ final class WarTablePages {
             for (int k : ks) {
                 int t = first + k, x = tr.x0() + PITCH * k + offset;
                 rollPlaque(g, t, x, tr, tier);
-                oathPlaque(g, t, x, tr);
+                if (OATHS_OPEN) oathPlaque(g, t, x, tr);
             }
             for (int k : ks) {
                 int t = first + k, x = tr.x0() + PITCH * k + offset;

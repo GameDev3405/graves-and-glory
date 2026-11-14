@@ -63,7 +63,7 @@ final class WarTableHome {
     static final String[] RAIL = {"recruit", "banner", "gear", "contracts", "chapter", "friends"};
     /** Six plaques on a 116 pitch (a 4 px gap) so the last still ends inside the 854 compact page. */
     static final int[] RAIL_X = {184, 300, 416, 532, 648, 764};
-    static final String[] RAIL_LABELS = {"Recruit", "Banner", "Arsenal", "Contracts", "Chapter", "Friends"};
+    static final String[] RAIL_LABELS = {"Recruit", "Banner", "Arsenal", "Contracts", "Season pass", "Friends"};
     /** Each plaque's icon: the Arsenal has no icon of its own and takes the table's, as its page header does. */
     static final String[] RAIL_ICONS = {"icon-recruit", "icon-banner", "icon-table", "icon-contracts", "icon-chapter", "icon-friends"};
     static final int RAIL_W = 112;

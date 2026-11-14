@@ -16,7 +16,7 @@ import static gg.gravesandglory.GravesAndGloryClient.*;
 /** The War Table: home, the recruit page and WarTablePages' banner, contracts, chapter, friends and field, all in canvas pixels;
  *  the battle report (results) is WarTableReport's two papers. */
 final class CampScreen extends ArmyScreen {
-    String page;float scale=1;int offset;String key="";long requestAt;
+    String page;/** The page the Banner page goes back to (home; the war council when it was opened from there with pageFrom). */String backPage="home";float scale=1;int offset;String key="";long requestAt;
     /** The commands the 300 ms throttle held back, oldest first (at most QUEUE_MAX); tick() sends one each time the throttle allows. */
     final ArrayDeque<String> queue=new ArrayDeque<>();
     static final int QUEUE_MAX=8;
@@ -84,7 +84,9 @@ final class CampScreen extends ArmyScreen {
     }
     void transmit(String cmd,long now){requestAt=now;sentAt=now;CampaignClient.notice="";CampaignClient.dismissed="";send(cmd);} // what the player does next speaks anew: a notice he left behind by changing page shows again if the server answers with the same words (review fix round 2)
     /** Turns the table to another page (an old name goes through alias); the keyboard's focus starts afresh there. */
-    void page(String next){if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;if("forge".equals(next))gearTab="forge";page=alias(next);if(!page.equals("gear"))arsenal=null;offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("troop"))troopSheet=null;if(!page.equals("lobby"))lobby=null;if(!page.equals("results"))report=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
+    /** Opens a page that goes back to another than home: the Banner page opened from the war council returns to it. */
+    void pageFrom(String next,String back){page(next);backPage=back;}
+    void page(String next){backPage="home";if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;if("forge".equals(next))gearTab="forge";page=alias(next);if(!page.equals("gear"))arsenal=null;offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("troop"))troopSheet=null;if(!page.equals("lobby"))lobby=null;if(!page.equals("results"))report=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
     void rebuild(){clearAndInit();}
     /** The pages drawn at UiMath.pageScale, so they fill a 1440p window (Kort, 2026-10-31): every War Table page (home, recruit,
      *  the troop sheet, the lobby, the report and WarTablePages'), so the rail keeps one size from page to page. */

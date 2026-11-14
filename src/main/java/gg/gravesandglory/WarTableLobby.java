@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
@@ -26,7 +27,7 @@ final class WarTableLobby {
             ROOM_UP = 18, HOUSE_HEAD_Y = 184 - ROOM_UP, HOUSE_Y = 202 - ROOM_UP, CHIP_PAD = 6, CHIP_SEAL = 16, CHIP_SEAL_GAP = 4, CHIP_GAP = 4, ROLE_HEAD_Y = 236 - ROOM_UP, ROLE_Y = 254 - ROOM_UP,
             READY_Y = 288 - ROOM_UP, STATUS_Y = 334 - ROOM_UP, NOTICE_Y = 346 - ROOM_UP, NOTICE_STEP = 10, NOTICE_LINES = 2, PAPER_INSET = 6, STEP = 12;
     /** The room's code line on the sheet: the Copy and Invite tags beside the heading, and (not in a room) the Join by code field and its tag. SUMMARY_Y is the chosen mode's one line of rules, in the gap above the Ready plate. START_W is Start now beside Ready. */
-    static final int HEAD_TAG_H = 20, COPY_W = 48, INVITE_W = 56, SUMMARY_Y = 270 - ROOM_UP, START_W = 112, CODE_LENGTH = WarTablePages.CODE_LENGTH, JOIN_Y = 150, FIT_TICKS = 60;
+    static final int HEAD_TAG_H = 20, CHANGE_W = 64, CHANGE_Y = ROLE_Y - 6, COPY_W = 48, INVITE_W = 56, SUMMARY_Y = 270 - ROOM_UP, START_W = 112, CODE_LENGTH = WarTablePages.CODE_LENGTH, JOIN_Y = 150, FIT_TICKS = 60;
     /** The invite pop-over: its panel (sheet-relative), the rows of friends it lists and each row's height. */
     static final int POP_X = 40, POP_Y = 44, POP_W = 324, POP_ROWS = 5, POP_ROW_H = 28, POP_HEAD = 40, POP_FOOT = 40;
     /** On the note (note-relative): its text edge and width, and the rows of the orders. */
@@ -131,7 +132,30 @@ final class WarTableLobby {
     /** Why I cannot ready ("" when I can): my banner holds no troop of the House I picked. The server refuses the same. */
     static String houseRefusal() {
         if (myTroops() != 0 || myReady()) return "";
-        return "Your banner holds no " + RosterMath.houseName(myHouse()) + " troops. Pick another House.";
+        return noTroops(myHouse());
+    }
+    /** "Your banner has no Wildmoot troops.": the House chip's tooltip and the status line under Ready. */
+    static String noTroops(String house) { return "Your banner has no " + chipName(house) + " troops."; }
+    /** Troops of a House the battle banner (the profile's active one) holds, as the server fields them under that House pick. */
+    static int houseTroops(String house) {
+        var cat = RosterMath.Catalog.fromSpec();
+        return RosterMath.units(RosterMath.houseBanner(CampaignClient.profile.line(), cat, house, RosterMath.fieldableHouses()), cat);
+    }
+    /** The battle banner's line: "Banner I · 16 troops · 630 gold" (its name, its troops and the gold they cost). */
+    static String bannerLine() {
+        var p = CampaignClient.profile;
+        var bs = p.banners;
+        if (bs == null || bs.isEmpty()) return "";
+        int at = Math.max(0, Math.min(bs.size() - 1, p.activeBanner));
+        var cat = RosterMath.Catalog.fromSpec();
+        var table = WarGrid.parse(bs.get(at).cells);
+        int n = WarGrid.troops(table, cat);
+        return bs.get(at).name + " · " + n + (n == 1 ? " troop" : " troops") + " · " + WarGrid.cost(table, cat) + " gold";
+    }
+    /** Change: opens the Banner page on the battle banner; leaving it returns to this room. */
+    void changeBanner() {
+        WarTablePages.shownBanner = CampaignClient.profile.activeBanner;
+        screen.pageFrom("banner", "lobby");
     }
     /** A House chip's word: the House's first word (Gilded, Graveborn, Wildmoot, Ironclad, Tidecallers), always whole. */
     static String chipName(String id) { String n = RosterMath.houseName(id); int sp = n.indexOf(' '); return sp < 0 ? n : n.substring(0, sp); }
@@ -237,6 +261,9 @@ final class WarTableLobby {
             var b = add("house-" + id, new UiButton(cx, sy + HOUSE_Y, row.widths()[i], WarTablePages.CHIP_H, Text.literal(RosterMath.houseName(id)), x -> send("social:house:" + id), (g, x, y, w, h, hot) -> paintHouse(g, id, x, y, w, h)));
             b.active = idle && !choosing;
         }
+        for (var id : houses) if (houseTroops(id) == 0) buttons.get("house-" + id).setTooltip(Tooltip.of(Text.literal(noTroops(id))));
+        add("change", new UiButton(sx + PAD + TEXT_W - CHANGE_W, sy + CHANGE_Y, CHANGE_W, HEAD_TAG_H, Text.literal("Change"), b -> changeBanner(), (g, x, y, w, h, hot) -> tag(g, "change", "Change", false, x, y, w, h))).setTooltip(Tooltip.of(Text.literal("Open the Banner page")));
+        buttons.get("change").active = idle && !choosing;
         String room = str("room", "");
         int hx = sx + PAD + TEXT_W;
         add("invite", new UiButton(hx - INVITE_W, sy + 10, INVITE_W, HEAD_TAG_H, Text.literal("Invite"), b -> { inviting = true; inviteOffset = 0; screen.rebuild(); }, (g, x, y, w, h, hot) -> tag(g, "invite", "Invite", false, x, y, w, h))).active = idle && !choosing;
@@ -535,9 +562,8 @@ final class WarTableLobby {
         String role = myRole();
         var sr = setRow(role);
         head(g, "role", "Your role", sr == null ? "" : houseSet(sr) ? sr.name() : roleName(role) + ", " + sr.name(), lx, y + ROLE_HEAD_Y, TEXT_W);
-        int worn = sr == null ? 0 : GearStats.of(CampaignClient.profile).setCounts().getOrDefault(role, 0);
-        String gearLine = UiMath.trim(worn + " of 4 " + (sr == null ? "" : sr.name()) + " pieces worn.", TEXT_W, t -> font.getWidth(DarkUi.body(t)));
-        line(g, "gear", DarkUi.body(gearLine), gearLine, lx, y + ROLE_Y, DarkUi.SEPIA);
+        String bannerLine = UiMath.trim(bannerLine(), TEXT_W - CHANGE_W - 8, t -> font.getWidth(DarkUi.body(t)));
+        line(g, "banner", DarkUi.body(bannerLine), bannerLine, lx, y + ROLE_Y, DarkUi.INK_TEXT);
         String sum = UiMath.trim(summary(str("mode", "")), TEXT_W, t -> font.getWidth(DarkUi.body(t)));
         if (!sum.isEmpty()) line(g, "summary", DarkUi.body(sum), sum, lx, y + SUMMARY_Y, DarkUi.INK_TEXT);
         status(g, x, y);
@@ -768,6 +794,7 @@ final class WarTableLobby {
         var font = font();
         boolean on = id.equals(myHouse());
         int dy = on ? 1 : 0;
+        boolean empty = houseTroops(id) == 0; // the battle banner holds none of this House: dimmed, its tooltip says so
         String tex = on ? "table/chip-house-on" : "table/chip-house";
         UiTex.nine(g, tex, x, y, w + 1, on ? h + WarTablePages.CHIP_RULE : h + 2);
         boolean withSeal = chipSeals.getOrDefault(id, false);
@@ -778,10 +805,12 @@ final class WarTableLobby {
             tx += CHIP_SEAL + CHIP_SEAL_GAP;
         }
         String name = chipName(id); // whole: the row was laid out to fit every name (chipRow)
-        int ink = buttons.get("house-" + id) != null && buttons.get("house-" + id).active ? DarkUi.INK_TEXT : DarkUi.SEPIA;
+        int ink = !empty && buttons.get("house-" + id) != null && buttons.get("house-" + id).active ? DarkUi.INK_TEXT : DarkUi.SEPIA;
         int nw = font.getWidth(DarkUi.body(name));
         g.drawText(font, DarkUi.body(name), tx, y + 6 + dy, ink, false);
         if (WarTableRecruit.hot(buttons.get("house-" + id))) underline(g, tx, y + 18 + dy, nw, ink);
+        if (empty) DarkUi.disabledVeil(g, x + 1, y + 1, w - 1, h);
+        textsDrawn.put("house-" + id + "-dim", String.valueOf(empty));
         rectsDrawn.put("house-" + id + "-name", new int[]{tx, y + 6 + dy, nw, 11});
         textsDrawn.put("house-" + id + "-name", name);
         textsDrawn.put("house-" + id + "-seal", String.valueOf(withSeal));
@@ -854,7 +883,7 @@ final class WarTableLobby {
     static String readyCount() {
         var all = commanders();
         long ready = all.stream().filter(r -> flag(r, "ready")).count();
-        return ready + " of " + all.size() + " ready. Starts 10 s after the last.";
+        return ready + " of " + all.size() + " ready. Starts 10 s after everyone is ready.";
     }
 
     // ---- the orders note ----
