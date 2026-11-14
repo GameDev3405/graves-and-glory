@@ -638,7 +638,8 @@ final class Tactics {
             var below=new BlockPos(tx,ty-1,tz);var feet=new BlockPos(tx,ty,tz);var head=new BlockPos(tx,ty+1,tz);
             if(!w.getBlockState(below).getCollisionShape(w,below).isEmpty()&&w.getFluidState(below).isEmpty()
                 &&w.getBlockState(feet).getCollisionShape(w,feet).isEmpty()&&w.getFluidState(feet).isEmpty()
-                &&w.getBlockState(head).getCollisionShape(w,head).isEmpty()&&w.getFluidState(head).isEmpty())return new int[]{tx,ty,tz};
+                &&w.getBlockState(head).getCollisionShape(w,head).isEmpty()&&w.getFluidState(head).isEmpty()
+                &&MapBlockRules.landingOk(w,tx,ty,tz))return new int[]{tx,ty,tz}; // never in or on troop_fence or still_water (their context-free shape is empty, so the shape tests above call them free)
         }
         return null;
     }
@@ -678,7 +679,7 @@ final class Tactics {
     }
     // ---- the stall ladder (Stall; engine-map pathing plan step 2): walk asks once per beat of every walking troop, a player's squad's and a bot's, and carries out the rung it is given.
     /** Counters of the ladder (the bot sim prints them): rungs carried out by kind (Stall.NAMES), jumps refused because a player watched, and jumps with nowhere to put the troop. */
-    static final int[] stalls=new int[Stall.NAMES.length],nowhereWhy=new int[5];static int jumpsWatched,jumpsNowhere,stallCalls;static long stallNanos,stallMaxNanos; // the clock's own time (stallRung), and the time of the rungs that search (regroupPoint, jumpFree): the ladder's cost, read by the bot sim
+    static final int[] stalls=new int[Stall.NAMES.length],nowhereWhy=new int[6];static int jumpsWatched,jumpsNowhere,stallCalls;static long stallNanos,stallMaxNanos; // the clock's own time (stallRung), and the time of the rungs that search (regroupPoint, jumpFree): the ladder's cost, read by the bot sim
     /** A test hook: told of every jump free, the troop and where it was put from (the bot sim logs them with their place). */
     static java.util.function.BiConsumer<GravesAndGlory.Unit,Vec3d> jumpListener;
     /** How long a regroup walk may take before it is dropped, in ticks. */
@@ -766,7 +767,7 @@ final class Tactics {
     static Vec3d jumpSpot(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time){
         var mob=u.mob;var nav=field();
         if(nav==null)return null; // no route field (an old map): nothing knows where a floor with a way on is, so no jump (step 3 adds the queue test)
-        var w=battle.world;var wp=nav.rescue(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z,time,(sx,sy,sz)->w.getFluidState(BlockPos.ofFloored(sx,sy+.1,sz)).isEmpty()&&!enemyNear(battle,u,new Vec3d(sx,sy,sz)));return wp==null?null:new Vec3d(wp.x(),wp.y(),wp.z());
+        var w=battle.world;var wp=nav.rescue(mob.getX(),mob.getY(),mob.getZ(),destination.x,destination.y,destination.z,time,(sx,sy,sz)->w.getFluidState(BlockPos.ofFloored(sx,sy+.1,sz)).isEmpty()&&MapBlockRules.landingOk(w,(int)Math.floor(sx),(int)Math.floor(sy+.01),(int)Math.floor(sz))&&!enemyNear(battle,u,new Vec3d(sx,sy,sz)));return wp==null?null:new Vec3d(wp.x(),wp.y(),wp.z());
     }
     /** The last rung: the troop is put on its jump spot, unless a player watches it or the spot, or the spot is not free for its body. True when it was moved. */
     static boolean jumpFree(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time){
@@ -780,10 +781,10 @@ final class Tactics {
     }
     private static boolean jumpTry(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,Vec3d destination,long time){
         var mob=u.mob;Vec3d to=jumpSpot(battle,u,destination,time);
-        int why=to==null?0:to.squaredDistanceTo(mob.getPos())<4?1:!battle.world.isSpaceEmpty(mob,mob.getBoundingBox().offset(to.x-mob.getX(),to.y-mob.getY(),to.z-mob.getZ()))?2:enemyNear(battle,u,to)?3:!battle.world.getFluidState(BlockPos.ofFloored(to.x,to.y+.1,to.z)).isEmpty()?4:-1;
+        int why=to==null?0:to.squaredDistanceTo(mob.getPos())<4?1:!MapBlockRules.landingOk(battle.world,(int)Math.floor(to.x),(int)Math.floor(to.y+.01),(int)Math.floor(to.z))?5:!battle.world.isSpaceEmpty(mob,mob.getBoundingBox().offset(to.x-mob.getX(),to.y-mob.getY(),to.z-mob.getZ()))?2:enemyNear(battle,u,to)?3:!battle.world.getFluidState(BlockPos.ofFloored(to.x,to.y+.1,to.z)).isEmpty()?4:-1;
         if(why>=0){
             jumpsNowhere++;nowhereWhy[why]++;
-            if(TRACE_HOPS)System.out.println("[Graves and Glory] no jump spot for slot "+u.slot+" at ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+"): "+new String[]{"no spot","spot too near "+to,"spot not free "+to,"enemy near "+to,"fluid at "+to}[why]);
+            if(TRACE_HOPS)System.out.println("[Graves and Glory] no jump spot for slot "+u.slot+" at ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+"): "+new String[]{"no spot","spot too near "+to,"spot not free "+to,"enemy near "+to,"fluid at "+to,"map block at "+to}[why]);
             return false;}
         if(watched(battle,mob,to)){jumpsWatched++;return false;}
         Vec3d from=mob.getPos();

@@ -216,6 +216,20 @@ public final class Arena {
     public static final int FLOOR_RADIUS=12;
     private static final java.util.concurrent.ConcurrentHashMap<Long,int[]> FLOORS=new java.util.concurrent.ConcurrentHashMap<>();private static String floorsOf="";
     public static int[] floor(ServerWorld w,int x,int z,double refX,double refZ){
+        int[] f=floorOf(w,x,z,refX,refZ);
+        if(w==null||MapBlockRules.landingOk(w,f[0],f[2],f[1]))return f;
+        // troop_fence or still_water in the cell, over it or under it (the route field and the columns never name one as a floor; this is a block set after the bake): the nearest column whose floor is clear of both
+        int[] best=null;long bestD=Long.MAX_VALUE;
+        for(int r=1;r<=FLOOR_RADIUS;r++){
+            if(best!=null&&(long)(r-1)*(r-1)>bestD)break;
+            for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
+                if(Math.max(Math.abs(dx),Math.abs(dz))!=r)continue;
+                long d=(long)dx*dx+(long)dz*dz;if(d>=bestD)continue;
+                int[] c=floorOf(w,x+dx,z+dz,refX,refZ);if(!MapBlockRules.landingOk(w,c[0],c[2],c[1]))continue;
+                best=c;bestD=d;}}
+        return best==null?f:best;
+    }
+    private static int[] floorOf(ServerWorld w,int x,int z,double refX,double refZ){
         var e=EngineMaps.current();
         if(e==null)return new int[]{x,z,ground(x,z)+1};
         if(e.nav!=null){ // the route field's floors (NavField: reachable floors of every column, the ground under a roof or a lintel too): the column's top when it is a floor, else its lowest, else the nearest column with one
@@ -248,7 +262,7 @@ public final class Arena {
         var pos=new BlockPos.Mutable();int top=e.solid(x,z);
         for(int y=e.floorY+1;y<=top;y++){
             if(w.getBlockState(pos.set(x,y-1,z)).getCollisionShape(w,pos).isEmpty()||!w.getFluidState(pos).isEmpty())continue;
-            if(w.getBlockState(pos.set(x,y,z)).getCollisionShape(w,pos).isEmpty()&&w.getFluidState(pos).isEmpty()&&w.getBlockState(pos.set(x,y+1,z)).getCollisionShape(w,pos).isEmpty()&&w.getFluidState(pos).isEmpty())return y;
+            if(w.getBlockState(pos.set(x,y,z)).getCollisionShape(w,pos).isEmpty()&&w.getFluidState(pos).isEmpty()&&w.getBlockState(pos.set(x,y+1,z)).getCollisionShape(w,pos).isEmpty()&&w.getFluidState(pos).isEmpty()&&MapBlockRules.landingOk(w,x,y,z))return y; // not in or on troop_fence or still_water (empty context-free shape: the tests above call them free)
         }
         return Integer.MIN_VALUE;
     }
@@ -270,7 +284,7 @@ public final class Arena {
     static Vec3d guarded(ServerWorld w,EngineMap e,double x,double z,double homeX,int maxGround,EngineMap.Spawn home){
         int ix=(int)Math.floor(x),iz=(int)Math.floor(z);var pos=new BlockPos.Mutable();
         java.util.function.BiPredicate<Integer,Integer> headroom=w==null?null:(cx,cz)->{int g=e.solid(cx,cz);
-            for(int y=g+1;y<=g+2;y++)if(!w.getBlockState(pos.set(cx,y,cz)).getCollisionShape(w,pos).isEmpty())return false;return true;};
+            for(int y=g+1;y<=g+2;y++)if(!w.getBlockState(pos.set(cx,y,cz)).getCollisionShape(w,pos).isEmpty())return false;return MapBlockRules.landingOk(w,cx,g+1,cz);};
         if(e.stands(ix,iz,maxGround)&&(home==null||e.nearHome(home,ix,iz))&&(headroom==null||headroom.test(ix,iz))){double[] q=e.inside(x,z,EngineMap.BODY,maxGround,headroom);return new Vec3d(q[0],e.solid(ix,iz)+1,q[1]);} // off the wall post on the edge of the cell
         int[] c=e.footing(ix,iz,homeX,48,maxGround,home,headroom);
         return c==null?null:new Vec3d(c[0]+.5,e.solid(c[0],c[1])+1,c[1]+.5);
@@ -291,7 +305,7 @@ public final class Arena {
             int d=dx*dx+dz*dz;if(d>256||d>bestD)continue;int cx=x+dx,cz=z+dz;double t=Math.abs(cx+.5-towardX);
             if(d==bestD&&t>=bestT)continue;
             int g=ground(cx,cz);if(deep(cx,cz)||g>maxGround)continue;
-            boolean open=true;if(w!=null)for(int y=g+1;y<=g+2&&open;y++)open=w.getBlockState(pos.set(cx,y,cz)).getCollisionShape(w,pos).isEmpty();
+            boolean open=true;if(w!=null){for(int y=g+1;y<=g+2&&open;y++)open=w.getBlockState(pos.set(cx,y,cz)).getCollisionShape(w,pos).isEmpty();open&=MapBlockRules.landingOk(w,cx,g+1,cz);}
             if(open){best=new int[]{cx,cz};bestD=d;bestT=t;}
         }
         return best;
