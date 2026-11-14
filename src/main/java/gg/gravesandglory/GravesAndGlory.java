@@ -86,6 +86,7 @@ public final class GravesAndGlory implements ModInitializer {
         // A match the server stops is void: no rewards, no losses, armies to camp (MatchRules). Then the banners come down.
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null){battle.campaign.voidMatch(MatchRules.Ending.STOPPED);Abilities.serverStopping(battle);battle.clearCorpses();}});
         if (BuildMode.active()) BuildMode.init();
+        AdminCommands.register(); // /gg og (admin tools phase A); the join ledger is server side only
         Props.init(); // prop kit: defs, /prop, anchor scanner (no registry entries)
         PropTicker.init(); // prop kit: proximity-gated alive effects, /prop stats
         PropMenu.init(); // prop kit: /prop menu, ghost placement, hit-to-remove

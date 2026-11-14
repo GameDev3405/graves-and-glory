@@ -134,6 +134,8 @@ public final class Campaign {
         }
         return pr;
     }
+    /** The name for the join ledger: the online player's, or empty (the ledger keeps the one it has). */
+    String nameOf(UUID id){var p=b.server.getPlayerManager().getPlayer(id);return p==null?"":p.getName().getString();}
     /** Players already told that their save is from a newer build (Profile.readOnly), so the notice comes once per session. */
     final Set<UUID> newerSaveTold=new HashSet<>();
     /** A new commander: the 10 Commons, the starter banner (sanitize fills them in) and the role's starter gear. Also what a damaged profile with no usable .bak falls back to. */
@@ -201,6 +203,7 @@ public final class Campaign {
     boolean away(UUID id){return leftAt.containsKey(id);}
     void joined(ServerPlayerEntity p){
         grantImport(p.getUuid());profile(p.getUuid());
+        AdminCommands.seen(p); // the join ledger's first-seen stamp
         // A dedicated server writes a new commander's file on the first join, not on the first collection change (QA C9). The first-visit import is never offered there.
         if(b.server.isDedicated()&&!Files.exists(directory.resolve(p.getUuid()+".json")))save(p.getUuid());
         // Rejoining the same battle keeps the original start time, so a dropped connection does not cost the reward.
@@ -609,6 +612,7 @@ public final class Campaign {
             for(var e:j.getAsJsonObject("played").entrySet())played.put(UUID.fromString(e.getKey()),e.getValue().getAsLong());
             System.err.println("[Graves and Glory] Match "+j.get("matchId").getAsString()+" was interrupted by a crash: partial participation gold for "+played.size()+" player(s).");
             payPartial(played,j.get("roundSeconds").getAsInt(),j.get("practice").getAsBoolean());
+            for(var e:played.entrySet())if(JoinLedger.finished(true,e.getValue(),Spec.CAMPAIGN[0].minimumRewardSeconds()))AdminCommands.matched(e.getKey(),nameOf(e.getKey())); // a crash after the reward minimum still counts as a match played
         }catch(Exception e){System.err.println("[Graves and Glory] The match progress file could not be read; no partial reward: "+e);}
         deleteProgress();
     }
@@ -628,7 +632,8 @@ public final class Campaign {
         for(var sq:b.squads.values())if(sq.seated)sq.stats.kept=(int)b.fielded(sq).count(); // each army's living non-temporary troops at the end
         JsonArray podium=rankArmies(winner);endingLine=scoreLine(seconds);
         if(!instantEnding())sendBegin(winner); // the instant freeze goes out before the saves below, so the banner does not wait on the disk
-        for(UUID id:participants){var s=b.squads.get(id);if(s==null||!s.seated)s=absentSeat.get(id);if(s==null)continue;Profile p=profile(id);String before=JSON.toJson(p);
+        for(UUID id:participants){var s=b.squads.get(id);boolean present=s!=null&&s.seated&&!away(id); // at the ending, not dropped (a commander who dropped and came back is present)
+            if(s==null||!s.seated)s=absentSeat.get(id);if(s==null)continue;Profile p=profile(id);String before=JSON.toJson(p);
             // Pay is pro-rated by the share of the match he was seated (Kort 2026-11-02): a commander who dropped and did not return, or came back late, gets that share of the gold, XP, shards and Renown;
             // one seated the whole match is paid in full. The win, the cleared battle and the bonus count only when he was seated for at least half of it.
             long seated=seatedTicks(id)/20;boolean eligible=seated>0&&seconds>=Spec.CAMPAIGN[0].minimumRewardSeconds();int percent=MatchRules.sharePercent(seated,seconds);
@@ -645,6 +650,7 @@ public final class Campaign {
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
             List<String> titles=eligible?ledger(p,s):List.of();List<Integer> pactChapters=pacts(p);int pacts=pactChapters.size();
             List<MatchEnding.Best> bests=eligible?MatchEnding.bests(p.bests,bestValues(liveSquad(id,s))):List.of(); // pass 3: personal bests, in the same save as the rewards
+            if(JoinLedger.finished(present,seated,seconds,Spec.CAMPAIGN[0].minimumRewardSeconds()))AdminCommands.matched(id,nameOf(id)); // admin tools phase A: the first finished match, in the server's join ledger (never the profile)
             boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("writs",saved?p.troopWrits-writs0:0);report.addProperty("gearShards",saved?p.gearShards-shards0:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pactChapters));results.put(id,report);
             // match ending (2026-11-12 spec): a loss reads DEFEAT, plus the banner line, podium, your groups, rewards rows and what is ready to claim
             if(winner>=0&&s.team!=winner)report.addProperty("outcome","DEFEAT");report.addProperty("line",endingLine);
