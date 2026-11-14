@@ -16,8 +16,8 @@ import static gg.gravesandglory.Phase1Checks.*;
  *  (p1-bf-paint-place), a second Legendary is refused with the why in words and nothing sent (p1-bf-paint-refused), and another banner's tab
  *  shows that banner, whose Use button makes it the one that goes into battle (p1-bf-paint-switch). */
 final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch {
-    static final String[] SCENES = {"banner-normal", "banner-empty", "banner-empty-house", "banner-hover", "banner-blocked", "banner-error", "banner-paint",
-        "field-normal", "field-empty", "field-error", "banner-battle"};
+    static final String[] SCENES = {"banner-normal", "banner-empty", "banner-empty-house", "banner-hover", "banner-blocked", "banner-error", "banner-paint", "banner-tools",
+        "field-normal", "field-empty", "field-error", "banner-battle", "banner-lock"};
     /** The window sizes shot: 1080p, 1440p and a small window that gets the compact page (scale -1: the page must be compact). */
     static final int[][] SIZES = {{1920, 1080, 2}, {2560, 1440, 3}, {900, 520, -1}, {1280, 720, 1}, {960, 540, 1}, {854, 480, -1}};
     static final String[] SIZE_NAMES = {"1080", "1440", "small", "720", "540", "480"};
@@ -52,12 +52,13 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         return switch(scene){
             case "banner-normal","banner-battle" -> { var t=tbl(4,LEGEND,13,"mage");fill(t,9,3,"sentinel");fill(t,18,4,"longbow");fill(t,27,4,"knight");fill(t,36,3,"archer");
                 yield profile(List.of("sentinel","longbow","mage",LEGEND,"wm_tusk"),"Banner I",t,"Banner II",tbl(0,"knight",1,"knight")); }
+            case "banner-tools","banner-lock" -> profile(List.of("sentinel","longbow","mage"),"Banner I",tbl(0,"longbow",5,"mage",20,"sentinel",33,"knight",50,"sentinel"),"Banner II",tbl(0,"knight"));
             case "banner-hover","banner-blocked","banner-error","banner-paint" -> profile(List.of(LEGEND,"sentinel"),"Banner I",tbl(4,LEGEND,30,"sentinel"),"Banner II",tbl(0,"knight",1,"knight"));
             default -> { var p=profile(List.of(),"Banner I",tbl());p.owned.keySet().removeIf(id->!id.equals("knight"));p.sanitize();yield p; }
         };
     }
 
-    static boolean isBanner(String n){return n.startsWith("banner")&&!n.equals("banner-battle");}
+    static boolean isBanner(String n){return n.startsWith("banner")&&!n.equals("banner-battle")&&!n.equals("banner-lock");}
 
     /** Server and client state for the scene. */
     void setup(MinecraftClient c,String name){
@@ -67,6 +68,9 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
             server(c,b->{if(b.running)b.campaign.returnLobby();var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,p);b.campaign.save(id);});
         } else if(name.equals("banner-battle")){
             want=cells(banner(name));
+        } else if(name.equals("banner-lock")){
+            var p=banner(name);want=cells(p);
+            server(c,b->{if(b.running)b.campaign.returnLobby();var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,p);b.campaign.save(id);});
         } else if(name.equals("field-normal")){
             server(c,b->{if(b.running)b.campaign.returnLobby();var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,banner("banner-normal"));});
         } else if(name.equals("field-empty")){
@@ -81,6 +85,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         switch(name){
             case "field-normal": return cells(CampaignClient.profile).equals(cells(banner("banner-normal")))&&!GravesAndGloryClient.running;
             case "field-empty": return !GravesAndGloryClient.running;
+            case "banner-lock": return GravesAndGloryClient.running&&serverRunning&&cells(CampaignClient.profile).equals(want); // seated in the round: no page, only the commands
             case "field-error": case "banner-battle": return GravesAndGloryClient.running&&CampaignClient.waiting&&serverRunning; // seated players cannot open the War Table in a round: the commander is stood down
             default: return cells(CampaignClient.profile).equals(want)&&!GravesAndGloryClient.running;
         }
@@ -168,12 +173,13 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         switch(phase){
             case 0->{ // the scene's state, built on the server; waits for the snapshot to carry it
                 if(k==0){note="";standDown=false;setup(c,name);c.setScreen(null);window(c,1920,1080,0,true);return;}
-                if((name.equals("field-error")||name.equals("banner-battle"))&&!(name.equals("banner-battle")&&serverRunning)){ // a round: started on the server until it runs
+                if(name.equals("banner-lock")){if(k>=2&&!serverRunning)server(c,b->{var p=b.server.getPlayerManager().getPlayer(player);if(p!=null)skirmish(b,p,0,1,"normal");});}
+                else if((name.equals("field-error")||name.equals("banner-battle"))&&!(name.equals("banner-battle")&&serverRunning)){ // a round: started on the server until it runs
                     if(k>=2&&!serverRunning){server(c,b->{var p=b.server.getPlayerManager().getPlayer(player);if(p!=null)skirmish(b,p,0,1,"normal");});}
                     else if(serverRunning&&!standDown){standDown=true;server(c,b->{var sq=b.squads.get(player);if(sq!=null)sq.seated=false;});}
                 }
-                if(ready(c,name,tick)&&k>=(name.equals("field-error")||name.equals("banner-battle")?150:30)&&CampaignClient.camera==null){go(1,tick);return;}
-                if(k>(name.equals("field-error")?2400:400)){report("p1-bf-"+name,false,"the state never reached the client: banners "+cells(CampaignClient.profile)+" wanted "+want+", running "+GravesAndGloryClient.running+", server running "+serverRunning);scene++;go(0,tick);}
+                if(ready(c,name,tick)&&k>=(name.equals("field-error")||name.equals("banner-battle")||name.equals("banner-lock")?150:30)&&(CampaignClient.camera==null||name.equals("banner-lock"))){go(name.equals("banner-lock")?2:1,tick);return;}
+                if(k>(name.equals("field-error")||name.equals("banner-lock")?2400:400)){report("p1-bf-"+name,false,"the state never reached the client: banners "+cells(CampaignClient.profile)+" wanted "+want+", running "+GravesAndGloryClient.running+", server running "+serverRunning);scene++;go(0,tick);}
             }
             case 1->{ // the page from the table's door
                 if(k<60&&k%6==0&&UiPagesChecks.pages(c)==null){CampScreen.open(page(name));return;} // a round's opening may close it again
@@ -181,8 +187,10 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                 else if(k>=80)go(2,tick);
             }
             case 2->{ // the scene's action, then the shots
+                if(name.equals("banner-lock")){lock(c,k,tick);return;}
                 if(UiPagesChecks.pages(c)==null){report("p1-bf-"+name,false,"the page is not open; screen "+c.currentScreen+", running "+GravesAndGloryClient.running+", waiting "+CampaignClient.waiting);scene++;go(0,tick);return;}
                 if(name.equals("banner-paint")){paint(c,k,tick);return;}
+                if(name.equals("banner-tools")){tools(c,k,tick);return;}
                 if(act(c,name,k)){shotIdx=0;go(3,tick);sub=1;}
             }
             case 3->{ // a shot at SIZES[shotIdx]; after a resize the page is built again, so the action runs again first
@@ -312,6 +320,107 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                     st=15;stAt=k+1;}
             }
             case 15->{if(d>=4){var pg=UiPagesChecks.pages(c);report("p1-bf-rename-esc",pg!=null&&pg.renaming==null&&UiPagesChecks.screen(c)!=null,"Esc drops the name being written and keeps the table open: renaming "+(pg==null?"(no page)":String.valueOf(pg.renaming))+" (want null)");scene++;go(0,tick);}}
+            default->{}
+        }
+    }
+
+
+    // ============================================================================================================ the fast tools
+    int ts,tAt;List<String> before=List.of();SortedMap<Integer,String> wantTable=new TreeMap<>();
+
+    /** The centre of cell i, in GUI px. */
+    static double[] at(MinecraftClient c,int cell){var b=UiPagesChecks.box(c,"cell-"+cell);return new double[]{UiHomeChecks.gui(c,b[0]+b[2]/2.0),UiHomeChecks.gui(c,b[1]+b[3]/2.0)};}
+    static void press(MinecraftClient c,int cell){var s=UiPagesChecks.screen(c);var a=at(c,cell);s.mouseMoved(a[0],a[1]);s.mouseClicked(a[0],a[1],0);}
+    static void drag(MinecraftClient c,int cell){var s=UiPagesChecks.screen(c);var a=at(c,cell);s.mouseDragged(a[0],a[1],0,1,0);}
+    static void release(MinecraftClient c,int cell){var s=UiPagesChecks.screen(c);var a=at(c,cell);s.mouseReleased(a[0],a[1],0);}
+    /** Banner I as the server holds it. */
+    static SortedMap<Integer,String> held(){return WarGrid.parse(CampaignClient.profile.banners.get(0).cells);}
+
+    /** banner-tools, by real presses and drags: a lifted troop moves (and the table the server holds changes), paint-drag from an empty cell still paints, a drag from the brush's
+     *  own troop still takes off, a click on another troop still paints over it, Auto-arrange sets the rule's order, Clear takes two presses. The brush is the Order Squire. */
+    void tools(MinecraftClient c,int k,int tick){
+        var pg=UiPagesChecks.pages(c);
+        if(k==0){ts=0;tAt=0;}
+        int d=k-tAt;
+        switch(ts){
+            case 0->{if(d==0)gilded(c);if(d>=6){ts=1;tAt=k+1;}}
+            case 1->{if(d==0)UiPagesChecks.click(c,row(c,"knight"));if(d>=4){ts=2;tAt=k+1;}}
+            case 2->{ // a lifted sentinel from cell 20 to the empty cell 30
+                if(d==0){sent0=WarTablePages.sent().size();press(c,20);drag(c,25);drag(c,30);}
+                if(d==3){
+                    String word=WarTablePages.texts().get("cell-word");boolean lifted=pg!=null&&pg.lift==20&&pg.moving&&pg.moveTarget==30;
+                    note="mid-drag: lifted "+lifted+" (lift "+(pg==null?-9:pg.lift)+", target "+(pg==null?-9:pg.moveTarget)+"), strip \""+word+"\" (want \"Move here\"), nothing sent yet "+(WarTablePages.sent().size()==sent0)+(lifted&&"Move here".equals(word)&&WarTablePages.sent().size()==sent0?"":" WRONG");
+                    shot(c,"bf-banner-drag-move-1080");
+                    release(c,30);
+                }
+                if(d>=40){
+                    var t=held();var mine=new ArrayList<>(WarTablePages.sent().subList(Math.min(sent0,WarTablePages.sent().size()),WarTablePages.sent().size()));
+                    boolean moved="sentinel".equals(t.get(30))&&!t.containsKey(20)&&t.size()==5;
+                    report("p1-bf-tools-drag-move",moved&&mine.equals(List.of("banner:move:0:20:30"))&&!note.contains("WRONG"),note+"; the server's banner I now holds 30 "+t.get(30)+" and 20 "+t.get(20)+" (want sentinel and none); sent "+mine);note="";ts=3;tAt=k+1;}
+            }
+            case 3->{ // a swap: the sentinel on 30 let go over the mage on 5
+                if(d==0){press(c,30);drag(c,5);release(c,5);}
+                if(d>=40){var t=held();report("p1-bf-tools-drag-swap","sentinel".equals(t.get(5))&&"mage".equals(t.get(30)),"letting the sentinel go over the mage: 5 holds "+t.get(5)+", 30 holds "+t.get(30)+" (want sentinel, mage)");ts=4;tAt=k+1;}
+            }
+            case 4->{ // paint-drag from an empty cell still paints: cells 2, 3, 4
+                if(d==0){press(c,2);drag(c,3);drag(c,4);release(c,4);}
+                if(d>=40){var t=held();report("p1-bf-tools-paint-drag",List.of(2,3,4).stream().allMatch(i->"knight".equals(t.get(i))),"a drag from the empty cell 2 to 4 with the knight brush: server holds "+t.get(2)+", "+t.get(3)+", "+t.get(4)+" (want knight x3)");ts=5;tAt=k+1;}
+            }
+            case 5->{ // a drag that starts on the brush's own troop takes off, as before: cells 3, 4 emptied, 2 stays
+                if(d==0){press(c,3);drag(c,4);release(c,4);}
+                if(d>=40){var t=held();report("p1-bf-tools-brush-drag-erases",!t.containsKey(3)&&!t.containsKey(4)&&"knight".equals(t.get(2)),"a drag from the knight on cell 3 to 4: server holds 2 "+t.get(2)+", 3 "+t.get(3)+", 4 "+t.get(4)+" (want knight, none, none)");ts=6;tAt=k+1;}
+            }
+            case 6->{ // a click without a drag on another troop still paints over it
+                if(d==0){press(c,0);release(c,0);}
+                if(d>=40){var t=held();report("p1-bf-tools-click-replaces","knight".equals(t.get(0)),"a click on the longbow on cell 0 with the knight brush: server holds "+t.get(0)+" (want knight)");ts=7;tAt=k+1;}
+            }
+            case 7->{ // Auto-arrange: the bots' order, every troop kept
+                if(d==0){wantTable=WarGrid.arrange(WarTablePages.table());before=cells(CampaignClient.profile);var ab=buttonsOf(c).get("arrange");note="Auto-arrange takes a press on a scattered banner: "+(ab!=null&&ab.active);UiPagesChecks.click(c,UiPagesChecks.box(c,"arrange"));}
+                if(d>=40){
+                    var t=held();int shields=0,lastShield=-1,firstRanged=Integer.MAX_VALUE,lastMelee=-1,firstMelee=Integer.MAX_VALUE;
+                    for(var e:t.entrySet()){int r=WarGrid.row(e.getKey()),role=WarGrid.role(e.getValue());if(role==0)lastShield=Math.max(lastShield,r);if(role==1){lastMelee=Math.max(lastMelee,r);firstMelee=Math.min(firstMelee,r);}if(role==2)firstRanged=Math.min(firstRanged,r);}
+                    boolean order=lastShield<=firstMelee&&lastMelee<=firstRanged;var ab=buttonsOf(c).get("arrange");
+                    report("p1-bf-tools-arrange",t.equals(wantTable)&&order&&note.endsWith("true")&&ab!=null&&!ab.active,note+"; the server's banner I "+t+" (want "+wantTable+"), shields no further back than melee no further back than ranged "+order+", Auto-arrange now inactive "+(ab!=null&&!ab.active));note="";ts=8;tAt=k+1;}
+            }
+            case 8->{ // Clear: the first press only arms it ("Sure?"), the second empties the banner
+                if(d==0){sent0=WarTablePages.sent().size();UiPagesChecks.click(c,UiPagesChecks.box(c,"clear"));}
+                if(d==4){
+                    String label=WarTablePages.texts().get("clear");var mine=WarTablePages.sent().subList(Math.min(sent0,WarTablePages.sent().size()),WarTablePages.sent().size());
+                    note="after one press the button reads \""+label+"\" (want \"Sure?\"), commands sent "+mine+" (want none), the server still holds "+held().size()+" troops"+("Sure?".equals(label)&&mine.isEmpty()&&held().size()>0?"":" WRONG");
+                    shot(c,"bf-banner-clear-confirm-1080");UiPagesChecks.click(c,UiPagesChecks.box(c,"clear"));}
+                if(d>=40){
+                    var mine=WarTablePages.sent().subList(Math.min(sent0,WarTablePages.sent().size()),WarTablePages.sent().size());
+                    report("p1-bf-tools-clear",!note.contains("WRONG")&&held().isEmpty()&&mine.equals(List.of("banner:clear:0")),note+"; after the second press the server holds "+held().size()+" troops (want 0), sent "+mine);note="";scene++;go(0,tick);}
+            }
+            default->{}
+        }
+    }
+
+    // ============================================================================================================ the battle lock
+    int lockSerial;
+
+    /** banner-lock: a commander seated in a round. The server answers Auto-arrange, Clear and Move with the battle-lock notice and changes nothing. */
+    void lock(MinecraftClient c,int k,int tick){
+        if(k==0){ts=0;tAt=0;}
+        int d=k-tAt;
+        switch(ts){
+            case 0->{if(d==5){before=cells(CampaignClient.profile);lockSerial=CampaignClient.noticeSerial;GravesAndGloryClient.send("banner:arrange:0");ts=1;tAt=k+1;}}
+            case 1->{
+                if(CampaignClient.noticeSerial>lockSerial||d>120){
+                    boolean said=GearChecks.LOCKED.equals(CampaignClient.notice);
+                    note="Auto-arrange in a round: notice \""+CampaignClient.notice+"\" (want the lock), banners unchanged "+cells(CampaignClient.profile).equals(before);
+                    ok16=said&&cells(CampaignClient.profile).equals(before);lockSerial=CampaignClient.noticeSerial;GravesAndGloryClient.send("banner:clear:0");ts=2;tAt=k+1;}
+            }
+            case 2->{
+                if(CampaignClient.noticeSerial>lockSerial||d>120){
+                    boolean said=GearChecks.LOCKED.equals(CampaignClient.notice);ok16&=said&&cells(CampaignClient.profile).equals(before);lockSerial=CampaignClient.noticeSerial;GravesAndGloryClient.send("banner:move:0:20:30");ts=3;tAt=k+1;}
+            }
+            case 3->{
+                if(CampaignClient.noticeSerial>lockSerial||d>120){
+                    boolean said=GearChecks.LOCKED.equals(CampaignClient.notice);ok16&=said&&cells(CampaignClient.profile).equals(before);
+                    var snap=cells(CampaignClient.profile);
+                    report("p1-bf-tools-battle-lock",ok16,note+"; then Clear and Move: last notice \""+CampaignClient.notice+"\", banners "+snap+" (want unchanged "+before+")");note="";scene++;go(0,tick);}
+            }
             default->{}
         }
     }
