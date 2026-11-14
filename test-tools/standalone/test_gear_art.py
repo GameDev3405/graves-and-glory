@@ -276,34 +276,60 @@ class GearWeapons(unittest.TestCase):
 
 class GearIcons(unittest.TestCase):
     def test_item_icons(self):
-        """Every item id at every rarity: 32 x 32 RGBA, a clear 1 px margin, no House ramp, Common unlike Legendary."""
-        import icons, graveborn, tidecallers, wildmoot
+        """Every item id at every rarity (Kort's baked real-model pictures, 2026-11-13): a 144 x 144 RGBA picture whose model
+        fills the 128 px box centred in it (8 px clear of every edge, only the soft shadow and halo past it, faint at the
+        edge), a model render with no House ramp, Common unlike Legendary."""
+        import icon_render, graveborn, tidecallers, wildmoot
         banned = {tuple(c[:3]) for R in (graveborn.VIOLET, tidecallers.SEA, wildmoot.OCHRE) for c in R}
-        ics = icons.item_icons()
         ids = [i["id"] for i in gearlib.ids()["items"]]
-        self.assertEqual(set(ics), {(i, r) for i in ids for r in gearlib.RARITIES})
+        self.assertEqual(set(icon_render.items()), set(ids))
         for iid in ids:
             looks = {}
             for r in gearlib.RARITIES:
-                im = ics[(iid, r)]
-                self.assertEqual((im.mode, im.size), ("RGBA", (32, 32)), (iid, r))
-                for x in range(32):
-                    for y in (0, 31):
-                        self.assertEqual(im.getpixel((x, y))[3], 0, (iid, r)); self.assertEqual(im.getpixel((y, x))[3], 0, (iid, r))
+                raw = icon_render.item_render(iid, r); im = icon_render.picture(raw)
+                self.assertEqual((im.mode, im.size), ("RGBA", (144, 144)), (iid, r))
+                alpha = im.getchannel("A")
+                body = alpha.point(lambda v: 255 if v >= 250 else 0).getbbox()
+                self.assertTrue(body and body[0] >= 8 and body[1] >= 8 and body[2] <= 136 and body[3] <= 136, (iid, r, body))
+                self.assertGreaterEqual(max(body[2] - body[0], body[3] - body[1]), 124, (iid, r, body))   # fitted, not shrunk
+                ring = [alpha.getpixel((x, y)) for x in range(144) for y in (0, 143)] + [alpha.getpixel((y, x)) for x in range(144) for y in (0, 143)]
+                self.assertLessEqual(max(ring), 64, (iid, r))
                 px = tuple(pixels(im))
-                self.assertGreater(sum(1 for p in px if p[3]), 60, (iid, r))
-                self.assertFalse({p[:3] for p in px if p[3]} & banned, (iid, r))
+                self.assertGreater(sum(1 for p in px if p[3] == 255), 60 * 4.5 ** 2, (iid, r))   # the old 32 px floor of 60, at the new scale
+                self.assertFalse({p[:3] for p in pixels(raw) if p[3]} & banned, (iid, r))   # the model's own colours; resampling may blend into anything
                 looks[r] = px
-            self.assertNotEqual(looks[1], looks[5], iid)   # the slot border carries rarity; middle tiers may fold alike
+            self.assertNotEqual(looks[1], looks[5], iid)
+
+    def test_rarity_glow_and_frames(self):
+        """Each rarity's shared glow (144 x 144) and frames (44 x 44 for the slot, 48 x 48 for the Forge card): the frame's 2 px
+        border in the rarity's colour, clear inside, ornaments only added as rarity rises."""
+        import icon_render
+        for r in gearlib.RARITIES:
+            g = icon_render.glow(r)
+            self.assertEqual((g.mode, g.size), ("RGBA", (144, 144)), r)
+            self.assertGreater(g.getpixel((72, 72))[3], 0, r); self.assertEqual(g.getpixel((0, 0))[3], 0, r)
+            for s in (icon_render.FRAME, icon_render.FRAME_CARD):
+                f = icon_render.frame(r, s)
+                self.assertEqual((f.mode, f.size), ("RGBA", (s, s)), (r, s))
+                ink = tuple(int(gearlib.BORDERS[r][i:i + 2], 16) for i in (0, 2, 4)) + (255,)
+                for t in (0, 1): self.assertEqual(f.getpixel((s // 2 - 10, s - 1 - t)), ink, (r, s, t))   # the bottom border, clear of the crest
+                self.assertEqual(f.getpixel((s // 2, s // 2))[3], 0, (r, s))
+        opaque = lambda r: sum(1 for p in pixels(icon_render.frame(r)) if p[3])
+        for r in gearlib.RARITIES[1:]: self.assertGreaterEqual(opaque(r), opaque(r - 1), r)
+        self.assertGreater(opaque(5), opaque(2))
+
     def test_atlas_rows(self):
-        """Every item at every rarity and every relic has a fixed 32 x 32 row in the UI atlas, and its PNG is there."""
+        """Every item at every rarity has a fixed 144 x 144 picture row in the UI atlas, every rarity its 144 x 144 glow and
+        44 x 44 and 48 x 48 frames, every relic its 32 x 32 icon, and each PNG is there."""
         import json, icons
         gui = os.path.join(ROOT, "src", "main", "resources", "assets", "gravesandglory", "textures", "gui")
         with open(os.path.join(gui, "atlas.json"), encoding="utf-8") as f: rows = json.load(f)["textures"]
-        want = ["gear/%s_r%d" % (i["id"], r) for i in gearlib.ids()["items"] for r in gearlib.RARITIES] + ["relic/" + k for k in icons.RELICS]
-        for name in want:
+        want = [("gear/%s_r%d" % (i["id"], r), 144) for i in gearlib.ids()["items"] for r in gearlib.RARITIES]
+        want += [("gear/%s_r%d" % (k, r), n) for r in gearlib.RARITIES for k, n in (("glow", 144), ("frame", 44), ("frame48", 48))]
+        want += [("relic/" + k, 32) for k in icons.RELICS]
+        for name, n in want:
             self.assertIn(name, rows)
-            self.assertEqual((rows[name]["kind"], rows[name]["w"], rows[name]["h"]), ("fixed", 32, 32), name)
+            self.assertEqual((rows[name]["kind"], rows[name]["w"], rows[name]["h"]), ("fixed", n, n), name)
             self.assertTrue(os.path.isfile(os.path.join(gui, name + ".png")), name)
 
 if __name__ == "__main__": unittest.main()

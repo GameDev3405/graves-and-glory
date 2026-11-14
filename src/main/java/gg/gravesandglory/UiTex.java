@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.resource.ResourceFactory;
 import net.minecraft.resource.ResourceManager;
@@ -16,7 +17,8 @@ import java.util.Map;
  *  textures/gui/atlas.json. Names are "<folder>/<name>", such as "hud/card-sel". Positions are canvas pixels (draw
  *  between UiCanvas.begin and end) and name the box, not the PNG: a texture whose shadow or overhang sits outside
  *  its box is drawn ox, oy up and left of the given point. Every texture draws at one canvas pixel per art pixel;
- *  slices tile their edges and middles and never stretch. */
+ *  slices tile their edges and middles and never stretch. The one exception is scaled: the whole PNG into a given box,
+ *  for the gear pictures (smooth renders, linear filtered) and frames drawn at 2x (nearest). */
 public final class UiTex {
     private UiTex() {}
 
@@ -74,6 +76,21 @@ public final class UiTex {
         Entry e = entry(name);
         blit(g, e, x - e.ox, y - e.oy, 0, 0, e.w, e.h);
         return new int[]{x - e.ox, y - e.oy, e.w, e.h};
+    }
+
+    /** The whole PNG scaled into a w x h canvas-px box at (x, y) (no box offset). smooth: linear filtering, for the baked
+     *  gear pictures and glows (144 px renders shown at 36 to 96 canvas px), set on the texture for this draw only and put
+     *  back to nearest after, as every other UI texture draws; else nearest (a frame drawn at 2x). */
+    public static void scaled(DrawContext g, String name, int x, int y, int w, int h, boolean smooth) {
+        Entry e = entry(name);
+        if (w <= 0 || h <= 0) return;
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        if (!smooth) { g.drawTexture(e.id, x, y, w, h, 0, 0, e.w, e.h, e.w, e.h); return; }
+        var tex = MinecraftClient.getInstance().getTextureManager().getTexture(e.id);
+        tex.setFilter(true, false);
+        try { g.drawTexture(e.id, x, y, w, h, 0, 0, e.w, e.h, e.w, e.h); }
+        finally { tex.setFilter(false, false); }
     }
 
     /** Cell `frame` of a sheet (wrapping), its box at (x, y). */

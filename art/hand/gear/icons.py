@@ -1,12 +1,11 @@
 """Relic icons (docs/superpowers/plans/2026-11-03-gear-art.md, Task 8): each relic as the object it is, on a shared
 dark round plate, 32 x 32 with a clear 1 px margin. Shapes are drawn without anti-aliasing and lit from the top left:
 a layer's texels nearest the light step up its ramp, the far edge steps down, and one ink line runs round the whole
-object. Item grid icons (D3) render each piece alone at three-quarter view and fold it to 28 px by majority colour.
+object. The gear item pictures are icon_render.py's (smooth real-model renders); cube_render here draws the weapons.
 
   python art/hand/gear/icons.py relics <out_dir>        one PNG per relic id
   python art/hand/gear/icons.py sheet <out.png>         the review sheet: 1x and 3x on every slot border colour
-  python art/hand/gear/icons.py items <out_dir>         one PNG per item and rarity, <id>_r<n>.png
-  python art/hand/gear/icons.py items-sheet <out.png>   every item at every rarity, 1x and 3x in its rarity's slot"""
+  (the gear item pictures: python art/hand/gear/icon_render.py sheet <out.png>)"""
 import os, sys
 from PIL import Image, ImageDraw
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "common"))
@@ -217,44 +216,12 @@ RELICS = {"stand_fast": ward_of_the_wall, "bloodrush": reavers_fang, "mark_prey"
 
 def relics(): return {k: on_plate(f()) for k, f in RELICS.items()}
 
-# ---- item grid icons (D3): an offline 3/4 render of each piece, folded to 28 px by majority colour, then inked ----
+# ---- weapon renders for the gear pictures (icon_render.py, the baked real-model pictures Kort approved 2026-11-13) ----
 HERE = os.path.dirname(os.path.abspath(__file__))
-FIT = 28          # the object's box; the ink line takes one more texel each side, leaving the 1 px clear margin
-SRC = 6           # render scale before the fold
-ICON_SIDE = "linen"   # grid icons carry no side colour: cloth shows as undyed linen
+SRC = 6           # cube_render's default px per model texel
+ICON_SIDE = "linen"   # gear pictures carry no side colour: cloth shows as undyed linen
 POSES = {          # item -> (yaw, pitch, roll): long arms lie on the diagonal, point or head up right
     "kite_shield": (-25, 10, 0), "quiver": (-30, 10, -25), "hunting_bow": (-20, 8, -40), "crossbow": (-30, 20, -45)}
-
-def fold(src, fit=FIT, cap=2):
-    """Each output texel takes the most common opaque colour of its source cell, when the cell is at least half covered;
-    the scale never passes `cap` icon px per model texel."""
-    bb = src.getbbox()
-    if not bb: return Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    src = src.crop(bb); w, h = src.size
-    k = max(max(w, h) / fit, SRC / cap)      # source px per icon px
-    ow, oh = min(fit, max(1, round(w / k))), min(fit, max(1, round(h / k)))
-    out = Image.new("RGBA", (S, S), (0, 0, 0, 0)); ox, oy = (S - ow) // 2, (S - oh) // 2
-    px = src.load()
-    for y in range(oh):
-        for x in range(ow):
-            x0, y0 = int(x * k), int(y * k)
-            x1, y1 = max(x0 + 1, int((x + 1) * k)), max(y0 + 1, int((y + 1) * k))
-            seen = {}; n = 0
-            for yy in range(y0, min(y1, h)):
-                for xx in range(x0, min(x1, w)):
-                    n += 1; c = px[xx, yy]
-                    if c[3] >= 128: seen[c[:3]] = seen.get(c[:3], 0) + 1
-            if n and sum(seen.values()) * 2 >= n: out.putpixel((ox + x, oy + y), max(seen, key=seen.get) + (255,))
-    return out
-
-def inked(img):
-    """One ink line round the silhouette, outside it."""
-    filled = {(x, y) for y in range(S) for x in range(S) if img.getpixel((x, y))[3]}
-    ring = {(x + dx, y + dy) for x, y in filled for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))} - filled
-    out = img.copy()
-    for x, y in ring:
-        if 0 <= x < S and 0 <= y < S: out.putpixel((x, y), INK)
-    return out
 
 def cube_render(cubes, yaw, pitch, roll, px=SRC):
     """build_swords.render with a roll and a clear background: every texel a quad, far to near, flat face light."""
@@ -285,46 +252,6 @@ def cube_render(cubes, yaw, pitch, roll, px=SRC):
         d.polygon([((x - mx) * px, (y - my) * px) for x, y in ps], fill=col)
     return img
 
-VIEWS = {"helm": (-35, 12), "chest": (-20, 8), "legs": (-15, 6), "boots": (-55, 8)}   # slot -> (yaw, pitch)
-
-def piece_render(p, r, built=None):
-    """The armour piece alone, the mannequin hidden but kept as the parent frame: the helm at three-quarter, chest and
-    legs near the front so both sides read, the boots turned further so the pair stands one behind the other."""
-    import gearlib
-    bones, vis, sheets = gearlib.worn([p], r, ICON_SIDE, built)
-    own = lambda bn: bn.name.startswith(p.item_id + ".") and vis(bn)
-    return render.render(bones, own, sheets, *VIEWS[p.slot], px=SRC, bg=(0, 0, 0, 0))
-
-def item_icons():
-    """{(item id, rarity): 32 x 32 icon} for every armour piece and weapon in ids.json."""
-    import importlib, gearlib
-    for d in ("sets", "weapons"): sys.path.insert(0, os.path.join(HERE, d))
-    import weaponlib
-    out = {}
-    for f in sorted(os.listdir(os.path.join(HERE, "sets"))):
-        if not f.endswith(".py") or f.startswith("_"): continue
-        for p in importlib.import_module(f[:-3]).pieces():
-            b = p.build()
-            for r in gearlib.RARITIES: out[(p.item_id, r)] = inked(fold(piece_render(p, r, {p.item_id: b})))
-    for w in weaponlib.items():
-        yaw, pitch, roll = POSES.get(w.item_id, (-30, 15, -45))
-        for r in gearlib.RARITIES: out[(w.item_id, r)] = inked(fold(cube_render(w.cubes(r, ICON_SIDE), yaw, pitch, roll)))
-    return out
-
-def items_sheet(out):
-    """Every item at every rarity: 1x in a slot of its rarity's border, then the same at 3x."""
-    import gearlib
-    ics = item_icons(); ids = [i["id"] for i in gearlib.ids()["items"]]
-    pad = 6; c1 = 44 + pad; c3 = 44 * 3 + pad; lw = 130
-    img = Image.new("RGBA", (lw + 5 * c1 + pad + 5 * c3, pad + len(ids) * c3), hx("28262e")); d = ImageDraw.Draw(img)
-    for n, iid in enumerate(ids):
-        y = pad + n * c3
-        d.text((pad, y + 60), iid, fill=(230, 226, 214, 255))
-        for r in gearlib.RARITIES:
-            img.alpha_composite(slot(ics[(iid, r)], gearlib.BORDERS[r], 1), (lw + (r - 1) * c1, y + 44))
-            img.alpha_composite(slot(ics[(iid, r)], gearlib.BORDERS[r], 3), (lw + 5 * c1 + pad + (r - 1) * c3, y))
-    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True); img.save(out); print("item icon sheet", out)
-
 BORDERS = ["9d9d9d", "3fae49", "3d7fd6", "9a4fd6", "e8892b"]
 
 def slot(icon, border, scale):
@@ -348,11 +275,7 @@ def review_sheet(out):
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "sheet"
-    if cmd == "items":
-        d = sys.argv[2]; os.makedirs(d, exist_ok=True)
-        for (k, r), im in item_icons().items(): im.save(os.path.join(d, "%s_r%d.png" % (k, r)))
-    elif cmd == "items-sheet": items_sheet(sys.argv[2])
-    elif cmd == "relics":
+    if cmd == "relics":
         d = sys.argv[2]; os.makedirs(d, exist_ok=True)
         for k, im in relics().items(): im.save(os.path.join(d, k + ".png"))
     else: review_sheet(sys.argv[2])

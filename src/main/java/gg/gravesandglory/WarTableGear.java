@@ -1,5 +1,6 @@
 package gg.gravesandglory;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -300,27 +301,38 @@ final class WarTableGear {
         g.drawText(font(), t, b[0] + (b[2] - font().getWidth(t)) / 2, b[1] + (b[3] - 8) / 2, DarkUi.SEPIA, false);
     }
 
-    /** The atlas name of a piece's picture: gear/<item>_r1 (Common) to _r5 (Legendary), one drawing per rarity. */
+    /** The atlas name of a piece's picture: gear/<item>_r1 (Common) to _r5 (Legendary), one 144 px render per rarity. */
     static String pieceArt(String item, String rarity) { return "gear/" + item + "_r" + (Gear.rarityIndex(rarity) + 1); }
+    /** The shared rarity glow behind a picture, gear/glow_r1 to _r5 (144 px, drawn smooth). */
+    static String glowArt(String rarity) { return "gear/glow_r" + (Gear.rarityIndex(rarity) + 1); }
+    /** The rarity frame over a piece: gear/frame_r1 to _r5 (44 px, the slot's size), or frame48_r1 to _r5 (the Forge card's box, drawn 2x). */
+    static String frameArt(String rarity, boolean card) { return "gear/frame" + (card ? "48" : "") + "_r" + (Gear.rarityIndex(rarity) + 1); }
     /** The atlas name of a relic's picture: relic/<id>. */
     static String relicArt(String id) { return "relic/" + id; }
+    /** The rarity tint over a picture's well: lighter from Rare up, where the glow carries the colour. */
+    static int rarityTint(String rarity) { int i = Gear.rarityIndex(rarity); return i >= 2 ? 0x22 : i == 1 ? 0x40 : 0x30; }
 
-    /** A piece in a box: its icon (the art track's gear/<item>_rN when the atlas has it, else a rarity-coloured placeholder with the
-     *  item's initials), the rarity border, the durability bar, and the worn mark, duplicate badge and broken dim. */
+    /** A piece in a box (Kort's baked real-model pictures, 2026-11-13): the rarity tint, the rarity glow in a 40 px box, the item's
+     *  smooth render in a 36 px box (gear/<item>_rN; else a placeholder with the item's initials), the rarity frame (or a 2 px
+     *  border when the atlas lacks it; brass when hovered), the durability bar, and the worn mark, duplicate badge and broken dim. */
     static void pieceIcon(DrawContext g, GearWire.View v, Gear.Piece p, int[] b, boolean hot, boolean wornMark, boolean duplicate) {
         var it = Gear.item(p.item);
         int ink = rarityInk(p.rarity), x = b[0], y = b[1], s = b[2];
         g.fill(x, y, x + s, y + s, DarkUi.TAB_IDLE);
-        g.fill(x + 2, y + 2, x + s - 2, y + s - 2, fade(ink, 0x40));
-        String art = pieceArt(p.item, p.rarity);
-        if (UiTex.has(art)) UiTex.draw(g, art, x + (s - UiTex.entry(art).w()) / 2, y + (s - UiTex.entry(art).h()) / 2);
-        else {
+        g.fill(x + 2, y + 2, x + s - 2, y + s - 2, fade(ink, rarityTint(p.rarity)));
+        String art = pieceArt(p.item, p.rarity), glow = glowArt(p.rarity), frame = frameArt(p.rarity, false);
+        if (UiTex.has(art)) {
+            if (UiTex.has(glow)) UiTex.scaled(g, glow, x + (s - 40) / 2, y + (s - 40) / 2 - 1, 40, 40, true);
+            UiTex.scaled(g, art, x + (s - 36) / 2, y + (s - 36) / 2 - 2, 36, 36, true);
+        } else {
             var t = DarkUi.heading(initials(it.name()));
             g.drawText(font(), t, x + (s - font().getWidth(t)) / 2, y + (s - 12) / 2, ink, false);
         }
         boolean broken = p.durability <= 0;
         if (broken) g.fill(x + 2, y + 2, x + s - 2, y + s - 2, DarkUi.DROP_DIM);
-        outline(g, x, y, s, s, 2, hot ? DarkUi.BRASS_HI : ink);
+        if (UiTex.has(frame)) UiTex.scaled(g, frame, x, y, s, s, false);
+        else outline(g, x, y, s, s, 2, ink);
+        if (hot) outline(g, x, y, s, s, 2, DarkUi.BRASS_HI);
         int max = Math.max(1, Gear.forge().maxDurability()), bar = s - 8;
         int fill = broken ? bar : Math.max(1, Math.min(bar, bar * p.durability / max));
         g.fill(x + 4, y + s - 6, x + 4 + bar, y + s - 4, DarkUi.CHARCOAL);
@@ -613,8 +625,9 @@ final class WarTableGear {
         }
     }
 
-    /** The roll's card over the page for REVEAL_MS: the rarity border fading in, then the name, the rarity, and Duplicate or the
-     *  gear shards refunded. */
+    /** The roll's card over the page for REVEAL_MS, 300 x 150: the rarity border fading in; on the left a 96 px box holding the
+     *  piece's glow, picture and rarity frame (frame48 at 2x; a relic's icon at 2x), fading in with the border; then, to the
+     *  right, the name, the rarity, Duplicate or New or the gear shards refunded, and Click to skip. */
     void reveal(DrawContext g) {
         var f = revealing;
         var font = font();
@@ -623,26 +636,41 @@ final class WarTableGear {
         var item = relic ? null : Gear.item(f.item());
         var rel = relic ? Gear.relic(f.relic()) : null;
         int ink = relic ? DarkUi.EPIC_INK : rarityInk(f.rarity());
-        int w = 260, h = 120, x = (UiCanvas.width() - w) / 2, y = Math.max(cardTop(), (UiCanvas.height() - h) / 2);
+        int w = 300, h = 150, x = (UiCanvas.width() - w) / 2, y = Math.max(cardTop(), (UiCanvas.height() - h) / 2);
         int alpha = (int) Math.max(0, Math.min(255, 255 * t / FADE_MS));
         g.getMatrices().push();
         g.getMatrices().translate(0, 0, 400);
         g.fill(x + 3, y + 3, x + w + 3, y + h + 3, DarkUi.DROP_LIFT);
         g.fill(x, y, x + w, y + h, DarkUi.TAB_IDLE);
         outline(g, x, y, w, h, 3, fade(ink, alpha));
+        int bx = x + 14, by = y + 27, bs = 96;
+        g.fill(bx, by, bx + bs, by + bs, fade(ink, 0x22 * alpha / 255));
+        String art = relic ? relicArt(f.relic()) : pieceArt(f.item(), f.rarity());
+        if (UiTex.has(art)) {
+            RenderSystem.setShaderColor(1f, 1f, 1f, alpha / 255f);
+            try {
+                if (relic) UiTex.scaled(g, art, bx + (bs - 64) / 2, by + (bs - 64) / 2, 64, 64, false);
+                else {
+                    String glow = glowArt(f.rarity()), frame = frameArt(f.rarity(), true);
+                    if (UiTex.has(glow)) UiTex.scaled(g, glow, bx, by, bs, bs, true);
+                    UiTex.scaled(g, art, bx + 4, by + 3, bs - 8, bs - 8, true);
+                    if (UiTex.has(frame)) UiTex.scaled(g, frame, bx, by, bs, bs, false);
+                }
+            } finally { RenderSystem.setShaderColor(1f, 1f, 1f, 1f); }
+        }
+        if (relic || !UiTex.has(art) || !UiTex.has(frameArt(f.rarity(), true))) outline(g, bx, by, bs, bs, 2, fade(ink, alpha));
         if (t >= FADE_MS / 2) {
+            int tx = bx + bs + 14, tw = x + w - 12 - tx;
             String name = relic ? rel == null ? f.relic() : rel.name() : item == null ? f.item() : item.name();
             var nt = DarkUi.heading(name);
-            g.drawText(font, nt, x + (w - font.getWidth(nt)) / 2, y + 26, ink, false);
+            if (font.getWidth(nt) > tw) nt = DarkUi.body(name);   // a long name steps down to the body face
+            g.drawText(font, nt, tx, y + 40, ink, false);
             var r = Gear.rarity(f.rarity());
             String kind = relic ? "Relic" : (r == null ? f.rarity() : r.name()) + (item == null ? "" : " " + GearView.SLOT_WORDS.getOrDefault(item.slot(), item.slot()));
-            var kt = DarkUi.body(kind);
-            g.drawText(font, kt, x + (w - font.getWidth(kt)) / 2, y + 50, DarkUi.IVORY, false);
+            g.drawText(font, DarkUi.body(kind), tx, y + 64, DarkUi.IVORY, false);
             String tail = f.refund() > 0 ? "+" + f.refund() + " gear shards refunded" : f.duplicate() ? "Duplicate" : "New";
-            var tt = DarkUi.body(tail);
-            g.drawText(font, tt, x + (w - font.getWidth(tt)) / 2, y + 74, f.duplicate() || f.refund() > 0 ? DarkUi.BRASS : DarkUi.DAWN, false);
-            var sk = DarkUi.small("Click to skip");
-            g.drawText(font, sk, x + (w - font.getWidth(sk)) / 2, y + h - 16, DarkUi.MUTED, false);
+            g.drawText(font, DarkUi.body(tail), tx, y + 86, f.duplicate() || f.refund() > 0 ? DarkUi.BRASS : DarkUi.DAWN, false);
+            g.drawText(font, DarkUi.small("Click to skip"), tx, y + h - 24, DarkUi.MUTED, false);
         }
         g.getMatrices().pop();
         rectsDrawn.put("reveal", new int[]{x, y, w, h});
