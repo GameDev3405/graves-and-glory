@@ -272,17 +272,19 @@ public final class Props {
         int r=1;
         for(PropDef d:DEFS.values())r=Math.max(r,Math.max(d.sx(),Math.max(d.sy(),d.sz())));
         BlockPos.Mutable p=new BlockPos.Mutable();
+        BlockPos open=null; // a walk-in prop's anchor cell is open floor that another prop may stand in, so it only counts when nothing else owns the cell
         for(int dy=-r-MAX_DEPTH;dy<=1;dy++)for(int dx=-r;dx<=r;dx++)for(int dz=-r;dz<=r;dz++){
             p.set(cell.getX()+dx,cell.getY()+dy,cell.getZ()+dz);
             if(!w.getBlockState(p).isOf(Blocks.COMMAND_BLOCK))continue;
             Live l=readBase(w,p);
             if(l==null)continue;
             BlockPos anchor=l.anchor();
-            if(cell.equals(p)||cell.equals(anchor))return anchor; // a walk-in prop's anchor cell is open floor, not a solid cell
+            if(cell.equals(p))return anchor;
             for(BlockPos c:solidCells(l.def(),anchor,l.facing()))if(c.equals(cell))return anchor;
             for(PropDef.Light li:l.def().lights())if(lightCell(l.def(),anchor,l.facing(),li).equals(cell))return anchor;
+            if(open==null&&cell.equals(anchor))open=anchor;
         }
-        return null;
+        return open;
     }
 
     /** The prop whose anchor cell is {@code anchor}, read from its command block under it; null if there is none or its id is unknown. */

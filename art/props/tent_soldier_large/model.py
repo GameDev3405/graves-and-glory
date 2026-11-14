@@ -38,6 +38,7 @@ ROOF = Mat(CANVAS, 2, lambda f, P, c, r, w, h: -1 if math.floor(P[2]) % 16 == 0 
 _wall_seam = lambda f, P, c, r, w, h: -1 if math.floor(P[2] if f in ("east", "west") else P[0]) % 16 == 0 else 0
 WALL = Mat(CANVAS, 3, _wall_seam)
 GABLE = Mat(CANVAS, 3, _wall_seam, edges=False)
+FRONT = Mat(CANVAS, 3, _wall_seam, edges=False)   # the front wall and lintel: no top edge, or it draws a pale seam across the gable
 POLE = Mat(make_ramp("9C805A"), 2, pat_grain("z"))
 INSIDE = Mat(CANVAS, 1, lambda f, P, c, r, w, h: 0, edges=False, lit=False)
 FOLD = Mat(CANVAS, 2, lambda f, P, c, r, w, h: -1 if math.floor(P[0]) % 5 == 0 else 0)   # the rolled flap
@@ -109,9 +110,9 @@ def build():
             els.append(E((CX - hw, y0, 60), (CX + hw, y0 + 4, 62), GABLE, faces={"north": INSIDE}, name="back gable"))
         y0 += 4
     # ---- front gable: pillars either side of the door (x -8..24, 38 high), canvas over it ---------------------------------------------
-    els.append(E((-46, 0, -46), (DOOR_X0, WALL_H, -44), WALL, skip="down", name="front wall left"))
-    els.append(E((DOOR_X1, 0, -46), (62, WALL_H, -44), WALL, skip="down", name="front wall right"))
-    els.append(E((DOOR_X0, DOOR_H, -46), (DOOR_X1, WALL_H, -44), WALL, name="front lintel"))
+    els.append(E((-46, 0, -46), (DOOR_X0, WALL_H, -44), FRONT, skip="down", name="front wall left"))
+    els.append(E((DOOR_X1, 0, -46), (62, WALL_H, -44), FRONT, skip="down", name="front wall right"))
+    els.append(E((DOOR_X0, DOOR_H, -46), (DOOR_X1, WALL_H, -44), FRONT, name="front lintel"))
     y0 = WALL_H
     while y0 < R - 3:
         hw = gable_half(y0)
