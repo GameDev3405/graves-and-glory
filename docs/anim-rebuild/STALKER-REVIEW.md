@@ -244,3 +244,44 @@ Rows on the committed clips:
 - For the animation session: the draw arm passes 2-3.7 px into the (now invisible) torso in volley, direct and brace;
   at the end of attack_direct the right bracer goes through the chest to z +3.4. Nothing on the model shows it now, but
   a cloak or chest piece there would.
+
+## Clips on the rebuilt model 2026-11-14
+
+Branch anim/stalker-on-bow. All 35 clips rendered on the hooded skeleton and re-keyed in the builder
+(`art/anim/stalker/stalker_core.py`, `build_stalker_anims.py`). Timing, markers, names, lengths, loop flags unchanged.
+
+What changed:
+- Hood (fur_cowl + cowl_band): `hood_plates` gives it a lag on the head's moves of at most HOOD_LAG (2, 4, 2) deg,
+  and the rim goes with it. The skull sits 0.4-0.6 px inside the hood, so a bigger lag shows the skull (it did in stun
+  at 3.9 deg of roll). With the lag at 1.5 deg, stun_out_upper secondary_life FAILed (1.86), so it stays at 2 deg.
+- Shoulder plates: each plate is turned (up to 14 deg) and slid (up to 0.6 px) down its own arm, by as little as
+  clears the head, neck, hood and rim by 0.15 px. The turn is smoothed over time. Hits fade the plate and head
+  envelope in over the first 2 ticks so the composite still settles on the stance.
+- Aims: hips turn 35 deg under the upper clips, so head_turn on aim_up goes from 123 to 81 deg and on aim_down from
+  115 to 81 deg (both now WARN, not FAIL). The chest stands about 15 deg squarer to the target, so check the arrow
+  line in the booth.
+- Stun: grip and bow yaw retuned (DAZE_GRIP_Z -4.4, DAZE_BOW_YAW 36), so bow_t3_rest into left_greave goes from
+  1.55 FAIL to 0.94 WARN.
+- death_left: flat hand window (4,12) and hand turn 16, so bow angular speed is 82.6 (limit 83.2). The new model had
+  pushed it to 87.6.
+- attack_volley and attack_direct (approved): head, arms, torso, bow and legs are unchanged. Only right_pauldron
+  and left_pauldron (z turn and y slide) and fur_cowl and cowl_band (lag) are re-keyed, on every tick.
+
+Rows (before, then after):
+- Scorecard exit 0, then 0.
+- Focus: 3 FAIL, 48 WARN, then 0 FAIL, 49 WARN. The new WARNs are fur_cowl secondary_life in hit_medium_back
+  (3.83), hit_block (2.85) and stun_out_upper (2.49): the hood lag is capped for the skull. The attack_direct settle
+  row is now on right_pauldron (86.1), which rides the arm. Gone: stance_aim WARN, aim_up limb_in_body, and three
+  hit left_pauldron stale rows.
+- Probe, worst pauldron into the hood: brace -1.00 to 0.27, hits -0.63..-1.00 to -0.21..0.37, stun -0.98 to 0.06.
+
+Open:
+- Shots, t7: the right forearm or bracer is 0.98 px into the bare neck (head#3) at the anchor. The neck turns about
+  its base, so head moves cannot clear it. A neck-keep IK term pulled the string hand 3-6 px off the string. Model or
+  anchor call.
+- charge_run_upper and attack_volley t24.5: the right pauldron is 0.97 px under the nape drape (fur_cowl#7) while the
+  head is turned. No plate turn or head nod clears it.
+- The draw arm in the ribcage, 0.5-0.7 px at the shoulder hinge in the shots: left alone (approved choreography).
+- Deaths (falls, not gated): bow_t3_rest under the ground is 12.9 px on death_left (was 10.3) and 3.0 px on
+  death_right (new).
+- Empty mantle and pelt bones keep their keys; they move nothing.

@@ -76,6 +76,8 @@ def both(*mods):
 
 def emit(out, name, samples, ticks, loop, legs=True, cloth_kw=None, upper_name=None, legs_name=None, review=True):
     cloth(samples, loop=loop is True, **(cloth_kw or {}))
+    # the rebuilt body (2026-11-14): the hood's lag and the plates clear of the head; the two approved shots keep their head
+    C.hood_plates(samples, loop=loop is True, report=name, head=review)
     if review:              # the review pass (2026-11-13): never on the two approved shots
         C.gear_follow(samples)
     FULL[name] = samples
@@ -104,8 +106,9 @@ ANCHOR = (-7.4, 24.6, 1.5)         # head-local: beside the fur cowl at the jaw,
 ELEV = {"volley": 35.0, "direct": 4.0}
 
 
-def anchor_solve(g, elev, draw=3.0, anchor=ANCHOR, feet=C.FEET):
-    """The bow arm and the aim's yaw that put the drawn nock on the anchor; returns the goals with grip, lhint and bow set."""
+def anchor_solve(g, elev, draw=3.0, anchor=ANCHOR, feet=C.FEET, turn_w=0.5):
+    """The bow arm and the aim's yaw that put the drawn nock on the anchor; returns the goals with grip, lhint and bow set.
+    turn_w: what the chest's own extra turn costs (the aims hold it near the keyed turn: 2026-11-14)."""
     g = dict(g)
     sv = C.Solver()
     full = C.fill([(0, g)])[0][1]
@@ -126,7 +129,7 @@ def anchor_solve(g, elev, draw=3.0, anchor=ANCHOR, feet=C.FEET):
 
     def f(x):
         N, A, _ = nock(x)
-        return np.concatenate([4.0 * (N - A), 0.02 * (x - x0) * np.array([1, 1, 1, 1, 40, 0.5, 8])])
+        return np.concatenate([4.0 * (N - A), 0.02 * (x - x0) * np.array([1, 1, 1, 1, 40, turn_w, 8])])
 
     x = B.gn(f, x0, clamp=lambda x: np.r_[x[:3], min(-4.0, x[3]), x[4:]])
     N, A, p = nock(x)
@@ -345,7 +348,9 @@ RALLY_SWING = (9.0, 24.0, -8.6)    # the bow hand on its way up, out in front
 RALLY_TOP = (7.6, 31.0, -1.8)      # ... and at the top of the punch
 
 
-AIM_HIPS = 20.0      # review pass 2026-11-13: degrees of the aim's turn the hips take from the chest (head_turn was 111-130)
+AIM_HIPS = 35.0      # degrees of the aim's turn the hips take from the chest (review pass 2026-11-13: 20, head_turn was 111-130;
+#                      2026-11-14 on the rebuilt body: 35, head_turn 123/115 -> about 81)
+AIM_TURN_W = {45.0: 5.0, -30.0: 5.0}   # aiming high or low the chest may not turn on past its key to reach (it took 36 more)
 
 
 # fix round 2: aiming high or low, the half-draw hand sits further back by the jaw (head-local px), so the string forearm comes
@@ -356,7 +361,8 @@ AIM_SHIFT = {0.0: (0.0, 0.0, 2.5), 45.0: (1.5, 0.0, 2.5), -30.0: (0.0, 0.0, 3.5)
 def aim_pose(elev):
     lean, nod = {0.0: (1.0, 0.0), 45.0: (-15.0, -12.0), -30.0: (12.0, 9.0)}[elev]
     g, err = anchor_solve(G(WATCH, hips_r=(0, 8 + AIM_HIPS, 0), torso=(lean, 78 - AIM_HIPS, 0), head=(-lean * 0.55 + nod, -94 + AIM_HIPS, 0), bow=(elev, 0, -6), draw=2.0, string=1.0,
-                            rhint=(-70.0, -30.0, 20.0, -130.0)), elev, draw=2.0, anchor=add(PRE_ANCHOR, AIM_SHIFT.get(elev, Z3)))
+                            rhint=(-70.0, -30.0, 20.0, -130.0)), elev, draw=2.0, anchor=add(PRE_ANCHOR, AIM_SHIFT.get(elev, Z3)),
+                     turn_w=AIM_TURN_W.get(elev, 0.5))
     print("  aim %+.0f: anchor miss %.3f px" % (elev, err))
     return g
 
@@ -542,8 +548,9 @@ def additive(out, name, samples, ticks, ref):
     cloth(samples)
     C.gear_follow(samples)
     C.soften(samples)
+    C.hood_plates(samples, report=name)
     FULL[name] = samples
-    out[name] = K.bake(C.close_end(delta(samples, ref, C.UPPER + C.CLOTH + C.SOFT)), ticks, loop=False)
+    out[name] = K.bake(C.close_end(C.open_start(delta(samples, ref, C.UPPER + C.CLOTH + C.SOFT), ("head",) + C.PLATES + C.HOOD)), ticks, loop=False)
     legs = delta(samples, ref, C.LEGS)
     for f in legs:
         for b in ("right_shin", "left_shin"):
@@ -567,7 +574,7 @@ READY_B = body(READY, READY_YAW, READY_LEAN, look=(0, 4))       # the ready pose
 
 
 def hit_ref():
-    return C.gear_follow(cloth([dict(C.static(READY_B)) for _ in range(40)]))[-1]
+    return C.hood_plates([C.gear_follow(cloth([dict(C.static(READY_B)) for _ in range(40)]))[-1]])[0]
 
 
 def hit_clips(out, only=None):
@@ -627,8 +634,9 @@ def hit_clips(out, only=None):
 # ------------------------------------------------------------------------------------------------
 
 DAZE_EASE = 0.5       # fix round 2: the daze moves slower through the loop seam, where the jolt hands over to it (loop_vel)
-DAZE_GRIP_Z = -3.2    # the slack bow hand a little out in front (was -2.4)
+DAZE_GRIP_Z = -4.4    # the slack bow hand a little out in front (was -2.4; -3.2 until 2026-11-14: the low limb in the left greave)
 DAZE_BOW = -54.0      # the trailing bow's elevation (was -58: the low limb went into the hips)
+DAZE_BOW_YAW = 36.0   # ... and its turn (30 until 2026-11-14)
 
 
 def daze(ph, jolt=0.0):
@@ -636,7 +644,7 @@ def daze(ph, jolt=0.0):
     return body(READY_SHOT, 30 + 4 * math.sin(a), 19 + 4 * math.sin(2 * a) - 17 * jolt, 6 * math.sin(a + 0.6),
                 look=(8 + 15 * math.cos(a), 24 + 9 * math.sin(a) - 16 * jolt, 13 * math.sin(a + 0.4)),
                 hips_r=(4, 8 + 2 * math.sin(a), 2.5 * math.sin(a)), hips_p=(0.5 * math.sin(a), -2.7 - 0.3 * math.cos(2 * a), 0.3 * math.cos(a)),
-                grip=(6.8 + 0.8 * jolt, 15.4 + 0.3 * math.sin(2 * a) + 1.6 * jolt, DAZE_GRIP_Z), bow=(DAZE_BOW + 5 * math.sin(a), 30, -30 + 8 * math.sin(a + 1)),
+                grip=(6.8 + 0.8 * jolt, 15.4 + 0.3 * math.sin(2 * a) + 1.6 * jolt, DAZE_GRIP_Z), bow=(DAZE_BOW + 5 * math.sin(a), DAZE_BOW_YAW, -30 + 8 * math.sin(a + 1)),
                 lhint=(-6.0, 0.0, -12.0, -16.0), rh=(-6.6, 13.6, -1.4 + 0.8 * math.sin(a + 2)), rhint=(-4.0, 0.0, 10.0, -14.0),
                 string=0.0, draw=0.0)
 
@@ -644,9 +652,10 @@ def daze(ph, jolt=0.0):
 def stun_clips(out, only=None):
     samples = run(lambda t: daze((t - 4.0) / 20.0) if t >= 4 else daze(0.0, math.sin(math.pi * t / 4.0) ** 2 * (1.0 - t / 8.0)), 24, report="stun")
     cloth(samples)
-    samples[24 * SUB] = samples[4 * SUB]
+    samples[24 * SUB] = dict(samples[4 * SUB])      # a copy: the passes below write each sample once (2026-11-14)
     C.gear_follow(samples)
     C.soften(samples, seam=4 * SUB, tune={"fur_cowl": {"gain": 0.6}})
+    C.hood_plates(samples, report="stun", seam=4 * SUB)
     FULL["stun"] = samples
     out["stun_upper"] = K.bake(upper_of(samples), 24, loop=True)
     out["stun_legs"] = K.bake(legs_of(samples), 24, loop=True)
@@ -711,10 +720,13 @@ DEATH_FORWARD = [
 ]
 
 
-FLAT = {"death_back": (4, 12), "death_forward": (8, 16), "death_left": (5, 13), "death_right": (5, 13)}   # the bow let go, slowly
+FLAT = {"death_back": (4, 12), "death_forward": (8, 16), "death_left": (4, 12), "death_right": (5, 13)}   # the bow let go, slowly
 
 
 MAX_HAND_TURN = 12.0     # degrees a tick (fix round 2: was 32; the side deaths turned the bow too fast)
+# 2026-11-14, the rebuilt body: the flat-hand search finds another rest for the left fall, which turned the bow 87.6 deg in
+# two ticks (limit 83.2); laid down from tick 4 to 12 (was 5 to 13) at up to 16 deg a tick it is 82.6
+HAND_TURN = {"death_left": 16.0}
 
 
 def rest_hand(pose, ref):
@@ -745,7 +757,7 @@ def rest_hand(pose, ref):
     return best[1]
 
 
-def lay_bow(keys, start, t0, t1):
+def lay_bow(keys, start, t0, t1, max_turn=MAX_HAND_TURN):
     """The bow let go of and laid flat (the bow family's flat-hand search), found backwards from where it comes to rest so the
     hand turns one way into that rest instead of hunting between the search's answers on the way down."""
     end = keys[-1][0]
@@ -758,7 +770,7 @@ def lay_bow(keys, start, t0, t1):
     for t in range(t0, end + 1):
         want = B.slerp_rot(K.pose_at(keys, start, t)["left_hand"], flats[t], B.ramp(t, t0 - 1, t1))
         turn = B.turn_deg(prev, want)
-        prev = B.slerp_rot(prev, want, min(1.0, MAX_HAND_TURN / max(turn, 1e-6)))     # the wrist never snaps to a new answer
+        prev = B.slerp_rot(prev, want, min(1.0, max_turn / max(turn, 1e-6)))     # the wrist never snaps to a new answer
         overs[t] = {"left_hand": prev}
     return K.roll_keys(keys, start, max(k[0] for k in keys if k[0] <= t0 - 1), overs)
 
@@ -807,7 +819,7 @@ def death_clips(out, only=None):
     for n, keys in falls.items():
         if only not in (None, n):
             continue
-        clip = B.only_rig({n: K.death_clip(lay_bow(keys, start, *FLAT[n]), start, n)})[n]
+        clip = B.only_rig({n: K.death_clip(lay_bow(keys, start, *FLAT[n], max_turn=HAND_TURN.get(n, MAX_HAND_TURN)), start, n)})[n]
         smooth_hand(clip)
         out[n] = clip
         FULL[n] = clip

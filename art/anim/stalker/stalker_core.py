@@ -317,7 +317,7 @@ def legs_of(samples):
 # ------------------------------------------------------------------------------------------------
 
 GEAR = ("right_foot_gear", "left_foot_gear")
-SOFT = ("fur_cowl", "wrap_tails", "right_pauldron", "left_pauldron")
+SOFT = ("fur_cowl", "cowl_band", "wrap_tails", "right_pauldron", "left_pauldron")
 
 
 def _gear_pos(side, rot, pos=None):
@@ -361,7 +361,9 @@ def soften(samples, seam=None, tune=None):
     it and the last sample is spread over the loop so it closes."""
     sys.path.insert(0, str(HERE.parent / "common"))
     import fullbody as FB
-    parts = {n: c for n, c in FB.soft_parts_for().items() if not set(c["bones"]) & set(CLOTH)}
+    # the hood is not swung here (2026-11-14): on the rebuilt body it sits half a pixel off the skull, so hood_plates gives it
+    # its own few degrees of lag instead
+    parts = {n: c for n, c in FB.soft_parts_for().items() if not set(c["bones"]) & (set(CLOTH) | {"fur_cowl", "cowl_band"})}
     for n, over in (tune or {}).items():
         if n in parts:
             parts[n].update(over)
@@ -407,6 +409,21 @@ def close_end(frames, ticks=3.0):
     return frames
 
 
+def open_start(frames, bones, ticks=2.0):
+    """An additive clip starts exactly on zero for `bones`: what they hold at its first frame is faded out over its first
+    ticks (2026-11-14: the head and the plates, whose clearance nod and turn are spread a tick or so ahead of the first hit
+    frames that need them)."""
+    w = int(ticks * SUB)
+    first = {b: frames[0][b] for b in bones if b in frames[0]}
+    for i, f in enumerate(frames[:w + 1]):
+        k = 1.0 - K.smooth(i / float(w))
+        for b, (fr, fp) in first.items():
+            rot, pos = f[b]
+            f[b] = (tuple(a - k * c for a, c in zip(rot, fr)),
+                    None if pos is None else tuple(a - k * c for a, c in zip(pos, fp or Z3)))
+    return frames
+
+
 def delta(samples, ref, bones):
     """Additive offsets of the samples from a reference pose (rotations wrapped; the hips' position too)."""
     out = []
@@ -416,10 +433,260 @@ def delta(samples, ref, bones):
             if b not in s or (b not in ref and b not in SOFT):
                 continue
             rot = tuple(wrap(a - c) for a, c in zip(s[b][0], ref[b][0] if b in ref else Z3))
-            pos = tuple(a - c for a, c in zip(s[b][1], ref[b][1])) if b == "hips" or b in GEAR else None
+            pos = (tuple(a - c for a, c in zip(s[b][1] or Z3, ref[b][1] if b in ref and ref[b][1] is not None else Z3))
+                   if b == "hips" or b in GEAR or b in PLATES else None)
             f[b] = (rot, pos)
         out.append(f)
     return out
+
+
+# ------------------------------------------------------------------------------------------------
+# The rebuilt body (hooded skeleton, 2026-11-14). The clips were authored on a cloaked body; on the skeleton the hood is
+# fur_cowl (cowl_band is its rim, a separate bone that must move with it) and sits only half a pixel off the skull, so:
+#   hood_plates  the hood takes a small lag on the head's moves (at most HOOD_LAG degrees, so the skull never shows through
+#                it) and the rim goes with it; then each shoulder plate is turned and slid down its own arm, as little as
+#                does it, until it is clear of the head, the neck, the hood and its rim by PLATE_CLEAR px. The plate's turn
+#                is smoothed over time so it never pops.
+# ------------------------------------------------------------------------------------------------
+
+HOOD = ("fur_cowl", "cowl_band")
+PLATES = ("right_pauldron", "left_pauldron")
+HEADSET = ("head", "fur_cowl", "cowl_band")
+HOOD_LAG = (2.0, 4.0, 2.0)        # degrees the hood may trail the head (x, y, z): the skull sits 0.4-0.6 px inside it, and
+#                                   its top corners are 10 px from the neck pivot (the stun showed it through 3.9 deg of roll;
+#                                   2 deg of x and z still lets the hits' hood read as alive, secondary_life >= 2.5)
+PLATE_CLEAR = 0.15                # px between a shoulder plate and the head assembly
+PLATE_MAX = 14.0                  # degrees a plate may turn on its arm to stay clear (fullbody lets a plate trail 10)
+PLATE_SLIDE = 0.6                 # px it may slide down the arm
+_FULL = None
+
+
+def _full():
+    global _FULL
+    if _FULL is None:
+        _FULL = rg.load_geo(str(HERE.parent.parent.parent / "src/main/resources/assets/gravesandglory/geo/troop/stalker.geo.json"))
+    return _FULL
+
+
+def _boxes(bone):
+    m = _full()
+    return [(c.corners.min(0), c.corners.max(0)) for c, b in zip(m.cube_list, m.cube_bone) if b == bone and not np.any(c.rot)]
+
+
+def _lattice(bone, step=1.0 / 16.0):
+    out = []
+    for lo, hi in _boxes(bone):
+        ax = [np.linspace(lo[i], hi[i], max(2, int(round((hi[i] - lo[i]) / step)) + 1)) for i in range(3)]
+        out.append(np.stack(np.meshgrid(*ax, indexing="ij"), -1).reshape(-1, 3))
+    return np.vstack(out) if out else np.zeros((0, 3))
+
+
+def _sdf(p, boxes):
+    """Signed distance (px) of points p (blocks, in the boxes' rest frame) to the nearest box; negative inside."""
+    best = np.full(len(p), 1e9)
+    for lo, hi in boxes:
+        q = np.abs(p - (lo + hi) / 2.0) - (hi - lo) / 2.0
+        out = np.linalg.norm(np.maximum(q, 0.0), axis=1)
+        best = np.minimum(best, np.where(out > 0, out, np.minimum(q.max(1), 0.0)))
+    return best * 16.0
+
+
+def _pose(s):
+    return {b: (tuple(v[0]), tuple(v[1]) if v[1] is not None else Z3) for b, v in s.items() if b != "draw" and b in K.MODEL.bones}
+
+
+def _into(M_from, pts, M_to):
+    P = np.c_[pts, np.ones(len(pts))] @ M_from.T
+    return (P @ np.linalg.inv(M_to).T)[:, :3]
+
+
+def head_clearance(s, movers):
+    """Least px between the lattice of `movers` and the head assembly in full-body sample s."""
+    pose = _pose(s)
+    Ms = {b: K.world(pose, b) for b in set(movers) | set(HEADSET)}
+    best = 1e9
+    for mv in movers:
+        pts = _lattice(mv)
+        for hb in HEADSET:
+            best = min(best, float(_sdf(_into(Ms[mv], pts, Ms[hb]), _boxes(hb)).min()))
+    return best
+
+
+def _lowpass(x, k):
+    """A critically damped follower of x (rows over samples), run twice round for a loop."""
+    y, v = np.array(x[0], float), np.zeros_like(np.array(x[0], float))
+    out = []
+    for xi in x:
+        a = np.asarray(xi, float) - y
+        v += (k * k * a - 2 * k * v) / SUB
+        y = y + v / SUB
+        out.append(y.copy())
+    return np.array(out)
+
+
+HEAD_FIX = (6.0, 6.0)            # degrees the head may be nodded down (x) and tilted (z) off its key to clear the plates/arms
+
+
+def _under(bone):
+    m = _full()
+    out, todo = [], [bone]
+    while todo:
+        b = todo.pop()
+        out.append(b)
+        todo += [c if isinstance(c, str) else c.name for c in m.bones[b].children]
+    return out
+
+
+ARM_PARTS = tuple(b for s in ("right", "left") for b in _under(s + "_arm")
+                  if "pauldron" not in b and not b.startswith(("bow_", "weapon_", "draw")) and _boxes(b))
+_LAT = {}
+
+
+def _lat(b):
+    if b not in _LAT:
+        _LAT[b] = _lattice(b)
+    return _LAT[b]
+
+
+def _w(M, pts):
+    return np.c_[pts, np.ones(len(pts))] @ M.T
+
+
+def _clear_into_head(Wpts, Mh):
+    """Least px of world points (homogeneous, blocks) against the head assembly given its world matrices."""
+    best = 1e9
+    for hb in HEADSET:
+        P = (Wpts @ np.linalg.inv(Mh[hb]).T)[:, :3]
+        best = min(best, float(_sdf(P, _boxes(hb)).min()))
+    return best
+
+
+def _hood_lag(samples, loop, lag):
+    n = len(samples)
+    hr = np.array([np.add(s["head"][0], s["torso"][0]) if "head" in s and "torso" in s else np.zeros(3) for s in samples], float)
+    seq = np.vstack([hr, hr]) if loop else hr
+    fol = _lowpass(seq, 0.9)[-n:]
+    return np.clip((fol - hr) * lag, -np.array(HOOD_LAG), np.array(HOOD_LAG))
+
+
+PLATE_K = (0.0, 0.25, 0.5, 0.75, 1.0)
+HEAD_GRID = sorted(((hx, hz) for hx in np.linspace(0.0, HEAD_FIX[0], 5) for hz in np.linspace(-HEAD_FIX[1], HEAD_FIX[1], 9)),
+                   key=lambda h: abs(h[0]) + abs(h[1]))
+
+
+def _solve(s, arms=True, grid=HEAD_GRID):
+    """(kR, kL, hx, hz, solved): the least plate turn and head nod/tilt that clears the plates (and, with `arms`, the arms)
+    off the head assembly. Unsolved: the plate turns that leave the most room under the unmoved head."""
+    pose = _pose(s)
+    Mt = K.world(pose, "torso")
+    apts = np.vstack([_w(K.world(pose, b), _lat(b)) for b in ARM_PARTS]) if arms else None
+    plates = {}
+    for pl in PLATES:
+        sd = 1.0 if pl.startswith("right") else -1.0
+        r0, p0 = pose.get(pl, (Z3, Z3))
+        par = K.world(pose, _full().bones[pl].parent)
+        plates[pl] = [_w(par @ K.local(pl, add(r0, (0.0, 0.0, sd * PLATE_MAX * k)), add(p0, (0.0, -PLATE_SLIDE * k, 0.0))), _lat(pl))
+                      for k in PLATE_K]
+    hr = pose.get("head", (Z3, Z3))
+    best, fall = None, None
+    for hx, hz in grid:
+        Mh = {"head": Mt @ K.local("head", add(hr[0], (hx, 0.0, hz)), hr[1])}
+        for b in HOOD:
+            r, p = pose.get(b, (Z3, Z3))
+            Mh[b] = Mh["head"] @ K.local(b, r, p)
+        if fall is None:        # the unmoved head: each plate's roomiest turn, kept in case nothing clears
+            fall = tuple(PLATE_K[int(np.argmax([_clear_into_head(q, Mh) for q in plates[pl]]))] for pl in PLATES) + (0.0, 0.0, False)
+        if arms and _clear_into_head(apts, Mh) < PLATE_CLEAR:
+            continue
+        ks = []
+        for pl in PLATES:
+            k = next((PLATE_K[i] for i in range(len(PLATE_K)) if _clear_into_head(plates[pl][i], Mh) >= PLATE_CLEAR), None)
+            ks.append(k)
+        if None in ks:
+            continue
+        cost = abs(hx) + abs(hz) + 0.4 * PLATE_MAX * (ks[0] + ks[1])
+        if best is None or cost < best[0]:
+            best = (cost, ks[0], ks[1], hx, hz, True)
+        if hx == 0 and hz == 0:
+            break
+        if best[0] <= abs(hx) + abs(hz):
+            break
+    return fall if best is None else best[1:]
+
+
+def _envelope(x, loop, w):
+    n = len(x)
+    idx = (lambda j: j % (n - 1)) if loop else (lambda j: min(n - 1, max(0, j)))
+    env = np.array([max(x[idx(j)] for j in range(i - w, i + w + 1)) for i in range(n)])
+    for _ in range(4):
+        env = np.array([(env[idx(i - 1)] + 2 * env[i] + env[idx(i + 1)]) / 4.0 for i in range(n)])
+    env = np.maximum(env, x)
+    if loop:
+        env[-1] = env[0]
+    return env
+
+
+def hood_plates(samples, loop=False, lag=1.0, report=None, seam=None, head=True):
+    """In place over full-body samples: the hood's lag, then the plates and the head solved clear of each other.
+    head=False (the two approved shots): only the hood's lag and the plates; the head and the arms are left as keyed.
+    Where the arms cannot be cleared the plates alone are solved; where even they cannot, they take their roomiest turn."""
+    n = len(samples)
+    seen = set()
+    for i, s in enumerate(samples):     # a loop's last sample may be its first one again: give it its own dict
+        if id(s) in seen:
+            samples[i] = dict(s)
+        seen.add(id(samples[i]))
+    base = [{b: s.get(b, (Z3, None))[0] for b in HOOD} for s in samples]
+    for s, r in zip(samples, _hood_lag(samples, loop, lag)):
+        for b in HOOD:
+            s[b] = (tuple(float(v) for v in add(s.get(b, (Z3, None))[0], r)), None)
+    need = np.zeros((n, 4))
+    miss = []
+    for i, s in enumerate(samples):
+        if i % 2 and i < n - 1:
+            continue
+        if head_clearance(s, PLATES + ARM_PARTS if head else PLATES) >= PLATE_CLEAR:
+            continue
+        got = _solve(s) if head else _solve(s, arms=False, grid=[(0.0, 0.0)])
+        if head and not got[4]:
+            got = _solve(s, arms=False)
+        if not got[4]:
+            miss.append(i / SUB)
+        need[i] = got[:4]
+    for i in range(1, n - 1, 2):
+        need[i] = np.where(np.abs(need[i - 1]) > np.abs(need[i + 1]), need[i - 1], need[i + 1])
+    w = int(1.5 * SUB)
+    kR, kL, hx = (_envelope(need[:, c], loop, w) for c in range(3))
+    hz = _envelope(np.maximum(need[:, 3], 0), loop, w) - _envelope(np.maximum(-need[:, 3], 0), loop, w)
+    for i, s in enumerate(samples):
+        for pl, k, kk in zip(PLATES, (kR[i], kL[i]), (kR, kL)):
+            if kk.max() > 1e-6:     # every sample keys the plate once any does (bake needs every sample)
+                sd = 1.0 if pl.startswith("right") else -1.0
+                r, p = s.get(pl, (Z3, None))
+                s[pl] = (add(r, (0.0, 0.0, sd * PLATE_MAX * float(k))), add(p or Z3, (0.0, -PLATE_SLIDE * float(k), 0.0)))
+        if abs(hx[i]) > 1e-6 or abs(hz[i]) > 1e-6:
+            r, p = s["head"]
+            s["head"] = (add(r, (float(hx[i]), 0.0, float(hz[i]))), p)
+    if seam is not None:       # a loop that starts at `seam` (the stun): the gap at its end is spread back over the loop
+        for b in ("head",) + HOOD + PLATES:
+            if b not in samples[seam]:
+                continue
+            g = np.subtract(samples[seam][b][0], samples[-1][b][0])
+            gp = np.subtract(samples[seam][b][1] or Z3, samples[-1][b][1] or Z3)
+            for i in range(seam, n):
+                f = (i - seam) / float(n - 1 - seam)
+                r, p = samples[i][b]
+                samples[i][b] = (tuple(float(v) for v in np.add(r, g * f)),
+                                 None if p is None and not gp.any() else tuple(float(v) for v in np.add(p or Z3, gp * f)))
+        for i in range(seam, n):     # ... and the hood still never trails its key by more than HOOD_LAG
+            for b in HOOD:
+                r, p = samples[i][b]
+                d = np.clip(np.subtract(r, base[i][b]), -np.array(HOOD_LAG), np.array(HOOD_LAG))
+                samples[i][b] = (tuple(float(v) for v in np.add(base[i][b], d)), p)
+    if report:
+        print("  %-22s head fix: plates %.2f/%.2f, nod %.1f, tilt %.1f..%.1f deg; unsolved ticks %s" % (
+            report, kR.max(), kL.max(), hx.max(), hz.min(), hz.max(), miss[:8]))
+    return samples
 
 
 # ------------------------------------------------------------------------------------------------
