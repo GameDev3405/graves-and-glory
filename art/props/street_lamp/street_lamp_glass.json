@@ -1,0 +1,91 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  64,
+  64
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/street_lamp",
+  "particle": "gravesandglory:prop/street_lamp"
+ },
+ "elements": [
+  {
+   "from": [
+    5,
+    20,
+    5
+   ],
+   "to": [
+    11,
+    28,
+    11
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      2.0,
+      7.5,
+      3.5,
+      9.5
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      3.5,
+      7.5,
+      5.0,
+      9.5
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      5.0,
+      7.5,
+      6.5,
+      9.5
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      6.5,
+      7.5,
+      8.0,
+      9.5
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "lantern glass",
+   "shade": false
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    16,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    -0.0,
+    -27.491,
+    -15.872
+   ],
+   "scale": [
+    1.984,
+    1.984,
+    1.984
+   ]
+  }
+ }
+}
