@@ -74,7 +74,7 @@ and start_interpolation: about 45 bytes on the wire with framing.
 | 1 banner (1 moving part) | 2 | ~90 |
 | 30 banners in range | 60 | ~2.7 KB |
 | 30 spear standards + 10 pavilions (1 pennant part each) | 80 | ~3.6 KB |
-| 1 trebuchet (arm 6 parts + box 3 parts) | 18 | ~0.8 KB |
+| 1 trebuchet (arm 6 parts + box 3 parts; KEY is global, a per-def KEY of 20 would halve it but is a design change) | 18 | ~0.8 KB |
 | 1 cook spit (roast) | 2 | ~90 |
 | for comparison: S5 effects, per effect prop | 0.02 (anvil) .. 5.7 (black smoke vent), mean 2.6 | particle packets ~40-60 B |
 
@@ -123,6 +123,6 @@ set can halve the cost by raising `KEY` to 20 for slow motion, at the price of a
   off the origin wobbles (straight-line translation tween) and needs a period of 120 or more.
 - **Trebuchet throw.** A one-shot throw (fast release,
   slow settle) is a later kind (`throw` with keyframed angles) and needs a trigger from gameplay, which is Kort's call.
-- **Previews.** `tools/prop_shot.py <ids> --frames N[:TICKS[:FOCUS]]` shoots N frames TICKS apart and writes
-  `work/props/review/<id>-motion.gif`; FOCUS > 0 aims the camera at the mean motion pivot from FOCUS blocks (small cloth on a big tent).
+- **Previews.** `tools/prop_shot.py <ids> --motion N[:TICKS[:FOCUS[:VIEW]]]` shoots N frames TICKS apart and writes
+  `work/props/review/<id>-motion.gif`; FOCUS > 0 aims the camera at the mean motion pivot from FOCUS blocks (small cloth on a big tent); VIEW sets the camera bearing (0 = square to the front; the spit GIF uses 30:5:3:0).
 - Sounds stay vanilla (a `minecraft:block.wood.*` creak as an ordinary S5 effect on the same prop).
