@@ -345,8 +345,7 @@ public final class SiegeMode extends BattleMode {
     @Override
     public Vec3d lineup(GravesAndGlory.Battle b, int team) {
         var st = s(b);
-        // An engine map's yard lies far from the defenders' home yard (the spawn guard keeps a lineup in its base's own yard, and stacked all of it on the base spawn): they line up at home there.
-        return team == 1 && stage == 0 && st.landmark != null ? at(st.yardX + YARD_LINEUP, st.yardZ) : super.lineup(b, team);
+        return team == 1 && stage == 0 ? at(st.yardX + YARD_LINEUP, st.yardZ) : super.lineup(b, team);
     }
 
     /** A spot on the ground. */
