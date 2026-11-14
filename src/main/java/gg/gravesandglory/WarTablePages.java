@@ -1995,6 +1995,7 @@ final class WarTablePages {
         rectsDrawn.put("roll-" + t, new int[]{x, y, PW, h});
         textsDrawn.put("roll-" + t, l1 + " / " + l2);
         texturesDrawn.put("roll-" + t, plate);
+        if (!title) texturesDrawn.put("icon-" + t, reward[0]);
     }
 
     /** An Oath plaque, sepia under "not sworn" (no House takes oaths in this phase): the House-wide reward the tier will give. */

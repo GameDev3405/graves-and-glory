@@ -3561,6 +3561,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** The name of the page's widget the screen's focus is on, or "none". */
         static String focused(MinecraftClient c){var s=screen(c);var p=pages(c);if(s==null||p==null)return "none";for(var e:p.buttons.entrySet())if(e.getValue()==s.getFocused())return e.getKey();return "none";}
         /** Adds the tiers the last frame drew on each of the track's rows. */
+        List<String> oathRects(){List<String> out=new ArrayList<>();for(var k:WarTablePages.rects().keySet())if(k.startsWith("oath-")||k.equals("oath"))out.add(k);return out;}
         void tiersDrawn(){for(var k:WarTablePages.rects().keySet()){if(k.startsWith("roll-"))rollSeen.add(Integer.parseInt(k.substring(5)));if(k.startsWith("oath-"))oathSeen.add(Integer.parseInt(k.substring(5)));}}
 
         /** The page as the last frame drew it: every visible widget and every piece of art (not the floor, the table or the rail)
@@ -3586,6 +3587,10 @@ public final class Phase1Checks implements ClientModInitializer {
                 boolean at=want!=null&&(r.equals(name)?!b.containsKey(r)&&Arrays.equals(rect("here"),want)&&"table/plaque-112-here".equals(tex("here")):Arrays.equals(b.get(r),want));
                 rail&=at;if(!at)railWhy.append(' ').append(r);}
             if(!Arrays.asList(WarTableHome.RAIL).contains(name)&&rect("here")!=null){rail=false;railWhy.append(" a plaque lit");}
+            // the top bar's labels (Season pass is the longest): each whole word inside its 112-wide plaque with 6 px to spare, at every canvas size
+            for(int i=0;i<WarTableHome.RAIL_LABELS.length;i++){String lab=WarTableHome.RAIL_LABELS[i];int lw=c.textRenderer.getWidth(DarkUi.heading(lab));if(28+lw>WarTableHome.RAIL_W-6){rail=false;railWhy.append(" label \"").append(lab).append("\" is ").append(lw).append(" px, too wide for the plaque");}}
+            if(!"Season pass".equals(WarTableHome.RAIL_LABELS[java.util.Arrays.asList(WarTableHome.RAIL).indexOf("chapter")])){rail=false;railWhy.append(" the Chapter button is not labelled Season pass");}
+            if(name.equals("chapter")&&!"Season pass".equals(text("here"))){rail=false;railWhy.append(" the lit plaque reads \""+text("here")+"\"");}
             String table=WarTable.drawnTable();boolean wood=table.equals("table/oak-table-"+name);
             String title=text("title");int[] tr=rect("title");
             boolean titled=name.equals("chapter")?title==null&&"Season pass / The Founders".equals(text("chapter"))
@@ -3884,11 +3889,11 @@ public final class Phase1Checks implements ClientModInitializer {
         }
         /** The hero letter's tier when the track starts at first (the page's own rule, UiMath.heroTier then the next title tier). */
         static int heroAt(int first){return WarTablePages.titleFrom(UiMath.heroTier(first,WarTablePages.shown(),Progression.TIERS,WarTablePages.EVERY));}
-        /** A Roll plaque's two lines hold the words of the tier's reward (Progression.reward) and nothing else: "30 gear shards" reads "Gear / 30"; the article and the word House are left out. */
+        /** A Roll plaque's two lines hold the words of the tier's reward (Progression.reward) and nothing else: "30 gear shards" reads "Gear / 30"; the article and the word shards are left out. */
         static boolean plaqueIs(int tier,String plaque){
             if(plaque==null)return false;Set<String> want=new TreeSet<>(),got=new TreeSet<>();
             String reward=Progression.reward(tier).toLowerCase(Locale.ROOT);
-            for(String w:reward.split(" "))if(!Set.of("a","an","house").contains(w)&&!(w.equals("shards")&&reward.contains("gear")))want.add(w); // "30 gear shards" reads "Gear / 30"
+            for(String w:reward.split(" "))if(!Set.of("a","an").contains(w)&&!w.equals("shards"))want.add(w); // "30 gear shards" reads "Gear / 30" and "10 House shards" reads "House / 10"
             for(String w:plaque.toLowerCase(Locale.ROOT).split("[ /]+"))if(!w.isEmpty())got.add(w);
             return want.equals(got);
         }
@@ -3996,18 +4001,20 @@ public final class Phase1Checks implements ClientModInitializer {
                         &&(UiMath.thousands(12*Progression.XP_PER_TIER-2870)+" XP to tier 12").equals(text("to-next"))
                         &&"Tier 11 gives".equals(text("gives-head"))&&Progression.reward(11).equals(text("gives"))&&noChips(c); // a gold tier waits: what it gives in the reward's own words, and no House row
                     gT=grant(pr,Progression.SEASON+":11",Progression.SEASON+":11");
-                    boolean plaques=Arrays.equals(rect("roll-10"),new int[]{o[0]+136,o[1]+320,68,80})&&Arrays.equals(rect("roll-11"),new int[]{o[0]+212,o[1]+312,68,88})&&Arrays.equals(rect("oath-12"),new int[]{o[0]+288,o[1]+408,68,80})
+                    boolean plaques=Arrays.equals(rect("roll-10"),new int[]{o[0]+136,o[1]+320,68,80})&&Arrays.equals(rect("roll-11"),new int[]{o[0]+212,o[1]+312,68,88})
                         &&"chapter/plaque-tier-b".equals(tex("roll-10"))&&"chapter/plaque-tier-raised".equals(tex("roll-11"))&&"chapter/plaque-tier-dull-b".equals(tex("roll-12"))&&"table/stamp-hollow-b".equals(tex("stamp-10"))
-                        &&"Pathfinder / title".equals(text("roll-10"))&&plaqueIs(11,text("roll-11"))&&plaqueIs(12,text("roll-12"))&&plaqueIs(13,text("roll-13"))&&"Tabard / livery".equals(text("oath-11"))&&"Portrait / frame".equals(text("oath-10"))&&button(c,"title-10")!=null;
+                        &&"Pathfinder / title".equals(text("roll-10"))&&plaqueIs(11,text("roll-11"))&&plaqueIs(12,text("roll-12"))&&plaqueIs(13,text("roll-13"))&&("Gear / "+Progression.TIER_GOLD).equals(text("roll-11"))&&("House / "+Progression.TIER_SHARDS).equals(text("roll-12"))
+                        &&WarTablePages.GEAR_TIER_ICON.equals(tex("icon-11"))&&"chapter/ic-shards".equals(tex("icon-12"))
+                        &&oathRects().isEmpty()&&WarTablePages.UNSWORN.equals(text("unsworn"))&&"The Oath: coming with House oaths.".equals(text("unsworn"))&&button(c,"title-10")!=null;
                     ok&=bright&&plaques;why+="; tier 11 reached, 1 to 10 claimed: Claim "+tex("claim")+(claim!=null&&claim.active?" taking a press":" dull")+", the track from "+text("first")+", the hero tier "+text("hero")+" "+text("hero-name")+" (\""+text("hero-state")+"\"), \""+text("xp")+"\", \""+text("to-next")+"\""+(bright?"":" WRONG")
-                        +"; roll-10 "+str(rect("roll-10"))+" "+tex("roll-10")+" \""+text("roll-10")+"\" stamped "+tex("stamp-10")+", roll-11 "+str(rect("roll-11"))+" "+tex("roll-11")+" \""+text("roll-11")+"\", roll-12 "+tex("roll-12")+", oath-11 \""+text("oath-11")+"\", oath-12 "+str(rect("oath-12"))+(plaques?"":" WRONG");
+                        +"; roll-10 "+str(rect("roll-10"))+" "+tex("roll-10")+" \""+text("roll-10")+"\" stamped "+tex("stamp-10")+", roll-11 "+str(rect("roll-11"))+" "+tex("roll-11")+" \""+text("roll-11")+"\", roll-12 "+tex("roll-12")+", roll-12 \""+text("roll-12")+"\", icon-11 "+tex("icon-11")+", Oath rects "+oathRects()+", Oath line \""+text("unsworn")+"\""+(plaques?"":" WRONG");
                     shot(c,"ui-page-chapter-claimable");click(c,box(c,"earlier"));next(tick);}
                 // the arrows, the title plaques: each step reads the track as a frame drew it, so it waits for the frame (up to 40 ticks)
                 case 3->{if(k<3||!"1".equals(text("first"))&&k<40)return;tiersDrawn();var earlier=button(c,"earlier");boolean at="1".equals(text("first"))&&earlier!=null&&!earlier.active&&"chapter/arrow-left-dim".equals(tex("earlier"));
                     ok&=at;why+="; the left arrow: from "+text("first")+" (the arrow "+tex("earlier")+")"+(at?"":" WRONG");click(c,box(c,"later"));next(tick);}
                 case 4->{if(k<3||!"11".equals(text("first"))&&k<40)return;tiersDrawn();boolean at="11".equals(text("first"));ok&=at;why+=", the right arrow: from "+text("first")+(at?"":" WRONG");click(c,box(c,"later"));next(tick);}
                 case 5->{if(k<3||!"21".equals(text("first"))&&k<40)return;tiersDrawn();var later=button(c,"later");boolean at="21".equals(text("first"))&&later!=null&&!later.active&&"chapter/arrow-right-dim".equals(tex("later"));
-                    Set<Integer> all=new TreeSet<>();for(int t=1;t<=Progression.TIERS;t++)all.add(t);boolean every=rollSeen.equals(all)&&oathSeen.equals(all);
+                    Set<Integer> all=new TreeSet<>();for(int t=1;t<=Progression.TIERS;t++)all.add(t);boolean every=rollSeen.equals(all)&&oathSeen.isEmpty();
                     ok&=at&&every;why+=", again: from "+text("first")+" (the arrow "+tex("later")+")"+(at?"":" WRONG")+"; tiers drawn on the Roll "+rollSeen.size()+" and on the Oath "+oathSeen.size()+" of "+Progression.TIERS+(every?"":" WRONG: "+rollSeen+" / "+oathSeen);
                     shot(c,"ui-page-chapter-end");UiRecruitChecks.tap(c,GLFW.GLFW_KEY_ENTER);next(tick);}
                 case 6->{int[] r11=rect("roll-11");if("11".equals(text("first"))&&r11!=null&&r11[0]>o[0]+136)slid=true;

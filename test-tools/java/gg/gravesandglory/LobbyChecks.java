@@ -201,7 +201,34 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                     report("p1-lobby-house-refused",dull&&status.contains("no Tidecallers troops")&&CampaignClient.notice.contains("no Tidecallers troops")&&!r&&said.contains("no Tidecallers troops"),"Ready "+(dull?"dull":"live")+", notice \""+CampaignClient.notice+"\", the sheet reads \""+status+"\", the server answers \""+said+"\", ready="+r);
                     stage=21;});
             }
-            case 21->{if(k<2)return;shot(c,"lobby-1080-host-no-house");press(c,"house-gilded");next();}
+            case 21->{if(k<2)return;
+                // the banner line and Change tag, the dimmed Houses and their tooltip (the host is on Tidecallers, whose troops the banner lacks)
+                var t=WarTableLobby.texts();var l=lobby(c);var p=CampaignClient.profile;var cat=RosterMath.Catalog.fromSpec();var bn=p.banners.get(p.activeBanner);var tb=WarGrid.parse(bn.cells);
+                String want=bn.name+" · "+WarGrid.troops(tb,cat)+" troops · "+WarGrid.cost(tb,cat)+" gold";String line=t.getOrDefault("banner","");
+                report("p1-lobby-banner-line",line.equals(want)&&!t.containsKey("gear")&&WarTableLobby.rects().get("banner")!=null&&active(c,"change"),"the sheet reads \""+line+"\" (want \""+want+"\"), old gear line "+(t.containsKey("gear")?"STILL DRAWN":"gone")+", Change "+(active(c,"change")?"live":"dull"));
+                StringBuilder dims=new StringBuilder();boolean dimOk=true;
+                for(String id:RosterMath.fieldableHouses()){boolean empty=WarTableLobby.houseTroops(id)==0;boolean drawn="true".equals(t.get("house-"+id+"-dim"));var b=l==null?null:l.button("house-"+id);
+                    boolean tip=b!=null&&(b.getTooltip()!=null)==empty;dimOk&=drawn==empty&&tip;dims.append(id).append(drawn?" dim":" lit").append(tip?"":"(TIP WRONG)").append(' ');}
+                report("p1-lobby-house-dim",dimOk&&"true".equals(t.get("house-tidecallers-dim"))&&"false".equals(t.get("house-gilded-dim")),"Houses: "+dims.toString().trim()+" (dim exactly where the banner has no troops, tooltip only on those)");
+                report("p1-lobby-house-dim-words",WarTableLobby.noTroops("tidecallers").equals("Your banner has no Tidecallers troops.")&&WarTableLobby.noTroops("wildmoot").equals("Your banner has no Wildmoot troops."),"tooltip words \""+WarTableLobby.noTroops("wildmoot")+"\"");
+                var wm=l==null?null:l.button("house-wildmoot");if(wm!=null){int[] box=UiCanvas.guiBox(wm.canvasBox()[0],wm.canvasBox()[1],wm.canvasBox()[2],wm.canvasBox()[3]);BarracksUiChecks.hover(c,box[0]+box[2]/2.0,box[1]+box[3]/2.0);}
+                stage=24;
+            }
+            case 24->{if(k<30)return;shot(c,"lobby-1080-host-no-house");BarracksUiChecks.hover(c,1,1);
+                if(!press(c,"change")){fail(c,"p1-lobby-change","Change is not live on the host's sheet");return;}
+                stage=25;
+            }
+            case 25->{ // the Change round trip: the Banner page on the battle banner, then back to the same room
+                if(k<10)return;var s=c.currentScreen instanceof CampScreen cs?cs:null;
+                boolean onBanner=s!=null&&"banner".equals(s.page)&&WarTablePages.shownBanner==CampaignClient.profile.activeBanner;
+                String there=s==null?"none":s.page;
+                if(onBanner&&s.pages!=null&&s.pages.button("back")!=null){WarTableRecruit.press(s.pages.button("back"));stage=26;return;}
+                if(k>100)fail(c,"p1-lobby-change","Change landed on page "+there+", battle banner shown "+(WarTablePages.shownBanner==CampaignClient.profile.activeBanner));
+            }
+            case 26->{if(k<10)return;var s=c.currentScreen instanceof CampScreen cs?cs:null;boolean back=s!=null&&"lobby".equals(s.page)&&lobby(c)!=null&&WarTableLobby.commanders().size()>=1;
+                if(!back){if(k>100)fail(c,"p1-lobby-change","Back from the Banner page did not return to the room (page "+(s==null?"none":s.page)+")");return;}
+                report("p1-lobby-change",true,"Change opens the Banner page on the battle banner and Back returns to the room");
+                press(c,"house-gilded");stage=22;}
             case 22->{if(!WarTableLobby.myHouse().equals("gilded")||WarTableLobby.myTroops()<=0||k<10){if(k>100)fail(c,"p1-lobby-house-gilded","house "+WarTableLobby.myHouse()+", troops "+WarTableLobby.myTroops());return;}
                 report("p1-lobby-house-gilded",active(c,"ready")&&WarTableLobby.myTroops()==RosterMath.LEGACY_BANNER_SIZE-1,"Gilded fields "+WarTableLobby.myTroops()+" troops (want "+(RosterMath.LEGACY_BANNER_SIZE-1)+"), Ready "+(active(c,"ready")?"live":"dull"));
                 map0=num("map");press(c,"map-next");stage=7;}
@@ -242,6 +269,7 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                 report("p1-lobby-start-now-guest",lobby(c).button("start")==null,"a guest's sheet has "+(lobby(c).button("start")==null?"no":"a")+" Start now");
                 report("p1-lobby-pass-host-guest",lobby(c).button("pass-host")==null,"a guest's note has "+(lobby(c).button("pass-host")==null?"no":"a")+" Pass host");
                 report("p1-lobby-guest",locked&&active(c,"ready")&&kinds(1).startsWith("human,bot,bot")&&orders.contains("Aldric"),"orders locked="+locked+", Ready live="+active(c,"ready")+", Dusk "+kinds(1)+", the note says \""+orders+"\"");
+                String rc=WarTableLobby.readyCount();report("p1-lobby-ready-words",rc.endsWith(" ready. Starts 10 s after everyone is ready.")&&!rc.contains("after the last"),"the ready line reads \""+rc+"\"");
                 shot(c,"lobby-1080-guest");window(c,2560,1440,0,true);next();
             }
             case 12->{
