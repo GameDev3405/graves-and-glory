@@ -47,16 +47,17 @@ Kort's rulings
 - OG is automatic by date **plus** manual add and remove.
 - Kort sets the window's start and end dates himself, and may change them.
 
-Design **(call, all of this section below)**
-- `Profile` gains `firstSeenAt` and `firstMatchAt` (epoch milliseconds, 0 = not yet). Profile schema goes from 7 to 8; the migration sets both to 0 for existing files. `firstSeenAt` is set on the first login after this ships; `firstMatchAt` when the player first finishes a match.
-- "Finishes a match": the player was seated in a battle of any mode (versus, Long March, survival, convoy, siege) when it reached its ending, with seated time above zero. Leaving before the end does not count. A battle against bots counts.
+Design **(call, all of this section below; revised after the builder check)**
+- The stamps live in a server-only ledger, `config/gravesandglory/joins.json`, keyed by account uuid: `firstSeenAt`, `firstMatchAt` (epoch milliseconds, 0 = not yet) and `lastName`. They are **not** in `Profile` and the profile schema does not change: a damaged profile falls back to a fresh one, a single-player import loads client data, and the whole profile is sent to its client. The ledger survives all three and reaches no client.
+- `firstSeenAt` is set on the first login after this ships; `firstMatchAt` when the player first finishes a match.
+- "Finishes a match": a battle of any mode (versus, Long March, survival, convoy, siege) reached its ending, the player was present at the end (dropping and coming back counts; dropping for good does not), and the player's own seated time meets the game's existing minimum for match rewards (`minimumRewardSeconds`, about three minutes). A battle against bots counts. A battle ended by a server crash counts on the same rule.
 - Both stamps are written once and never change, including under clock changes or profile repair.
-- Server file `config/gravesandglory/admin.json` (server-owned, never sent to clients) holds: `ogWindow {start, end}` as ISO-8601 instants (either may be absent: no window), `ogAdded [uuid]`, `ogRemoved [uuid]`.
+- Server file `config/gravesandglory/admin.json` (server-owned, never sent to clients) holds: `owners [uuid]`, `ogWindow {start, end}` as ISO-8601 instants or plain dates (a window needs both bounds), `ogAdded [uuid]`, `ogRemoved [uuid]`.
 - OG status is **derived**, not stored: `ogAdded` contains the player, or (`firstMatchAt` is inside the window, bounds inclusive, and `ogRemoved` does not contain them). Changing the window therefore re-evaluates everyone, including offline players, with no migration.
 - Existing testers have no stamp until they next finish a match. Kort sets the window to cover the test period, or adds them by hand.
-- Stopgap commands, permission level 4, until the admin screen exists: `/gg og window <start> <end>`, `/gg og window clear`, `/gg og add <player>`, `/gg og remove <player>`, `/gg og list`, `/gg og check <player>` (shows both stamps and why they are or are not OG). `add` and `remove` accept offline players by name when the server has seen them.
+- Stopgap commands until the admin screen exists, allowed only from the server console or for an account in `owners`. Vanilla operator level grants nothing: the builder server makes every player an operator. An empty `owners` list means console only. Commands: `/gg og window <start> <end>`, `/gg og window clear`, `/gg og add <player>`, `/gg og remove <player>`, `/gg og list`, `/gg og check <player>` (shows both stamps and why they are or are not OG). `add` and `remove` accept offline players by name when the server has seen them.
 - The client is told nothing in phase A; the tag has no visible effect yet.
-- Checks: standalone checks for the derivation rule (window edges, added, removed, no window, stamp 0), the migration, and stamp-once; one in-game check that finishing a match sets `firstMatchAt` and leaving early does not.
+- Checks: standalone checks for the derivation rule (window edges, added, removed, no window, stamp 0), the owner gate, malformed files, and stamp-once; one in-game check that finishing a match sets `firstMatchAt` and leaving early does not.
 
 ## 5. Phase B: roles and the action log
 
@@ -66,7 +67,8 @@ Kort's rulings
 - Every admin action is logged.
 
 Design **(call)**
-- Roles live in `admin.json` by account uuid: one `owner` list and one `moderators` list. Only an owner can change either list. Vanilla operator status grants nothing in this system; the first owner is set in the file by hand.
+- Roles live in `admin.json` by account uuid: the `owners` list from phase A and a `moderators` list. Only an owner can change either list. Vanilla operator status grants nothing in this system; the first owner is set in the file by hand.
+- The public server must not make players operators (the builder server does, through `BuildMode.opOnce`): an operator could use vanilla `/give` and similar commands around this system. Phase B's plan confirms which servers auto-op and closes it for the public one.
 - Every admin request is checked on the server against the role; the screen hiding a button is never the protection.
 - Action log: append-only file, one JSON line per action: time, actor, action, target, parameters, reason, and the data needed to reverse it. Kept for the life of the server.
 - Undo: each action type defines its reverse (unban, unmute, remove the granted thing, restore the removed thing, remove a tag, end an event). An undo is itself a logged action. Where an exact reverse is impossible (a player already spent granted shards), undo removes what remains and says so. Only the owner can undo.
@@ -117,7 +119,10 @@ Kort's rulings
 Design **(call)**
 - Sixteen new rows in the gear items sheet and four in the gear sets sheet, through `sheets/design.json`. Pieces are granted at Legendary rarity, quality 100.
 - A new `exclusive` flag on the gear item: the Forge never rolls it, breakdown and repair refuse it, durability never drops, and it does not count against inventory size.
-- Base stats copy the strongest existing Legendary armour piece of each slot. Set bonuses are proposed in the phase C plan and approved by Kort before they are built; each is checked in the balance sim against the best existing set and must land within the sim's normal tolerance.
+- Role. Kort's ruling: the player chooses the role. Today a commander's role comes from the set with the most worn pieces (`GearStats.of`); an OG set carries no fixed role or class limit, and its wearer picks which role it counts as. Any commander can wear any OG set.
+- Base stats copy the strongest existing Legendary armour piece of each slot, measured by gear power. Whether OG pieces carry Legendary perks is settled in the phase C plan so that set plus perks equals, and never exceeds, the best normal set.
+- Set bonuses. Kort's ruling: new themed bonuses, not re-skinned existing ones. Each needs new combat code (`GearStats` and `GearEffects` know only a fixed list of effects today). They are proposed in the phase C plan and approved by Kort before they are built; each is checked in the balance sim against the best existing set and must land within the sim's normal tolerance.
+- The `exclusive` flag must hold everywhere gear is handled, including `Forge.roll`'s item pool and `Forge.breakdownDuplicates`, and reaches the client so the Arsenal can show the piece as locked (a protocol change, gated like any other).
 - Proposed bonus directions, for Kort to accept or replace: Glitch, a chance for a hit on the commander to miss; Debug, the commander sees enemy health and takes less damage from the troop type that last hit them; Redstone, a short speed burst after giving an order; Builder, barricades and props near the commander are tougher.
 - Art: each set gets its own commander armour model and texture in the existing gear art pipeline. Animation by set: Glitch flickers and tears in bands; Debug scrolls green text across the plates; Redstone pulses and throws sparks; Builder has turning gears. Art follows the project's existing review gates and Kort approves each set's look before it ships.
 - Wearing a full OG set grants nothing beyond its set bonus.
