@@ -1,0 +1,150 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  512,
+  512
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/tent_pavilion",
+  "particle": "gravesandglory:prop/tent_pavilion"
+ },
+ "elements": [
+  {
+   "from": [
+    5,
+    -16,
+    5
+   ],
+   "to": [
+    11,
+    32,
+    11
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      0.0,
+      0.0,
+      0.1875,
+      1.5
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      0.1875,
+      0.0,
+      0.375,
+      1.5
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      0.375,
+      0.0,
+      0.5625,
+      1.5
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      0.5625,
+      0.0,
+      0.75,
+      1.5
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "centre pole"
+  },
+  {
+   "from": [
+    -14,
+    -16,
+    -14
+   ],
+   "to": [
+    30,
+    -15,
+    30
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      11.375,
+      7.5,
+      12.75,
+      7.53125
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      12.75,
+      7.5,
+      14.125,
+      7.53125
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      14.125,
+      7.5,
+      15.5,
+      7.53125
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      0.0,
+      7.5625,
+      1.375,
+      7.59375
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      1.5,
+      0.0,
+      2.875,
+      1.375
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "rug"
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    -0.0,
+    -0.0,
+    -0.0
+   ],
+   "scale": [
+    0.3307,
+    0.3307,
+    0.3307
+   ]
+  }
+ }
+}

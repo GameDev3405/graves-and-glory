@@ -132,7 +132,7 @@ def element(frm, to):
 
 
 def placeholder(d, index):
-    """Part 0: boxes over the solid cells (anchor-cell frame, clipped to -16..32). Later parts: a small marker on the anchor cell's north face."""
+    """Part 0: boxes over the solid cells (anchor-cell frame, clipped to -16..32; a small cube when there are none). Later parts: a small marker on the anchor cell's north face."""
     px, pz = (d['size'][0] - 1) // 2, (d['size'][2] - 1) // 2
     elements = []
     if index == 0:
@@ -142,9 +142,12 @@ def placeholder(d, index):
             frm, to = [max(LO, min(HI, v)) for v in frm], [max(LO, min(HI, v)) for v in to]
             if all(a < b for a, b in zip(frm, to)):
                 elements.append(element(frm, to))
+        if not elements:  # no solid cell (a wall-hung or overhead prop): a small cube in the anchor cell
+            elements.append(element([4, 4, 4], [12, 12, 12]))
     else:
-        y = 2 + 6 * index
-        elements.append(element([4, y, -2], [12, y + 4, 0]))
+        y = 2 + 6 * (index % 5)  # a prop has up to 10 parts; stacked markers stay inside -16..32, the second five a column over
+        x = 2 + 8 * (index // 5)
+        elements.append(element([x, y, -2], [x + 6, y + 4, 0]))
     lo = [min(e['from'][i] for e in elements) for i in range(3)]
     hi = [max(e['to'][i] for e in elements) for i in range(3)]
     scale = round(0.625 * 16 / max(16, max(h - l for h, l in zip(hi, lo))), 4)

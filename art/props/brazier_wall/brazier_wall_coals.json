@@ -1,0 +1,222 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  64,
+  64
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/brazier_wall",
+  "particle": "gravesandglory:prop/brazier_wall"
+ },
+ "elements": [
+  {
+   "from": [
+    4,
+    11,
+    3
+   ],
+   "to": [
+    12,
+    14,
+    11
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      13.5,
+      2.5,
+      15.5,
+      3.25
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      0.0,
+      3.5,
+      2.0,
+      4.25
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      2.0,
+      3.5,
+      4.0,
+      4.25
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      4.0,
+      3.5,
+      6.0,
+      4.25
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      6.0,
+      0.0,
+      8.0,
+      2.0
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "coal bed",
+   "shade": false
+  },
+  {
+   "from": [
+    5,
+    14,
+    4
+   ],
+   "to": [
+    11,
+    15,
+    10
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      4.5,
+      5.5,
+      6.0,
+      5.75
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      6.0,
+      5.5,
+      7.5,
+      5.75
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      7.5,
+      5.5,
+      9.0,
+      5.75
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      9.0,
+      5.5,
+      10.5,
+      5.75
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      9.0,
+      0.0,
+      10.5,
+      1.5
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "coal heap",
+   "shade": false
+  },
+  {
+   "from": [
+    6,
+    15,
+    5
+   ],
+   "to": [
+    10,
+    16,
+    9
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      10.5,
+      5.5,
+      11.5,
+      5.75
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      11.5,
+      5.5,
+      12.5,
+      5.75
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      12.5,
+      5.5,
+      13.5,
+      5.75
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      13.5,
+      5.5,
+      14.5,
+      5.75
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      12.5,
+      0.0,
+      13.5,
+      1.0
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "coal crest",
+   "shade": false
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    -1.403,
+    -8.749,
+    -6.671
+   ],
+   "scale": [
+    1.984,
+    1.984,
+    1.984
+   ]
+  }
+ }
+}

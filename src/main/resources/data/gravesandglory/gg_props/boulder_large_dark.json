@@ -1,0 +1,25 @@
+{
+  "id": "boulder_large_dark",
+  "category": "nature",
+  "name": "Large Boulder (Dark)",
+  "size": [3, 3, 3],
+  "parts": [
+    {"model": "boulder_large_dark", "cmd": 7310581, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0],
+    [2, 0, 0],
+    [0, 0, 1],
+    [1, 0, 1],
+    [2, 0, 1],
+    [0, 0, 2],
+    [1, 0, 2],
+    [2, 0, 2],
+    [1, 1, 0],
+    [0, 1, 1],
+    [1, 1, 1]
+  ],
+  "lights": [],
+  "effects": []
+}

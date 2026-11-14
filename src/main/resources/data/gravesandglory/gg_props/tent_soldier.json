@@ -1,0 +1,118 @@
+{
+  "id": "tent_soldier",
+  "category": "camp",
+  "name": "Soldier's Tent",
+  "size": [5, 4, 7],
+  "parts": [
+    {
+      "model": "tent_soldier_0",
+      "cmd": 7310431,
+      "glow": false,
+      "offset": [-24, 16, -48]
+    },
+    {
+      "model": "tent_soldier_1",
+      "cmd": 7310432,
+      "glow": false,
+      "offset": [24, 16, -48]
+    },
+    {
+      "model": "tent_soldier_2",
+      "cmd": 7310433,
+      "glow": false,
+      "offset": [-24, 16, 0]
+    },
+    {
+      "model": "tent_soldier_3",
+      "cmd": 7310434,
+      "glow": false,
+      "offset": [24, 16, 0]
+    },
+    {
+      "model": "tent_soldier_4",
+      "cmd": 7310435,
+      "glow": false,
+      "offset": [-24, 16, 48]
+    },
+    {
+      "model": "tent_soldier_5",
+      "cmd": 7310436,
+      "glow": false,
+      "offset": [24, 16, 48]
+    },
+    {
+      "model": "tent_soldier_6",
+      "cmd": 7310437,
+      "glow": false,
+      "offset": [-24, 64, -48]
+    },
+    {
+      "model": "tent_soldier_7",
+      "cmd": 7310438,
+      "glow": false,
+      "offset": [24, 64, -48]
+    },
+    {
+      "model": "tent_soldier_8",
+      "cmd": 7310439,
+      "glow": false,
+      "offset": [-24, 64, 0]
+    },
+    {
+      "model": "tent_soldier_9",
+      "cmd": 7310440,
+      "glow": false,
+      "offset": [24, 64, 0]
+    },
+    {
+      "model": "tent_soldier_10",
+      "cmd": 7310441,
+      "glow": false,
+      "offset": [-24, 64, 48]
+    },
+    {
+      "model": "tent_soldier_11",
+      "cmd": 7310442,
+      "glow": false,
+      "offset": [24, 64, 48]
+    }
+  ],
+  "solid": [
+    [1, 0, 1],
+    [1, 0, 2],
+    [1, 0, 3],
+    [1, 0, 4],
+    [1, 0, 5],
+    [2, 0, 1],
+    [2, 0, 2],
+    [2, 0, 3],
+    [2, 0, 4],
+    [2, 0, 5],
+    [3, 0, 1],
+    [3, 0, 2],
+    [3, 0, 3],
+    [3, 0, 4],
+    [3, 0, 5],
+    [1, 1, 1],
+    [1, 1, 2],
+    [1, 1, 3],
+    [1, 1, 4],
+    [1, 1, 5],
+    [2, 1, 1],
+    [2, 1, 2],
+    [2, 1, 3],
+    [2, 1, 4],
+    [2, 1, 5],
+    [3, 1, 1],
+    [3, 1, 2],
+    [3, 1, 3],
+    [3, 1, 4],
+    [3, 1, 5]
+  ],
+  "lights": [],
+  "effects": [],
+  "split": {
+    "block": 43,
+    "blocks": 2
+  }
+}

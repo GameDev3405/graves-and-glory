@@ -1,0 +1,16 @@
+{
+  "id": "smoke_vent_black",
+  "category": "nature",
+  "name": "Smoke Vent (black)",
+  "size": [1, 1, 1],
+  "parts": [
+    {"model": "smoke_vent_black", "cmd": 7310671, "glow": false}
+  ],
+  "solid": [],
+  "lights": [],
+  "effects": [
+    {"kind": "particle", "id": "minecraft:large_smoke", "x": 0.5, "y": 0.3, "z": 0.5, "spread": 0.25, "count": 2, "every": 5, "chance": 0.9},
+    {"kind": "particle", "id": "minecraft:smoke", "x": 0.5, "y": 0.4, "z": 0.5, "spread": 0.3, "count": 2, "every": 6, "chance": 0.8},
+    {"kind": "particle", "id": "minecraft:campfire_signal_smoke", "x": 0.5, "y": 0.3, "z": 0.5, "spread": 0.2, "count": 1, "every": 16, "chance": 0.5}
+  ]
+}

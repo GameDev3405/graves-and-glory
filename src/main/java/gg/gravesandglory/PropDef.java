@@ -19,8 +19,8 @@ import java.util.Set;
  * <p>JSON form:
  * <pre>
  * {"id":"anvil", "category":"smithy", "name":"Anvil", "size":[sx,sy,sz],
- *  "parts":[{"model":"anvil","cmd":7310011,"glow":false}],          // glow optional, default false
- *  "solid":[[x,y,z], ...],                                          // explicit cell list, non-empty, no repeats
+ *  "parts":[{"model":"anvil","cmd":7310011,"glow":false}],          // glow optional, default false; "offset":[x,y,z] px optional
+ *  "solid":[[x,y,z], ...],                                          // explicit cell list, no repeats; may be empty (wall-hung and overhead props, effect-only props)
  *  "lights":[{"x":0,"y":2,"z":0,"level":12}],                       // optional; never on a solid cell
  *  "effects":[{"kind":"particle|sound","id":"minecraft:...","x":..,"y":..,"z":..,"spread":..,"count":..,"every":..,"chance":..,"volume":..,"pitch":..}],
  *  "gameplay":{"hp":6,"heavyHit":2,"siegeHit":3,"heavyDamage":6,"cover":0.25,"coverRange":2,"siegeCap":4,"siegeSeconds":90,"siegeRadius":48}}  // optional
@@ -37,7 +37,11 @@ import java.util.Set;
  */
 public record PropDef(String id,String category,String name,int sx,int sy,int sz,List<Part> parts,List<int[]> solid,List<Light> lights,List<Effect> effects,Gameplay gameplay){
     public static final int CMD_MIN=7310001,CMD_MAX=7310999;
-    public record Part(String model,int cmd,boolean glow){}
+    /** A display part; {@code ox,oy,oz} (optional {@code "offset":[x,y,z]}, model px in the prop frame) move its entity, for big props whose parts
+     *  sit further from the anchor than a model's display translation reaches (Minecraft clamps that to 80 px). */
+    public record Part(String model,int cmd,boolean glow,int ox,int oy,int oz){
+        public Part(String model,int cmd,boolean glow){this(model,cmd,glow,0,0,0);}
+    }
     public record Light(int x,int y,int z,int level){}
     public record Effect(String kind,String id,double x,double y,double z,double spread,int count,int every,double chance,float volume,float pitch){}
     /**
@@ -75,7 +79,12 @@ public record PropDef(String id,String category,String name,int sx,int sy,int sz
             int cmd=num(p.get("cmd"),id,"parts.cmd");
             if(cmd<CMD_MIN||cmd>CMD_MAX)throw bad(id,"parts.cmd",cmd+" outside "+CMD_MIN+".."+CMD_MAX);
             boolean glow=p.has("glow")&&p.get("glow").getAsBoolean();
-            parts.add(new Part(model,cmd,glow));
+            int[] off={0,0,0};
+            if(p.has("offset")){
+                if(!p.get("offset").isJsonArray()||p.getAsJsonArray("offset").size()!=3)throw bad(id,"parts.offset","must be [x,y,z] px");
+                for(int i=0;i<3;i++)off[i]=num(p.getAsJsonArray("offset").get(i),id,"parts.offset");
+            }
+            parts.add(new Part(model,cmd,glow,off[0],off[1],off[2]));
         }
         if(parts.isEmpty())throw bad(id,"parts","must not be empty");
 
@@ -89,7 +98,6 @@ public record PropDef(String id,String category,String name,int sx,int sy,int sz
             if(!cells.add(x+","+y+","+z))throw bad(id,"solid","cell ("+x+","+y+","+z+") repeated");
             solid.add(new int[]{x,y,z});
         }
-        if(solid.isEmpty())throw bad(id,"solid","must not be empty");
 
         List<Light> lights=new ArrayList<>();
         if(o.has("lights"))for(JsonElement e:arr(o,"lights",id)){

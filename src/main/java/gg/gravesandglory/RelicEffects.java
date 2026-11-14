@@ -216,7 +216,7 @@ public final class RelicEffects {
          */
         static LivingEntity pick(GravesAndGlory.Battle b, ServerPlayerEntity p, GravesAndGlory.Squad s, double range) {
             Vec3d eye = p.getEyePos(), end = eye.add(p.getRotationVector().multiply(range));
-            var wall = p.getWorld().raycast(new RaycastContext(eye, end, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, p));
+            var wall = p.getWorld().raycast(new RaycastContext(eye, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, p)); // outline, not collider: the troop fence must not stop a targeting ray
             double nearest = wall.getType() == net.minecraft.util.hit.HitResult.Type.MISS ? range : eye.distanceTo(wall.getPos());
             LivingEntity best = null;
             for (var e : Abilities.enemies(b, s.team)) {

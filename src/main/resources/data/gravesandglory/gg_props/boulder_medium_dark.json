@@ -1,0 +1,17 @@
+{
+  "id": "boulder_medium_dark",
+  "category": "nature",
+  "name": "Medium Boulder (Dark)",
+  "size": [2, 2, 2],
+  "parts": [
+    {"model": "boulder_medium_dark", "cmd": 7310551, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0],
+    [0, 0, 1],
+    [1, 0, 1]
+  ],
+  "lights": [],
+  "effects": []
+}

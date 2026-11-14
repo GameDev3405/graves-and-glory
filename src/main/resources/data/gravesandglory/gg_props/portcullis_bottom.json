@@ -1,0 +1,14 @@
+{
+  "id": "portcullis_bottom",
+  "category": "fortification",
+  "name": "Portcullis Bottom",
+  "size": [1, 1, 1],
+  "parts": [
+    {"model": "portcullis_bottom", "cmd": 7310681, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

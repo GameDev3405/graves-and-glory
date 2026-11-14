@@ -11,24 +11,29 @@ import java.util.*;
  * In a practice battle the server lays a grass platform above the map, places each prop through the real path ({@link Props#place}: anchor,
  * barriers, lights, display parts, effects) facing north, and stands a frozen Knight beside each. Shots p1-prop-<id>-<near|far>-<day|night>.png
  * from the front-left at about 3 m and 15 m, by day and lantern-lit night, then a lineup. Needs the prop pack enabled as a client resource pack
- * (tools/prop_shot.py does it). Never shipped.
+ * (tools/prop_shot.py does it). Compare: GRAVES_PROPCMP=<id>=<group/name>;... places that structure template (data/gravesandglory/structures/
+ * group/name.nbt, the maps' plain-block version, through {@link Structures#place}) 2 blocks east of the prop and takes the same four views of
+ * the pair, p1-prop-<id>-cmp-<near|far>-<day|night>.png; an id without a template is skipped with a line saying so. Never shipped.
  */
 final class PropLookChecks implements Phase1Checks.Suite {
     /** id, size x y z, pivot cell x z. */
     record P(String id, int sx, int sy, int sz, int px, int pz) {}
     static volatile List<P> PROPS = List.of();
+    /** A compare pair: prop index, template id, template size; filled by build(). */
+    record Cmp(int i, String template, int tx, int ty, int tz) {}
+    static volatile List<Cmp> CMPS = List.of();
     static int GAP = 9;
     volatile UUID player;
     volatile boolean battleReady, built;
     volatile int ox, oy, oz;
-    int stage, at, pi, vi;
+    int stage, at, pi, vi, ci;
 
     static void say(String line) { System.out.println("[p1] prop-look: " + line); }
     void next(int tick, int s) { stage = s; at = tick; }
 
-    static void cmd(GravesAndGlory.Battle b, ServerPlayerEntity p, String line) {
+    static int cmd(GravesAndGlory.Battle b, ServerPlayerEntity p, String line) {
         var src = b.server.getCommandSource().withWorld(p.getServerWorld()).withSilent().withLevel(4);
-        b.server.getCommandManager().executeWithPrefix(src, line);
+        return b.server.getCommandManager().executeWithPrefix(src, line);
     }
 
     /** Anchor cell of prop i (its pivot cell). */
@@ -46,22 +51,62 @@ final class PropLookChecks implements Phase1Checks.Suite {
         return out;
     }
 
+    /** GRAVES_PROPCMP: id=template;id=template. Ids not being shot and templates that do not load are skipped, each with a line. */
+    static List<Cmp> compares(net.minecraft.server.world.ServerWorld w) {
+        List<Cmp> out = new ArrayList<>();
+        for (String pair : System.getenv().getOrDefault("GRAVES_PROPCMP", "").split(";")) {
+            String[] kv = pair.trim().split("=", 2);
+            if (kv.length != 2 || kv[0].isBlank()) continue;
+            String id = kv[0].trim(), tid = kv[1].trim(); int i = -1;
+            for (int k = 0; k < PROPS.size(); k++) if (PROPS.get(k).id().equals(id)) i = k;
+            if (i < 0) { say("compare " + id + ": not one of the props shot, skipped"); continue; }
+            var tpl = Structures.template(w, tid);
+            if (tpl.isEmpty()) { say("compare " + id + ": no structure template " + tid + " (data/gravesandglory/structures/" + tid + ".nbt), skipped");
+                Phase1Checks.report("p1-prop-cmp-" + id, true, "skipped: no structure template " + tid); continue; }
+            var s = tpl.get().getSize(); out.add(new Cmp(i, tid, s.getX(), s.getY(), s.getZ()));
+        }
+        return out;
+    }
+    Cmp cmpOf(int i) { for (Cmp c : CMPS) if (c.i() == i) return c; return null; }
+
     void build(GravesAndGlory.Battle b, ServerPlayerEntity p) {
         PROPS = select();
-        GAP = 6 + PROPS.stream().mapToInt(d -> Math.max(d.sx(), d.sz())).max().orElse(3);
-        ox = (int) Math.floor(p.getX()) - 20; oz = (int) Math.floor(p.getZ()); oy = Math.min(300, (int) Math.floor(p.getY()) + 45);
-        int x1 = ox - 8, x2 = ox + PROPS.size() * GAP + 4, z1 = oz - 26, z2 = oz + 10;
-        cmd(b, p, "gamerule doDaylightCycle false"); cmd(b, p, "weather clear 100000"); cmd(b, p, "time set 6000");
-        cmd(b, p, String.format("fill %d %d %d %d %d %d minecraft:air", x1, oy, z1, x2, oy + 10, z2));
-        cmd(b, p, String.format("fill %d %d %d %d %d %d minecraft:grass_block", x1, oy - 1, z1, x2, oy - 1, z2));
-        cmd(b, p, String.format("fill %d %d %d %d %d %d minecraft:dirt", x1, oy - 3, z1, x2, oy - 2, z2));
         var w = p.getServerWorld();
+        CMPS = compares(w);
+        GAP = 6 + PROPS.stream().mapToInt(d -> Math.max(d.sx(), d.sz())).max().orElse(3);
+        for (Cmp c : CMPS) GAP = Math.max(GAP, 6 + PROPS.get(c.i()).sx() + 2 + c.tx());
+        int deep = 0, high = 10;
+        for (Cmp c : CMPS) { deep = Math.max(deep, c.tz()); high = Math.max(high, c.ty() + 2); }
+        ox = (int) Math.floor(p.getX()) - 20; oz = (int) Math.floor(p.getZ()); oy = Math.min(300, (int) Math.floor(p.getY()) + 45);
+        int x1 = ox - 8, x2 = ox + PROPS.size() * GAP + 4, z1 = oz - 26, z2 = oz + Math.max(10, deep + 2);
+        cmd(b, p, "gamerule doDaylightCycle false"); cmd(b, p, "weather clear 100000"); cmd(b, p, "time set 6000");
+        scanTests(b, p, w);
+        // /fill stops at commandModificationBlockLimit (32768 blocks) and then changes nothing: a platform for 30 props is over 40000 blocks of
+        // dirt alone, so without this the dirt under the grass is missing, no cell is buried, and every anchor falls back to the floor (it shows).
+        cmd(b, p, "gamerule commandModificationBlockLimit 2000000");
+        // A long lineup (40+ props with compare fixtures) runs past the loaded chunks, and /fill refuses unloaded ground and changes
+        // nothing; force-load the platform and fill it in strips (forceload takes at most 256 chunks per command).
+        int grass = 0, dirt = 0;
+        for (int sx = x1; sx <= x2; sx += 128) {
+            int ex = Math.min(x2, sx + 127);
+            cmd(b, p, String.format("forceload add %d %d %d %d", sx, z1, ex, z2));
+            cmd(b, p, String.format("fill %d %d %d %d %d %d minecraft:air", sx, oy, z1, ex, oy + high, z2));
+            grass += cmd(b, p, String.format("fill %d %d %d %d %d %d minecraft:grass_block", sx, oy - 1, z1, ex, oy - 1, z2));
+            dirt += cmd(b, p, String.format("fill %d %d %d %d %d %d minecraft:dirt", sx, oy - 3, z1, ex, oy - 2, z2));
+        }
+        Phase1Checks.report("p1-prop-stage-platform", grass > 0 && dirt > 0, "fill grass " + grass + " dirt " + dirt + " blocks, platform " + (x2 - x1 + 1) + "x" + (z2 - z1 + 1));
         for (int i = 0; i < PROPS.size(); i++) {
             int[] a = anchor(i); String why = Props.place(w, PROPS.get(i).id(), new net.minecraft.util.math.BlockPos(a[0], a[1], a[2]), 0);
             Phase1Checks.report("p1-prop-place-" + PROPS.get(i).id(), why.isEmpty(), why.isEmpty() ? "placed through Props.place, facing north" : why);
             var cell = new net.minecraft.util.math.BlockPos(a[0], a[1], a[2]); var base = Props.anchorBase(w, cell);
             boolean hidden = why.isEmpty() && base != null && base.getY() < a[1] - 1 && w.getBlockState(cell.down()).isOf(net.minecraft.block.Blocks.GRASS_BLOCK);
             Phase1Checks.report("p1-prop-anchor-hidden-" + PROPS.get(i).id(), hidden, "anchor at " + (base == null ? "none" : base.toShortString()) + ", floor " + w.getBlockState(cell.down()).getBlock());
+        }
+        for (Cmp c : CMPS) { // the template 2 blocks east of the prop, its north edge on the prop's
+            var d = PROPS.get(c.i()); int[] a = anchor(c.i());
+            int tx0 = a[0] - d.px() + d.sx() + 2, tz0 = a[2] - d.pz();
+            var placed = Structures.place(w, c.template(), tx0 + (c.tx() - 1) / 2, oy, tz0 + (c.tz() - 1) / 2, 0);
+            Phase1Checks.report("p1-prop-cmp-place-" + d.id(), !placed.missing(), c.template() + " " + c.tx() + "x" + c.ty() + "x" + c.tz() + " beside " + d.id());
         }
         if (!PROPS.isEmpty()) oldAnchor(w, PROPS.get(0).id(), new net.minecraft.util.math.BlockPos(ox, oy, oz - 20));
         if (!PROPS.isEmpty()) { // no buried cell (air under the floor): the anchor falls back to the floor under the cell
@@ -89,6 +134,72 @@ final class PropLookChecks implements Phase1Checks.Suite {
         built = true; say("platform at " + ox + " " + oy + " " + oz + (own == null ? " (no squad: no knights)" : ""));
     }
 
+    /** The example template (docs/props/examples/prop_facings.nbt, GRAVES_PROPEXAMPLE or found upwards from the working directory). */
+    static java.nio.file.Path exampleFile() {
+        String env = System.getenv("GRAVES_PROPEXAMPLE");
+        if (env != null && !env.isBlank()) return java.nio.file.Path.of(env);
+        for (var d = java.nio.file.Path.of("").toAbsolutePath(); d != null; d = d.getParent()) {
+            var f = d.resolve("docs/props/examples/prop_facings.nbt");
+            if (java.nio.file.Files.isRegularFile(f)) return f;
+        }
+        return null;
+    }
+
+    /** Anchors written without barriers (a map generator writes only the anchor; docs/props/ANCHOR-NBT.md): the example template, one supply wagon
+     *  at each facing with nothing but its anchor, is placed through {@link Structures#place} and every wagon must have its barriers and parts;
+     *  then a wagon's barriers and parts are taken away, one barrier cell is replaced with stone, and a scan must put back all but that cell. */
+    void scanTests(GravesAndGlory.Battle b, ServerPlayerEntity p, net.minecraft.server.world.ServerWorld w) {
+        var def = Props.DEFS.get("supply_wagon");
+        var file = exampleFile();
+        if (def == null || file == null) { Phase1Checks.report("p1-prop-example-template", false, def == null ? "no supply_wagon def" : "docs/props/examples/prop_facings.nbt not found"); return; }
+        try {
+            net.minecraft.nbt.NbtCompound nbt;
+            try (var in = java.nio.file.Files.newInputStream(file)) { nbt = net.minecraft.nbt.NbtIo.readCompressed(in); }
+            var tpl = w.getStructureTemplateManager().createTemplate(nbt);
+            String id = "propcheck/prop_facings";
+            Structures.CACHE.put(id, new Structures.Loaded(tpl, nbt.getList("blocks", net.minecraft.nbt.NbtElement.COMPOUND_TYPE).size()));
+            var size = tpl.getSize(); int floor = 4, x0 = ox - 4, z0 = oz - 24, y0 = oy - floor;
+            cmd(b, p, "gamerule commandModificationBlockLimit 2000000");
+            var box = new net.minecraft.util.math.BlockBox(x0, y0, z0, x0 + size.getX() - 1, y0 + size.getY() - 1, z0 + size.getZ() - 1);
+            cmd(b, p, String.format("fill %d %d %d %d %d %d minecraft:air", box.getMinX(), box.getMinY(), box.getMinZ(), box.getMaxX(), box.getMaxY(), box.getMaxZ()));
+            var placed = Structures.place(w, id, x0 + (size.getX() - 1) / 2, y0, z0 + (size.getZ() - 1) / 2, 0);
+            var cells = new ArrayList<net.minecraft.util.math.BlockPos>(); int[] facings = {0, 90, 180, 270}; var bad = new StringBuilder();
+            for (int i = 0; i < 4; i++) {
+                var cell = new net.minecraft.util.math.BlockPos(x0 + i * 8 + 4, oy, z0 + 4); cells.add(cell);
+                var live = Props.readAnchor(w, cell);
+                if (live == null || live.facing() != facings[i]) { bad.append(" wagon ").append(facings[i]).append(": anchor ").append(live == null ? "missing" : "facing " + live.facing()); continue; }
+                for (var c : Props.solidCells(def, cell, facings[i])) if (!w.getBlockState(c).isOf(net.minecraft.block.Blocks.BARRIER)) bad.append(" wagon ").append(facings[i]).append(": no barrier at ").append(c.toShortString());
+                var parts = Props.parts(w, cell);
+                if (parts.size() != def.parts().size()) bad.append(" wagon ").append(facings[i]).append(": ").append(parts.size()).append(" parts");
+                else for (var part : def.parts()) {
+                    double[] t = PropGeometry.partTransform(def, facings[i], part); boolean found = false;
+                    for (var e : parts) if (Props.partCmd(e) == part.cmd() && Math.abs(e.getX() - (cell.getX() + t[0])) < 1e-3 && Math.abs(e.getY() - (cell.getY() + t[1])) < 1e-3
+                        && Math.abs(e.getZ() - (cell.getZ() + t[2])) < 1e-3 && Math.abs(net.minecraft.util.math.MathHelper.wrapDegrees(e.getYaw() - (float) t[3])) < 1) found = true;
+                    if (!found) bad.append(" wagon ").append(facings[i]).append(": part ").append(part.model()).append(" not at its transform");
+                }
+            }
+            int barriers = 0;
+            for (var c : net.minecraft.util.math.BlockPos.iterate(box.getMinX(), box.getMinY(), box.getMinZ(), box.getMaxX(), box.getMaxY(), box.getMaxZ())) if (w.getBlockState(c).isOf(net.minecraft.block.Blocks.BARRIER)) barriers++;
+            if (barriers != 4 * def.solid().size()) bad.append(" ").append(barriers).append(" barriers, wanted ").append(4 * def.solid().size());
+            Phase1Checks.report("p1-prop-example-template", !placed.missing() && bad.length() == 0, "4 wagons from anchors only, " + barriers + " barriers" + bad);
+
+            // a scan restores into air only: wagon 0 loses its barriers and parts, one cell becomes stone
+            var cell = cells.get(0); var solid = Props.solidCells(def, cell, 0);
+            for (var c : solid) w.setBlockState(c, net.minecraft.block.Blocks.AIR.getDefaultState(), 3);
+            var blocked = solid.get(solid.size() / 2); w.setBlockState(blocked, net.minecraft.block.Blocks.STONE.getDefaultState(), 3);
+            for (var e : Props.parts(w, cell)) e.discard();
+            int found = Props.scanBox(w, box);
+            int back = 0; for (var c : solid) if (w.getBlockState(c).isOf(net.minecraft.block.Blocks.BARRIER)) back++;
+            boolean ok = found == 4 && back == solid.size() - 1 && w.getBlockState(blocked).isOf(net.minecraft.block.Blocks.STONE) && Props.parts(w, cell).size() == def.parts().size();
+            Phase1Checks.report("p1-prop-scan-restore", ok, "found " + found + ", barriers back " + back + "/" + solid.size() + ", stone cell " + w.getBlockState(blocked).getBlock() + ", parts " + Props.parts(w, cell).size());
+            for (var c : cells) Props.remove(w, c);
+            Structures.CACHE.remove(id);
+            cmd(b, p, String.format("fill %d %d %d %d %d %d minecraft:air", box.getMinX(), box.getMinY(), box.getMinZ(), box.getMaxX(), box.getMaxY(), box.getMaxZ()));
+        } catch (Exception e) {
+            Phase1Checks.report("p1-prop-example-template", false, "threw " + e);
+        }
+    }
+
     /** An anchor in the old format (one block under its cell, no depth=) is found by the scanner, moved down out of sight, and removed with
      *  its floor and the block under it put back. */
     static void oldAnchor(net.minecraft.server.world.ServerWorld w, String id, net.minecraft.util.math.BlockPos cell) {
@@ -107,8 +218,17 @@ final class PropLookChecks implements Phase1Checks.Suite {
     /** Camera at the front-left (north-west) of prop i at distance d, eye height, looking at its middle. */
     void camera(MinecraftClient c, int i, double dist) {
         var d = PROPS.get(i); int[] a = anchor(i);
-        double cx = a[0] - d.px() + d.sx() / 2.0, cy = oy + Math.min(d.sy(), 2) / 2.0 + 0.3, cz = a[2] - d.pz() + d.sz() / 2.0;
-        if (dist < 8) dist += Math.max(d.sx(), d.sz()) * 0.35 + (d.sy() > 2 ? 1.2 : 0) - 0.6;
+        aim(c, a[0] - d.px() + d.sx() / 2.0, a[2] - d.pz() + d.sz() / 2.0, Math.max(d.sx(), d.sz()), d.sy(), dist);
+    }
+    /** The same camera on prop i and its compare template together. */
+    void cameraPair(MinecraftClient c, Cmp k, double dist) {
+        var d = PROPS.get(k.i()); int[] a = anchor(k.i());
+        int w = d.sx() + 2 + k.tx(), deep = Math.max(d.sz(), k.tz());
+        aim(c, a[0] - d.px() + w / 2.0, a[2] - d.pz() + deep / 2.0, Math.max(w, deep), Math.max(d.sy(), k.ty()), dist + (dist < 8 ? 0 : w * 0.4));
+    }
+    void aim(MinecraftClient c, double cx, double cz, int wide, int sy, double dist) {
+        double cy = oy + Math.min(sy, 2) / 2.0 + 0.3;
+        if (dist < 8) dist += wide * 0.35 + (sy > 2 ? 1.2 : 0) - 0.6;
         double x = cx + dist * 0.5, z = cz - dist * 0.87, y = oy + 1.62 + (dist > 8 ? 2.5 : 0.2);
         double dx = cx - x, dy = cy - y, dz = cz - z;
         float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)), pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
@@ -158,7 +278,22 @@ final class PropLookChecks implements Phase1Checks.Suite {
                     var id = c.player.getUuid(); double x = ox + (PROPS.size() - 1) * GAP / 2.0, y = oy + 6, z = oz - Math.min(22, 9 + PROPS.size() * GAP * 0.35);
                     c.getServer().execute(() -> { var p = c.getServer().getPlayerManager().getPlayer(id); if (p != null) p.teleport(p.getServerWorld(), x, y, z, 0f, 18f); }); }
                 if (k == 60) Phase1Checks.shot(c, "prop-lineup");
-                if (k == 62) next(tick, 9);
+                if (k == 62) { ci = 0; vi = 0; next(tick, CMPS.isEmpty() ? 9 : 4); }
+            }
+            case 4 -> { // compare pairs: the prop beside its map template, the same four views
+                String v = VIEWS[vi]; Cmp pair = CMPS.get(ci);
+                if (k == 1) {
+                    Phase1Checks.server(c, b -> { var p = b.server.getPlayerManager().getPlayer(player);
+                        if (p != null) cmd(b, p, v.endsWith("night") ? "time set 18000" : "time set 6000"); });
+                    cameraPair(c, pair, v.startsWith("near") ? 3.2 : 15.0);
+                }
+                if (k == 2) { c.setScreen(null); c.options.hudHidden = true; }
+                if (k == 60) Phase1Checks.shot(c, "prop-" + PROPS.get(pair.i()).id() + "-cmp-" + v);
+                if (k == 62) {
+                    if (++vi < VIEWS.length) next(tick, 4);
+                    else if (++ci < CMPS.size()) { vi = 0; next(tick, 4); }
+                    else { Phase1Checks.report("p1-prop-cmp", true, CMPS.size() * VIEWS.length + " compare shots"); next(tick, 9); }
+                }
             }
             case 9 -> {
                 c.options.hudHidden = false;

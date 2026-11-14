@@ -74,6 +74,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // The troops' own models (Phase 2 Task 5): one renderer per sheet entity type, the models reloaded with the resources.
         TroopRenderers.register();
         WagonRenderer.register(); // the Convoy supply wagon
+        MapBlocksClient.register(); // still_water: translucent layer and water tint
+
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(new TroopModelLoader());
         // The motion engine's clips (animation rework Task 13): clips/<rig>/<family>/*.json, each family's attacks in the sheet's order (Tactics.variants).
         {Map<String,List<String>> order=new LinkedHashMap<>();for(Spec.AttackVariantsRow v:Spec.ATTACKVARIANTS)order.computeIfAbsent(v.family(),k->new ArrayList<>()).add(v.id());

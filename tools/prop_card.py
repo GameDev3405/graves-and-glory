@@ -16,9 +16,14 @@ Checks (FAIL = exit 1, the prop is not ready for review; WARN = the reviewer mus
   frame      every stored element inside -16..32
   footprint  the assembled model inside the footprint, at most 2 px overhang, nothing below the floor
   palette    every texel colour comes from a proplib ramp (named ramps, make_ramp, House colours)
-  budget     elements <= 64 (WARN above, FAIL above 96); sheet <= 128 px (256 allowed over 8 cells)
+  budget     elements <= 64 (WARN above, FAIL above 96); sheet <= 128 px (256 allowed over 8 cells). A flagship may raise
+             both with a brief line `Budget override: elements 300, sheet 512` or a def field
+             "budget": {"elements": 300, "sheet": 512}: elements is then the FAIL limit (WARN above two thirds of it);
+             the sheet may not exceed 1024 (the most proplib packs and the block atlas is given)
   collision  WARN on a solid cell the model hardly fills (invisible wall) or an open cell it mostly fills (walk-through)
   brief      art/props/<id>/brief.md exists with no TODO left
+  effects    a prop with no visible element (smoke_vent) must have effects; it renders as an empty turnaround
+Compare shots (prop_shot.py --compare) are a separate row; the four main shots exclude them.
 """
 import argparse, importlib.util, json, math, os, re, sys
 from PIL import Image, ImageDraw, ImageFont
@@ -99,6 +104,19 @@ def collision_map(d, fill, k=24):
     g.text((0, 0), "top-down per layer, north up\ngrey = model fill, red = solid\n(barrier), dot = light", fill=DIM, font=f)
     return ps.compose(tiles + [note], label="collision")
 
+SHEET_MAX = 1024   # proplib.SHEETS[-1]: block atlas sprites stay power-of-two and modest
+
+def budget_of(d, brief_text):
+    """(elements FAIL limit, elements WARN limit, sheet cap override or None, where it came from)."""
+    b = dict(d.get("budget") or {}); src = "def" if b else ""
+    m = re.search(r"(?im)^[\s*\-]*budget\s+override[\s*:]*elements\s+(\d+)(?:[\s,;]+sheet\s+(\d+))?", brief_text or "")
+    if m:
+        b.setdefault("elements", int(m.group(1)))
+        if m.group(2): b.setdefault("sheet", int(m.group(2)))
+        src = src + "+brief" if src else "brief"
+    if "elements" in b: return int(b["elements"]), int(b["elements"]) * 2 // 3, b.get("sheet"), src
+    return 96, 64, b.get("sheet"), src
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("id"); ap.add_argument("--no-build", action="store_true")
@@ -120,8 +138,13 @@ def main(argv=None):
     tex, parts = ps.load_prop(ART, pid)
     files = {n for n, _ in parts}; defparts = [p["model"] for p in d["parts"]]
     if set(defparts) != files or set(prop.parts) != files:
-        chk("def", "FAIL", "def parts %s, exported %s, model.py %s" % (sorted(defparts), sorted(files), sorted(prop.parts)))
-    else: chk("def", "OK", "parts %s, size %s" % (",".join(defparts), d["size"]))
+        chk("def", "FAIL", "def parts %s, exported %s, model.py %s%s" % (sorted(defparts), sorted(files), sorted(prop.parts),
+            " (a split prop: python tools/new_prop.py %s --sync)" % pid if prop.offsets else ""))
+    else: chk("def", "OK", "parts %s, size %s" % (",".join(defparts) if len(defparts) <= 6 else "%s..%s (%d)" % (defparts[0], defparts[-1], len(defparts)), d["size"]))
+    want_off = proplib.part_offsets(prop)
+    have_off = {p["model"]: list(p.get("offset", [0, 0, 0])) for p in d["parts"]}
+    bad_off = [n for n in prop.parts if want_off.get(n, [0, 0, 0]) != have_off.get(n, [0, 0, 0])]
+    if bad_off: chk("def", "FAIL", "part offsets differ from the model's split for %s (run python tools/new_prop.py %s --sync)" % (bad_off[:4], pid))
     defglow = {p["model"] for p in d["parts"] if p.get("glow")}
     if defglow != set(prop.glow): chk("def", "FAIL", "glow parts: def %s, model.py %s" % (sorted(defglow), sorted(prop.glow)))
 
@@ -147,9 +170,16 @@ def main(argv=None):
                     q = np.array([cx, cy, cz], float)
                     if rot: q = ps.rot_matrix(rot[0], rot[1]) @ (q - rot[2]) + rot[2]
                     corners.append(q)
-    C = np.array(corners); lo = [round(float(v), 1) for v in C.min(0)]; hi = [round(float(v), 1) for v in C.max(0)]
+    if not corners:   # an effect-only prop (smoke_vent): no visible element at all
+        lo, hi = [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]
+        chk("footprint", "OK", "no visible elements (effect-only prop)")
+        fx = d.get("effects", [])
+        chk("effects", "OK" if fx else "FAIL", ("%d effect(s), no visible part" % len(fx)) if fx else "no visible elements and no effects: the prop shows nothing")
+    else:
+        C = np.array(corners); lo = [round(float(v), 1) for v in C.min(0)]; hi = [round(float(v), 1) for v in C.max(0)]
     over = [max(box[0][i] - lo[i], hi[i] - box[1][i]) for i in range(3)]
-    if lo[1] < 0 or max(over) > 2:
+    if not corners: pass
+    elif lo[1] < 0 or max(over) > 2:
         chk("footprint", "FAIL", "model x %g..%g y %g..%g z %g..%g vs footprint %s..%s" % (lo[0], hi[0], lo[1], hi[1], lo[2], hi[2], box[0], box[1]))
     else: chk("footprint", "OK", "model x %g..%g y %g..%g z %g..%g in footprint (overhang %g px)" % (lo[0], hi[0], lo[1], hi[1], lo[2], hi[2], max(0, max(over))))
 
@@ -162,9 +192,14 @@ def main(argv=None):
         else "%d colours, all from proplib ramps" % len(used))
 
     n_el = sum(len(m["elements"]) for _, m in parts); cells = sx * sy * sz
-    chk("budget", "FAIL" if n_el > 96 else ("WARN" if n_el > 64 else "OK"), "%d elements (64 target, 96 limit)" % n_el)
-    sheet_cap = 256 if cells > 8 else 128
-    chk("budget", "FAIL" if tex.size[0] > sheet_cap else "OK", "sheet %dx%d (cap %d)" % (tex.size[0], tex.size[1], sheet_cap))
+    bpath = os.path.join(ART, pid, "brief.md")
+    lim, target, sheet_over, bsrc = budget_of(d, open(bpath, encoding="utf8").read() if os.path.exists(bpath) else "")
+    note = " (budget from %s)" % bsrc if bsrc else ""
+    chk("budget", "FAIL" if n_el > lim else ("WARN" if n_el > target else "OK"), "%d elements (%d target, %d limit)%s" % (n_el, target, lim, note))
+    sheet_cap = int(sheet_over) if sheet_over else (256 if cells > 8 else 128)
+    if sheet_cap > SHEET_MAX or sheet_cap & (sheet_cap - 1):
+        chk("budget", "FAIL", "sheet budget %d: must be a power of two at most %d" % (sheet_cap, SHEET_MAX)); sheet_cap = min(sheet_cap, SHEET_MAX)
+    chk("budget", "FAIL" if tex.size[0] > sheet_cap else "OK", "sheet %dx%d (cap %d)%s" % (tex.size[0], tex.size[1], sheet_cap, note if sheet_over else ""))
 
     fill = cell_fill(els, d); solid = {tuple(c) for c in d["solid"]}
     wall = [c for c in solid if fill[c] < 0.08]; walk = [c for c, v in fill.items() if v > 0.5 and c not in solid]
@@ -173,7 +208,7 @@ def main(argv=None):
     if walk: msg.append("mostly filled but open (walk-through): %s" % walk)
     chk("collision", "WARN" if msg else "OK", "; ".join(msg) if msg else "%d solid cells match the model" % len(solid))
 
-    bpath = os.path.join(ART, pid, "brief.md"); use = "?"
+    use = "?"
     if not os.path.exists(bpath): chk("brief", "FAIL", "no art/props/%s/brief.md" % pid)
     else:
         bt = open(bpath, encoding="utf8").read()
@@ -190,8 +225,10 @@ def main(argv=None):
     rows = [ps.compose([ps.compose(r1, label="1x game scale"), ps.compose(r4, label="4x: " + ", ".join(v[0] for v in views))])]
     rows.append(collision_map(d, fill))
     order = ["near-day", "near-night", "far-day", "far-night"]
-    shot_files = sorted((f for f in (os.listdir(shots) if os.path.isdir(shots) else []) if f.endswith(".png")),
-                        key=lambda f: next((i for i, k in enumerate(order) if f.endswith(k + ".png")), 9))
+    pngs = [f for f in (os.listdir(shots) if os.path.isdir(shots) else []) if f.endswith(".png")]
+    rank = lambda f: next((i for i, k in enumerate(order) if f.endswith(k + ".png")), 9)
+    shot_files = sorted((f for f in pngs if "-cmp-" not in f), key=rank)
+    cmp_files = sorted((f for f in pngs if "-cmp-" in f), key=rank)
     if shot_files:
         ims = []
         for f in shot_files[:4]:
@@ -199,13 +236,20 @@ def main(argv=None):
         rows.append(ps.compose(ims, label="in game: " + ", ".join(os.path.splitext(f)[0].replace("p1-prop-" + pid + "-", "") for f in shot_files[:4])))
     else:
         chk("in-game", "WARN", "no shots in %s (run tools/prop_shot.py %s)" % (os.path.relpath(shots, ROOT), pid))
+    if cmp_files:
+        ims = []
+        for f in cmp_files[:4]:
+            im = Image.open(os.path.join(shots, f)).convert("RGBA"); im = im.resize((480, int(480 * im.height / im.width)), Image.BILINEAR); ims.append(im)
+        rows.append(ps.compose(ims, label="beside the map's template (east): " + ", ".join(os.path.splitext(f)[0].replace("p1-prop-" + pid + "-cmp-", "") for f in cmp_files[:4])))
 
     knight_h = kn1.height if kn1 else 32
     numbers = ["cells %dx%dx%d (x*y*z), anchor (%d,0,%d), front north" % (sx, sy, sz, px, pz),
                "height %g px = %.2f blocks = %.2f x the Knight (%d px)" % (hi[1], hi[1] / 16, hi[1] / knight_h, knight_h),
                "elements %d in %d part(s); sheet %dx%d; %d colours; solid %d cells; lights %d; effects %d" %
                (n_el, len(parts), tex.size[0], tex.size[1], len(used), len(solid), len(d.get("lights", [])), len(d.get("effects", []))),
-               "cmd %s" % ", ".join("%s=%d" % (p["model"], p["cmd"]) for p in d["parts"])]
+               ("cmd %s" % ", ".join("%s=%d" % (p["model"], p["cmd"]) for p in d["parts"])) if len(d["parts"]) <= 6 else
+               "cmd %d..%d over %d parts (%s..%s)" % (min(p["cmd"] for p in d["parts"]), max(p["cmd"] for p in d["parts"]), len(d["parts"]),
+                                                    d["parts"][0]["model"], d["parts"][-1]["model"])]
     fb, fs = font(18), font(13)
     W = max(r.width for r in rows); hh = 34 + 18 * len(numbers) + 17 * len(checks) + 10
     head = Image.new("RGBA", (max(W, 900), hh), BG); g = ImageDraw.Draw(head)
@@ -222,7 +266,7 @@ def main(argv=None):
     card.save(os.path.join(out, "card.png"))
     res = {"id": pid, "name": d["name"], "use": use, "size": d["size"], "elements": n_el, "sheet": list(tex.size), "colours": len(used),
            "height_px": hi[1], "knight_px": knight_h, "checks": [{"check": n, "level": l, "text": t} for n, l, t in checks],
-           "shots": shot_files}
+           "shots": shot_files, "compare_shots": cmp_files, "parts": len(d["parts"])}
     json.dump(res, open(os.path.join(out, "card.json"), "w"), indent=1)
     for n, l, t in checks: print("%-4s %-10s %s" % (l, n, t))
     print("card", os.path.join(out, "card.png"), card.size)

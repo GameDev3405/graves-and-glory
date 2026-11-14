@@ -41,15 +41,16 @@ for folder in ('src/main/resources/data/gravesandglory/structures','test-tools/r
     if not (root/folder).is_dir(): continue
     for nbt in sorted((root/folder).rglob('*.nbt')):
         sid=nbt.relative_to(root/folder).with_suffix('').as_posix()
+        fixture=folder.startswith('test-tools') and sid.startswith('compare/')   # tools/compare_templates.py: unshipped prop-shot fixtures, not studio pieces
         if not re.fullmatch(r'[a-z0-9_]+(/[a-z0-9_]+)+',sid): errors.append(f'structure {sid}: the id must be <group>/<name> in [a-z0-9_/]')
-        if not (root/studio_scripts/(sid+'.mcfunction')).is_file(): errors.append(f'structure {sid}: no script {studio_scripts}/{sid}.mcfunction')
+        if not fixture and not (root/studio_scripts/(sid+'.mcfunction')).is_file(): errors.append(f'structure {sid}: no script {studio_scripts}/{sid}.mcfunction')
         try: version,size=structure_header(nbt)
         except Exception as e: errors.append(f'structure {sid}: cannot read the NBT ({e})'); continue
         if version!=STRUCTURE_DATA_VERSION: errors.append(f'structure {sid}: DataVersion {version}, expected {STRUCTURE_DATA_VERSION}')
         if size is None: errors.append(f'structure {sid}: size is not a list of three ints'); continue
         width,height,depth=size
-        if width%2==0: errors.append(f'structure {sid}: width {width} is even, it must be odd')
-        if depth%2==0: errors.append(f'structure {sid}: depth {depth} is even, it must be odd')
+        if not fixture and width%2==0: errors.append(f'structure {sid}: width {width} is even, it must be odd')
+        if not fixture and depth%2==0: errors.append(f'structure {sid}: depth {depth} is even, it must be odd')
         if width>48: errors.append(f'structure {sid}: width {width} is more than 48')
         if depth>48: errors.append(f'structure {sid}: depth {depth} is more than 48')
         if height>32: errors.append(f'structure {sid}: height {height} is more than 32')

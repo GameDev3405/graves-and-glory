@@ -99,6 +99,7 @@ read it first. The short version a builder needs:
 - Look: chunky, readable, troop scale. A few big shapes first; detail is 1-2 px insets, bands, pegs, nails. No noise,
   no single-pixel speckle fields, no smooth gradients, no thin 1 px parts longer than about 8 px (they shimmer in game). Flat 1 px boards or papers seen face-on are fine; the rule is about rods and wires.
 - Budget: 64 elements target (96 hard), sheet 128 px (256 only over 8 cells). The forge (the flagship) is 61.
+  Big props may carry an override agreed with the lead (see Shapes, big props, budgets below).
 - If a build stops on an `AssertionError` naming an element outside -16..32, the part's `.json` is left half written;
   fix the element and build again (the next build rewrites it).
 - Build and look: `python art/props/build_props.py <id>` writes `<part>.json`, `<id>.png` and `<id>.bbmodel`
@@ -118,8 +119,10 @@ Exit 1 on any FAIL; a prop is not sent to review until it exits 0.
 | frame | a stored element leaves -16..32 | - |
 | footprint | the model leaves the footprint by more than 2 px, or goes below the floor | - |
 | palette | a texel colour is not from a proplib ramp | - |
-| budget | over 96 elements; sheet over its cap | over 64 elements |
+| budget | over 96 elements (or the override); sheet over its cap | over 64 elements (2/3 of the override) |
 | collision | - | a solid cell the model hardly fills (invisible wall); an open cell the model mostly fills (walk-through) |
+| offsets | a split prop's def part offsets differ from the split (fix: `new_prop.py <id> --sync`) | - |
+| effects | an effect-only prop has no effects | - |
 | brief | no brief, or a TODO left | - |
 | in-game | - | no in-game shots yet |
 
@@ -136,6 +139,13 @@ to put them on the card. Takes about 5-10 minutes (most of it the Gradle build).
 (e.g. overlapping cells) or a shot is missing.
 
 A new def is part of the jar's data, so the client must be rebuilt for it; `prop_shot.py` always runs a fresh build.
+
+Compare against a structure: `--compare <id>=<group>/<name>` (repeatable) places the structure template
+`src/main/resources/data/gravesandglory/structures/<group>/<name>.nbt` 2 blocks east of the prop, north edges aligned,
+and shoots `work/props/shots/<id>/p1-prop-<id>-cmp-{near,far}-{day,night}.png` (own row on the card). A missing template
+is skipped with a message listing that group's templates. Example: `--compare stone_hand=kit/shrine`.
+
+Compare against the maps' plain-block builds: `python tools/prop_shot.py --compare-all <ids>` pairs each id with its fixture from `tools/compare_templates.py` (variants to the base build: `boulder_*` to `compare/boulder`, `supply_wagon_*` to the hay or shot wagon, `market_stall_*`, `smoke_vent_*`, the giant bones to `compare/giant_rib`; `handcart*`, `brazier_wall` and `portcullis_raised` are shot alone). The 12 fixtures are test-only templates in `test-tools/resources/data/gravesandglory/structures/compare/` (the unshipped local-integration jar; `release_config.py` refuses `structures/compare/` in a player jar). Regenerate with `python tools/compare_templates.py` (reads the maps lead's generators from the bb-maps checkout, read-only; `--check` tells whether they changed) and look at `work/compare/fixtures.png`.
 
 ## Step 5: review
 
@@ -173,7 +183,9 @@ each prop; for gameplay props he also decides the effect. Nothing merges into `m
 - After Kort's yes the lead merges; the builder server gets the new pack (`/prop pack reload` on the server after the
   file is replaced; see `docs/BUILDER-SERVER.md`).
 - Placing: builders use the prop menu (pick, ghost, scroll to rotate, click to place, hit to remove). Maps carry props as
-  anchors through mapforge export and `Structures.place`; battles treat a prop's solid cells as walls.
+  anchors through mapforge export and `Structures.place`; battles treat a prop's solid cells as walls. A generator that writes
+  `.nbt` templates directly writes only the anchor command block (`tools/prop_anchor.py`, `docs/props/ANCHOR-NBT.md`); the scan on
+  placement and chunk load restores the barriers and lights (into air only) and the parts.
 
 ## Gameplay props: what exists and what needs Kort
 
@@ -220,6 +232,22 @@ above unless noted):
 
 The lead's own slip: the first draft said shifted parts are modelled at y 0..32; they are modelled in the real frame.
 The worker and the stone hand both hit it before the fix.
+
+## Shapes, big props, budgets, effect-only props
+
+- Shape helpers in `proplib` (examples in `art/props/README.md`): `wheel`, `cylinder`, `blob`, `curve`, plus `slab`
+  and `disc_cells` underneath. They emit whole-px `E` boxes and skip hidden faces; a wheel is about 13 elements.
+- Big props (any axis over 3 cells): `new_prop.py <id> --size X Y Z` scaffolds with `Prop.split` (or force `--split`).
+  The model is one element list in the normal frame; the splitter cuts it into 3x3x3-cell regions, stores each
+  shifted into -16..32 and names the parts `<id>_<n>`. Parts sit on their own entity offset (`"offset":[x,y,z]` px in
+  the def), not a display translation, because Minecraft clamps that to 80 px. A rotated element may cross a region
+  boundary only along its rotation axis; the build stops naming it otherwise. Glow elements go in their own list.
+- CMD blocks: a split prop reserves consecutive blocks, 10 parts each (`--block N` is the first); the def records
+  `"split": {"block", "blocks"}`. After changing the size or glow, run `new_prop.py <id> --sync` to rewrite the def parts.
+- Budget override (for big props agreed with the lead): brief line `Budget override: elements 300, sheet 512`, or def
+  field `"budget": {"elements": 300, "sheet": 512}`. Sheets cap at 1024. Default budgets are unchanged.
+- Effect-only props (smoke vents, sound spots): `new_prop.py <id> --effects-only` writes a part with no elements,
+  `solid: []` and a sample effect. `Props.place` and the card accept them; the def must list at least one effect.
 
 ## Parallel builders: assign CMD blocks
 

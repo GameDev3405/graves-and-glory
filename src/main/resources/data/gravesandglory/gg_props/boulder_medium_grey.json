@@ -1,0 +1,17 @@
+{
+  "id": "boulder_medium_grey",
+  "category": "nature",
+  "name": "Medium Boulder (Grey)",
+  "size": [2, 2, 2],
+  "parts": [
+    {"model": "boulder_medium_grey", "cmd": 7310541, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0],
+    [0, 0, 1],
+    [1, 0, 1]
+  ],
+  "lights": [],
+  "effects": []
+}

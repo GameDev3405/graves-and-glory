@@ -1,0 +1,14 @@
+{
+  "id": "smoke_vent_thin",
+  "category": "nature",
+  "name": "Smoke Vent (thin)",
+  "size": [1, 1, 1],
+  "parts": [
+    {"model": "smoke_vent_thin", "cmd": 7310651, "glow": false}
+  ],
+  "solid": [],
+  "lights": [],
+  "effects": [
+    {"kind": "particle", "id": "minecraft:campfire_cosy_smoke", "x": 0.5, "y": 0.2, "z": 0.5, "spread": 0.2, "count": 1, "every": 12, "chance": 0.7}
+  ]
+}

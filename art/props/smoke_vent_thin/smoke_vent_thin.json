@@ -1,0 +1,38 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  32,
+  32
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/smoke_vent_thin",
+  "particle": "gravesandglory:prop/smoke_vent_thin"
+ },
+ "elements": [],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.625,
+    0.625,
+    0.625
+   ]
+  }
+ }
+}

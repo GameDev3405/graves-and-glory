@@ -1,0 +1,20 @@
+{
+  "id": "market_stall_fish",
+  "category": "market",
+  "name": "Market Stall (Fish)",
+  "size": [3, 3, 2],
+  "parts": [
+    {
+      "model": "market_stall_fish",
+      "cmd": 7310471,
+      "glow": false
+    }
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0],
+    [2, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

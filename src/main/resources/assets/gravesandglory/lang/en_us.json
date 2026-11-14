@@ -115,5 +115,7 @@
   "subtitles.gravesandglory.podium_reveal": "A drum strikes",
   "subtitles.gravesandglory.reward_total": "The reward is tallied",
   "subtitles.gravesandglory.level_up": "A new level is reached",
-  "subtitles.gravesandglory.award": "A horn honours the best"
+  "subtitles.gravesandglory.award": "A horn honours the best",
+  "block.gravesandglory.troop_fence": "Troop Fence",
+  "block.gravesandglory.still_water": "Still Water"
 }

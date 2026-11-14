@@ -1,0 +1,14 @@
+{
+  "id": "boulder_small_mossy",
+  "category": "nature",
+  "name": "Small Boulder (Mossy)",
+  "size": [1, 1, 1],
+  "parts": [
+    {"model": "boulder_small_mossy", "cmd": 7310531, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

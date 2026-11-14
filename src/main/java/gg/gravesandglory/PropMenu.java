@@ -282,8 +282,8 @@ public final class PropMenu {
     }
 
     static void spawnGhost(ServerWorld w,Placing pl,PropDef d){
-        double[] t=PropGeometry.partTransform(d,pl.facing);
         for(PropDef.Part part:d.parts()){
+            double[] t=PropGeometry.partTransform(d,pl.facing,part);
             NbtCompound n=new NbtCompound();
             n.putString("id","minecraft:item_display");
             NbtCompound item=new NbtCompound();
@@ -295,7 +295,7 @@ public final class PropMenu {
             n.putBoolean("Glowing",true);
             n.putInt("glow_color_override",pl.red?RED:WHITE);
             NbtCompound b=new NbtCompound();b.putInt("block",15);b.putInt("sky",15);n.put("brightness",b);
-            NbtList tags=new NbtList();tags.add(NbtString.of(GHOST_TAG));n.put("Tags",tags);
+            NbtList tags=new NbtList();tags.add(NbtString.of(GHOST_TAG));tags.add(NbtString.of(GHOST_TAG+"#"+part.cmd()));n.put("Tags",tags);
             EntityType.getEntityFromNbt(n,w).ifPresent(e->{
                 e.refreshPositionAndAngles(pl.at.getX()+t[0],pl.at.getY()+t[1],pl.at.getZ()+t[2],(float)t[3],0);
                 GHOSTS.add(e.getUuid());
@@ -305,9 +305,13 @@ public final class PropMenu {
     }
 
     static void moveGhost(Placing pl,PropDef d){
-        double[] t=PropGeometry.partTransform(d,pl.facing);
-        double x=pl.at.getX()+t[0],y=pl.at.getY()+t[1],z=pl.at.getZ()+t[2];
-        for(Entity e:pl.ghosts)if(e.getX()!=x||e.getY()!=y||e.getZ()!=z||e.getYaw()!=(float)t[3])e.refreshPositionAndAngles(x,y,z,(float)t[3],0);
+        for(Entity e:pl.ghosts){
+            PropDef.Part part=null;
+            for(PropDef.Part p:d.parts())if(e.getCommandTags().contains(GHOST_TAG+"#"+p.cmd()))part=p;
+            double[] t=part==null?PropGeometry.partTransform(d,pl.facing):PropGeometry.partTransform(d,pl.facing,part);
+            double x=pl.at.getX()+t[0],y=pl.at.getY()+t[1],z=pl.at.getZ()+t[2];
+            if(e.getX()!=x||e.getY()!=y||e.getZ()!=z||e.getYaw()!=(float)t[3])e.refreshPositionAndAngles(x,y,z,(float)t[3],0);
+        }
     }
 
     /** Whether the player is placing (for checks and tests). */

@@ -1,0 +1,14 @@
+{
+  "id": "boulder_small_grey",
+  "category": "nature",
+  "name": "Small Boulder (Grey)",
+  "size": [1, 1, 1],
+  "parts": [
+    {"model": "boulder_small_grey", "cmd": 7310511, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

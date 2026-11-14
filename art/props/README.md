@@ -29,6 +29,21 @@ CMD = `7310001 + 10*propIndex + partIndex` (SYSTEMS `PropDef`, agreed 2026-11-08
 7310001..7310003, anvil 7310011, weapon_rack 7310021, shield_rack 7310031, quench_trough 7310041, grindstone_bench
 7310051. The pack builder assigns CMDs from the defs; the models carry no numbers.
 
+## Shape helpers (`from proplib import *`)
+Each returns a list of `E` boxes in whole px; add them to a part's list. `axis` is the long/through axis.
+```python
+els += wheel((8, 12, -4), 12, 3, "x", wood, spokes=4)          # cart wheel, r 12 px, 3 px thick, about 13 elements
+els += cylinder((4, 0, 4), 4, 30, "y", stone)                  # post, base = centre of the min cap
+els += blob((-10, 0, -6), (26, 14, 22), moss, layers=3)        # boulder or bush in that box
+els += curve([(0, 0, 0), (8, 10, 0), (20, 14, 0)], (3, 3, 3), iron)  # bent bar through points (min corners)
+```
+
+## Big props
+Over 3 cells on any axis: build one element list in the normal frame and let the splitter cut it:
+`prop = Prop.split("siege_tower", els, SIZE, glow=glow_els)` gives parts `siege_tower_0..n` in 3x3x3-cell regions.
+Each part is stored inside -16..32 and placed by an entity offset from the def (display translations clamp at 80 px).
+`new_prop.py <id> --size X Y Z` scaffolds this and reserves the CMD blocks; `--sync` refreshes the def parts.
+
 ## Look
 - Chunky: 1 texel per model px (16 px a block), like the troops and vanilla blocks. One sheet per prop, shelf-packed.
 - Ramps: 5 tones, 0 shadow .. 4 highlight, made the style guide's way (`proplib.make_ramp`: value ±22%, shadows toward

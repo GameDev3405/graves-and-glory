@@ -29,6 +29,11 @@ def load_prop(art, pid):
         m = json.load(open(path))
         if "elements" not in m: continue
         parts.append((os.path.splitext(os.path.basename(path))[0], m))
+    dpath = os.path.join(ROOT, "src", "main", "resources", "data", "gravesandglory", "gg_props", pid + ".json")
+    if os.path.exists(dpath):   # a big prop's parts are moved by the def's part offset (the game moves the entity)
+        off = {q["model"]: q["offset"] for q in json.load(open(dpath, encoding="utf8")).get("parts", []) if "offset" in q}
+        for n, m in parts:
+            if n in off: m["_offset"] = off[n]
     return tex, parts
 
 def check_density(name, model, tex_size):
@@ -56,7 +61,7 @@ def elements_of(parts):
     """Flatten parts into elements in the prop frame (shift added back): (from, to, rot, faces, shade, part)."""
     out = []
     for pname, m in parts:
-        sh = m.get("display", {}).get("fixed", {}).get("translation", [0, 0, 0])
+        sh = np.array(m.get("display", {}).get("fixed", {}).get("translation", [0, 0, 0]), float) + m.get("_offset", [0, 0, 0])
         for e in m["elements"]:
             frm = np.array(e["from"], float) + sh; to = np.array(e["to"], float) + sh
             r = e.get("rotation")
@@ -70,14 +75,17 @@ def render(els, tex, yaw=0.0, pitch=0.0, k=1, bg=None):
     a, p = math.radians(yaw), math.radians(pitch)
     d = np.array([-math.sin(a) * math.cos(p), -math.sin(p), math.cos(a) * math.cos(p)])
     rgt = np.cross(d, [0, 1, 0]); rgt /= np.linalg.norm(rgt); up = np.cross(rgt, d)
-    corners = []
+    if not els: return Image.new("RGBA", (16 * k, 16 * k), (0, 0, 0, 0))   # an effect-only prop: nothing to draw
+    corners = []; spans = []
     for frm, to, rot, *_ in els:
+        mine = []
         for cx in (frm[0], to[0]):
             for cy in (frm[1], to[1]):
                 for cz in (frm[2], to[2]):
                     q = np.array([cx, cy, cz])
                     if rot: q = rot_matrix(rot[0], rot[1]) @ (q - rot[2]) + rot[2]
-                    corners.append(q)
+                    mine.append(q)
+        corners += mine; M = np.array(mine); spans.append(((M @ rgt).min(), (M @ rgt).max(), (M @ up).min(), (M @ up).max()))
     C = np.array(corners); sx, sy = C @ rgt, C @ up
     x0, x1 = math.floor(sx.min()) - 1, math.ceil(sx.max()) + 1
     y0, y1 = math.floor(sy.min()) - 1, math.ceil(sy.max()) + 1
@@ -87,29 +95,34 @@ def render(els, tex, yaw=0.0, pitch=0.0, k=1, bg=None):
     O = (U[..., None] * rgt + V[..., None] * up - d * 1000.0).reshape(-1, 3)
     N = O.shape[0]
     best = np.full(N, np.inf); col = np.zeros((N, 4), np.float32)
-    for frm, to, rot, faces, shade, _ in els:
+    for (frm, to, rot, faces, shade, _), (smin, smax, tmin_, tmax_) in zip(els, spans):
+        # only the rays inside the element's screen box can hit it (same picture, far less work on big props)
+        i0, i1 = max(0, int(math.floor((smin - x0) * k)) - 1), min(W, int(math.ceil((smax - x0) * k)) + 1)
+        j0, j1 = max(0, int(math.floor((y1 - tmax_) * k)) - 1), min(H, int(math.ceil((y1 - tmin_) * k)) + 1)
+        if i0 >= i1 or j0 >= j1: continue
+        sub = (np.arange(j0, j1)[:, None] * W + np.arange(i0, i1)[None, :]).ravel()
         if rot:
             Ri = rot_matrix(rot[0], rot[1]).T
-            Ol = (O - rot[2]) @ Ri.T + rot[2]; Dl = Ri @ d
+            Ol = (O[sub] - rot[2]) @ Ri.T + rot[2]; Dl = Ri @ d
         else:
-            Ol, Dl = O, d
+            Ol, Dl = O[sub], d
         with np.errstate(divide="ignore", invalid="ignore"):
             inv = np.where(np.abs(Dl) > 1e-12, 1.0 / Dl, np.inf)
             t1 = (frm - Ol) * inv; t2 = (to - Ol) * inv
         t1 = np.where(np.isnan(t1), -np.inf, t1); t2 = np.where(np.isnan(t2), np.inf, t2)
         tmin = np.minimum(t1, t2); tmax = np.maximum(t1, t2)
         tn = tmin.max(1); tf = tmax.min(1); ax = tmin.argmax(1)
-        hit = (tn <= tf + 1e-9) & (tf > 0) & (tn < best)
+        hit = (tn <= tf + 1e-9) & (tf > 0) & (tn < best[sub])
         if not hit.any(): continue
-        idx = np.nonzero(hit)[0]
-        P = Ol[idx] + np.outer(tn[idx], Dl)
+        loc = np.nonzero(hit)[0]; idx = sub[loc]
+        P = Ol[loc] + np.outer(tn[loc], Dl)
         for axis in range(3):
             side = 0 if Dl[axis] > 0 else 1
             f = FACE_OF[(axis, side)]
             if f not in faces: continue
-            sel = idx[ax[idx] == axis]
+            sel = idx[ax[loc] == axis]
             if not len(sel): continue
-            Ps = P[ax[idx] == axis]
+            Ps = P[ax[loc] == axis]
             x, y, z = Ps[:, 0], Ps[:, 1], Ps[:, 2]
             fx = lambda v, lo, hi: np.clip((v - lo) / max(hi - lo, 1e-9), 0, 0.999999)
             if f == "north": s, t = fx(-x, -to[0], -frm[0]), fx(-y, -to[1], -frm[1])
@@ -126,7 +139,7 @@ def render(els, tex, yaw=0.0, pitch=0.0, k=1, bg=None):
             sel, c = sel[ok], c[ok]
             sh = SHADE[f] if shade else 1.0
             col[sel, :3] = c[:, :3] * sh; col[sel, 3] = 1.0
-            best[sel] = tn[sel]
+            best[sel] = tn[loc[ax[loc] == axis][ok]]
     img = Image.fromarray((col.reshape(H, W, 4) * 255).astype(np.uint8), "RGBA")
     return img
 

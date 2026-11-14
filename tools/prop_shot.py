@@ -1,10 +1,20 @@
 """In-game prop shots (docs/props/WORKFLOW.md, step 4): one real client, props placed through Props.place.
 
-    python tools/prop_shot.py <id>[,<id>...] [--offline] [--timeout 1500]
+    python tools/prop_shot.py <id>[,<id>...] [--compare <id>=<group/name> ...] [--compare-all] [--offline] [--timeout 1500]
 
 Builds the prop pack (tools/build_prop_pack.py) into an isolated run root work/props/shotrun/<stamp>/, enables it as a client
 resource pack, runs `gradlew runClient` with the prop-look suite (GRAVES_PHASE1_CHECKS=prop-look, GRAVES_PROPLOOK=<ids>) and copies
-each prop's screenshots to work/props/shots/<id>/ for tools/prop_card.py. Exit 0 only when every placement and shot check passed.
+each prop's screenshots to work/props/shots/<id>/ for tools/prop_card.py.
+
+--compare <id>=<group/name> (repeatable) also places that structure template (the maps' current plain-block version:
+src/main/resources/data/gravesandglory/structures/<group>/<name>.nbt, e.g. camp/tent_gilded, kit/market) 2 blocks east of the
+prop and shoots the pair the same four ways: p1-prop-<id>-cmp-<near|far>-<day|night>.png. A missing template is skipped with a message. Exit 0 only when every placement and shot check passed.
+A template is looked up in the shipped structures and then in the unshipped test fixtures (test-tools/resources/.../structures/, e.g. compare/trebuchet).
+
+--compare-all pairs every prop id with the maps' plain-block fixture from tools/compare_templates.py (variants go to the base build:
+boulder_* to compare/boulder, supply_wagon_* to the nearest wagon, market_stall_* to compare/market_stall, giant bones to compare/giant_rib);
+props with no fixture (handcart, brazier_wall, portcullis_raised, ...) are shot alone. An explicit --compare for an id wins.
+Regenerate the fixtures with `python tools/compare_templates.py` (needs the maps checkout, read-only).
 
 Counts as one of the game clients (WORKFLOW.md: at most 4 across the workspace now, 30 minutes each). Refuses to start when a
 client from this checkout is already running; it never stops a client it did not start.
@@ -15,11 +25,52 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 
 
+STRUCTURES = ROOT / 'src' / 'main' / 'resources' / 'data' / 'gravesandglory' / 'structures'
+# Test-only templates (the compare fixtures): carried by the unshipped local-integration jar, never by the release jar.
+FIXTURE_STRUCTURES = ROOT / 'test-tools' / 'resources' / 'data' / 'gravesandglory' / 'structures'
+
+
+def template_file(tid):
+    for root in (STRUCTURES, FIXTURE_STRUCTURES):
+        if (root / (tid + '.nbt')).is_file(): return root / (tid + '.nbt')
+    return None
+
+
+def compare_pairs(specs, ids):
+    """[(id, template)] from --compare id=group/name; a pair whose template file is missing is dropped with a message."""
+    out = []
+    for s in specs:
+        if '=' not in s: sys.exit('--compare wants <id>=<group/name>, got %r' % s)
+        pid, tid = (v.strip() for v in s.split('=', 1))
+        tid = tid[:-4] if tid.endswith('.nbt') else tid
+        if pid not in ids: sys.exit('--compare %s: %s is not one of the props shot (%s)' % (s, pid, ','.join(ids)))
+        if template_file(tid) is None:
+            known = sorted({'%s/%s' % (d.name, f.stem) for root in (STRUCTURES, FIXTURE_STRUCTURES) if root.is_dir()
+                            for d in root.iterdir() if d.is_dir() and d.name == tid.split('/')[0] for f in d.glob('*.nbt')})
+            print('compare %s: no structure template %s (looked in %s and %s); skipping the compare shots. Known: %s'
+                  % (pid, tid, STRUCTURES.relative_to(ROOT), FIXTURE_STRUCTURES.relative_to(ROOT), ', '.join(known) or 'none in that group'))
+            continue
+        out.append((pid, tid))
+    return out
+
+
 def main(argv=None):
     a = argparse.ArgumentParser(); a.add_argument('ids'); a.add_argument('--offline', action='store_true')
     a.add_argument('--timeout', type=int, default=1500)
+    a.add_argument('--compare-all', action='store_true',
+                   help='pair every id with the plain-block fixture of the maps (tools/compare_templates.py); ids without one are shot alone')
+    a.add_argument('--compare', action='append', default=[], metavar='ID=GROUP/NAME',
+                   help='shoot the prop beside this structure template (data/gravesandglory/structures/GROUP/NAME.nbt); repeatable')
     o = a.parse_args(argv)
     ids = [i for i in o.ids.split(',') if i]
+    specs = list(o.compare)
+    if o.compare_all:
+        import compare_templates
+        paired, alone = compare_templates.pairs_for(ids)
+        explicit = {s.split('=', 1)[0].strip() for s in specs}
+        specs += ['%s=%s' % pt for pt in paired if pt[0] not in explicit]
+        print('compare-all:', ', '.join('%s=%s' % pt for pt in paired) or 'no fixtures', '| shot alone:', ', '.join(alone) or 'none', flush=True)
+    cmp = compare_pairs(specs, ids)
     import verify   # game_guard, java_home: the same guards as tools/verify.py game
     verify.game_guard()
     jdk = verify.java_home()
@@ -34,7 +85,9 @@ def main(argv=None):
     (run / 'options.txt').write_text('pauseOnLostFocus:false\nonboardAccessibility:false\nrenderDistance:8\nsimulationDistance:6\n'
                                      'guiScale:3\nresourcePacks:["fabric","gravesandglory:armory","file/gg-props.zip"]\n', encoding='utf8')
     env = dict(os.environ, JAVA_HOME=str(jdk), PATH=str(jdk / 'bin') + os.pathsep + os.environ['PATH'],
-               GRAVES_ROADMAP_TEST_ROOT=str(root), GRAVES_PHASE1_CHECKS='prop-look', GRAVES_PROPLOOK=','.join(ids))
+               GRAVES_ROADMAP_TEST_ROOT=str(root), GRAVES_PHASE1_CHECKS='prop-look', GRAVES_PROPLOOK=','.join(ids),
+               GRAVES_PROPCMP=';'.join('%s=%s' % kv for kv in cmp),
+               GRAVES_PROPEXAMPLE=str(ROOT / 'docs' / 'props' / 'examples' / 'prop_facings.nbt'))
     gradle = [str(ROOT / ('gradlew.bat' if os.name == 'nt' else 'gradlew')), '--no-daemon'] + (['--offline'] if o.offline else [])
     log = root / 'game.log'
     print('client running, log', log, flush=True)

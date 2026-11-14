@@ -1,0 +1,17 @@
+{
+  "id": "boulder_medium_mossy",
+  "category": "nature",
+  "name": "Medium Boulder (Mossy)",
+  "size": [2, 2, 2],
+  "parts": [
+    {"model": "boulder_medium_mossy", "cmd": 7310561, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0],
+    [0, 0, 1],
+    [1, 0, 1]
+  ],
+  "lights": [],
+  "effects": []
+}

@@ -90,6 +90,7 @@ public final class GravesAndGlory implements ModInitializer {
         PropTicker.init(); // prop kit: proximity-gated alive effects, /prop stats
         PropMenu.init(); // prop kit: /prop menu, ghost placement, hit-to-remove
         PropGameplay.init(); // gameplay props: destructible, cover, Siege /barricade
+        MapBlocks.init(); // section F map blocks: troop_fence and still_water (docs/props/MAP-BLOCKS.md)
         PropPack.init(); // prop kit: server resource pack delivery, /prop pack reload (only with -Dgg.propPack.file)
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.

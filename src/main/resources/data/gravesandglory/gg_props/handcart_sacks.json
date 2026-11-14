@@ -1,0 +1,41 @@
+{
+  "id": "handcart_sacks",
+  "category": "carts",
+  "name": "Handcart (Sacks)",
+  "size": [
+    2,
+    2,
+    3
+  ],
+  "parts": [
+    {
+      "model": "handcart_sacks",
+      "cmd": 7310371,
+      "glow": false
+    }
+  ],
+  "solid": [
+    [
+      0,
+      0,
+      1
+    ],
+    [
+      1,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      2
+    ],
+    [
+      1,
+      0,
+      2
+    ]
+  ],
+  "lights": [],
+  "effects": []
+}

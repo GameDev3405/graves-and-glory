@@ -1,0 +1,13 @@
+{
+  "id": "brazier_wall",
+  "category": "yard",
+  "name": "Wall Brazier",
+  "size": [1, 1, 1],
+  "parts": [
+    {"model": "brazier_wall", "cmd": 7310621, "glow": false},
+    {"model": "brazier_wall_coals", "cmd": 7310622, "glow": true}
+  ],
+  "solid": [],
+  "lights": [{"x": 0, "y": 0, "z": 0, "level": 11}],
+  "effects": []
+}

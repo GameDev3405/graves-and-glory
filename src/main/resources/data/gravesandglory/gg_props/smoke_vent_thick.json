@@ -1,0 +1,15 @@
+{
+  "id": "smoke_vent_thick",
+  "category": "nature",
+  "name": "Smoke Vent (thick)",
+  "size": [1, 1, 1],
+  "parts": [
+    {"model": "smoke_vent_thick", "cmd": 7310661, "glow": false}
+  ],
+  "solid": [],
+  "lights": [],
+  "effects": [
+    {"kind": "particle", "id": "minecraft:campfire_signal_smoke", "x": 0.5, "y": 0.2, "z": 0.5, "spread": 0.25, "count": 1, "every": 10, "chance": 0.85},
+    {"kind": "particle", "id": "minecraft:campfire_cosy_smoke", "x": 0.5, "y": 0.3, "z": 0.5, "spread": 0.3, "count": 2, "every": 8, "chance": 0.8}
+  ]
+}

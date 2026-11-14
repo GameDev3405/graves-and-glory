@@ -1,0 +1,12 @@
+{
+  "id": "weapon_rack_wall",
+  "category": "smithy",
+  "name": "Wall Weapon Rack",
+  "size": [2, 2, 1],
+  "parts": [
+    {"model": "weapon_rack_wall", "cmd": 7310601, "glow": false}
+  ],
+  "solid": [],
+  "lights": [],
+  "effects": []
+}

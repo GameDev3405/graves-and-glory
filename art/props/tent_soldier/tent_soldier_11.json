@@ -1,0 +1,81 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  256,
+  256
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/tent_soldier",
+  "particle": "gravesandglory:prop/tent_soldier"
+ },
+ "elements": [
+  {
+   "from": [
+    -16,
+    -16,
+    -16
+   ],
+   "to": [
+    -14,
+    -13,
+    4
+   ],
+   "faces": {
+    "south": {
+     "uv": [
+      14.5625,
+      9.3125,
+      14.6875,
+      9.5
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      4.25,
+      8.9375,
+      5.5,
+      9.125
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      15.125,
+      4.75,
+      15.25,
+      6.0
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "ridge pole"
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    -20.763,
+    12.939,
+    13.302
+   ],
+   "scale": [
+    0.7936,
+    0.7936,
+    0.7936
+   ]
+  }
+ }
+}

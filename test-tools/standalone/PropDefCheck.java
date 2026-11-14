@@ -50,7 +50,12 @@ public final class PropDefCheck {
   r=refusal(def("[{\"model\":\"a\",\"cmd\":7310001}]","[[3,0,0]]","[]"));
   check(r!=null&&r.contains("solid"),"Cell (3,0,0) in a 3-wide prop is refused naming solid: "+r);
   r=refusal(def("[{\"model\":\"a\",\"cmd\":7310001}]","[]","[]"));
-  check(r!=null&&r.contains("solid"),"Empty solid is refused naming solid: "+r);
+  check(r==null,"An empty solid list parses (wall-hung and overhead props have no collision): "+r);
+  String vent="{\"id\":\"t\",\"category\":\"x\",\"name\":\"T\",\"size\":[1,1,1],\"parts\":[{\"model\":\"a\",\"cmd\":7310001}],\"solid\":[],\"effects\":[{\"kind\":\"particle\",\"id\":\"minecraft:campfire_cosy_smoke\",\"x\":0.5,\"y\":0.2,\"z\":0.5}]}";
+  check(refusal(vent)==null&&PropDef.parse(vent).solid().isEmpty(),"An effect-only prop (effects, no solid cell) parses: "+refusal(vent));
+  String far="{\"id\":\"t\",\"category\":\"x\",\"name\":\"T\",\"size\":[1,1,1],\"parts\":[{\"model\":\"a\",\"cmd\":7310001,\"offset\":[-24,112,96]}],\"solid\":[[0,0,0]]}";
+  check(refusal(far)==null&&PropDef.parse(far).parts().get(0).oy()==112&&PropDef.parse(far).parts().get(0).ox()==-24,"A part offset is read in px: "+refusal(far));
+  check(PropDef.parse(ok).parts().get(0).oz()==0,"A part without offset sits at the anchor");
   r=refusal(def("[{\"model\":\"a\",\"cmd\":7310001}]","[[0,0,0]]","[{\"x\":0,\"y\":0,\"z\":0,\"level\":9}]"));
   check(r!=null&&r.contains("lights"),"A light on a solid cell is refused naming lights: "+r);
   r=refusal(def("[{\"model\":\"a\",\"cmd\":7310000}]","[[0,0,0]]","[]"));

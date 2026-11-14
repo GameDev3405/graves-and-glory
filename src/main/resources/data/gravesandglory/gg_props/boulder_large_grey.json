@@ -1,0 +1,25 @@
+{
+  "id": "boulder_large_grey",
+  "category": "nature",
+  "name": "Large Boulder (Grey)",
+  "size": [3, 3, 3],
+  "parts": [
+    {"model": "boulder_large_grey", "cmd": 7310571, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0],
+    [2, 0, 0],
+    [0, 0, 1],
+    [1, 0, 1],
+    [2, 0, 1],
+    [0, 0, 2],
+    [1, 0, 2],
+    [2, 0, 2],
+    [1, 1, 0],
+    [0, 1, 1],
+    [1, 1, 1]
+  ],
+  "lights": [],
+  "effects": []
+}

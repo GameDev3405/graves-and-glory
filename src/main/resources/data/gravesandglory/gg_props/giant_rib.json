@@ -1,0 +1,21 @@
+{
+  "id": "giant_rib",
+  "category": "relics",
+  "name": "Giant's Rib",
+  "size": [3, 6, 1],
+  "parts": [
+    {"model": "giant_rib_0", "cmd": 7310201, "glow": false, "offset": [0, 16, 0]},
+    {"model": "giant_rib_1", "cmd": 7310202, "glow": false, "offset": [0, 64, 0]}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [0, 1, 0],
+    [0, 2, 0]
+  ],
+  "lights": [],
+  "effects": [],
+  "split": {
+    "block": 20,
+    "blocks": 1
+  }
+}

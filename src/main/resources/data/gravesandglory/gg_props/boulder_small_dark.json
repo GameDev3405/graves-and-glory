@@ -1,0 +1,14 @@
+{
+  "id": "boulder_small_dark",
+  "category": "nature",
+  "name": "Small Boulder (Dark)",
+  "size": [1, 1, 1],
+  "parts": [
+    {"model": "boulder_small_dark", "cmd": 7310521, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

@@ -57,7 +57,7 @@ import java.util.TreeMap;
  * under the anchor cell so it does not show (in the floor directly under when no buried cell exists), {@code facing} = prop facing, {@code Command} = {@code gravesandglory:prop/<id> depth=<n> floor=<state>},
  * the block it replaced, never run; an old anchor without {@code depth=} sits one block under and moves down on scan), {@code barrier} blocks on its solid
  * cells, {@code light} blocks on its light cells and one {@code item_display} per part, tagged {@code gg_prop}, {@code gg_prop@x,y,z}
- * (anchor cell) and {@code gg_prop#<cmd>} (which part). The anchor is the truth: the scanner (chunk load, {@link #scanBox}) spawns missing
+ * (anchor cell) and {@code gg_prop#<cmd>} (which part). The anchor is the truth: the scanner (chunk load, {@link #scanBox}) puts back missing barrier and light cells (into air only) and spawns missing
  * parts, discards duplicates and discards parts whose anchor is gone.
  */
 public final class Props {
@@ -325,22 +325,22 @@ public final class Props {
 
     static List<Entity> parts(ServerWorld w,BlockPos anchor){
         String tag=anchorTag(anchor);
-        return new ArrayList<>(w.getEntitiesByType(EntityType.ITEM_DISPLAY,new Box(anchor).expand(1),e->e.getCommandTags().contains(tag)));
+        double reach=0;for(PropDef d:DEFS.values())reach=Math.max(reach,PropGeometry.reach(d)); // a big prop's parts sit away from the anchor
+        return new ArrayList<>(w.getEntitiesByType(EntityType.ITEM_DISPLAY,new Box(anchor).expand(1+Math.ceil(reach)),e->e.getCommandTags().contains(tag)));
     }
 
     /** Makes the anchor's parts exactly one item_display per def part at the calibrated transform; records the prop as live. */
     static void ensureParts(ServerWorld w,BlockPos anchor,PropDef d,int facing){
-        double[] t=PropGeometry.partTransform(d,facing);
-        float yaw=(float)t[3];
-        double x=anchor.getX()+t[0],y=anchor.getY()+t[1],z=anchor.getZ()+t[2];
         Set<Integer> have=new HashSet<>();
-        Set<Integer> want=new HashSet<>();for(PropDef.Part p:d.parts())want.add(p.cmd());
+        Map<Integer,double[]> want=new HashMap<>();for(PropDef.Part p:d.parts())want.put(p.cmd(),PropGeometry.partTransform(d,facing,p));
         for(Entity e:parts(w,anchor)){
-            int cmd=partCmd(e);
-            boolean placed=Math.abs(MathHelper.wrapDegrees(e.getYaw()-yaw))<1&&e.squaredDistanceTo(x,y,z)<1e-4;
-            if(cmd<0||!want.contains(cmd)||!placed||!have.add(cmd))e.discard();
+            int cmd=partCmd(e);double[] t=want.get(cmd);
+            boolean placed=t!=null&&Math.abs(MathHelper.wrapDegrees(e.getYaw()-(float)t[3]))<1&&e.squaredDistanceTo(anchor.getX()+t[0],anchor.getY()+t[1],anchor.getZ()+t[2])<1e-4;
+            if(cmd<0||t==null||!placed||!have.add(cmd))e.discard();
         }
-        for(PropDef.Part p:d.parts())if(!have.contains(p.cmd()))spawnPart(w,anchor,p,x,y,z,yaw);
+        for(PropDef.Part p:d.parts())if(!have.contains(p.cmd())){
+            double[] t=want.get(p.cmd());spawnPart(w,anchor,p,anchor.getX()+t[0],anchor.getY()+t[1],anchor.getZ()+t[2],(float)t[3]);
+        }
         LIVE.computeIfAbsent(w,k->new LinkedHashMap<>()).put(anchor.toImmutable(),new Live(anchor.toImmutable(),d,facing));
     }
 
@@ -385,12 +385,28 @@ public final class Props {
                 Live l=readBase(w,base);
                 if(l==null||!box.contains(l.anchor())&&!box.contains(base))continue;
                 migrate(w,base,l,box);
+                restoreCells(w,l.anchor(),l.def(),l.facing());
                 ensureParts(w,l.anchor(),l.def(),l.facing());found++;
             }
         }
         Box area=new Box(box.getMinX(),box.getMinY(),box.getMinZ(),box.getMaxX()+1,box.getMaxY()+1,box.getMaxZ()+1);
         for(Entity e:new ArrayList<>(w.getEntitiesByType(EntityType.ITEM_DISPLAY,area,e->e.getCommandTags().contains(TAG))))checkPart(w,e);
         return found;
+    }
+
+    /** Puts back the barrier and light blocks of a prop whose anchor was written without them (a map generator writes only the anchor): every
+     *  solid cell that is air becomes a barrier, every light cell that is air a light block. Never over another block, and never in a chunk
+     *  that is not loaded (reading it would load it). Returns how many cells it set. */
+    static int restoreCells(ServerWorld w,BlockPos anchor,PropDef d,int facing){
+        int set=0;
+        for(BlockPos p:solidCells(d,anchor,facing))if(restoreCell(w,p,Blocks.BARRIER.getDefaultState()))set++;
+        for(PropDef.Light l:d.lights())if(restoreCell(w,lightCell(d,anchor,facing,l),Blocks.LIGHT.getDefaultState().with(LightBlock.LEVEL_15,l.level())))set++;
+        if(set>0)LOG.info("[props] restored {} barrier/light cells of {} at {}",set,d.id(),anchor.toShortString());
+        return set;
+    }
+    private static boolean restoreCell(ServerWorld w,BlockPos p,BlockState state){
+        if(w.isOutOfHeightLimit(p)||!w.getWorldBorder().contains(p)||!loaded(w,p)||!w.getBlockState(p).isAir())return false;
+        w.setBlockState(p,state,3);return true;
     }
 
     /** Moves an old anchor (one block under its cell, so it shows) down to a hidden cell inside {@code box} and puts its floor block back;

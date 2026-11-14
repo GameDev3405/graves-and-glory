@@ -1,0 +1,12 @@
+{
+  "id": "portcullis_raised",
+  "category": "fortification",
+  "name": "Raised Portcullis",
+  "size": [1, 1, 1],
+  "parts": [
+    {"model": "portcullis_raised", "cmd": 7310641, "glow": false}
+  ],
+  "solid": [],
+  "lights": [],
+  "effects": []
+}

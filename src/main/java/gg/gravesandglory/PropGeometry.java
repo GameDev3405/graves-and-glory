@@ -52,6 +52,18 @@ public final class PropGeometry {
         return new double[]{.5,.5,.5,(180+valid(facing))%360};
     }
 
+    /** One part's item_display: {@link #partTransform(PropDef,int)} moved by the part's offset (model px, prop frame) turned by facing. */
+    public static double[] partTransform(PropDef d,int facing,PropDef.Part p){
+        double[] t=partTransform(d,facing),o=turn(facing,p.ox()/16.0,p.oz()/16.0);
+        return new double[]{t[0]+o[0],t[1]+p.oy()/16.0,t[2]+o[1],t[3]};
+    }
+
+    /** How far (blocks) any part entity of a prop sits from its anchor cell centre. */
+    public static double reach(PropDef d){
+        double r=0;for(PropDef.Part p:d.parts())r=Math.max(r,Math.max(Math.abs(p.ox()),Math.max(Math.abs(p.oy()),Math.abs(p.oz())))/16.0);
+        return r;
+    }
+
     /** The prop facing of a command-block {@code facing} value: north 0, east 90, south 180, west 270; anything else -1. */
     public static int facingOf(String dir){
         if(dir!=null)for(int i=0;i<4;i++)if(DIRECTIONS[i].equals(dir))return 90*i;

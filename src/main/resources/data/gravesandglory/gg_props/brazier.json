@@ -1,0 +1,15 @@
+{
+  "id": "brazier",
+  "category": "yard",
+  "name": "Brazier",
+  "size": [1, 2, 1],
+  "parts": [
+    {"model": "brazier", "cmd": 7310611, "glow": false},
+    {"model": "brazier_coals", "cmd": 7310612, "glow": true}
+  ],
+  "solid": [
+    [0, 0, 0]
+  ],
+  "lights": [{"x": 0, "y": 1, "z": 0, "level": 13}],
+  "effects": []
+}

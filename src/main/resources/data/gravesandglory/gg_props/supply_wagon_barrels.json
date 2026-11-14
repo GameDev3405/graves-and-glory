@@ -1,0 +1,100 @@
+{
+  "id": "supply_wagon_barrels",
+  "category": "carts",
+  "name": "Supply Wagon (Barrels)",
+  "size": [
+    3,
+    3,
+    6
+  ],
+  "parts": [
+    {
+      "model": "supply_wagon_barrels_0",
+      "cmd": 7310321,
+      "glow": false,
+      "offset": [
+        0,
+        16,
+        -16
+      ]
+    },
+    {
+      "model": "supply_wagon_barrels_1",
+      "cmd": 7310322,
+      "glow": false,
+      "offset": [
+        0,
+        16,
+        32
+      ]
+    }
+  ],
+  "solid": [
+    [
+      0,
+      0,
+      2
+    ],
+    [
+      1,
+      0,
+      2
+    ],
+    [
+      2,
+      0,
+      2
+    ],
+    [
+      0,
+      0,
+      3
+    ],
+    [
+      1,
+      0,
+      3
+    ],
+    [
+      2,
+      0,
+      3
+    ],
+    [
+      0,
+      0,
+      4
+    ],
+    [
+      1,
+      0,
+      4
+    ],
+    [
+      2,
+      0,
+      4
+    ],
+    [
+      0,
+      0,
+      5
+    ],
+    [
+      1,
+      0,
+      5
+    ],
+    [
+      2,
+      0,
+      5
+    ]
+  ],
+  "lights": [],
+  "effects": [],
+  "split": {
+    "block": 32,
+    "blocks": 1
+  }
+}
