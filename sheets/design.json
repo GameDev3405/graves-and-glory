@@ -1287,7 +1287,7 @@
     {
       "id": "domination",
       "name": "Domination",
-      "maps": "0,1,2,3,4,5,6",
+      "maps": "0,1,2,3,4,5,6,7",
       "roundSeconds": 900,
       "winTarget": 300,
       "scoreInterval": 80,
@@ -3124,6 +3124,15 @@
       "fieldHalfX": 270,
       "fieldHalfZ": 190,
       "source": "rivergate_ey"
+    },
+    {
+      "id": "ironhold_ip",
+      "name": "New Ironhold",
+      "theme": "fortress",
+      "description": "The Iron Pass (test): three points A to C up the valley, the outer ward and the inner ward, behind three walls with gates, postern doors and a breach.",
+      "fieldHalfX": 270,
+      "fieldHalfZ": 190,
+      "source": "ironhold_ip"
     }
   ],
   "gearRarities": [

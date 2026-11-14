@@ -1,0 +1,696 @@
+{
+ "baseY": 64,
+ "columns": "columns.bin.gz",
+ "depth": 384,
+ "design_sha256": "3e7fbe4664d1954c1d42d35c3a60c30dd76c0248b4408aa500e8452d0d16ba43",
+ "field": {
+  "halfX": 270,
+  "halfZ": 190
+ },
+ "floorY": 60,
+ "format": 1,
+ "id": "ironhold_ip",
+ "origin": [
+  -288,
+  -192
+ ],
+ "points": [
+  {
+   "id": "A",
+   "name": "Outwork",
+   "radius": 17,
+   "x": 176,
+   "y": 65,
+   "z": 192
+  },
+  {
+   "id": "B",
+   "name": "Muster Yard",
+   "radius": 17,
+   "x": 288,
+   "y": 71,
+   "z": 192
+  },
+  {
+   "id": "C",
+   "name": "Keep Court",
+   "radius": 17,
+   "x": 400,
+   "y": 77,
+   "z": 192
+  }
+ ],
+ "roads": [],
+ "routes": [
+  {
+   "point": "Outwork",
+   "spawn": "dawn",
+   "straight": 144.0,
+   "walk": 144
+  },
+  {
+   "point": "Muster Yard",
+   "spawn": "dawn",
+   "straight": 256.0,
+   "walk": 256
+  },
+  {
+   "point": "Keep Court",
+   "spawn": "dawn",
+   "straight": 368.0,
+   "walk": 368
+  },
+  {
+   "point": "Outwork",
+   "spawn": "dusk",
+   "straight": 368.0,
+   "walk": 374
+  },
+  {
+   "point": "Muster Yard",
+   "spawn": "dusk",
+   "straight": 256.0,
+   "walk": 262
+  },
+  {
+   "point": "Keep Court",
+   "spawn": "dusk",
+   "straight": 144.0,
+   "walk": 150
+  }
+ ],
+ "routesBy": "floors",
+ "spawns": [
+  {
+   "id": "dawn",
+   "team": "dawn",
+   "x": 32,
+   "y": 65,
+   "z": 192
+  },
+  {
+   "id": "dusk",
+   "team": "dusk",
+   "x": 544,
+   "y": 77,
+   "z": 192
+  }
+ ],
+ "tiles": [
+  {
+   "file": "ih_a1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 0
+  },
+  {
+   "file": "ih_b1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 0
+  },
+  {
+   "file": "ih_c1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 0
+  },
+  {
+   "file": "ih_d1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 0
+  },
+  {
+   "file": "ih_e1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 0
+  },
+  {
+   "file": "ih_f1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 0
+  },
+  {
+   "file": "ih_g1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 0
+  },
+  {
+   "file": "ih_h1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 0
+  },
+  {
+   "file": "ih_i1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 0
+  },
+  {
+   "file": "ih_a2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 64
+  },
+  {
+   "file": "ih_b2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 64
+  },
+  {
+   "file": "ih_c2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 64
+  },
+  {
+   "file": "ih_d2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 64
+  },
+  {
+   "file": "ih_e2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 64
+  },
+  {
+   "file": "ih_f2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 64
+  },
+  {
+   "file": "ih_g2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 64
+  },
+  {
+   "file": "ih_h2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 64
+  },
+  {
+   "file": "ih_i2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 64
+  },
+  {
+   "file": "ih_a3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 128
+  },
+  {
+   "file": "ih_b3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 128
+  },
+  {
+   "file": "ih_c3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 128
+  },
+  {
+   "file": "ih_d3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 128
+  },
+  {
+   "file": "ih_e3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 128
+  },
+  {
+   "file": "ih_f3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 128
+  },
+  {
+   "file": "ih_g3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 128
+  },
+  {
+   "file": "ih_h3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 128
+  },
+  {
+   "file": "ih_i3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 128
+  },
+  {
+   "file": "ih_a4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 192
+  },
+  {
+   "file": "ih_b4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 192
+  },
+  {
+   "file": "ih_c4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 192
+  },
+  {
+   "file": "ih_d4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 192
+  },
+  {
+   "file": "ih_e4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 192
+  },
+  {
+   "file": "ih_f4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 192
+  },
+  {
+   "file": "ih_g4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 192
+  },
+  {
+   "file": "ih_h4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 192
+  },
+  {
+   "file": "ih_i4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 192
+  },
+  {
+   "file": "ih_a5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 256
+  },
+  {
+   "file": "ih_b5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 256
+  },
+  {
+   "file": "ih_c5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 256
+  },
+  {
+   "file": "ih_d5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 256
+  },
+  {
+   "file": "ih_e5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 256
+  },
+  {
+   "file": "ih_f5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 256
+  },
+  {
+   "file": "ih_g5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 256
+  },
+  {
+   "file": "ih_h5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 256
+  },
+  {
+   "file": "ih_i5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 256
+  },
+  {
+   "file": "ih_a6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 320
+  },
+  {
+   "file": "ih_b6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 320
+  },
+  {
+   "file": "ih_c6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 320
+  },
+  {
+   "file": "ih_d6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 320
+  },
+  {
+   "file": "ih_e6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 320
+  },
+  {
+   "file": "ih_f6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 320
+  },
+  {
+   "file": "ih_g6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 320
+  },
+  {
+   "file": "ih_h6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 320
+  },
+  {
+   "file": "ih_i6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 320
+  }
+ ],
+ "width": 576
+}

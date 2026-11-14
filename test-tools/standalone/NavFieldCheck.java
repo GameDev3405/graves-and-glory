@@ -18,14 +18,16 @@ public final class NavFieldCheck {
     }
 
     /** Walks the waypoints: from (x, z) toward the goal, each waypoint taken as the next position, until route has none (a straight walk) or the steps run out. Returns the waypoints. */
-    static java.util.List<NavField.Waypoint> follow(NavField n, double x, double z, double gx, double gz, int max) {
+    static java.util.List<NavField.Waypoint> follow(NavField n, double x, double z, double gx, double gz, int max) { return follow(n, x, 65, z, gx, 65, gz, max); }
+    /** with the standing heights of the start and the goal (a map that climbs, Ironhold, has its yards at y 65, 71 and 77) */
+    static java.util.List<NavField.Waypoint> follow(NavField n, double x, double y, double z, double gx, double gy, double gz, int max) {
         var out = new java.util.ArrayList<NavField.Waypoint>();
-        double cx = x, cz = z, cy = 65;
+        double cx = x, cz = z, cy = y;
         for (int i = 0; i < max; i++) {
-            var wp = n.route(cx, cy, cz, gx, 65, gz, i);
+            var wp = n.route(cx, cy, cz, gx, gy, gz, i);
             if (wp == null) {
                 // no waypoint is an arrival only when the goal is in plain sight (or in this very node) and the field says it can be reached: not for a refused build or a goal with no way
-                double dist = n.distance(cx, cy, cz, gx, 65, gz);
+                double dist = n.distance(cx, cy, cz, gx, gy, gz);
                 if (dist < 0 || !(n.sees(cx, cy, cz, gx, gz) || dist < 6)) out.add(null);
                 return out;
             }
@@ -154,7 +156,7 @@ public final class NavFieldCheck {
         check(Math.abs(l1.z() - l2.z()) >= 1.5 && Math.abs(l1.z() - door3.z()) <= 1.01 && Math.abs(l2.z() - door3.z()) <= 1.01, "the lanes are spread across the 3 wide door, clamped to (width - 1) / 2: " + l1 + " " + l2);
 
         // 5. the bundled maps: follow the waypoints from each spawn to each point
-        for (String id : new String[]{"kingsfield_cq", "rivergate_ey"}) {
+        for (String id : new String[]{"kingsfield_cq", "rivergate_ey", "ironhold_ip"}) {
             Path dir = Path.of("src/main/resources/data/gravesandglory/sectionmaps/" + id);
             if (!Files.exists(dir.resolve("map.json"))) dir = Path.of(System.getProperty("user.dir")).resolve(dir);
             EngineMap m = EngineMap.read(dir);
@@ -162,7 +164,7 @@ public final class NavFieldCheck {
             NavField n = m.nav;
             System.out.println(id + ": " + n.summary());
             for (var sp : m.spawns) for (var p : m.points) {
-                var w = follow(n, sp.x() + .5, sp.z() + .5, p.x() + .5, p.z() + .5, 400);
+                var w = follow(n, sp.x() + .5, sp.y(), sp.z() + .5, p.x() + .5, p.y(), p.z() + .5, 400);
                 check(!w.isEmpty() ? w.get(w.size() - 1) != null : true, id + " " + sp.id() + " to " + p.name() + ": the waypoints arrive (" + w.size() + ")");
                 for (var wp : w) check(wp != null, id + " " + sp.id() + " to " + p.name() + " never arrives");
                 if (id.startsWith("kings")) for (var wp : w) check(!(Math.abs(wp.x()) >= 100 && Math.abs(wp.x()) <= 108 && Math.abs(wp.z()) < 8), id + " " + sp.id() + " to " + p.name() + ": a waypoint in a sealed gate tunnel at " + wp);
