@@ -71,6 +71,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     static final int SLASH_N = slashClips();
     /** Whether the troop has its own hit_knockback: without it a throw plays the medium stagger (HitController), so a pull from behind does too. */
     static final boolean KNOCKBACK_CLIP = hasClip("hit_knockback");
+    /** hasClip answers, kept: the stance row asks every tick. */
+    static final Map<String, Boolean> HAS_CLIP = new HashMap<>();
     static boolean hasClip(String clip) {
         try (var in = GeoKnightChecks.class.getResourceAsStream("/assets/gravesandglory/animations/troop/" + TROOP + ".animation.json")) {
             return in != null && com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonObject("animations").has(clip);
@@ -990,7 +992,10 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 int ci = i / STANCE_VIEWS.length, vi = i % STANCE_VIEWS.length;
                 String[] sc = STANCE_CASES[ci]; String view = STANCE_VIEWS[vi];
                 boolean shield = sc[2].equals("1"), ready = sc[0].equals("ready");
-                String[] want = StanceController.target(sc[1], shield, true);
+                // What the game itself aims for on this troop's clip file (StanceController.tick passes the model's clips the same way): a troop
+                // without a stance's own clips keeps the default, so the hound (no stance_fallback clips) wards with stance_ward_upper and no legs clip.
+                // Asked for a model with every clip, the row wanted stance_fallback_upper/_legs of the hound and failed on every one (wm_hound-lb1, -sb1).
+                String[] want = StanceController.target(sc[1], shield, true, clip -> HAS_CLIP.computeIfAbsent(clip, GeoKnightChecks::hasClip));
                 if (k == 1) {
                     if (i == 0) stanceBad.clear();
                     if (vi == 0) stanceLag.clear();
