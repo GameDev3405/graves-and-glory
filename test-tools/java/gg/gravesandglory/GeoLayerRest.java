@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -30,10 +31,11 @@ import java.util.WeakHashMap;
  * cleared, which is what an earlier draw's leftover is to the next one, only unmistakable. The next draw of that model must carry none of it: a bone that still does was
  * built on, not written. A draw in which every bone still carries it was not animated at all (GeckoLib skips the second draw of one troop in one frame) and is not counted.
  * <p>
- * <b>start-own-legs.</b> A troop that sets off from a standstill starts its stride on the phase whose legs lie nearest the legs it was holding
- * (GaitController.matchPhase). The legs it reads must be its own, not what the last draw of the model left on the bones. So the leg bones the walk clip keys are not
- * left on the impossible value but on a real pose: the walk clip half a stride away from the phase the idle pose matches ({@link Legs}). A set-off that takes the phase
- * matching that leftover read the bones, not its own legs.
+ * <b>start-own-legs.</b> A troop that sets off from a standstill starts its stride on the phase whose legs lie nearest the legs it was last drawn with
+ * (GaitController.matchPhase). Those must be its own, kept by the controller (GaitController.Shown), not what the last draw of the model left on the bones. So the leg
+ * bones the walk clip keys are not left on the impossible value but on a real pose, the walk clip half a stride away from the phase the idle pose matches ({@link Legs}),
+ * and this keeps each troop's legs as it was last drawn. A troop that sets off must start on the phase its own last drawn legs match; one that read the bones starts
+ * on the leftover's phase instead.
  * <p>
  * A suite that puts its own probe in (GeoGaps) calls {@link #tap} from it, so its draws are read too.
  */
@@ -41,25 +43,28 @@ final class GeoLayerRest {
     static final float ROT = 64, POS = 10000;
     /** A bone this far from rest is carrying a leftover: no clip turns a bone two full turns or moves it 100 px. A pose blended over the leftover at up to 99% still shows. */
     static final float ROT_FAR = 12, POS_FAR = 100;
-    /** matchPhase tries this many phases; two phases nearer than {@link #SAME} of a loop are the same choice, and a model is judged only when the leftover's phase and the idle pose's are at least {@link #APART} apart. */
-    static final double STEP = 1.0 / 48, SAME = .5 * STEP, APART = 6 * STEP;
+    /** matchPhase tries 48 phases; two phases nearer than half a step are the same choice. */
+    static final double SAME = .5 / 48;
 
     private static final Map<BakedGeoModel, List<GeoBone>> BONES = new IdentityHashMap<>();
     private static final Map<BakedGeoModel, Legs> LEGS = new IdentityHashMap<>();
     private static final Map<BakedGeoModel, Boolean> LEFT = new IdentityHashMap<>();
-    /** Each troop's gait mode and world time at its last draw, to see it set off. */
-    private static final Map<Entity, Object[]> LAST = new WeakHashMap<>();
+    /** Each troop's gait mode and legs at its last animated draw, to see it set off and to know what it set off from. */
+    private static final Map<Entity, Drawn> LAST = new WeakHashMap<>();
     private static GeoTroopRenderer.Probe before, mine;
     private static boolean on;
     /** Animated draws read, and draws that were not animated (see the class comment). */
     static int draws, skipped;
     /** Each bone found carrying a leftover, with where the check was when it first did. */
     static final Map<String, String> leaks = new LinkedHashMap<>();
-    /** Set-offs judged, set-offs on a model that cannot be judged, and each set-off that took the leftover's phase. */
-    static int starts, unjudged;
-    static final List<String> matched = new ArrayList<>();
-    /** The furthest a judged set-off's phase lay from the phase the model's idle pose matches, in loops; and each model's phases that had a set-off, for the report. */
-    static double ownWorst;
+    /**
+     * Set-offs judged; those of them whose own legs and the leftover match different phases, so reading the bones would have shown; those that started on the leftover's
+     * phase; and set-offs on a model with no walk clip, not judged.
+     */
+    static int starts, telling, onLeftover, unjudged;
+    /** Each set-off that did not start on the phase its own last drawn legs match. */
+    static final List<String> strayed = new ArrayList<>();
+    /** The phases of each model that had a set-off, for the report. */
     static final Map<String, String> legsNotes = new LinkedHashMap<>();
     /** What the check is doing now, for a leak's report. */
     static volatile String where = "";
@@ -67,8 +72,8 @@ final class GeoLayerRest {
     /** Starts reading every Geo draw, handing each on to a probe already there. */
     static void start() {
         if (on) return;
-        on = true; draws = 0; skipped = 0; leaks.clear(); LEFT.clear(); LAST.clear();
-        starts = 0; unjudged = 0; matched.clear(); ownWorst = 0; legsNotes.clear();
+        on = true; draws = 0; skipped = 0; leaks.clear(); LEFT.clear(); LAST.clear(); BONES.clear(); LEGS.clear();
+        starts = 0; telling = 0; onLeftover = 0; unjudged = 0; strayed.clear(); legsNotes.clear();
         GeoTroopRenderer.Probe prev = before = GeoTroopRenderer.PROBE;
         GeoTroopRenderer.PROBE = mine = (e, model, td) -> {
             if (prev != null) prev.seen(e, model, td);
@@ -112,27 +117,36 @@ final class GeoLayerRest {
         return base + ": " + leaks.size() + " bones were drawn built on it " + first;
     }
 
-    /** Whether at least {@code least} set-offs were judged and none took the leftover's phase. */
-    static boolean ownLegs(int least) { return starts >= least && matched.isEmpty(); }
+    /** Whether every set-off started on its own legs' phase, with at least {@code least} of them able to show the fault. */
+    static boolean ownLegs(int least) { return telling >= least && strayed.isEmpty(); }
 
     static String startResult() {
-        String base = starts + " troops set off from a standstill with another draw's legs left on the bones " + legsNotes.values()
-            + (unjudged > 0 ? ", " + unjudged + " more on a model whose leftover cannot be told from its idle pose" : "");
+        String base = starts + " set-offs from a standstill, each with another draw's walk pose left on the leg bones " + legsNotes.values()
+            + (unjudged > 0 ? ", " + unjudged + " more on a model with no walk clip" : "");
         if (starts == 0) return base + ": none to judge";
-        if (matched.isEmpty()) return base + String.format(java.util.Locale.ROOT, ": none started on the leftover's phase; furthest from the idle pose's phase %.3f of a loop", ownWorst);
-        return base + ": " + matched.size() + " started on the leftover's phase " + matched.subList(0, Math.min(8, matched.size()));
+        String tell = telling + " of them could tell the two apart, " + onLeftover + " started on the leftover's phase";
+        if (strayed.isEmpty()) return base + ": each started on the phase its own last drawn legs match (" + tell + ")";
+        return base + ": " + strayed.size() + " did not start on the phase their own last drawn legs match (" + tell + ") " + strayed.subList(0, Math.min(8, strayed.size()));
+    }
+
+    /** A troop at its last animated draw: its gait mode, and its leg bones' rotations as drawn (by bone name). */
+    private static final class Drawn {
+        Gait.Mode mode;
+        final Map<String, float[]> legs = new HashMap<>();
     }
 
     /**
-     * A model's leg bones as the walk clip keys them, and what is left on them after each draw: the walk clip's pose half a stride from the phase the idle pose matches.
-     * {@code walkLeft} and {@code runLeft} are the phases a set-off reading that leftover takes, {@code walkOwn} and {@code runOwn} those the idle pose itself matches; a
-     * gait is judged only when the two lie well apart.
+     * A model's legs. {@code bones} are the leg bones the walk clip keys, and {@code left} what is left on them after each draw: the walk clip's pose half a stride from
+     * the phase the idle pose matches. {@code all} is every leg bone of the model (GaitController.legWeight), the bones a troop's drawn legs are kept from, as
+     * GaitController.shown keeps them. {@code walkLeft} and {@code runLeft} are the phases a set-off reading the leftover takes.
      */
     private static final class Legs {
         final List<GeoBone> bones = new ArrayList<>();
         final List<float[]> left = new ArrayList<>();
-        double walkLeft = -1, runLeft = -1, walkOwn = -1, runOwn = -1;
-        boolean walk, run;
+        final List<GeoBone> all = new ArrayList<>();
+        final Map<String, CoreGeoBone> byName = new HashMap<>();
+        Animation walk, run;
+        double walkLeft = -1, runLeft = -1;
         String note = "";
     }
 
@@ -141,48 +155,48 @@ final class GeoLayerRest {
     private static Legs legs(BakedGeoModel model) {
         return LEGS.computeIfAbsent(model, m -> {
             Legs l = new Legs();
+            List<GeoBone> todo = new ArrayList<>(m.topLevelBones());
+            while (!todo.isEmpty()) {
+                GeoBone b = todo.remove(todo.size() - 1);
+                l.byName.put(b.getName(), b);
+                if (GaitController.legWeight(b.getName()) > 0) l.all.add(b);
+                todo.addAll(b.getChildBones());
+            }
             Identifier id = null;
             for (Map.Entry<Identifier, BakedGeoModel> en : GeckoLibCache.getBakedModels().entrySet()) if (en.getValue() == m) id = en.getKey();
             if (id == null) return l;
             BakedAnimations baked = GeckoLibCache.getBakedAnimations().get(new Identifier(id.getNamespace(), id.getPath().replace("geo/", "animations/").replace(".geo.json", ".animation.json")));
-            Animation walk = baked == null ? null : baked.getAnimation("walk_legs");
-            if (walk == null) return l;
-            Animation run = baked.getAnimation("run_legs"), idle = baked.getAnimation("idle_legs");
-            Map<String, CoreGeoBone> byName = new HashMap<>();
-            List<GeoBone> todo = new ArrayList<>(m.topLevelBones());
-            while (!todo.isEmpty()) { GeoBone b = todo.remove(todo.size() - 1); byName.put(b.getName(), b); todo.addAll(b.getChildBones()); }
-            // the pose a standing troop's gait layer holds: the idle clip's first frame on the leg bones (rest where it keys none)
+            l.walk = baked == null ? null : baked.getAnimation("walk_legs");
+            if (l.walk == null) return l;
+            l.run = baked.getAnimation("run_legs");
+            Animation idle = baked.getAnimation("idle_legs");
+            // the legs a standing troop's gait layer holds: the idle clip's first frame on the leg bones the walk keys (rest where the idle keys none)
             Map<String, float[]> idlePose = new HashMap<>();
-            for (BoneAnimation b : walk.boneAnimations()) {
-                CoreGeoBone bone = byName.get(b.boneName());
+            for (BoneAnimation b : l.walk.boneAnimations()) {
+                CoreGeoBone bone = l.byName.get(b.boneName());
                 if (GaitController.legWeight(b.boneName()) == 0 || bone == null || b.rotationKeyFrames().xKeyframes().isEmpty()) continue;
                 idlePose.put(b.boneName(), pose(bone, idle, b.boneName(), 0));
             }
             if (idlePose.isEmpty()) return l;
-            l.walkOwn = GaitController.matchPhase(walk, byName, idlePose);
-            double q = Gait.wrap(l.walkOwn + .5);
+            double walkIdle = GaitController.matchPhase(l.walk, l.byName, idlePose);
+            double q = Gait.wrap(walkIdle + .5);
             Map<String, float[]> leftPose = new HashMap<>();
             for (String name : idlePose.keySet()) {
-                float[] p = pose(byName.get(name), walk, name, q * walk.length());
+                float[] p = pose(l.byName.get(name), l.walk, name, q * l.walk.length());
                 leftPose.put(name, p);
-                l.bones.add((GeoBone) byName.get(name)); l.left.add(p);
+                l.bones.add((GeoBone) l.byName.get(name)); l.left.add(p);
             }
-            l.walkLeft = GaitController.matchPhase(walk, byName, leftPose);
-            l.walk = circ(l.walkLeft, l.walkOwn) >= APART;
-            if (run != null) {
-                l.runOwn = GaitController.matchPhase(run, byName, idlePose);
-                l.runLeft = GaitController.matchPhase(run, byName, leftPose);
-                l.run = circ(l.runLeft, l.runOwn) >= APART;
-            }
-            l.note = String.format(java.util.Locale.ROOT, "%s: walk phase %.3f, idle pose's %.3f; run %.3f, idle pose's %.3f", id.getPath().replaceAll(".*/|\\.geo\\.json", ""), l.walkLeft, l.walkOwn, l.runLeft, l.runOwn);
+            l.walkLeft = GaitController.matchPhase(l.walk, l.byName, leftPose);
+            if (l.run != null) l.runLeft = GaitController.matchPhase(l.run, l.byName, leftPose);
+            l.note = String.format(Locale.ROOT, "%s: the leftover matches walk phase %.3f and run %.3f, the idle pose walk %.3f", id.getPath().replaceAll(".*/|\\.geo\\.json", ""), l.walkLeft, l.runLeft, walkIdle);
             return l;
         });
     }
 
-    /** Rest plus the clip's rotation on {@code name} at {@code t} (rest alone when the clip is missing or does not key it); rotation xyz, then the rest position. */
+    /** Rest plus the clip's rotation on {@code name} at {@code t} (rest alone when the clip is missing or does not key it). */
     private static float[] pose(CoreGeoBone bone, Animation clip, String name, double t) {
         BoneSnapshot init = bone.getInitialSnapshot();
-        float[] p = {init.getRotX(), init.getRotY(), init.getRotZ(), init.getOffsetX(), init.getOffsetY(), init.getOffsetZ()};
+        float[] p = {init.getRotX(), init.getRotY(), init.getRotZ()};
         if (clip != null) for (BoneAnimation b : clip.boneAnimations()) {
             if (!b.boneName().equals(name) || b.rotationKeyFrames().xKeyframes().isEmpty()) continue;
             p[0] += AttackController.sample(b.rotationKeyFrames().xKeyframes(), t);
@@ -212,7 +226,7 @@ final class GeoLayerRest {
     /** One draw: reads what it carried over and whether the troop set off on its own legs, then leaves the bones off rest for the next. */
     private static void seen(Entity e, BakedGeoModel model) {
         List<GeoBone> bones = bones(model);
-        boolean animated = true;
+        boolean animated = true;   // the first draw of a model has no leftover on it to tell by: taken as animated
         if (LEFT.containsKey(model)) {
             List<GeoBone> carried = new ArrayList<>();
             for (GeoBone b : bones) {
@@ -225,8 +239,8 @@ final class GeoLayerRest {
                 draws++;
                 for (GeoBone b : carried) leaks.putIfAbsent(b.getName(), where);
             }
-            if (animated) setOff(e, model);
         }
+        if (animated) setOff(e, model);
         for (GeoBone b : bones) {
             BoneSnapshot init = b.getInitialSnapshot();
             b.setRotX(init.getRotX() + ROT); b.setRotY(init.getRotY() + ROT); b.setRotZ(init.getRotZ() + ROT);
@@ -244,21 +258,33 @@ final class GeoLayerRest {
     }
 
     /**
-     * Whether this draw is the troop setting off (idle at its last draw, a tick or two ago, and moving now), and if so whether its stride began on the leftover's phase.
-     * The gait clock holds the phase matchPhase chose until the next frame walks it on.
+     * One animated draw of a troop, read before the bones are left off rest. If the troop was standing at its last animated draw and moves now, it set off in this
+     * draw: the stride clock still holds the phase matchPhase chose (the next frame walks it on), and that must be the phase the troop's own legs, as last drawn,
+     * match. Then keeps the legs as drawn now.
      */
     private static void setOff(Entity e, BakedGeoModel model) {
         Gait g = Gait.LIVE.get(e);
-        if (g == null || e.getWorld() == null) return;
-        long now = e.getWorld().getTime();
-        Object[] last = LAST.put(e, new Object[]{g.mode, now});
-        if (last == null || last[0] != Gait.Mode.IDLE || g.mode == Gait.Mode.IDLE || now - (Long) last[1] > 3) return;
+        if (g == null) return;
         Legs l = legs(model);
-        legsNotes.putIfAbsent(l.note, l.note);
-        boolean run = g.mode == Gait.Mode.RUN;
-        if (!(run ? l.run : l.walk)) { unjudged++; return; }
-        starts++;
-        if (circ(g.phase, run ? l.runLeft : l.walkLeft) < SAME) matched.add(String.format(java.util.Locale.ROOT, "%d %s phase %.3f (%s)", e.getId(), run ? "run" : "walk", g.phase, where));
-        ownWorst = Math.max(ownWorst, circ(g.phase, run ? l.runOwn : l.walkOwn));
+        Drawn last = LAST.get(e);
+        if (last != null && last.mode == Gait.Mode.IDLE && g.mode != Gait.Mode.IDLE) {
+            boolean run = g.mode == Gait.Mode.RUN;
+            Animation clip = run ? l.run : l.walk;
+            if (clip == null) unjudged++;
+            else {
+                double own = GaitController.matchPhase(clip, l.byName, last.legs), left = run ? l.runLeft : l.walkLeft;
+                legsNotes.putIfAbsent(l.note, l.note);
+                starts++;
+                if (circ(own, left) >= SAME) telling++;
+                if (circ(g.phase, left) < SAME) onLeftover++;
+                if (circ(g.phase, own) >= SAME) strayed.add(String.format(Locale.ROOT, "%d %s phase %.3f, own legs' %.3f, leftover's %.3f (%s)", e.getId(), run ? "run" : "walk", g.phase, own, left, where));
+            }
+        }
+        if (last == null) LAST.put(e, last = new Drawn());
+        last.mode = g.mode;
+        for (GeoBone b : l.all) {
+            float[] a = last.legs.computeIfAbsent(b.getName(), n -> new float[3]);
+            a[0] = b.getRotX(); a[1] = b.getRotY(); a[2] = b.getRotZ();
+        }
     }
 }
