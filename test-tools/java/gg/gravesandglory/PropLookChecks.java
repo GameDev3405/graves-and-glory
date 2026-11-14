@@ -14,7 +14,11 @@ import java.util.*;
  * (tools/prop_shot.py does it). Compare: GRAVES_PROPCMP=<id>=<group/name>;... places that structure template (data/gravesandglory/structures/
  * group/name.nbt, the maps' plain-block version, through {@link Structures#place}) 2 blocks east of the prop and takes the same four views of
  * the pair, p1-prop-<id>-cmp-<near|far>-<day|night>.png; an id without a template is skipped with a line saying so. GRAVES_PROPFRAMES=1 adds
- * p1-prop-<id>-near-day-t3/t6/t9.png, the near-day view 3, 6 and 9 ticks later (animated flame and lamp textures). Never shipped.
+ * p1-prop-<id>-near-day-t3/t6/t9.png, the near-day view 3, 6 and 9 ticks later (animated flame and lamp textures). GRAVES_PROPTURN=1 replaces the
+ * four views with a turntable (no Knight, no fence lanterns, so the prop's own light is all there is at night): p1-prop-<id>-turn-000..315 (8 angles, day,
+ * the camera orbits the prop, 000 = from the front/north, 090 = from the east), -close-day, -close-night, -turn-night-000/090/180/270.
+ * GRAVES_PROPFOCUS=<id>=H,dist,fx,fy,fz,cdist;... gives per prop the framed height (blocks), the orbit distance, the close-up target (blocks from the
+ * prop's min corner) and the close-up distance. Never shipped.
  */
 final class PropLookChecks implements Phase1Checks.Suite {
     /** id, size x y z, pivot cell x z. */
@@ -121,6 +125,7 @@ final class PropLookChecks implements Phase1Checks.Suite {
         for (int i = 0; i < PROPS.size(); i++) {
             var d = PROPS.get(i); int[] a = anchor(i);
             int minX = a[0] - d.px(), minZ = a[2] - d.pz();
+            if (TURN) continue;   // turntable: nothing but the prop (no fence lanterns, no Knight)
             // torch light: lanterns on fence posts beside the front corners
             cmd(b, p, String.format("setblock %d %d %d minecraft:oak_fence", minX - 1, oy, minZ + d.sz()));
             cmd(b, p, String.format("setblock %d %d %d minecraft:lantern", minX - 1, oy + 1, minZ + d.sz()));
@@ -240,6 +245,20 @@ final class PropLookChecks implements Phase1Checks.Suite {
             if (p != null) { p.changeGameMode(GameMode.SPECTATOR); p.teleport(p.getServerWorld(), x, y, z, yaw, pitch); } });
     }
 
+    /** Turntable camera: orbits prop i's middle at angle deg (0 = north of it, 90 = east) from a little above eye height, or, close, circles the focus point. */
+    void orbit(MinecraftClient c, int i, int deg, boolean close) {
+        var d = PROPS.get(i); int[] a = anchor(i); double[] f = focus(d);
+        double minX = a[0] - d.px(), minZ = a[2] - d.pz(), tx, ty, tz, r, eye;
+        if (close) { tx = minX + f[2]; ty = oy + f[3]; tz = minZ + f[4]; r = f[5]; eye = ty + 0.3; }
+        else { tx = minX + d.sx() / 2.0; tz = minZ + d.sz() / 2.0; ty = oy + f[0] / 2; r = f[1]; eye = oy + Math.min(2.12, f[0] * 0.5 + 0.7); }
+        double rad = Math.toRadians(deg), x = tx + r * Math.sin(rad), z = tz - r * Math.cos(rad), y = eye - 1.62;
+        double dx = tx - x, dy = ty - eye, dz = tz - z;
+        float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)), pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
+        var id = c.player.getUuid();
+        c.getServer().execute(() -> { var p = c.getServer().getPlayerManager().getPlayer(id);
+            if (p != null) { p.changeGameMode(GameMode.SPECTATOR); p.teleport(p.getServerWorld(), x, y, z, yaw, pitch); } });
+    }
+
     @Override public void cleanup(MinecraftClient c) {
         c.options.hudHidden = false;
         if (c.getServer() != null) Phase1Checks.server(c, b -> { if (b.running) b.campaign.returnLobby(); });
@@ -248,6 +267,28 @@ final class PropLookChecks implements Phase1Checks.Suite {
     static final String[] VIEWS = {"near-day", "far-day", "near-night", "far-night"};
     /** GRAVES_PROPFRAMES=1: three extra near-day shots 3, 6 and 9 ticks after the first (p1-prop-<id>-near-day-t<n>.png), to see animated textures move. */
     static final boolean FRAMES = "1".equals(System.getenv("GRAVES_PROPFRAMES"));
+    /** GRAVES_PROPTURN=1: the turntable review mode (see the class comment). */
+    static final boolean TURN = "1".equals(System.getenv("GRAVES_PROPTURN"));
+    /** One turntable shot: file suffix, night or day, orbit angle in degrees (0 = camera north of the prop, 90 = east), close-up of the focus point. */
+    record Shot(String name, boolean night, int angle, boolean close) {}
+    static final List<Shot> TURNS = turns();
+    static List<Shot> turns() {
+        List<Shot> l = new ArrayList<>();
+        for (int a = 0; a < 360; a += 45) l.add(new Shot(String.format("turn-%03d", a), false, a, false));
+        l.add(new Shot("close-day", false, 20, true)); l.add(new Shot("close-night", true, 20, true));
+        for (int a = 0; a < 360; a += 90) l.add(new Shot(String.format("turn-night-%03d", a), true, a, false));
+        return l;
+    }
+    /** GRAVES_PROPFOCUS: id=H,dist,fx,fy,fz,cdist;id=... */
+    static double[] focus(P d) {
+        for (String pair : System.getenv().getOrDefault("GRAVES_PROPFOCUS", "").split(";")) {
+            String[] kv = pair.trim().split("=", 2);
+            if (kv.length == 2 && kv[0].trim().equals(d.id())) { String[] n = kv[1].split(","); double[] v = new double[6];
+                for (int k = 0; k < 6 && k < n.length; k++) v[k] = Double.parseDouble(n[k].trim()); return v; }
+        }
+        double h = d.sy();
+        return new double[]{h, Math.max(2.0, 0.9 * h + 0.6), d.sx() / 2.0, h * 0.75, d.sz() / 2.0, 1.3};
+    }
 
     public void step(MinecraftClient c, int tick) {
         if (tick > 30000 && stage < 9) { Phase1Checks.report("p1-prop-look-timeout", false, "stuck at stage " + stage); next(tick, 9); }
@@ -261,7 +302,7 @@ final class PropLookChecks implements Phase1Checks.Suite {
                     return;
                 }
                 if (k == 100) Phase1Checks.server(c, b -> { var p = b.server.getPlayerManager().getPlayer(player); if (p != null) build(b, p); });
-                if (k > 140 && built) { say("packs " + c.getResourcePackManager().getEnabledNames()); vi = 0; pi = 0; next(tick, 2); }
+                if (k > 140 && built) { say("packs " + c.getResourcePackManager().getEnabledNames()); vi = 0; pi = 0; next(tick, TURN ? 5 : 2); }
             }
             case 2 -> {
                 String v = VIEWS[vi];
@@ -300,6 +341,20 @@ final class PropLookChecks implements Phase1Checks.Suite {
                     if (++vi < VIEWS.length) next(tick, 4);
                     else if (++ci < CMPS.size()) { vi = 0; next(tick, 4); }
                     else { Phase1Checks.report("p1-prop-cmp", true, CMPS.size() * VIEWS.length + " compare shots"); next(tick, 9); }
+                }
+            }
+            case 5 -> { // turntable: shot vi of TURNS for every prop (time of day set once per shot, on the first prop)
+                Shot t = TURNS.get(vi);
+                if (k == 1) {
+                    if (pi == 0) Phase1Checks.server(c, b -> { var p = b.server.getPlayerManager().getPlayer(player); if (p != null) cmd(b, p, t.night() ? "time set 18000" : "time set 6000"); });
+                    orbit(c, pi, t.angle(), t.close());
+                }
+                if (k == 2) { c.setScreen(null); c.options.hudHidden = true; }
+                if (k == 60) Phase1Checks.shot(c, "prop-" + PROPS.get(pi).id() + "-" + t.name());
+                if (k == 62) {
+                    if (++pi < PROPS.size()) next(tick, 5);
+                    else if (++vi < TURNS.size()) { pi = 0; next(tick, 5); }
+                    else { Phase1Checks.report("p1-prop-look", true, PROPS.size() * TURNS.size() + " turntable shots"); next(tick, 9); }
                 }
             }
             case 9 -> {

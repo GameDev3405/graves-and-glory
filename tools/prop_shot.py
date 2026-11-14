@@ -1,6 +1,6 @@
 """In-game prop shots (docs/props/WORKFLOW.md, step 4): one real client, props placed through Props.place.
 
-    python tools/prop_shot.py <id>[,<id>...] [--compare <id>=<group/name> ...] [--compare-all] [--offline] [--frames] [--timeout 1500]
+    python tools/prop_shot.py <id>[,<id>...] [--compare <id>=<group/name> ...] [--compare-all] [--offline] [--frames] [--turntable] [--timeout 1500]
 
 Builds the prop pack (tools/build_prop_pack.py) into an isolated run root work/props/shotrun/<stamp>/, enables it as a client
 resource pack, runs `gradlew runClient` with the prop-look suite (GRAVES_PHASE1_CHECKS=prop-look, GRAVES_PROPLOOK=<ids>) and copies
@@ -15,6 +15,11 @@ A template is looked up in the shipped structures and then in the unshipped test
 boulder_* to compare/boulder, supply_wagon_* to the nearest wagon, market_stall_* to compare/market_stall, giant bones to compare/giant_rib);
 props with no fixture (handcart, brazier_wall, portcullis_raised, ...) are shot alone. An explicit --compare for an id wins.
 Regenerate the fixtures with `python tools/compare_templates.py` (needs the maps checkout, read-only).
+
+--turntable replaces the four views with a review turntable (test tooling, for rework advice): 8 daylight angles around the prop from a little above eye
+height (p1-prop-<id>-turn-000..315, 000 = seen from the front, 090 = from the east), a flame/glass close-up by day and by night (-close-day, -close-night) and 4 night
+angles (-turn-night-000/090/180/270). No Knight and no fence lanterns, so at night only the prop's own light shows. The shots go to work/props/review/shots/<id>/
+(work/props/shots/<id>/ is left alone). Framing per prop is TURN_FOCUS below (framed height, orbit distance, close-up point, close-up distance, in blocks).
 
 Counts as one of the game clients (WORKFLOW.md: at most 4 across the workspace now, 30 minutes each). Refuses to start when a
 client from this checkout is already running; it never stops a client it did not start.
@@ -54,9 +59,18 @@ def compare_pairs(specs, ids):
     return out
 
 
+# id -> (framed height, orbit distance, close-up x, y, z from the prop's min corner, close-up distance), blocks; unlisted: height = cells, 0.9*h+0.6 away
+TURN_FOCUS = {
+    'street_lamp': (3.0, 2.6, 0.5, 2.5, 0.5, 1.2),
+    'street_lamp_wall': (1.0, 1.35, 0.5, 0.4, 0.3, 0.9),
+    'cauldron_tripod': (1.9, 1.8, 0.5, 0.45, 0.5, 1.1),
+}
+
+
 def main(argv=None):
     a = argparse.ArgumentParser(); a.add_argument('ids'); a.add_argument('--offline', action='store_true')
     a.add_argument('--frames', action='store_true', help='also shoot near-day 3, 6 and 9 ticks later (-t3/-t6/-t9) to see animated textures move')
+    a.add_argument('--turntable', action='store_true', help='turntable review shots (8 day angles, close-ups day/night, 4 night angles) to work/props/review/shots/<id>/')
     a.add_argument('--timeout', type=int, default=1500)
     a.add_argument('--compare-all', action='store_true',
                    help='pair every id with the plain-block fixture of the maps (tools/compare_templates.py); ids without one are shot alone')
@@ -87,7 +101,8 @@ def main(argv=None):
                                      'guiScale:3\nresourcePacks:["fabric","gravesandglory:armory","file/gg-props.zip"]\n', encoding='utf8')
     env = dict(os.environ, JAVA_HOME=str(jdk), PATH=str(jdk / 'bin') + os.pathsep + os.environ['PATH'],
                GRAVES_ROADMAP_TEST_ROOT=str(root), GRAVES_PHASE1_CHECKS='prop-look', GRAVES_PROPLOOK=','.join(ids),
-               GRAVES_PROPCMP=';'.join('%s=%s' % kv for kv in cmp), GRAVES_PROPFRAMES='1' if o.frames else '',
+               GRAVES_PROPCMP=';'.join('%s=%s' % kv for kv in cmp), GRAVES_PROPFRAMES='1' if o.frames else '', GRAVES_PROPTURN='1' if o.turntable else '',
+               GRAVES_PROPFOCUS=';'.join('%s=%s' % (k, ','.join(str(x) for x in v)) for k, v in TURN_FOCUS.items()) if o.turntable else '',
                GRAVES_PROPEXAMPLE=str(ROOT / 'docs' / 'props' / 'examples' / 'prop_facings.nbt'))
     gradle = [str(ROOT / ('gradlew.bat' if os.name == 'nt' else 'gradlew')), '--no-daemon'] + (['--offline'] if o.offline else [])
     log = root / 'game.log'
@@ -104,13 +119,13 @@ def main(argv=None):
         if 'prop' in line: print(' ', line)
     shots = run / 'screenshots'; copied = 0
     for pid in ids:
-        dest = ROOT / 'work' / 'props' / 'shots' / pid
+        dest = ROOT / 'work' / 'props' / ('review/shots' if o.turntable else 'shots') / pid
         if dest.exists(): shutil.rmtree(dest)
         dest.mkdir(parents=True)
         for f in sorted(shots.glob('p1-prop-%s-*.png' % pid)) if shots.exists() else []:
             shutil.copy(f, dest / f.name); copied += 1
         print('%s: %d shots -> %s' % (pid, len(list(dest.glob('*.png'))), dest))
-    if shots.exists() and (shots / 'p1-prop-lineup.png').exists():
+    if not o.turntable and shots.exists() and (shots / 'p1-prop-lineup.png').exists():
         shutil.copy(shots / 'p1-prop-lineup.png', ROOT / 'work' / 'props' / 'shots' / ('lineup-' + '-'.join(ids)[:60] + '.png'))
     ok = code == 0 and lines and not any(l.startswith('fail ') for l in lines) and any('pass p1-prop-look' in l for l in lines) and copied
     print('prop-look', 'PASS' if ok else 'FAIL (exit %s, log %s)' % (code, log))
