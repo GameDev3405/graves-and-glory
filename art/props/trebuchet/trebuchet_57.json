@@ -1,0 +1,108 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  1024,
+  1024
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/trebuchet",
+  "particle": "gravesandglory:prop/trebuchet"
+ },
+ "elements": [
+  {
+   "from": [
+    8,
+    -16,
+    -2
+   ],
+   "to": [
+    20,
+    -10,
+    10
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      5.015625,
+      4.0625,
+      5.203125,
+      4.15625
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      5.203125,
+      4.0625,
+      5.390625,
+      4.15625
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      5.390625,
+      4.0625,
+      5.578125,
+      4.15625
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      5.578125,
+      4.0625,
+      5.765625,
+      4.15625
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      7.0,
+      3.25,
+      7.1875,
+      3.4375
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "front leg",
+   "rotation": {
+    "angle": 22.5,
+    "axis": "x",
+    "origin": [
+     8,
+     -136,
+     4
+    ]
+   }
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    1.871,
+    28.732,
+    5.788
+   ],
+   "scale": [
+    1.3227,
+    1.3227,
+    1.3227
+   ]
+  }
+ }
+}

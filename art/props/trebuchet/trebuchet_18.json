@@ -1,0 +1,99 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  1024,
+  1024
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/trebuchet",
+  "particle": "gravesandglory:prop/trebuchet"
+ },
+ "elements": [
+  {
+   "from": [
+    10,
+    -16,
+    -8
+   ],
+   "to": [
+    18,
+    32,
+    0
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      4.5,
+      0.75,
+      4.625,
+      1.5
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      4.625,
+      0.75,
+      4.75,
+      1.5
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      4.75,
+      0.75,
+      4.875,
+      1.5
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      4.875,
+      0.75,
+      5.0,
+      1.5
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "front raker",
+   "rotation": {
+    "angle": 45,
+    "axis": "x",
+    "origin": [
+     10,
+     -40,
+     -4
+    ]
+   }
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    -1.403,
+    2.105,
+    -3.645
+   ],
+   "scale": [
+    0.3307,
+    0.3307,
+    0.3307
+   ]
+  }
+ }
+}

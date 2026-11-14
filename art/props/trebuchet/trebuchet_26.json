@@ -1,0 +1,99 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  1024,
+  1024
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/trebuchet",
+  "particle": "gravesandglory:prop/trebuchet"
+ },
+ "elements": [
+  {
+   "from": [
+    -3,
+    22,
+    -16
+   ],
+   "to": [
+    7,
+    30,
+    30
+   ],
+   "faces": {
+    "south": {
+     "uv": [
+      10.8125,
+      3.71875,
+      10.96875,
+      3.84375
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      11.1875,
+      3.59375,
+      11.90625,
+      3.71875
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      11.90625,
+      3.59375,
+      12.625,
+      3.71875
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      11.125,
+      0.75,
+      11.28125,
+      1.46875
+     ],
+     "texture": "#0"
+    },
+    "down": {
+     "uv": [
+      11.28125,
+      0.75,
+      11.4375,
+      1.46875
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "tie beam"
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    -1.708,
+    -5.988,
+    -2.049
+   ],
+   "scale": [
+    0.345,
+    0.345,
+    0.345
+   ]
+  }
+ }
+}

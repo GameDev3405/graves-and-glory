@@ -1,0 +1,90 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  1024,
+  1024
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/trebuchet",
+  "particle": "gravesandglory:prop/trebuchet"
+ },
+ "elements": [
+  {
+   "from": [
+    -16,
+    -12,
+    -15
+   ],
+   "to": [
+    32,
+    -4,
+    -3
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      3.75,
+      3.59375,
+      4.5,
+      3.71875
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      4.5,
+      3.59375,
+      5.25,
+      3.71875
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      12.375,
+      3.03125,
+      13.125,
+      3.21875
+     ],
+     "texture": "#0"
+    },
+    "down": {
+     "uv": [
+      13.125,
+      3.03125,
+      13.875,
+      3.21875
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "back cross tie"
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    -3.975,
+    6.57,
+    -0.797
+   ],
+   "scale": [
+    0.3307,
+    0.3307,
+    0.3307
+   ]
+  }
+ }
+}

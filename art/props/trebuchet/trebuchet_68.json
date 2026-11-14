@@ -1,0 +1,108 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  1024,
+  1024
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/trebuchet",
+  "particle": "gravesandglory:prop/trebuchet"
+ },
+ "elements": [
+  {
+   "from": [
+    -2,
+    -16,
+    20
+   ],
+   "to": [
+    6,
+    28,
+    28
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      5.0,
+      1.5,
+      5.125,
+      2.1875
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      5.125,
+      1.5,
+      5.25,
+      2.1875
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      5.25,
+      1.5,
+      5.375,
+      2.1875
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      5.375,
+      1.5,
+      5.5,
+      2.1875
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      13.53125,
+      3.71875,
+      13.65625,
+      3.84375
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "rear raker",
+   "rotation": {
+    "angle": -45,
+    "axis": "x",
+    "origin": [
+     -2,
+     -136,
+     24
+    ]
+   }
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    2.551,
+    -2.181,
+    5.22
+   ],
+   "scale": [
+    0.3607,
+    0.3607,
+    0.3607
+   ]
+  }
+ }
+}
