@@ -19,6 +19,7 @@ made, and writes the result to out/ (export.py then copies it forward, as for ev
   5 charge.py       charge_run_upper
   6 reactions.py    hit_pulled, hit_pulled_legs
   7 soft_layers.py  (troops in its LAYERS) the soft pieces and footing fixes on the step 4 and 6 clips
+  8 own attacks     (troops with art/anim/<troop>/build_own_attacks.py) the troop's own attack clips replace the family's
 
 Each merge puts its clips after the last stance_ clip, so this order also reproduces the shipped clip order. soft_layers.py
 adds to what reactions.py built, so steps 3-7 never run twice over one file: the whole-file mode always starts from step 1.
@@ -96,6 +97,21 @@ def late(path, only):
                        env=dict(os.environ, GG_ANIM_TROOP=TROOP), check=True)
 
 
+def own_attacks(doc, only=None):
+    """Step 8: a troop's own attack clips (art/anim/<troop>/build_own_attacks.py, clips() -> {name: clip}) replace the family's."""
+    mod = ROOT / "art" / "anim" / TROOP / "build_own_attacks.py"
+    if not mod.exists():
+        return doc
+    sys.path.insert(0, str(mod.parent))
+    import build_own_attacks  # noqa: E402
+    for name, clip in build_own_attacks.clips().items():
+        if only and name not in only:
+            continue
+        assert name in doc["animations"], name
+        doc["animations"][name] = clip
+    return doc
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", help="comma list of late-layer clips: rebuild only their steps over the existing out/ file")
@@ -105,12 +121,17 @@ def main():
     path = Path(a.anim)
     only = set(a.only.split(",")) if a.only else None
     if only is not None:
-        unknown = only - {n for _, names in LATE for n in names}
+        unknown = only - {n for _, names in LATE for n in names} - {f"attack_{a}{s}" for a in ("thrust", "overhead", "low_cut")
+                                                                   for s in ("", "_legs")}
         if unknown:
             sys.exit(f"rebuild_out.py: --only takes late-layer clips; not {sorted(unknown)}")
     else:
         base(path)
     late(path, only)
+    text = path.read_text(encoding="utf-8")
+    doc = own_attacks(json.loads(text), only)
+    if json.dumps(doc, indent=1) != text:
+        write(doc, path)
 
 
 if __name__ == "__main__":
