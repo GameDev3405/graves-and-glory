@@ -31,6 +31,8 @@ import java.util.Map;
  * {@link #after}, which {@link After}, registered behind both gait layers, calls once their poses are on the bones. Until 2026-11-12 the setting-off blend ran inside
  * {@code process} and so never showed in play: a troop setting off shows the moving clip's first frame for one render frame, then the matched phase.
  * {@link #START_BLEND} keeps that as it was approved.
+ * <p>
+ * {@link After} also puts the bones no gait clip keyed this frame at rest ({@link #rest}), so the layers behind it never build on what an earlier draw left there.
  */
 final class GaitController extends AnimationController<GeoTroop> {
     /** Reference speed of each gait clip (blocks per tick) as built by art/anim/knight/build_anims.py; the clip name is its key prefix. */
@@ -152,8 +154,24 @@ final class GaitController extends AnimationController<GeoTroop> {
         @Override
         public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
                             Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
+            rest(bones);
             legs.after(bones, seekTime);
             upper.after(bones, seekTime);
+        }
+    }
+
+    /**
+     * Puts every bone the gait layers did not write this frame at its rest pose, before anything reads it. The bones are the model's, shared by every troop drawn with it,
+     * and GeckoLib resets only a bone nothing touched: one the playing gait clips do not key still holds what the last draw left on it, this troop's last frame or another
+     * troop's. The stop blend, and the stance, attack, hit and death layers behind it, all read a bone before they write it, so on such a bone they built on that leftover:
+     * a hit clip's offset was added onto last frame's offset, every frame (a pauldron that span through a blow), and a pose faded in and out from itself. Started from rest,
+     * each layer's result depends only on this frame. Setting a bone marks it changed, so GeckoLib's own reset (a one-tick lerp to this same pose) no longer runs for these.
+     */
+    static void rest(Map<String, CoreGeoBone> bones) {
+        for (CoreGeoBone bone : bones.values()) {
+            BoneSnapshot init = bone.getInitialSnapshot();
+            if (!bone.hasRotationChanged()) { bone.setRotX(init.getRotX()); bone.setRotY(init.getRotY()); bone.setRotZ(init.getRotZ()); }
+            if (!bone.hasPositionChanged()) { bone.setPosX(init.getOffsetX()); bone.setPosY(init.getOffsetY()); bone.setPosZ(init.getOffsetZ()); }
         }
     }
 
