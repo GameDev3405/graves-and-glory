@@ -1,4 +1,33 @@
 {
  "about": "Clips the owner approved exactly as they are, although a metric is over its limit. Each entry names the troop, clip, metric, the value that was approved and Kort's words with the date. The metric still shows as a fail on the clip's card; it only stops refusing the batch, and only while the value is no worse than the approved one. Add an entry only for a clip Kort has seen and said to keep as it is. Never add one to get a new or changed clip through.",
- "approved": []
+ "approved": [
+  {
+   "troop": "gb_hollowking",
+   "clip": "rise",
+   "metric": "ang_speed_arms",
+   "value": 174.6,
+   "reason": "Kort, 2026-11-11: exemption for the Hollow King's rise, whose spec has the limbs snap back into place in about 3 ticks (the knight-derived speed limits do not fit that one clip). Moved here 2026-11-14 from the lane's scorecard_exemptions.json (43f19f5a), which this file replaces; value is the clip as Kort approved the lane on 2026-11-14."
+  },
+  {
+   "troop": "gb_hollowking",
+   "clip": "rise",
+   "metric": "ang_speed_legs",
+   "value": 115.76,
+   "reason": "Kort, 2026-11-11: exemption for the Hollow King's rise, whose spec has the limbs snap back into place in about 3 ticks (the knight-derived speed limits do not fit that one clip). Moved here 2026-11-14 from the lane's scorecard_exemptions.json (43f19f5a), which this file replaces; value is the clip as Kort approved the lane on 2026-11-14."
+  },
+  {
+   "troop": "gb_hollowking",
+   "clip": "rise",
+   "metric": "ang_speed_torso",
+   "value": 26.9,
+   "reason": "Kort, 2026-11-11: exemption for the Hollow King's rise, whose spec has the limbs snap back into place in about 3 ticks (the knight-derived speed limits do not fit that one clip). Moved here 2026-11-14 from the lane's scorecard_exemptions.json (43f19f5a), which this file replaces; value is the clip as Kort approved the lane on 2026-11-14."
+  },
+  {
+   "troop": "gb_hollowking",
+   "clip": "rise",
+   "metric": "ang_speed_weapon",
+   "value": 170.04,
+   "reason": "Kort, 2026-11-11: exemption for the Hollow King's rise, whose spec has the limbs snap back into place in about 3 ticks (the knight-derived speed limits do not fit that one clip). Moved here 2026-11-14 from the lane's scorecard_exemptions.json (43f19f5a), which this file replaces; value is the clip as Kort approved the lane on 2026-11-14."
+  }
+ ]
 }

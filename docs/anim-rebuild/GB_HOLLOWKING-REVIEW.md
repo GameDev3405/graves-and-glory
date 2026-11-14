@@ -284,3 +284,16 @@ clips stances/reactions/charge add to the asset only.
 Open: the two pop WARNs (a panel meeting a plate in one quarter tick); a hit added to the stance at another phase than
 its start can lie up to the stance's breath (about 8 deg) further in or out; hit_pulled_legs' rags and cuisse keys moved
 up to 3.75 deg because those late stages measure the whole pose, cape included.
+
+## Rebase onto main (2026-11-14)
+
+The lane was rebased onto main 39115c8c. Two things changed in the move; the clips did not (byte-identical to the
+reviewed ones).
+
+- **The `rise` exemption lives in `tools/anim/scorecard_approved.json` now.** main gained its own way to record a clip
+  Kort approved as it is (c728f2be), so the lane's `scorecard_exemptions.json` and its code (43f19f5a) were dropped
+  and the four `rise` rows were entered there, at the values the clip has now. The scorecard prints them as APPROVED
+  (it said EXEMPT above). main's rule is stricter than the lane's was: a row stays approved only while its value is no
+  worse than the recorded one (the lane allowed about 5% more).
+- **The model was regenerated on main's settled rig** (`troop_rig.py gb_hollowking`, `export.py --geo-only`): the rags
+  split and the knee cape, with main's z-fight offsets. As on main, the clips were not rebuilt for it.
