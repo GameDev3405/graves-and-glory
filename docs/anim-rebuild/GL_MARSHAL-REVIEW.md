@@ -202,3 +202,50 @@ Its impact and follow-through differ in 3 of 4 (the passed foot, 7.2 px).
 - The overhead wind-up reads close to the family's at 16 blocks; the difference is in the pass and the finish.
 - Whole-file rebuild cape drift (above) on stun_upper and hit_medium_*: for whoever owns soft_layers / the pivot change.
 - Not seen in game; no Gradle, harness or verify.py run (the lead runs those).
+
+## Fix round 1 (2026-11-13, after the independent review)
+
+The reviewer found the overhead still the family's move (F1 wind-up/finish silhouette, F2 a level stab at t10).
+Builder only (`build_own_attacks.py`); out/ by `rebuild_out.py --only <six clips>`, then export.
+
+- **F2 overhead impact.** The cut now runs t8.5-11.5, fastest across the impact: tip high on the sword side at t9
+  (-16, 43, 11), level forward about t9.75, then down and across. At t10 the blade is 36 deg below level, yaw 12, edge
+  leading; tip (-2.8, 11.7, 31.1), 0.6 px from the present 31.7. With the tip held at z 31 and the pitch at least 35
+  the hand cannot go higher on this rig, so the blade's middle meets a target at chest to chin height, not crown.
+- **F1 overhead silhouette.** A true roof guard (hilt above the head, blade back) does not fit: the crown reaches
+  y 36.9 and the 8.1 px arm cannot carry the hilt over it without the blade passing through the helm. Nearest clean
+  thing: an upright blade at the sword-side ear (pitch -96 to -102, no roll), shield drawn in to the chest, chest
+  coiled 21-24 deg, weight back over the rear foot. Follow-through: the rear foot passes (plant 6.8 px), the torso
+  turns through to -48 deg, the blade finishes low outside the lead knee on the shield side (tip x 13.7 at t12.5-13),
+  then he rises tall by t18.
+- **F4 thrust.** Draw shortened to end at 2.8; load held 2.8-5.9 (3.1 ticks). The phases WARN is gone.
+- **F3 thrust.** Shield fist moved out: prop_in_body now 1.33 into the belt (was 1.94 into the torso).
+- **F5 low cut.** Blade kept off the helm at t2.25 (the head graze row is gone; the remaining weapon row is the
+  gorget, 0.87 at t5.75).
+- **F6 low cut.** Torso pitch at t10-11 6.5-7.6 deg (was 14-15); tip y 6.6-9.8, off the floor. Impact tip z 35.2.
+- F7, F8 not touched.
+
+Overhead, same tick, present (c1f97231) against own (`work/ownmoves/fx_table.py`):
+
+| Tick | Hips yaw deg (pelvis px) | Torso yaw deg | Weapon dir deg | Lead foot px | Differ (of 4) |
+|---|---|---|---|---|---|
+| t6 | 5 (2.1) | 13 | 38 | 0.0 | 2 |
+| t8 | 6 (2.1) | 13 | 67 | 1.8 | 2 |
+| t10 | 18 (3.2) | 8 | 7 | 6.9 | 2 |
+| t12 | 17 (3.5) | 21 | 34 | 6.9 | 4 |
+| t13 | 15 (3.4) | 23 | 35 | 6.9 | 4 |
+
+Phase table after fix 1 (`difftable.py`): thrust 3/3/3, overhead 2/2/4, low cut 4/3/4.
+
+Sheets (`work/ownmoves/`): `attack_overhead_present_vs_own_fix1.jpg`, `attack_overhead_strip_8.5-11.5_fix1.jpg`,
+`attack_{thrust,overhead,low_cut}_every2_own_fix1.jpg`. Every tick rendered in `work/ownmoves/fx/final/`.
+
+Checks after fix 1: scorecard exit 0 (41 clips, 0 fails); focus_check 0 FAIL, 66 WARN rows (67 at 7cd2abbd), every
+changed row on the three attacks and none new on other clips; unittest discover OK (161 tests). Attack WARN rows now:
+thrust weapon_in_body 1.23 t6.5, prop_in_body 1.33 t6.5 (belt), floor 0.57 t9.5, point_lead 33.18; overhead
+armour_clip 1.84 t9.5, pop 8.87 t10.5 (cape); low cut weapon_in_body 0.87 t5.75, prop_in_body 1.58 t5.75,
+limb_in_body 1.05 t8, armour_clip 1.86 t2.5.
+
+Open after fix 1: overhead armour_clip WARN 1.84 at t9.5 (sword arm into torso), cape pop WARN at t10.5; in side view
+the overhead finish still reads low and forward like the family's (the difference shows in front and three-quarter);
+blade middle at chest height at the impact (rig limit above).
