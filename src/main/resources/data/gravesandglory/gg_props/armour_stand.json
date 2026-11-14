@@ -1,0 +1,31 @@
+{
+  "id": "armour_stand",
+  "category": "hall",
+  "name": "Armour Stand",
+  "size": [
+    1,
+    2,
+    1
+  ],
+  "parts": [
+    {
+      "model": "armour_stand",
+      "cmd": 7311501,
+      "glow": false
+    }
+  ],
+  "solid": [
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      0
+    ]
+  ],
+  "lights": [],
+  "effects": []
+}
