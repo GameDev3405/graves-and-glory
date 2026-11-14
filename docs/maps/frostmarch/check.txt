@@ -1,0 +1,62 @@
+signal tower   x 27..42 z -135..-123 ground 80
+refuge         x -43..-27 z 122..136 ground 80
+gatehouse 0    x -58..-50 z -121..-103 ground 80
+gatehouse 1    x 50..58 z -121..-103 ground 80
+waystation     x -123..-105 z -99..-87 ground 69
+hold hut 1     x -206..-198 z -96..-88 ground 64
+hold hut 2     x -193..-185 z -91..-83 ground 64
+tent n0      x -279..-273 z -30..-24 ground 64  prop tent_soldier_large_dawn facing 180
+tent s0      x -279..-273 z 24..30 ground 64  prop tent_soldier_large_dawn facing 0
+tent n1      x -267..-261 z -30..-24 ground 64  prop tent_soldier_large_dawn facing 180
+tent s1      x -267..-261 z 24..30 ground 64  prop tent_soldier_large_dawn facing 0
+tent n2      x -255..-249 z -30..-24 ground 64  prop tent_soldier_large_dawn facing 180
+tent s2      x -255..-249 z 24..30 ground 64  prop tent_soldier_large_dawn facing 0
+tent n3      x -243..-237 z -30..-24 ground 64  prop tent_soldier_large_dawn facing 180
+tent s3      x -243..-237 z 24..30 ground 64  prop tent_soldier_large_dawn facing 0
+pavilion     x -277..-269 z -4..4 ground 64  prop tent_pavilion_large_dawn facing 90
+wagon camp n x -245..-242 z -18..-16 ground 64  prop supply_wagon_covered facing 90
+wagon camp s x -242..-239 z 16..18 ground 64  prop supply_wagon_hay facing 270
+wagon camp w x -263..-261 z -14..-11 ground 64  prop supply_wagon_barrels facing 0
+brazier gate n x -236..-236 z -10..-10 ground 64  prop brazier_tall facing 0
+brazier gate s x -236..-236 z 10..10 ground 64  prop brazier_tall facing 0
+brazier way  x -103..-103 z -85..-85 ground 69  prop brazier_tall facing 0
+cart way     x -111..-110 z -84..-83 ground 69  prop handcart_sacks facing 90
+wagon way    x -120..-117 z -84..-82 ground 69  prop supply_wagon facing 90
+cart hold    x -194..-193 z -96..-95 ground 64  prop handcart facing 0
+cells Dawn can reach: 142849 | Dusk: 142849
+point A standing heights [81] cells with anything built: 0
+point B standing heights [73] cells with anything built: 0
+point C standing heights [81] cells with anything built: 0
+walk to A          from Dawn 302 | from Dusk 302
+walk to B          from Dawn 273 | from Dusk 273
+walk to C          from Dawn 302 | from Dusk 302
+walk to Dawn spawn from Dawn 0 | from Dusk 534
+walk to Dusk spawn from Dawn 534 | from Dusk 0
+walks fair (B equal, Dawn to A = Dusk to C, Dawn to C = Dusk to A): True
+convoy start to stop 1: 88
+convoy stop 1 to stop 2: 130
+convoy stop 2 to stop 3: 130
+convoy stop 3 to end: 88
+things on or low over the wagon road: 0 []
+Dawn can stand on mountain, crag rock or ice: 0 []
+Dawn can stand 4 or more above the ground: 0 []
+Dawn stands on stairs, slabs or beds: 0 []
+Dawn reachable cells beside ice: 0 []
+Dawn reachable cells beside a lit campfire: 0 []
+Dusk can stand on mountain, crag rock or ice: 0 []
+Dusk can stand 4 or more above the ground: 0 []
+Dusk stands on stairs, slabs or beds: 0 []
+Dusk reachable cells beside ice: 0 []
+Dusk reachable cells beside a lit campfire: 0 []
+water, powder snow or snow layers on the map: 0
+columns whose height differs from the half-turn twin: 0 | Dawn cells whose twin Dusk cannot reach: 2
+only the cut open: Dawn reaches the Dusk spawn in 534
+only the gap n open: Dawn reaches the Dusk spawn in 550
+only the gap s open: Dawn reaches the Dusk spawn in 550
+only the shelf a open: Dawn reaches the Dusk spawn in 601
+only the shelf c open: Dawn reaches the Dusk spawn in 601
+every crossing shut: Dawn reaches the Dusk spawn? False
+non-full blocks: 419
+  stone_brick_stairs 88, deepslate_tile_stairs 71, lantern 50, deepslate_tile_slab 46, iron_bars 32, stone_brick_slab 28, spruce_slab 26, glass_pane 22, stone_brick_wall 20, spruce_fence 18, campfire 10, lightning_rod 4, cobblestone_wall 3, bell 1
+props: 36
+OK

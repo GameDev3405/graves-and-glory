@@ -1,0 +1,307 @@
+# Frostmarch: every section placed, a picture of each before the next row hides it.
+note Frostmarch sections
+mc time set 3000
+mc execute as @a at @s run forceload add -288 -192 -225 -129
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_a1 -288 195 -192
+props -288 195 -192 -225 275 -129
+wait 10
+shot sec-a1 -256 290 -105 -256 206 -166
+mc execute as @a at @s run forceload add -224 -192 -161 -129
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_b1 -224 195 -192
+props -224 195 -192 -161 275 -129
+wait 10
+shot sec-b1 -192 290 -105 -192 206 -166
+mc execute as @a at @s run forceload add -160 -192 -97 -129
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_c1 -160 195 -192
+props -160 195 -192 -97 275 -129
+wait 10
+shot sec-c1 -128 290 -105 -128 206 -166
+mc execute as @a at @s run forceload add -96 -192 -33 -129
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_d1 -96 195 -192
+props -96 195 -192 -33 275 -129
+wait 10
+shot sec-d1 -64 290 -105 -64 206 -166
+mc execute as @a at @s run forceload add -32 -192 31 -129
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_e1 -32 195 -192
+props -32 195 -192 31 275 -129
+wait 10
+shot sec-e1 0 290 -105 0 206 -166
+mc execute as @a at @s run forceload add 32 -192 95 -129
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_f1 32 195 -192
+props 32 195 -192 95 275 -129
+wait 10
+shot sec-f1 64 290 -105 64 206 -166
+mc execute as @a at @s run forceload add 96 -192 159 -129
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_g1 96 195 -192
+props 96 195 -192 159 275 -129
+wait 10
+shot sec-g1 128 290 -105 128 206 -166
+mc execute as @a at @s run forceload add 160 -192 223 -129
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_h1 160 195 -192
+props 160 195 -192 223 275 -129
+wait 10
+shot sec-h1 192 290 -105 192 206 -166
+mc execute as @a at @s run forceload add 224 -192 287 -129
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_i1 224 195 -192
+props 224 195 -192 287 275 -129
+wait 10
+shot sec-i1 256 290 -105 256 206 -166
+mc execute as @a at @s run forceload add -288 -128 -225 -65
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_a2 -288 195 -128
+props -288 195 -128 -225 275 -65
+wait 10
+shot sec-a2 -256 256 -41 -256 206 -102
+mc execute as @a at @s run forceload add -224 -128 -161 -65
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_b2 -224 195 -128
+props -224 195 -128 -161 275 -65
+wait 10
+shot sec-b2 -192 256 -41 -192 206 -102
+mc execute as @a at @s run forceload add -160 -128 -97 -65
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_c2 -160 195 -128
+props -160 195 -128 -97 275 -65
+wait 10
+shot sec-c2 -128 256 -41 -128 206 -102
+mc execute as @a at @s run forceload add -96 -128 -33 -65
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_d2 -96 195 -128
+props -96 195 -128 -33 275 -65
+wait 10
+shot sec-d2 -64 256 -41 -64 206 -102
+mc execute as @a at @s run forceload add -32 -128 31 -65
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_e2 -32 195 -128
+props -32 195 -128 31 275 -65
+wait 10
+shot sec-e2 0 256 -41 0 206 -102
+mc execute as @a at @s run forceload add 32 -128 95 -65
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_f2 32 195 -128
+props 32 195 -128 95 275 -65
+wait 10
+shot sec-f2 64 256 -41 64 206 -102
+mc execute as @a at @s run forceload add 96 -128 159 -65
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_g2 96 195 -128
+props 96 195 -128 159 275 -65
+wait 10
+shot sec-g2 128 256 -41 128 206 -102
+mc execute as @a at @s run forceload add 160 -128 223 -65
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_h2 160 195 -128
+props 160 195 -128 223 275 -65
+wait 10
+shot sec-h2 192 256 -41 192 206 -102
+mc execute as @a at @s run forceload add 224 -128 287 -65
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_i2 224 195 -128
+props 224 195 -128 287 275 -65
+wait 10
+shot sec-i2 256 256 -41 256 206 -102
+mc execute as @a at @s run forceload add -288 -64 -225 -1
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_a3 -288 195 -64
+props -288 195 -64 -225 275 -1
+wait 10
+shot sec-a3 -256 256 23 -256 206 -38
+mc execute as @a at @s run forceload add -224 -64 -161 -1
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_b3 -224 195 -64
+props -224 195 -64 -161 275 -1
+wait 10
+shot sec-b3 -192 256 23 -192 206 -38
+mc execute as @a at @s run forceload add -160 -64 -97 -1
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_c3 -160 195 -64
+props -160 195 -64 -97 275 -1
+wait 10
+shot sec-c3 -128 256 23 -128 206 -38
+mc execute as @a at @s run forceload add -96 -64 -33 -1
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_d3 -96 195 -64
+props -96 195 -64 -33 275 -1
+wait 10
+shot sec-d3 -64 256 23 -64 206 -38
+mc execute as @a at @s run forceload add -32 -64 31 -1
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_e3 -32 195 -64
+props -32 195 -64 31 275 -1
+wait 10
+shot sec-e3 0 256 23 0 206 -38
+mc execute as @a at @s run forceload add 32 -64 95 -1
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_f3 32 195 -64
+props 32 195 -64 95 275 -1
+wait 10
+shot sec-f3 64 256 23 64 206 -38
+mc execute as @a at @s run forceload add 96 -64 159 -1
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_g3 96 195 -64
+props 96 195 -64 159 275 -1
+wait 10
+shot sec-g3 128 256 23 128 206 -38
+mc execute as @a at @s run forceload add 160 -64 223 -1
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_h3 160 195 -64
+props 160 195 -64 223 275 -1
+wait 10
+shot sec-h3 192 256 23 192 206 -38
+mc execute as @a at @s run forceload add 224 -64 287 -1
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_i3 224 195 -64
+props 224 195 -64 287 275 -1
+wait 10
+shot sec-i3 256 256 23 256 206 -38
+mc execute as @a at @s run forceload add -288 0 -225 63
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_a4 -288 195 0
+props -288 195 0 -225 275 63
+wait 10
+shot sec-a4 -256 256 87 -256 206 26
+mc execute as @a at @s run forceload add -224 0 -161 63
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_b4 -224 195 0
+props -224 195 0 -161 275 63
+wait 10
+shot sec-b4 -192 256 87 -192 206 26
+mc execute as @a at @s run forceload add -160 0 -97 63
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_c4 -160 195 0
+props -160 195 0 -97 275 63
+wait 10
+shot sec-c4 -128 256 87 -128 206 26
+mc execute as @a at @s run forceload add -96 0 -33 63
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_d4 -96 195 0
+props -96 195 0 -33 275 63
+wait 10
+shot sec-d4 -64 256 87 -64 206 26
+mc execute as @a at @s run forceload add -32 0 31 63
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_e4 -32 195 0
+props -32 195 0 31 275 63
+wait 10
+shot sec-e4 0 256 87 0 206 26
+mc execute as @a at @s run forceload add 32 0 95 63
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_f4 32 195 0
+props 32 195 0 95 275 63
+wait 10
+shot sec-f4 64 256 87 64 206 26
+mc execute as @a at @s run forceload add 96 0 159 63
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_g4 96 195 0
+props 96 195 0 159 275 63
+wait 10
+shot sec-g4 128 256 87 128 206 26
+mc execute as @a at @s run forceload add 160 0 223 63
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_h4 160 195 0
+props 160 195 0 223 275 63
+wait 10
+shot sec-h4 192 256 87 192 206 26
+mc execute as @a at @s run forceload add 224 0 287 63
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_i4 224 195 0
+props 224 195 0 287 275 63
+wait 10
+shot sec-i4 256 256 87 256 206 26
+mc execute as @a at @s run forceload add -288 64 -225 127
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_a5 -288 195 64
+props -288 195 64 -225 275 127
+wait 10
+shot sec-a5 -256 256 151 -256 206 90
+mc execute as @a at @s run forceload add -224 64 -161 127
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_b5 -224 195 64
+props -224 195 64 -161 275 127
+wait 10
+shot sec-b5 -192 256 151 -192 206 90
+mc execute as @a at @s run forceload add -160 64 -97 127
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_c5 -160 195 64
+props -160 195 64 -97 275 127
+wait 10
+shot sec-c5 -128 256 151 -128 206 90
+mc execute as @a at @s run forceload add -96 64 -33 127
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_d5 -96 195 64
+props -96 195 64 -33 275 127
+wait 10
+shot sec-d5 -64 256 151 -64 206 90
+mc execute as @a at @s run forceload add -32 64 31 127
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_e5 -32 195 64
+props -32 195 64 31 275 127
+wait 10
+shot sec-e5 0 256 151 0 206 90
+mc execute as @a at @s run forceload add 32 64 95 127
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_f5 32 195 64
+props 32 195 64 95 275 127
+wait 10
+shot sec-f5 64 256 151 64 206 90
+mc execute as @a at @s run forceload add 96 64 159 127
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_g5 96 195 64
+props 96 195 64 159 275 127
+wait 10
+shot sec-g5 128 256 151 128 206 90
+mc execute as @a at @s run forceload add 160 64 223 127
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_h5 160 195 64
+props 160 195 64 223 275 127
+wait 10
+shot sec-h5 192 256 151 192 206 90
+mc execute as @a at @s run forceload add 224 64 287 127
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_i5 224 195 64
+props 224 195 64 287 275 127
+wait 10
+shot sec-i5 256 256 151 256 206 90
+mc execute as @a at @s run forceload add -288 128 -225 191
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_a6 -288 195 128
+props -288 195 128 -225 275 191
+wait 10
+shot sec-a6 -256 290 215 -256 206 154
+mc execute as @a at @s run forceload add -224 128 -161 191
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_b6 -224 195 128
+props -224 195 128 -161 275 191
+wait 10
+shot sec-b6 -192 290 215 -192 206 154
+mc execute as @a at @s run forceload add -160 128 -97 191
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_c6 -160 195 128
+props -160 195 128 -97 275 191
+wait 10
+shot sec-c6 -128 290 215 -128 206 154
+mc execute as @a at @s run forceload add -96 128 -33 191
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_d6 -96 195 128
+props -96 195 128 -33 275 191
+wait 10
+shot sec-d6 -64 290 215 -64 206 154
+mc execute as @a at @s run forceload add -32 128 31 191
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_e6 -32 195 128
+props -32 195 128 31 275 191
+wait 10
+shot sec-e6 0 290 215 0 206 154
+mc execute as @a at @s run forceload add 32 128 95 191
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_f6 32 195 128
+props 32 195 128 95 275 191
+wait 10
+shot sec-f6 64 290 215 64 206 154
+mc execute as @a at @s run forceload add 96 128 159 191
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_g6 96 195 128
+props 96 195 128 159 275 191
+wait 10
+shot sec-g6 128 290 215 128 206 154
+mc execute as @a at @s run forceload add 160 128 223 191
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_h6 160 195 128
+props 160 195 128 223 275 191
+wait 10
+shot sec-h6 192 290 215 192 206 154
+mc execute as @a at @s run forceload add 224 128 287 191
+mc execute as @a at @s run place template ggmaps:fm/sec/fm_i6 224 195 128
+props 224 195 128 287 275 191
+wait 10
+shot sec-i6 256 290 215 256 206 154
+props -288 195 -192 287 275 191
+wait 20
+shot camp-dawn -206 214 8 -258 201 0
+shot camp-dusk 206 214 -8 258 201 0
+shot camp-inside -238 203 4 -272 204 0
+shot first-bend -152 216 -46 -104 205 -78
+shot waystation -100 207 -72 -113 204 -93
+shot ridge-cleft -146 208 -52 -158 203 -10
+shot ridge-air -130 260 60 -130 205 -6
+shot hold -176 210 -76 -197 202 -92
+shot tarn -168 224 -92 -200 198 -120
+shot low-road -206 214 30 -130 208 104
+shot ramp-a-west -104 212 -108 -55 219 -112
+shot gatehouse-a -74 218 -106 -55 220 -112
+shot signal-shelf -44 226 -92 36 236 -129
+shot tower 14 220 -100 36 240 -129
+shot point-a 0 250 -80 0 215 -112
+shot refuge -14 220 100 -36 226 129
+shot refuge-shelf 44 226 92 -36 226 129
+shot cut-west -44 214 -26 0 212 0
+shot cut-road -22 210 -13 14 212 8
+shot spine-north -36 218 -30 0 216 -60
+shot spine-gap-s -20 210 44 0 210 48
+shot spine-shelf-end -30 216 60 0 216 84
+shot second-bend 150 216 46 104 205 78
+shot shelf-view 0 218 -88 -60 206 -40
+shot air-west -210 290 110 -200 200 -20
+shot air-midwest -100 290 110 -100 205 -20
+shot air-middle 0 300 120 0 205 -10
+shot air-mideast 100 290 110 100 205 -20
+shot air-east 210 290 110 200 200 -20
+shot top-spine-n 0 292 -52 0 90
+shot top-spine-s 0 292 52 0 90
+shot top-cut 0 300 0 0 90
