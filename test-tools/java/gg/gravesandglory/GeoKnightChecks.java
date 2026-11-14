@@ -43,8 +43,12 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     static final boolean THROW = RANGED && (CAST || SPELL || SHOT || Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && "thrower".equals(r.family())));
     /** A crossbow troop: its 50-tick clip shoots, spans and reloads, so its shots are spaced wider (nudgeR) and its gap window sits after the reload. */
     static final boolean XBOW = RANGED && Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && "crossbow".equals(r.family()));
-    /** Ticks without a shot before a ranged duelist is made to shoot again: a crossbow standing waits 60 (its cooldown) so the gap after its 50-tick clip shows; walking, 40 (clips 51 ticks apart) so the 70-tick walk fits two shots each. */
-    static int nudgeR(String mode) { return XBOW && !mode.equals("walk") ? 60 : mode.equals("walk") ? 40 : 40 + ablLead; } // standing, an ability cast's clip runs ablLead ticks later, so its gap window does too
+    /** Ticks without a shot before a ranged duelist is made to shoot again: a crossbow standing waits 60 (its cooldown) so the gap after its 50-tick clip shows; walking, 40 (clips 51 ticks apart) so the 70-tick walk fits two shots each.
+     *  lead is the troop's Tactics.drawLead: a bow's draw is announced 30 ticks ahead of its beat where every other shot's is 10, so its nudge comes those 20 ticks sooner and its shots stay 51 ticks apart too
+     *  (nudged 40 after a loose, a bow's second shot of the walk would leave after the walk ends and its sync row would judge 2 swings where it wants 4).
+     *  loose is the troop's Projectiles.looseTicks (a bow's seed, 0 to MotionMath.LOOSE_MAX; else 0): each shot leaves that much after its beat, so the nudge comes twice that sooner
+     *  and the walk's second shot is logged on duel tick 89 for every seed (unshortened, a seed of 3 logged it on tick 95, after the walk's sync row was written on tick 94: 3 swings judged of the 4 wanted). */
+    static int nudgeR(String mode, int lead, int loose) { return (XBOW && !mode.equals("walk") ? 60 : mode.equals("walk") ? 40 : 40 + ablLead) - (lead - 10) - 2 * loose; } // standing, an ability cast's clip runs ablLead ticks later, so its gap window does too
     /** The duelists' spacing (blocks); a bow duel stands where neither is too close to shoot. */
     static final double GAP = RANGED ? 10 : 2;
     /** Ticks into the foe's swing (a bow: its draw) it is killed; the swing must show 2 ticks before that. */
@@ -95,8 +99,24 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             return len > 0 ? (int) Math.round(len * 20) : 22;
         } catch (Exception e) { return 22; }
     }
-    /** Clip ticks the frame checks expect (a bow clip draws, holds and recovers over 26; a crossbow's shot, kick and span over its first 30; a melee clip its own length), and the gap window between swings. */
-    static final int FRAMES = XBOW ? 30 : THROW ? MELEE_T : RANGED ? 26 : MELEE_T, GAP_T = XBOW ? 55 : THROW ? MELEE_T + 1 : RANGED ? 31 : MELEE_T;
+    /** A bow troop (Tactics.drawsAhead): the one ranged kind that is neither a crossbow nor a one-clip thrower or caster. */
+    static final boolean BOW = RANGED && !XBOW && !THROW;
+    /** A bow clip's full-draw marker in ticks (its "full" timeline marker), or -1: from there to its impact marker the draw is held Seed.hold ticks longer (AttackController). */
+    static final double BOW_FULL = BOW ? bowFull() : -1;
+    static double bowFull() {
+        try (var in = GeoKnightChecks.class.getResourceAsStream("/assets/gravesandglory/animations/troop/" + TROOP + ".animation.json")) {
+            if (in == null) return -1;
+            var anims = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonObject("animations");
+            for (var e : anims.entrySet())
+                if (e.getKey().startsWith("attack_") && !e.getKey().endsWith("_legs") && e.getValue().getAsJsonObject().has("timeline"))
+                    for (var m : e.getValue().getAsJsonObject().getAsJsonObject("timeline").entrySet())
+                        if ("full".equals(m.getValue().getAsString())) return Double.parseDouble(m.getKey()) * 20;
+            return -1;
+        } catch (Exception e) { return -1; }
+    }
+    /** Clip ticks the frame checks expect (a crossbow's shot, kick and span over its first 30; every other clip its own length: a bow's draws, holds, looses on tick 22 and recovers over 32),
+     *  and the gap window between swings: when the clip has ended, which for a bow is its length plus the longest held draw (Seed.hold, 0 to MotionMath.LOOSE_MAX ticks: AttackController plays the clip that much longer). */
+    static final int FRAMES = XBOW ? 30 : MELEE_T, GAP_T = XBOW ? 55 : THROW ? MELEE_T + 1 : BOW ? MELEE_T + MotionMath.LOOSE_MAX : MELEE_T;
     static final Gait.Mode[] MODES = {Gait.Mode.WALK, Gait.Mode.RUN};
     /** March directions per view, seen from the camera north of the line looking south: side on, head on, three-quarter. */
     static final String[] MARCH_VIEWS = {"side", "front", "threequarter"};
@@ -122,6 +142,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     static final class Duel {
         static final int NUDGE = 40;
         final GeoKnightChecks owner; final GravesAndGlory.Battle b; final String mode; final int start;
+        /** The world tick the duel began: a swing that started before it is the battle's own, begun in the stage before. */
+        final long t0;
         final GravesAndGlory.Unit[] us;
         final long[] seen = new long[2], last = new long[2], beatAt = {-1, -1};
         /** The world tick each duelist's nudged shot left (rangedNudge): the swing log reads it a tick later, so it lands here. */
@@ -133,11 +155,11 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         volatile long killSwing = -1, killedAt = -1;
         volatile boolean killedDead;
         Duel(GeoKnightChecks owner, GravesAndGlory.Battle b, String mode) {
-            this.owner = owner; this.b = b; this.mode = mode; this.start = b.server.getTicks();
+            this.owner = owner; this.b = b; this.mode = mode; this.start = b.server.getTicks(); this.t0 = b.world.getTime();
             us = new GravesAndGlory.Unit[]{owner.knights.get(2), owner.knights.get(5)};
             long now = b.world.getTime();
             // A bow duel shoots first 5 ticks in: its shots are spaced wider than a swing (draw, hold, recovery), so the walk fits two each.
-            for (int j = 0; j < 2; j++) { seen[j] = us[j].swingTick; last[j] = RANGED ? now - nudgeR(mode) + 5 : now; }
+            for (int j = 0; j < 2; j++) { seen[j] = us[j].swingTick; last[j] = RANGED ? now - nudgeR(mode, Tactics.drawLead(us[j]), 0) + 5 : now; }
         }
     }
     static volatile Duel duel;
@@ -568,8 +590,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             if (u.mob.isAlive() && enemy.isAlive() && b.time >= u.stunnedUntil) { u.mob.swingHand(Hand.MAIN_HAND); if (CAST) Projectiles.fire(b, u, enemy, "mend", 0f); else { if (SPELL) u.abilityAt = 0; Tactics.shoot(b, u, enemy, b.time, true); } d.shotAt[j] = now; }
             return;
         }
-        if (!u.mob.isAlive() || !enemy.isAlive() || now - d.last[j] <= nudgeR(d.mode) || b.time < u.stunnedUntil || Tactics.pending(b, u)) return;
         int lead = Tactics.drawLead(u); // as Tactics.tick: a bow's whole draw ahead (30), any other troop one beat (10)
+        if (!u.mob.isAlive() || !enemy.isAlive() || now - d.last[j] <= nudgeR(d.mode, lead, Projectiles.looseTicks(u)) || b.time < u.stunnedUntil || Tactics.pending(b, u)) return;
         if (Projectiles.drawAhead(b, u, enemy, lead) <= 0) return;
         d.beatAt[j] = now + lead + Projectiles.looseTicks(u);
         d.forced++; d.last[j] = now;
@@ -599,7 +621,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     /** The client tick each swing was first listed: a frame drawn before that did not know of it, so it cannot count as drawn. */
     final Map<String, Long> clientKnown = new HashMap<>();
     double minImpactLegsW = 2, maxWalkLegsW = 0, maxOnsetLegsW = 0; int walkSettledSamples;
-    String minImpactWhy = "";
+    String minImpactWhy = "", minImpactLegsWhy = "";
     double minImpactW = 2, maxGapW = 0, maxDeadW = 0, maxBeforeDeathW = 0, foeBackMin = 9;
     /** The foe's backing speed each swinging sample: a server hitch dips the smoothed speed for a frame (as in readBack), so the median must
      *  read a real backpedal and the minimum only that it never walked forward. */
@@ -628,7 +650,12 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             if (!dead && latest != Long.MIN_VALUE && ac.shownStart == latest && ac.shownImpact >= 0 && Math.abs(ac.shownT - ac.shownImpact) <= 1) {
                 if (ac.shownWeight < minImpactW) minImpactWhy = String.format("%d:%d at %.2f t %.2f seen %.2f", id, latest, ac.shownAt, ac.shownT, ac.shownSeenAt);
                 minImpactW = Math.min(minImpactW, ac.shownWeight); impactSamples++;
-                if (d.mode.equals("stand")) minImpactLegsW = Math.min(minImpactLegsW, ac.shownLegsWeight);
+                // The footwork is judged on the duel's own shots: one the battle's own beat began in the march before lands in the duel's first ticks,
+                // while the troop (just put on its mark) is not yet still, so its attack legs are faded by design (AttackController: weight times stillness).
+                if (d.mode.equals("stand") && latest >= d.t0) {
+                    if (ac.shownLegsWeight < minImpactLegsW) { StanceController sc = StanceController.LIVE.get(e); minImpactLegsWhy = String.format("%s %d:%d at %.2f t %.2f still %.3f duel tick %d", u == d.us[0] ? "own" : "foe", id, latest, ac.shownAt, ac.shownT, sc == null ? -1 : sc.shownStill, d.k); }
+                    minImpactLegsW = Math.min(minImpactLegsW, ac.shownLegsWeight);
+                }
             }
             if (!dead && latest != Long.MIN_VALUE && t >= GAP_T + ablLead && t <= GAP_T + ablLead + 2.5) { maxGapW = Math.max(maxGapW, ac.shownWeight); gapSamples++; }
             Gait g = Gait.LIVE.get(e);
@@ -835,9 +862,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 // Tick 0 is weight 0 by design (the same pose as the frame before it), and the client often hears of a swing a
                 // fraction of a tick after it starts, so it is saved when caught but not required: ticks 1 to FRAMES-1 (far: the even
                 // ones) of every variant are (the knight: 3 clips, ticks 1-21, far 2-20).
-                // A bow duel at range always shoots the same arc, so one clip's frames: ticks 1-25 (far: 2-24).
+                // A bow duel at range always shoots the same arc, so one clip's frames: ticks 1-31 (far: 2-30).
                 int nv = Tactics.variants(d.us[0].spec.family()).size();
-                int want = XBOW ? (far ? 14 : 29) : THROW ? (far ? (FRAMES - 1) / 2 : FRAMES - 1) : RANGED ? (far ? 12 : 25) : nv * (far ? (FRAMES - 1) / 2 : FRAMES - 1);
+                int want = XBOW ? (far ? 14 : 29) : RANGED ? (far ? (FRAMES - 1) / 2 : FRAMES - 1) : nv * (far ? (FRAMES - 1) / 2 : FRAMES - 1);
                 if (k > 30 && c.world != null) {
                     var e = c.world.getEntityById(d.us[0].mob.getId());
                     AttackController ac = e == null ? null : AttackController.LIVE.get(e);
@@ -846,7 +873,11 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     if (ac != null && ac.shownT >= 0 && (ac.shownWeight > 0 || ac.shownT < .5)) {
                         int tt = (int) Math.round(ac.shownT);
                         // A late bow draw's quickened wind-up runs its clip faster than the clock, so a tick can step past a frame's .3 window.
-                        if (Math.abs(ac.shownT - tt) <= (tt == 0 || ac.shownRate > 1.05 ? .5 : .3) && tt < FRAMES && (!far || tt % 2 == 0) && taken.add(ac.shownClip + ":" + tt))
+                        // A bow's held draw (Seed.hold ticks stretched over the clip's full-to-impact span) runs slower than the clock: samples one tick
+                        // apart are less than a frame apart there, so each frame has a sample within half a frame of it, but not always within .3
+                        // (hold 1 at the usual sample phase of .9: frames 18.53 and 19.38, so tick 19 was never caught and the row failed on that seed).
+                        boolean held = BOW_FULL >= 0 && ac.shownT > BOW_FULL && ac.shownT < ac.shownImpact && Projectiles.seed(e.getUuid()).hold() > 0;
+                        if (Math.abs(ac.shownT - tt) <= (tt == 0 || ac.shownRate > 1.05 || held ? .5 : .3) && tt < FRAMES && (!far || tt % 2 == 0) && taken.add(ac.shownClip + ":" + tt))
                             Phase1Checks.shot(c, String.format("geo-" + TROOP + "-attack-%s-%s-%02d", view, ac.shownClip.replace("attack_", ""), tt));
                         // At rate r the clip moves r frames a tick, so the frames within r/2 of this sample play between it and its
                         // neighbours (every render frame in play); the harness samples once a tick and counts them as stepped past.
@@ -866,7 +897,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                         Phase1Checks.report("p1-geo-" + TROOP + "-attack-plays", impactSamples > 10 && minImpactW > .9 && gapSamples > 4 && maxGapW == 0,
                             String.format("weight at impact (+-1 tick) min %.4f (%s) over %d samples; between swings max %.5f over %d", minImpactW, minImpactWhy, impactSamples, maxGapW, gapSamples));
                         Phase1Checks.report("p1-geo-" + TROOP + "-attack-footwork", impactSamples > 10 && minImpactLegsW > .9,
-                            String.format("standing: attack legs weight at impact min %.4f over %d samples", minImpactLegsW, impactSamples));
+                            String.format("standing: attack legs weight at impact min %.4f (%s) over %d samples", minImpactLegsW, minImpactLegsWhy, impactSamples));
                         duel = null; i = 0; next(tick, 6);
                     }
                 }
