@@ -168,7 +168,7 @@ GRAVES_ROADMAP_TEST_ROOT="$ROOT" GRAVES_PHASE1_CHECKS=geo-knight GRAVES_GEO_CHEC
 grep -c "^\[p1\] p1-" "$ROOT/gradle.log"; grep -c "=false" "$ROOT/gradle.log"
 ```
 In PowerShell set each variable first (`$env:GRAVES_PHASE1_CHECKS = 'geo-knight'`, and so on), then run the same
-`.\gradlew.bat` line. Pass: 24 `[p1] p1-` lines and 0 `=false` (the stalker's suite `stalker-reel`: 39). The row `-layer-rest` is the one that catches a layer building on leftover bone state (lessons.md section 6). `GRAVES_GEO_TROOPS=all` is needed for any troop still in `PREVIEW`.
+`.\gradlew.bat` line. Pass: 25 `[p1] p1-` lines and 0 `=false` (the stalker's suite `stalker-reel`: 40). The rows `-layer-rest` and `-start-own-legs` are the ones that catch code building on leftover bone state (lessons.md section 6). `GRAVES_GEO_TROOPS=all` is needed for any troop still in `PREVIEW`.
 Screens land under the run root. A loaded machine can fail a speed or sample-count check (see IC_BREAKER-REVIEW.md);
 rerun once before diagnosing, and record both runs. Performance: `GRAVES_PHASE1_CHECKS=geo-perf` (PLAN.md).
 

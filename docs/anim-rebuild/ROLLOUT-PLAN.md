@@ -28,7 +28,7 @@ Kort: carry over "the whole feel and flow of [the Knight's] movements, its weigh
 
 1. Build and probe: clipping, floor, and gear in the body.
 2. Reel. One Sonnet high review. At most 2 fix rounds; record the minors.
-3. Harness: geo-knight checks with an isolated root, at most 4 clients at a time. Pass = 24 `[p1] p1-` lines and 0 `=false`.
+3. Harness: geo-knight checks with an isolated root, at most 4 clients at a time. Pass = 25 `[p1] p1-` lines and 0 `=false`.
 4. Commit, and add the result to the unit's review md.
 
 One video per family goes to Kort when the family is finished (Kort's choice).
