@@ -17,7 +17,8 @@
     "FilmFovMixin",
     "FilmFrameMixin",
     "FilmHudMixin",
-    "FilmSlowClockMixin"
+    "FilmSlowClockMixin",
+    "DropFilmFrameMixin"
   ],
   "injectors": {
     "defaultRequire": 0
