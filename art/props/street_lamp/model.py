@@ -11,8 +11,8 @@ import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOUSE, Anim   # noqa: F401
 
-# candle flicker behind the glass (proplib lamp_glass): four frames blended, played in an irregular order
-LAMP_FLICKER = Anim(frames=4, frametime=3, interpolate=True, order=[0, 0, 1, 0, 2, 0, 0, 3, 1, 0, 2, 2, 0, 3])
+# candle flicker behind the glass (proplib lamp_glass): four frames blended, in an irregular order that leaves the steady frame often
+LAMP_FLICKER = Anim(frames=4, frametime=2, interpolate=True, order=[0, 1, 2, 0, 3, 1, 1, 0, 2, 3, 0, 1, 2, 2])
 
 
 def build():

@@ -350,34 +350,37 @@ def _flame(face, P, c, r, w, h, k, n):
     if f < 0.9: return HOT[2]
     return HOT[1]
 
-def _embers(face, P, c, r, w, h, k, n):
-    """pat_coal with the glow breathing: each 2 px lump of the hot gaps brightens and dims on its own phase."""
+def _embers(face, P, c, r, w, h, k, n, dark=False):
+    """pat_coal with the glow breathing: each 2 px lump of the hot gaps brightens and dims on its own phase. `dark` keeps
+    the top a tone lower (bright gaps orange, mid gaps red) so flame planes standing in a small basket read against it."""
     x, y, z = P
     lump = (math.floor(x / 2), math.floor(z / 2), math.floor(y / 2))
-    kk = h3(*lump, 13); s = _wave(k, n, h3(*lump, 17))
+    kk = h3(*lump, 13); s = _wave(k, n, h3(*lump, 17)); o = 1 if dark else 0
     if face == "up":
-        if kk < 0.38: return HOT[4] if s > -0.2 else HOT[3]
-        if kk < 0.55: return HOT[3] if s > 0.6 else HOT[2]
+        if kk < 0.38: return HOT[4 - o] if s > -0.2 else HOT[3 - o]
+        if kk < 0.55: return HOT[3 - o] if s > 0.6 else HOT[2 - o]
         return COAL[3] if (x + z) % 3 == 0 else COAL[2]
     if kk < 0.45: return (HOT[2] if s > -0.4 else HOT[1]) if r < h - 1 else HOT[1]
     return COAL[2] if r == 0 else COAL[1]
 
 def _lamp_glass(face, P, c, r, w, h, k, n):
-    """Frosted lantern pane with a candle behind it: a darker rim, a bright heart that dips, flares and sways a column."""
+    """Frosted lantern pane with a candle behind it: rim, ring and heart (0, 1, 2+ texels in). Frame 0 steady, 1 a deep dip
+    (heart and ring two tones down, rim one), 2 a flare (rim and ring a tone up), 3 a sway (the heart one column over, its
+    top cooling). Strong steps on purpose: the glass is full-bright, so a one-tone flicker vanishes by day."""
     G = LAMP_GLASS
-    if face in ("up", "down"): return G[2]
-    sway = 1 if k == 3 and c >= w // 2 else (-1 if k == 3 else 0)
-    cc = c - sway if 0 <= c - sway < w else c
-    d = min(cc, w - 1 - cc, r, h - 1 - r)
-    if d == 0: return G[2]
-    if k == 1 and r < h // 2: return G[3]           # the flame dips: the upper heart cools
-    if k == 2 and d == 1 and r >= h // 2: return G[4]   # the flame flares: the lower ring warms
-    return G[3] if d == 1 else G[4]
+    if face in ("up", "down"): return G[1] if k == 1 else G[2]
+    cc = c
+    if k == 3: cc = min(w - 1, c + 1) if c >= w // 2 else max(0, c - 1)
+    d = min(min(cc, w - 1 - cc), r, h - 1 - r, 2)
+    t = ((2, 3, 4), (1, 1, 2), (3, 4, 4), (2, 3, 4))[k][d]   # steady, dip, flare, sway
+    if k == 3 and d == 2 and r < h // 2: t = 3
+    return G[max(0, min(4, t))]
 
 def flame_mat(): m = AnimMat(HOT, 2, _flame, edges=False, lit=False); m.ramps = (HOT,); return m
-def ember_mat(): m = AnimMat(COAL, 2, _embers, edges=False, lit=False); m.ramps = (HOT, COAL); return m
+def ember_mat(dark=False):
+    m = AnimMat(COAL, 2, (lambda *a: _embers(*a, dark=True)) if dark else _embers, edges=False, lit=False); m.ramps = (HOT, COAL); return m
 def lamp_glass_mat(): m = AnimMat(LAMP_GLASS, 2, _lamp_glass, edges=False, lit=False); m.ramps = (LAMP_GLASS,); return m
-MAT["flame"] = flame_mat(); MAT["embers"] = ember_mat(); MAT["lamp_glass"] = lamp_glass_mat()
+MAT["flame"] = flame_mat(); MAT["embers"] = ember_mat(); MAT["embers_dark"] = ember_mat(True); MAT["lamp_glass"] = lamp_glass_mat()
 
 def flames(cx, cz, y0, y1, half, name="flame"):
     """Two crossed flame planes (one along x, one along z) centred on (cx, cz), from y0 (bury it in the coals) to y1,

@@ -228,10 +228,12 @@ final class PropLookChecks implements Phase1Checks.Suite {
         aim(c, a[0] - d.px() + w / 2.0, a[2] - d.pz() + deep / 2.0, Math.max(w, deep), Math.max(d.sy(), k.ty()), dist + (dist < 8 ? 0 : w * 0.4));
     }
     void aim(MinecraftClient c, double cx, double cz, int wide, int sy, double dist) {
-        double cy = oy + Math.min(sy, 2) / 2.0 + 0.3;
-        if (dist < 8) dist += wide * 0.35 + (sy > 2 ? 1.2 : 0) - 0.6;
-        double x = cx + dist * 0.5, z = cz - dist * 0.87, y = oy + 1.62 + (dist > 8 ? 2.5 : 0.2);
-        double dx = cx - x, dy = cy - y, dz = cz - z;
+        // Aim at the prop's middle (up to 2 blocks), from far enough back that its whole height fits the 70-degree view.
+        double cy = oy + Math.min(sy, 4) / 2.0;
+        if (dist < 8) dist = Math.max(dist + wide * 0.35 + (sy > 2 ? 1.2 : 0) - 0.6, 1.1 * sy + 1.0);
+        // teleport sets the feet; the eyes are 1.62 higher: near shots look from eye height 1.82, far ones from 5.74 as before
+        double x = cx + dist * 0.5, z = cz - dist * 0.87, y = oy + (dist > 8 ? 1.62 + 2.5 : 0.2);
+        double dx = cx - x, dy = cy - (y + 1.62), dz = cz - z;
         float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)), pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
         var id = c.player.getUuid();
         c.getServer().execute(() -> { var p = c.getServer().getPlayerManager().getPlayer(id);

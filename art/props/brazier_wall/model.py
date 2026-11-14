@@ -29,9 +29,9 @@ def build():
         E((3, 15, 4), (5, 16, 10), "iron", name="rim"), E((11, 15, 4), (13, 16, 10), "iron", name="rim"),
     ]
     c = [
-        E((4, 11, 3), (12, 14, 11), "embers", skip="down", name="coal bed"),
-        E((5, 14, 4), (11, 15, 10), "embers", skip="down", name="coal heap"),
-        E((6, 15, 5), (10, 16, 9), "embers", skip="down", name="coal crest"),
+        E((4, 11, 3), (12, 14, 11), "embers_dark", skip="down", name="coal bed"),
+        E((5, 14, 4), (11, 15, 10), "embers_dark", skip="down", name="coal heap"),
+        E((6, 15, 5), (10, 16, 9), "embers_dark", skip="down", name="coal crest"),
     ] + flames(8, 7, 12, 18, 3)   # live fire: short tongues over the rim (the footprint allows 2 px above the cell)
     return Prop("brazier_wall", {"brazier_wall": b, "brazier_wall_coals": c}, glow=("brazier_wall_coals",),
                 anim={"brazier_wall_coals": Anim(**FIRE_ANIM)})
