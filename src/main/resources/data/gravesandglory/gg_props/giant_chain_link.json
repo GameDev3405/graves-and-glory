@@ -1,0 +1,16 @@
+{
+  "id": "giant_chain_link",
+  "category": "relics",
+  "name": "Giant's Chain Link",
+  "size": [3, 2, 2],
+  "parts": [
+    {"model": "giant_chain_link", "cmd": 7311571, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0],
+    [2, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}
