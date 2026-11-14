@@ -306,12 +306,14 @@ final class StalkerReelChecks implements Phase1Checks.Suite {
     public void step(MinecraftClient c, int tick) {
         if (tick > 5000 && stage != 9 && stage < 99) { Phase1Checks.report("p1-stalker-reel-timeout", false, "stuck at stage " + stage + ", segment " + i); next(tick, 9); }
         int k = tick - at - 1; // next(tick, s) is called on the last tick of a stage: the next stage's first step is k 0
+        GeoLayerRest.where = "stage " + stage + (stage >= 99 ? "" : " segment " + i);
         switch (stage) {
             case 0 -> {
                 if (tick == 20) {
                     c.setScreen(null); player = c.player.getUuid();
                     c.options.hudHidden = true; c.options.setPerspective(Perspective.FIRST_PERSON);
                     fov0 = c.options.getFov().getValue(); c.options.getFov().setValue(FOV);
+                    GeoLayerRest.start();
                     next(tick, 1);
                 }
             }
@@ -357,6 +359,8 @@ final class StalkerReelChecks implements Phase1Checks.Suite {
             case 9 -> {
                 c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;
                 if (k == 1) Phase1Checks.server(c, b -> { if (b.running) b.campaign.returnLobby(); });
+                // every Geo draw of the run began with the bones left off rest (GeoLayerRest): none may have been built on that
+                if (k == 1) { GeoLayerRest.stop(); Phase1Checks.report("p1-stalker-reel-layer-rest", GeoLayerRest.clean(), GeoLayerRest.result()); }
                 if (k > 40) { Phase1Checks.finish(c, "stalker-reel"); stage = 99; }
             }
             default -> {}

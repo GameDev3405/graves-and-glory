@@ -756,8 +756,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     public void step(MinecraftClient c, int tick) {
         if (tick > 30000 && stage != 9 && stage < 99) { Phase1Checks.report("p1-geo-" + TROOP + "-timeout", false, "stuck at stage " + stage); next(tick, 9); }
         int k = tick - at;
+        GeoLayerRest.where = "stage " + stage + (stage >= 99 ? "" : " case " + i);
         switch (stage) {
-            case 0 -> { if (tick == 20) { c.setScreen(null); player = c.player.getUuid(); next(tick, 1); } }
+            case 0 -> { if (tick == 20) { c.setScreen(null); player = c.player.getUuid(); GeoLayerRest.start(); next(tick, 1); } }
             case 1 -> {
                 if (!battleReady) {
                     Phase1Checks.server(c, b -> { var p = b.server.getPlayerManager().getPlayer(player); if (!battleReady && p != null && Phase1Checks.skirmish(b, p, 0, 1, "normal")) battleReady = true; });
@@ -1456,6 +1457,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             case 9 -> {
                 c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;
                 if (k == 1) Phase1Checks.server(c, b -> { if (b.running) b.campaign.returnLobby(); });
+                // every Geo draw of the run began with the bones left off rest (GeoLayerRest): none may have been built on that
+                if (k == 1) { GeoLayerRest.stop(); Phase1Checks.report("p1-geo-" + TROOP + "-layer-rest", GeoLayerRest.clean(), GeoLayerRest.result()); }
                 if (k > 40) { Phase1Checks.finish(c, "geo-knight"); stage = 99; }
             }
             default -> {}
