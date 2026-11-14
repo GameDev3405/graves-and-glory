@@ -1,0 +1,36 @@
+# Ironhold works sampler
+note Ironhold works
+mc time set 3000
+mc execute as @a at @s run forceload add -8 -8 128 143
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_0 -5 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_1 -5 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_2 -5 198 89
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_3 -5 198 136
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_4 42 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_5 42 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_6 42 198 89
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_7 42 198 136
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_8 89 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_9 89 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_10 89 198 89
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_11 89 198 136
+wait 10
+shot wk-houses -1.1 212.0 66.2 36.5 205.4 8.0
+shot wk-houses-b 80.4 209.4 53.6 36.5 204.6 8.0
+shot wk-forge 79.0 211.0 30.6 91.5 204.6 7.0
+shot wk-forge-b 106.0 208.6 26.4 91.5 203.9 7.0
+shot wk-smelter 105.8 213.0 24.0 115.5 206.2 5.5
+shot wk-smelter-b 126.9 210.2 20.8 115.5 205.3 5.5
+shot wk-stables -3.8 208.5 56.0 10.5 202.6 32.5
+shot wk-store 27.1 211.0 59.2 40.0 204.6 35.0
+shot wk-barracks 45.0 211.0 109.6 71.0 204.6 51.5
+shot wk-barracks-b 101.3 208.6 101.0 71.0 203.9 51.5
+shot wk-tents 89.5 210.0 61.6 106.5 203.8 33.5
+shot wk-tents-b 126.3 207.8 56.0 106.5 203.2 33.5
+shot wk-trebuchet -4.0 210.0 108.0 8.0 203.8 89.5
+shot wk-wagons 22.1 205.0 108.6 34.5 199.8 89.5
+shot wk-palisade 49.5 207.5 111.4 65.5 201.8 88.5
+shot wk-minehead 84.3 211.5 126.6 99.0 205.0 97.0
+shot wk-minehead-b 116.2 209.0 121.7 99.0 204.2 97.0
+shot wk-slag -3.4 206.5 154.6 13.5 201.0 125.5
+shot wk-outwork 33.9 209.0 162.8 54.0 203.0 127.5

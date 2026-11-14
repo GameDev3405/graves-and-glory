@@ -1,0 +1,17 @@
+# Ironhold outer curtain, mine gate and breach, workshop placement
+note Ironhold curtain
+mc time set 3000
+mc execute as @a at @s run forceload add -112 -120 -49 111
+mc execute as @a at @s run place template ggmaps:rg/ih_cur_n1 -100 195 -112
+mc execute as @a at @s run place template ggmaps:rg/ih_cur_n2 -100 195 -77
+mc execute as @a at @s run place template ggmaps:rg/ih_breach -98 195 50
+wait 10
+shot ih-cur-field -112 212 -70 -74 211 -80
+shot ih-cur-mine -99 202 -92 -80 207 -96
+shot ih-cur-tunnel -84.5 206.6 -96 -70 206.6 -96
+shot ih-cur-ward -53 207.6 -74 -74 212 -82
+shot ih-cur-top -92 234 -110 -72 212 -80
+shot ih-br-field -99 203 70 -70 208 73
+shot ih-br-close -82 207.6 68 -66 206.5 74
+shot ih-br-ward -53 207.6 78 -70 207 73
+shot ih-br-top -94 230 52 -70 206 73

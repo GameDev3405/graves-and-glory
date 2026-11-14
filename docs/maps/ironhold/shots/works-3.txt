@@ -1,0 +1,42 @@
+# Ironhold works sampler
+note Ironhold works
+mc time set 3000
+mc execute as @a at @s run forceload add -8 -8 463 54
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_0 -5 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_1 -5 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_2 42 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_3 42 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_4 89 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_5 89 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_6 136 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_7 136 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_8 183 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_9 183 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_10 230 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_11 230 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_12 277 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_13 277 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_14 324 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_15 324 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_16 371 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_17 371 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_18 418 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_19 418 198 42
+wait 10
+shot w3-houses-1 10 207 34 24 204 8
+shot w3-houses-2 62 207 34 48 204 8
+shot w3-forge 80 205 26 92 202 7
+shot w3-forge-close 97 201.6 20 89 201.5 10
+shot w3-smelter 104 207 24 115 206 5
+shot w3-stables 132 204 22 142 201 3
+shot w3-store 160 205 28 171 204 6
+shot w3-barracks 184 212 60 202 202 22
+shot w3-barracks-yard 192 201.6 23 212 203 20
+shot w3-tents 226 204 24 240 201 5
+shot w3-pavilion 249 201.6 12 249 201.4 4
+shot w3-trebuchet 262 205 18 272 205 2
+shot w3-wagons 294 202.5 12 300 200.5 1
+shot w3-palisade 322 204 16 330 202 0
+shot w3-minehead 348 208 34 362 207 12
+shot w3-slag 388 205 26 398 200 6
+shot w3-outwork 428 208 32 439 201 8

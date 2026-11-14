@@ -1,0 +1,11 @@
+# Ironhold breach, second version
+note Ironhold breach
+mc time set 3000
+mc execute as @a at @s run forceload add -112 32 -49 111
+mc execute as @a at @s run place template ggmaps:rg/ih_breach -98 195 50
+wait 10
+shot ih-br2-field -99 203 70 -70 208 73
+shot ih-br2-field2 -96 206 52 -70 207 76
+shot ih-br2-close -82 207.6 71 -66 206.5 74
+shot ih-br2-ward -53 207.6 78 -70 207 73
+shot ih-br2-top -94 230 52 -70 206 73

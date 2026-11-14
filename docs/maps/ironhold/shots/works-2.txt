@@ -1,0 +1,44 @@
+# Ironhold works sampler
+note Ironhold works
+mc time set 3000
+mc execute as @a at @s run forceload add -8 -8 463 54
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_0 -5 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_1 -5 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_2 42 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_3 42 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_4 89 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_5 89 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_6 136 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_7 136 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_8 183 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_9 183 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_10 230 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_11 230 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_12 277 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_13 277 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_14 324 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_15 324 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_16 371 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_17 371 198 42
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_18 418 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_19 418 198 42
+wait 10
+shot wk-houses 15.3 212.6 63.2 36.5 205.4 8.0
+shot wk-houses-b 58.4 201.6 21.0 29.2 204.2 8.0
+shot wk-forge 84.1 211.4 30.4 91.5 204.6 7.0
+shot wk-forge-b 96.6 201.6 19.0 89.8 203.8 7.0
+shot wk-smelter 109.6 213.8 24.1 115.5 206.2 5.5
+shot wk-smelter-b 118.8 201.6 16.0 114.4 204.6 5.5
+shot wk-stables 133.2 208.4 27.6 141.5 202.6 4.5
+shot wk-store 163.4 211.4 30.9 171.0 204.6 7.0
+shot wk-barracks 187.2 211.4 79.8 202.0 204.6 23.5
+shot wk-barracks-b 209.2 201.6 52.0 199.6 203.8 23.5
+shot wk-tents 228.7 210.2 35.0 239.5 203.8 5.5
+shot wk-tents-b 248.8 201.6 16.0 236.4 203.4 5.5
+shot wk-trebuchet 265.9 210.2 20.8 273.0 203.8 2.5
+shot wk-wagons 292.1 204.2 21.4 299.5 199.8 2.5
+shot wk-palisade 321.2 207.2 23.8 330.5 201.8 1.5
+shot wk-minehead 355.4 212.0 39.1 364.0 205.0 10.0
+shot wk-minehead-b 370.6 201.6 25.0 361.8 204.0 10.0
+shot wk-slag 388.7 206.0 34.9 398.5 201.0 6.5
+shot wk-outwork 427.4 209.0 42.7 439.0 203.0 8.5

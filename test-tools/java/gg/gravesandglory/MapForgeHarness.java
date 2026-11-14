@@ -80,6 +80,11 @@ public final class MapForgeHarness implements ClientModInitializer {
                 case "points"->{StringBuilder s=new StringBuilder("points");for(var p:b.points)s.append(" ").append(p.spec.id()).append("(").append(p.spec.name()).append(" ").append(p.spec.x()).append(",").append(p.spec.elevation()).append(",").append(p.spec.z()).append(" owner ").append(p.owner).append(")");
                     log(s+" scores "+b.scores[0]+"-"+b.scores[1]+" field "+Field.halfX()+"x"+Field.halfZ()+" spawns "+Spec.FACTIONS[0].spawnX()+","+Spec.FACTIONS[0].spawnZ()+" / "+Spec.FACTIONS[1].spawnX()+","+Spec.FACTIONS[1].spawnZ());}
                 case "wait"->pause=Integer.parseInt(rest.trim());
+                case "props"->{String[] a=rest.trim().split("\\s+"); // props x0 y0 z0 x1 y1 z1: wake the prop anchors in templates placed by command (the game does it on chunk load)
+                    if(a.length!=6){end(c,false,"props x0 y0 z0 x1 y1 z1: "+line);return;}
+                    int[] n=new int[6];for(int i=0;i<6;i++)n[i]=Integer.parseInt(a[i]);var id=c.player.getUuid();pause=20;
+                    server.execute(()->{var p=server.getPlayerManager().getPlayer(id);
+                        if(p!=null)log("props "+Props.scanBox(p.getServerWorld(),new net.minecraft.util.math.BlockBox(n[0],n[1],n[2],n[3],n[4],n[5]))+" found in "+rest);});}
                 case "shot"->{String[] a=rest.trim().split("\\s+");
                     if(a.length!=6&&a.length!=7){end(c,false,"shot NAME x y z yaw pitch | shot NAME x y z lookX lookY lookZ: "+line);return;}
                     shotName=a[0];pause=120;c.options.hudHidden=true;b.campaign.leash=false;

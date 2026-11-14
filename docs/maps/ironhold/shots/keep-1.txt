@@ -1,0 +1,26 @@
+# Ironhold Great Keep, workshop placement
+note Ironhold keep
+mc time set 3000
+mc execute as @a at @s run forceload add 80 -96 159 -17
+mc execute as @a at @s run place template ggmaps:rg/ih_keep_wn1 95 199 -87
+mc execute as @a at @s run place template ggmaps:rg/ih_keep_wn2 95 246 -87
+mc execute as @a at @s run place template ggmaps:rg/ih_keep_ws1 95 199 -61
+mc execute as @a at @s run place template ggmaps:rg/ih_keep_ws2 95 246 -61
+mc execute as @a at @s run place template ggmaps:rg/ih_keep_en1 123 199 -87
+mc execute as @a at @s run place template ggmaps:rg/ih_keep_en2 123 246 -87
+mc execute as @a at @s run place template ggmaps:rg/ih_keep_es1 123 199 -61
+mc execute as @a at @s run place template ggmaps:rg/ih_keep_es2 123 246 -61
+wait 10
+shot keep-court 112 212.6 -8 112 232 -70
+shot keep-stair 112 213 -30 112 224 -60
+shot keep-west 68 222 -48 112 236 -70
+shot keep-east 166 226 -38 126 230 -70
+shot keep-far 62 236 14 112 236 -70
+shot keep-door 112 220.6 -49 112 223 -60
+shot keep-hall 112 221.6 -61 112 222 -80
+shot keep-hall2 104 222.6 -62 118 221.5 -77
+shot keep-wing 127 221.6 -70 144 221 -70
+shot keep-f1 104 230.6 -62 120 229 -76
+shot keep-f2 104 238.6 -63 120 237 -72
+shot keep-roof 103 245.6 -60 120 247 -80
+shot keep-top 78 292 -16 118 236 -68

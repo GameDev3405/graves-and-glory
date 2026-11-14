@@ -1,0 +1,13 @@
+# Ironhold main gatehouse, workshop placement
+note Ironhold gatehouse
+mc time set 3000
+mc execute as @a at @s run forceload add -112 -48 -33 47
+mc execute as @a at @s run place template ggmaps:rg/ih_gate_n -98 195 -36
+mc execute as @a at @s run place template ggmaps:rg/ih_gate_s -98 195 1
+wait 10
+shot ih-gate-field -108 203 -10 -76 210 0
+shot ih-gate-field2 -100 201.6 14 -76 212 2
+shot ih-gate-far -118 214 -30 -74 208 0
+shot ih-gate-under -80 206.6 0 -60 207 0
+shot ih-gate-ward -52 207.6 12 -72 213 0
+shot ih-gate-top -86 232 -34 -72 212 0

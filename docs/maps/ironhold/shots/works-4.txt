@@ -1,0 +1,12 @@
+# Ironhold works sampler
+note Ironhold works
+mc time set 3000
+mc execute as @a at @s run forceload add -8 -8 82 30
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_0 -5 198 -5
+mc execute as @a at @s run place template ggmaps:rg/ih_wk_1 42 198 -5
+wait 10
+shot w4-treb -4 205 16 8 204 3
+shot w4-treb-back 24 204 -8 8 204 3
+shot w4-ruin 36 208 36 52 203 8
+shot w4-ruin-east 72 206 30 50 204 8
+shot w4-ruin-in 50 201.6 18 47 206 5
