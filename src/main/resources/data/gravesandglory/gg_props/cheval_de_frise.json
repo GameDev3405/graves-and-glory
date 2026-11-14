@@ -1,0 +1,16 @@
+{
+  "id": "cheval_de_frise",
+  "category": "fieldworks",
+  "name": "Cheval de Frise",
+  "size": [3, 1, 1],
+  "parts": [
+    {"model": "cheval_de_frise", "cmd": 7310911, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0],
+    [2, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}
