@@ -1,0 +1,18 @@
+{
+  "id": "rune_stone",
+  "category": "relics",
+  "name": "Giant's Rune Stone",
+  "size": [2, 3, 2],
+  "parts": [
+    {"model": "rune_stone", "cmd": 7311541, "glow": false},
+    {"model": "rune_stone_runes", "cmd": 7311542, "glow": true}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0],
+    [0, 0, 1],
+    [1, 0, 1]
+  ],
+  "lights": [],
+  "effects": []
+}
