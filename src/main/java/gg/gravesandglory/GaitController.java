@@ -163,9 +163,11 @@ final class GaitController extends AnimationController<GeoTroop> {
     /**
      * Puts every bone the gait layers did not write this frame at its rest pose, before anything reads it. The bones are the model's, shared by every troop drawn with it,
      * and GeckoLib resets only a bone nothing touched: one the playing gait clips do not key still holds what the last draw left on it, this troop's last frame or another
-     * troop's. The stop blend, and the stance, attack, hit and death layers behind it, all read a bone before they write it, so on such a bone they built on that leftover:
-     * a hit clip's offset was added onto last frame's offset, every frame (a pauldron that span through a blow), and a pose faded in and out from itself. Started from rest,
-     * each layer's result depends only on this frame. Setting a bone marks it changed, so GeckoLib's own reset (a one-tick lerp to this same pose) no longer runs for these.
+     * troop's. The stance, attack, hit and death layers behind this all read a bone before they write it, so on such a bone they built on that leftover: a hit clip's
+     * offset was added onto last frame's offset, every frame (a pauldron that spun through a blow), and a pose faded in and out from itself. Started from rest, each
+     * layer's result depends only on this frame. (The stop blend reads only bones the gait clips key; it would build on a leftover only on a model whose gait clips key
+     * different bones, and none does.) Setting a bone marks it changed, so GeckoLib's own end-of-tick reset (to this same pose: these bones' snapshots never leave rest) no
+     * longer runs for them. The head keeps the mark the renderer's look sets after the tick, so its rotation is left to the upper gait clips, which all key it.
      */
     static void rest(Map<String, CoreGeoBone> bones) {
         for (CoreGeoBone bone : bones.values()) {

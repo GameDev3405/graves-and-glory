@@ -157,7 +157,7 @@ final class GeoGaps {
     // ---------------------------------------------------------------- foot probe
 
     void installProbe(MinecraftClient c) {
-        GeoTroopRenderer.PROBE = (Entity e, BakedGeoModel model, float td) -> {
+        GeoTroopRenderer.Probe own = (Entity e, BakedGeoModel model, float td) -> {
             if (e.getId() != probeId || !(e instanceof LivingEntity le)) return;
             long wt = e.getWorld().getTime();
             if (wt == lastProbe && td == lastTd) return;
@@ -191,6 +191,7 @@ final class GeoGaps {
             }
             pose.append(pr).append('\n');
         };
+        GeoTroopRenderer.PROBE = (e, model, td) -> { own.seen(e, model, td); GeoLayerRest.tap(model); };   // the layer-rest row reads these draws too
     }
 
     // ---------------------------------------------------------------- server
