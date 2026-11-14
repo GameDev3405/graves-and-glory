@@ -97,6 +97,7 @@ class HoundRig(TR.Rig):
         s.skin, s.cloth = WM_HOUND.skin, WM_HOUND.cloth
         s.wy = s.skin[1] + s.cloth[1]
         s.B = rigify(WM_HOUND.bones())
+        s.ground = 24   # the floor's handlib y, as troop_rig.Rig (geo y is ground - y)
         s.tiers = tuple(WM_HOUND.tiers)
 
 

@@ -535,10 +535,9 @@ def bones():
     B.append(Bone("cape", "body", (0, -12, 3.6), team=True, stages=[3], rot=(8, 0, 0), boxes=[
         Box((-5, 0, 0), (10, 17, 1), "cape", sheet="cloth"), Box((-4.5, -0.5, -1.5), (9, 2, 2), "collar", sheet="cloth")]))
     # the shield, on the left forearm (TroopFeatures.Shield draws none of vanilla's for a model that carries its own)
-    # the rim stands 0.01 proud of the board on every side (dil): their shared edge faces z-fought on a corpse (Task 16 r2 grade)
+    # the rim stands proud of the board on every side (handlib.RIM_LIFT): their shared edge faces z-fought on a corpse (Task 16 r2 grade)
     B.append(Bone("shield", "left_forearm", SHIELD_PIVOT, rot=SHIELD_ROT, tag="shield", boxes=
-        [Box((x, y, -1.9), (w, h, 1), wood) for (x, y), (w, h) in SHIELD_BODY]
-        + [Box((x, y, -2.5), (w, h, 2), per_tier(shield_rim), dil=0.01) for (x, y), (w, h) in SHIELD_RIM]
+        shield_boxes(wood, per_tier(shield_rim))
         + [Box((-1, -5, -2.7), (2, 2, 1), per_tier(shield_boss)), Box((-1, -3, -0.9), (2, 5, 3), leather(base=2))]))
     for t in (1, 2, 3):
         B.append(Bone(f"shield_face_t{t}", "shield", team=True, stages=[t], boxes=[Box((-6, -10, -2.1), (12, 18, 0), ("shield", t), sheet="cloth")]))

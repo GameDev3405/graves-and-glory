@@ -340,8 +340,7 @@ def bones():
         Box((-3, -10, -2.3), (6, 10, 0), ("surcoat", False), sheet="cloth"), Box((-3, -10, 2.3), (6, 10, 0), ("surcoat", True), sheet="cloth")]))
     # the shield
     B.append(Bone("shield", "left_forearm", SHIELD_PIVOT, rot=SHIELD_ROT, tag="shield", boxes=
-        [Box((x, y, -1.9), (w, h, 1), wood) for (x, y), (w, h) in SHIELD_BODY]
-        + [Box((x, y, -2.5), (w, h, 2), shield_rim(3)) for (x, y), (w, h) in SHIELD_RIM]
+        shield_boxes(wood, shield_rim(3))
         + [Box((-1, -3, -0.9), (2, 5, 3), leather(base=2))]))
     B.append(Bone("shield_face", "shield", team=True, tag="shield", boxes=[Box((-6, -10, -2.1), (12, 18, 0), "shield", sheet="cloth")]))
     # limbs

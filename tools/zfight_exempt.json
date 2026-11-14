@@ -1,0 +1,221 @@
+{
+ "exempt": [
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "belt#0",
+   "b": "right_skirt#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "belt#0",
+   "b": "right_skirt#1",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "belt#0",
+   "b": "right_skirt_plate#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "belt#0",
+   "b": "right_skirt_plate#1",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "belt#0",
+   "b": "right_skirt_gilt#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "belt#0",
+   "b": "right_skirt_gilt#1",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "belt#0",
+   "b": "left_skirt#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "belt#0",
+   "b": "left_skirt#1",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "belt#0",
+   "b": "left_skirt_plate#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "belt#0",
+   "b": "left_skirt_plate#1",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "belt#0",
+   "b": "left_skirt_gilt#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "belt#0",
+   "b": "left_skirt_gilt#1",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "helm_great#0",
+   "b": "cape#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "helm_crown#0",
+   "b": "crest#1",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "right_leg#0",
+   "b": "left_leg#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "right_foot#0",
+   "b": "left_foot#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "shield#0",
+   "b": "left_skirt#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "shield#0",
+   "b": "left_skirt_plate#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "shield#0",
+   "b": "left_skirt_gilt#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "shield#1",
+   "b": "left_skirt#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "shield#1",
+   "b": "left_skirt_plate#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "shield#1",
+   "b": "left_skirt_gilt#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "right_pauldron#1",
+   "b": "right_pauldron#2",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "right_knee#0",
+   "b": "left_knee#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "right_skirt#0",
+   "b": "left_skirt#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "right_skirt#1",
+   "b": "left_skirt#1",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "right_skirt_plate#0",
+   "b": "left_skirt_plate#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "right_skirt_plate#1",
+   "b": "left_skirt_plate#1",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "right_skirt_gilt#0",
+   "b": "left_skirt_gilt#0",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "right_skirt_gilt#1",
+   "b": "left_skirt_gilt#1",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  },
+  {
+   "kind": "geo",
+   "troop": "knight",
+   "a": "left_pauldron#1",
+   "b": "left_pauldron#2",
+   "reason": "The knight's GeckoLib geo is frozen at main: fullbody.py derives the shipped knight overhead demo clip and scorecard_limits.json from its exact cube sizes, so any inflate change (even the shield rim) breaks test_fullbody and test_scorecard unless knight.animation.json is re-solved, which this fix may not do. Lead decision pending."
+  }
+ ]
+}

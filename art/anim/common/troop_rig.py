@@ -27,6 +27,7 @@ for p in ("hand/common", "hand/knight", "hand/weapons"):
     sys.path.insert(0, os.path.join(ART, p))
 from PIL import Image                                         # noqa: E402
 import handlib as H                                           # noqa: E402
+import zfight as Z                                            # noqa: E402
 from handlib import Box, Bone, pack, paint_box, on, SIDES    # noqa: E402
 import build_swords as SW                                     # noqa: E402
 
@@ -441,6 +442,18 @@ class Rig:
         return img
 
     def geo(s, keep=lambda bn: True):
+        """The GeckoLib geometry; keep(bone) False writes the bone without cubes. The first call settles the rig (settle)."""
+        if not getattr(s, "_settled", False):
+            s._settled = True
+            s.settle()
+        return s._geo(keep)
+
+    def settle(s):
+        """Parts every pair of cubes whose same-way faces share a plane (knee plates on the thigh, a foot on its shin's foot, a
+        thigh on its twin) by zfight.SEP of inflate, art/hand/common/zfight.py: under 0.05 px, UVs unchanged, pivots untouched."""
+        return Z.settle(s.B, lambda: Z.Model.geo(s._geo(), s.meta(), s.tid))
+
+    def _geo(s, keep=lambda bn: True):
         absp, out = {}, []
         r = lambda v: round(v, 4)
         for bn in s.B:

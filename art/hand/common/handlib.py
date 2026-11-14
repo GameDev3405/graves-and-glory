@@ -167,8 +167,9 @@ class Box:
     """cut=(full_h, y0): this box is rows y0..y0+h of a limb full_h tall (a jointed limb's upper or lower half, limb()): its painter
     paints the whole limb's sides and the box keeps its rows, so the two halves at rest look as the one-piece limb did. The limb's
     top shows on the box at y0 0 and its bottom on the box that ends it; the faces at the joint are caps (paint_box)."""
-    def __init__(s, origin, size, paint, dil=0.0, sheet="skin", cut=None):
+    def __init__(s, origin, size, paint, dil=0.0, sheet="skin", cut=None, lift=0.0):
         s.origin, s.size, s.dil, s.sheet, s.cut = list(origin), list(size), dil, sheet, cut
+        s.lift = lift   # px of dil that is an anti z-fighting offset (RIM_LIFT, LIMB_INSET), not shape: zfight.settle counts it
         s.paint = paint if isinstance(paint, dict) else {0: paint}   # {tier or 0 for every tier: painter}
         s.uv = None
 
@@ -195,6 +196,10 @@ JOINT_OVERLAP = 2  # px a limb's lower box reaches past its hinge into the upper
 # lower box shares the upper's cross-section through the overlap, so a bent knee or elbow left their side faces coplanar and the two
 # textures z-fought in stripes. Inset, the upper box's faces always win; 0.1 px is under a texel yet resolves in depth to ~70 blocks.
 JOINT_INSET = 0.1
+# px the lower box of a jointed limb is shrunk in the old (ModelPart) troop model, which Troop.outputs applies to every forearm and
+# shin (the GeckoLib rigs keep JOINT_INSET): under 0.05 px, so the shape does not change, and it parts the joint's side faces and the
+# boot's sole and back from the shin's in every bend. 0.04 px resolves in a 24-bit depth buffer to about 45 blocks.
+LIMB_INSET = 0.04
 
 def limb(name, parent, pivot, origin, paint, lower, joint, size=(4, 12, 4), dil=0.0, sheet="skin", limit=None, upper_h=6, rot=(0, 0, 0), inset=0.0):
     """A jointed limb as two bones: `name` at pivot with the upper box at origin, and `lower` at joint (in the upper bone's frame)
@@ -322,6 +327,17 @@ SHIELD_W = [12] * 12 + [10, 10, 8, 8, 6, 4]           # row widths, top to botto
 SHIELD_BODY = [((-6, -10), (12, 12)), ((-5, 2), (10, 2)), ((-4, 4), (8, 2)), ((-3, 6), (6, 1)), ((-2, 7), (4, 1))]
 SHIELD_RIM = [((-6, -10), (12, 1)), ((-6, -9), (1, 11)), ((5, -9), (1, 11)), ((-5, 2), (1, 2)), ((4, 2), (1, 2)),
               ((-4, 4), (1, 2)), ((3, 4), (1, 2)), ((-3, 6), (1, 1)), ((2, 6), (1, 1)), ((-2, 7), (4, 1))]
+
+# px the rim stands proud of the board on every side (inflate): flush, their shared edge faces z-fought along the shield's rim
+# (the knight's corpse grade, Kort 2026-11-14 on the marshal). 0.01 resolved only close up; 0.03 holds to about 40 blocks and
+# stays under the 0.05 px no-visible-change line.
+RIM_LIFT = 0.03
+
+def shield_boxes(wood, rim):
+    """The heater shield's board (SHIELD_BODY, wood) and its raised rim (SHIELD_RIM, rim) in the shield bone's frame; the rim
+    stands RIM_LIFT proud of the board so no edge face is shared."""
+    return ([Box((x, y, -1.9), (w, h, 1), wood) for (x, y), (w, h) in SHIELD_BODY]
+            + [Box((x, y, -2.5), (w, h, 2), rim, dil=RIM_LIFT, lift=RIM_LIFT) for (x, y), (w, h) in SHIELD_RIM])
 
 def in_shield(x, y, inset=0):
     """Whether column x (0..11) of row y (0..17) lies on the board, inset rings in from its edge."""
@@ -528,9 +544,22 @@ class Troop:
         return {"format_version": "1.12.0", "minecraft:geometry": [{"description": {"identifier": f"geometry.{name}",
                 "texture_width": s.skin[0], "texture_height": s.skin[1] + s.cloth[1]}, "bones": bones_out}]}
 
+    def settle(s, B):
+        """The old model's anti z-fighting pass (art/hand/common/zfight.py): each forearm and shin box cut from a jointed limb is
+        inset LIMB_INSET, then every pair of cubes whose same-way faces still share a plane is parted by zfight.SEP of inflate.
+        Inflate leaves the UVs, so the sheets do not change."""
+        import zfight
+        for bn in B:
+            if bn.name.endswith(("_forearm", "_shin")):
+                for b in bn.boxes:
+                    if b.cut:
+                        b.dil, b.lift = round(b.dil - LIMB_INSET, 4), b.lift - LIMB_INSET
+        return zfight.settle(B, lambda: zfight.Model.old(s.troop_json(B)))
+
     def outputs(s):
         """Every file this troop ships, for tools/build_skins.py: {path under the assets root: PIL image or JSON object}."""
         B, skins, cloths = s.build()
+        s.settle(B)
         out = {f"textures/entity/troop/{s.tid}/{s.tid}_s{t}.png": skins[t] for t in s.tiers}
         out.update({f"textures/entity/troop/{s.tid}/team_cloth_{side}.png": cloths[side] for side in SIDES})
         if s.trim: out[f"textures/entity/troop/{s.tid}/{s.tid}_veteran.png"] = s.trim

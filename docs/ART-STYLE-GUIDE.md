@@ -141,7 +141,9 @@ in whole pixels.
 - Never a face painted in a tone brighter than the face above it (an underside brighter than the top).
 - Never a pattern on a face smaller than 2 x 2 texels; such a face is a flat tone.
 - Never coplanar faces between different cubes in one frame: two faces on one plane that overlap and face the same way
-  z-fight. Offset a cube by 0.05 px. Faces back to back, each hidden inside the other, are fine.
+  z-fight. Offset a cube by 0.05 px. Faces back to back, each hidden inside the other, are fine. Troop bodies are
+  separated by the generators (`zfight.settle`, 0.015 to 0.045 px of `dil`) and checked by `tools/zfight_check.py`
+  (docs/NEW-UNIT.md stage 3).
 - Never an air gap between parts: every frame is one connected piece (the string may hang free by up to 0.2 px).
 - Never a fixed-period repeat: a glint every seventh row, a hammer mark every fifth, a stitch every second, wear on a
   grid. It reads as procedural texture, not wear. Place marks by the light and at edges (a wrap, a weave or a mail check

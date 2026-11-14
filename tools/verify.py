@@ -93,7 +93,7 @@ def run(args):
             with ThreadPoolExecutor(max(1,min(6,cpus//4))) as pool: futures=[pool.submit(run_check,t) for t in checks]
             errors=[f.exception() for f in futures if f.exception()]
             if errors: raise errors[0]
-        canon=['preflight','python-tests','ui-standard','ui-assets','skin-assets','clips','java-compile',*(t.stem for t in checks),'build']
+        canon=['preflight','python-tests','ui-standard','ui-assets','skin-assets','zfight','clips','java-compile',*(t.stem for t in checks),'build']
         together(canon,
             # One process per test module (slow modules split by recorded times); the same discovery, every id accounted for.
             lambda: step('python-tests',[sys.executable,'tools/parallel_tests.py','test-tools/standalone','--pattern','test_*.py','--times',ROOT/'work/verify/python-test-times.json']),
@@ -101,6 +101,8 @@ def run(args):
             # test_build_skins is already included in unittest discovery; do not run it twice.
             lambda: step('ui-assets',[sys.executable,'tools/build_ui_art.py','--verify']),
             lambda: step('skin-assets',[sys.executable,'tools/build_skins.py','--verify']),
+            # no coplanar same-way faces on any troop model, rest pose and bent joints (tools/zfight_exempt.json lists the exceptions)
+            lambda: step('zfight',[sys.executable,'tools/zfight_check.py']),
             lambda: step('clips',[sys.executable,'tools/clips.py','--verify']),
             java_lane,
             lambda: (game_guard(),step('build',[*gradle,'build','compileLocalTestTools','-x','test'],1200)))  # the guard again right before Gradle, as before
