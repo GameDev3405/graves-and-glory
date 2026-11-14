@@ -7,6 +7,10 @@ Walls apothem 72 (9 blocks across), eave apothem 86, valance 88 (11 blocks acros
 finial tip at 191. Diagonal boxes longer than a 3-cell region are cut into pieces along the face; ropes crossing the
 y=48 region line are cut in two with one rotation origin.
 Build:  python art/props/build_props.py tent_pavilion_large      Card:  python tools/prop_card.py tent_pavilion_large
+
+Palette: `build(pid, pal)` takes a `Palette` (stripe ramps, hemp, optional weathering). `ORIGINAL` is this prop; the colour
+variants (`tent_pavilion_large_weathered|dawn|dusk`) are thin model.py wrappers that call `build` with their own palette,
+so the geometry, collision and solid cells are identical. Do not change ORIGINAL's output: it must build byte-identical.
 """
 import math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -21,6 +25,26 @@ REGIONS = (-112, -64, -16, 32, 80, 128)   # x and z region bounds of the split g
 CREAM = make_ramp("E0D2AC", 0.16)   # undyed canvas
 RED = make_ramp("8C2A25", 0.20)     # madder-red canvas
 ROPE_R = make_ramp("A8977A", 0.16)  # hemp
+
+
+class Palette:
+    """Colours of one pavilion: `light` / `dark` stripe ramps (roof ones default to the same), hemp, and optional `wear`:
+    a dict {mud: ramp, mud_lo, mud_span (ragged mud line height px), dirt (px of grimed canvas above it), valance_dirt,
+    patches: [(octagon face deg, u centre, half width, y0, y1, ramp)], roof_patches: [(face deg, u, half width, r0, r1, ramp)]}.
+    Angles: 90 = north (the door face), 0 = east, 180 = west, -90 = south."""
+    def __init__(s, light=CREAM, dark=RED, rope=ROPE_R, roof_light=None, roof_dark=None, wear=None):
+        s.light, s.dark, s.rope, s.wear = light, dark, rope, wear
+        s.roof_light, s.roof_dark = roof_light or light, roof_dark or dark
+
+    def ramps(s):
+        w = s.wear or {}
+        extra = [w["mud"]] if w.get("mud") else []
+        extra += [p[-1] for p in list(w.get("patches", ())) + list(w.get("roof_patches", ()))]
+        return (s.light, s.dark, s.roof_light, s.roof_dark, s.rope) + tuple(extra)
+
+
+ORIGINAL = Palette()
+CURRENT = [ORIGINAL]      # the palette `build` is painting with (read by Canvas; the helpers below stay palette-free)
 
 # outward normal (x, z) of each octagon face; the face tangent is the normal turned 90 degrees
 NORM = {"N": (0, -1), "NE": (R2, -R2), "E": (1, 0), "SE": (R2, R2), "S": (0, 1), "SW": (-R2, R2), "W": (-1, 0), "NW": (-R2, -R2)}
@@ -39,13 +63,22 @@ def stripe(x, z):
     return int(math.floor((ang + 7.5) / 15.0)) % 2
 
 
+def sector(x, z):
+    """(octagon face index k, depth along the face normal, distance along the face tangent) of a point: face k looks
+    toward angle 45 k degrees (90 = north), like `stripe`."""
+    ang = math.degrees(math.atan2(-(z - CZ), x - CX)); k = int(round(ang / 45.0)) % 8
+    a = math.radians(45 * k); nx, nz = math.cos(a), -math.sin(a); tx, tz = math.sin(a), math.cos(a)
+    return k, (x - CX) * nx + (z - CZ) * nz, (x - CX) * tx + (z - CZ) * tz, (nx, nz)
+
+
 class Canvas:
     """Striped canvas painter. `rot` is the element's turn about y (so texels map to world points and normals);
     kind: wall (lit top row, dark hem), roof (flat steps, red crown), valance (stripes, dark trim rows), flap (red)."""
-    ramps = (CREAM, RED)
 
-    def __init__(s, kind, rot=None, crown=0.0):
-        s.kind, s.rot, s.crown = kind, rot, crown
+    def __init__(s, kind, rot=None, crown=0.0, pal=None):
+        pal = pal or CURRENT[0]
+        s.kind, s.rot, s.crown, s.pal = kind, rot, crown, pal
+        s.ramps = pal.ramps()
 
     def world(s, P, n):
         if not s.rot: return P, n
@@ -71,8 +104,37 @@ class Canvas:
         col = stripe(x, z)
         if s.kind == "flap": col = 0
         if s.kind == "roof" and math.hypot(x - CX, z - CZ) < s.crown: col = 0
-        ramp = RED if col == 0 else CREAM
+        pal = s.pal
+        if s.kind == "roof": ramp = pal.roof_dark if col == 0 else pal.roof_light
+        else: ramp = pal.dark if col == 0 else pal.light
+        if pal.wear: return s.weather(f, n, x, y, z, t, ramp)
         return ramp[max(0, min(4, t))]
+
+    def weather(s, f, n, x, y, z, t, ramp):
+        """Grime, mud and patches on top of the plain tone `t` (outer faces only: inside the tent stays clean)."""
+        wr = s.pal.wear; clamp = lambda v: max(0, min(4, v))
+        k, dn, dt, (nx, nz) = sector(x, z)
+        outer = f == "up" or (f != "down" and n[0] * nx + n[2] * nz > 0.9)
+        if not outer: return ramp[clamp(t)]
+        if s.kind == "roof":
+            for kk, u, hw, r0, r1, pr in wr.get("roof_patches", ()):
+                if kk % 360 == 45 * k and abs(dt - u) < hw and r0 <= dn < r1:
+                    edge = abs(dt - u) >= hw - 1 or dn < r0 + 1 or dn >= r1 - 1
+                    return pr[clamp(t - (1 if edge else 0))]
+            return ramp[clamp(t)]
+        if f == "up": return ramp[clamp(t)]
+        if s.kind == "valance":
+            return ramp[clamp(t - (1 if y < wr.get("valance_dirt", 0) else 0))]
+        for kk, u, hw, y0, y1, pr in wr.get("patches", ()):
+            if s.kind == "wall" and kk % 360 == 45 * k and abs(dt - u) < hw and y0 <= y < y1:
+                edge = abs(dt - u) >= hw - 1 or y < y0 + 1 or y >= y1 - 1
+                return pr[clamp(t - (1 if edge else 0))]
+        # ragged mud line: 3 px columns along the face, each its own height; grimed canvas above it
+        key = (k, math.floor(dt / 3.0))
+        line = wr["mud_lo"] + int(h3(key[0], key[1], 5) * wr["mud_span"])
+        if y < line: return wr["mud"][clamp(t - (1 if y < 2 else 0))]
+        if y < line + wr["dirt"] and h3(key[0], key[1], 7) < 0.7: return ramp[clamp(t - 1)]
+        return ramp[clamp(t)]
 
 
 def _place(lo, n):
@@ -143,7 +205,8 @@ DOOR = 12            # the door runs u -12..12 on the north face: x -4..20, the 
 CROWN = 20.0         # roof canvas inside this radius is the red crown
 
 
-def build():
+def build(pid="tent_pavilion_large", pal=ORIGINAL):
+    CURRENT[0] = pal
     els = []
     # ---- walls: canvas on seven faces and the door face's two jambs and lintel ----
     h = half(WALL_A)
@@ -164,7 +227,7 @@ def build():
         rot = ("y", ang, (hx, 0, zw))
         els.append(E((x0, 4, zw - 3), (x1, 45, zw - 1), Canvas("flap", rot), rot=rot, name="door flap"))
         tx0 = x0 + 4 if ang > 0 else x1 - 7
-        els.append(E((tx0, 22, zw - 4), (tx0 + 3, 26, zw), Mat(ROPE_R, 2), rot=rot, name="flap tie"))
+        els.append(E((tx0, 22, zw - 4), (tx0 + 3, 26, zw), Mat(pal.rope, 2), rot=rot, name="flap tie"))
 
     # ---- roof ----
     for i, a in enumerate(ROOF_A):
@@ -190,14 +253,14 @@ def build():
     els.append(E((CX - 6, top, CZ - 6), (CX + 6, top + 3, CZ + 6), "gilt", name="gilt collar"))
     els.append(E((CX - 5, 178, CZ - 5), (CX + 5, 186, CZ + 5), "gilt", name="finial"))
     els.append(E((CX - 3, 186, CZ - 3), (CX + 3, 191, CZ + 3), "gilt", name="finial tip"))
-    pen = Mat(RED, 2, lambda f, P, c, r, w, h: 2 if 6 <= P[1] - 160 < 9 and f in ("north", "south") else 0)
+    pen = Mat(pal.dark, 2, lambda f, P, c, r, w, h: 2 if 6 <= P[1] - 160 < 9 and f in ("north", "south") else 0)
     els.append(E((CX + 4, 160, CZ - 1), (CX + 26, 176, CZ + 1), pen, name="pennant"))
     els.append(E((CX + 26, 160, CZ - 1), (CX + 36, 165, CZ + 1), pen, name="pennant tail"))
     els.append(E((CX + 26, 171, CZ - 1), (CX + 36, 176, CZ + 1), pen, name="pennant tail"))
 
     # ---- guy ropes (22.5 degrees off the vertical) to pegs, two a face on the four cardinal faces ----
     # Each rope is cut at y=48 (a region line) into two boxes turned about the same origin: one straight rope.
-    rope = Mat(ROPE_R, 2, edges=False)
+    rope = Mat(pal.rope, 2, edges=False)
     L, foot = 56, 110
 
     def guy(frm, to, rot):
@@ -225,14 +288,14 @@ def build():
         x, y, z = P
         e = min(x - (CX - R_), (CX + R_) - x, z - (CZ - R_), (CZ + R_) - z)
         if e < 3: return GILT[2]
-        if e < 4: return RED[1]
-        return RED[2] if (int(x) + int(z)) % 8 else RED[1]
-    rugm = Mat(RED, 2, rug)
-    rugm.ramps = (RED, GILT)
+        if e < 4: return pal.dark[1]
+        return pal.dark[2] if (int(x) + int(z)) % 8 else pal.dark[1]
+    rugm = Mat(pal.dark, 2, rug)
+    rugm.ramps = (pal.dark, GILT)
     els.append(E((CX - R_, 0, CZ - R_), (CX + R_, 1, CZ + R_), rugm, skip="down", name="rug"))
     cz0 = 56           # by the back wall, across a cell line so no one cell is mostly chest
     els.append(E((-12, 0, cz0), (12, 9, cz0 + 12), "plank_x", skip="down", name="chest"))
     els.append(E((-13, 9, cz0 - 1), (13, 12, cz0 + 13), "swood_x", name="chest lid"))
     for x0 in (-9, 6):
         els.append(E((x0, 0, cz0 - 1), (x0 + 3, 12, cz0), "iron", skip="down", name="chest strap"))
-    return Prop.split("tent_pavilion_large", els, SIZE)
+    return Prop.split(pid, els, SIZE)

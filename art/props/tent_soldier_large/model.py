@@ -11,10 +11,14 @@ Rotated roof slabs may not cross an x or y boundary, so each roof side is cut at
 boundary turns about its END (its unrotated box then stays inside the region), the others about their start.
 After changing which regions hold elements run  python tools/new_prop.py tent_soldier_large --sync.
 Build:  python art/props/build_props.py tent_soldier_large      Card:  python tools/prop_card.py tent_soldier_large
+
+Palette: `build(pid, pal)` takes a `Palette` (canvas ramps, hemp, optional team trim and weathering). `ORIGINAL` is this prop; the
+variants (`tent_soldier_large_weathered|dawn|dusk`) are thin model.py wrappers around `build`, so geometry, collision and solid
+cells are identical. ORIGINAL's output must stay byte-identical.
 """
 import math, os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from proplib import E, Prop, Mat, MAT, make_ramp, h3, WOOD, pat_grain, cylinder   # noqa: F401
+from proplib import E, Prop, Mat, MAT, make_ramp, h3, WOOD, pat_grain, cylinder, LIT   # noqa: F401
 
 SIZE = (9, 6, 9)
 CX = 8            # ridge line (x)
@@ -34,32 +38,112 @@ def pat_weave(face, P, c, r, w, h):
     return -1 if h3(*P, 61) < 0.025 else 0
 
 
-ROOF = Mat(CANVAS, 2, lambda f, P, c, r, w, h: -1 if math.floor(P[2]) % 16 == 0 else 0)
-_wall_seam = lambda f, P, c, r, w, h: -1 if math.floor(P[2] if f in ("east", "west") else P[0]) % 16 == 0 else 0
-WALL = Mat(CANVAS, 3, _wall_seam)
-GABLE = Mat(CANVAS, 3, _wall_seam, edges=False)
-FRONT = Mat(CANVAS, 3, _wall_seam, edges=False)   # the front wall and lintel: no top edge, or it draws a pale seam across the gable
+def _clamp(v): return max(0, min(4, v))
+
+
+class Palette:
+    """Colours of one tent. `canvas` (walls, gables), `roof` (defaults to canvas), `hemp`, `team` (a ramp: roof stripes on
+    panels `stripes`, the eave skirt and the rolled flap) and `wear`, a dict: mud (ramp), mud_lo / mud_span (ragged mud line
+    px), dirt_lo / dirt_span (grimed lower wall), wall_patches [(face, a0, a1, y0, y1, ramp)] on WALL (a along the wall),
+    front_patches (same, on the front wall), roof_patches [(side, s0, s1, z0, z1, ramp)] (side +1 east / -1 west, s px down
+    the slope from the ridge), roof_stain (chance a 16 px roof panel is a tone darker)."""
+    def __init__(s, canvas=CANVAS, roof=None, hemp=HEMP, team=None, stripes=(), wear=None):
+        s.canvas, s.roof, s.hemp, s.team, s.stripes, s.wear = canvas, roof or canvas, hemp, team, tuple(stripes), wear
+
+    def extra(s):
+        w = s.wear or {}
+        out = [w["mud"]] if w.get("mud") else []
+        for key in ("wall_patches", "front_patches", "roof_patches"):
+            out += [q[-1] for q in w.get(key, ())]
+        if s.team: out.append(s.team)
+        return tuple(out)
+
+
+ORIGINAL = Palette()
+
+
+def _col(ramp, face, d, base):
+    """A texel colour by hand (a pattern returning a colour skips Mat's own lighting): base tone + light + delta."""
+    return ramp[_clamp(base + (1 if face == "up" else LIT[face]) + d)]
+
+
+def _wall_pattern(pal, patches_key, base=3):
+    """The wall canvas pattern: a seam every 16 px; weathered: mud line at the hem, grimed lower wall, patches."""
+    wr = pal.wear
+
+    def p(f, P, c, r, w, h):
+        along = P[2] if f in ("east", "west") else P[0]
+        d = -1 if math.floor(along) % 16 == 0 else 0
+        if not wr or f in ("up", "down"): return d
+        y = P[1]
+        for fc, a0, a1, y0, y1, pr in wr.get(patches_key, ()):
+            if fc == f and a0 <= along < a1 and y0 <= y < y1:
+                edge = along < a0 + 1 or along >= a1 - 1 or y < y0 + 1 or y >= y1 - 1
+                return _col(pr, f, -1 if edge else 0, base)
+        key = math.floor(along / 3.0)
+        if y < wr["mud_lo"] + int(h3(key, 5, 3) * wr["mud_span"]):
+            return _col(wr["mud"], f, -1 if y < 2 else 0, base)
+        if y < wr["dirt_lo"] + int(h3(math.floor(along / 5.0), 9, 3) * wr["dirt_span"]): d -= 1
+        return d
+    return p
+
+
+def _roof_pattern(pal, side, skirt=False):
+    """Roof canvas: a seam every 16 px; team stripes on `pal.stripes` panels; weathered: stained panels and patches."""
+    wr = pal.wear
+
+    def p(f, P, c, r, w, h):
+        panel = math.floor(P[2] / 16)
+        d = -1 if math.floor(P[2]) % 16 == 0 else 0
+        if pal.team and (skirt or panel in pal.stripes): return _col(pal.team, f, d, 2)
+        if not wr: return d
+        if f == "up" and not skirt:
+            sl = abs(P[0] - 8) + 10
+            for sd, s0, s1, z0, z1, pr in wr.get("roof_patches", ()):
+                if sd == side and s0 <= sl < s1 and z0 <= P[2] < z1:
+                    edge = sl < s0 + 1 or sl >= s1 - 1 or P[2] < z0 + 1 or P[2] >= z1 - 1
+                    return _col(pr, f, -1 if edge else 0, 2)
+        if wr.get("roof_stain") and h3(panel, 3, side) < wr["roof_stain"]: d -= 1
+        return d
+    return p
+
+
+class Kit:
+    """The materials of one palette."""
+    def __init__(s, pal):
+        wr = pal.wear
+        s.roof = {sd: Mat(pal.roof, 2, _roof_pattern(pal, sd)) for sd in (1, -1)}
+        s.skirt = {sd: Mat(pal.roof, 2, _roof_pattern(pal, sd, skirt=True)) for sd in (1, -1)} if pal.team else s.roof
+        s.wall = Mat(pal.canvas, 3, _wall_pattern(pal, "wall_patches"))
+        s.gable = Mat(pal.canvas, 3, _wall_pattern(pal, "none"), edges=False)
+        s.front = Mat(pal.canvas, 3, _wall_pattern(pal, "front_patches"), edges=False)   # the front wall and lintel: no top edge, or it draws a pale seam across the gable
+        s.pole = POLE
+        s.inside = Mat(pal.canvas, 1, lambda f, P, c, r, w, h: 0, edges=False, lit=False)
+        s.fold = Mat(pal.team or pal.canvas, 2, lambda f, P, c, r, w, h: -1 if math.floor(P[0]) % 5 == 0 else 0)   # the rolled flap
+        s.rope = Mat(pal.hemp, 2, edges=False)
+        for m in (s.wall, s.gable, s.front) + tuple(s.roof.values()) + tuple(s.skirt.values()):
+            m.ramps = (pal.canvas, pal.roof) + pal.extra()
+        s.floor, s.blanket, s.bale = FLOOR, BLANKET, BALE
+
+
 POLE = Mat(make_ramp("9C805A"), 2, pat_grain("z"))
-INSIDE = Mat(CANVAS, 1, lambda f, P, c, r, w, h: 0, edges=False, lit=False)
-FOLD = Mat(CANVAS, 2, lambda f, P, c, r, w, h: -1 if math.floor(P[0]) % 5 == 0 else 0)   # the rolled flap
-ROPE = Mat(HEMP, 2, edges=False)
 FLOOR = Mat(GROUND, 2, pat_weave, edges=False)
 BLANKET = Mat(WOOL, 2, lambda f, P, c, r, w, h: -1 if math.floor(P[0]) % 5 == 0 else 0)
 BALE = Mat(HAY, 2, lambda f, P, c, r, w, h: -1 if math.floor(P[2] if f in ("east", "west") else P[0]) % 3 == 0 else 0, edges=False)
 
 
-def piece_start(side, ox, oy, length, angle, z0, z1, name, thick=2):
+def piece_start(side, ox, oy, length, angle, z0, z1, name, mat, thick=2):
     """A roof slab turning about its outer top START corner (ox, oy); it pitches down away from the ridge."""
     if side > 0:
-        return E((ox, oy - thick, z0), (ox + length, oy, z1), ROOF, rot=("z", -angle, (ox, oy, z0)), name=name)
-    return E((ox - length, oy - thick, z0), (ox, oy, z1), ROOF, rot=("z", angle, (ox, oy, z0)), name=name)
+        return E((ox, oy - thick, z0), (ox + length, oy, z1), mat, rot=("z", -angle, (ox, oy, z0)), name=name)
+    return E((ox - length, oy - thick, z0), (ox, oy, z1), mat, rot=("z", angle, (ox, oy, z0)), name=name)
 
 
-def piece_end(side, ex, ey, length, angle, z0, z1, name, thick=2):
+def piece_end(side, ex, ey, length, angle, z0, z1, name, mat, thick=2):
     """A roof slab turning about its outer top END corner (ex, ey): its unrotated box lies back toward the ridge."""
     if side > 0:
-        return E((ex - length, ey - thick, z0), (ex, ey, z1), ROOF, rot=("z", -angle, (ex, ey, z0)), name=name)
-    return E((ex, ey - thick, z0), (ex + length, ey, z1), ROOF, rot=("z", angle, (ex, ey, z0)), name=name)
+        return E((ex - length, ey - thick, z0), (ex, ey, z1), mat, rot=("z", -angle, (ex, ey, z0)), name=name)
+    return E((ex, ey - thick, z0), (ex + length, ey, z1), mat, rot=("z", angle, (ex, ey, z0)), name=name)
 
 
 def roof_lower(dx):
@@ -75,19 +159,21 @@ def gable_half(y0):
     return int(dx) - 1
 
 
-def build():
+def build(pid="tent_soldier_large", pal=ORIGINAL):
+    k = Kit(pal)
+    ROPE, WALL, GABLE, FRONT, INSIDE, FOLD, POLE = k.rope, k.wall, k.gable, k.front, k.inside, k.fold, k.pole
     els = []
     # ---- roof: three bays along z (cuts at z=-16, 32), the middle one sags 1 px --------------------------------------
     for z0, z1, sag in [(-50, -16, 0), (-16, 32, -1), (32, 66, 0)]:
         e = R + sag
         # east of the ridge: steep slab ending on the x=32 boundary (turns about its end), then the rest, then the skirt
-        els.append(piece_end(1, 32, e - 24, 34, 45, z0, z1, "roof pitch"))
-        els.append(piece_start(1, 32, e - 24, 23, 45, z0, z1, "roof pitch"))
-        els.append(piece_start(1, 48, e - 40, 17, 22.5, z0, z1, "roof eave skirt"))
+        els.append(piece_end(1, 32, e - 24, 34, 45, z0, z1, "roof pitch", k.roof[1]))
+        els.append(piece_start(1, 32, e - 24, 23, 45, z0, z1, "roof pitch", k.roof[1]))
+        els.append(piece_start(1, 48, e - 40, 17, 22.5, z0, z1, "roof eave skirt", k.skirt[1]))
         # west: mirrored about x=8, boundary x=-16
-        els.append(piece_end(-1, -16, e - 24, 34, 45, z0, z1, "roof pitch"))
-        els.append(piece_start(-1, -16, e - 24, 23, 45, z0, z1, "roof pitch"))
-        els.append(piece_start(-1, -32, e - 40, 17, 22.5, z0, z1, "roof eave skirt"))
+        els.append(piece_end(-1, -16, e - 24, 34, 45, z0, z1, "roof pitch", k.roof[-1]))
+        els.append(piece_start(-1, -16, e - 24, 23, 45, z0, z1, "roof pitch", k.roof[-1]))
+        els.append(piece_start(-1, -32, e - 40, 17, 22.5, z0, z1, "roof eave skirt", k.skirt[-1]))
     # ---- ridge pole and rear post ------------------------------------------------------------------------------------------
     els.append(E((5, R - 2, -52), (11, R + 3, 68), POLE, name="ridge pole"))
     els.append(E((6, 0, 62), (10, R - 2, 66), "wood_y", skip="down", name="rear post"))
@@ -144,4 +230,4 @@ def build():
     els.append(E((44, 9, 12), (60, 11, 26), "wood_x", name="chest lid"))
     els.extend(cylinder((40, 1, 32), 6, 14, "y", "swood_y", name="barrel"))
     glow = []
-    return Prop.split("tent_soldier_large", els, SIZE, glow=glow)
+    return Prop.split(pid, els, SIZE, glow=glow)

@@ -1,0 +1,114 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  512,
+  512
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/tent_soldier_large_weathered",
+  "particle": "gravesandglory:prop/tent_soldier_large_weathered"
+ },
+ "elements": [
+  {
+   "from": [
+    -16,
+    -16,
+    -16
+   ],
+   "to": [
+    32,
+    -15,
+    32
+   ],
+   "faces": {
+    "up": {
+     "uv": [
+      0.0,
+      0.0,
+      1.5,
+      1.5
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "groundsheet"
+  },
+  {
+   "from": [
+    -16,
+    -15,
+    30
+   ],
+   "to": [
+    -10,
+    -10,
+    32
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      13.375,
+      6.375,
+      13.5625,
+      6.53125
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      15.1875,
+      6.375,
+      15.25,
+      6.53125
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      5.125,
+      7.8125,
+      5.3125,
+      7.875
+     ],
+     "texture": "#0"
+    },
+    "down": {
+     "uv": [
+      5.3125,
+      7.8125,
+      5.5,
+      7.875
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "bedroll"
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    -0.0,
+    6.014,
+    3.472
+   ],
+   "scale": [
+    0.3307,
+    0.3307,
+    0.3307
+   ]
+  }
+ }
+}

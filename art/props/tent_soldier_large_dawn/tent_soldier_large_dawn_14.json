@@ -1,0 +1,195 @@
+{
+ "credit": "Graves and Glory prop kit, art/props/build_props.py",
+ "texture_size": [
+  512,
+  512
+ ],
+ "textures": {
+  "0": "gravesandglory:prop/tent_soldier_large_dawn",
+  "particle": "gravesandglory:prop/tent_soldier_large_dawn"
+ },
+ "elements": [
+  {
+   "from": [
+    -16,
+    0,
+    -16
+   ],
+   "to": [
+    7,
+    2,
+    32
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      0.0,
+      7.6875,
+      0.71875,
+      7.75
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      0.71875,
+      7.6875,
+      1.4375,
+      7.75
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      6.0,
+      7.3125,
+      7.5,
+      7.375
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      7.5,
+      7.3125,
+      9.0,
+      7.375
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      9.0625,
+      0.0,
+      9.78125,
+      1.5
+     ],
+     "texture": "#0"
+    },
+    "down": {
+     "uv": [
+      9.78125,
+      0.0,
+      10.5,
+      1.5
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "roof pitch",
+   "rotation": {
+    "angle": -45,
+    "axis": "z",
+    "origin": [
+     -16,
+     2,
+     -16
+    ]
+   }
+  },
+  {
+   "from": [
+    0,
+    -16,
+    -16
+   ],
+   "to": [
+    17,
+    -14,
+    32
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      6.75,
+      7.75,
+      7.28125,
+      7.8125
+     ],
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      7.28125,
+      7.75,
+      7.8125,
+      7.8125
+     ],
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      9.0,
+      7.3125,
+      10.5,
+      7.375
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      10.5,
+      7.3125,
+      12.0,
+      7.375
+     ],
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      11.5625,
+      0.0,
+      12.09375,
+      1.5
+     ],
+     "texture": "#0"
+    },
+    "down": {
+     "uv": [
+      12.09375,
+      0.0,
+      12.625,
+      1.5
+     ],
+     "texture": "#0"
+    }
+   },
+   "name": "roof eave skirt",
+   "rotation": {
+    "angle": -22.5,
+    "axis": "z",
+    "origin": [
+     0,
+     -14,
+     -16
+    ]
+   }
+  }
+ ],
+ "display": {
+  "fixed": {
+   "translation": [
+    0,
+    0,
+    0
+   ]
+  },
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    -1.754,
+    3.419,
+    3.999
+   ],
+   "scale": [
+    0.3307,
+    0.3307,
+    0.3307
+   ]
+  }
+ }
+}
