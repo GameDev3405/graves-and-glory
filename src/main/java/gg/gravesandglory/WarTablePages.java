@@ -71,9 +71,10 @@ final class WarTablePages {
     /** A daily note keeps a second reward line for the shards of the daily that completes all three, so its bar, count and Claim sit
      *  lower than the weekly's (which pays its shards on its one line): offsets from the note's top. */
     static final int DAILY_BAR_DY = 56, DAILY_STAMP_DY = 64, DAILY_CLAIM_DY = 66;
-    /** The weekly note: its bar and count sit at 52 and Claim at 64; while its "+ 1 troop writ" line shows (at 43, 11 tall) the bar drops one
-     *  line, 11 px, to 63 and Claim with it to 75, so the line, the bar and the count never meet. Offsets from the note's top. */
-    static final int WEEKLY_BAR_DY = 52, WEEKLY_CLAIM_DY = 64, WEEKLY_LINE_DROP = 11;
+    /** The weekly note: its bar and count sit at 52 and Claim at 64, x 228; while its "+ 1 troop writ" line shows (at 43, 11 tall) the bar and
+     *  count drop one line, 11 px, to 63, and Claim (which would then hang over the card's torn foot, 101 tall) stays at 64 and slides left to
+     *  x 192, clear of the count, so the line, the bar, the count and Claim never meet and Claim stays on the card. Offsets from the note's top. */
+    static final int WEEKLY_BAR_DY = 52, WEEKLY_CLAIM_DY = 64, WEEKLY_LINE_DROP = 11, WEEKLY_CLAIM_DX = 228, WEEKLY_CLAIM_DX_LOW = 192;
     /** The House row (claims with a House, War Table port Task 1): five chips 24 tall, seal then name, 3 px apart, the House the
      *  shards of the next claim go to pressed in with a tick, a rule under it and its word in the reward line. The Contracts row is
      *  centred on the page under the reset line, the Chapter's starts at the chapter block's text column under its name. */
@@ -1441,8 +1442,8 @@ final class WarTablePages {
         if (on) textsDrawn.put("house-chosen", id);
     }
 
-    /** The weekly Claim's top at rest (no writ line); it drops by weeklyDrop() while the line shows. */
-    int weeklyClaimY;
+    /** The weekly Claim's left at rest (no writ line); it slides left while the writ line shows. */
+    int weeklyClaimX;
 
     /** The weekly note's "+ 1 troop writ" line: shown while the weekly is unclaimed and pays at least 100 gold (one writ). */
     static String weeklyExtra(Progression.State p, String house) {
@@ -1450,7 +1451,7 @@ final class WarTablePages {
         return p.claims.contains("weekly") || pay.gold() < 100 ? "" : "+ " + Progression.writs(pay.gold() / 100);
     }
 
-    /** How far the weekly bar, count and Claim drop to clear the writ line: one line while it shows, else none. */
+    /** How far the weekly bar and count drop to clear the writ line: one line while it shows, else none. */
     int weeklyDrop() { return weeklyExtra(progression(), claimHouse()).isEmpty() ? 0 : WEEKLY_LINE_DROP; }
 
     void initContracts() {
@@ -1461,9 +1462,9 @@ final class WarTablePages {
             final int slot = i;
             tag("claim-" + i, ox + NOTE_X + NOTE_STEP * i + 124, oy + NOTE_Y + DAILY_CLAIM_DY, 64, "Claim", () -> claimDaily(slot));
         }
-        weeklyClaimY = oy + WEEKLY_Y + WEEKLY_CLAIM_DY;
+        weeklyClaimX = ox + WEEKLY_X;
         add("reroll", new UiButton(ox + REROLL_X, oy + REROLL_Y, 88, 24, Text.literal("Reroll"), b -> send("progress:reroll"), this::paintReroll));
-        tag("claim-weekly", ox + WEEKLY_X + 228, oy + WEEKLY_Y + WEEKLY_CLAIM_DY + weeklyDrop(), 64, "Claim", () -> send(RecruitPages.contractClaim("weekly", claimHouse())));
+        tag("claim-weekly", ox + WEEKLY_X + (weeklyDrop() == 0 ? WEEKLY_CLAIM_DX : WEEKLY_CLAIM_DX_LOW), oy + WEEKLY_Y + WEEKLY_CLAIM_DY, 64, "Claim", () -> send(RecruitPages.contractClaim("weekly", claimHouse())));
     }
 
     /** A daily's Claim: the daily that completes all three names the House its shards go to (Progression.claim's rule, as RecruitPages.contractShards
@@ -1484,7 +1485,7 @@ final class WarTablePages {
         var w = buttons.get("claim-weekly");
         if (w != null) {
             w.visible = w.active = Progression.claimable(p, "weekly");
-            w.cy = weeklyClaimY + weeklyDrop(); w.relayout(); // Claim follows the bar down while the writ line shows
+            w.cx = weeklyClaimX + (weeklyDrop() == 0 ? WEEKLY_CLAIM_DX : WEEKLY_CLAIM_DX_LOW); w.relayout(); // Claim slides left of the count while the writ line shows
         }
         var r = buttons.get("reroll");
         if (r != null) r.active = !p.rerolled && !p.claims.contains("daily:2");

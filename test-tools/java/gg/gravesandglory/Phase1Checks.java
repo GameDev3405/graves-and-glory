@@ -3624,6 +3624,8 @@ public final class Phase1Checks implements ClientModInitializer {
         /** After a bots' tier press the Field page draws no "Bots: Tier." echo (the notice the server sends lands in CampaignClient.notice and is withheld from the page). */
         void echoClear(String tier,int serial){String n=text("notice");boolean echoed=n!=null&&n.startsWith("Bots: ");crowdOk&=!echoed;
             crowdWhy+=(crowdWhy.isEmpty()?"":"; ")+"field after "+tier+": the server's notice \""+CampaignClient.notice+"\", the page's notice "+(n==null?"none":"\""+n+"\"")+(echoed?" WRONG":" (no echo)");}
+        /** The card's torn foot: Claim's bottom keeps this far above the card's bottom edge (the daily Claims sit 11 above theirs, the plain weekly's 13). */
+        static final int CLAIM_FOOT=8;
         void crowd(MinecraftClient c,String name,String label){
             List<String> bad=new ArrayList<>();var b=boxes(c);
             if(name.equals("field")){int[] st=rect("status");if(st==null)bad.add("no host line drawn");
@@ -3633,7 +3635,8 @@ public final class Phase1Checks implements ClientModInitializer {
                 String n=text("notice");if(n!=null&&n.startsWith("Bots: "))bad.add("the bots echo \""+n+"\" is drawn");}
             if(name.equals("contracts"))for(String id:new String[]{"0","1","2","weekly"}){int[] line=rect("shards-"+id);if(line==null)continue;
                 for(String other:new String[]{"bar-"+id,"progress-"+id,"claim-"+id}){int[] r=other.startsWith("claim-")?b.get(other):rect(other);if(r!=null&&UiHomeChecks.overlap(line,r))bad.add("note "+id+"'s second line "+str(line)+" meets "+other+" "+str(r));}
-                int[] bar=rect("bar-"+id),cl=b.get("claim-"+id);if(bar!=null&&cl!=null&&UiHomeChecks.overlap(bar,cl))bad.add("note "+id+"'s bar meets its Claim");}
+                int[] bar=rect("bar-"+id),cl=b.get("claim-"+id),card=rect(id.equals("weekly")?"weekly":"note-"+id);if(bar!=null&&cl!=null&&UiHomeChecks.overlap(bar,cl))bad.add("note "+id+"'s bar meets its Claim");
+                if(cl!=null&&card!=null&&(cl[0]<card[0]||cl[1]<card[1]||cl[0]+cl[2]>card[0]+card[2]||cl[1]+cl[3]+CLAIM_FOOT>card[1]+card[3]))bad.add("note "+id+"'s Claim "+str(cl)+" is not inside its card "+str(card)+" with "+CLAIM_FOOT+" px for the torn foot");}
             crowdOk&=bad.isEmpty();crowdWhy+=(crowdWhy.isEmpty()?"":"; ")+name+" at "+label+(bad.isEmpty()?" clear":" WRONG "+bad);
         }
         /** 1280x720 GUI 3: the page centred on a canvas of 1280x720 (origin 160,90), the table's planks covering it, and layout's rules. */
