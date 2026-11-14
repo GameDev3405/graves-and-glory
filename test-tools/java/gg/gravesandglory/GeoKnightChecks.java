@@ -44,11 +44,12 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     /** A crossbow troop: its 50-tick clip shoots, spans and reloads, so its shots are spaced wider (nudgeR) and its gap window sits after the reload. */
     static final boolean XBOW = RANGED && Arrays.stream(Spec.TROOPS).anyMatch(r -> r.id().equals(TROOP) && "crossbow".equals(r.family()));
     /** Ticks without a shot before a ranged duelist is made to shoot again: a crossbow standing waits 60 (its cooldown) so the gap after its 50-tick clip shows; walking, 40 (clips 51 ticks apart) so the 70-tick walk fits two shots each.
-     *  lead is the troop's Tactics.drawLead: a bow's draw is announced 30 ticks ahead of its beat where every other shot's is 10, so its nudge comes those 20 ticks sooner and its shots stay 51 ticks apart too
+     *  lead is the troop's Tactics.drawLead: a bow's draw is announced 30 ticks ahead of its beat where every other shot's is 10, so its nudge comes those 20 ticks sooner and its shots stay as far apart as the others'
      *  (nudged 40 after a loose, a bow's second shot of the walk would leave after the walk ends and its sync row would judge 2 swings where it wants 4).
-     *  loose is the troop's Projectiles.looseTicks (a bow's seed, 0 to MotionMath.LOOSE_MAX; else 0): each shot leaves that much after its beat, so the nudge comes twice that sooner
-     *  and the walk's second shot is logged on duel tick 89 for every seed (unshortened, a seed of 3 logged it on tick 95, after the walk's sync row was written on tick 94: 3 swings judged of the 4 wanted). */
-    static int nudgeR(String mode, int lead, int loose) { return (XBOW && !mode.equals("walk") ? 60 : mode.equals("walk") ? 40 : 40 + ablLead) - (lead - 10) - 2 * loose; } // standing, an ability cast's clip runs ablLead ticks later, so its gap window does too
+     *  loose is the troop's Projectiles.looseTicks (a bow's seed, 0 to MotionMath.LOOSE_MAX; else 0): each shot leaves that much after its beat, so its draw is announced that much sooner
+     *  and every shot leaves on the same duel tick whatever the seed: 36, then every 52 (the Duel's first wait is the seedless one, so the first draw is announced on tick 6 less the loose).
+     *  The walk's second shot is so logged on tick 89 (not allowed for, a seed of 3 logged it on tick 95, after the walk's sync row was written on tick 94: 3 swings judged of the 4 wanted). */
+    static int nudgeR(String mode, int lead, int loose) { return (XBOW && !mode.equals("walk") ? 60 : mode.equals("walk") ? 40 : 40 + ablLead) - (lead - 10) - loose; } // standing, an ability cast's clip runs ablLead ticks later, so its gap window does too
     /** The duelists' spacing (blocks); a bow duel stands where neither is too close to shoot. */
     static final double GAP = RANGED ? 10 : 2;
     /** Ticks into the foe's swing (a bow: its draw) it is killed; the swing must show 2 ticks before that. */
@@ -115,8 +116,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         } catch (Exception e) { return -1; }
     }
     /** Clip ticks the frame checks expect (a crossbow's shot, kick and span over its first 30; every other clip its own length: a bow's draws, holds, looses on tick 22 and recovers over 32),
-     *  and the gap window between swings: when the clip has ended, which for a bow is its length plus the longest held draw (Seed.hold, 0 to MotionMath.LOOSE_MAX ticks: AttackController plays the clip that much longer). */
-    static final int FRAMES = XBOW ? 30 : MELEE_T, GAP_T = XBOW ? 55 : THROW ? MELEE_T + 1 : BOW ? MELEE_T + MotionMath.LOOSE_MAX : MELEE_T;
+     *  and the gap window between swings: when the clip has ended. A bow's clip plays its duelist's held draw longer (Seed.hold, 0 to MotionMath.LOOSE_MAX ticks: AttackController),
+     *  so watch adds that duelist's hold to GAP_T: the window opens on the tick the clip ends for every seed. */
+    static final int FRAMES = XBOW ? 30 : MELEE_T, GAP_T = XBOW ? 55 : THROW ? MELEE_T + 1 : MELEE_T;
     static final Gait.Mode[] MODES = {Gait.Mode.WALK, Gait.Mode.RUN};
     /** March directions per view, seen from the camera north of the line looking south: side on, head on, three-quarter. */
     static final String[] MARCH_VIEWS = {"side", "front", "threequarter"};
@@ -158,7 +160,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             this.owner = owner; this.b = b; this.mode = mode; this.start = b.server.getTicks(); this.t0 = b.world.getTime();
             us = new GravesAndGlory.Unit[]{owner.knights.get(2), owner.knights.get(5)};
             long now = b.world.getTime();
-            // A bow duel shoots first 5 ticks in: its shots are spaced wider than a swing (draw, hold, recovery), so the walk fits two each.
+            // A ranged duel announces its first shot 5 ticks in (a bow, its loose seed sooner: nudgeR): its shots are spaced wider than a swing (draw, hold, recovery), so the walk fits two each.
             for (int j = 0; j < 2; j++) { seen[j] = us[j].swingTick; last[j] = RANGED ? now - nudgeR(mode, Tactics.drawLead(us[j]), 0) + 5 : now; }
         }
     }
@@ -627,7 +629,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
      *  read a real backpedal and the minimum only that it never walked forward. */
     final List<Double> foeBack = new ArrayList<>();
     static double median(List<Double> v) { if (v.isEmpty()) return 0; var c = new ArrayList<>(v); java.util.Collections.sort(c); return c.get(c.size() / 2); }
-    int impactSamples, gapSamples, walkSwingSamples, deadSamples;
+    int impactSamples, footSamples, gapSamples, walkSwingSamples, deadSamples;
     final Set<String> walkWrong = new LinkedHashSet<>(), deadWrong = new LinkedHashSet<>();
 
     /** One client tick of a duel: every duelist's announced swings and what its attack layer drew last frame. */
@@ -650,14 +652,17 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             if (!dead && latest != Long.MIN_VALUE && ac.shownStart == latest && ac.shownImpact >= 0 && Math.abs(ac.shownT - ac.shownImpact) <= 1) {
                 if (ac.shownWeight < minImpactW) minImpactWhy = String.format("%d:%d at %.2f t %.2f seen %.2f", id, latest, ac.shownAt, ac.shownT, ac.shownSeenAt);
                 minImpactW = Math.min(minImpactW, ac.shownWeight); impactSamples++;
-                // The footwork is judged on the duel's own shots: one the battle's own beat began in the march before lands in the duel's first ticks,
+                // A ranged troop's footwork is judged on the duel's own shots: one the battle's own beat began in the march before lands in the duel's first ticks,
                 // while the troop (just put on its mark) is not yet still, so its attack legs are faded by design (AttackController: weight times stillness).
-                if (d.mode.equals("stand") && latest >= d.t0) {
+                // footSamples counts the samples judged, so the row cannot pass on none.
+                if (d.mode.equals("stand") && (!RANGED || latest >= d.t0)) {
+                    footSamples++;
                     if (ac.shownLegsWeight < minImpactLegsW) { StanceController sc = StanceController.LIVE.get(e); minImpactLegsWhy = String.format("%s %d:%d at %.2f t %.2f still %.3f duel tick %d", u == d.us[0] ? "own" : "foe", id, latest, ac.shownAt, ac.shownT, sc == null ? -1 : sc.shownStill, d.k); }
                     minImpactLegsW = Math.min(minImpactLegsW, ac.shownLegsWeight);
                 }
             }
-            if (!dead && latest != Long.MIN_VALUE && t >= GAP_T + ablLead && t <= GAP_T + ablLead + 2.5) { maxGapW = Math.max(maxGapW, ac.shownWeight); gapSamples++; }
+            int gapT = GAP_T + ablLead + (BOW ? Projectiles.hold(u) : 0);
+            if (!dead && latest != Long.MIN_VALUE && t >= gapT && t <= gapT + 2.5) { maxGapW = Math.max(maxGapW, ac.shownWeight); gapSamples++; }
             Gait g = Gait.LIVE.get(e);
             if (d.mode.equals("walk") && d.k > WALK0 + 6 && d.k < WALK0 + WALK && ac.shownWeight > .5) {
                 walkSwingSamples++;
@@ -850,7 +855,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k == 1) {
                     taken.clear(); stepped.clear();
                     if (i == 0) {
-                        clientVariant.clear(); clientImpact.clear(); clientDrawn.clear(); clientKnown.clear(); minImpactW = 2; minImpactLegsW = 2; maxGapW = 0; impactSamples = gapSamples = 0;
+                        clientVariant.clear(); clientImpact.clear(); clientDrawn.clear(); clientKnown.clear(); minImpactW = 2; minImpactLegsW = 2; maxGapW = 0; impactSamples = footSamples = gapSamples = 0;
                         Phase1Checks.server(c, b -> duel = new Duel(this, b, "stand"));
                     }
                     Phase1Checks.server(c, b -> eye(b, cx + eyeAt[0], cz + eyeAt[1], (float) eyeAt[2], (float) eyeAt[3]));
@@ -896,8 +901,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                         syncReport(d);
                         Phase1Checks.report("p1-geo-" + TROOP + "-attack-plays", impactSamples > 10 && minImpactW > .9 && gapSamples > 4 && maxGapW == 0,
                             String.format("weight at impact (+-1 tick) min %.4f (%s) over %d samples; between swings max %.5f over %d", minImpactW, minImpactWhy, impactSamples, maxGapW, gapSamples));
-                        Phase1Checks.report("p1-geo-" + TROOP + "-attack-footwork", impactSamples > 10 && minImpactLegsW > .9,
-                            String.format("standing: attack legs weight at impact min %.4f (%s) over %d samples", minImpactLegsW, minImpactLegsWhy, impactSamples));
+                        Phase1Checks.report("p1-geo-" + TROOP + "-attack-footwork", impactSamples > 10 && footSamples >= 4 && minImpactLegsW > .9,
+                            String.format("standing: attack legs weight at impact min %.4f (%s) over %d of %d samples", minImpactLegsW, minImpactLegsWhy, footSamples, impactSamples));
                         duel = null; i = 0; next(tick, 6);
                     }
                 }
