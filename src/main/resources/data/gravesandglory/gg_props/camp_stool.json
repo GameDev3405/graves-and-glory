@@ -1,0 +1,12 @@
+{
+  "id": "camp_stool",
+  "category": "camp",
+  "name": "Camp Stool",
+  "size": [1, 1, 1],
+  "parts": [
+    {"model": "camp_stool", "cmd": 7310891, "glow": false}
+  ],
+  "solid": [],
+  "lights": [],
+  "effects": []
+}
