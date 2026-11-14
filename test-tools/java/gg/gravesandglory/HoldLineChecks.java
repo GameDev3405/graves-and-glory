@@ -2216,7 +2216,7 @@ final class HoldLineChecks {
                     long n = since(b);
                     if (n == 1 && (cpCacheTroop = cpCacheTroop()) == null) { // every candidate is GeckoLib: nothing draws from BodyCache's buffers
                         cpCacheBody = null; cpShotDone = true; cpFadeDone = true; cpShotPass = false; cpFadePass = false;
-                        cpShotWhy = cpFadeWhy = "not run: " + String.join(", ", CP_LEGACY) + " are all drawn by GeckoLib, which never draws from BodyCache (legacy-only)"; return;
+                        cpShotWhy = cpFadeWhy = "not run: " + String.join(", ", CP_CACHE) + ", " + String.join(", ", CP_LEGACY) + " are all drawn by GeckoLib, which never draws from BodyCache (legacy-only)"; return;
                     }
                     if (cpCacheBody == null && n > 1) {if (n < CP_STAND + 2) return;} // not run: straight to the report
                     else if (n == 1) {cpShotDone = false; cpFadeDone = false; cpFadeK = 0; cpFadeId = -1; cpFloor(b); cpCacheBody = cpOwn(b, 65, cpHome, cpCacheTroop); var at = ground(b, cpHome.x, cpHome.z - 3); b.relocate(sp(b), at.x, at.y, at.z, 0f, 28f); return;}
