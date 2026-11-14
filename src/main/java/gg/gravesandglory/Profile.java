@@ -175,7 +175,7 @@ public final class Profile {
             trimmed += before - kept.size();
             b.cells = WarGrid.format(kept);
         }
-        if (trimmed > 0 && notice == null) notice = "Your banner no longer fits the table; " + trimmedText(trimmed) + " taken off the back rows.";
+        if (trimmed > 0 && notice == null) notice = "Your banner was changed to fit the table: " + trimmedText(trimmed) + " taken off the back rows.";
         activeBanner = clamp(activeBanner, 0, banners.size() - 1);
     }
     /** Removes, front to back, each troop past its rarity's rarities.bannerMax (a second Legendary), so trim never has to clear the rows behind it. */
@@ -183,6 +183,12 @@ public final class Profile {
         Map<String, Integer> seen = new HashMap<>();
         table.entrySet().removeIf(e -> { String r = c.rarityOf(e.getValue()); return seen.merge(r, 1, Integer::sum) > RosterMath.bannerMax(r); });
     }
+    /** What the join says of an unread notice: the Banner page holds the note itself, until "Understood". */
+    static final String NOTICE_POINTER = "Your banner was changed for the new war table. Open Banner to see it.";
+    /** The join pointer, or null when there is no unread notice. */
+    String pointer() { return notice == null ? null : NOTICE_POINTER; }
+    /** Understood: clears the one-time notice and returns what it said (null when there was none). The only thing that clears it, so it survives a relog until then. */
+    String understood() { String text = notice; notice = null; return text; }
     /** "1 troop was" or "N troops were": the troop count of a banner trim notice. */
     static String trimmedText(int n) { return n == 1 ? "1 troop was" : n + " troops were"; }
     /** A banner name without control characters, trimmed and cut to MAX_BANNER_NAME; "Banner N" when nothing is left. */

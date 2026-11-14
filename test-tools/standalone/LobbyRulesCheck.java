@@ -74,13 +74,22 @@ public final class LobbyRulesCheck {
   check(run(p,"banner:move:0:0:"+WarGrid.index(mid,1))==null&&ranged.equals(WarGrid.parse(p.banners.get(0).cells).get(0))&&shield.equals(WarGrid.parse(p.banners.get(0).cells).get(WarGrid.index(mid,1))),"Move onto a troop swaps the two");
   check(run(p,"banner:clear:0")==null&&p.banners.get(0).cells.isEmpty()&&run(p,"banner:clear:0")!=null,"Clear empties the banner; a second clear is refused");
  }
- /** The one-time notice: set, saved, kept through a reload until shown, null once shown and saved. Campaign.showNotice is this clear-and-save. */
+ /** The one-time change notice: the join says one pointer line while it is unread; the note itself stays on the Banner page and in the saved file until "Understood"
+  *  (Profile.understood, the clear-and-save Campaign runs for "notice:understood"); a relog, however often, keeps it. */
  static void noticeOnce(){
-  Profile p=fresh();p.notice="Your banner cost more than the table allows; 2 troops were taken off the back rows.";
+  String note="Your banner was changed for the new war table: 2 troops were taken off the back rows to fit the "+RosterMath.allowance()+" gold limit.";
+  Profile p=fresh();
+  check(p.pointer()==null,"No pointer at join when there is no notice");
+  p.notice=note;
+  check("Your banner was changed for the new war table. Open Banner to see it.".equals(p.pointer()),"The join pointer reads the agreed line while a notice is unread");
   Profile a=GSON.fromJson(json(p),Profile.class);a.sanitize();
-  check(p.notice.equals(a.notice),"The notice survives a save and reload until it is shown");
-  String shown=a.notice;a.notice=null;Profile b=GSON.fromJson(json(a),Profile.class);b.sanitize();
-  check(shown!=null&&b.notice==null,"Once shown and saved the notice is null after a reload");
+  check(note.equals(a.notice)&&Profile.NOTICE_POINTER.equals(a.pointer()),"The notice and its pointer survive a save and reload");
+  Profile again=GSON.fromJson(json(a),Profile.class);again.sanitize();
+  check(note.equals(again.notice),"A second relog keeps it as well: joining and opening the page never clear it");
+  String cleared=again.understood();
+  check(note.equals(cleared)&&again.notice==null&&again.pointer()==null,"Understood clears it and says what it held");
+  Profile b=GSON.fromJson(json(again),Profile.class);b.sanitize();
+  check(b.notice==null&&b.pointer()==null&&b.understood()==null,"Once understood and saved it is gone after a reload, and a second Understood does nothing");
  }
  public static void main(String[] args){
   cellCommandRefusals();bannerCommands();battleBanner();fastTools();noticeOnce();

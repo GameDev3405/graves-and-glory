@@ -53,7 +53,8 @@ final class WarTablePages {
     static final int REAR_DY = 300, SUB_DY = 48;
     static final int TABS_X = 20, TABS_Y = 313, ACTS_Y = 336, TAB_W = 68, TAB_H = 18, TAB_GAP = 6,
         GROUP_W = 50, GROUP_GAP = 4, MAIN_W = 124, MAIN_H = 24,
-        TOOL_Y = 30, TOOL_H = 16, ARRANGE_W = 88, CLEAR_W = 52, TOOL_GAP = 4;
+        TOOL_Y = 30, TOOL_H = 16, ARRANGE_W = 88, CLEAR_W = 52, TOOL_GAP = 4,
+        PIN_PAD = 5, PIN_STEP = 11, PIN_LINES = 6, PIN_BTN_W = 80, PIN_BTN_H = 24;
     static final int CLASS_X = 760, CLASS_Y = 140, CLASS_STEP = 40, CLASS_W = 120, BONUS_Y = 374, BONUS_W = 144;
     /** What a seat click places when the Clear tag is armed: the server's word for an empty seat. */
     static final String EMPTY = "empty";
@@ -275,7 +276,6 @@ final class WarTablePages {
         this.screen = screen;
         this.page = page;
         noticeSerialSeen = CampaignClient.noticeSerial;
-        if (page.equals("banner")) send("notice");
         viewed = Math.max(0, Math.min(Spec.MAPS.length - 1, CampaignClient.map));
     }
 
@@ -732,6 +732,10 @@ final class WarTablePages {
         var clear = add("clear", new UiButton(toolsRight - CLEAR_W, toolsY, CLEAR_W, TOOL_H, Text.literal("Clear"), bb -> act("clear"),
             (g, x, y, w, h, hot) -> vellum(g, "clear", x, y, w, h, clearArmed > ticks && clearArmedBanner == shownBanner() ? "Sure?" : "Clear", false)));
         clear.setTooltip(Tooltip.of(Text.literal("Take every troop off this banner (press twice)")));
+        // The pinned note's button (placed and shown by bannerTick while the profile holds an unread notice).
+        var understood = add("understood", new UiButton(0, 0, PIN_BTN_W, PIN_BTN_H, Text.literal("Understood"), bb -> act("understood"),
+            (g, x, y, w, h, hot) -> vellum(g, "understood", x, y, w, h, "Understood", false)));
+        understood.visible = false;
         // The main button, set apart on the right: Take to battle. The banner already going to battle reads "Going to battle" with the tick and takes no press.
         var use = add("use", new UiButton(sh[0] + SHEET_X + TABS_X + BANNER_PAPER_W - MAIN_W, sh[1] + SHEET_Y + ACTS_Y, MAIN_W, MAIN_H, Text.literal("Take to battle"), bb -> act("use"),
             (g, x, y, w, h, hot) -> mainButton(g, x, y, w, h, hot)));
@@ -883,6 +887,7 @@ final class WarTablePages {
             case "rename" -> renaming = CampaignClient.profile.banners.get(b).name;
             case "delete" -> { if (deleteArmed > ticks && deleteArmedBanner == b) { deleteArmed = 0; deleteArmedBanner = -1; planned = null; send("banner:delete:" + b); } else { deleteArmed = ticks + 60; deleteArmedBanner = b; } }
             case "arrange" -> submit(BannerDrop.arrange(table(), rules()), -1);
+            case "understood" -> send("notice:understood"); // the server clears Profile.notice and saves; the next snapshot takes the note away
             case "clear" -> {
                 if (clearArmed > ticks && clearArmedBanner == b) { clearArmed = 0; clearArmedBanner = -1; submit(BannerDrop.clear(table(), rules()), -1); }
                 else { clearArmed = ticks + 60; clearArmedBanner = b; }
@@ -902,6 +907,40 @@ final class WarTablePages {
         setActive("arrange", free && BannerDrop.arrange(table(), rules()).ok()); // only a banner that would change takes it
         setActive("clear", free && !table().isEmpty());
         if (!free && lift >= 0) cancelDrag();
+        var note = noteBox(); // the pinned note and its button
+        var understood = buttons.get("understood");
+        if (understood != null) {
+            understood.visible = note != null;
+            if (note != null) understood.moveTo(note[0] + note[2] - PIN_BTN_W - PIN_PAD, note[1] + note[3] - PIN_BTN_H - PIN_PAD, PIN_BTN_W, PIN_BTN_H);
+        }
+    }
+
+    /** The pinned note's text: the profile's one-time notice, kept until "Understood" (also across a relog), or "" when there is none. */
+    static String noteText() {
+        var p = CampaignClient.profile;
+        return p == null || p.notice == null ? "" : p.notice;
+    }
+
+    /** The pinned note in the right column, just above "Team colour": {x, y, w, h, lines drawn}, or null when the profile holds no notice. The House traits above it give way. */
+    int[] noteBox() {
+        String text = noteText();
+        if (text.isEmpty() || !page.equals("banner")) return null;
+        int x = col(C_CLASS)[0] + CLASS_X, w = BONUS_W - 4;
+        var font = font();
+        var lines = UiMath.lines(text, w - 2 * PIN_PAD, PIN_LINES, s -> font.getWidth(DarkUi.small(s)));
+        int h = PIN_PAD + PIN_STEP * lines.size() + PIN_PAD + PIN_BTN_H + PIN_PAD;
+        return new int[]{x, colourTop() - 6 - h, w, h, lines.size()};
+    }
+
+    /** Draws the pinned note: a brass-edged plate holding the notice in small ivory text, and its Understood button (a widget) at the foot. */
+    void drawNote(DrawContext g, int[] n) {
+        var font = font();
+        g.fill(n[0], n[1], n[0] + n[2], n[1] + n[3], DarkUi.opaque(DarkUi.OAK0));
+        g.drawBorder(n[0], n[1], n[2], n[3], DarkUi.BRASS);
+        var lines = UiMath.lines(noteText(), n[2] - 2 * PIN_PAD, PIN_LINES, s -> font.getWidth(DarkUi.small(s)));
+        for (int i = 0; i < lines.size(); i++) g.drawText(font, DarkUi.small(lines.get(i)), n[0] + PIN_PAD, n[1] + PIN_PAD + PIN_STEP * i, DarkUi.IVORY, false);
+        textsDrawn.put("banner-note", String.join(" ", lines));
+        rectsDrawn.put("banner-note", new int[]{n[0], n[1], n[2], n[3]});
     }
 
     /** A typed character goes into the new name while Rename is open (at most 16 characters). */
@@ -1297,8 +1336,10 @@ final class WarTablePages {
         for (var id : table().values()) for (int k = 0; k < kinds.length; k++) if (kinds[k].equals(kindOf(id))) by[k]++;
         for (int k = 0; k < kinds.length; k++)
             stat(g, "army-" + kinds[k].toLowerCase(), kinds[k], Integer.toString(by[k]), x + (k % 2) * (BONUS_W / 2 + 4), y + 28 + 12 * (k / 2), BONUS_W / 2 - 10, DarkUi.IVORY);
-        int limit = colourTop() - 6;
+        var note = noteBox();
+        int limit = colourTop() - 6 - (note == null ? 0 : note[3] + 6); // the pinned note takes the foot of the column from the traits
         traits(g, x, top + ARMY_H, limit);
+        if (note != null) drawNote(g, note);
     }
 
     /** A label at the left of its box and its value at the right (the label muted, the value in `ink`); records both under key. */

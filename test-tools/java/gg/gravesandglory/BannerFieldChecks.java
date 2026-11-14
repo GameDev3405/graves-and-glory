@@ -16,7 +16,7 @@ import static gg.gravesandglory.Phase1Checks.*;
  *  (p1-bf-paint-place), a second Legendary is refused with the why in words and nothing sent (p1-bf-paint-refused), and another banner's tab
  *  shows that banner, whose Use button makes it the one that goes into battle (p1-bf-paint-switch). */
 final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch {
-    static final String[] SCENES = {"banner-normal", "banner-empty", "banner-empty-house", "banner-hover", "banner-blocked", "banner-error", "banner-paint", "banner-tools",
+    static final String[] SCENES = {"banner-normal", "banner-empty", "banner-empty-house", "banner-hover", "banner-blocked", "banner-error", "banner-paint", "banner-tools", "banner-notice", "banner-notice-read",
         "field-normal", "field-empty", "field-error", "banner-battle", "banner-lock"};
     /** The window sizes shot: 1080p, 1440p and a small window that gets the compact page (scale -1: the page must be compact). */
     static final int[][] SIZES = {{1920, 1080, 2}, {2560, 1440, 3}, {900, 520, -1}, {1280, 720, 1}, {960, 540, 1}, {854, 480, -1}};
@@ -52,13 +52,15 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         return switch(scene){
             case "banner-normal","banner-battle" -> { var t=tbl(4,LEGEND,13,"mage");fill(t,9,3,"sentinel");fill(t,18,4,"longbow");fill(t,27,4,"knight");fill(t,36,3,"archer");
                 yield profile(List.of("sentinel","longbow","mage",LEGEND,"wm_tusk"),"Banner I",t,"Banner II",tbl(0,"knight",1,"knight")); }
+            case "banner-notice","banner-notice-read" -> { var p=banner("banner-normal");p.notice=NOTE;yield p; }
             case "banner-tools","banner-lock" -> profile(List.of("sentinel","longbow","mage"),"Banner I",tbl(0,"longbow",5,"mage",20,"sentinel",33,"knight",50,"sentinel"),"Banner II",tbl(0,"knight"));
             case "banner-hover","banner-blocked","banner-error","banner-paint" -> profile(List.of(LEGEND,"sentinel"),"Banner I",tbl(4,LEGEND,30,"sentinel"),"Banner II",tbl(0,"knight",1,"knight"));
             default -> { var p=profile(List.of(),"Banner I",tbl());p.owned.keySet().removeIf(id->!id.equals("knight"));p.sanitize();yield p; }
         };
     }
 
-    static boolean isBanner(String n){return n.startsWith("banner")&&!n.equals("banner-battle")&&!n.equals("banner-lock");}
+    static boolean isBanner(String n){return n.startsWith("banner")&&!n.equals("banner-battle")&&!n.equals("banner-lock")&&!n.equals("banner-notice-read");}
+    static final String NOTE="Your banner was changed for the new war table: 3 troops were taken off the back rows to fit the "+RosterMath.allowance()+" gold limit.";
 
     /** Server and client state for the scene. */
     void setup(MinecraftClient c,String name){
@@ -68,6 +70,9 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
             server(c,b->{if(b.running)b.campaign.returnLobby();var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,p);b.campaign.save(id);});
         } else if(name.equals("banner-battle")){
             want=cells(banner(name));
+        } else if(name.equals("banner-notice-read")){ // a relog: the server forgets the profile and reads it from the saved file again
+            want=cells(banner(name));
+            server(c,b->{if(b.running)b.campaign.returnLobby();b.campaign.profiles.remove(id);b.campaign.profile(id);});
         } else if(name.equals("banner-lock")){
             var p=banner(name);want=cells(p);
             server(c,b->{if(b.running)b.campaign.returnLobby();var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,p);b.campaign.save(id);});
@@ -79,7 +84,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
             server(c,b->{var pos=b.server.getPlayerManager().getPlayer(id);if(pos!=null)b.campaign.toLobby(pos);b.campaign.profiles.put(id,banner("banner-normal"));b.campaign.save(id);});
         }
     }
-    boolean standDown;
+    boolean standDown,pointed,opened,reported;int serial0;
     /** Whether the scene's state has reached the client. */
     boolean ready(MinecraftClient c,String name,int tick){
         switch(name){
@@ -119,6 +124,12 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                 if(k==10){UiPagesChecks.click(c,UiPagesChecks.box(c,"cell-20"));return false;}
                 return k>=13;
             }
+            case "banner-notice": { // the join pointer, once; the page's opening posted nothing
+                if(reported)return true;
+                if(!pointed){pointed=true;serial0=CampaignClient.noticeSerial;opened=serial0==serial;server(c,b->b.campaign.pointNotice(player));return false;}
+                if(CampaignClient.noticeSerial>serial0||k>=60){reported=true;pointerReport(c,0);}
+                return false;
+            }
             case "field-normal": { // a click on the second map row shows its card; nothing is voted any more
                 if(k==0){UiPagesChecks.click(c,UiPagesChecks.box(c,"map-1"));return false;}
                 return k>=8;
@@ -142,6 +153,10 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
             extra=", price \""+price+"\" red "+red+", no sentence on the row "+quiet+", the reason held for the tooltip \""+WarTablePages.blockedWhy(LEGEND)+"\"";}
         if(name.equals("banner-error")){String why=BannerDrop.why("legendary_limit"),said=t.get("cell-word");pass&=p!=null&&why.equals(said)&&!why.equals(p.noticeText)&&!t.containsKey("why-"+rowIndex(LEGEND));extra=", strip beside the cell \""+said+"\" (want \""+why+"\"), bottom notice \""+(p==null?"":p.noticeText)+"\" (want none of it)";}
         if(name.equals("banner-empty-house")){String say=t.get("roll-empty"),want="No Wildmoot troops yet.";var rb=UiPagesChecks.box(c,"roll-recruit");pass&=want.equals(say)&&rb!=null&&WarTablePages.ROLL_HINT.equals(t.get("roll-hint"));extra=", empty House \""+say+"\" (want \""+want+"\"), Recruit button "+(rb==null?"missing":UiHomeChecks.overlap(rb,rb)?"drawn":"")+", foot hint \""+t.get("roll-hint")+"\"";}
+        if(name.equals("banner-notice")){
+            var ub=UiPagesChecks.box(c,"understood");String said=t.get("banner-note");var nb=WarTablePages.rects().get("banner-note");
+            boolean text=NOTE.equals(said);
+            pass&=ub!=null&&nb!=null&&text;extra+=", pinned note \""+said+"\", Understood button "+(ub==null?"missing":"drawn")+(text?"":" WRONG")+", traits "+t.keySet().stream().filter(k->k.startsWith("trait-")).count();}
         if(page(name).equals("banner")){var faults=bannerFaults(c);pass&=faults.isEmpty();extra+=faults.isEmpty()?", every banner text apart":", WRONG banner texts: "+faults;}
         ok[0]=pass;
         String said=page(name).equals("banner")?" name \""+t.get("banner-name")+"\", army \""+t.get("army-troops")+"\", gold \""+t.get("gold")+"\", shown tab \""+t.get("tab-shown")+"\", roll-empty \""+t.get("roll-empty")+"\"":" status \""+t.get("status")+"\", bots "+t.get("bots-current");
@@ -152,7 +167,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
      *  palette badge sits on its row's frame: both left out). */
     static List<String> bannerFaults(MinecraftClient c){
         List<String> bad=new ArrayList<>();var all=WarTablePages.rects();int w=UiCanvas.width(),h=UiCanvas.height();List<String> keys=new ArrayList<>();
-        for(var k:all.keySet())if(k.equals("banner-name")||k.equals("sub-line")||k.equals("front")||k.equals("gold")||k.equals("gold-of")||k.equals("gold-bar")||k.equals("rear")||k.equals("place-hint")
+        for(var k:all.keySet())if(k.equals("banner-note")||k.equals("banner-name")||k.equals("sub-line")||k.equals("front")||k.equals("gold")||k.equals("gold-of")||k.equals("gold-bar")||k.equals("rear")||k.equals("place-hint")
             ||k.startsWith("army-")||k.startsWith("trait-")||k.equals("colour-label")||k.startsWith("price-")||k.equals("roll-empty")||k.equals("roll-hint")||k.equals("rename-help"))keys.add(k);
         for(var k:keys){var b=all.get(k);if(b[0]<0||b[1]<0||b[0]+b[2]>w||b[1]+b[3]>h)bad.add(k+" off the "+w+"x"+h+" canvas");}
         for(int i=0;i<keys.size();i++)for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(all.get(keys.get(i)),all.get(keys.get(j))))bad.add(keys.get(i)+"/"+keys.get(j));
@@ -172,7 +187,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         String name=SCENES[scene];int k=tick-pAt;
         switch(phase){
             case 0->{ // the scene's state, built on the server; waits for the snapshot to carry it
-                if(k==0){note="";standDown=false;setup(c,name);c.setScreen(null);window(c,1920,1080,0,true);return;}
+                if(k==0){note="";standDown=false;pointed=false;reported=false;setup(c,name);c.setScreen(null);window(c,1920,1080,0,true);return;}
                 if(name.equals("banner-lock")){if(k>=2&&!serverRunning)server(c,b->{var p=b.server.getPlayerManager().getPlayer(player);if(p!=null)skirmish(b,p,0,1,"normal");});}
                 else if((name.equals("field-error")||name.equals("banner-battle"))&&!(name.equals("banner-battle")&&serverRunning)){ // a round: started on the server until it runs
                     if(k>=2&&!serverRunning){server(c,b->{var p=b.server.getPlayerManager().getPlayer(player);if(p!=null)skirmish(b,p,0,1,"normal");});}
@@ -191,6 +206,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                 if(UiPagesChecks.pages(c)==null){report("p1-bf-"+name,false,"the page is not open; screen "+c.currentScreen+", running "+GravesAndGloryClient.running+", waiting "+CampaignClient.waiting);scene++;go(0,tick);return;}
                 if(name.equals("banner-paint")){paint(c,k,tick);return;}
                 if(name.equals("banner-tools")){tools(c,k,tick);return;}
+                if(name.equals("banner-notice-read")){read(c,k,tick);return;}
                 if(act(c,name,k)){shotIdx=0;go(3,tick);sub=1;}
             }
             case 3->{ // a shot at SIZES[shotIdx]; after a resize the page is built again, so the action runs again first
@@ -420,6 +436,40 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                     boolean said=GearChecks.LOCKED.equals(CampaignClient.notice);ok16&=said&&cells(CampaignClient.profile).equals(before);
                     var snap=cells(CampaignClient.profile);
                     report("p1-bf-tools-battle-lock",ok16,note+"; then Clear and Move: last notice \""+CampaignClient.notice+"\", banners "+snap+" (want unchanged "+before+")");note="";scene++;go(0,tick);}
+            }
+            default->{}
+        }
+    }
+
+    // ============================================================================================================ the change notice
+    volatile Boolean fileClean;int rs,rAt;
+
+    /** banner-notice (the standard shots, judged at every size, with the pinned note drawn): at k 0 the join's pointer is said by the server once, as the line the player reads. */
+    void pointerReport(MinecraftClient c,int tick){
+        boolean once=CampaignClient.noticeSerial==serial0+1&&Profile.NOTICE_POINTER.equals(CampaignClient.notice);
+        report("p1-bf-notice-pointer",opened&&once,"opening the Banner page posted no notice "+opened+"; the join then said \""+CampaignClient.notice+"\" (want \""+Profile.NOTICE_POINTER+"\"), notice serial "+serial0+" to "+CampaignClient.noticeSerial+" (want +1)");
+    }
+
+    /** banner-notice-read: after a relog the note is still pinned; Understood clears it on the client and in the saved file. */
+    void read(MinecraftClient c,int k,int tick){
+        if(k==0){rs=0;rAt=0;fileClean=null;}
+        int d=k-rAt;
+        var ub=UiPagesChecks.box(c,"understood");
+        switch(rs){
+            case 0->{if(d>=6){
+                boolean kept=NOTE.equals(CampaignClient.profile.notice)&&WarTablePages.texts().containsKey("banner-note")&&ub!=null;
+                report("p1-bf-notice-persists",kept,"after a relog the client's profile notice "+(NOTE.equals(CampaignClient.profile.notice)?"is the saved text":"is \""+CampaignClient.profile.notice+"\"")+", the note is drawn "+WarTablePages.texts().containsKey("banner-note")+", Understood is drawn "+(ub!=null));
+                UiPagesChecks.click(c,ub);rs=1;rAt=k+1;}}
+            case 1->{
+                if(CampaignClient.profile.notice==null||d>120){
+                    server(c,b->{try{fileClean=!java.nio.file.Files.readString(b.campaign.directory.resolve(player+".json")).contains("\"notice\"");}catch(Exception e){fileClean=false;}});rs=2;rAt=k+1;}
+            }
+            case 2->{
+                if(fileClean!=null&&d>=8||d>120){
+                    var nb=UiPagesChecks.box(c,"understood");
+                    boolean gone=CampaignClient.profile.notice==null&&!WarTablePages.texts().containsKey("banner-note")&&nb==null&&Boolean.TRUE.equals(fileClean);
+                    report("p1-bf-notice-understood",gone,"pressing Understood: the client's notice is "+CampaignClient.profile.notice+" (want null), the note drawn "+WarTablePages.texts().containsKey("banner-note")+", the button drawn "+(nb!=null)+", the saved file lacks the notice "+fileClean);
+                    scene++;go(0,tick);}
             }
             default->{}
         }

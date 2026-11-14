@@ -211,9 +211,16 @@ public final class Campaign {
         if(ending()){skipped.put(p.getUuid(),MatchEnding.Step.DONE);endingDone.add(p.getUuid());toLobby(p);return;} // joining during the ending: to camp, no step; a participant's reward and report are already settled
         if(b.running&&squad!=null&&squad.seated){returned(p.getUuid());b.toBase(p,squad.team);}else toLobby(p);
         if(b.running&&(squad==null||!squad.seated))notice(p.getUuid(),WELCOME_WAIT); // true for the moments he reads it, and gone with the round (returnLobby) or after NOTICE_TICKS: no standing line, which the round's end would leave false
-        else standing(p.getUuid(),WELCOME);} // the profile's one-time notice waits for the War Table's "notice" command: shown at join, the client is not ready and the text is spent unseen
-    /** Shows the profile's one-time notice (Profile.notice, set when a banner was trimmed on load) as a normal notice, then clears it and saves; nothing when there is none. */
-    void showNotice(UUID id){var pr=profile(id);if(pr.notice==null)return;String text=pr.notice;pr.notice=null;if(save(id))notice(id,text);else pr.notice=text;}
+        else standing(p.getUuid(),WELCOME);
+        pointNotice(p.getUuid());}
+    /** At join, when the profile holds an unread notice (Profile.notice: a banner was trimmed on load): a pointer to it (Profile.NOTICE_POINTER), said after the welcome so it is the line he reads. The notice itself is held on the Banner page until "Understood"; it survives a relog and is never posted here. A standing line in camp, a timed one in a round. */
+    void pointNotice(UUID id){String text=profile(id).pointer();if(text==null)return;if(b.running)notice(id,text);else standing(id,text);}
+    /** "notice:understood": the Banner page's note is read. Clears Profile.notice and saves (put back when the save fails, so it is not lost unseen); the join pointer, if it is still the line standing, goes with it. */
+    void understood(UUID id){
+        var pr=profile(id);String text=pr.understood();if(text==null)return;
+        if(!save(id)){pr.notice=text;return;}
+        if(Profile.NOTICE_POINTER.equals(notices.get(id))){notices.remove(id);noticeAt.remove(id);}
+    }
     void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();GearCombat.clear(p);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
         // The mode takes down what it placed before the round's armies go (idempotent: finish and a manual return both call it).
@@ -254,7 +261,7 @@ public final class Campaign {
             if(row.map()!=map){switchMap(row.map());notice(p.getUuid(),"Preparing "+Spec.MAPS[map].name()+" for "+row.name()+".");}
             return true;
         }
-        if(cmd.equals("notice")){showNotice(p.getUuid());return true;} // the War Table page opened: a one-time profile text (a banner trimmed on load) is shown now
+        if(cmd.equals("notice:understood")){understood(p.getUuid());return true;} // never a battle choice: a note is read, so it answers in a round too
         if(cmd.equals("lobby")){if(b.running)notice(p.getUuid(),"Finish the battle before returning to the lobby.");else toLobby(p);return true;}
         if(b.running){
             var current=b.squads.get(p.getUuid());

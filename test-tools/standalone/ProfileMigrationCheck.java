@@ -167,7 +167,7 @@ public final class ProfileMigrationCheck {
         var t = p.table();
         check(t.size() == 12 && count(t, "longbow") == 1 && count(t, "sentinel") == 8 && count(t, "mage") == 2 && count(t, "gl_marshal") == 1, "v6OverTrims: the 3 highest cells (longbows at the back) went: " + t);
         check(problem(p) == null && WarGrid.cost(t, cat) <= RosterMath.allowance(), "v6OverTrims: what is left passes the validator: " + problem(p));
-        check(p.notice != null && p.notice.contains("3 troops were") && p.notice.contains("the table allows"), "v6OverTrims: the one-time notice names the trim: " + p.notice);
+        check(p.notice != null && p.notice.contains("3 troops were") && p.notice.contains(RosterMath.allowance() + " gold limit"), "v6OverTrims: the one-time notice names the trim: " + p.notice);
         String note = p.notice;
         p.sanitize();
         check(p.notice.equals(note) && p.table().equals(t), "v6OverTrims: sanitizing again changes nothing");
