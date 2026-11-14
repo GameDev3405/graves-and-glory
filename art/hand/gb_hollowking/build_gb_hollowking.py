@@ -6,7 +6,7 @@ identity baked into the boxes: body 10x14x5, arms 4x13x4, legs 5x14x5). Black gr
 ribcage (the mark: the lit ribs, with the broken crown above them, on the glow sheet), a funeral-gilt crown with its band
 chipped and its spikes snapped, a bare skull with its jaw bound shut in gilt wire, two soul-lit eyes, great layered
 pauldrons with broken spikes, a high gorget, a violet-hemmed rag skirt over a belt with a gilt buckle, greaves slit over
-bare bone, and one large tattered team-cloth cloak (three panels) dragging behind him on the ground. His grave sword
+bare bone, and a torn team-cloth cape (three strips under a rolled fold) to the back of the knee. His grave sword
 (weapon "grave_sword") is a greatsword. Tier II (the Hollow Lord): the crown mended and raised, violet-piped salvaged plate
 on the forearms, thighs and a raised gorget ring, tines on the great pauldrons. Tier III (the Hollow King crowned): a tall
 gilt crown of tines, gilt rails and collar bar round the soul-fire ribs, gilt-chased black plate, long pauldron tines and a
@@ -331,36 +331,51 @@ def rag(length_cut, key):
         return g
     return paint
 
-# ---- the cloak: three panels of team cloth, each ending in a train lying on the ground ----
-def cloak(T, M, key, train=False, top=False):
+# ---- the cape: three team-cloth strips to the back of the knee under a rolled fold (model fix 2026-11-13, Kort's pick A) ----
+def cape_strip(T, key, hem):
+    """A cape strip: lit outer face, darker lining, a fold every third column, a torn hem `hem` px deep at most, moth holes."""
     def paint(face, w, h):
         g = blank(w, h)
-        r = rnd("cloak", key, face)
+        r = rnd("cape", key, face)
         for y in range(h):
             for x in range(w):
                 if face in ("top", "bottom"): g[y][x] = T[2]; continue
-                fold = (x + (2 if key.startswith("b") else 0)) % 5
-                i = 3 if face == "back" else 2                                  # the outer face (back) is lit, the lining (front) darker
-                if fold == 4: i -= 1
-                if not train and y > h * 0.8: i -= 1
+                i = 3 if face == "back" else 1
+                if (x + (1 if key == "b" else 0)) % 3 == 2: i -= 1
+                if y < 2 and face == "back": i += 1                              # light across the shoulders
+                if y > h - hem - 3: i -= 1                                       # the hem darkens with grave dirt
                 g[y][x] = clamp(T, i)
-        if face in ("front", "back"):
-            if not train:
-                for x in r.sample(range(1, w - 1), 2):                           # long tears up from the hem
-                    for y in range(h - r.randrange(4, 9), h): g[y][x] = None
-            if train:
-                for x in range(w):
-                    cut = r.choice((0, 1, 2, 4, 7))
-                    for y in range(h - cut, h): g[y][x] = None
+        if face in ("front", "back", "left", "right"):
             for x in range(w):
-                if r.random() < 0.18:
-                    g[r.randrange(h // 2, h)][x] = None                         # moth-bitten holes
+                cut = r.choice((0, 1, 1, 2, 3, hem))
+                for y in range(h - cut, h): g[y][x] = None
+            if face in ("front", "back"):
+                for _ in range(max(1, w // 3)):
+                    if r.random() < 0.6: g[r.randrange(h // 2, h - 2)][r.randrange(w)] = None
+        return g
+    return paint
+
+def cape_roll(T, key):
+    """The rolled fold across the cape's top: lit top band, a darker fold every fourth column, a few torn points."""
+    def paint(face, w, h):
+        g = blank(w, h)
+        r = rnd("caperoll", key, face)
+        for y in range(h):
+            for x in range(w):
+                i = 3 if face in ("back", "top") else 2
+                if face not in ("top", "bottom") and y == 0: i += 1
+                if face in ("back", "front") and x % 4 == 3: i -= 1
+                g[y][x] = clamp(T, i)
+        if face in ("front", "back", "left", "right"):
+            for x in range(w):
+                cut = r.choice((0, 0, 1, 2))
+                for y in range(h - cut, h): g[y][x] = None
         return g
     return paint
 
 def cloth_painter(spec, side):
     T, M = TEAM[side]
-    return cloak(T, M, spec[0], train=spec[1], top=spec[2])
+    return cape_strip(T, spec[1], spec[2]) if spec[0] == "strip" else cape_roll(T, spec[1])
 
 # ---- assembling ----
 def glow(bone, box):
@@ -375,6 +390,8 @@ def glow(bone, box):
             return g
         return p
     return None
+
+CAPE_TILT, CAPE_B = -12, 15   # the cape hangs back off the shoulders; the centre strip is the longest
 
 def bones():
     B = [Bone("root", "")]
@@ -422,14 +439,16 @@ def bones():
     # its box, paint and place at rest (the boxes are the old ones, moved into their bone's frame).
     for name, x, z, ln, cut, key in (("rags_r", -3, -3.4, 12, 4, "a"), ("rags_c", 0, -3.6, 14, 5, "b"), ("rags_l", 3, -3.4, 10, 3, "c")):
         B.append(Bone(name, "body", (x, -2, z), boxes=[Box((-1.5, 0, 0), (3, ln, 0), rag(cut, key))]))
-    # the cloak: three panels hanging from the high collar, each with a train along the floor
-    panels = [("a", -6.5, 5, 26, 8), ("b", -2.5, 5, 27, 12), ("c", 1.5, 5, 25, 7)]
-    flare = {"a": 5, "b": 0, "c": -5}
-    for key, x0, w, ln, tl in panels:
-        B.append(Bone(f"cloak_{key}", "body", (x0, -14, 3.2 + (0.15 if key != "b" else 0)), team=True, rot=(7, 0, flare[key]), boxes=[
-            Box((0, 0, 0), (w, ln, 1), (key, False, True), sheet="cloth")]))
-        B.append(Bone(f"train_{key}", f"cloak_{key}", (0, ln, 0), team=True, rot=(-82, 0, 0), boxes=[
-            Box((0, 0, 0), (w, tl, 1), (key + "t", True, False), sheet="cloth")]))
+    # the cape (model fix 2026-11-13, Kort's pick A): a mount under the pauldrons, which troop_rig turns into
+    # the "cape" container the idle, walk, run, attack and death clips key; three strips named cloak_a/b/c (keyed by the attack
+    # and hit clips) hang from it to the back of the knee, flared a little outward. Integer widths keep every texel row.
+    # The mount is named plain "collar" (troop_rig hangs it in the "cape" container just as it does cape*) so that it is a
+    # rigid part of the container, not a separate piece of cloth; it carries the rolled fold across the top.
+    B.append(Bone("collar", "body", (0, -10, 3.8), team=True, rot=(CAPE_TILT, 0, 0),
+                  boxes=[Box((-2.5, -1.5, -0.5), (5, 2, 2), ("roll", "roll"), sheet="cloth")]))
+    for key, x0, w, ln, flare in (("a", -5, 3, 13, 4), ("b", -2, 4, CAPE_B, 0), ("c", 2, 3, 12, -4)):
+        B.append(Bone(f"cloak_{key}", "collar", (x0 + w / 2, 0, 0), team=True, rot=(0, 0, flare), boxes=[
+            Box((-w / 2, 0, 0), (w, ln, 1), ("strip", key, 4), sheet="cloth")]))
     # tier II, the Hollow Lord: the crown mended and raised, salvaged plate piped in violet, tines on the pauldrons
     P2 = lambda seed, worn=0.12: per_tier(lambda t: gb_plate(t, seed, worn), (2, 3))
     TN = per_tier(lambda t: gb_spike(GI, 4, 3), (2, 3))
@@ -456,7 +475,7 @@ def bones():
 NOTE = ("Graveborn Hollow King (unit identity, Graveborn Legendary): the grandest of the six, tall and broad (body 10x14x5, arms 4x13x4, legs "
         "5x14x5): black grave-iron plate split open over a lit soul-fire ribcage, a broken funeral-gilt crown with a violet stone, a bare "
         "skull with its jaw bound in gilt wire and soul-lit eyes, layered pauldrons with broken spikes, a high gorget, a violet-hemmed rag "
-        "skirt, slit greaves over bare bone and one large tattered team-cloth cloak dragging behind. Carries the grave sword. Tier II mended crown and "
+        "skirt, slit greaves over bare bone and a torn team-cloth cape to the back of the knee. Carries the grave sword. Tier II mended crown and "
         "salvaged plate, tier III tall gilt crown, gilt rails and a spine fan; no flag. Glow sheet 16 texels (ribs and eyes).")
 
 HOLLOWKING = Troop("gb_hollowking", SKIN, CLOTH, bones, cloth_painter,

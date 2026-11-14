@@ -216,3 +216,28 @@ is not blended.
 
 **Not checked:**
 - The in-game reel, verify and Gradle (not allowed by this brief).
+
+## Model rebuild 2026-11-13 (cape)
+
+Kort: "the hollow kings cape looks weird that needs fixed". Shown today's cape and three options (knee cape, heel cape,
+knee cape with capelet); he picked A, the knee cape, and said nothing else bothers him. Builder only
+(`art/hand/gb_hollowking/build_gb_hollowking.py`); no clip was re-keyed.
+
+Changes (everything else, bone names, parents, pivots and limb lengths, is unchanged):
+- Removed `cloak_a/b/c` (5x25-27x1 panels from the collar to the ground) and `train_a/b/c` (trains lying on the floor).
+- New `collar` on body at (0,-10,3.8), rot (-12,0,0), carrying a 5x2x2 rolled fold of team cloth. troop_rig hangs it in a
+  new `cape` container (pivot world (0,24,3.8)), which is the bone the idle, walk, run, attack, death, fake_death and rise
+  clips already key. Before this the `cape` keys did nothing (no such bone) and the cloak never moved in idle, walk or run.
+- New `cloak_a` (3x13x1, flare z +4), `cloak_b` (4x15x1), `cloak_c` (3x12x1, flare z -4) under `collar`, torn hem, team
+  cloth, to the back of the knee. The names are kept so the attack and hit keys on cloak_a/b/c still drive them.
+- Final cape chain: torso > cape > collar > cloak_a, cloak_b, cloak_c.
+
+Proof:
+- focus_check: 44 clips, 0 FAIL (unchanged from before). WARN: secondary_life cloak_a 3.86 and 3.21 (as before), settle on cape.
+- scorecard: 0 failing.
+- verify fast: PASS.
+- Cape clearance (work/hk_model/probe.py, every quarter tick): idle/walk/run legs +0.63, arms -0.15, sword +1.9, hem
+  +7.3 px over the feet. Worst of all clips: cloak_a into right_pauldron -1.6 (attack_overhead_cleave t14.5), cloak_b into
+  left_foot_gear -1.7 (hit_knockback t3), cloak_a into belt -0.85 (attack_side_cut t15). Before: legs -2.48, sword -0.64,
+  hem 8.87 px through the ground.
+- Open for animation: the cloak_a/b/c and cape keys were tuned for the old cape; those last 1-2 px are the cape's motion.

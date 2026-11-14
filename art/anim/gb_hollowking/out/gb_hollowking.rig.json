@@ -110,22 +110,19 @@
     3
    ]
   },
-  "cloak_a": {
+  "cape": {
    "team": true
   },
-  "train_a": {
+  "collar": {
+   "team": true
+  },
+  "cloak_a": {
    "team": true
   },
   "cloak_b": {
    "team": true
   },
-  "train_b": {
-   "team": true
-  },
   "cloak_c": {
-   "team": true
-  },
-  "train_c": {
    "team": true
   },
   "gorget_ring": {
