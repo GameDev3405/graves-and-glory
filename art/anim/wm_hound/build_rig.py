@@ -106,6 +106,7 @@ def main():
     os.makedirs(os.path.join(out, "preview"), exist_ok=True)
     R = HoundRig(); R.textures()
     json.dump(R.geo(), open(os.path.join(out, "wm_hound.geo.json"), "w"), indent=1)
+    json.dump(R.settle_sidecar, open(os.path.join(out, "wm_hound.settle.json"), "w"), indent=1)
     json.dump(R.meta(), open(os.path.join(out, "wm_hound.rig.json"), "w"), indent=1)
     for t in R.tiers:
         for side in SIDES:

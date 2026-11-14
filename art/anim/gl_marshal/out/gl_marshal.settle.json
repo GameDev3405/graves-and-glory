@@ -1,0 +1,89 @@
+{
+ "note": "render-only depth bias (art/hand/common/zfight.py settle_geo): render_geo.load_geo puts each listed cube's shipped inflate back to the authored one, so measurements see the authored shapes",
+ "cubes": {
+  "left_boot|-0.6,0,-3|5,3,5": [
+   0.03,
+   0.0
+  ],
+  "left_cuff|3.5,15,-2.5|5,2,5": [
+   0.03,
+   0.0
+  ],
+  "left_knee|-0.6,5,-3|5,2,2": [
+   0.03,
+   0.0
+  ],
+  "left_leg|-0.1,6,-2|4,6,4": [
+   0.03,
+   0.0
+  ],
+  "left_pauldron|2,24,-4|8,2,8": [
+   0.03,
+   0.0
+  ],
+  "left_pauldron|3.5,20,-3|7,2,6": [
+   0.18,
+   0.15
+  ],
+  "left_skirt|-0.1,6,-2.45|4,6,0": [
+   0.03,
+   0.0
+  ],
+  "left_skirt|-0.1,6,2.45|4,6,0": [
+   0.03,
+   0.0
+  ],
+  "right_cuff|-8.5,15,-2.5|5,2,5": [
+   0.03,
+   0.0
+  ],
+  "right_pauldron|-10,24,-4|8,2,8": [
+   0.03,
+   0.0
+  ],
+  "right_pauldron|-10.5,20,-3|7,2,6": [
+   0.18,
+   0.15
+  ],
+  "shield|-1,19,-4|12,1,2": [
+   0.03,
+   0.0
+  ],
+  "shield|-1,8,-4|1,11,2": [
+   0.03,
+   0.0
+  ],
+  "shield|0,6,-4|1,2,2": [
+   0.03,
+   0.0
+  ],
+  "shield|1,4,-4|1,2,2": [
+   0.03,
+   0.0
+  ],
+  "shield|10,8,-4|1,11,2": [
+   0.03,
+   0.0
+  ],
+  "shield|2,3,-4|1,1,2": [
+   0.03,
+   0.0
+  ],
+  "shield|3,2,-3.4|4,1,1": [
+   -0.03,
+   0.0
+  ],
+  "shield|7,3,-4|1,1,2": [
+   0.03,
+   0.0
+  ],
+  "shield|8,4,-4|1,2,2": [
+   0.03,
+   0.0
+  ],
+  "shield|9,6,-4|1,2,2": [
+   0.03,
+   0.0
+  ]
+ }
+}

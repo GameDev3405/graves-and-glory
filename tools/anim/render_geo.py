@@ -283,11 +283,56 @@ def _build_cube(cj, bone, tw, th):
     return cube
 
 
-def load_geo(src):
-    """Load a geo.json from a path, JSON string-less dict, or file object."""
+def settle_sidecar_for(path):
+    """The depth-bias sidecar (art/hand/common/zfight.py settle_geo) of a troop geo, or None: out/<troop>.settle.json beside
+    the generator's geo (also for its preview/ cuts), or art/anim/<troop>/out[/A]/<troop>.settle.json for the shipped
+    assets/<ns>/geo/troop/<troop>.geo.json."""
+    p = os.path.abspath(os.fspath(path))
+    d, name = os.path.split(p)
+    if os.path.basename(d) == "preview":
+        d = os.path.dirname(d)
+    cands = sorted(f for f in os.listdir(d) if f.endswith(".settle.json")) if os.path.isdir(d) else []
+    if cands:
+        return os.path.join(d, cands[0])
+    parts = p.replace("\\", "/").split("/")
+    if len(parts) > 6 and parts[-2] == "troop" and parts[-3] == "geo" and "src" in parts and name.endswith(".geo.json"):
+        root = "/".join(parts[:len(parts) - 1 - parts[::-1].index("src")])
+        t = name[:-len(".geo.json")]
+        for sub in ("out", "out/A"):
+            f = os.path.join(root, "art/anim", t, sub, t + ".settle.json")
+            if os.path.isfile(f):
+                return f
+    return None
+
+
+def authored(data, side):
+    """data with each sidecar cube's shipped inflate put back to the authored one (a cube matches on bone, origin, size and
+    its shipped inflate, so a geo the bias never touched, main's for one, loads as it is). Changes data in place."""
+    rows = side.get("cubes", {})
+    for g in data.get("minecraft:geometry", [])[:1]:
+        for b in g.get("bones", []):
+            for c in b.get("cubes", []):
+                k = "%s|%s|%s" % (b["name"], ",".join("%g" % v for v in c.get("origin", ())),
+                                  ",".join("%g" % v for v in c.get("size", ())))
+                r = rows.get(k)
+                if r is not None and abs(c.get("inflate", 0.0) - r[0]) < 1e-9:
+                    if r[1]:
+                        c["inflate"] = r[1]
+                    else:
+                        c.pop("inflate", None)
+    return data
+
+
+def load_geo(src, shipped=False):
+    """Load a geo.json from a path, JSON string-less dict, or file object. A troop geo built with a z-fight depth bias loads
+    with its authored inflates (settle_sidecar_for, authored) unless shipped=True: measurements see the authored shapes."""
     if isinstance(src, (str, os.PathLike)):
         with open(src, "r", encoding="utf-8") as fh:
             data = json.load(fh)
+        side = None if shipped else settle_sidecar_for(src)
+        if side:
+            with open(side, "r", encoding="utf-8") as fh:
+                authored(data, json.load(fh))
     else:
         data = src
     geos = data.get("minecraft:geometry")

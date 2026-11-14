@@ -450,8 +450,10 @@ class Rig:
 
     def settle(s):
         """Parts every pair of cubes whose same-way faces share a plane (knee plates on the thigh, a foot on its shin's foot, a
-        thigh on its twin) by zfight.SEP of inflate, art/hand/common/zfight.py: under 0.05 px, UVs unchanged, pivots untouched."""
-        return Z.settle(s.B, lambda: Z.Model.geo(s._geo(), s.meta(), s.tid))
+        thigh on its twin) by zfight.SEP of inflate, art/hand/common/zfight.py: under 0.05 px, UVs unchanged, pivots untouched.
+        A render-only depth bias: s.settle_sidecar (out/<tid>.settle.json) lets render_geo.load_geo measure the authored shapes."""
+        left, s.settle_sidecar = Z.settle_geo(s.B, s._geo, lambda g: Z.Model.geo(g, s.meta(), s.tid))
+        return left
 
     def _geo(s, keep=lambda bn: True):
         absp, out = {}, []
@@ -526,6 +528,7 @@ def main():
     os.makedirs(os.path.join(out, "preview"), exist_ok=True)
     R = Rig(tid); R.textures()
     json.dump(R.geo(), open(os.path.join(out, f"{tid}.geo.json"), "w"), indent=1)
+    json.dump(R.settle_sidecar, open(os.path.join(out, f"{tid}.settle.json"), "w"), indent=1)
     json.dump(R.meta(), open(os.path.join(out, f"{tid}.rig.json"), "w"), indent=1)
     for t in R.tiers:
         for side in SIDES:

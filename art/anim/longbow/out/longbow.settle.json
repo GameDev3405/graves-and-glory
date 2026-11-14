@@ -1,0 +1,53 @@
+{
+ "note": "render-only depth bias (art/hand/common/zfight.py settle_geo): render_geo.load_geo puts each listed cube's shipped inflate back to the authored one, so measurements see the authored shapes",
+ "cubes": {
+  "left_boot_cuff|-0.6,2,-2.5|5,2,5": [
+   0.03,
+   0.0
+  ],
+  "left_foot|-0.1,0,-2|4,2,4": [
+   0.03,
+   0.0
+  ],
+  "left_jack|-0.1,6,-2.3|4,6,0": [
+   0.03,
+   0.0
+  ],
+  "left_jack|-0.1,6,2.3|4,6,0": [
+   0.03,
+   0.0
+  ],
+  "left_leg|-0.1,6,-2|4,6,4": [
+   0.03,
+   0.0
+  ],
+  "left_skirt_t1|-0.1,8,-2.45|4,4,0": [
+   0.03,
+   0.0
+  ],
+  "left_skirt_t1|-0.1,8,2.45|4,4,0": [
+   0.03,
+   0.0
+  ],
+  "left_skirt_t2|-0.1,8,-2.45|4,4,0": [
+   0.03,
+   0.0
+  ],
+  "left_skirt_t2|-0.1,8,2.45|4,4,0": [
+   0.03,
+   0.0
+  ],
+  "left_skirt_t3|-0.1,8,-2.45|4,4,0": [
+   0.03,
+   0.0
+  ],
+  "left_skirt_t3|-0.1,8,2.45|4,4,0": [
+   0.03,
+   0.0
+  ],
+  "long_feather|3.5,33,-1|1,2,12": [
+   0.03,
+   0.0
+  ]
+ }
+}

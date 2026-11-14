@@ -1,0 +1,21 @@
+{
+ "note": "render-only depth bias (art/hand/common/zfight.py settle_geo): render_geo.load_geo puts each listed cube's shipped inflate back to the authored one, so measurements see the authored shapes",
+ "cubes": {
+  "cord|2,7,-2.8|1,8,1": [
+   0.03,
+   0.0
+  ],
+  "head|-4,24,-3|8,8,8": [
+   0.03,
+   0.0
+  ],
+  "left_sleeve|3,18.5,-2|4,7,4": [
+   0.23,
+   0.2
+  ],
+  "right_sleeve|-7,18.5,-2|4,7,4": [
+   0.23,
+   0.2
+  ]
+ }
+}

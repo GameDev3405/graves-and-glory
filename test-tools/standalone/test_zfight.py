@@ -1,4 +1,5 @@
 """The z-fighting check (art/hand/common/zfight.py, tools/zfight_check.py) on small hand-made models."""
+import json
 import pathlib
 import sys
 import unittest
@@ -162,6 +163,66 @@ class Settle(unittest.TestCase):
         Z.settle(B, self.emit(B), protect={'a#0'})
         self.assertEqual(B[0].boxes[0].dil, 0.0)
         self.assertNotEqual(B[1].boxes[0].dil, 0.0)
+
+
+def gj(*cubes):
+    """a one-bone geo: cubes (origin, size, inflate)"""
+    return {'minecraft:geometry': [{'bones': [{'name': 'b', 'pivot': [0, 0, 0], 'cubes': [
+        dict({'origin': list(o), 'size': list(s)}, **({'inflate': i} if i else {})) for o, s, i in cubes]}]}]}
+
+
+class Sidecar(unittest.TestCase):
+    """The settle offsets are a render-only depth bias: render_geo.load_geo reads <troop>.settle.json and measures the
+    authored shapes. Shipped = authored + sidecar."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(ROOT / 'tools/anim'))
+        import render_geo
+        cls.rg = render_geo
+
+    def test_round_trip(self):
+        a = gj(((0, 0, 0), (4, 4, 4), 0), ((2, 0, 0), (2, 2, 2), 0.1), ((5, 5, 5), (1, 1, 1), 0))
+        s = gj(((0, 0, 0), (4, 4, 4), 0.03), ((2, 0, 0), (2, 2, 2), 0.07), ((5, 5, 5), (1, 1, 1), 0))
+        side = Z.sidecar(a, s)
+        self.assertEqual(len(side['cubes']), 2)
+        self.assertEqual(self.rg.authored(json.loads(json.dumps(s)), side), a)
+        # a geo the bias never touched (main's) loads as it is: its inflate is not the shipped one
+        self.assertEqual(self.rg.authored(json.loads(json.dumps(a)), side), a)
+
+    def test_ambiguous_twins_refused(self):
+        a = gj(((0, 0, 0), (4, 4, 4), 0), ((0, 0, 0), (4, 4, 4), 0))
+        s = gj(((0, 0, 0), (4, 4, 4), 0.03), ((0, 0, 0), (4, 4, 4), 0))
+        with self.assertRaises(ValueError):
+            Z.sidecar(a, s)
+
+    def test_shape_change_refused(self):
+        with self.assertRaises(ValueError):
+            Z.sidecar(gj(((0, 0, 0), (4, 4, 4), 0)), gj(((0, 0, 0), (4, 5, 4), 0)))
+
+    def test_shipped_is_authored_plus_sidecar(self):
+        """Every GeckoLib troop: its sidecar is found from the shipped geo, every row matches a shipped cube, and the troop_rig
+        generator rebuilds exactly the shipped geo and sidecar."""
+        geo = ROOT / 'src/main/resources/assets/gravesandglory/geo/troop'
+        sys.path.insert(0, str(ROOT / 'art/anim/common'))
+        import troop_rig
+        for p in sorted(geo.glob('*.geo.json')):
+            t = p.name[:-len('.geo.json')]
+            with self.subTest(troop=t):
+                side_path = self.rg.settle_sidecar_for(p)
+                self.assertIsNotNone(side_path, t)
+                side = json.loads(pathlib.Path(side_path).read_text(encoding='utf-8'))
+                shipped = json.loads(p.read_text(encoding='utf-8'))
+                ids = {}
+                for n, c in Z._cubes_of(shipped):
+                    ids.setdefault(Z.cube_id(n, c), set()).add(c.get('inflate', 0.0))
+                for k, (s_, a_) in side['cubes'].items():
+                    self.assertIn(s_, ids.get(k, ()), 'stale sidecar row %s %s' % (t, k))
+                if t in troop_rig.TROOPS:
+                    R = troop_rig.Rig(t)
+                    R.textures()
+                    self.assertEqual(json.loads(json.dumps(R.geo())), shipped, t)
+                    self.assertEqual(json.loads(json.dumps(R.settle_sidecar)), side, t)
 
 
 if __name__ == '__main__':

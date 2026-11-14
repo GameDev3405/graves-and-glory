@@ -1,6 +1,10 @@
 """Copies a troop rig built by troop_rig.py, and its clips, into the mod's assets for the GeckoLib renderer.
 
 python art/anim/common/export.py <troop>
+python art/anim/common/export.py --geo-only <troop> [<troop> ...]   geometry only: geo/troop/<troop>.geo.json and
+    troop_rig/<troop>.json, nothing else (no clips, textures or cast tip). After a geometry-only rebuild (troop_rig.py,
+    or the knight's build_rig.py A: its out/A), e.g. the z-fight depth bias, while out/<troop>.animation.json may not be
+    the shipped clips.
 
 geo/troop/<troop>.geo.json, troop_rig/<troop>.json, textures/entity/troop/<troop>_geo/t<tier>_<side>.png,
 animations/troop/<troop>.animation.json  (as art/anim/knight/export.py does for the knight); and, for a caster v2 troop whose
@@ -13,7 +17,20 @@ HERE = Path(__file__).resolve().parent
 ASSETS = HERE.parents[2] / "src/main/resources/assets/gravesandglory"
 
 
+def geo_only(tids):
+    for tid in tids:
+        src = HERE.parent / tid / "out" / ("A" if tid == "knight" else "")
+        for need in (f"{tid}.geo.json", f"{tid}.rig.json"):
+            if not (src / need).exists():
+                sys.exit(f"missing {src / need}: run its rig builder first")
+        shutil.copyfile(src / f"{tid}.geo.json", ASSETS / f"geo/troop/{tid}.geo.json")
+        shutil.copyfile(src / f"{tid}.rig.json", ASSETS / f"troop_rig/{tid}.json")
+        print(f"exported {tid}: geo, rig")
+
+
 def main():
+    if sys.argv[1] == "--geo-only":
+        return geo_only(sys.argv[2:])
     tid = sys.argv[1]
     src = HERE.parent / tid / "out"
     for need in (f"{tid}.geo.json", f"{tid}.rig.json", f"{tid}.animation.json"):

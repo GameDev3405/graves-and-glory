@@ -482,6 +482,50 @@ def settle(bones, emit, protect=(), budget=200000):
     return [h for h in find(emit(), eps=SOLVE_EPS) if h.a in boxes and h.b in boxes]
 
 
+def settle_geo(bones, emit_geo, model_of, protect=()):
+    """settle for a GeckoLib generator, plus its depth-bias sidecar. emit_geo() -> geo dict at the bones' current inflate;
+    model_of(geo) -> Model. The offsets are a render-only depth bias: every measuring tool (render_geo.load_geo, so the
+    scorecard, focus_check, fullbody and the clip builders) must see the authored shapes, so this returns the rows that
+    take the shipped inflate back to the authored one (sidecar). Authored = before settle and before any Box.lift (a shield
+    rim's RIM_LIFT). Returns (pairs still near, sidecar dict)."""
+    boxes = [b for bn in bones for b in bn.boxes if getattr(b, "lift", 0.0)]
+    keep = [b.dil for b in boxes]
+    for b in boxes:
+        b.dil = round(b.dil - b.lift, 4)
+    authored = emit_geo()
+    for b, d in zip(boxes, keep):
+        b.dil = d
+    left = settle(bones, lambda: model_of(emit_geo()), protect)
+    return left, sidecar(authored, emit_geo())
+
+
+def _cubes_of(g):
+    g = g["minecraft:geometry"][0] if "minecraft:geometry" in g else g
+    return [(b["name"], c) for b in g["bones"] for c in b.get("cubes", [])]
+
+
+def cube_id(bone, c):
+    """A cube's identity in every geo cut from one rig (the full geo and each tier preview): bone, origin, size."""
+    return "%s|%s|%s" % (bone, ",".join("%g" % v for v in c["origin"]), ",".join("%g" % v for v in c["size"]))
+
+
+def sidecar(authored, shipped):
+    """{"cubes": {cube_id: [shipped inflate, authored inflate]}} for every cube whose inflate the bias changed."""
+    a, s = _cubes_of(authored), _cubes_of(shipped)
+    if [(n, cube_id(n, c)) for n, c in a] != [(n, cube_id(n, c)) for n, c in s]:
+        raise ValueError("sidecar: the authored and shipped geo differ in more than inflate")
+    seen, rows = {}, {}
+    for (n, ca), (_, cs) in zip(a, s):
+        k, pair = cube_id(n, ca), [cs.get("inflate", 0.0), ca.get("inflate", 0.0)]
+        if seen.setdefault(k, pair) != pair:   # the loader could not tell the two apart
+            raise ValueError("sidecar: two cubes share %s with different inflates" % k)
+        if pair[0] != pair[1]:
+            rows[k] = pair
+    return {"note": "render-only depth bias (art/hand/common/zfight.py settle_geo): render_geo.load_geo puts each listed "
+                    "cube's shipped inflate back to the authored one, so measurements see the authored shapes",
+            "cubes": dict(sorted(rows.items()))}
+
+
 MAX_OFFSET = 0.05   # px: no box moves this far from its authored shape, counting a generator's own lift (handlib Box.lift)
 
 

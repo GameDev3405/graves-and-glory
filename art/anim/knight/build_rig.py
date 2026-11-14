@@ -20,6 +20,7 @@ for p in ("hand/common", "hand/knight", "hand/weapons", "anim/knight"):
     sys.path.insert(0, os.path.join(ART, p))
 from PIL import Image                                         # noqa: E402
 import handlib as H                                           # noqa: E402
+import zfight as Z                                            # noqa: E402
 from handlib import Box, Bone, limb, pack, paint_box, on, SIDES, ELBOW, KNEE, HAND, JOINT_INSET, per_tier  # noqa: E402
 import build_knight as K                                      # noqa: E402
 import build_swords as SW                                     # noqa: E402
@@ -213,10 +214,19 @@ def rig_meta(B):
         for bn in B}}
 
 
+SIDECAR = {}   # option -> the depth-bias sidecar of its settle (zfight.settle_geo), written as out/<option>/knight.settle.json
+
+
 def build(option):
     P = K if option == "A" else __import__("paint_b")
     B = bones(P)
-    return (B,) + textures(P, B)
+    skins, cloths, sword, uvs, cubes = textures(P, B)
+    # part every same-way coplanar cube pair by zfight.SEP of inflate (art/hand/common/zfight.py): UVs and pivots unchanged.
+    # A render-only depth bias: render_geo.load_geo reads the sidecar back, so fullbody, the scorecard and the clip builders
+    # measure the authored shapes (the shipped clips and scorecard_limits.json were derived from them)
+    h = SWORD_Y + sword.height
+    _, SIDECAR[option] = Z.settle_geo(B, lambda: geo(B, uvs, cubes, h), lambda g: Z.Model.geo(g, rig_meta(B), "knight"))
+    return B, skins, cloths, sword, uvs, cubes
 
 
 def main():
@@ -226,6 +236,7 @@ def main():
     B, skins, cloths, sword, uvs, cubes = build(option)
     h = SWORD_Y + sword.height
     json.dump(geo(B, uvs, cubes, h), open(os.path.join(out, "knight.geo.json"), "w"), indent=1)
+    json.dump(SIDECAR[option], open(os.path.join(out, "knight.settle.json"), "w"), indent=1)
     json.dump(rig_meta(B), open(os.path.join(out, "knight.rig.json"), "w"), indent=1)
     for t in TIERS:
         for side in SIDES:
