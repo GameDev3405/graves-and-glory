@@ -1,0 +1,75 @@
+{
+  "id": "chain_brazier",
+  "category": "hall",
+  "name": "Chain Brazier",
+  "size": [
+    1,
+    4,
+    1
+  ],
+  "parts": [
+    {
+      "model": "chain_brazier",
+      "cmd": 7311521,
+      "glow": false
+    },
+    {
+      "model": "chain_brazier_coals",
+      "cmd": 7311522,
+      "glow": true
+    },
+    {
+      "model": "chain_brazier_flame",
+      "cmd": 7311523,
+      "glow": true
+    }
+  ],
+  "solid": [
+    [
+      0,
+      2,
+      0
+    ]
+  ],
+  "lights": [
+    {
+      "x": 0,
+      "y": 3,
+      "z": 0,
+      "level": 14
+    }
+  ],
+  "effects": [
+    {
+      "kind": "particle",
+      "id": "minecraft:smoke",
+      "x": 0.5,
+      "y": 3.4,
+      "z": 0.5,
+      "spread": 0.1,
+      "count": 2,
+      "every": 10
+    },
+    {
+      "kind": "particle",
+      "id": "minecraft:flame",
+      "x": 0.5,
+      "y": 2.9,
+      "z": 0.5,
+      "spread": 0.15,
+      "count": 2,
+      "every": 16,
+      "chance": 0.5
+    },
+    {
+      "kind": "sound",
+      "id": "minecraft:block.campfire.crackle",
+      "x": 0.5,
+      "y": 2.8,
+      "z": 0.5,
+      "every": 40,
+      "chance": 0.6,
+      "volume": 0.7
+    }
+  ]
+}
