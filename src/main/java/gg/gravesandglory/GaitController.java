@@ -56,7 +56,7 @@ final class GaitController extends AnimationController<GeoTroop> {
      */
     private final Map<String, float[]> wrote = new HashMap<>();
     /**
-     * The legs layer only: this troop's leg bones as it was last drawn, under every layer (rotation xyz), which a set-off matches its stride to ({@link #matchPhase}).
+     * The legs layer only: this troop's leg bones as it was last drawn, with every layer on (rotation xyz), which a set-off matches its stride to ({@link #matchPhase}).
      * Kept by {@link Shown}, behind the last layer, for the same reason {@link #wrote} is kept: the bones themselves hold the model's last draw, not this troop's.
      */
     private final Map<String, float[]> shown = new HashMap<>();
@@ -241,7 +241,7 @@ final class GaitController extends AnimationController<GeoTroop> {
     /**
      * The phase (0..1) of the gait clip {@code clip} whose leg rotations lie nearest {@code pose} (each bone's rotation xyz first), so a troop that sets off steps out of
      * the stance it held without its planted foot jumping. 0 when the pose holds none of the clip's leg bones. The pose given is the troop's own legs as last drawn
-     * ({@link #shown}): a stance lerps the legs toward its own pose and lets go over a few ticks once the troop moves, so the stride that slides the feet least through
+     * ({@link #shown}): a standing stance (all but the stun and fall-back legs) lerps the legs toward its own pose and lets go over a few ticks once the troop moves, so the stride that slides the feet least through
      * that is the one nearest the drawn legs, not the idle legs under the stance. Until 2026-11-14 it was what the bones held when {@link #process} began, the last draw
      * of the model: a lone troop's own drawn legs, but in a battle another troop's.
      */

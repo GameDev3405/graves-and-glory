@@ -83,12 +83,14 @@ lessons into this file with their commit hashes.
   new clip that keys a bone no gait clip keys (soft-motion parts: cape, hood, skirt, pauldron, braid) is only proven
   by an in-game reel, never by renders alone, and "something spins or drifts in play only" means look at the layers,
   not the clip.
-- **Code that reads a bone reads the last draw of the model, not this troop** (2026-11-14). A controller's clip pose
-  goes onto the bones after its `process` returns, so inside `process` the bones still hold what the previous draw
-  left: in a battle, another troop. `GaitController.matchPhase` picked a troop's first stride from that, so troops
-  set off on a phase taken from someone else's legs. Anything that must know what this troop held reads a pose
-  the controller kept for it, never the bones: `wrote` (the gait layer, taken in `after()`) or `shown` (the legs
-  as drawn under every layer, taken by `GaitController.Shown`, registered last). The harness row `-start-own-legs`
+- **A gait layer that reads a bone reads the last draw of the model, not this troop** (2026-11-14). A controller's
+  clip pose goes onto the bones after its `process` returns, so inside the `process` of the legs and upper gait
+  layers, which run first, every bone still holds what the previous draw left: in a battle, another troop. (The
+  stance, attack, hit and death layers run behind them and read this frame's bones, which is right.)
+  `GaitController.matchPhase` picked a troop's first stride from that, so troops set off on a phase taken from
+  someone else's legs. Anything in a gait layer that must know what this troop held last frame reads a pose the
+  controller kept for it, never the bones: `wrote` (the gait layer alone, taken in `after()`) or `shown` (the legs
+  as drawn with every layer on, taken by `GaitController.Shown`, registered last). The harness row `-start-own-legs`
   guards it: it leaves a walk pose half a stride off on the leg bones after each draw, keeps each troop's legs as
   last drawn, and fails if a troop that sets off does not start on the phase its own drawn legs match.
 
