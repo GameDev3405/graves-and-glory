@@ -47,8 +47,9 @@ class Palette:
     px), dirt_lo / dirt_span (grimed lower wall), wall_patches [(face, a0, a1, y0, y1, ramp)] on WALL (a along the wall),
     front_patches (same, on the front wall), roof_patches [(side, s0, s1, z0, z1, ramp)] (side +1 east / -1 west, s px down
     the slope from the ridge), roof_stain (chance a 16 px roof panel is a tone darker)."""
-    def __init__(s, canvas=CANVAS, roof=None, hemp=HEMP, team=None, stripes=(), wear=None):
+    def __init__(s, canvas=CANVAS, roof=None, hemp=HEMP, team=None, stripes=(), wear=None, trim_y=None):
         s.canvas, s.roof, s.hemp, s.team, s.stripes, s.wear = canvas, roof or canvas, hemp, team, tuple(stripes), wear
+        s.trim_y = trim_y      # team trim band on the side and back walls from this height up (needs `team`)
 
     def extra(s):
         w = s.wear or {}
@@ -67,13 +68,15 @@ def _col(ramp, face, d, base):
     return ramp[_clamp(base + (1 if face == "up" else LIT[face]) + d)]
 
 
-def _wall_pattern(pal, patches_key, base=3):
+def _wall_pattern(pal, patches_key, base=3, trim=False):
     """The wall canvas pattern: a seam every 16 px; weathered: mud line at the hem, grimed lower wall, patches."""
     wr = pal.wear
 
     def p(f, P, c, r, w, h):
         along = P[2] if f in ("east", "west") else P[0]
         d = -1 if math.floor(along) % 16 == 0 else 0
+        if trim and pal.team and pal.trim_y is not None and f not in ("up", "down") and P[1] >= pal.trim_y:
+            return _col(pal.team, f, d, 2)
         if not wr or f in ("up", "down"): return d
         y = P[1]
         for fc, a0, a1, y0, y1, pr in wr.get(patches_key, ()):
@@ -114,7 +117,7 @@ class Kit:
         wr = pal.wear
         s.roof = {sd: Mat(pal.roof, 2, _roof_pattern(pal, sd)) for sd in (1, -1)}
         s.skirt = {sd: Mat(pal.roof, 2, _roof_pattern(pal, sd, skirt=True)) for sd in (1, -1)} if pal.team else s.roof
-        s.wall = Mat(pal.canvas, 3, _wall_pattern(pal, "wall_patches"))
+        s.wall = Mat(pal.canvas, 3, _wall_pattern(pal, "wall_patches", trim=True))
         s.gable = Mat(pal.canvas, 3, _wall_pattern(pal, "none"), edges=False)
         s.front = Mat(pal.canvas, 3, _wall_pattern(pal, "front_patches"), edges=False)   # the front wall and lintel: no top edge, or it draws a pale seam across the gable
         s.pole = POLE

@@ -15,8 +15,8 @@ PAL = SRC.Palette(
     light=tentlib.LINEN,
     dark=tentlib.DAWN,
     rope=make_ramp("9B8D72", 0.16),
-    wear=dict(mud=MUD, mud_lo=3, mud_span=4, dirt=3, valance_dirt=38,
-              patches=[(45, 19, 5, 18, 26, PATCH_NEW)]))
+    wear=dict(mud=MUD, mud_lo=3, mud_span=6, dirt=5, valance_dirt=38,
+              patches=[(45, 19, 6, 16, 26, PATCH_NEW), (180, 0, 6, 20, 30, PATCH_NEW)]))
 
 
 def build():

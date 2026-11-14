@@ -11,15 +11,17 @@ from tentlib import MUD, PATCH_NEW, PATCH_TAR   # noqa: F401
 
 SRC = tentlib.load_model("tent_pavilion_large")
 
+DUN = make_ramp("857656", 0.16)                      # a mid-brown patch, visible on the linen stripes
+
 PAL = SRC.Palette(
     light=make_ramp("CBBF9C", 0.15),            # unbleached linen, sun-dulled
-    dark=make_ramp("7A3F3A", 0.17),             # faded oxblood
+    dark=make_ramp("9A8A6E", 0.14),             # sun-bleached khaki-brown: tone on tone with the linen, no circus stripes
     roof_light=make_ramp("CFC5A8", 0.11),       # the roof takes the most sun: paler, flatter
-    roof_dark=make_ramp("90605A", 0.12),
+    roof_dark=make_ramp("A99C80", 0.11),
     rope=make_ramp("8E8068", 0.16),
     wear=dict(mud=MUD, mud_lo=5, mud_span=7, dirt=5, valance_dirt=41,
-              patches=[(45, 19, 5, 16, 25, PATCH_NEW), (135, 0, 5, 26, 35, PATCH_TAR), (180, 0, 5, 18, 27, PATCH_NEW)],
-              roof_patches=[(90, -26, 6, 40, 52, PATCH_NEW), (45, 0, 6, 55, 66, PATCH_TAR)]))
+              patches=[(45, 19, 7, 14, 26, PATCH_NEW), (135, 0, 7, 24, 36, DUN), (180, 0, 7, 16, 28, PATCH_NEW)],
+              roof_patches=[(90, -26, 7, 40, 52, PATCH_NEW), (45, 16, 7, 55, 66, PATCH_NEW)]))
 
 
 def build():
