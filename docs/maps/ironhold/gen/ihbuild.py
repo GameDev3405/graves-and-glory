@@ -293,7 +293,7 @@ class Map:
                 ys = [y for y in range(self.h[(x, z)] + 1, self.h[(x, z)] + 8) if self.extra.get((x, y, z)) == 'polished_blackstone_brick_wall']
                 if not ys: self.log.append('brazier %d %d: no cage found  CONFLICT' % (x, z)); continue
                 for y in range(ys[0], ys[0] + 3): self.extra.pop((x, y, z), None)
-                self.prop('brazier', x, z, 0, 'brazier', ay=ys[0], chk=False)
+                self.prop('brazier_tall', x, z, 0, 'brazier', ay=ys[0], chk=False)
 
     # ---------------------------------------------------------------- cover and dressing
     def free(self, x, z, r=1, kinds=('ground',)):
