@@ -10,6 +10,9 @@ import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3   # noqa: F401
 
+MAT["seat"] = Mat(make_ramp("33201A"), 2, pattern=lambda f, P, c, r, w, h: -1 if h3(*P, 81) < 0.07 else 0)   # dark slung leather
+MAT["seat_edge"] = Mat(make_ramp("8A6A3E", 0.18), 2)       # lighter stitched edge band
+
 
 def build():
     s = [
@@ -26,7 +29,8 @@ def build():
         # seat rails and the slung leather seat
         E((1, 10, 2), (4, 12, 14), "swood_z", name="seat rail west"),
         E((12, 10, 2), (15, 12, 14), "swood_z", name="seat rail east"),
-        E((4, 11, 3), (12, 12, 13), "leather", name="leather seat"),
-        E((4, 10, 4), (12, 11, 12), "leather", skip="up", name="seat sag"),
+        E((4, 11, 4), (12, 12, 12), "seat", name="leather seat"),
+        E((4, 11, 3), (12, 12, 4), "seat_edge", name="seat edge north"), E((4, 11, 12), (12, 12, 13), "seat_edge", name="seat edge south"),
+        E((4, 10, 4), (12, 11, 12), "seat", skip="up", name="seat sag"),
     ]
     return Prop("camp_stool", {"camp_stool": s})

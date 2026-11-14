@@ -8,11 +8,12 @@ Build:  python art/props/build_props.py cauldron_tripod      Card:  python tools
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3   # noqa: F401
+from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOT   # noqa: F401
 
 MAT["rope"] = Mat(make_ramp("7A6038", 0.20), 2, edges=False, pattern=lambda f, P, c, r, w, h: -1 if int(P[1]) % 2 else 0)
 MAT["stew"] = Mat(make_ramp("5B4630"), 2, edges=False, pattern=lambda f, P, c, r, w, h: 1 if h3(*P, 71) < 0.12 else 0)
-MAT["pot"] = Mat(make_ramp("555A66"), 2, pattern=lambda f, P, c, r, w, h: -1 if h3(*P, 73) < 0.06 else 0)
+FLAME = Mat(HOT, 3, edges=False, lit=False)
+MAT["pot"] = Mat(make_ramp("6E7380"), 2, pattern=lambda f, P, c, r, w, h: -1 if h3(*P, 73) < 0.06 else 0)
 
 
 def build():
@@ -47,7 +48,10 @@ def build():
     t.append(E((6, 10, 6), (10, 11, 10), "stew", skip="down", name="stew"))
     # embers (glow part)
     embers = [
-        E((4, 0, 4), (12, 3, 12), "coal", skip="down", name="ember bed"),
-        E((5, 3, 5), (11, 4, 11), "coal", skip="down", name="ember heap"),
+        E((3, 0, 3), (13, 4, 13), "coal", skip="down", name="ember bed"),
+        E((5, 4, 5), (11, 5, 11), "coal", skip="down", name="ember heap"),
+        # flame tongues licking up the pot's sides, between the stones
+        E((6, 4, 3), (8, 7, 5), FLAME, name="flame front"), E((9, 4, 3), (10, 6, 5), FLAME, name="flame front small"),
+        E((3, 4, 6), (5, 7, 8), FLAME, name="flame west"), E((11, 4, 8), (13, 7, 10), FLAME, name="flame east"),
     ]
     return Prop("cauldron_tripod", {"cauldron_tripod": t, "cauldron_tripod_embers": embers}, glow=("cauldron_tripod_embers",))

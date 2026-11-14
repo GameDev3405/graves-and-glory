@@ -35,12 +35,12 @@ def build():
     ]
     # pennant: 1 px cloth streaming east from the shaft, a gold hem top and bottom, a swallow tail, a gold charge
     P = [
-        E((5, 28, 8), (9, 36, 9), CLOTH, name="hoist"), E((5, 36, 8), (9, 37, 9), "gilt", name="hem top"), E((5, 27, 8), (9, 28, 9), "gilt", name="hem bottom"),
-        E((9, 29, 8), (13, 35, 9), CLOTH, name="fly"), E((9, 35, 8), (13, 36, 9), "gilt", name="hem top"), E((9, 28, 8), (13, 29, 9), "gilt", name="hem bottom"),
-        E((13, 33, 8), (16, 35, 9), CLOTH, name="tail upper"), E((13, 35, 8), (16, 36, 9), "gilt", name="hem top"),
-        E((13, 29, 8), (16, 31, 9), CLOTH, name="tail lower"), E((13, 28, 8), (16, 29, 9), "gilt", name="hem bottom"),
-        E((16, 34, 8), (18, 36, 9), "gilt", name="tail upper tip"), E((16, 28, 8), (18, 30, 9), "gilt", name="tail lower tip"),
-        E((6, 30, 7), (8, 34, 8), "gilt", name="charge"),
+        E((5, 25, 8), (9, 35, 9), CLOTH, name="hoist"), E((5, 35, 8), (9, 36, 9), "gilt", name="hem top"), E((5, 24, 8), (9, 25, 9), "gilt", name="hem bottom"),
+        E((9, 26, 8), (13, 34, 9), CLOTH, name="fly"), E((9, 34, 8), (13, 35, 9), "gilt", name="hem top"), E((9, 25, 8), (13, 26, 9), "gilt", name="hem bottom"),
+        E((13, 32, 8), (16, 34, 9), CLOTH, name="tail upper"), E((13, 34, 8), (16, 35, 9), "gilt", name="hem top"),
+        E((13, 27, 8), (16, 29, 9), CLOTH, name="tail lower"), E((13, 26, 8), (16, 27, 9), "gilt", name="hem bottom"),
+        E((16, 33, 8), (18, 35, 9), "gilt", name="tail upper tip"), E((16, 26, 8), (18, 28, 9), "gilt", name="tail lower tip"),
+        E((6, 28, 7), (8, 33, 8), "gilt", name="charge"),
     ]
     sh = (0, 16, 0)
     return Prop("spear_standard", {"spear_standard": spear, "spear_standard_pennant": P},
