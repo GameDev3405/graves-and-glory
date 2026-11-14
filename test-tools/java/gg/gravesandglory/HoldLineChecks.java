@@ -185,12 +185,12 @@ final class HoldLineChecks {
         /** How far the moving case's dummy walks south each tick of the flight: 4 blocks a second, a troop's walk. */
         static final double ARC_WALK = 0.2;
         /**
-         * The damage a second six Dusk Order Archers deal to the six-dummy line of hl-arc's volley stage at BASE 2cc6d9a (Projectiles before Task 4:
-         * straight shots), measured by this check on the same world seed before the arc went in; the arc must leave it within 3%.
+         * The damage a second six Dusk Order Archers deal to the six-dummy line of hl-arc's volley stage had every arrow hit. Measured by this check at
+         * BASE 2cc6d9a (Projectiles before Task 4: straight shots) on the same world seed, 211.20 over the 400 ticks in both BASE runs
+         * (test-tools/work/t4/base-1 and base-2) at the bow cooldown of 40: 10.560; b711c5f3 raised the cooldown to 50 (Kort, DECISIONS.md
+         * 2026-11-03: bow damage a second -20%), so 10.560 x 40/50. Scatter (c53a1bf9, 9ac2d05b) lets arrows miss at random, so the check divides the
+         * measured damage a second by the window's hit rate; the arc must leave it within 3%.
          */
-        // 211.20 over the 400 ticks in both BASE runs (test-tools/work/t4/base-1 and base-2, bow cooldown 40) was 10.560; b711c5f3 raised the bow
-        // cooldown to 50 (Kort, DECISIONS.md 2026-11-03: bow damage a second -20%), so 10.560 x 40/50. Scatter (c53a1bf9, 9ac2d05b) lets arrows
-        // miss at random, so the check judges the damage a second every arrow would have dealt: the measured one over the window's hit rate
         static final double ARC_DPS_BASE = 8.448;
         final List<String> arcWhy = new ArrayList<>();
         boolean arcPass = true;
@@ -1262,8 +1262,8 @@ final class HoldLineChecks {
                         for (int far : new int[]{12, 8, 30}) if (!arcMarched) arcMarched = m.getNavigation().startMovingTo(arcHome.x, arcHome.y, arcHome.z + far, 1.0); // a path within its follow range (30 found none)
                         m.prevX = m.getX(); m.prevZ = m.getZ() - ARC_WALK;
                     }
-                    if (ARC_CASES[arcIndex].kind().equals("moving") && !arcMarched) arcPath0 = " (no path: on the ground " + arcTarget.mob.isOnGround() + ", AI off " + arcTarget.mob.isAiDisabled() + ")"; else arcPath0 = "";
-                    arcMissedAt = arrows(Projectiles.ARROWS_MISSED);
+                    if (ARC_CASES[arcIndex].kind().equals("moving") && !arcMarched) arcPath0 = " (no path: on the ground " + arcTarget.mob.isOnGround() + ", navigation " + arcTarget.mob.getNavigation().getClass().getSimpleName() + ")"; else arcPath0 = "";
+                    arcMissedAt = arrows(Projectiles.ARROWS_MISSED) + arrows(Projectiles.ARROWS_LOST); arcWaitTo = 5;
                     Projectiles.fire(b, arcShooter, arcTarget.mob, Abilities.visual(arcShooter), 2f);
                     arcShot = b.shots.get(b.shots.size() - 1); arcArrow = arcShot.visual(); arcPath.clear(); arcTurn.clear(); arcHealth = arcTarget.mob.getHealth();
                     arcClient.clear(); arcClientId = arcArrow == null ? -1 : arcArrow.getId();
@@ -1278,7 +1278,7 @@ final class HoldLineChecks {
                         if (since(b) <= 60) return;
                         arcPass = false; arcWhy.add(ac.id() + " " + ac.kind() + "'s shot still in flight 60 ticks after it was fired=false");
                         Projectiles.clear(b); arcPendingWhy = null;
-                    } else {arcLanded(b, cd, ac); arcFlying = arrows(Projectiles.ARROWS_MISSED) > arcMissedAt ? arcArrow : null; arcFlyEnd = null; arcWaitTo = 5;}
+                    } else {arcLanded(b, cd, ac); arcFlying = arrows(Projectiles.ARROWS_MISSED) + arrows(Projectiles.ARROWS_LOST) > arcMissedAt ? arcArrow : null; arcFlyEnd = null; arcWaitTo = 5;}
                     for (var r : arcRoof.entrySet()) b.world.setBlockState(r.getKey(), r.getValue());
                     arcRoof.clear(); walk(arcHome); if (arcTarget != null) arcTarget.mob.getNavigation().stop();
                     unpin(b, List.of(arcShooter)); arcShooter = null; arcShot = null; arcArrow = null;
