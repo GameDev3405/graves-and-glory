@@ -48,7 +48,6 @@ final class TroopKnowledge {
         out.add(new Stat("speed", "Move speed", speedLabel(t.speed()), "")); // the word only: the sheet's raw speed is no unit a player knows
         out.add(new Stat("cost", "Deploy cost", t.cost() + " gold", ""));
         out.add(new Stat("training", "Training time", UpgradeStats.num(t.trainingSeconds()) + " s", ""));
-        out.add(new Stat("slots", "Army slots", String.valueOf(t.slotWeight()), ""));
         List<String> armour = new ArrayList<>();
         for (String id : new String[]{t.helmet(), t.chest()}) { String n = item(id); if (!n.isEmpty()) armour.add(n); }
         String weapon = item(t.weapon());

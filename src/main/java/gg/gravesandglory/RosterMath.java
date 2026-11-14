@@ -98,14 +98,15 @@ public final class RosterMath {
     }
 
     /**
-     * Banner slots per House (army rework R5): each troop of the banner adds its slotWeight to its House, so a war table troop that takes one
-     * cell still counts its weight toward House tiers. Markers, empty cells and unknown ids count for nothing. Houses with no slots are absent.
+     * Troops per House: every troop of the banner counts 1 toward its House, whatever its rarity (Kort 2026-11-14, War Table review item 5;
+     * slotWeight is only a legacy 20-slot footprint now). Trait tiers and House rewards both read this count. Markers, empty cells and unknown
+     * ids count for nothing. Houses with none are absent.
      */
     public static Map<String, Integer> houseSlots(List<String> banner, Catalog c) {
         Map<String, Integer> slots = new LinkedHashMap<>();
         if (banner != null) for (String id : banner) {
             String house = c.houseOf(id);
-            if (house != null) slots.merge(house, Math.max(1, c.weight(id)), Integer::sum);
+            if (house != null) slots.merge(house, 1, Integer::sum);
         }
         return slots;
     }

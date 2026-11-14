@@ -259,7 +259,7 @@ public final class GravesAndGlory implements ModInitializer {
         final Map<String,Long> chargedAt=new HashMap<>();
         /** Battle time (ticks) each group was last shot at by an enemy archer, or taken aim at from within its reach (Tactics.stamp): its shield troops raise their shields and crawl while it is fresh (Tactics.underFire). */
         final Map<String,Long> shotAt=new HashMap<>();
-        /** House id to trait tier (1 to 3) for the Houses this army's living troops reach, from their slot weights; Houses.recompute keeps it. */
+        /** House id to trait tier (1 to 3) for the Houses this army's living troops reach, one troop each; Houses.recompute keeps it. */
         final Map<String,Integer> traits=new LinkedHashMap<>();
         /** Troop id to how many of them this army lost this round and has not had back as a Reaver's Bloodrush refund (RelicEffects.Bloodrush); the round's start clears it. */
         final Map<String,Integer> fallen=new LinkedHashMap<>();

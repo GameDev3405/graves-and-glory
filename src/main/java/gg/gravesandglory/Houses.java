@@ -7,7 +7,7 @@ import net.minecraft.util.math.Vec3d;
 import java.util.*;
 
 /**
- * House traits (spec 1.3). A squad's trait tier in a House comes from the slot weights of its living troops of that House against the
+ * House traits (spec 1.3). A squad's trait tier in a House comes from the number of its living troops of that House against the
  * houseTraits sheet's slot thresholds; the tiers feed the HUD strip, the trait seconds of the battle report and, in each House's task, the
  * trait multipliers. The pure maths is RosterMath and CounterMath. Gilded Bulwark is in: traitFactor's ranged share and the covered flanks (covered, which the counters table's flank condition reads). Graveborn Rise Again
  * is in: allowDeath, the death log Grave Bloom raises from, and the expiry of the temporary troops it makes. Ironclad Entrench is in (traitFactor, still). Tidecallers
@@ -29,12 +29,12 @@ final class Houses {
         return cachedThresholds.getOrDefault(house, new int[0]);
     }
 
-    /** Sets the squad's House tiers from its living troops' slot weights, in House order, keeping only the Houses at tier I or higher. Temporary troops do not count. */
+    /** Sets the squad's House tiers from its living troops, one each, in House order, keeping only the Houses at tier I or higher. Temporary troops do not count. */
     static void recompute(GravesAndGlory.Squad s) {
         var battle = GravesAndGlory.battle;
         if (battle == null) return;
         Map<String, Integer> slots = new HashMap<>();
-        for (var u : battle.units) if (u.squad == s && !u.temporary && u.mob.isAlive()) slots.merge(u.spec.house(), u.spec.slotWeight(), Integer::sum);
+        for (var u : battle.units) if (u.squad == s && !u.temporary && u.mob.isAlive()) slots.merge(u.spec.house(), 1, Integer::sum); // every living troop counts 1 (review item 5)
         s.traits.clear();
         for (var h : Spec.HOUSES) { int tier = RosterMath.traitTier(slots.getOrDefault(h.id(), 0), thresholds(h.id())); if (tier > 0) s.traits.put(h.id(), tier); }
         battle.mode.traits(battle, s); // a mode may set an army's tiers itself (Survival's dead take the tier's waveTraitTier)
