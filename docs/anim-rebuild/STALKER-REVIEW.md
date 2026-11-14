@@ -285,3 +285,25 @@ Open:
 - Deaths (falls, not gated): bow_t3_rest under the ground is 12.9 px on death_left (was 10.3) and 3.0 px on
   death_right (new).
 - Empty mantle and pelt bones keep their keys; they move nothing.
+
+## Review fix round 1 (2026-11-14): skull through the hood
+
+The review of 043ef753 found a skull corner showing through the hood's upper back corner (a tan triangle) in about nine
+clips, whenever the hood's trail behind the head reached about 1.4 deg: the trail turned the hood about the neck pivot,
+10 px below the skull's top corners, and the skull sits only 0.4-0.6 px inside the hood.
+
+What changed (`stalker_core.py`):
+- The hood (fur_cowl and its rim cowl_band) now turns about the skull's own centre (a position key with every turn,
+  `hood_about_skull`), where the top corners are 3.5 px off the axis. Trail capped at (2.5, 3, 2.5) deg, soft-capped
+  (tanh) and averaged over a tick either side, so a gait's hood no longer flicks from cap to cap (charge_run hood y span
+  8 -> 3.2 deg, walk 8 -> 3.5).
+- Turned about the skull, the nape drape swings against the trail: where it comes within 0.45 px of a shoulder plate the
+  trail gives way (`_spare_plates`).
+- Additive hits carry the hood's position keys (delta()).
+
+Measured by `work/newmodel/skull_probe.py` (every skull lattice point in the hood's frame, every clip, every quarter
+tick; a frame counts when a point above the hood's bottom and behind its face is outside the shell): frames over the gate
+be4ef602 445 (the old fault, up to 2.2 px), 043ef753 275 (the triangle, up to 0.23 px), now 0 (worst -0.07 px, rest
+-0.40). The shots: only fur_cowl, cowl_band and the pauldrons differ from be4ef602.
+Rows: scorecard exit 0; focus 0 FAIL, 50 WARN (one new: hit_knockback fur_cowl secondary_life 3.49, the hood's cap).
+Pauldron and arm clearances stay positive; a few hits and stance_fallback lost 0.03-0.11 px of room (the drape swing).

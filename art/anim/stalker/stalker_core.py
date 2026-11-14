@@ -434,7 +434,7 @@ def delta(samples, ref, bones):
                 continue
             rot = tuple(wrap(a - c) for a, c in zip(s[b][0], ref[b][0] if b in ref else Z3))
             pos = (tuple(a - c for a, c in zip(s[b][1] or Z3, ref[b][1] if b in ref and ref[b][1] is not None else Z3))
-                   if b == "hips" or b in GEAR or b in PLATES else None)
+                   if b == "hips" or b in GEAR or b in PLATES or b in HOOD else None)
             f[b] = (rot, pos)
         out.append(f)
     return out
@@ -452,9 +452,11 @@ def delta(samples, ref, bones):
 HOOD = ("fur_cowl", "cowl_band")
 PLATES = ("right_pauldron", "left_pauldron")
 HEADSET = ("head", "fur_cowl", "cowl_band")
-HOOD_LAG = (2.0, 4.0, 2.0)        # degrees the hood may trail the head (x, y, z): the skull sits 0.4-0.6 px inside it, and
-#                                   its top corners are 10 px from the neck pivot (the stun showed it through 3.9 deg of roll;
-#                                   2 deg of x and z still lets the hits' hood read as alive, secondary_life >= 2.5)
+HOOD_LAG = (2.5, 3.0, 2.5)        # degrees the hood may trail the head (x, y, z). The skull sits 0.4-0.6 px inside it, so the
+#                                   hood turns about the skull's centre (hood_about_skull), where 3 deg moves the shell 0.2 px
+#                                   on the skull; about the neck pivot 1.4 deg already showed a skull corner (review, 2026-11-14).
+#                                   Checked by work/newmodel/skull_probe.py: no frame of any clip puts the skull outside the hood.
+HOOD_SMOOTH = 1.0                 # ticks either side the trail is averaged over
 PLATE_CLEAR = 0.15                # px between a shoulder plate and the head assembly
 PLATE_MAX = 14.0                  # degrees a plate may turn on its arm to stay clear (fullbody lets a plate trail 10)
 PLATE_SLIDE = 0.6                 # px it may slide down the arm
@@ -562,11 +564,44 @@ def _clear_into_head(Wpts, Mh):
 
 
 def _hood_lag(samples, loop, lag):
+    """The hood's trail behind the head: soft-capped at HOOD_LAG (no flat-topped swing from cap to cap) and smoothed over
+    HOOD_SMOOTH ticks either side (round the seam for a loop), so a gait's hood never flicks end to end."""
     n = len(samples)
     hr = np.array([np.add(s["head"][0], s["torso"][0]) if "head" in s and "torso" in s else np.zeros(3) for s in samples], float)
     seq = np.vstack([hr, hr]) if loop else hr
     fol = _lowpass(seq, 0.9)[-n:]
-    return np.clip((fol - hr) * lag, -np.array(HOOD_LAG), np.array(HOOD_LAG))
+    cap = np.array(HOOD_LAG)
+    raw = cap * np.tanh((fol - hr) * lag / cap)
+    w = int(HOOD_SMOOTH * SUB)
+    if loop:
+        m = n - 1 if n > 1 else 1
+        return np.array([raw[[(j % m) for j in range(i - w, i + w + 1)]].mean(axis=0) for i in range(n)])
+    return np.array([raw[max(0, i - w):min(n, i + w + 1)].mean(axis=0) for i in range(n)])
+
+
+SKULL_C = None
+
+
+def _hood_pos(b, r):
+    """The position key that makes hood bone b, turned r, turn about the skull's centre instead of the neck pivot: the
+    skull's top corners are 10 px from the neck but only 3.5 px from its own centre, so the hood's turn moves the shell
+    against the skull a third as far (2026-11-14 review: the neck-pivot lag showed a skull corner through the hood)."""
+    global SKULL_C
+    if SKULL_C is None:
+        lo, hi = max(_boxes("head"), key=lambda bx: float(np.prod(bx[1] - bx[0])))
+        SKULL_C = np.append((lo + hi) / 2.0, 1.0)
+    t = SKULL_C[:3] - (K.local(b, r, Z3) @ SKULL_C)[:3]
+    return (float(-t[0] * 16.0), float(t[1] * 16.0), float(t[2] * 16.0))
+
+
+def hood_about_skull(samples):
+    """In place: every hood bone's position set from its turn (see _hood_pos)."""
+    for s in samples:
+        for b in HOOD:
+            if b in s:
+                r = s[b][0]
+                s[b] = (r, _hood_pos(b, r))      # every sample keyed (bake needs every sample once any is)
+    return samples
 
 
 PLATE_K = (0.0, 0.25, 0.5, 0.75, 1.0)
@@ -626,6 +661,46 @@ def _envelope(x, loop, w):
     return env
 
 
+HOOD_SPARE = 0.45                 # px: where a plate is closer than this to the hood, the hood's trail gives way to it
+HOOD_GIVE = (1.0, 0.75, 0.5, 0.25, 0.0)
+
+
+def _spare_plates(samples, base, loop):
+    """In place: the hood's trail scaled down where it carries the nape drape onto a shoulder plate. Turned about the skull
+    the drape (3 px under it) swings against the trail; where a plate is near, the trail takes the largest share that leaves
+    the plate as much room as the untrailed hood would (or HOOD_SPARE px). Spread over time like the plates' own turn."""
+    n = len(samples)
+    give = np.zeros(n)
+    for i, s in enumerate(samples):
+        if i % 2 and i < n - 1:
+            continue
+        c1 = head_clearance(s, PLATES)
+        if c1 >= HOOD_SPARE:
+            continue
+        held = {b: s[b] for b in HOOD}
+        got = {}
+        for f in HOOD_GIVE[1:]:
+            for b in HOOD:
+                r = tuple(float(bb + f * (a - bb)) for a, bb in zip(held[b][0], base[i][b]))
+                s[b] = (r, _hood_pos(b, r))
+            got[f] = head_clearance(s, PLATES)
+        for b in HOOD:
+            s[b] = held[b]
+        want = min(HOOD_SPARE, got[0.0]) - 0.02
+        f = next((f for f in HOOD_GIVE if (c1 if f == 1.0 else got[f]) >= want), 0.0)
+        give[i] = 1.0 - f
+    for i in range(1, n - 1, 2):
+        give[i] = max(give[i - 1], give[i + 1])
+    if give.max() <= 0:
+        return
+    g = _envelope(give, loop, int(1.0 * SUB))
+    for i, s in enumerate(samples):
+        if g[i] > 1e-6:
+            for b in HOOD:
+                r = tuple(float(a - g[i] * (a - bb)) for a, bb in zip(s[b][0], base[i][b]))
+                s[b] = (r, _hood_pos(b, r))
+
+
 def hood_plates(samples, loop=False, lag=1.0, report=None, seam=None, head=True):
     """In place over full-body samples: the hood's lag, then the plates and the head solved clear of each other.
     head=False (the two approved shots): only the hood's lag and the plates; the head and the arms are left as keyed.
@@ -640,6 +715,7 @@ def hood_plates(samples, loop=False, lag=1.0, report=None, seam=None, head=True)
     for s, r in zip(samples, _hood_lag(samples, loop, lag)):
         for b in HOOD:
             s[b] = (tuple(float(v) for v in add(s.get(b, (Z3, None))[0], r)), None)
+    hood_about_skull(samples)
     need = np.zeros((n, 4))
     miss = []
     for i, s in enumerate(samples):
@@ -667,6 +743,7 @@ def hood_plates(samples, loop=False, lag=1.0, report=None, seam=None, head=True)
         if abs(hx[i]) > 1e-6 or abs(hz[i]) > 1e-6:
             r, p = s["head"]
             s["head"] = (add(r, (float(hx[i]), 0.0, float(hz[i]))), p)
+    _spare_plates(samples, base, loop)
     if seam is not None:       # a loop that starts at `seam` (the stun): the gap at its end is spread back over the loop
         for b in ("head",) + HOOD + PLATES:
             if b not in samples[seam]:
@@ -683,6 +760,7 @@ def hood_plates(samples, loop=False, lag=1.0, report=None, seam=None, head=True)
                 r, p = samples[i][b]
                 d = np.clip(np.subtract(r, base[i][b]), -np.array(HOOD_LAG), np.array(HOOD_LAG))
                 samples[i][b] = (tuple(float(v) for v in np.add(base[i][b], d)), p)
+        hood_about_skull(samples)
     if report:
         print("  %-22s head fix: plates %.2f/%.2f, nod %.1f, tilt %.1f..%.1f deg; unsolved ticks %s" % (
             report, kR.max(), kL.max(), hx.max(), hz.min(), hz.max(), miss[:8]))
