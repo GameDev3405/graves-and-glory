@@ -58,6 +58,8 @@ final class MapBlocksTroopChecks implements Phase1Checks.Suite {
         String still = MapBlocks.STILL_WATER.getRegistryEntry().registryKey().getValue().toString();
         fill(b, p, fence, ox + FENCE, oy, oz - 3, ox + FENCE, oy + 1, oz + SPAN + 3);
         fill(b, p, "minecraft:stone", ox + WALL, oy, oz - 3, ox + WALL, oy + 2, oz + SPAN + 3);
+        fill(b, p, fence, ox + 26, oy, oz + 2, ox + 26, oy, oz + 2); // a 1-high fence and a 1-high stone block, for the rise tests
+        fill(b, p, "minecraft:stone", ox + 28, oy, oz + 2, ox + 28, oy, oz + 2);
         fill(b, p, "minecraft:water", ox + POOL_X, oy - 1, oz + POOL_Z, ox + POOL_X + POOL_W - 1, oy - 1, oz + POOL_Z + POOL_D - 1);
         fill(b, p, still, ox + POOL_X, oy, oz + POOL_Z, ox + POOL_X + POOL_W - 1, oy, oz + POOL_Z + POOL_D - 1);
         p.teleport(p.getServerWorld(), ox + 0.5, oy, oz - 2.5, 0f, 0f);
@@ -74,6 +76,8 @@ final class MapBlocksTroopChecks implements Phase1Checks.Suite {
         z0.refreshPositionAndAngles(x, y, z, 0, 0); z0.setOnGround(true);
         return z0;
     }
+    MobEntity open1(ServerWorld w, int py) { return troop(w, ox + 14.5, py, oz + 1.5); }
+    MobEntity open2(ServerWorld w, int py) { return troop(w, ox + 19.5, py, oz + 1.5); }
     /** How many nodes of a path are in or on a map block. */
     static int bad(ServerWorld w, Path path) {
         int n = 0;
@@ -131,6 +135,9 @@ final class MapBlocksTroopChecks implements Phase1Checks.Suite {
         var look = troop(w, fx - 3.5, py, lz); var seen = troop(w, fx + 3.5, py, lz);
         boolean vanillaFence = look.canSee(seen), helperFence = MapBlockRules.canSee(look, seen);
         report("sight-fence", !vanillaFence && helperFence, "troop to troop across the 2-high fence wall: vanilla canSee " + vanillaFence + " (stopped), the helper " + helperFence);
+        // the split: a melee troop keeps vanilla canSee (a fence stops its target pick), a ranged troop sees past the fence
+        report("sight-split", !Tactics.look(false, look, seen) && Tactics.look(true, look, seen) && Tactics.look(false, open1(w, py), open2(w, py)),
+            "across the fence wall: melee " + Tactics.look(false, look, seen) + ", ranged " + Tactics.look(true, look, seen) + "; open ground melee " + Tactics.look(false, open1(w, py), open2(w, py)));
         var beyond = troop(w, ox + WALL + 3.5, py, lz); var between = troop(w, ox + WALL - 3.5, py, lz);
         boolean stone = MapBlockRules.canSee(between, beyond), both = MapBlockRules.canSee(look, beyond);
         report("sight-stone", !stone && !both, "a 3-high stone wall still blocks: " + stone + ", and the fence plus the stone: " + both);
@@ -153,6 +160,10 @@ final class MapBlocksTroopChecks implements Phase1Checks.Suite {
         report("landing", MapBlockRules.landingOk(w, ox + 3, py, oz + 3) && !MapBlockRules.landingOk(w, fx, py, sz) && !MapBlockRules.landingOk(w, fx, py + 1, sz) && !MapBlockRules.landingOk(w, fx, py + 2, sz)
             && !MapBlockRules.landingOk(w, px, py, pz) && !MapBlockRules.landingOk(w, px, py + 1, pz) && MapBlockRules.landingOk(w, fx, py + 3, sz) && MapBlockRules.landingOk(w, px, py + 2, pz),
             "plain ground lands; feet in the fence, on a 1-high fence, in a 2-high stack, in still_water or on it do not");
+        // a one-block rise: a troop does not hop onto a 1-high fence (its top is no floor), and still hops a stone block
+        var riser = troop(w, ox + 25.5, py, oz + 2.5); var riser2 = troop(w, ox + 27.5, py, oz + 2.5);
+        boolean riseFence = Tactics.onRise(riser, new Vec3d(ox + 26.5, py, oz + 2.5)), riseStone = Tactics.onRise(riser2, new Vec3d(ox + 28.5, py, oz + 2.5));
+        report("rise", !riseFence && riseStone, "Tactics.onRise toward a 1-high fence: " + riseFence + ", toward a 1-high stone block (control): " + riseStone);
         // Arena.floor and Tactics.standable on a camp column away from the platform, with the blocks put at its feet cells and then put back
         int cx = (int) Math.floor(p.getX()) + 40, cz = (int) Math.floor(p.getZ()) + 40;
         int g = Arena.ground(cx, cz);

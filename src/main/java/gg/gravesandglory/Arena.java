@@ -218,6 +218,9 @@ public final class Arena {
     public static int[] floor(ServerWorld w,int x,int z,double refX,double refZ){
         int[] f=floorOf(w,x,z,refX,refZ);
         if(w==null||MapBlockRules.landingOk(w,f[0],f[2],f[1]))return f;
+        var em=EngineMaps.current();String id=em==null?"":em.sha;if(!clearOf.equals(id)){CLEAR.clear();clearOf=id;} // the search below is cached per column and quadrant of the reference, cleared on a map change
+        long key=((long)x*1_000_003L+z)*4+((refX>=x+.5?1:0)|(refZ>=z+.5?2:0));
+        int[] hit=CLEAR.get(key);if(hit!=null&&MapBlockRules.landingOk(w,hit[0],hit[2],hit[1]))return hit.clone(); // still clear of both blocks
         // troop_fence or still_water in the cell, over it or under it (the route field and the columns never name one as a floor; this is a block set after the bake): the nearest column whose floor is clear of both
         int[] best=null;long bestD=Long.MAX_VALUE;
         for(int r=1;r<=FLOOR_RADIUS;r++){
@@ -227,8 +230,10 @@ public final class Arena {
                 long d=(long)dx*dx+(long)dz*dz;if(d>=bestD)continue;
                 int[] c=floorOf(w,x+dx,z+dz,refX,refZ);if(!MapBlockRules.landingOk(w,c[0],c[2],c[1]))continue;
                 best=c;bestD=d;}}
-        return best==null?f:best;
+        if(best==null)return f;
+        CLEAR.put(key,best.clone());return best;
     }
+    private static final java.util.concurrent.ConcurrentHashMap<Long,int[]> CLEAR=new java.util.concurrent.ConcurrentHashMap<>();private static String clearOf="";
     private static int[] floorOf(ServerWorld w,int x,int z,double refX,double refZ){
         var e=EngineMaps.current();
         if(e==null)return new int[]{x,z,ground(x,z)+1};

@@ -90,6 +90,14 @@ class MapBlockClassification(unittest.TestCase):
         self.assertNotIn((1, 5), floors)
         self.assertIn((1, 4), floors)
 
+    def test_still_water_in_the_head_cell_is_no_standing_room(self):
+        stack = section()
+        stack[:, :, 0] = S
+        stack[1, 5, 2] = ST  # a floor at y 0 with air at y 1 and still_water at y 2: the head cell
+        floors = sm.floors_of(stack, PALETTE, 64)
+        self.assertNotIn((1, 5), floors)
+        self.assertIn((1, 4), floors)
+
     def test_bake_is_byte_reproducible(self):
         stack = section()
         stack[:, :, 0] = S

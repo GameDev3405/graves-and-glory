@@ -66,7 +66,7 @@ def floors_of(stack, palette, floor):
     sz, sx, sy = k.shape
     pad = np.concatenate([k, np.zeros((sz, sx, 2), dtype=k.dtype)], axis=2)
     a1, a2 = pad[:, :, 1:sy + 1], pad[:, :, 2:sy + 2]
-    stand = (k == 1) & (a1 != 1) & (a1 != 3) & (a2 != 1) & (a2 != 3) & (a1 != 2)
+    stand = (k == 1) & (a1 != 1) & (a1 != 3) & (a2 != 1) & (a2 != 3) & (a1 != 2) & (a2 != 2)
     out = {}
     for z, x, y in zip(*np.nonzero(stand)):
         out.setdefault((int(z), int(x)), []).append(floor + int(y))

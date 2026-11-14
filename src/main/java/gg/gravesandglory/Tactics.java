@@ -162,7 +162,7 @@ final class Tactics {
         double range=Spec.SCOUTING[0].range(),best=range*range;LivingEntity seen=null;
         for(var other:b.units)if(other.squad.team!=u.squad.team&&other.mob.isAlive()){double d=u.mob.squaredDistanceTo(other.mob);if(d<best){best=d;seen=other.mob;}}
         for(ServerPlayerEntity p:b.server.getPlayerManager().getPlayerList()){var other=b.squads.get(p.getUuid());if(other!=null&&other.team!=u.squad.team&&!p.isSpectator()&&p.isAlive()){double d=u.mob.squaredDistanceTo(p);if(d<best){best=d;seen=p;}}}
-        return seen!=null&&MapBlockRules.canSee(u.mob,seen)?best:-1;
+        return seen!=null&&look(u,seen)?best:-1;
     }
     /** Raises or lowers a shield troop's shield (the off hand: Combat counts it raised while the item is in use). */
     static void shield(MobEntity mob,boolean up){if(up&&!mob.isUsingItem())mob.setCurrentHand(Hand.OFF_HAND);else if(!up&&mob.isUsingItem())mob.stopUsingItem();}
@@ -254,11 +254,14 @@ final class Tactics {
     static double engageRadius(GravesAndGlory.Battle battle,GravesAndGlory.Unit u,double order){return u.tags.contains("siege")?Math.max(order,Abilities.range(battle,u)):order;}
     /** Line of sight for targeting (AI fix 2026-11-11): whether the troop sees the entity now. One raycast (MapBlockRules.canSee: LivingEntity.canSee with troop_fence and still_water seen through) per troop and entity
      *  a beat at most: a result read within SIGHT_REFRESH ticks is reused (Unit.sight, keyed by UUID). Old entries are dropped once the cache grows past SIGHT_KEEP. */
+    /** One sight test of a troop: a ranged troop sees past troop_fence and still_water (it shoots over a fence, MapBlockRules.canSee); a melee troop keeps vanilla's canSee, so a fence blocks its target pick (it must not choose an enemy it cannot reach). Abilities, scouting and orders use MapBlockRules.canSee directly. */
+    static boolean look(GravesAndGlory.Unit u,Entity e){return look(u.spec.ranged(),u.mob,e);}
+    static boolean look(boolean ranged,MobEntity mob,Entity e){return ranged?MapBlockRules.canSee(mob,e):mob.canSee(e);}
     static boolean sees(GravesAndGlory.Unit u,Entity e,long time){
         long[] r=u.sight.get(e.getUuid());
         if(r==null||time-r[0]>=SIGHT_REFRESH||time<r[0]){
             if(r==null){if(u.sight.size()>=SIGHT_KEEP)u.sight.values().removeIf(v->time-v[0]>SIGHT_REFRESH*4||time<v[0]);r=new long[]{0,Long.MIN_VALUE/2};u.sight.put(e.getUuid(),r);}
-            r[0]=time;sightRays++;if(MapBlockRules.canSee(u.mob,e))r[1]=time;
+            r[0]=time;sightRays++;if(look(u,e))r[1]=time;
         }
         return r[1]==r[0];
     }
@@ -528,7 +531,8 @@ final class Tactics {
      */
     static boolean onRise(MobEntity mob,Vec3d goal){
         var w=mob.getWorld();
-        return StepHop.onRise(mob.getX(),mob.getY(),mob.getZ(),mob.getWidth()/2,mob.getHeight(),goal.x,goal.z,mob.getStepHeight(),(x0,y0,z0,x1,y1,z1)->w.isSpaceEmpty(mob,new Box(x0,y0,z0,x1,y1,z1)));
+        return StepHop.onRise(mob.getX(),mob.getY(),mob.getZ(),mob.getWidth()/2,mob.getHeight(),goal.x,goal.z,mob.getStepHeight(),(x0,y0,z0,x1,y1,z1)->w.isSpaceEmpty(mob,new Box(x0,y0,z0,x1,y1,z1)))
+            &&MapBlockRules.landingOk(w,(int)Math.floor(goal.x),(int)Math.floor(mob.getY()+.01)+1,(int)Math.floor(goal.z)); // the goal one block up is no fence or still_water cell, and has neither under it
     }
     /** How near its slot a wall troop must stand to be left alone by settle. */
     static final double SETTLED=.03;
@@ -608,8 +612,8 @@ final class Tactics {
         if(!HOP)return false;
         var w=battle.world;var mob=u.mob;
         int[] c=StepHop.up(mob.getX(),mob.getY(),mob.getZ(),goal.x,goal.z,new StepHop.Probe(){
-            public boolean open(int x,int y,int z){var p=new BlockPos(x,y,z);return w.getBlockState(p).getCollisionShape(w,p).isEmpty()&&w.getFluidState(p).isEmpty();}
-            public boolean floor(int x,int y,int z){var p=new BlockPos(x,y,z);return w.getBlockState(p).isSideSolidFullSquare(w,p,Direction.UP);}
+            public boolean open(int x,int y,int z){var p=new BlockPos(x,y,z);var s=w.getBlockState(p);return !MapBlockRules.isMapBlock(s)&&s.getCollisionShape(w,p).isEmpty()&&w.getFluidState(p).isEmpty();} // troop_fence and still_water have an empty context-free shape: not open by id
+            public boolean floor(int x,int y,int z){var p=new BlockPos(x,y,z);var s=w.getBlockState(p);return !MapBlockRules.isMapBlock(s)&&s.isSideSolidFullSquare(w,p,Direction.UP);}
         });
         if(c==null)return false;
         if(TRACE_HOPS)System.out.println("[Graves and Glory] step hop of slot "+u.slot+" from ("+String.format("%.1f,%.1f,%.1f",mob.getX(),mob.getY(),mob.getZ())+") to ("+c[0]+","+c[1]+","+c[2]+") on its way to ("+String.format("%.1f,%.1f",goal.x,goal.z)+")");

@@ -26,3 +26,9 @@ The stand-ins are declared once, in `MapBlocks.STAND_INS`, for the later Polymer
 - **Nobody stays on it.** Each server tick, a living entity on the ground whose feet are only on still_water is put back: at the last place it stood on anything else in the same world (within 8 blocks), otherwise on the nearest dry bank within 12 blocks (searched at most once per 20 ticks per entity; never onto a fence or still_water), and when no bank is found at that last place however far. Players are corrected by the server, so vanilla clients get the same result. Creative and spectator players are exempt (builders).
 - **Known limit:** riders and vehicles are not put back (there are no mounts today); an entity that is not living (an item, a boat) is blocked by the full cube but not moved.
 - Pathing is the AI lead's: `ai/pathing` classifies the ids, this branch does not touch it.
+
+## Troop side (ai/map-blocks)
+
+- **Pathing:** troop mobs only (`ArmyMob`; `TroopPathMixin`) get BLOCKED for a cell holding either block and for the cell above it, so troops do not walk into them or over a pool; vanilla mobs keep the open reading. The route field and engine-map read-back classify by id (fence: wall, still_water: no-entry water).
+- **Sight:** `MapBlockRules.canSee` sees through both blocks and still stops at ordinary walls. Ranged troops, abilities, scouting, order aim and the stall's watched test use it; melee troops keep vanilla `canSee`, so a fence stops their target pick.
+- **Landing:** floors, the stall jump, step hops and `Tactics.standable` never put a troop in, on or under either block (`MapBlockRules.landingOk`).
