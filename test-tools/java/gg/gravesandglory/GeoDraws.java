@@ -29,6 +29,8 @@ final class GeoDraws {
         volatile int variant = -1, armour = -1;
         /** The texture file it bound (&lt;troop&gt;_geo/t&lt;tier&gt;_&lt;side&gt;.png); "-" when unread. */
         volatile String texture = "-";
+        /** The veteran trim overlay the Trim layer drew (&lt;troop&gt;_geo/veteran_t&lt;tier&gt;.png); "-" when it drew none. */
+        volatile String trim = "-";
         /** The face bones (face_v&lt;n&gt;) shown in the last draw. */
         volatile List<String> faces = List.of();
         /** Every bone of the last draw, in the baked model's order: position x, y, z then rotation x, y, z (radians), as TroopModel.snapshot lays a bone out. */
@@ -127,6 +129,8 @@ final class GeoDraws {
                     Object tex = m == null ? null : texture.get(m);
                     String path = tex == null ? "-" : tex.toString();
                     d.texture = path.substring(path.lastIndexOf('/', path.lastIndexOf('/') - 1) + 1);
+                    String t = g instanceof GeoTroopRenderer<?> gr && gr.trimDrawn != null ? gr.trimDrawn.toString() : "-";
+                    d.trim = t.equals("-") ? t : t.substring(t.lastIndexOf('/', t.lastIndexOf('/') - 1) + 1);
                 }
             } catch (ReflectiveOperationException | ClassCastException ex) {
                 System.out.println("[geo-draws] could not read a draw's state: " + ex);

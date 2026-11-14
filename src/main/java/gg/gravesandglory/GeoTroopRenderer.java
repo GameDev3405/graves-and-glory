@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.EntityRendererFactory;
@@ -19,6 +20,7 @@ import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.model.data.EntityModelData;
 import software.bernie.geckolib.renderer.GeoReplacedEntityRenderer;
+import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 
 import java.io.Reader;
 import java.util.ArrayList;
@@ -30,7 +32,9 @@ import java.util.Set;
  * Draws a rebuilt troop through GeckoLib (unit animation rebuild, docs/anim-rebuild/PLAN.md); TroopRenderer hands it the troops it
  * covers (handles). The rig is one model for every tier, face and side: the per-bone rules in troop_rig/&lt;troop&gt;.json (written by
  * art/anim/&lt;troop&gt;/build_rig.py) choose which bones show for the troop's armour tier, weapon tier, face and shield, and the texture
- * is the tier's sheet in the side's cloth. -Dgravesandglory.geoTroops=false draws the old model instead; =all also draws the PREVIEW troops (GeoTroops).
+ * is the tier's sheet in the side's cloth. A veteran (Proven, Mastery II: Look.veteran) also gets its tier's trim overlay,
+ * &lt;troop&gt;_geo/veteran_t&lt;tier&gt;.png (built by tools/build_geo_trim.py from art/geo_trim/&lt;troop&gt;.json), redrawn over the
+ * sheet on the same bones by the Trim layer; a troop or tier without that file draws plain. -Dgravesandglory.geoTroops=false draws the old model instead; =all also draws the PREVIEW troops (GeoTroops).
  */
 final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRenderer<E, GeoTroop> {
     private static final String MOD = "gravesandglory";
@@ -54,6 +58,11 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
     /** The current draw's choices (set by draw, read by preRender). */
     private int armour, weaponTier, face;
     private boolean shieldShown;
+    /** The current draw's veteran trim (null for none), and the trim the Trim layer really drew in the last draw (harness: GeoDraws). */
+    private Identifier trim;
+    Identifier trimDrawn;
+    /** Per armour tier (1 to 3): whether the troop ships a trim overlay for it; null until looked up (once per renderer, so per reload). */
+    private final Boolean[] trims = new Boolean[4];
 
     GeoTroopRenderer(EntityRendererFactory.Context ctx, String troop) {
         this(ctx, new Model(troop), troop);
@@ -62,6 +71,30 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
         super(ctx, geo, new GeoTroop(troop));
         this.geo = geo;
         this.shadowRadius = .5f;
+        addRenderLayer(new Trim(this));
+    }
+
+    /** The veteran trim over the worn tier's sheet (TroopFeatures.Trim's Geo counterpart): the same bones redrawn cutout with the overlay, lit as the sheet is. */
+    private static final class Trim extends GeoRenderLayer<GeoTroop> {
+        private final GeoTroopRenderer<?> r;
+        Trim(GeoTroopRenderer<?> r) { super(r); this.r = r; }
+        @Override
+        public void render(MatrixStack poseStack, GeoTroop animatable, BakedGeoModel bakedModel, RenderLayer renderType, VertexConsumerProvider bufferSource,
+                           VertexConsumer buffer, float partialTick, int packedLight, int packedOverlay) {
+            Identifier t = r.trim;
+            if (t == null) return;
+            RenderLayer layer = RenderLayer.getEntityCutoutNoCull(t);
+            r.reRender(bakedModel, poseStack, bufferSource, animatable, layer, bufferSource.getBuffer(layer), partialTick, packedLight, packedOverlay, 1f, 1f, 1f, 1f);
+            r.trimDrawn = t;
+        }
+    }
+
+    /** The veteran trim a Look draws through this renderer: its armour tier's overlay when it is a veteran and the troop has one, else null. */
+    private Identifier trimFor(TroopModels.Look l) {
+        if (!l.veteran()) return null;
+        Identifier id = new Identifier(MOD, "textures/entity/troop/" + animatable.troop + "_geo/veteran_t" + armour + ".png");
+        if (trims[armour] == null) trims[armour] = MinecraftClient.getInstance().getResourceManager().getResource(id).isPresent();
+        return trims[armour] ? id : null;
     }
 
     /** Draws one troop (its Look resolved and not held). */
@@ -73,6 +106,8 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
         shieldShown = !e.getOffHandStack().isEmpty();
         String cloth = TroopModels.clothOf(e, l), side = cloth != null && SIDES.contains(cloth) ? cloth : "linen";
         geo.texture = new Identifier(MOD, "textures/entity/troop/" + animatable.troop + "_geo/t" + armour + "_" + side + ".png");
+        trim = e.isInvisible() ? null : trimFor(l);
+        trimDrawn = null;
         render(e, yaw, tickDelta, matrices, consumers, light);
         Probe pr = PROBE;
         if (pr != null) pr.seen(e, geo.getBakedModel(geo.getModelResource(animatable)), tickDelta);
@@ -86,6 +121,9 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
     public void preRender(MatrixStack poseStack, GeoTroop animatable, BakedGeoModel model, VertexConsumerProvider bufferSource, VertexConsumer buffer,
                           boolean isReRender, float partialTick, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
         super.preRender(poseStack, animatable, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        // A re-render (the trim layer) draws the bones exactly as the main pass left them: setting the rules again would show a bow's
+        // draw frames that setCustomAnimations hid after this pass's preRender.
+        if (isReRender) return;
         // Parents first (the rig file's order), so a shown bone never sits under a hidden one's hidden children.
         for (Rule r : rules) {
             boolean show = (!r.shield || shieldShown)

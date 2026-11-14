@@ -20,6 +20,10 @@ import java.util.*;
  * missing, never doubled). The server moves them every server tick, as a troop's own walk does, never from the client, whose
  * ticks stall on each screenshot. Over 8 mid-march ticks the client's stride clock (Gait) is read back for every knight: its
  * mean speed must be within 10% of the true speed and its clip the expected one in every sample. Never shipped.
+ * GRAVES_GEO_CAPTURE=veteran instead stands six knights of the player's side: tiers I-III fresh (slots 0-2) and tiers I-III Proven
+ * (slots 3-5, the " (Proven)" name a Mastery II troop gets), shot front, three-quarter and back, close and at 16 blocks
+ * (p1-geo-knight-veteran-<view>-<near|far>.png); p1-geo-knight-veteran passes only if every Proven knight drew its tier's trim
+ * overlay (GeoTroopRenderer's Trim layer, read through GeoDraws) and no fresh one drew any (C15-F4).
  */
 final class GeoKnightChecks implements Phase1Checks.Suite {
     /** Knight yaw per view; the camera looks south (+z, yaw 0) and the knights face it at 180. */
@@ -451,13 +455,15 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         cx = Math.floor(p.getX()) + .5; cz = Math.floor(p.getZ()) + 7.5;
         cy = Arena.ground((int) cx, (int) cz) + 1;
         int slot = 0;
-        for (var s : List.of(mine, foe)) for (int t = 1; t <= 3; t++) {
+        boolean vet = "veteran".equals(CAPTURE);
+        for (var s : vet ? List.of(mine, mine) : List.of(mine, foe)) for (int t = 1; t <= 3; t++) {
             // Own side at cx-7..cx-3, enemy at cx+3..cx+7: six blocks apart so the two sides never come to blows.
             double x = cx + (slot < 3 ? -7 + slot * 2 : 3 + (slot - 3) * 2), z = cz;
             var u = b.spawn(s, spec, 20 + slot, new Vec3d(x, Arena.ground((int) Math.floor(x), (int) Math.floor(z)) + 1, z));
             u.level = t; u.weaponTier = t; u.armourTier = t;
             u.mob.setAiDisabled(true); u.mob.setInvulnerable(true);
             RankSync.changed(b, u);
+            if (vet && slot >= 3) u.mob.setCustomName(net.minecraft.text.Text.literal(u.mob.getCustomName().getString() + ArmyMobs.VETERAN));
             knights.add(u);
             slot++;
         }
@@ -723,6 +729,24 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
         for (var u : knights) { u.mob.setYaw(yaw); u.mob.setBodyYaw(yaw); u.mob.setHeadYaw(yaw); u.mob.prevYaw = yaw; }
     }
 
+    /** C15-F4: every Proven knight (slots 3-5) drew its own tier's trim overlay through the Trim layer, and no fresh one (slots 0-2) drew any. */
+    void veteranCheck(MinecraftClient c) {
+        List<String> bad = new ArrayList<>();
+        for (int j = 0; j < knights.size(); j++) {
+            var e = c.world == null ? null : c.world.getEntityById(knights.get(j).mob.getId());
+            var d = GeoDraws.drawn(e);
+            int tier = j % 3 + 1;
+            boolean vet = j >= 3;
+            String want = vet ? TROOP + "_geo/veteran_t" + tier + ".png" : "-";
+            var look = e == null ? null : TroopModels.resolve(e);
+            if (d == null || d.count == 0) bad.add("slot " + j + " never drew through GeckoLib");
+            else if (look == null || look.veteran() != vet) bad.add("slot " + j + " Look.veteran is " + (look == null ? "unresolved" : look.veteran()) + ", wanted " + vet);
+            else if (d.armour != tier) bad.add("slot " + j + " drew armour tier " + d.armour + ", wanted " + tier);
+            else if (!want.equals(d.trim)) bad.add("slot " + j + " drew trim " + d.trim + ", wanted " + want);
+        }
+        Phase1Checks.report("p1-geo-" + TROOP + "-veteran", bad.isEmpty(), bad.isEmpty() ? "three Proven knights drew their tier's trim, three fresh drew none" : String.join("; ", bad));
+    }
+
     /** Puts the camera (the player's eye) dist blocks north of the line's centre, looking south and slightly down. */
     void camera(GravesAndGlory.Battle b, double dx, double dist, float pitch) {
         var p = b.server.getPlayerManager().getPlayer(player);
@@ -802,7 +826,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k > 100) {
                     if (!placed) { Phase1Checks.report("p1-geo-" + TROOP + "-placed", false, "could not place knights: " + why); next(tick, 9); return; }
                     Phase1Checks.report("p1-geo-" + TROOP + "-placed", true, "six knights");
-                    i = 0; next(tick, "ability".equals(CAPTURE) || "abilitywith".equals(CAPTURE) ? 40 : "gaps".equals(CAPTURE) ? 32 : "slash".equals(CAPTURE) ? 33 : "video".equals(CAPTURE) || "stunfix".equals(CAPTURE) ? 31 : CAPTURE != null ? 30 : 2);
+                    i = 0; next(tick, "veteran".equals(CAPTURE) ? 50 : "ability".equals(CAPTURE) || "abilitywith".equals(CAPTURE) ? 40 : "gaps".equals(CAPTURE) ? 32 : "slash".equals(CAPTURE) ? 33 : "video".equals(CAPTURE) || "stunfix".equals(CAPTURE) ? 31 : CAPTURE != null ? 30 : 2);
                 }
             }
             case 2 -> {
@@ -1490,6 +1514,20 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     }
                     i++; next(tick, 40);
                 }
+            }
+            case 50 -> {
+                // Fresh (slots 0-2) and Proven (3-5) knights of one side; the line's centre is between slots 2 and 3.
+                String[] views = {"front", "threequarter", "back"};
+                float[] yaws = {180, 135, 0};
+                String view = views[i];
+                float yaw = yaws[i];
+                Phase1Checks.server(c, b -> turn(yaw));
+                if (k == 1) { GeoDraws.install(); Phase1Checks.server(c, b -> camera(b, 0, 8, 8)); }
+                if (k == 2) { c.setScreen(null); c.options.hudHidden = true; c.options.setPerspective(Perspective.FIRST_PERSON); }
+                if (k == 40) { Phase1Checks.shot(c, "geo-" + TROOP + "-veteran-" + view + "-near"); if (i == 0) veteranCheck(c); }
+                if (k == 41) Phase1Checks.server(c, b -> camera(b, 0, 16, 3));
+                if (k == 80) Phase1Checks.shot(c, "geo-" + TROOP + "-veteran-" + view + "-far");
+                if (k == 81) { if (++i < views.length) next(tick, 50); else next(tick, 9); }
             }
             case 9 -> {
                 c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;
