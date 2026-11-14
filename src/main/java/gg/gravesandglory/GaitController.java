@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * A GeckoLib controller whose walk and run loops are driven by ground distance, not time (see {@link Gait}). The idle loop runs on
@@ -233,8 +234,17 @@ final class GaitController extends AnimationController<GeoTroop> {
         if (done) from = null;
     }
 
-    /** How much a bone's turn moves the foot, by name: a thigh most, a shin half, a foot little; 0 for every other bone. */
+    /** A spider's upper leg bone (wm_stalker: left_leg_1..4, right_leg_1..4); its lower one adds {@code _low}. */
+    private static final Pattern SPIDER_LEG = Pattern.compile("(left|right)_leg_\\d+"), SPIDER_LEG_LOW = Pattern.compile("(left|right)_leg_\\d+_low");
+
+    /**
+     * How much a bone's turn moves the foot, by name: a thigh most, a shin half, a foot little; 0 for every other bone. The names: a biped's or beast's
+     * {@code *leg} (1), {@code *shin} (.5), {@code *foot} (.15); a spider's (wm_stalker) eight legs, upper {@code <side>_leg_<i>} (1) and lower
+     * {@code <side>_leg_<i>_low} (.5), whole-name matches that no other troop's bone has (checked 2026-11-14 over every geo/troop model).
+     */
     static double legWeight(String bone) {
+        if (SPIDER_LEG.matcher(bone).matches()) return 1;
+        if (SPIDER_LEG_LOW.matcher(bone).matches()) return .5;
         return bone.endsWith("leg") ? 1 : bone.endsWith("shin") ? .5 : bone.endsWith("foot") ? .15 : 0;
     }
 
