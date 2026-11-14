@@ -12,6 +12,7 @@ from v4lib import Spr, rgba
 from v4pal import VEL, INK
 import v4a_table
 import kit_track
+import kit_gearshard
 import manifest
 
 W, H = 64, 24
@@ -47,6 +48,7 @@ manifest.add('table/chip-house-on', chip_on, kind='nine', l=4, t=4, r=5, b=H + R
 
 # The Chapter's Roll plaques carry the reward of the tier (Progression.reward), so the three rewards the Roll showed as coins
 # get their own pictures: the Oath row's own art (kit_track.OATH_ART, bright where the Oath shows it in sepia).
+manifest.add('chapter/ic-gear-shards', kit_gearshard.gear_shards)                                  # a gear tier: gear shards (review item 15)
 manifest.add('chapter/ic-shards', lambda: kit_track.shard_cluster(kit_track.SHARD_GILDED))      # a shard tier: House shards
 manifest.add('chapter/ic-pennant', lambda: kit_track.pennant('pale'))                            # tier 21: the pennant pattern
 manifest.add('chapter/ic-frame', kit_track.house_frame)                                          # tier 29: the banner frame

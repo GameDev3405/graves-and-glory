@@ -121,7 +121,7 @@ final class WarTablePages {
     /** The one line under the Roll while the Oath row is hidden (Kort 2026-11-13, season pass review item 16). */
     static final String UNSWORN = "The Oath: coming with House oaths.";
     /** The UiTex key of the picture on the gear-shard tiers of the Roll (the "Gear / 30" plaques): the one place it is named, so the gear-shard art lands with this one line. */
-    static final String GEAR_TIER_ICON = "chapter/ic-coins";
+    static final String GEAR_TIER_ICON = "chapter/ic-gear-shards";
 
     // Friends: the camp's commanders on the left, the party's note in the middle with a seat for each of its four places, the
     // war council's short note on the right (the room itself is run from the war council page, WarTableLobby), with the tag that
@@ -1581,7 +1581,7 @@ final class WarTablePages {
         else { int i = w[0].equals("a") || w[0].equals("an") ? 1 : 0; l1 = w[i]; l2 = w.length > i + 1 ? w[w.length - 1] : ""; }
         String icon = Progression.GOLD_TIERS.contains(t) ? GEAR_TIER_ICON : Progression.SHARD_TIERS.contains(t) ? "chapter/ic-shards"
             : t == Progression.RARE_TIER ? "recruit/wax-star" : "pennant_pattern".equals(Progression.COSMETIC_TIERS.get(t)) ? "chapter/ic-pennant"
-            : Progression.COSMETIC_TIERS.containsKey(t) ? "chapter/ic-frame" : GEAR_TIER_ICON;
+            : Progression.COSMETIC_TIERS.containsKey(t) ? "chapter/ic-frame" : "chapter/ic-coins";
         return new String[]{icon, l1, l2};
     }
 
