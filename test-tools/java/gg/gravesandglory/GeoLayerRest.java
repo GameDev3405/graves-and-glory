@@ -58,9 +58,9 @@ final class GeoLayerRest {
     /** Set-offs judged, set-offs on a model that cannot be judged, and each set-off that took the leftover's phase. */
     static int starts, unjudged;
     static final List<String> matched = new ArrayList<>();
-    /** The furthest a judged set-off's phase lay from the phase the model's idle pose matches, in loops; and the judged model's phases, for the report. */
+    /** The furthest a judged set-off's phase lay from the phase the model's idle pose matches, in loops; and each model's phases that had a set-off, for the report. */
     static double ownWorst;
-    static String legsNote = "";
+    static final Map<String, String> legsNotes = new LinkedHashMap<>();
     /** What the check is doing now, for a leak's report. */
     static volatile String where = "";
 
@@ -68,7 +68,7 @@ final class GeoLayerRest {
     static void start() {
         if (on) return;
         on = true; draws = 0; skipped = 0; leaks.clear(); LEFT.clear(); LAST.clear();
-        starts = 0; unjudged = 0; matched.clear(); ownWorst = 0; legsNote = "";
+        starts = 0; unjudged = 0; matched.clear(); ownWorst = 0; legsNotes.clear();
         GeoTroopRenderer.Probe prev = before = GeoTroopRenderer.PROBE;
         GeoTroopRenderer.PROBE = mine = (e, model, td) -> {
             if (prev != null) prev.seen(e, model, td);
@@ -116,7 +116,7 @@ final class GeoLayerRest {
     static boolean ownLegs(int least) { return starts >= least && matched.isEmpty(); }
 
     static String startResult() {
-        String base = starts + " troops set off from a standstill with another draw's legs left on the bones (" + legsNote + ")"
+        String base = starts + " troops set off from a standstill with another draw's legs left on the bones " + legsNotes.values()
             + (unjudged > 0 ? ", " + unjudged + " more on a model whose leftover cannot be told from its idle pose" : "");
         if (starts == 0) return base + ": none to judge";
         if (matched.isEmpty()) return base + String.format(java.util.Locale.ROOT, ": none started on the leftover's phase; furthest from the idle pose's phase %.3f of a loop", ownWorst);
@@ -133,6 +133,7 @@ final class GeoLayerRest {
         final List<float[]> left = new ArrayList<>();
         double walkLeft = -1, runLeft = -1, walkOwn = -1, runOwn = -1;
         boolean walk, run;
+        String note = "";
     }
 
     private static double circ(double a, double b) { double d = Math.abs(a - b) % 1; return Math.min(d, 1 - d); }
@@ -173,7 +174,7 @@ final class GeoLayerRest {
                 l.runLeft = GaitController.matchPhase(run, byName, leftPose);
                 l.run = circ(l.runLeft, l.runOwn) >= APART;
             }
-            legsNote = String.format(java.util.Locale.ROOT, "%s: walk phase %.3f, idle pose's %.3f; run %.3f, idle pose's %.3f", id.getPath().replaceAll(".*/|\\.geo\\.json", ""), l.walkLeft, l.walkOwn, l.runLeft, l.runOwn);
+            l.note = String.format(java.util.Locale.ROOT, "%s: walk phase %.3f, idle pose's %.3f; run %.3f, idle pose's %.3f", id.getPath().replaceAll(".*/|\\.geo\\.json", ""), l.walkLeft, l.walkOwn, l.runLeft, l.runOwn);
             return l;
         });
     }
@@ -253,6 +254,7 @@ final class GeoLayerRest {
         Object[] last = LAST.put(e, new Object[]{g.mode, now});
         if (last == null || last[0] != Gait.Mode.IDLE || g.mode == Gait.Mode.IDLE || now - (Long) last[1] > 3) return;
         Legs l = legs(model);
+        legsNotes.putIfAbsent(l.note, l.note);
         boolean run = g.mode == Gait.Mode.RUN;
         if (!(run ? l.run : l.walk)) { unjudged++; return; }
         starts++;
