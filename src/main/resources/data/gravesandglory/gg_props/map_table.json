@@ -1,0 +1,16 @@
+{
+  "id": "map_table",
+  "category": "camp",
+  "name": "Map Table",
+  "size": [2, 2, 1],
+  "parts": [
+    {"model": "map_table", "cmd": 7310881, "glow": false},
+    {"model": "map_table_flame", "cmd": 7310882, "glow": true}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0]
+  ],
+  "lights": [{"x": 1, "y": 1, "z": 0, "level": 10}],
+  "effects": []
+}
