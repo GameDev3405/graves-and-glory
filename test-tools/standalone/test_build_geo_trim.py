@@ -25,9 +25,34 @@ class GeoTrimTest(unittest.TestCase):
             self.assertTrue(B.target("knight", tier).exists(), tier)
 
     def test_tier_sheets_are_untouched_by_the_trim(self):
-        # The overlay is its own file: a fresh knight draws exactly the exporter's sheets.
-        sheets = sorted((B.ASSETS / "textures/entity/troop/knight_geo").glob("t*_*.png"))
+        # The overlay is its own file: a fresh knight draws exactly the exporter's sheets, so building writes none of them.
+        folder = B.ASSETS / "textures/entity/troop/knight_geo"
+        sheets = sorted(folder.glob("t*_*.png"))
         self.assertEqual(len(sheets), 18)
+        before = {p.name: p.read_bytes() for p in sheets}
+        B.build("knight")
+        self.assertEqual({p.name: p.read_bytes() for p in sorted(folder.glob("t*_*.png"))}, before)
+
+    def test_check_fails_on_drift_and_orphans(self):
+        t = B.target("knight", 1)
+        saved = t.read_bytes()
+        orphan = B.target("knight", 9)
+        try:
+            img = B.build("knight")[1].copy()
+            img.putpixel((0, 0), (1, 2, 3, 255))
+            t.write_bytes(B.png_bytes(img))
+            self.assertEqual(B.main(["--check", "knight"]), 1)
+            t.write_bytes(saved)
+            orphan.write_bytes(saved)
+            self.assertEqual(B.main(["--check", "knight"]), 1)
+        finally:
+            t.write_bytes(saved)
+            if orphan.exists():
+                orphan.unlink()
+        self.assertEqual(B.main(["--check", "knight"]), 0)
+
+    def test_row_outside_cube_refused(self):
+        self._fails(lambda r: r["marks"].append({"bone": "belt", "cube": 0, "pattern": "rope", "rows": [5], "tiers": [1]}), "outside")
 
     def _fails(self, mutate, needle):
         recipe, geo, rig = B.load("knight")

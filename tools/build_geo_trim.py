@@ -2,7 +2,8 @@
 """Builds the veteran trim overlays of the GeckoLib troops (C15-F4: a Proven, Mastery II, troop shows its trim on the Geo rig too).
 
 python tools/build_geo_trim.py [troop ...]      build every art/geo_trim/<troop>.json (or the named ones)
-python tools/build_geo_trim.py --check [troop]  rebuild in memory and fail if a committed overlay differs (verify fast runs this)
+python tools/build_geo_trim.py --check [troop]  rebuild in memory and fail if a committed overlay differs or has no recipe tier
+                                                 (verify fast runs this through test-tools/standalone/test_build_geo_trim.py)
 
 Input, one recipe per troop: art/geo_trim/<troop>.json
   colours  {"light": hex, "dark": hex}: the trim's two brass tones (the legacy knight_veteran.png's palette).
@@ -187,6 +188,11 @@ def main(argv):
             print(f"build_geo_trim: FAIL {e}")
             bad += 1
             continue
+        if check:
+            for orphan in sorted((ASSETS / f"textures/entity/troop/{troop}_geo").glob("veteran_t*.png")):
+                if orphan.stem[len("veteran_t"):] not in {str(t) for t in built}:
+                    print(f"build_geo_trim: FAIL {orphan.relative_to(ROOT)} has no tier in art/geo_trim/{troop}.json; delete it or add the tier")
+                    bad += 1
         for tier, img in built.items():
             t = target(troop, tier)
             if check:
