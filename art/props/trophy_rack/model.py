@@ -9,10 +9,10 @@ Build:  python art/props/build_props.py trophy_rack      Card:  python tools/pro
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, IRON, LINEN, cylinder   # noqa: F401
+from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, IRON, LINEN, cylinder, SWOOD, pat_plank   # noqa: F401
 
-ENEMY = make_ramp("3B4D38")          # captured colours: dark green
-ENEMY2 = make_ramp("5E2A2A")         # a second captured colour: dull oxblood
+ENEMY = make_ramp("5E8A4C")          # captured colours: bright moss green
+ENEMY2 = make_ramp("A03C34")         # a second captured colour: brick red
 RUST = make_ramp("8A4B2A", 0.18)     # rust on the helm
 
 
@@ -31,21 +31,22 @@ def shield_pat(cx, cy, kind):
 
 MAT["shield_a"] = Mat(ENEMY, 2, shield_pat(26, 10, "slash"))
 MAT["shield_b"] = Mat(ENEMY2, 2, shield_pat(6, 10, "cross"))
+MAT["dark_plank"] = Mat(SWOOD, 1, pat_plank("x"))   # stained board: the weapons and helm stand out
 MAT["rust"] = Mat(RUST, 2)
 
 
 def build():
     b = [
         # the board: plank panel on the wall, two posts, a stepped crown, a foot rail
-        E((3, 2, 14), (29, 28, 16), "plank_x", skip="south", name="back panel"),
+        E((3, 2, 14), (29, 28, 16), "dark_plank", skip="south", name="back panel"),
         E((0, 1, 12), (4, 30, 16), "wood_y", skip="south", name="post west"), E((28, 1, 12), (32, 30, 16), "wood_y", skip="south", name="post east"),
         E((4, 27, 12), (28, 30, 16), "swood_x", skip="south", name="top rail"),
         E((8, 30, 13), (24, 32, 16), "swood_x", skip="south", name="crown"),
         E((4, 1, 12), (28, 3, 16), "swood_x", skip="south", name="foot rail"),
         # spear and sword crossed behind the helm (rotated 45 degrees about the crossing)
         E((15, 3, 13), (17, 29, 14), "wood_y", skip="south", rot=("z", 45, (16, 16, 13)), name="spear shaft"),
-        E((14, 29, 13), (18, 32, 14), "steel", skip="south", rot=("z", 45, (16, 16, 13)), name="spear head"),
-        E((15, 5, 11), (17, 21, 13), "steel", rot=("z", -45, (16, 16, 13)), name="sword blade"),
+        E((13, 28, 13), (19, 32, 14), "steel", skip="south", rot=("z", 45, (16, 16, 13)), name="spear head"),
+        E((14, 5, 11), (17, 21, 13), "steel", rot=("z", -45, (16, 16, 13)), name="sword blade"),
         E((9, 21, 11), (23, 22, 13), "iron", rot=("z", -45, (16, 16, 13)), name="sword guard"),
         E((15, 22, 11), (17, 27, 13), "leather", rot=("z", -45, (16, 16, 13)), name="sword grip"),
         E((14, 27, 11), (18, 29, 13), "gilt", rot=("z", -45, (16, 16, 13)), name="sword pommel"),

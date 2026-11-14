@@ -3,7 +3,7 @@
 Frame (art/props/README.md): model px, 16 = 1 block, origin = min corner of the anchor cell, x east, y up, z south,
 FRONT FACES NORTH (-z). The footprint runs x 0..16, y 0..64, z 0..16 px; everything hangs in y 32..64 (the two lowest
 cells are open air, walk-under height), so every part is modelled in the real frame and stored shifted by 32.
-A ceiling plate at y 62..64, two interlocked links, a block, a stepped bail arching over the fire, and a deep iron bowl
+A ceiling plate at y 62..64, two interlocked 2 px links, a 3 px stepped bail arching over the fire, and a deep iron bowl
 with a banded belly and a rim hoop. Three parts, the last two full-bright:
   chain_brazier        the iron: plate, chain, bail, bowl
   chain_brazier_coals  the coal bed and heap in the bowl (glow)
@@ -21,17 +21,16 @@ FLAME_EDGE = Mat(HOT, 2, edges=False, lit=False)
 
 def build():
     b = [
-        # ceiling plate and the chain: an x-facing link, a z-facing link passing through it
+        # ceiling plate and the chain: a z-facing link hung from it, an x-facing link through that; 2 px bars
         E((4, 62, 4), (12, 64, 12), "iron", skip="up", name="ceiling plate"),
-        E((7, 58, 7), (9, 59, 9), "iron", name="link z foot"),
-        E((7, 59, 6), (9, 62, 7), "iron", name="link z bar"), E((7, 59, 9), (9, 62, 10), "iron", name="link z bar"),
-        E((6, 55, 7), (7, 60, 9), "iron", name="link x bar"), E((9, 55, 7), (10, 60, 9), "iron", name="link x bar"),
-        E((7, 59, 7), (9, 60, 9), "iron", name="link x cap"),
-        E((6, 54, 6), (10, 56, 10), "iron", name="bail block"),
-        # stepped bail from the rim posts up over the fire
-        E((2, 43, 7), (4, 50, 9), "iron", name="bail post west"), E((12, 43, 7), (14, 50, 9), "iron", name="bail post east"),
-        E((3, 50, 7), (6, 52, 9), "iron", name="bail step west"), E((10, 50, 7), (13, 52, 9), "iron", name="bail step east"),
-        E((5, 52, 7), (8, 54, 9), "iron", name="bail step west"), E((8, 52, 7), (11, 54, 9), "iron", name="bail step east"),
+        E((7, 59, 5), (9, 62, 7), "iron", name="link z bar"), E((7, 59, 9), (9, 62, 11), "iron", name="link z bar"),
+        E((7, 59, 7), (9, 60, 9), "iron", name="link z foot"),
+        E((5, 56, 7), (7, 61, 9), "iron", name="link x bar"), E((9, 56, 7), (11, 61, 9), "iron", name="link x bar"),
+        E((7, 60, 7), (9, 61, 9), "iron", name="link x cap"),
+        # bail: 3 px posts from the rim, 3 px steps up over the fire, a top beam under the chain
+        E((2, 43, 6), (5, 50, 9), "iron", name="bail post west"), E((11, 43, 6), (14, 50, 9), "iron", name="bail post east"),
+        E((4, 50, 6), (7, 53, 9), "iron", name="bail step west"), E((9, 50, 6), (12, 53, 9), "iron", name="bail step east"),
+        E((6, 53, 6), (10, 56, 9), "iron", name="bail beam"),
         # the bowl: base, belly, shoulder, a steel-bright band, a rim hoop
         E((5, 33, 5), (11, 34, 11), "iron", skip="down", name="bowl base"),
         E((4, 34, 4), (12, 37, 12), "iron", name="bowl belly"),

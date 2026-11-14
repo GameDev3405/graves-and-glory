@@ -45,7 +45,7 @@ def build():
         E((4, 12, 5), (12, 15, 11), "mail", name="mail skirt"),
         E((4, 15, 4), (12, 16, 12), "leather", name="belt"),
         E((7, 15, 3), (9, 16, 4), "gilt", name="buckle"),
-        E((6, 8, 3), (10, 15, 4), "cloth", name="tabard"),
+        E((6, 8, 4), (10, 15, 6), "cloth", name="tabard"),
         # cuirass with a ridge, pauldrons, gorget
         E((5, 16, 5), (11, 23, 11), "plate", name="cuirass"),
         E((7, 17, 4), (9, 22, 5), "steel", name="chest ridge"),

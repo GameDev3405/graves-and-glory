@@ -19,26 +19,26 @@ def build():
         E((0, 3, 14), (32, 27, 16), "dark_plank", skip="south", name="back panel"),
         E((0, 27, 12), (32, 30, 16), "swood_x", skip="south", name="top rail"),
         E((0, 1, 10), (32, 3, 16), "swood_x", skip="south", name="foot shelf"),
-        E((4, 27, 10), (6, 29, 12), "iron", name="peg"), E((12, 27, 10), (14, 29, 12), "iron", name="peg"),
-        E((20, 27, 10), (22, 29, 12), "iron", name="peg"), E((28, 27, 10), (30, 29, 12), "iron", name="peg"),
+        E((4, 26, 10), (6, 29, 12), "iron", name="peg"), E((11, 26, 10), (15, 29, 12), "iron", name="peg"),
+        E((20, 26, 10), (22, 29, 12), "iron", name="peg"), E((28, 26, 10), (30, 29, 12), "iron", name="peg"),
     ]
     # sledge (x 1..10): ash haft, a heavy iron head with steel strike faces
-    b += [E((4, 8, 12), (6, 26, 14), "wood_y", name="sledge haft"),
+    b += [E((4, 8, 12), (6, 27, 14), "wood_y", name="sledge haft"),
           E((1, 19, 11), (9, 25, 14), "iron", name="sledge head"),
           E((0, 20, 12), (1, 24, 13), "steel", name="sledge face"), E((9, 20, 12), (10, 24, 13), "steel", name="sledge face"),
           E((3, 8, 11), (7, 10, 14), "leather", name="sledge wrap")]
     # tongs (x 10..16): spread reins, a steel pivot, closed jaws
-    b += [E((10, 18, 12), (12, 26, 14), "iron", name="tong rein"), E((14, 18, 12), (16, 26, 14), "iron", name="tong rein"),
+    b += [E((10, 18, 12), (12, 27, 14), "iron", name="tong rein"), E((14, 18, 12), (16, 27, 14), "iron", name="tong rein"),
           E((11, 15, 12), (15, 18, 14), "steel", name="tong pivot"),
           E((12, 6, 12), (14, 15, 13), "iron", name="tong jaws"), E((11, 6, 12), (12, 9, 13), "iron", name="tong lip"),
           E((14, 6, 12), (15, 9, 13), "iron", name="tong lip")]
     # cross-peen hammer (x 17..26): haft, iron head, steel face and a peen wedge
-    b += [E((20, 10, 12), (22, 26, 14), "wood_y", name="hammer haft"),
+    b += [E((20, 10, 12), (22, 27, 14), "wood_y", name="hammer haft"),
           E((17, 22, 11), (25, 26, 14), "iron", name="hammer head"),
           E((25, 22, 12), (26, 26, 13), "steel", name="hammer face"), E((16, 23, 12), (17, 25, 13), "iron", name="hammer peen")]
     # shovel (x 26..32): handle with a T grip, steel socket and blade
-    b += [E((28, 15, 12), (30, 26, 14), "wood_y", name="shovel handle"),
-          E((26, 24, 11), (32, 26, 14), "wood_x", name="shovel grip"),
+    b += [E((28, 15, 12), (30, 25, 14), "wood_y", name="shovel handle"),
+          E((26, 25, 12), (32, 27, 14), "wood_x", name="shovel grip"),
           E((28, 12, 12), (30, 15, 14), "iron", name="shovel socket"),
           E((26, 7, 12), (32, 12, 13), "steel", name="shovel blade"), E((27, 5, 12), (31, 7, 13), "steel", name="shovel tip")]
     # two-man crosscut saw lying on the shelf: blade, a row of teeth, a handle at each end
