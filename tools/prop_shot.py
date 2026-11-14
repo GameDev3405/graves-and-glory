@@ -1,6 +1,6 @@
 """In-game prop shots (docs/props/WORKFLOW.md, step 4): one real client, props placed through Props.place.
 
-    python tools/prop_shot.py <id>[,<id>...] [--compare <id>=<group/name> ...] [--compare-all] [--offline] [--frames] [--turntable] [--timeout 1500]
+    python tools/prop_shot.py <id>[,<id>...] [--compare <id>=<group/name> ...] [--compare-all] [--offline] [--frames] [--turntable] [--motion N[:TICKS]] [--timeout 1500]
 
 Builds the prop pack (tools/build_prop_pack.py) into an isolated run root work/props/shotrun/<stamp>/, enables it as a client
 resource pack, runs `gradlew runClient` with the prop-look suite (GRAVES_PHASE1_CHECKS=prop-look, GRAVES_PROPLOOK=<ids>) and copies
@@ -20,6 +20,10 @@ Regenerate the fixtures with `python tools/compare_templates.py` (needs the maps
 height (p1-prop-<id>-turn-000..315, 000 = seen from the front, 090 = from the east), a flame/glass close-up by day and by night (-close-day, -close-night) and 4 night
 angles (-turn-night-000/090/180/270). No Knight and no fence lanterns, so at night only the prop's own light shows. The shots go to work/props/review/shots/<id>/
 (work/props/shots/<id>/ is left alone). Framing per prop is TURN_FOCUS below (framed height, orbit distance, close-up point, close-up distance, in blocks).
+
+--motion N[:TICKS] (moving parts, docs/props/MOVING-PARTS.md) also shoots N frames of each prop from one front-right camera, TICKS client
+ticks apart (default 4: 5 a second, so a GIF at 200 ms a frame plays in real time), into work/props/frames/<id>/frame-NN.png, and writes
+work/props/review/<id>-sway.gif from them. Frames never go in the card's shots folder.
 
 Counts as one of the game clients (WORKFLOW.md: at most 4 across the workspace now, 30 minutes each). Refuses to start when a
 client from this checkout is already running; it never stops a client it did not start.
@@ -76,6 +80,8 @@ def main(argv=None):
                    help='pair every id with the plain-block fixture of the maps (tools/compare_templates.py); ids without one are shot alone')
     a.add_argument('--compare', action='append', default=[], metavar='ID=GROUP/NAME',
                    help='shoot the prop beside this structure template (data/gravesandglory/structures/GROUP/NAME.nbt); repeatable')
+    a.add_argument('--motion', default='', metavar='N[:TICKS]',
+                   help='also shoot N frames TICKS client ticks apart (default 4) and make work/props/review/<id>-sway.gif')
     o = a.parse_args(argv)
     ids = [i for i in o.ids.split(',') if i]
     specs = list(o.compare)
@@ -86,6 +92,11 @@ def main(argv=None):
         specs += ['%s=%s' % pt for pt in paired if pt[0] not in explicit]
         print('compare-all:', ', '.join('%s=%s' % pt for pt in paired) or 'no fixtures', '| shot alone:', ', '.join(alone) or 'none', flush=True)
     cmp = compare_pairs(specs, ids)
+    motion = (0, 4)
+    if o.motion:
+        try: n, _, t = o.motion.partition(':'); motion = (int(n), int(t or 4))
+        except ValueError: sys.exit('--motion wants N or N:TICKS, got %r' % o.motion)
+        if not (1 <= motion[0] <= 200 and motion[1] >= 1): sys.exit('--motion: N 1..200, TICKS at least 1')
     import verify   # game_guard, java_home: the same guards as tools/verify.py game
     verify.game_guard()
     jdk = verify.java_home()
@@ -103,6 +114,7 @@ def main(argv=None):
                GRAVES_ROADMAP_TEST_ROOT=str(root), GRAVES_PHASE1_CHECKS='prop-look', GRAVES_PROPLOOK=','.join(ids),
                GRAVES_PROPCMP=';'.join('%s=%s' % kv for kv in cmp), GRAVES_PROPFRAMES='1' if o.frames else '', GRAVES_PROPTURN='1' if o.turntable else '',
                GRAVES_PROPFOCUS=';'.join('%s=%s' % (k, ','.join(str(x) for x in v)) for k, v in TURN_FOCUS.items()) if o.turntable else '',
+               GRAVES_PROPMOTION='%d,%d' % motion,
                GRAVES_PROPEXAMPLE=str(ROOT / 'docs' / 'props' / 'examples' / 'prop_facings.nbt'))
     gradle = [str(ROOT / ('gradlew.bat' if os.name == 'nt' else 'gradlew')), '--no-daemon'] + (['--offline'] if o.offline else [])
     log = root / 'game.log'
@@ -127,9 +139,36 @@ def main(argv=None):
         print('%s: %d shots -> %s' % (pid, len(list(dest.glob('*.png'))), dest))
     if not o.turntable and shots.exists() and (shots / 'p1-prop-lineup.png').exists():
         shutil.copy(shots / 'p1-prop-lineup.png', ROOT / 'work' / 'props' / 'shots' / ('lineup-' + '-'.join(ids)[:60] + '.png'))
-    ok = code == 0 and lines and not any(l.startswith('fail ') for l in lines) and any('pass p1-prop-look' in l for l in lines) and copied
+    gifs = []
+    if motion[0]:
+        for pid in ids:
+            fdir = ROOT / 'work' / 'props' / 'frames' / pid
+            if fdir.exists(): shutil.rmtree(fdir)
+            fdir.mkdir(parents=True)
+            got = sorted(shots.glob('p1-propframe-%s-*.png' % pid)) if shots.exists() else []
+            for f in got: shutil.copy(f, fdir / ('frame-' + f.stem.rsplit('-', 1)[1] + '.png'))
+            if got: gifs.append(make_gif(sorted(fdir.glob('frame-*.png')), ROOT / 'work' / 'props' / 'review' / ('%s-sway.gif' % pid), motion[1] * 50))
+            print('%s: %d frames -> %s' % (pid, len(got), fdir))
+        for g in gifs: print('gif', g)
+    ok = code == 0 and lines and not any(l.startswith('fail ') for l in lines) and any('pass p1-prop-look' in l for l in lines) and copied \
+        and (not motion[0] or len(gifs) == len(ids))
     print('prop-look', 'PASS' if ok else 'FAIL (exit %s, log %s)' % (code, log))
     return 0 if ok else 1
+
+
+def make_gif(files, out, ms, width=560):
+    """An animated GIF of the frames (cropped to the middle 60% of the width, scaled to `width` px), `ms` per frame, looping."""
+    from PIL import Image
+    out.parent.mkdir(parents=True, exist_ok=True)
+    imgs = []
+    for f in files:
+        im = Image.open(f).convert('RGB'); w, h = im.size
+        im = im.crop((w // 5, 0, w - w // 5, h))
+        imgs.append(im.resize((width, round(im.size[1] * width / im.size[0])), Image.LANCZOS))
+    pal = imgs[0].quantize(colors=255, method=Image.MEDIANCUT)
+    frames = [im.quantize(palette=pal, dither=Image.NONE) for im in imgs]   # one palette: no flicker between frames
+    frames[0].save(out, save_all=True, append_images=frames[1:], duration=ms, loop=0, optimize=False)
+    return out
 
 
 if __name__ == '__main__':

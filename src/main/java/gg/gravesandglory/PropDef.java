@@ -23,10 +23,13 @@ import java.util.Set;
  *  "solid":[[x,y,z], ...],                                          // explicit cell list, no repeats; may be empty (wall-hung and overhead props, effect-only props)
  *  "lights":[{"x":0,"y":2,"z":0,"level":12}],                       // optional; never on a solid cell
  *  "effects":[{"kind":"particle|sound","id":"minecraft:...","x":..,"y":..,"z":..,"spread":..,"count":..,"every":..,"chance":..,"volume":..,"pitch":..}],
+ *  "motion":[{"part":"great_banner_cloth","kind":"sway|rotate|swing","axis":"x|y|z|-x|-y|-z","pivot":[x,y,z],"amplitude":4,"bias":0,"period":90,"phase":0}],  // optional
  *  "gameplay":{"hp":6,"heavyHit":2,"siegeHit":3,"heavyDamage":6,"cover":0.25,"coverRange":2,"siegeCap":4,"siegeSeconds":90,"siegeRadius":48}}  // optional
  * </pre>
  * {@code gameplay} (optional, {@link Gameplay}) makes a prop a gameplay object that {@link PropGameplay} acts on; every field is optional and 0 turns
  * that effect off.
+ * {@code motion} (optional, {@link Motion}; docs/props/MOVING-PARTS.md) turns parts about a pivot; {@link PropMotion} computes the pose and
+ * {@link PropTicker} sends it. A def without it behaves exactly as before.
  * {@code solid} is always the explicit list of [x,y,z] cells (no shorthand), so the file reads the same as the record.
  *
  * <p>Custom model data: parts are {@code minecraft:paper} items keyed by CMD = {@link #cmd}{@code (propIndex, partIndex)} =
@@ -35,7 +38,7 @@ import java.util.Set;
  * {@code 7310001..7319999}, so numbering starts at 7310001 (forge hearth 7310001, hood 7310002, coals 7310003, anvil 7310011, ...). A prop's
  * menu icon is its first part.
  */
-public record PropDef(String id,String category,String name,int sx,int sy,int sz,List<Part> parts,List<int[]> solid,List<Light> lights,List<Effect> effects,Gameplay gameplay){
+public record PropDef(String id,String category,String name,int sx,int sy,int sz,List<Part> parts,List<int[]> solid,List<Light> lights,List<Effect> effects,Gameplay gameplay,List<Motion> motion){
     public static final int CMD_MIN=7310001,CMD_MAX=7319999;
     /** A display part; {@code ox,oy,oz} (optional {@code "offset":[x,y,z]}, model px in the prop frame) move its entity, for big props whose parts
      *  sit further from the anchor than a model's display translation reaches (Minecraft clamps that to 80 px). */
@@ -44,6 +47,12 @@ public record PropDef(String id,String category,String name,int sx,int sy,int sz
     }
     public record Light(int x,int y,int z,int level){}
     public record Effect(String kind,String id,double x,double y,double z,double spread,int count,int every,double chance,float volume,float pitch){}
+    /** A moving part (docs/props/MOVING-PARTS.md): part {@code part} (a def part's model) turns about {@code axis} (0 x, 1 y, 2 z of the prop
+     *  frame at facing 0; {@code sign} -1 for "-x" etc.) through {@code pivot} (model px, prop frame). Angle in degrees at phase u (0..1 of
+     *  {@code period} ticks): sway {@code bias+amplitude*sin(2 pi u)}; swing the same with an eased ping-pong that rests at both ends; rotate
+     *  {@code bias+360u} (a full turn per period). Several entries on one part compose, in def order. */
+    public record Motion(String part,String kind,int axis,int sign,double px,double py,double pz,double amplitude,double bias,int period,double phase){}
+    public static final List<String> MOTION_KINDS=List.of("sway","rotate","swing");
     /**
      * A gameplay prop's rules (stake barricade, Kort 2026-11-09), read by {@link PropGameplay}. Destructible when hp > 0: a heavy melee hit (a
      * player's full swing with a weapon of at least heavyDamage attack damage, a troop's slam or trample splash) takes heavyHit, siege fire (a siege
@@ -88,7 +97,7 @@ public record PropDef(String id,String category,String name,int sx,int sy,int sz
         }
         if(parts.isEmpty())throw bad(id,"parts","must not be empty");
 
-        PropDef shape=new PropDef(id,category,name,sx,sy,sz,List.of(),List.of(),List.of(),List.of(),null);
+        PropDef shape=new PropDef(id,category,name,sx,sy,sz,List.of(),List.of(),List.of(),List.of(),null,List.of());
         List<int[]> solid=new ArrayList<>();Set<String> cells=new HashSet<>();
         for(JsonElement e:arr(o,"solid",id)){
             if(!e.isJsonArray()||e.getAsJsonArray().size()!=3)throw bad(id,"solid","each cell must be [x,y,z]");
@@ -133,7 +142,31 @@ public record PropDef(String id,String category,String name,int sx,int sy,int sz
             if(gameplay.cover()<0||gameplay.cover()>1)throw bad(id,"gameplay.cover","must be 0..1");
             if(gameplay.coverRange()<0||gameplay.coverRange()>8)throw bad(id,"gameplay.coverRange","must be 0..8");
         }
-        return new PropDef(id,category,name,sx,sy,sz,List.copyOf(parts),List.copyOf(solid),List.copyOf(lights),List.copyOf(effects),gameplay);
+        List<Motion> motion=new ArrayList<>();
+        if(o.has("motion"))for(JsonElement e:arr(o,"motion",id)){
+            JsonObject m=obj(e,id,"motion");
+            String part=str(m,"part");
+            if(!models.contains(part))throw bad(id,"motion.part",part+" is not one of the def's parts");
+            String kind=str(m,"kind");
+            if(!MOTION_KINDS.contains(kind))throw bad(id,"motion.kind",kind+" must be sway, rotate or swing");
+            String ax=str(m,"axis");
+            int sign=ax.startsWith("-")?-1:1,axis="xyz".indexOf(ax.substring(sign<0?1:0));
+            if(ax.length()!=(sign<0?2:1)||axis<0)throw bad(id,"motion.axis",ax+" must be x, y, z, -x, -y or -z");
+            JsonElement pv=m.get("pivot");
+            if(pv==null||!pv.isJsonArray()||pv.getAsJsonArray().size()!=3)throw bad(id,"motion.pivot","must be [x,y,z] px");
+            double[] pivot=new double[3];
+            for(int i=0;i<3;i++){JsonElement c=pv.getAsJsonArray().get(i);if(!c.isJsonPrimitive()||!c.getAsJsonPrimitive().isNumber())throw bad(id,"motion.pivot","not a number");pivot[i]=c.getAsDouble();}
+            double amplitude=mnum(m,"amplitude",0,id),bias=mnum(m,"bias",0,id),phase=mnum(m,"phase",0,id);
+            int period=(int)mnum(m,"period",0,id);
+            if(!kind.equals("rotate")&&(amplitude<=0||amplitude>90))throw bad(id,"motion.amplitude",amplitude+" must be over 0 and at most 90 degrees");
+            if(Math.abs(bias)>90)throw bad(id,"motion.bias",bias+" must be within 90 degrees");
+            // a keyframe is a client tween over PropMotion.KEY ticks; a rotate must turn less than half a turn per keyframe, a sway needs a few per swing
+            int least=kind.equals("rotate")?4*PropMotion.KEY:2*PropMotion.KEY;
+            if(period<least||period>2400)throw bad(id,"motion.period",period+" must be "+least+".."+2400+" ticks");
+            if(phase<0||phase>=1)throw bad(id,"motion.phase",phase+" must be 0..1 (a share of the period)");
+            motion.add(new Motion(part,kind,axis,sign,pivot[0],pivot[1],pivot[2],amplitude,bias,period,phase));
+        }
+        return new PropDef(id,category,name,sx,sy,sz,List.copyOf(parts),List.copyOf(solid),List.copyOf(lights),List.copyOf(effects),gameplay,List.copyOf(motion));
     }
 
     static IllegalArgumentException bad(String id,String field,String text){return new IllegalArgumentException("prop "+id+": "+field+": "+text);}
@@ -162,6 +195,12 @@ public record PropDef(String id,String category,String name,int sx,int sy,int sz
         JsonElement e=o.get(field);
         if(e==null)return fallback;
         if(!e.isJsonPrimitive()||!e.getAsJsonPrimitive().isNumber())throw bad(id,"gameplay."+field,"not a number");
+        return e.getAsDouble();
+    }
+    static double mnum(JsonObject o,String field,double fallback,String id){
+        JsonElement e=o.get(field);
+        if(e==null)return fallback;
+        if(!e.isJsonPrimitive()||!e.getAsJsonPrimitive().isNumber())throw bad(id,"motion."+field,"not a number");
         return e.getAsDouble();
     }
     static double dbl(JsonObject o,String field,double fallback,String id){

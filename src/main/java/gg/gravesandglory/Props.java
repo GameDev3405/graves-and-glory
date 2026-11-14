@@ -264,6 +264,7 @@ public final class Props {
         if(base!=null)w.setBlockState(base,floor,3);
         Map<BlockPos,Live> m=LIVE.get(w);if(m!=null)m.remove(anchor);
         PropGameplay.forget(w,anchor);
+        PropTicker.forget(w,anchor);
         return true;
     }
 
@@ -459,6 +460,7 @@ public final class Props {
         if(m!=null){ChunkPos cp=chunk.getPos();m.keySet().removeIf(a->(a.getX()>>4)==cp.x&&(a.getZ()>>4)==cp.z);}
         Map<BlockPos,Integer> dm=DEPTHS.get(w);
         if(dm!=null){ChunkPos cp=chunk.getPos();dm.keySet().removeIf(a->(a.getX()>>4)==cp.x&&(a.getZ()>>4)==cp.z);}
+        PropTicker.forgetChunk(w,chunk.getPos());
     }
 
     /** The live map's values as they are, without the anchor check or a copy (the S5 ticker's cheap pass); do not modify. */

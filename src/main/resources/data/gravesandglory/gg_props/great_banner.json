@@ -32,5 +32,35 @@
     ]
   ],
   "lights": [],
-  "effects": []
+  "effects": [],
+  "motion": [
+    {
+      "part": "great_banner_cloth",
+      "kind": "sway",
+      "axis": "x",
+      "pivot": [
+        8,
+        80,
+        6
+      ],
+      "amplitude": 3,
+      "bias": 4,
+      "period": 96,
+      "phase": 0
+    },
+    {
+      "part": "great_banner_cloth",
+      "kind": "sway",
+      "axis": "z",
+      "pivot": [
+        8,
+        80,
+        5
+      ],
+      "amplitude": 2,
+      "bias": 0,
+      "period": 64,
+      "phase": 0.25
+    }
+  ]
 }

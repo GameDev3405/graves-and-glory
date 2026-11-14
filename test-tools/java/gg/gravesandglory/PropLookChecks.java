@@ -18,7 +18,8 @@ import java.util.*;
  * four views with a turntable (no Knight, no fence lanterns, so the prop's own light is all there is at night): p1-prop-<id>-turn-000..315 (8 angles, day,
  * the camera orbits the prop, 000 = from the front/north, 090 = from the east), -close-day, -close-night, -turn-night-000/090/180/270.
  * GRAVES_PROPFOCUS=<id>=H,dist,fx,fy,fz,cdist;... gives per prop the framed height (blocks), the orbit distance, the close-up target (blocks from the
- * prop's min corner) and the close-up distance. Never shipped.
+ * prop's min corner) and the close-up distance. GRAVES_PROPMOTION=count,spacing (prop_shot.py --motion N:TICKS) adds count day frames per prop from one
+ * front-right camera, spacing ticks apart, p1-propframe-<id>-NN.png (moving parts); it runs after the other shots. Never shipped.
  */
 final class PropLookChecks implements Phase1Checks.Suite {
     /** id, size x y z, pivot cell x z. */
@@ -289,6 +290,28 @@ final class PropLookChecks implements Phase1Checks.Suite {
         double h = d.sy();
         return new double[]{h, Math.max(2.0, 0.9 * h + 0.6), d.sx() / 2.0, h * 0.75, d.sz() / 2.0, 1.3};
     }
+    /** GRAVES_PROPMOTION=count,spacing (tools/prop_shot.py --motion): frames per prop and client ticks between them; 0 frames by default. */
+    static final int[] MOTION = motion();
+    static int[] motion() {
+        String[] v = System.getenv().getOrDefault("GRAVES_PROPMOTION", "").split(",");
+        try { return new int[]{Math.max(0, Math.min(200, Integer.parseInt(v[0].trim()))), v.length > 1 ? Math.max(1, Integer.parseInt(v[1].trim())) : 4}; }
+        catch (NumberFormatException e) { return new int[]{0, 4}; }
+    }
+    /** The motion camera: front-right of prop i, far enough back for its full height, looking at its middle (moving parts show their sweep). */
+    void frameCamera(MinecraftClient c, int i) {
+        var d = PROPS.get(i); int[] a = anchor(i);
+        double cx = a[0] - d.px() + d.sx() / 2.0, cz = a[2] - d.pz() + d.sz() / 2.0, cy = oy + d.sy() * 0.55;
+        double dist = Math.max(4.5, Math.max(d.sy(), Math.max(d.sx(), d.sz())) * 0.95 + 1);
+        double x = cx + dist * 0.77, z = cz - dist * 0.64, y = cy + 0.4;
+        double dx = cx - x, dy = cy - y, dz = cz - z;
+        float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz)), pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.hypot(dx, dz)));
+        var id = c.player.getUuid();
+        c.getServer().execute(() -> { var p = c.getServer().getPlayerManager().getPlayer(id);
+            if (p != null) { p.changeGameMode(GameMode.SPECTATOR); p.teleport(p.getServerWorld(), x, y, z, yaw, pitch); } });
+    }
+
+    /** Where the shot stages hand over when done (the turntable at its end, else the lineup or compare): motion frames when asked for, else the end. */
+    static int afterShots() { return MOTION[0] > 0 ? 6 : 9; }
 
     public void step(MinecraftClient c, int tick) {
         if (tick > 30000 && stage < 9) { Phase1Checks.report("p1-prop-look-timeout", false, "stuck at stage " + stage); next(tick, 9); }
@@ -326,7 +349,7 @@ final class PropLookChecks implements Phase1Checks.Suite {
                     var id = c.player.getUuid(); double x = ox + (PROPS.size() - 1) * GAP / 2.0, y = oy + 6, z = oz - Math.min(22, 9 + PROPS.size() * GAP * 0.35);
                     c.getServer().execute(() -> { var p = c.getServer().getPlayerManager().getPlayer(id); if (p != null) p.teleport(p.getServerWorld(), x, y, z, 0f, 18f); }); }
                 if (k == 60) Phase1Checks.shot(c, "prop-lineup");
-                if (k == 62) { ci = 0; vi = 0; next(tick, CMPS.isEmpty() ? 9 : 4); }
+                if (k == 62) { ci = 0; vi = 0; pi = 0; next(tick, !CMPS.isEmpty() ? 4 : afterShots()); }
             }
             case 4 -> { // compare pairs: the prop beside its map template, the same four views
                 String v = VIEWS[vi]; Cmp pair = CMPS.get(ci);
@@ -340,7 +363,7 @@ final class PropLookChecks implements Phase1Checks.Suite {
                 if (k == 62) {
                     if (++vi < VIEWS.length) next(tick, 4);
                     else if (++ci < CMPS.size()) { vi = 0; next(tick, 4); }
-                    else { Phase1Checks.report("p1-prop-cmp", true, CMPS.size() * VIEWS.length + " compare shots"); next(tick, 9); }
+                    else { Phase1Checks.report("p1-prop-cmp", true, CMPS.size() * VIEWS.length + " compare shots"); pi = 0; next(tick, afterShots()); }
                 }
             }
             case 5 -> { // turntable: shot vi of TURNS for every prop (time of day set once per shot, on the first prop)
@@ -354,7 +377,21 @@ final class PropLookChecks implements Phase1Checks.Suite {
                 if (k == 62) {
                     if (++pi < PROPS.size()) next(tick, 5);
                     else if (++vi < TURNS.size()) { pi = 0; next(tick, 5); }
-                    else { Phase1Checks.report("p1-prop-look", true, PROPS.size() * TURNS.size() + " turntable shots"); next(tick, 9); }
+                    else { Phase1Checks.report("p1-prop-look", true, PROPS.size() * TURNS.size() + " turntable shots"); pi = 0; next(tick, afterShots()); }
+                }
+            }
+            case 6 -> { // motion frames (GRAVES_PROPMOTION=count,spacing): one camera per prop, a shot every spacing ticks, day
+                if (k == 1) {
+                    Phase1Checks.server(c, b -> { var p = b.server.getPlayerManager().getPlayer(player); if (p != null) cmd(b, p, "time set 6000"); });
+                    frameCamera(c, pi);
+                }
+                if (k == 2) { c.setScreen(null); c.options.hudHidden = true; }
+                int f = k - 60;
+                if (f >= 0 && f % MOTION[1] == 0 && f / MOTION[1] < MOTION[0])
+                    Phase1Checks.shot(c, String.format("propframe-%s-%02d", PROPS.get(pi).id(), f / MOTION[1]));
+                if (f == MOTION[0] * MOTION[1] + 2) {
+                    if (++pi < PROPS.size()) next(tick, 6);
+                    else { Phase1Checks.report("p1-prop-frames", true, PROPS.size() * MOTION[0] + " frames, " + MOTION[1] + " ticks apart"); next(tick, 9); }
                 }
             }
             case 9 -> {

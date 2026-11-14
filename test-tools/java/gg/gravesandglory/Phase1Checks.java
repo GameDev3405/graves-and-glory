@@ -227,6 +227,64 @@ public final class Phase1Checks implements ClientModInitializer {
             }
         }
 
+        /** p1-prop-motion (docs/props/MOVING-PARTS.md): a great_banner placed 40 blocks over the player (within PropMotion.RANGE) sways: its cloth's
+         *  transformation changes over 60 ticks and is never the rest pose for long, the pole never moves, a moving cloth is written to NBT at
+         *  rest (a chunk or structure save), and Props.remove takes every part and the ticker's motion state. On a buried platform, put back. */
+        net.minecraft.util.math.BlockPos motionCell;Map<net.minecraft.util.math.BlockPos,net.minecraft.block.BlockState> motionSaved;
+        final List<float[]> motionPoses=new ArrayList<>();int motionPoleMoved;
+        boolean propMotionStart(GravesAndGlory.Battle b){
+            var p=sp(b);var w=b.world;
+            if(p==null){report("p1-prop-motion",false,"no player");return false;}
+            int x0=(int)Math.floor(p.getX())+8,z0=(int)Math.floor(p.getZ()),oy=Math.min(w.getTopY()-16,(int)Math.floor(p.getY())+40);
+            motionCell=new net.minecraft.util.math.BlockPos(x0,oy,z0);
+            var box=net.minecraft.util.math.BlockBox.create(motionCell.add(-4,-4,-3),motionCell.add(4,8,3));
+            motionSaved=new HashMap<>();
+            for(var q:net.minecraft.util.math.BlockPos.iterate(box.getMinX(),box.getMinY(),box.getMinZ(),box.getMaxX(),box.getMaxY(),box.getMaxZ()))motionSaved.put(q.toImmutable(),w.getBlockState(q));
+            for(var q:motionSaved.keySet())w.setBlockState(q,(q.getY()>=oy?net.minecraft.block.Blocks.AIR:q.getY()==oy-1?net.minecraft.block.Blocks.GRASS_BLOCK:net.minecraft.block.Blocks.DIRT).getDefaultState(),2);
+            String why=Props.place(w,"great_banner",motionCell,0);
+            if(!why.isEmpty()){report("p1-prop-motion",false,"place: "+why);propMotionEnd(b);return false;}
+            motionPoses.clear();motionPoleMoved=0;return true;
+        }
+        net.minecraft.entity.decoration.DisplayEntity motionPart(GravesAndGlory.Battle b,String model){
+            var d=Props.DEFS.get("great_banner");if(d==null)return null;
+            int cmd=-1;for(var part:d.parts())if(part.model().equals(model))cmd=part.cmd();
+            for(var e:Props.parts(b.world,motionCell))if(Props.partCmd(e)==cmd&&e instanceof net.minecraft.entity.decoration.DisplayEntity de)return de;
+            return null;
+        }
+        boolean propMotionStep(GravesAndGlory.Battle b){
+            var cloth=motionPart(b,"great_banner_cloth");var pole=motionPart(b,"great_banner");
+            if(cloth!=null)motionPoses.add(PropTicker.pose(cloth));
+            if(pole!=null&&!Arrays.equals(PropTicker.pose(pole),PropMotion.REST))motionPoleMoved++;
+            if(b.time-stageAt<60)return false;
+            var w=b.world;
+            try{
+                int distinct=0,rest=0;float[] last=null;
+                for(float[] q:motionPoses){if(last==null||!Arrays.equals(q,last))distinct++;if(Arrays.equals(q,PropMotion.REST))rest++;last=q;}
+                double maxAngle=0;for(float[] q:motionPoses)maxAngle=Math.max(maxAngle,Math.toDegrees(2*Math.acos(Math.min(1,Math.abs(q[6])))));
+                boolean moving=PropTicker.moving(w,motionCell);
+                NbtCompound saved=new NbtCompound();if(cloth!=null)cloth.writeNbt(saved);
+                float[] live=cloth==null?null:PropTicker.pose(cloth);
+                var tr=saved.getCompound(net.minecraft.entity.decoration.DisplayEntity.TRANSFORMATION_NBT_KEY);
+                var savedPose=net.minecraft.util.math.AffineTransformation.ANY_CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE,tr).result().orElse(null);
+                boolean savedRest=savedPose!=null&&savedPose.equals(net.minecraft.util.math.AffineTransformation.identity());
+                boolean liveMoved=live!=null&&!Arrays.equals(live,PropMotion.REST);
+                boolean removed=Props.remove(w,motionCell);
+                int parts=Props.parts(w,motionCell).size();boolean forgotten=!PropTicker.moving(w,motionCell);
+                boolean ok=cloth!=null&&pole!=null&&distinct>=5&&rest<=2&&maxAngle>1&&maxAngle<12&&motionPoleMoved==0&&moving&&liveMoved&&savedRest&&removed&&parts==0&&forgotten;
+                report("p1-prop-motion",ok,"cloth poses over 60 ticks: "+motionPoses.size()+" samples, "+distinct+" distinct, "+rest+" at rest, largest turn "+String.format("%.1f",maxAngle)
+                    +" deg; pole moved "+motionPoleMoved+"; ticker moving="+moving+"; live pose off rest="+liveMoved+", saved NBT at rest="+savedRest+"; removed="+removed+", parts left "+parts+", motion state forgotten="+forgotten);
+            }catch(Exception e){report("p1-prop-motion",false,"threw "+e);e.printStackTrace();}
+            propMotionEnd(b);
+            return true;
+        }
+        void propMotionEnd(GravesAndGlory.Battle b){
+            var w=b.world;
+            if(Props.readAnchor(w,motionCell)!=null)Props.remove(w,motionCell);
+            for(var e:new ArrayList<>(Props.parts(w,motionCell)))e.discard();
+            if(motionSaved!=null)motionSaved.forEach((q,st)->w.setBlockState(q,st,2));
+            motionSaved=null;
+        }
+
         public void step(MinecraftClient c,int tick){
             if(tick==20){c.setScreen(null);UUID id=c.player.getUuid();server(c,b->{player=id;next(b,1);});}
             if(wantShot!=null&&!shotTaken&&++shotDelay>=2){c.setScreen(null);shot(c,wantShot);shotTaken=true;}
@@ -327,7 +385,8 @@ public final class Phase1Checks implements ClientModInitializer {
                 case 12->{if(b.time-stageAt>=2){
                     try{Projectiles.fire(b,orphanShooter,orphanSecond.mob,"arrow",4);System.out.println("[p1] orphan: "+Projectiles.inFlight(b)+" in flight at finish");saveArrow(b);b.campaign.finish(-1);}catch(Exception e){orphanError=e;e.printStackTrace();}
                     next(b,13);}}
-                case 13->{int left=tagged(b);report("p1-shot-orphan",orphanError==null&&Projectiles.inFlight(b)==0&&left==0&&!b.running,"error="+orphanError+" inFlight="+Projectiles.inFlight(b)+" taggedArrows="+left+" running="+b.running);reloadArrow(b);propWalkIn(b);next(b,14);}
+                case 13->{int left=tagged(b);report("p1-shot-orphan",orphanError==null&&Projectiles.inFlight(b)==0&&left==0&&!b.running,"error="+orphanError+" inFlight="+Projectiles.inFlight(b)+" taggedArrows="+left+" running="+b.running);reloadArrow(b);propWalkIn(b);next(b,propMotionStart(b)?30:14);}
+                case 30->{if(propMotionStep(b))next(b,14);}
                 case 14->{ // tick cost: eight bot armies fighting around the centre point
                     var p=sp(b);if(p==null||!skirmish(b,p,0,4,"normal"))return;
                     var own=b.squads.get(player);own.bot=true;own.order="attack";b.reinforce(own);
