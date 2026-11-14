@@ -1,0 +1,187 @@
+{
+  "id": "tent_soldier_large",
+  "category": "camp",
+  "name": "Soldier's Tent (Large)",
+  "size": [9, 6, 9],
+  "parts": [
+    {
+      "model": "tent_soldier_large_0",
+      "cmd": 7310801,
+      "glow": false,
+      "offset": [-48, 16, -48]
+    },
+    {
+      "model": "tent_soldier_large_1",
+      "cmd": 7310802,
+      "glow": false,
+      "offset": [0, 16, -48]
+    },
+    {
+      "model": "tent_soldier_large_2",
+      "cmd": 7310803,
+      "glow": false,
+      "offset": [48, 16, -48]
+    },
+    {
+      "model": "tent_soldier_large_3",
+      "cmd": 7310804,
+      "glow": false,
+      "offset": [-48, 16, 0]
+    },
+    {
+      "model": "tent_soldier_large_4",
+      "cmd": 7310805,
+      "glow": false,
+      "offset": [0, 16, 0]
+    },
+    {
+      "model": "tent_soldier_large_5",
+      "cmd": 7310806,
+      "glow": false,
+      "offset": [48, 16, 0]
+    },
+    {
+      "model": "tent_soldier_large_6",
+      "cmd": 7310807,
+      "glow": false,
+      "offset": [-48, 16, 48]
+    },
+    {
+      "model": "tent_soldier_large_7",
+      "cmd": 7310808,
+      "glow": false,
+      "offset": [0, 16, 48]
+    },
+    {
+      "model": "tent_soldier_large_8",
+      "cmd": 7310809,
+      "glow": false,
+      "offset": [48, 16, 48]
+    },
+    {
+      "model": "tent_soldier_large_9",
+      "cmd": 7310810,
+      "glow": false,
+      "offset": [-48, 64, -48]
+    },
+    {
+      "model": "tent_soldier_large_10",
+      "cmd": 7310811,
+      "glow": false,
+      "offset": [0, 64, -48]
+    },
+    {
+      "model": "tent_soldier_large_11",
+      "cmd": 7310812,
+      "glow": false,
+      "offset": [48, 64, -48]
+    },
+    {
+      "model": "tent_soldier_large_12",
+      "cmd": 7310813,
+      "glow": false,
+      "offset": [-48, 64, 0]
+    },
+    {
+      "model": "tent_soldier_large_13",
+      "cmd": 7310814,
+      "glow": false,
+      "offset": [0, 64, 0]
+    },
+    {
+      "model": "tent_soldier_large_14",
+      "cmd": 7310815,
+      "glow": false,
+      "offset": [48, 64, 0]
+    },
+    {
+      "model": "tent_soldier_large_15",
+      "cmd": 7310816,
+      "glow": false,
+      "offset": [-48, 64, 48]
+    },
+    {
+      "model": "tent_soldier_large_16",
+      "cmd": 7310817,
+      "glow": false,
+      "offset": [0, 64, 48]
+    },
+    {
+      "model": "tent_soldier_large_17",
+      "cmd": 7310818,
+      "glow": false,
+      "offset": [48, 64, 48]
+    }
+  ],
+  "solid": [
+    [1, 0, 1],
+    [1, 0, 2],
+    [1, 0, 3],
+    [1, 0, 4],
+    [1, 0, 5],
+    [1, 0, 6],
+    [1, 0, 7],
+    [2, 0, 1],
+    [2, 0, 7],
+    [3, 0, 7],
+    [4, 0, 7],
+    [5, 0, 7],
+    [6, 0, 1],
+    [6, 0, 7],
+    [7, 0, 1],
+    [7, 0, 2],
+    [7, 0, 3],
+    [7, 0, 4],
+    [7, 0, 5],
+    [7, 0, 6],
+    [7, 0, 7],
+    [1, 1, 1],
+    [1, 1, 2],
+    [1, 1, 3],
+    [1, 1, 4],
+    [1, 1, 5],
+    [1, 1, 6],
+    [1, 1, 7],
+    [2, 1, 1],
+    [2, 1, 7],
+    [3, 1, 7],
+    [4, 1, 7],
+    [5, 1, 7],
+    [6, 1, 1],
+    [6, 1, 7],
+    [7, 1, 1],
+    [7, 1, 2],
+    [7, 1, 3],
+    [7, 1, 4],
+    [7, 1, 5],
+    [7, 1, 6],
+    [7, 1, 7],
+    [1, 2, 1],
+    [1, 2, 2],
+    [1, 2, 3],
+    [1, 2, 4],
+    [1, 2, 5],
+    [1, 2, 6],
+    [1, 2, 7],
+    [2, 2, 1],
+    [2, 2, 7],
+    [3, 2, 7],
+    [4, 2, 7],
+    [5, 2, 7],
+    [6, 2, 1],
+    [6, 2, 7],
+    [7, 2, 1],
+    [7, 2, 2],
+    [7, 2, 3],
+    [7, 2, 4],
+    [7, 2, 5],
+    [7, 2, 6],
+    [7, 2, 7]
+  ],
+  "lights": [],
+  "effects": [],
+  "split": {
+    "block": 80,
+    "blocks": 2
+  }
+}
