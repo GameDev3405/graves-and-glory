@@ -87,7 +87,8 @@ final class GaitController extends AnimationController<GeoTroop> {
             transitionLength = 0; keepPhase = true;
             if (START_BLEND && !wrote.isEmpty()) { from = copy(wrote); fromAt = seekTime; fromLength = startBlend; fromEased = true; }
             else from = null;
-            if (owner) gait.phase = matchPhase(model, bones, m == Gait.Mode.RUN ? "run_legs" : "walk_legs");
+            Animation legs = owner ? model.getAnimation(animatable, m == Gait.Mode.RUN ? "run_legs" : "walk_legs") : null;
+            if (owner) gait.phase = legs == null ? 0 : matchPhase(legs, bones, out);
         }
         else if (m != lastMode && m == Gait.Mode.IDLE && !wrote.isEmpty()) {
             // stopping: the idle loop is already running at this troop's own point in it (Gait.standingTime), so GeckoLib's transition, which lands on the loop's
@@ -204,24 +205,22 @@ final class GaitController extends AnimationController<GeoTroop> {
     }
 
     /** How much a bone's turn moves the foot, by name: a thigh most, a shin half, a foot little; 0 for every other bone. */
-    private static double legWeight(String bone) {
+    static double legWeight(String bone) {
         return bone.endsWith("leg") ? 1 : bone.endsWith("shin") ? .5 : bone.endsWith("foot") ? .15 : 0;
     }
 
     /**
-     * The phase (0..1) of the gait clip {@code name} whose leg rotations lie nearest the pose this controller was holding, so a troop that sets off steps out of the idle
-     * stance without its planted foot jumping. 0 when the model lacks the clip or its leg bones.
+     * The phase (0..1) of the gait clip {@code clip} whose leg rotations lie nearest {@code pose} (each bone's rotation xyz first), so a troop that sets off steps out of
+     * the stance it held without its planted foot jumping. 0 when the pose holds none of the clip's leg bones.
      */
-    private double matchPhase(CoreGeoModel<GeoTroop> model, Map<String, CoreGeoBone> bones, String name) {
-        Animation clip = model.getAnimation(animatable, name);
-        if (clip == null) return 0;
+    static double matchPhase(Animation clip, Map<String, CoreGeoBone> bones, Map<String, float[]> pose) {
         final int steps = 48;
         double best = Double.MAX_VALUE, at = 0;
         for (int i = 0; i < steps; i++) {
             double t = clip.length() * i / steps, cost = 0;
             for (BoneAnimation b : clip.boneAnimations()) {
                 double w = legWeight(b.boneName());
-                float[] now = out.get(b.boneName());
+                float[] now = pose.get(b.boneName());
                 CoreGeoBone bone = bones.get(b.boneName());
                 var rot = b.rotationKeyFrames();
                 if (w == 0 || now == null || bone == null || rot.xKeyframes().isEmpty()) continue;

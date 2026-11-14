@@ -1458,7 +1458,11 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;
                 if (k == 1) Phase1Checks.server(c, b -> { if (b.running) b.campaign.returnLobby(); });
                 // every Geo draw of the run began with the bones left off rest (GeoLayerRest): none may have been built on that
-                if (k == 1) { GeoLayerRest.stop(); Phase1Checks.report("p1-geo-" + TROOP + "-layer-rest", GeoLayerRest.clean(), GeoLayerRest.result()); }
+                if (k == 1) {
+                    GeoLayerRest.stop(); Phase1Checks.report("p1-geo-" + TROOP + "-layer-rest", GeoLayerRest.clean(), GeoLayerRest.result());
+                    // and with another draw's legs left on the leg bones: a troop that set off must have matched its stride to its own
+                    Phase1Checks.report("p1-geo-" + TROOP + "-start-own-legs", GeoLayerRest.ownLegs(3), GeoLayerRest.startResult());
+                }
                 if (k > 40) { Phase1Checks.finish(c, "geo-knight"); stage = 99; }
             }
             default -> {}

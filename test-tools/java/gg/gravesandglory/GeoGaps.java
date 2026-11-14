@@ -191,7 +191,7 @@ final class GeoGaps {
             }
             pose.append(pr).append('\n');
         };
-        GeoTroopRenderer.PROBE = (e, model, td) -> { own.seen(e, model, td); GeoLayerRest.tap(model); };   // the layer-rest row reads these draws too
+        GeoTroopRenderer.PROBE = (e, model, td) -> { own.seen(e, model, td); GeoLayerRest.tap(e, model); };   // the layer-rest and start-own-legs rows read these draws too
     }
 
     // ---------------------------------------------------------------- server
