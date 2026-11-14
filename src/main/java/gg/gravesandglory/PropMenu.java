@@ -160,7 +160,7 @@ public final class PropMenu {
 
     static void open(ServerPlayerEntity p,String category){open(p,category,TabPaging.pageOf(categories().indexOf(category),categories().size()));}
     static void open(ServerPlayerEntity p,String category,int page){
-        p.openHandledScreen(new SimpleNamedScreenHandlerFactory((syncId,inv,player)->new Menu(syncId,inv,category,page),Text.literal("Props")));
+        p.openHandledScreen(new SimpleNamedScreenHandlerFactory((syncId,inv,player)->new Menu(syncId,inv,category,page),Text.literal("Props: "+title(category))));
     }
 
     static ItemStack arrow(boolean next){
@@ -213,7 +213,7 @@ public final class PropMenu {
                     if(!c.equals(category))START.put(p.getUuid(),"tab:"+c);
                 }else if(slot==TabPaging.PREV_SLOT&&TabPaging.hasPrev(tabs.size(),page))START.put(p.getUuid(),"page:"+(page-1)+":"+category);
                 else if(slot==TabPaging.NEXT_SLOT&&TabPaging.hasNext(tabs.size(),page))START.put(p.getUuid(),"page:"+(page+1)+":"+category);
-            }else if(slot>=TAB_SLOTS&&slot-TAB_SLOTS<items.size())START.put(p.getUuid(),items.get(slot-TAB_SLOTS).id());
+            }else if(slot>=TAB_SLOTS&&slot<9*ROWS&&slot-TAB_SLOTS<items.size())START.put(p.getUuid(),items.get(slot-TAB_SLOTS).id());
         }
         @Override public ItemStack quickMove(PlayerEntity player,int slot){return ItemStack.EMPTY;}
         @Override public boolean canUse(PlayerEntity player){return true;}

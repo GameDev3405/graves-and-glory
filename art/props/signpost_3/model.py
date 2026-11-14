@@ -12,4 +12,4 @@ from signlib import sign
 
 
 def build():
-    return sign("signpost_3", [("front", True, 36), ("front", False, 23), ("back", True, 15)])
+    return sign("signpost_3", [("front", True, 35), ("front", False, 23), ("back", True, 15)])
