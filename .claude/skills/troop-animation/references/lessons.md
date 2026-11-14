@@ -74,6 +74,15 @@ lessons into this file with their commit hashes.
   a "blade above the head" that is really the opponent, wastes a round: confirm which troop and clip each frame is.
 - "Not checked" is a required answer when the evidence cannot show something.
 - A loaded machine fails speed and sample-count checks; rerun once and keep both logs before diagnosing.
+- **Offline renders cannot show a layering fault** (the spin fault, 2026-11-13: a hood, cape or pauldron spinning in
+  play while every rendered frame looked right). render_geo plays one clip on a fresh model; in the game the stance,
+  attack, hit and death layers add onto bones the model shares between every troop drawn with it. A bone the playing
+  gait clips do not key kept the last draw's value, so a hit clip's offset piled up each frame. Fixed in
+  `GaitController.rest` (bones the gait did not write start each frame at rest). The harness row `-layer-rest` guards
+  it: it leaves an impossible value on every bone after each draw and fails if any drawn bone still carries it. So a
+  new clip that keys a bone no gait clip keys (soft-motion parts: cape, hood, skirt, pauldron, braid) is only proven
+  by an in-game reel, never by renders alone, and "something spins or drifts in play only" means look at the layers,
+  not the clip.
 
 ## 7. Process
 

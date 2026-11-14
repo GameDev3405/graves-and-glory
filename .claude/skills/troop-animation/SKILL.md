@@ -94,7 +94,7 @@ geometry, not taste: a clip that passes can still be wrong, so the reviewer and 
    escalate with evidence. What counts: build-and-check cycles before your first full look (every tick, three
    views) are authoring and are free. A fix round is one pass over a list of faults that a full look, a reviewer or
    Kort returned. Undoing a change that made a row worse belongs to the round that made it.
-8. **Harness:** the geo-knight suite for the troop (pipeline.md section 6). Pass = 22 `[p1] p1-` lines, 0 `=false`.
+8. **Harness:** the geo-knight suite for the troop (pipeline.md section 6). Pass = 24 `[p1] p1-` lines, 0 `=false`.
 9. **Verify and commit:** `python tools/verify.py fast` PASS; commit the builder, `out/`, exported assets and the
    review md together on the lane branch.
 10. **Booth:** submit the batch (Review booth below). Only `booth.py decide` moves the lane on.
