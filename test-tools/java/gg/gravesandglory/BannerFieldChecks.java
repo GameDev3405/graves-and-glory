@@ -16,11 +16,11 @@ import static gg.gravesandglory.Phase1Checks.*;
  *  (p1-bf-paint-place), a second Legendary is refused with the why in words and nothing sent (p1-bf-paint-refused), and another banner's tab
  *  shows that banner, whose Use button makes it the one that goes into battle (p1-bf-paint-switch). */
 final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch {
-    static final String[] SCENES = {"banner-normal", "banner-empty", "banner-empty-house", "banner-hover", "banner-error", "banner-paint",
+    static final String[] SCENES = {"banner-normal", "banner-empty", "banner-empty-house", "banner-hover", "banner-blocked", "banner-error", "banner-paint",
         "field-normal", "field-empty", "field-error", "banner-battle"};
     /** The window sizes shot: 1080p, 1440p and a small window that gets the compact page (scale -1: the page must be compact). */
-    static final int[][] SIZES = {{1920, 1080, 2}, {2560, 1440, 3}, {900, 520, -1}};
-    static final String[] SIZE_NAMES = {"1080", "1440", "small"};
+    static final int[][] SIZES = {{1920, 1080, 2}, {2560, 1440, 3}, {900, 520, -1}, {1280, 720, 1}, {960, 540, 1}, {854, 480, -1}};
+    static final String[] SIZE_NAMES = {"1080", "1440", "small", "720", "540", "480"};
     static final String LEGEND = "gl_marshal";
     volatile UUID player;volatile boolean serverRunning;
     int scene,phase,pAt,sub,oldW,oldH,oldGui,serial,shotIdx;boolean started,finished;String saved;List<String> want=List.of();String note="";
@@ -52,7 +52,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         return switch(scene){
             case "banner-normal","banner-battle" -> { var t=tbl(4,LEGEND,13,"mage");fill(t,9,3,"sentinel");fill(t,18,4,"longbow");fill(t,27,4,"knight");fill(t,36,3,"archer");
                 yield profile(List.of("sentinel","longbow","mage",LEGEND,"wm_tusk"),"Banner I",t,"Banner II",tbl(0,"knight",1,"knight")); }
-            case "banner-hover","banner-error","banner-paint" -> profile(List.of(LEGEND,"sentinel"),"Banner I",tbl(4,LEGEND,30,"sentinel"),"Banner II",tbl(0,"knight",1,"knight"));
+            case "banner-hover","banner-blocked","banner-error","banner-paint" -> profile(List.of(LEGEND,"sentinel"),"Banner I",tbl(4,LEGEND,30,"sentinel"),"Banner II",tbl(0,"knight",1,"knight"));
             default -> { var p=profile(List.of(),"Banner I",tbl());p.owned.keySet().removeIf(id->!id.equals("knight"));p.sanitize();yield p; }
         };
     }
@@ -103,6 +103,11 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                 if(k==10){var b=UiPagesChecks.box(c,"cell-13");if(b!=null)UiRecruitChecks.pointer(c,b[0]+b[2]/2.0,b[1]+b[3]/2.0);return false;}
                 return k>=14;
             }
+            case "banner-blocked": { // the pointer rests on the Legendary's row, which the banner cannot take a second of
+                if(k==0){gilded(c);return false;}
+                if(k==6){var b=row(c,LEGEND);if(b!=null)UiRecruitChecks.pointer(c,b[0]+b[2]/2.0,b[1]+b[3]/2.0);return false;}
+                return k>=40;
+            }
             case "banner-error": {
                 if(k==0){gilded(c);return false;}
                 if(k==6){UiPagesChecks.click(c,row(c,LEGEND));return false;}
@@ -117,7 +122,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         }
     }
     /** Whether the scene keeps the pointer where its action left it (the hover shot). */
-    static boolean held(String name){return name.equals("banner-hover");}
+    static boolean held(String name){return name.equals("banner-hover")||name.equals("banner-blocked");}
 
     /** The page as the last frame drew it at canvas scale wantK (-1: the compact page). */
     String judge(MinecraftClient c,String name,int wantK,boolean[] ok){
@@ -127,10 +132,27 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         boolean pass=p!=null&&p.page.equals(page(name))&&(wantK<0?WarTable.compact():UiCanvas.k()==wantK)&&over.isEmpty()&&bad.isEmpty();
         var t=WarTablePages.texts();String extra="";
         if(name.equals("banner-hover")){String w=t.get("cell-word"),want="Place "+WarTablePages.troopName("knight")+", "+WarTablePages.cost("knight")+" gold";pass&=want.equals(w);extra=", hover words \""+w+"\" (want \""+want+"\")";}
-        if(name.equals("banner-error")){String why=BannerDrop.why("legendary_limit"),on=t.get("why-"+rowIndex(LEGEND));pass&=p!=null&&why.equals(p.noticeText)&&why.equals(on);extra=", why on the palette \""+on+"\" (want \""+why+"\")";}
+        if(name.equals("banner-blocked")){int ri=rowIndex(LEGEND);String why=BannerDrop.why("legendary_limit"),price=t.get("price-"+ri);var col=WarTablePages.colors().get("price-"+ri);
+            boolean red=col!=null&&col==DarkUi.ROUT_TEXT,quiet=!t.containsKey("why-"+ri);pass&=red&&quiet&&why.equals(WarTablePages.blockedWhy(LEGEND))&&price!=null&&price.matches("[0-9]+ gold \u00b7 (Shield|Melee|Ranged|Caster)");
+            extra=", price \""+price+"\" red "+red+", no sentence on the row "+quiet+", the reason held for the tooltip \""+WarTablePages.blockedWhy(LEGEND)+"\"";}
+        if(name.equals("banner-error")){String why=BannerDrop.why("legendary_limit"),said=t.get("cell-word");pass&=p!=null&&why.equals(said)&&!why.equals(p.noticeText)&&!t.containsKey("why-"+rowIndex(LEGEND));extra=", strip beside the cell \""+said+"\" (want \""+why+"\"), bottom notice \""+(p==null?"":p.noticeText)+"\" (want none of it)";}
+        if(name.equals("banner-empty-house")){String say=t.get("roll-empty"),want="No Wildmoot troops yet.";var rb=UiPagesChecks.box(c,"roll-recruit");pass&=want.equals(say)&&rb!=null&&WarTablePages.ROLL_HINT.equals(t.get("roll-hint"));extra=", empty House \""+say+"\" (want \""+want+"\"), Recruit button "+(rb==null?"missing":UiHomeChecks.overlap(rb,rb)?"drawn":"")+", foot hint \""+t.get("roll-hint")+"\"";}
+        if(page(name).equals("banner")){var faults=bannerFaults(c);pass&=faults.isEmpty();extra+=faults.isEmpty()?", every banner text apart":", WRONG banner texts: "+faults;}
         ok[0]=pass;
-        String said=page(name).equals("banner")?" troops \""+t.get("troops")+"\", gold \""+t.get("gold")+"\", shown tab \""+t.get("tab-shown")+"\", roll-empty \""+t.get("roll-empty")+"\"":" status \""+t.get("status")+"\", bots "+t.get("bots-current");
+        String said=page(name).equals("banner")?" name \""+t.get("banner-name")+"\", army \""+t.get("army-troops")+"\", gold \""+t.get("gold")+"\", shown tab \""+t.get("tab-shown")+"\", roll-empty \""+t.get("roll-empty")+"\"":" status \""+t.get("status")+"\", bots "+t.get("bots-current");
         return "canvas "+UiCanvas.width()+"x"+UiCanvas.height()+" (k "+UiCanvas.k()+", compact "+WarTable.compact()+"), "+b.size()+" widgets, overlapping "+over+", not fitting "+bad+", notice \""+t.get("notice")+"\","+said+extra+(pass?"":" WRONG");
+    }
+
+    /** The Banner page's own texts: each drawn box on the canvas, and none over another (the strip beside a hovered cell is an overlay by design, and a
+     *  palette badge sits on its row's frame: both left out). */
+    static List<String> bannerFaults(MinecraftClient c){
+        List<String> bad=new ArrayList<>();var all=WarTablePages.rects();int w=UiCanvas.width(),h=UiCanvas.height();List<String> keys=new ArrayList<>();
+        for(var k:all.keySet())if(k.equals("banner-name")||k.equals("sub-line")||k.equals("front")||k.equals("gold")||k.equals("gold-of")||k.equals("gold-bar")||k.equals("rear")||k.equals("place-hint")
+            ||k.startsWith("army-")||k.startsWith("trait-")||k.equals("colour-label")||k.startsWith("price-")||k.equals("roll-empty")||k.equals("roll-hint")||k.equals("rename-help"))keys.add(k);
+        for(var k:keys){var b=all.get(k);if(b[0]<0||b[1]<0||b[0]+b[2]>w||b[1]+b[3]>h)bad.add(k+" off the "+w+"x"+h+" canvas");}
+        for(int i=0;i<keys.size();i++)for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(all.get(keys.get(i)),all.get(keys.get(j))))bad.add(keys.get(i)+"/"+keys.get(j));
+        for(var k:keys)for(var e:UiPagesChecks.boxes(c).entrySet())if(!e.getKey().startsWith("cell-")&&!e.getKey().equals("gold-tip")&&!e.getKey().startsWith("row-")&&UiHomeChecks.overlap(all.get(k),e.getValue()))bad.add(k+" meets widget "+e.getKey());
+        return bad;
     }
 
     public void step(MinecraftClient c,int tick){
@@ -203,7 +225,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
             case 3->{
                 var sent=WarTablePages.sent();var mine=new ArrayList<>(sent.subList(Math.min(sent0,sent.size()),sent.size()));
                 boolean went=mine.contains(expect),held="knight".equals(WarTablePages.savedTable().get(13));
-                if(went&&held||d>120){report("p1-bf-paint-place",went&&held,"a click on cell 13 with the Order Squire brush sent "+mine+" (want "+expect+"), the snapshot holds it "+held+", troops \""+WarTablePages.texts().get("troops")+"\", gold \""+WarTablePages.texts().get("gold")+"\"");st=4;stAt=k+1;}
+                if(went&&held||d>120){report("p1-bf-paint-place",went&&held,"a click on cell 13 with the Order Squire brush sent "+mine+" (want "+expect+"), the snapshot holds it "+held+", army \""+WarTablePages.texts().get("army-troops")+"\", gold \""+WarTablePages.texts().get("gold")+"\"");st=4;stAt=k+1;}
             }
             case 4->{if(d==0)UiPagesChecks.click(c,row(c,LEGEND));if(d>=4){st=5;stAt=k+1;}}
             case 5->{
@@ -211,8 +233,8 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
                 UiPagesChecks.click(c,UiPagesChecks.box(c,"cell-20"));st=6;stAt=k+1;
             }
             case 6->{if(d>=6){
-                int more=WarTablePages.sent().size()-sent0;boolean ok=!why.isEmpty()&&more==0&&p!=null&&why.equals(p.noticeText)&&!WarTablePages.table().containsKey(20);
-                report("p1-bf-paint-refused",ok,"a second Legendary on cell 20: why \""+why+"\", commands sent "+more+" (want 0), notice \""+(p==null?"":p.noticeText)+"\", cell 20 "+WarTablePages.table().get(20));st=7;stAt=k+1;}}
+                int more=WarTablePages.sent().size()-sent0;String said=WarTablePages.texts().get("cell-word");boolean ok=!why.isEmpty()&&more==0&&p!=null&&why.equals(said)&&!why.equals(p.noticeText)&&!WarTablePages.table().containsKey(20);
+                report("p1-bf-paint-refused",ok,"a second Legendary on cell 20: why \""+why+"\", the strip beside the cell \""+said+"\", commands sent "+more+" (want 0), bottom notice \""+(p==null?"":p.noticeText)+"\" (want none), cell 20 "+WarTablePages.table().get(20));st=7;stAt=k+1;}}
             case 7->{if(d==0)UiPagesChecks.click(c,UiPagesChecks.box(c,"tab-1"));if(d>=6){st=8;stAt=k+1;}}
             case 8->{
                 var bs=CampaignClient.profile.banners;

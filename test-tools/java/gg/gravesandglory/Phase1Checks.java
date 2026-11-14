@@ -3647,25 +3647,25 @@ public final class Phase1Checks implements ClientModInitializer {
             if(rows.stream().noneMatch(r->r.tier()>0))bad.add("no House is at a threshold, so the rows show no trait");
             for(var r:rows){String id=r.house().id();int[] box=rect("trait-"+id);String t=text("trait-"+id);
                 if(box==null||t==null){bad.add(id+" row not drawn (shown only for the Houses that fit)");continue;}
-                if(!t.matches("[0-9]+ (/ [0-9]+|slots)"))bad.add(id+" progress \""+t+"\"");
+                if(!t.matches("[0-9]+ (of [0-9]+ troops for tier [IVX]+|troops, top tier)"))bad.add(id+" progress \""+t+"\"");
                 if(!UiHomeChecks.inside(box,w,h))bad.add(id+" "+str(box)+" off the "+w+"x"+h+" canvas");
-                for(var e:all.entrySet()){String k=e.getKey();if((k.equals("sheet")||k.equals("roll")||k.equals("mark")||k.startsWith("role-")||k.startsWith("trait-")&&!k.equals("trait-"+id))&&UiHomeChecks.overlap(box,e.getValue()))bad.add(id+" meets "+k+" "+str(e.getValue()));}
+                for(var e:all.entrySet()){String k=e.getKey();if((k.equals("sheet")||k.equals("roll")||k.equals("mark")||k.startsWith("army-")||k.equals("colour-label")||k.startsWith("trait-")&&!k.equals("trait-"+id))&&UiHomeChecks.overlap(box,e.getValue()))bad.add(id+" meets "+k+" "+str(e.getValue()));}
                 for(var e:b.entrySet())if(UiHomeChecks.overlap(box,e.getValue()))bad.add(id+" meets widget "+e.getKey()+" "+str(e.getValue()));}
             bad.addAll(colourFaults(c));
             return bad;
         }
-        /** The Banner's colour row: every side has a chip drawn on the sheet's paper, as its widget's own box, on the canvas, overlapping no other widget and none of the page's other
-         *  drawn boxes (the sheet and the roll's paper aside): not the House rows, the seats, the seat count or head line, the roll, the role plaques, the trait rows or the armed band. */
+        /** The Banner's team colour: every side has a swatch drawn under the "Team colour" label at the right column's foot, as its widget's own box, on the canvas, right of the sheet, overlapping no other
+         *  widget and none of the page's other drawn boxes (the sheet and the table aside): not the army summary, the trait rows, the roll or the grid. */
         List<String> colourFaults(MinecraftClient c){
-            List<String> bad=new ArrayList<>();int w=UiCanvas.width(),h=UiCanvas.height();var b=boxes(c);var all=WarTablePages.rects();int[] sheet=all.get("sheet");
-            if(sheet==null){bad.add("no sheet drawn to hold the colour row");return bad;}
-            int paperL=sheet[0]+WarTablePages.BANNER_PAPER_X,paperR=paperL+WarTablePages.BANNER_PAPER_W;
-            if(!"Colour".equals(text("colour-label")))bad.add("no Colour word drawn");
+            List<String> bad=new ArrayList<>();int w=UiCanvas.width(),h=UiCanvas.height();var b=boxes(c);var all=WarTablePages.rects();int[] sheet=all.get("sheet"),lab=all.get("colour-label");
+            if(sheet==null){bad.add("no sheet drawn to stand beside the colour swatches");return bad;}
+            if(!"Team colour".equals(text("colour-label"))||lab==null)bad.add("no Team colour label drawn");
             for(var f:Spec.FACTIONS){String key="colour-"+f.id();int[] box=rect(key),widget=b.get(key);
                 if(box==null||widget==null){bad.add(key+" not drawn"+(widget==null?" and has no widget":""));continue;}
                 if(!Arrays.equals(box,widget))bad.add(key+" drawn at "+str(box)+" but its widget is "+str(widget));
                 if(!UiHomeChecks.inside(box,w,h))bad.add(key+" "+str(box)+" off the "+w+"x"+h+" canvas");
-                if(box[0]<paperL||box[0]+box[2]>paperR||box[1]<sheet[1]||box[1]+box[3]>sheet[1]+sheet[3])bad.add(key+" "+str(box)+" is not on the sheet's paper "+paperL+".."+paperR);
+                if(box[0]<sheet[0]+sheet[2])bad.add(key+" "+str(box)+" is not right of the sheet");
+                if(lab!=null&&box[1]<lab[1]+lab[3])bad.add(key+" "+str(box)+" is not under its label "+str(lab));
                 for(var e:all.entrySet()){String k=e.getKey();if(k.equals("sheet")||k.equals("table")||k.equals(key))continue;if(UiHomeChecks.overlap(box,e.getValue()))bad.add(key+" meets "+k+" "+str(e.getValue()));}
                 for(var e:b.entrySet())if(!e.getKey().equals(key)&&UiHomeChecks.overlap(box,e.getValue()))bad.add(key+" meets widget "+e.getKey()+" "+str(e.getValue()));}
             return bad;
@@ -3833,9 +3833,11 @@ public final class Phase1Checks implements ClientModInitializer {
             int k=at(tick);int[] o=WarTable.origin();var p=pages(c);var saved=WarTablePages.savedTable();
             switch(sub){
                 case 0->{roll=new ArrayList<>();for(var r:WarTablePages.owned())roll.add(r.troopId());
-                    String troops=WarTablePages.troops()+" / "+RosterMath.maxTroops()+" troops",gold=WarTablePages.spent()+" / "+RosterMath.allowance()+" gold";
-                    boolean start=!roll.isEmpty()&&troops.equals(text("troops"))&&gold.equals(text("gold"))&&"Front".equals(text("front"))&&box(c,"cell-"+(WarGrid.cells()-1))!=null;
-                    ok&=start;why+="; the palette "+roll+", \""+text("troops")+"\", \""+text("gold")+"\", \""+text("front")+"\""+(start?"":" WRONG (want \""+troops+"\", \""+gold+"\")");
+                    int left=RosterMath.allowance()-WarTablePages.spent();
+                    String troops="Troops "+WarTablePages.troops()+" / "+RosterMath.maxTroops(),gold=(left>=0?left+" gold left":-left+" gold over"),of=WarTablePages.spent()+" of "+RosterMath.allowance();
+                    boolean start=!roll.isEmpty()&&troops.equals(text("army-troops"))&&gold.equals(text("gold"))&&of.equals(text("gold-of"))&&("Gold left "+left).equals(text("army-gold"))&&"Front".equals(text("front"))&&"Rear".equals(text("rear"))
+                        &&WarTablePages.SUB_LINE.equals(text("sub-line"))&&WarTablePages.PLACE_HINT.equals(text("place-hint"))&&rect("gold-bar")!=null&&rect("gold-bar")[3]>=7&&box(c,"cell-"+(WarGrid.cells()-1))!=null;
+                    ok&=start;why+="; the palette "+roll+", \""+text("army-troops")+"\", \""+text("gold")+"\", \""+text("gold-of")+"\", \""+text("front")+"\", \""+text("rear")+"\""+(start?"":" WRONG (want \""+troops+"\", \""+gold+"\", \""+of+"\")");
                     // with places left on the roll, the hint sits in its last place, at the foot (finding 3 of the Task 7 review)
                     int[] hr=rect("roll-hint");int last=o[1]+WarTablePages.ROW_TOP+WarTablePages.ROW_H*(WarTablePages.ROWS-1);
                     boolean foot=roll.size()>=WarTablePages.ROWS||WarTablePages.ROLL_HINT.equals(text("roll-hint"))&&in(hr,rect("roll"))&&hr[1]>=last&&hr[1]+hr[3]<=last+WarTablePages.ROW_H;
@@ -4148,7 +4150,7 @@ public final class Phase1Checks implements ClientModInitializer {
         static final String HIDDEN="forward_supply";
         /** The class art the role plaques and seats still use (the first legacy class of each gear set's roles). */
         static final String[] CLASS_ART={"champion","reaver","warden","marshal","warlock","quartermaster"};
-        static final String[] ROLE_SETS={"bruiser","healer","ranged","commander"};
+        static final String[] ARMY_KEYS={"army-head","army-gold","army-troops","army-shield","army-melee","army-ranged","army-caster"};
         // the server thread writes these, the client thread reads them
         volatile int stage;volatile UUID player;volatile String serverRelic;
         // client thread only
@@ -4212,10 +4214,11 @@ public final class Phase1Checks implements ClientModInitializer {
                     if(k==6)UiRecruitChecks.park(c);
                     if(k==12){var s=UiPagesChecks.screen(c);
                         List<String> boxes=new ArrayList<>(),missing=new ArrayList<>();
-                        for(String set:ROLE_SETS){int[] r=WarTablePages.rects().get("role-"+set);boxes.add(set+" "+box(r));if(r==null)missing.add(set);}
+                        for(String key:ARMY_KEYS){int[] r=WarTablePages.rects().get(key);boxes.add(key+" "+box(r));if(r==null)missing.add(key);}
+                        boolean plaques=WarTablePages.rects().keySet().stream().anyMatch(key->key.startsWith("role-"));
                         shot(c,"ui-icons-classes-gui2");
-                        boolean ok=s!=null&&UiPagesChecks.pages(c)!=null&&missing.isEmpty()&&"table/plaque-120-here".equals(WarTablePages.textures().get("role-commander"))&&"table/plaque-120".equals(WarTablePages.textures().get("role-bruiser"));
-                        report("p1-ui-icons-classes",ok,"the Banner page at 1920x1080 GUI 2 (canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", k "+UiCanvas.k()+") drew a plaque for each role, the Commander's lit (a fresh Marshal wears no gear): "+boxes+(missing.isEmpty()?"":"; no plaque for "+missing)+(ok?"":" WRONG"));
+                        boolean ok=s!=null&&UiPagesChecks.pages(c)!=null&&missing.isEmpty()&&!plaques&&WarTablePages.rects().get("army-head")!=null;
+                        report("p1-ui-icons-classes",ok,"the Banner page at 1920x1080 GUI 2 (canvas "+UiCanvas.width()+"x"+UiCanvas.height()+", k "+UiCanvas.k()+") drew the army summary (gold left, troops, the four kinds) and no role plaques: "+boxes+(missing.isEmpty()?"":"; not drawn: "+missing)+(plaques?"; a role plaque is still drawn":"")+(ok?"":" WRONG"));
                         c.setScreen(null);window(c,960,540,1);stage=40; // the practice battle (the server starts it)
                     }
                 }
