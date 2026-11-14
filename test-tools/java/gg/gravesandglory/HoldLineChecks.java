@@ -215,6 +215,8 @@ final class HoldLineChecks {
         boolean arcMarched;
         /** The roof's block layer (its underside), and where the landed shot's arrow stood on its landing tick on the server. */
         int arcRoofY; Vec3d arcEnd;
+        // a scattered arrow that missed flies on (Projectiles.flyOn): followed on the server until it is discarded, where the client must draw it last (N7)
+        net.minecraft.entity.Entity arcFlying; Vec3d arcFlyEnd; long arcMissedAt, arcWaitTo = 5; String arcPath0 = "";
         /** hl-arc's decoy (N8): an untagged no-clip, no-gravity arrow no battle fired. */
         net.minecraft.entity.Entity arcDecoy;
         /** The landed shot's result, finished once the client has seen the whole flight. */
@@ -1256,9 +1258,12 @@ final class HoldLineChecks {
                     arcFireAim = Projectiles.aim(arcTarget.mob); arcAim = arcFireAim;
                     arcMarched = false;
                     if (ARC_CASES[arcIndex].kind().equals("moving")) { // the lead is for a troop walking a path: the dummy has one north, and last tick's step of ARC_WALK along it (the pin's teleport leaves none)
-                        var m = arcTarget.mob; for (int far : new int[]{12, 8, 30}) if (!arcMarched) arcMarched = m.getNavigation().startMovingTo(arcHome.x, arcHome.y, arcHome.z + far, 1.0); // a path within its follow range (30 found none)
+                        var m = arcTarget.mob; m.setOnGround(true); // the pin's teleport each tick leaves it off the ground, where a mob's navigation finds no path
+                        for (int far : new int[]{12, 8, 30}) if (!arcMarched) arcMarched = m.getNavigation().startMovingTo(arcHome.x, arcHome.y, arcHome.z + far, 1.0); // a path within its follow range (30 found none)
                         m.prevX = m.getX(); m.prevZ = m.getZ() - ARC_WALK;
                     }
+                    if (ARC_CASES[arcIndex].kind().equals("moving") && !arcMarched) arcPath0 = " (no path: on the ground " + arcTarget.mob.isOnGround() + ", AI off " + arcTarget.mob.isAiDisabled() + ")"; else arcPath0 = "";
+                    arcMissedAt = arrows(Projectiles.ARROWS_MISSED);
                     Projectiles.fire(b, arcShooter, arcTarget.mob, Abilities.visual(arcShooter), 2f);
                     arcShot = b.shots.get(b.shots.size() - 1); arcArrow = arcShot.visual(); arcPath.clear(); arcTurn.clear(); arcHealth = arcTarget.mob.getHealth();
                     arcClient.clear(); arcClientId = arcArrow == null ? -1 : arcArrow.getId();
@@ -1273,14 +1278,15 @@ final class HoldLineChecks {
                         if (since(b) <= 60) return;
                         arcPass = false; arcWhy.add(ac.id() + " " + ac.kind() + "'s shot still in flight 60 ticks after it was fired=false");
                         Projectiles.clear(b); arcPendingWhy = null;
-                    } else arcLanded(b, cd, ac);
+                    } else {arcLanded(b, cd, ac); arcFlying = arrows(Projectiles.ARROWS_MISSED) > arcMissedAt ? arcArrow : null; arcFlyEnd = null; arcWaitTo = 5;}
                     for (var r : arcRoof.entrySet()) b.world.setBlockState(r.getKey(), r.getValue());
                     arcRoof.clear(); walk(arcHome); if (arcTarget != null) arcTarget.mob.getNavigation().stop();
                     unpin(b, List.of(arcShooter)); arcShooter = null; arcShot = null; arcArrow = null;
                     next(b, 74);
                 }
                 case 74 -> { // five ticks on, the client has drawn the whole flight: where its arrow ended, and its attitude every tick against the move it drew
-                    if (since(b) < 5) return;
+                    if (arcFlying != null) {if (!arcFlying.isRemoved() && since(b) < 60) {arcFlyEnd = arcFlying.getPos(); arcWaitTo = since(b) + 5; return;} arcFlying = null;}
+                    if (since(b) < arcWaitTo) return;
                     arcClientId = -1;
                     List<double[]> seen; synchronized (arcClient) {seen = new ArrayList<>(arcClient); arcClient.clear();}
                     if (arcPendingWhy != null) {
@@ -1300,18 +1306,19 @@ final class HoldLineChecks {
                                 if (n == 1) firstPitch = midPitch; lastPitch = midPitch; moved = t;
                             }
                             // N7: the last place the client drew the arrow (it is gone the tick after) is where it landed on the server
-                            double[] last = seen.isEmpty() ? null : seen.get(seen.size() - 1);
-                            double arrive = last == null || arcEnd == null ? 1e9 : arcEnd.distanceTo(new Vec3d(last[4], last[5], last[6]));
-                            double lastMove = moved == null || arcEnd == null ? Double.NaN : arcEnd.distanceTo(new Vec3d(moved[4], moved[5], moved[6]));
+                            // (a miss flies on: the last place the server had it before it was discarded)
+                            double[] last = seen.isEmpty() ? null : seen.get(seen.size() - 1); Vec3d endAt = arcFlyEnd != null ? arcFlyEnd : arcEnd;
+                            double arrive = last == null || endAt == null ? 1e9 : endAt.distanceTo(new Vec3d(last[4], last[5], last[6]));
+                            double lastMove = moved == null || endAt == null ? Double.NaN : endAt.distanceTo(new Vec3d(moved[4], moved[5], moved[6]));
                             int want = Math.max(1, arcPendingTicks - 1); boolean upDown = arcPendingArced && arcPendingTicks >= 2;
                             boolean client = n >= want && lag <= 1 && arrive <= 0.3 && (!upDown || firstPitch > 0 && lastPitch < 0); pass &= client;
-                            why += "; on the client " + n + " ticks of flight seen (want " + want + " or more), its last drawn place " + fmt(arrive) + " from where it landed (want 0.3 at most; "
+                            why += "; on the client " + n + " ticks of flight seen (want " + want + " or more), its last drawn place " + fmt(arrive) + " from where it " + (arcFlyEnd != null ? "flew on to, a miss," : "landed") + " (want 0.3 at most; "
                                 + fmt(lastMove) + " at the end of its last move), the nose halfway through each tick at most " + fmt(lag) + " degrees off that tick's move (want 1 at most; at the tick's ends "
                                 + fmt(ends) + ", " + fmt(jump) + " from one tick's end to the next one's start), its pitch " + fmt(firstPitch) + " first and " + fmt(lastPitch) + " last" + (upDown ? " (want nose up, then down)" : "");
                         }
                         arcPass &= pass; arcWhy.add(why + "=" + pass);
                     }
-                    arcPendingWhy = null; arcEnd = null;
+                    arcPendingWhy = null; arcEnd = null; arcFlyEnd = null;
                     next(b, ++arcIndex < ARC_CASES.length ? 71 : 75);
                 }
                 case 75 -> { // N8: a no-clip, no-gravity arrow flying east that no battle fired keeps vanilla's own attitude, on the server and the client
@@ -2570,7 +2577,8 @@ final class HoldLineChecks {
             String id = ac.id(), kind = ac.kind(); boolean bolt = arcShot.kind().equals("bolt"), moving = kind.equals("moving");
             // since 9ac2d05b an archer's shot flies its fixed curve to its scattered (and, at a walking target, led) aim point: the curve and the landing are judged against that
             Vec3d from = arcShot.from(), aimed = arcShot.aimPoint() != null ? arcShot.aimPoint() : arcFireAim, to = arcShot.aimPoint() != null ? arcShot.aimPoint() : arcAim;
-            double dist = from.distanceTo(aimed);
+            // the game works a shot's flight out from the shooter's eyes to its aim (Projectiles.fire, arc); a bolt is drawn from the cast tip (castFrom), so its distance is taken from the eyes
+            double dist = bolt && arcShooter != null ? arcShooter.mob.getEyePos().distanceTo(arcFireAim) : from.distanceTo(aimed);
             int travel = BattleMath.travelTicks(dist, bolt ? cd.boltSpeed() : cd.arrowSpeed(), cd.projectileMinTicks(), cd.projectileMaxTicks());
             // the arc each weapon should take (animation rework section 5, R24): a bow the whole of it, a crossbow (the Arbalist's and the Ballista's) and a thrown trident their sheet scales, the Mortar's and a caster's bolt none
             double scale = bolt ? 0 : switch (id) {case "archer" -> 1; case "ic_arbalist", "ic_ballista" -> cd.crossbowArcScale(); case "tc_harpooner" -> cd.thrownArcScale(); default -> 0;};
@@ -2613,7 +2621,7 @@ final class HoldLineChecks {
                 double walked = Math.sqrt(GravesAndGlory.Battle.horizontalDistance(arcFireAim, arcAim)), sigma = BattleMath.arrowSigma(cd.arrowSpreadBase(), cd.arrowSpreadPerBlock(), dist);
                 Vec3d now = Projectiles.aim(arcTarget.mob); double lead = Math.hypot(to.x - now.x, to.z - now.z), still = Math.hypot(to.x - arcFireAim.x, to.z - arcFireAim.z);
                 shaped = arcMarched && walked >= ARC_WALK * (wantTicks - 2) && miss <= 0.05 && lead <= 3 * sigma + 0.5;
-                shape = "at a dummy walking a path at the loose (" + arcMarched + ", want true) that walked " + fmt(walked) + " sideways in its flight (want " + fmt(ARC_WALK * (wantTicks - 2)) + " or more), peak " + fmt(peak)
+                shape = "at a dummy walking a path at the loose (" + arcMarched + arcPath0 + ", want true) that walked " + fmt(walked) + " sideways in its flight (want " + fmt(ARC_WALK * (wantTicks - 2)) + " or more), peak " + fmt(peak)
                     + ", the arrow " + fmt(miss) + " from its aim point (want 0.05), the aim point " + fmt(lead) + " from the dummy at the landing (want 3 sigma + 0.5 = " + fmt(3 * sigma + 0.5) + " at most; " + fmt(still) + " from where it stood at the loose)";}
             else if (id.equals("archer")) {bowPeak = peak; shaped = Math.abs(peak - 5.5) <= 0.15; shape = "peak " + fmt(peak) + " over the straight line at tick " + peakAt + " (want 5.5 +/- 0.15; the sheet's " + fmt(wantPeak) + ")";}
             else if (scale > 0) {double ratio = peak / BattleMath.arcPeak(dist, cd.volleyPeakPerBlock(), cd.volleyPeakMax(), 1), tol = id.equals("ic_ballista") ? 0.05 : 0.02; shaped = bowPeak > 0.5 && Math.abs(ratio - scale) <= tol; shape = "peak " + fmt(peak) + " at tick " + peakAt + ", " + String.format(Locale.ROOT, "%.3f", ratio) + " of a bow's at this shot's own distance (want " + fmt(scale) + " +/- " + fmt(tol) + ")";}
