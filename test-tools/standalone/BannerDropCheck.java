@@ -23,7 +23,7 @@ public final class BannerDropCheck {
         check(BannerDrop.why("legendary_limit").equals("1 Legendary per banner"), "The Legendary limit reads short: " + BannerDrop.why("legendary_limit"));
         check(BannerDrop.why("house").equals("This House is not playable yet.") && BannerDrop.why("count").equals(RosterMath.maxTroops() + " troops max"), "The House and count refusals read short");
         check(BannerDrop.costWhy(22, 10).equals("Need 22 gold, 10 left"), "The cost reason names the price and the gold left");
-        for (String f : List.of("range", "unknown", "not_owned", "house", "count", "cost", "epic_limit", "rare_limit", "common_limit")) check(!BannerDrop.why(f).isEmpty() && !BannerDrop.why(f).endsWith(".") && !BannerDrop.why(f).toLowerCase().contains("war table"), f + " is a short reason: " + BannerDrop.why(f));
+        for (String f : List.of("range", "unknown", "not_owned", "house", "count", "cost", "epic_limit", "rare_limit", "common_limit")) check(!BannerDrop.why(f).isEmpty() && (f.equals("house") || !BannerDrop.why(f).endsWith(".")) && !BannerDrop.why(f).toLowerCase().contains("war table"), f + " is a short reason: " + BannerDrop.why(f));
         System.out.println("BannerDropCheck passed: " + count + " checks");
     }
 

@@ -61,7 +61,7 @@ final class WarTablePages {
     static final String ROLL_LOCKED = "Locked during battle.";
     static final String RENAME_HELP = "Enter to save \u00b7 Esc to cancel";
     static final String COLOUR_TIP = "Team colour. First team to pick it keeps it.";
-    static final String SUB_LINE = "Your troops stand in battle the way you place them here.", PLACE_HINT = "Click or drag to place \u00b7 Right-click to remove";
+    static final String SUB_LINE = "Your troops stand in battle the way you place them here.", PLACE_HINT = "Click or drag to place \u00b7 Other button to remove";
     static final int ROLL_HINT_CX = 116, ROLL_HINT_W = 200, EMPTY_BTN_DY = 88;
     /** The Banner's House row sits in the sheet's head: the chosen House shows seal, tick and name, the other four their seal only
      *  (five names are 414 px wide and the sheet's paper holds 372); each chip's tooltip names its House. */
