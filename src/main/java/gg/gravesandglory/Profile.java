@@ -163,19 +163,24 @@ public final class Profile {
         if (banners.isEmpty()) banners = starterBanners();
         while (banners.size() > RosterMath.maxBanners()) banners.remove(banners.size() - 1);
         Set<String> houses = new LinkedHashSet<>(houseOrder()); // every House: a House switched off keeps its troops saved and is left out at field time (RosterMath.fieldable), as in schema 6
-        int trimmed = 0;
+        int gone = 0, limit = 0, house = 0, cost = 0, other = 0; // troops taken off, by the reason that was true for them
         for (int i = 0; i < banners.size(); i++) {
             Banner b = banners.get(i);
             b.name = bannerName(b.name, i + 1);
             SortedMap<Integer, String> table = WarGrid.parse(b.cells);
             int before = table.size();
             table.entrySet().removeIf(e -> !WarGrid.inRange(e.getKey()) || !c.known(e.getValue()) || !owned.containsKey(e.getValue()));
+            gone += before - table.size();
+            int beforeLimit = table.size();
             dropOverLimit(table, c);
+            limit += beforeLimit - table.size();
+            String why = RosterMath.validTable(table, c, owned.keySet(), houses); // the first rule the rest of the table breaks says why the back rows go
             SortedMap<Integer, String> kept = WarGrid.trim(table, t -> RosterMath.validTable(t, c, owned.keySet(), houses) == null);
-            trimmed += before - kept.size();
+            int cut = table.size() - kept.size();
+            if ("house".equals(why)) house += cut; else if ("cost".equals(why)) cost += cut; else other += cut;
             b.cells = WarGrid.format(kept);
         }
-        if (trimmed > 0 && notice == null) notice = "Your banner was changed to fit the table: " + trimmedText(trimmed) + " taken off the back rows.";
+        if (notice == null) notice = trimNotice(gone, limit, house, cost, other);
         activeBanner = clamp(activeBanner, 0, banners.size() - 1);
     }
     /** Removes, front to back, each troop past its rarity's rarities.bannerMax (a second Legendary), so trim never has to clear the rows behind it. */
@@ -183,10 +188,35 @@ public final class Profile {
         Map<String, Integer> seen = new HashMap<>();
         table.entrySet().removeIf(e -> { String r = c.rarityOf(e.getValue()); return seen.merge(r, 1, Integer::sum) > RosterMath.bannerMax(r); });
     }
-    /** What the join says of an unread notice: the Banner page holds the note itself, until "Understood". */
-    static final String NOTICE_POINTER = "Your banner was changed for the new war table. Open Banner to see it.";
+    /** The note for a banner trimmed on load (sanitize), one clause per reason, each true of the troops it counts; null when nothing was taken off. The v6 migration word is ProfileMigration's own. */
+    static String trimNotice(int gone, int limit, int house, int cost, int other) {
+        List<String> parts = new ArrayList<>();
+        if (gone > 0) parts.add(troops(gone) + " you no longer have " + were(gone) + " taken off");
+        if (limit > 0) parts.add(troops(limit) + " over a rarity limit " + were(limit) + " taken off");
+        if (house > 0) parts.add(troops(house) + " of a House that is not playable " + were(house) + " taken off the back rows");
+        if (cost > 0) parts.add(troops(cost) + " " + were(cost) + " taken off the back rows to fit the " + RosterMath.allowance() + " gold limit");
+        if (other > 0) parts.add(troops(other) + " " + were(other) + " taken off the back rows to fit the banner limits");
+        return parts.isEmpty() ? null : "Your banner was changed: " + String.join("; ", parts) + ".";
+    }
+    static String troops(int n) { return n == 1 ? "1 troop" : n + " troops"; }
+    static String were(int n) { return n == 1 ? "was" : "were"; }
+    /** The lead of the one notice the v6 migration writes (ProfileMigration.v6toV7), the only change made for the new war table. */
+    static final String MIGRATION_LEAD = "Your banner was changed for the new war table";
+    /** What follows the notice's reason in the join pointer. */
+    static final String POINT_TAIL = " Open Banner to see it.";
+    /** What the join says of an unread notice: the migration's lead alone, any other notice as it reads; the Banner page holds the note itself, until "Understood". */
+    static String pointerFor(String notice) {
+        return notice == null ? null : notice.startsWith(MIGRATION_LEAD) ? MIGRATION_LEAD + "." + POINT_TAIL : notice + POINT_TAIL;
+    }
+    /** The line the join posts: base (the welcome or the wait line) with the pointer to an unread notice beside it, never in place of it; base alone when there is none. */
+    static String withPointer(String base, String notice) { String point = pointerFor(notice); return point == null ? base : base + " " + point; }
+    /** What a posted line goes back to once the notice is read: the line without its pointer, or the line itself when it carries none. */
+    static String withoutPointer(String posted, String notice) {
+        String point = pointerFor(notice);
+        return posted != null && point != null && posted.endsWith(" " + point) ? posted.substring(0, posted.length() - point.length() - 1) : posted;
+    }
     /** The join pointer, or null when there is no unread notice. */
-    String pointer() { return notice == null ? null : NOTICE_POINTER; }
+    String pointer() { return pointerFor(notice); }
     /** Understood: clears the one-time notice and returns what it said (null when there was none). The only thing that clears it, so it survives a relog until then. */
     String understood() { String text = notice; notice = null; return text; }
     /** "1 troop was" or "N troops were": the troop count of a banner trim notice. */

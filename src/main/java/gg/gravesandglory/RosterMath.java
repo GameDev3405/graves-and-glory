@@ -111,6 +111,9 @@ public final class RosterMath {
         return slots;
     }
 
+    /** A House reward's reason on the battle report: the banner troops that paid it, "6 Gilded troops" (houseSlots counts one per troop). */
+    public static String troopsOf(int n, String house) { return n + " " + houseName(house) + (n == 1 ? " troop" : " troops"); }
+
     /** A House's trait tier for its banner slots: one tier per threshold reached (houseTraits.slots of tiers I to III), so 0 to 3. */
     public static int traitTier(int slots, int[] thresholds) { return reached(slots, thresholds); }
     static int reached(int value, int[] thresholds) {

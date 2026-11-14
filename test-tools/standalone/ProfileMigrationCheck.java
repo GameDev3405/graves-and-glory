@@ -202,6 +202,31 @@ public final class ProfileMigrationCheck {
         check(p.banners.size() == 1 && p.table().size() == 18 && p.notice == null && p.owned.keySet().equals(COMMONS), "v1ChainsToV7: the 18 troops of the v1 line are on the war table, whole");
     }
 
+    /** Each kind of sanitize trim says its own true reason, and only the v6 migration says "for the new war table"; the join pointer follows the notice (review item 17). */
+    static void noticeReasons() throws IOException {
+        var cat = RosterMath.Catalog.fromSpec();
+        var gone = new Profile();
+        gone.banners = new ArrayList<>(List.of(new Profile.Banner("A", "0:knight,1:knight,2:mage")));
+        gone.sanitize();
+        check("Your banner was changed: 1 troop you no longer have was taken off.".equals(gone.notice) && gone.table().size() == 2, "noticeReasons: a troop no longer owned: " + gone.notice);
+        check(("Your banner was changed: 1 troop you no longer have was taken off." + Profile.POINT_TAIL).equals(gone.pointer()), "noticeReasons: the pointer carries the same reason: " + gone.pointer());
+        var legendary = new TreeMap<String, String>();
+        for (var e : cat.rarity().entrySet()) if (e.getValue().equals("legendary")) legendary.put(e.getKey(), e.getKey());
+        var ids = new ArrayList<>(legendary.keySet());
+        var limit = new Profile();
+        for (String id : ids) limit.owned.put(id, new Profile.Owned());
+        limit.banners = new ArrayList<>(List.of(new Profile.Banner("B", "0:" + ids.get(0) + ",1:" + ids.get(1))));
+        limit.sanitize();
+        check("Your banner was changed: 1 troop over a rarity limit was taken off.".equals(limit.notice) && limit.table().size() == 1, "noticeReasons: a second Legendary: " + limit.notice);
+        check("Your banner was changed: 2 troops of a House that is not playable were taken off the back rows.".equals(Profile.trimNotice(0, 0, 2, 0, 0)), "noticeReasons: a House that is not fieldable: " + Profile.trimNotice(0, 0, 2, 0, 0));
+        check(Profile.trimNotice(0, 0, 0, 0, 0) == null && ("Your banner was changed: 3 troops were taken off the back rows to fit the " + RosterMath.allowance() + " gold limit.").equals(Profile.trimNotice(0, 0, 0, 3, 0)), "noticeReasons: a cost raise names the limit; nothing taken off says nothing");
+        check("Your banner was changed: 1 troop was taken off the back rows to fit the banner limits.".equals(Profile.trimNotice(0, 0, 0, 0, 1)), "noticeReasons: any other limit: " + Profile.trimNotice(0, 0, 0, 0, 1));
+        var moved = fixture("over");
+        moved.sanitize();
+        check(moved.notice != null && moved.notice.startsWith("Your banner was changed for the new war table: ") && moved.notice.endsWith("to fit the " + RosterMath.allowance() + " gold limit."), "noticeReasons: the migration trim says the new table and the 640 limit: " + moved.notice);
+        check("Your banner was changed for the new war table.".concat(Profile.POINT_TAIL).equals(moved.pointer()), "noticeReasons: the migration pointer keeps the agreed line: " + moved.pointer());
+    }
+
     /** A banner that no longer fits is trimmed from the back, never wiped: 30 Squires cost 660 against 640. */
     static void sanitizeTrimsNotWipes() {
         var p = new Profile();
@@ -214,7 +239,7 @@ public final class ProfileMigrationCheck {
         var kept = WarGrid.parse(t);
         check(kept.size() == 29 && kept.firstKey() == 0 && kept.lastKey() == 28 && count(kept, "knight") == 29, "sanitizeTrimsNotWipes: 29 of 30 Squires stay (the unowned cell went first): " + t);
         check(p.banners.get(1).cells.isEmpty() && p.banners.size() == 2 && p.banners.get(1).name.equals("Empty"), "sanitizeTrimsNotWipes: an empty banner stays empty and named");
-        check(p.notice != null && p.notice.contains("2 troops were") && problem(p) == null, "sanitizeTrimsNotWipes: the notice counts what was taken off (the unowned cell and the 30th): " + p.notice);
+        check(p.notice != null && p.notice.equals("Your banner was changed: 1 troop you no longer have was taken off; 1 troop was taken off the back rows to fit the " + RosterMath.allowance() + " gold limit.") && problem(p) == null, "sanitizeTrimsNotWipes: the notice says why each troop went (the unowned cell, the 30th for the gold limit): " + p.notice);
         var old = new Profile();
         old.banners = new ArrayList<>(List.of(new Profile.Banner("Kept", "0:knight")));
         old.notice = "earlier";
@@ -497,7 +522,7 @@ public final class ProfileMigrationCheck {
         } finally {
             try (Stream<Path> paths = Files.walk(dir)) { paths.sorted(Comparator.reverseOrder()).forEach(path -> path.toFile().delete()); }
         }
-        v6StarterMoves(); v6WideDropsMarkers(); v6OverTrims(); v6GoldSplit(); v1ChainsToV7(); sanitizeTrimsNotWipes(); bannerNamesClamp(); reviewFixups(); legacyFieldsNotWritten(); marksFoldIntoShards(); writsCarryRemainder();
+        v6StarterMoves(); v6WideDropsMarkers(); v6OverTrims(); v6GoldSplit(); v1ChainsToV7(); sanitizeTrimsNotWipes(); noticeReasons(); bannerNamesClamp(); reviewFixups(); legacyFieldsNotWritten(); marksFoldIntoShards(); writsCarryRemainder();
         System.out.println("ProfileMigrationCheck: " + checks + " checks passed");
     }
 }

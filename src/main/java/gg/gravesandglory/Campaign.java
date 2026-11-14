@@ -210,16 +210,15 @@ public final class Campaign {
         if(!(b.running&&participants.contains(p.getUuid())))joinedAt.put(p.getUuid(),b.time);var squad=b.squads.get(p.getUuid());
         if(ending()){skipped.put(p.getUuid(),MatchEnding.Step.DONE);endingDone.add(p.getUuid());toLobby(p);return;} // joining during the ending: to camp, no step; a participant's reward and report are already settled
         if(b.running&&squad!=null&&squad.seated){returned(p.getUuid());b.toBase(p,squad.team);}else toLobby(p);
-        if(b.running&&(squad==null||!squad.seated))notice(p.getUuid(),WELCOME_WAIT); // true for the moments he reads it, and gone with the round (returnLobby) or after NOTICE_TICKS: no standing line, which the round's end would leave false
-        else standing(p.getUuid(),WELCOME);
-        pointNotice(p.getUuid());}
-    /** At join, when the profile holds an unread notice (Profile.notice: a banner was trimmed on load): a pointer to it (Profile.NOTICE_POINTER), said after the welcome so it is the line he reads. The notice itself is held on the Banner page until "Understood"; it survives a relog and is never posted here. A standing line in camp, a timed one in a round. */
-    void pointNotice(UUID id){String text=profile(id).pointer();if(text==null)return;if(b.running)notice(id,text);else standing(id,text);}
-    /** "notice:understood": the Banner page's note is read. Clears Profile.notice and saves (put back when the save fails, so it is not lost unseen); the join pointer, if it is still the line standing, goes with it. */
+        welcome(p.getUuid(),b.running&&(squad==null||!squad.seated));}
+    /** The line a commander reads at join: the wait line (timed: true for the moments he reads it, and gone with the round (returnLobby) or after NOTICE_TICKS, no standing line, which the round's end would leave false) or the welcome (standing). When the profile holds an unread notice (Profile.notice: a banner was trimmed on load) the pointer to it (Profile.pointer) shows beside that line, not in place of it, so the {key:menu} hint stays. The notice itself is held on the Banner page until "Understood"; it survives a relog and is never posted here. */
+    void welcome(UUID id,boolean wait){String note=profile(id).notice;if(wait)notice(id,Profile.withPointer(WELCOME_WAIT,note));else standing(id,Profile.withPointer(WELCOME,note));}
+    /** "notice:understood": the Banner page's note is read. Clears Profile.notice and saves (put back when the save fails, so it is not lost unseen); the join pointer, if it is still the line standing, goes with it and the welcome (or the wait line) it sat beside is what remains. */
     void understood(UUID id){
         var pr=profile(id);String text=pr.understood();if(text==null)return;
         if(!save(id)){pr.notice=text;return;}
-        if(Profile.NOTICE_POINTER.equals(notices.get(id))){notices.remove(id);noticeAt.remove(id);}
+        String posted=notices.get(id),back=Profile.withoutPointer(posted,text);
+        if(posted!=null&&!posted.equals(back)){notices.put(id,back);noticeSerials.merge(id,1,Integer::sum);}
     }
     void toLobby(ServerPlayerEntity p){var at=CampWorld.spawn(profile(p.getUuid()));b.relocate(p,at.x(),at.y(),at.z(),at.yaw(),at.pitch());p.changeGameMode(GameMode.ADVENTURE);p.getInventory().clear();GearCombat.clear(p);p.setHealth(p.getMaxHealth());p.getHungerManager().setFoodLevel(20);}
     void returnLobby(){
@@ -233,7 +232,7 @@ public final class Campaign {
         Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearCorpses();b.clearSides();b.clearProgression();b.clearPlans();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();botGuard.clear();musterFirstAt.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();deleteProgress();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}closeParty();
-        notices.values().removeIf(WELCOME_WAIT::equals);noticeAt.keySet().retainAll(notices.keySet()); // "Battle in progress" is no longer true
+        notices.values().removeIf(t->t.startsWith(WELCOME_WAIT));noticeAt.keySet().retainAll(notices.keySet()); // "Battle in progress" is no longer true
         for(var p:b.server.getPlayerManager().getPlayerList())toLobby(p);
         // The autosaves skipped during the round (ArenaAutosave) are paid now, with the armies gone and everyone in camp.
         // A stopping server skips this: its own shutdown save follows.
@@ -665,7 +664,7 @@ public final class Campaign {
             report.add("podium",podium.deepCopy());report.add("you",reportYou(liveSquad(id,s)));report.add("claimable",reportClaimable(p));
             JsonArray rewards=new JsonArray(); // what was saved, one row per paid item in a fixed order; the army rework adds its currencies here
             if(saved){String why=(credited?"victory":practice?"practice":"match complete")+(percent<100?" (pro-rated "+percent+"%)":"");reward(rewards,"Troop writs",p.troopWrits-writs0,why);reward(rewards,"Gear shards",p.gearShards-shards0,why);reward(rewards,"XP",p.progression.xp-priorXp,"battle progress");
-                for(String h:Profile.houseOrder()){reward(rewards,RosterMath.houseName(h)+" shards",paid.shards().getOrDefault(h,0),"House slots");reward(rewards,RosterMath.houseName(h)+" Renown",paid.renown().getOrDefault(h,0),"House slots");}
+                for(String h:Profile.houseOrder()){String troops=RosterMath.troopsOf(slots.getOrDefault(h,0),h);reward(rewards,RosterMath.houseName(h)+" shards",paid.shards().getOrDefault(h,0),troops);reward(rewards,RosterMath.houseName(h)+" Renown",paid.renown().getOrDefault(h,0),troops);}
                 if(march!=null&&march.bonusPaid()){reward(rewards,RosterMath.houseName(march.bonusHouse())+" shards",march.bonusShards(),"bonus objective");}
                 reward(rewards,pacts==1?"Pact":"Pacts",pacts,"chapter cleared");for(String t:titles)reward(rewards,"New title: "+t,1,"mastery");}
             report.add("rewards",rewards);

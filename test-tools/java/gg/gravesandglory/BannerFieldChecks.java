@@ -61,6 +61,8 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
 
     static boolean isBanner(String n){return n.startsWith("banner")&&!n.equals("banner-battle")&&!n.equals("banner-lock")&&!n.equals("banner-notice-read");}
     static final String NOTE="Your banner was changed for the new war table: 3 troops were taken off the back rows to fit the "+RosterMath.allowance()+" gold limit.";
+    /** The join line: the welcome and its menu hint with the pointer to the unread notice beside them, never instead of them. */
+    static final String WANT_JOIN=Profile.withPointer(Campaign.WELCOME,NOTE);
 
     /** Server and client state for the scene. */
     void setup(MinecraftClient c,String name){
@@ -126,7 +128,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
             }
             case "banner-notice": { // the join pointer, once; the page's opening posted nothing
                 if(reported)return true;
-                if(!pointed){pointed=true;serial0=CampaignClient.noticeSerial;opened=serial0==serial;server(c,b->b.campaign.pointNotice(player));return false;}
+                if(!pointed){pointed=true;serial0=CampaignClient.noticeSerial;opened=serial0==serial;server(c,b->b.campaign.welcome(player,false));return false;}
                 if(CampaignClient.noticeSerial>serial0||k>=60){reported=true;pointerReport(c,0);}
                 return false;
             }
@@ -446,8 +448,8 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
 
     /** banner-notice (the standard shots, judged at every size, with the pinned note drawn): at k 0 the join's pointer is said by the server once, as the line the player reads. */
     void pointerReport(MinecraftClient c,int tick){
-        boolean once=CampaignClient.noticeSerial==serial0+1&&Profile.NOTICE_POINTER.equals(CampaignClient.notice);
-        report("p1-bf-notice-pointer",opened&&once,"opening the Banner page posted no notice "+opened+"; the join then said \""+CampaignClient.notice+"\" (want \""+Profile.NOTICE_POINTER+"\"), notice serial "+serial0+" to "+CampaignClient.noticeSerial+" (want +1)");
+        boolean once=CampaignClient.noticeSerial==serial0+1&&WANT_JOIN.equals(CampaignClient.notice);
+        report("p1-bf-notice-pointer",opened&&once,"opening the Banner page posted no notice "+opened+"; the join then said \""+CampaignClient.notice+"\" (want \""+WANT_JOIN+"\"), notice serial "+serial0+" to "+CampaignClient.noticeSerial+" (want +1)");
     }
 
     /** banner-notice-read: after a relog the note is still pinned; Understood clears it on the client and in the saved file. */
