@@ -39,11 +39,10 @@ FLETCH_R = Mat(RED, 2, lambda f, P, c, r, w, h: -1 if (c + r) % 3 == 0 else 0, e
 
 
 def arrow(x, y, depth, fl):
-    """An arrow flying north-south: tail with cross fletching at z 0..3, shaft into the boss until z = depth."""
+    """An arrow flying north-south: tail with a single 1x3 vane at z 0..3, shaft into the boss until z = depth."""
     return [
         E((x, y, 0), (x + 1, y + 1, depth), ARROW_SHAFT, name="arrow shaft"),
-        E((x, y - 1, 0), (x + 1, y + 2, 3), fl, name="arrow fletching"),
-        E((x - 1, y, 0), (x + 2, y + 1, 3), fl, name="arrow fletching"),
+        E((x, y - 1, 0), (x + 1, y + 2, 3), fl, name="arrow vane"),
     ]
 
 

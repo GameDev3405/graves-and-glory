@@ -38,6 +38,7 @@ def straw_pattern(axis="y", dark=0.48, light=0.12, seg=3):
 
 
 STRAW_Y = Mat(STRAW_R, 2, straw_pattern("y"), edges=False, top=0)
+STRAW_Y_DARK = Mat(STRAW_R, 1, straw_pattern("y"), edges=False, top=0)   # shaded straw: one ramp step down
 STRAW_X = Mat(STRAW_R, 2, straw_pattern("x"), edges=False, top=0)
 STRAW_Z = Mat(STRAW_R, 2, straw_pattern("z"), edges=False, top=0)
 
