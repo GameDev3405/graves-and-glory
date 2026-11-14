@@ -21,14 +21,23 @@ FLOOR = -16  # lowest built layer, relative to baseY
 ROLES = ('deep', 'under', 'surface', 'bed', 'water', 'road')
 
 
-# Blocks the mod's read-back (EngineMaps phase 4) does not count as ground: air, barrier, sea lantern, fences, wool.
+# Blocks the mod's read-back (EngineMaps phase 4) does not count as ground: air, barrier, sea lantern, fences, wool, and the two map blocks
+# (docs/props/MAP-BLOCKS.md): troop_fence is a wall that is never a floor, still_water is water nobody may enter (it counts as water, see water_state).
+# Keyed on block ids, never on shapes: both blocks have an empty context-free collision shape.
+TROOP_FENCE = 'gravesandglory:troop_fence'
+STILL_WATER = 'gravesandglory:still_water'
 _NOT_GROUND = {'minecraft:air', 'minecraft:cave_air', 'minecraft:void_air', 'minecraft:barrier', 'minecraft:sea_lantern',
-               'minecraft:water', 'minecraft:structure_void'}
+               'minecraft:water', 'minecraft:structure_void', TROOP_FENCE, STILL_WATER}
 
 
 def ground_state(state):
     n = block_name(state)
     return n not in _NOT_GROUND and not n.endswith('_fence') and not n.endswith('_wool')
+
+
+def water_state(state):
+    """Water in the mod's read-back (EngineMaps phase 4): real water, and still_water, the no-entry water that sits on it."""
+    return block_name(state) in ('minecraft:water', STILL_WATER)
 
 
 class BuildError(Exception):
@@ -123,7 +132,7 @@ def build(d, out_dir):
     top = max(top, FLOOR)
     H = top - FLOOR + 1
     is_ground = np.array([ground_state(s) for s in states] + [False])  # index -1 (no block) is the last entry
-    is_water = np.array([block_name(s) == 'minecraft:water' for s in states] + [False])
+    is_water = np.array([water_state(s) for s in states] + [False])
     solid = np.full((dp, w), NONE, dtype=np.int32)
     water = solid.copy()
     tiles = []

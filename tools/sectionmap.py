@@ -28,7 +28,7 @@ import numpy as np
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from mapforge import nbt  # noqa: E402
 from mapforge.structure import Structure, parse_state, block_name  # noqa: E402
-from mapengine.build import ground_state  # noqa: E402
+from mapengine.build import ground_state, water_state  # noqa: E402
 from mapengine.walk import NONE  # noqa: E402
 
 # Walking over floors (a column can hold several: the ground under a gatehouse and its roof). A floor is a block a troop collides with, not a
@@ -40,8 +40,17 @@ PASS = ('air', 'grass', 'fern', 'azure_bluet', 'cornflower', 'dandelion', 'oxeye
 TALL = ('_fence', '_wall', 'iron_bars', '_fence_gate')
 
 
+MAP_FENCE = 'gravesandglory:troop_fence'
+MAP_WATER = 'gravesandglory:still_water'
+
+
 def kind(state):
-    n = block_name(state).split(':')[1]
+    full = block_name(state)
+    if full == MAP_FENCE:  # a wall (map block): never a floor, blocks the two cells above a floor like a fence, so the edges through it are cut
+        return 3
+    if full == MAP_WATER:  # no-entry water: never a floor, and a floor under it has no standing room
+        return 2
+    n = full.split(':')[1]
     if n == 'water':
         return 2
     if n in PASS or n.endswith('_wall_banner') or n.endswith('_carpet'):
@@ -178,7 +187,7 @@ def main(settings_path, sections_dir, out_dir):
                 stack[z, x, y] = used.setdefault(state, len(used))
             palette = list(used)
             is_ground = np.array([ground_state(p) for p in palette] + [False])
-            is_water = np.array([block_name(p) == 'minecraft:water' for p in palette] + [False])
+            is_water = np.array([water_state(p) for p in palette] + [False])
             for grid, mask in ((solid, is_ground[stack]), (water, is_water[stack])):
                 hit = mask.any(axis=2)
                 top = sy - 1 - np.argmax(mask[:, :, ::-1], axis=2)

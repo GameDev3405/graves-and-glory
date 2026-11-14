@@ -153,7 +153,7 @@ public final class EngineMaps {
      if(skirt&&y-shift>ground){set(w,pos,Blocks.AIR.getDefaultState());continue;}
      if(shift==0){set(w,pos,at(cx,cz,y));continue;}
      int sy=y-shift;BlockState s=sy>ground?Blocks.AIR.getDefaultState():at(cx,cz,Math.max(map.floorY,sy));
-     if(s.isOf(Blocks.WATER))s=at(cx,cz,ground);
+     if(s.isOf(Blocks.WATER)||s.isOf(MapBlocks.STILL_WATER))s=at(cx,cz,ground);
      set(w,pos,s);}
     int surface=top(w,x,z);
     for(int y=top;y<surface;y++){pos.set(x,y,z);set(w,pos,Blocks.AIR.getDefaultState());}
@@ -174,8 +174,8 @@ public final class EngineMaps {
    while(column<total&&System.nanoTime()-t0<BUDGET_NS){int cx=column%map.width,cz=column/map.width,x=cx+map.ox,z=cz+map.oz;
     int solid=EngineMap.NONE,water=EngineMap.NONE;
     for(int y=top(w,x,z);y>=map.floorY;y--){pos.set(x,y,z);BlockState s=w.getBlockState(pos);
-     if(s.isOf(Blocks.WATER)){if(water==EngineMap.NONE)water=y;continue;}
-     if(s.isAir()||s.isOf(Blocks.BARRIER)||s.isOf(Blocks.SEA_LANTERN)||s.getBlock() instanceof FenceBlock||s.isIn(BlockTags.WOOL))continue;
+     if(s.isOf(Blocks.WATER)||s.isOf(MapBlocks.STILL_WATER)){if(water==EngineMap.NONE)water=y;continue;} // still_water reads as water (tools/mapengine/build.py water_state): no-entry water, never ground
+     if(s.isAir()||s.isOf(Blocks.BARRIER)||s.isOf(Blocks.SEA_LANTERN)||s.isOf(MapBlocks.TROOP_FENCE)||s.getBlock() instanceof FenceBlock||s.isIn(BlockTags.WOOL))continue; // troop_fence is a wall, never ground (ground_state)
      solid=y;break;}
     readSolid[column]=solid;readWater[column]=water;column++;}
    if(column<total)return false;

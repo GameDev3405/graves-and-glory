@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from mapengine import buildings
-from mapengine.build import _BLOCK, canonical_bytes, ground_state
+from mapengine.build import _BLOCK, canonical_bytes, ground_state, water_state
 from mapengine.terrain import heightfield
 from mapforge import nbt
 from mapforge.structure import Structure, block_name
@@ -61,7 +61,7 @@ def _columns(path, shape):
         arr = np.array([(p[0], p[1], p[2], i) for p, i, _ in s.blocks], dtype=np.int64).reshape(-1, 4)
         fast = (s.palette, arr[:, 0], arr[:, 1], arr[:, 2], arr[:, 3])
     palette, xs, ys, zs, idx = fast
-    wet = np.array([block_name(p) == 'minecraft:water' for p in palette] or [False])[idx]
+    wet = np.array([water_state(p) for p in palette] or [False])[idx]
     ground = np.array([ground_state(p) for p in palette] or [False])[idx]  # the mod's read-back rule
     for a, m in ((solid, ground), (water, wet)):
         np.maximum.at(a, (zs[m], xs[m]), ys[m].astype(np.int32))
