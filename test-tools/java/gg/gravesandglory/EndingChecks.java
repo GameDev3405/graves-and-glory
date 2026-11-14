@@ -527,6 +527,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
 
     static void report(String id, boolean pass, String why) { Phase4Checks.report(id, pass, why); }
     static JsonObject snap(Campaign c, ServerPlayerEntity p) { return JsonParser.parseString(c.snapshot(p)).getAsJsonObject(); }
+    { try { Files.deleteIfExists(AdminCommands.joinsFile()); } catch (Exception ignored) {} } // the join ledger file of an earlier run: remove it before the login this suite checks
     /** What a match pays into, so a second payout shows: troop writs, gear shards and the carried writ gold. */
     static String purse(Profile p) { return p.troopWrits + "/" + p.gearShards + "/" + p.writGold; }
     static String step(JsonObject snap) { return snap.has("ending") ? snap.getAsJsonObject("ending").get("step").getAsString() : "none"; }
@@ -590,7 +591,8 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
             c.profile(player).bests.clear(); // pass 3: the first match with bests (ending-bests)
             graphShape(b, c); // pass 3: a score race for the graph's shot (ending-client-graph); ending-timeline reads the real samples of the next round
             var led = AdminCommands.ledger().get(player); // admin tools phase A: the join ledger. A joins.json left by an earlier run may hold a stamp, so this check starts from none
-            report("ending-ledger-login-stamp", led != null && led.firstSeenAt > 0 && !led.lastName.isEmpty(), "ledger entry " + (led == null ? "missing" : led.firstSeenAt + " " + led.lastName));
+            long jvmStart = java.lang.management.ManagementFactory.getRuntimeMXBean().getStartTime(); // a stamp left by an earlier run is older than this JVM and fails the row
+            report("ending-ledger-login-stamp", led != null && led.firstSeenAt >= jvmStart && !led.lastName.isEmpty(), "ledger entry " + (led == null ? "missing" : led.firstSeenAt + " (JVM started " + jvmStart + ") " + led.lastName));
             if (led != null) led.firstMatchAt = 0;
             report("ending-gate-accessor", AdminCommands.allowed(b.server.getCommandSource()) && !AdminCommands.allowed(p.getCommandSource()), "the server console passes the /gg gate (ServerCommandSourceAccessor applied) and a player who is not an owner does not");
             finishServer = b.time; finishNanos = System.nanoTime(); finishSerial++;

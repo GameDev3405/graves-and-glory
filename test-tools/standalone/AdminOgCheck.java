@@ -182,6 +182,25 @@ public final class AdminOgCheck {
             try { bl.save(jf); } catch (IllegalStateException refuse) { no = true; }
             check(no && Files.readString(jf).equals(bad), "a broken ledger refuses to save and leaves the file: '" + bad + "'");
         }
+        // A repaired ledger saves the merged stamps at once, not at the next stamp.
+        Path rp = sd.resolve("repair.json");
+        Files.writeString(rp, "{broken");
+        var broke = JoinLedger.load(rp); broke.matched(A, "Alice", 55);
+        Files.writeString(rp, "{\"" + B + "\":{\"firstSeenAt\":9,\"firstMatchAt\":0,\"lastName\":\"Bob\"}}");
+        var healed = JoinLedger.reload(broke, rp);
+        var onDisk = JoinLedger.load(rp);
+        check(!healed.broken && !onDisk.broken && onDisk.get(A) != null && onDisk.get(A).firstMatchAt == 55 && onDisk.get(B).firstSeenAt == 9, "repaired ledger: the file already holds the merged stamp, with no further stamp");
+        var still = JoinLedger.load(sd.resolve("repair2.json")); // missing: not broken, reload keeps it
+        check(JoinLedger.reload(still, sd.resolve("repair2.json")) == still, "a ledger that is not broken is returned as it is");
+
+        // Unknown keys inside ogWindow survive a command write.
+        Path wf = sd.resolve("window.json");
+        Files.writeString(wf, "{\"ogWindow\":{\"start\":\"2026-12-01T00:00:00Z\",\"end\":\"2026-12-31T23:59:59Z\",\"note\":\"keep\"},\"top\":1}");
+        var ws = new AdminOg.Store(wf);
+        var wc = ws.copy(); wc.ogWindow.end = "2027-01-31T23:59:59Z";
+        ws.save(wc);
+        String wtext = Files.readString(wf);
+        check(wtext.contains("\"note\"") && wtext.contains("2027-01-31") && wtext.contains("\"top\"") && !wtext.contains("2026-12-31"), "ogWindow keeps its unknown keys; known fields change");
         check(!JoinLedger.load(sd.resolve("nothing.json")).broken, "a missing ledger file starts empty and is not broken");
         Path fixed = sd.resolve("fixable.json");
         Files.writeString(fixed, "{x");

@@ -37,10 +37,7 @@ public final class AdminCommands {
     /** The ledger, read once per server run; a damaged file is read again once it changes, and the stamps taken meanwhile are kept. */
     static synchronized JoinLedger ledger() {
         if (ledger == null) ledger = JoinLedger.load(joinsFile());
-        else if (ledger.broken && JoinLedger.keyOf(joinsFile()) != ledger.brokenKey) {
-            JoinLedger fresh = JoinLedger.load(joinsFile());
-            if (!fresh.broken) { fresh.absorb(ledger); ledger = fresh; } else ledger.brokenKey = fresh.brokenKey;
-        }
+        else if (ledger.broken) ledger = JoinLedger.reload(ledger, joinsFile()); // a repaired file takes the stamps kept meanwhile and saves them at once
         return ledger;
     }
     private static synchronized void saveLedger() {
@@ -90,7 +87,8 @@ public final class AdminCommands {
         if (a == null || b == null) return fail(s, "Usage: /gg og window <start> <end>, each an ISO-8601 instant (2026-12-01T00:00:00Z) or a date (2026-12-01: a start date is 00:00:00 UTC, an end date is the end of that UTC day).");
         if (b.isBefore(a)) return fail(s, "The end is before the start.");
         var c = admin().copy();
-        c.ogWindow = new AdminOg.Window(); c.ogWindow.start = a.toString(); c.ogWindow.end = b.toString();
+        if (c.ogWindow == null) c.ogWindow = new AdminOg.Window(); // keep the window object: its unknown keys survive
+        c.ogWindow.start = a.toString(); c.ogWindow.end = b.toString();
         return store(s, c, "OG window set: " + a + " to " + b + " (UTC, both inclusive).");
     }
 

@@ -22,7 +22,7 @@ public final class AdminOg {
     static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     /** The OG window as ISO-8601 instants; both bounds are needed for it to count. */
-    public static final class Window { public String start, end; }
+    public static final class Window { public String start, end; /** The object the file held, so a write keeps keys this build does not know. */ transient JsonObject raw; }
 
     public static final class Config {
         public Window ogWindow;
@@ -108,6 +108,7 @@ public final class AdminOg {
             if (!j.get("ogWindow").isJsonObject()) throw new IllegalArgumentException("ogWindow must be an object");
             JsonObject w = j.getAsJsonObject("ogWindow");
             c.ogWindow = new Window();
+            c.ogWindow.raw = w;
             for (String k : new String[] {"start", "end"}) {
                 if (!w.has(k) || w.get(k).isJsonNull()) continue;
                 String v = w.get(k).getAsString();
@@ -160,7 +161,12 @@ public final class AdminOg {
         j.add("ogAdded", GSON.toJsonTree(c.ogAdded));
         j.add("ogRemoved", GSON.toJsonTree(c.ogRemoved));
         j.add("owners", GSON.toJsonTree(c.owners));
-        if (c.ogWindow == null) j.remove("ogWindow"); else j.add("ogWindow", GSON.toJsonTree(c.ogWindow));
+        if (c.ogWindow == null) j.remove("ogWindow"); else {
+            JsonObject w = c.ogWindow.raw == null ? new JsonObject() : c.ogWindow.raw.deepCopy();
+            if (c.ogWindow.start == null) w.remove("start"); else w.addProperty("start", c.ogWindow.start);
+            if (c.ogWindow.end == null) w.remove("end"); else w.addProperty("end", c.ogWindow.end);
+            j.add("ogWindow", w);
+        }
         return GSON.toJson(j);
     }
 

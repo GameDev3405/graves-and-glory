@@ -133,6 +133,19 @@ public final class JoinLedger {
         return l;
     }
 
+    /**
+     * The ledger to use now: when the broken one's file has changed and reads clean, the fresh ledger with the stamps taken meanwhile merged in and saved at once (a crash
+     * before the next stamp must not lose them); otherwise the broken ledger, its key updated so the file is not read again until it changes.
+     */
+    static JoinLedger reload(JoinLedger old, Path file) {
+        if (!old.broken || keyOf(file) == old.brokenKey) return old;
+        JoinLedger fresh = load(file);
+        if (fresh.broken) { old.brokenKey = fresh.brokenKey; return old; }
+        fresh.absorb(old);
+        try { fresh.save(file); } catch (IOException | RuntimeException e) { SafeFiles.warn.accept("joins.json: the merged stamps could not be saved yet (" + e.getMessage() + ")."); }
+        return fresh;
+    }
+
     void markBroken(Path file, String reason) { broken = true; brokenReason = reason; brokenKey = keyOf(file); }
 
     /** Stamps this ledger lacks, taken from another (the one read after a fixed file). */
