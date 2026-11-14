@@ -2,14 +2,12 @@
 .gradle/
 build/
 dist/
-run*/
+/run*/
 evidence/
 clips/
 # ...but the motion clips are source: their Blockbench projects and the JSON tools/clips.py writes from them
 !art/clips/
 !src/main/resources/assets/gravesandglory/clips/
-# ...and run*/ must not swallow the rune_stone prop's art
-!art/props/rune_stone/
 dependencies/mods/
 dependencies/resourcepacks/
 dependencies/shaders/

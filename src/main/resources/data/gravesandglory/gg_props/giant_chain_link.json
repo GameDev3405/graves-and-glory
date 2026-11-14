@@ -7,9 +7,10 @@
     {"model": "giant_chain_link", "cmd": 7311571, "glow": false}
   ],
   "solid": [
-    [0, 0, 0],
     [1, 0, 0],
-    [2, 0, 0]
+    [1, 0, 1],
+    [2, 0, 0],
+    [2, 0, 1]
   ],
   "lights": [],
   "effects": []

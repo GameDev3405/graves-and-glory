@@ -12,7 +12,19 @@ import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from proplib import E, Prop, Mat, rects   # noqa: F401
 from giant_bones import mound
-from giant_relics import stone, RUNE
+from proplib import make_ramp
+from giant_relics import stone
+
+RUNE_DIM = make_ramp("4E8A7E", 0.16)   # the runes' faint cold light: dim teal, full-bright part
+
+
+def rune_core(face, P, c, r, w, h):
+    """A darker core: on a 2 px stroke the lower/right texel row is a tone down (light caught on one wall of a groove);
+    on a wider box its inner texels are."""
+    if w >= 3 and h >= 3: return -1 if 0 < c < w - 1 and 0 < r < h - 1 else 0
+    if w <= 2 and h > 2: return -1 if c == 1 else 0
+    if h <= 2 and w > 2: return -1 if r == 1 else 0
+    return 0
 
 # Runes as 2 px cells, rows top to bottom, column 0 the viewer's left (= the higher x on the north face).
 RUNES = [
@@ -30,7 +42,7 @@ def rune_boxes(glyph, xr, y_top, zf, mat):
 
 
 def build():
-    S = stone(moss_h=7, seed=3)
+    S = stone(moss_h=7, seed=3, edges=False)   # no per-box seams: one stone, not stacked slabs
     S2 = stone(moss_h=3, seed=4)
     body = [
         # a rough menhir: a buried root, then courses of the one stone each a little narrower and leaning east,
@@ -41,14 +53,17 @@ def build():
         E((8, 36, 12), (25, 42, 21), S, skip="down", name="shoulder"),
         E((9, 42, 13), (20, 47, 20), S, skip="down", name="crown"),
         E((20, 42, 14), (24, 44, 20), S, skip="down", name="broken crown"),
-        E((5, 14, 13), (6, 22, 20), S, skip="east", name="west bulge"),
+        # the west side tapers in one long chipped face, leaning toward the crown
+        E((5, 6, 12), (9, 38, 21), S, skip="down east", name="west taper", rot=("z", -22.5, (5, 6, 12))),
+        # a big flake gone from the east shoulder
+        E((22, 30, 12), (27, 42, 21), S, skip="west", name="east chip", rot=("z", 22.5, (27, 30, 12))),
         # fallen chips at the foot
         E((24, 0, 25), (30, 4, 30), S2, skip="down", name="fallen chip", rot=("y", 22.5, (24, 0, 25))),
         E((2, 0, 4), (6, 2, 7), S2, skip="down", name="pebble"),
     ]
     body += mound((0, 0, 3), (32, 4, 30), layers=2, seed=5)
     runes = []
-    M = Mat(RUNE, 1, edges=False, lit=False)
+    M = Mat(RUNE_DIM, 1, rune_core, edges=False, lit=False)   # dim, with a darker core along each stroke
     runes += rune_boxes(RUNES[0], 20, 36, 12, M)     # on the upper body, y 26..36
     runes += rune_boxes(RUNES[1], 19, 22, 11, M)     # on the lower body, y 12..22
     return Prop("rune_stone", {"rune_stone": body, "rune_stone_runes": runes},

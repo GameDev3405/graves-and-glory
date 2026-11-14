@@ -15,12 +15,12 @@ from proplib import E, Prop, Mat, MAT, h3, make_ramp   # noqa: F401
 from giant_bones import octagon
 from giant_relics import (stone, octo_ring_y, candle, lift, tone, GSTONE, WAX, COIN, POPPY, TANSY, STEM)
 
-POOL = make_ramp("3E5552", 0.18)   # dark still rainwater, gone green with age
+POOL = make_ramp("2B3533", 0.20)   # dark still rainwater, almost black with age
 
 
 def pat_pool(face, P, c, r, w, h):
     x, y, z = P
-    return 1 if face == "up" and h3(math.floor(x / 3), z, 51) < 0.08 else 0
+    return 1 if face == "up" and h3(math.floor(x / 3), z, 51) < 0.06 else 0
 
 
 C = (8, 8)          # the bowl's axis (x, z)
@@ -52,7 +52,7 @@ def build():
     els += octagon(C, 14, "y", 15, 19, T, name="bowl underside")
     els += octagon(C, 19, "y", 19, 24, T, name="bowl belly")
     els += octo_ring_y(C[0], C[1], 21, 4, 24, RIM, W, name="bowl wall")
-    els += octagon(C, 17, "y", 24, 29, Mat(POOL, 1, pat_pool, edges=False), name="old rainwater")
+    els += octagon(C, 17, "y", 24, 29, Mat(POOL, 2, pat_pool, edges=False), name="old rainwater")
     glow = []
     # candles: (x, y, z, height) on the plinth, on the ground in front, and two on the rim (north and east walls)
     for x, y, z, hgt in ((-4, 3, -4, 5), (18, 3, -4, 4), (-4, 3, 18, 3), (1, 0, -12, 4), (13, 0, -14, 6), (5, RIM, -12, 3),

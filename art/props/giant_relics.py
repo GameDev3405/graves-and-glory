@@ -40,7 +40,7 @@ def _moss_lichen(face, P, moss_h, top_moss, seed):
     return None
 
 
-def stone(moss_h=6, top_moss=0.45, seed=0, ramp=GSTONE):
+def stone(moss_h=6, top_moss=0.45, seed=0, ramp=GSTONE, edges=True):
     """Weathered giant stone: big flat planes, a few long slanted cracks, rare 2x2 chips; mossy foot and tops."""
     def p(face, P, c, r, w, h):
         g = _moss_lichen(face, P, moss_h, top_moss, seed)
@@ -51,7 +51,7 @@ def stone(moss_h=6, top_moss=0.45, seed=0, ramp=GSTONE):
         if k < 1.0 and h3(round(a / 3), round(y / 3), 7 + seed) < 0.55: return -1
         if h3(math.floor(x / 2), math.floor(y / 2), math.floor(z / 2), 13 + seed) < 0.03: return -1
         return 0
-    m = Mat(ramp, 2, p, top=1)
+    m = Mat(ramp, 2, p, top=1, edges=edges)
     m.ramps = (MOSS, LICHEN)
     return m
 
@@ -82,12 +82,12 @@ def pat_earth(face, P, c, r, w, h):
 
 WAX = Mat(LINEN, 1, edges=False)
 COIN = Mat(GILT, 2, edges=False)
-FLAME = Mat(HOT, 3, lambda f, P, c, r, w, h: 1 if r == 0 else 0, edges=False, lit=False)
+FLAME = Mat(HOT, 3, lambda f, P, c, r, w, h: 1 if r < 2 else 0, edges=False, lit=False)   # a bright tip over an orange root
 
 
 def candle(x, z, h, name="candle"):
     """A 2x2 tallow candle `h` px tall standing on y0 (pass y via the returned list's shift); returns (wax, flame)."""
-    return E((x, 0, z), (x + 2, h, z + 2), WAX, skip="down", name=name), E((x, h, z), (x + 2, h + 2, z + 2), FLAME, skip="down", name=name + " flame")
+    return E((x, 0, z), (x + 2, h, z + 2), WAX, skip="down", name=name), E((x, h, z), (x + 2, h + 3, z + 2), FLAME, skip="down", name=name + " flame")
 
 
 def lift(els, dy):
@@ -113,7 +113,7 @@ def octo_ring_y(cx, cz, R, t, y0, y1, mat, name="ring", faces=None):
     return out
 
 
-def old_iron(seed=0, bloom=0.3, moss_h=0, top_moss=0.0, top=1):
+def old_iron(seed=0, bloom=0.3, moss_h=0, top_moss=0.0, top=1, runs=0.18):
     """Dark old iron with big rust blooms (4 px cells) and rust runs down the sides: calmer than `rust`, for a piece
     that should still read as worked iron at a distance."""
     def p(face, P, c, r, w, h):
@@ -124,7 +124,7 @@ def old_iron(seed=0, bloom=0.3, moss_h=0, top_moss=0.0, top=1):
             return tone(RUST, face, 1 if h3(math.floor(x / 2), math.floor(y / 2), math.floor(z / 2), 63) < 0.15 else 0)
         if face not in ("up", "down"):
             a = x if face in ("north", "south") else z
-            if h3(math.floor(a / 2), 65 + seed) < 0.18 and h3(math.floor(a / 2), math.floor(y / 8), 67 + seed) < 0.5:
+            if h3(math.floor(a / 2), 65 + seed) < runs and h3(math.floor(a / 2), math.floor(y / 8), 67 + seed) < 0.5:
                 return tone(RUST, face, -1)
         return 0
     m = Mat(OLDIRON, 2, p, top=top)
