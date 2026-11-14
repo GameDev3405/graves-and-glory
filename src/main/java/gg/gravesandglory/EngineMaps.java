@@ -4,6 +4,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.FenceBlock;
+import net.minecraft.block.entity.CommandBlockBlockEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtHelper;
@@ -12,6 +13,7 @@ import net.minecraft.nbt.NbtList;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.Heightmap;
 import java.io.InputStream;
@@ -93,6 +95,10 @@ public final class EngineMaps {
  // placement: load every tile once, then columns under a time budget per tick, then the point dressing, then the read-back check
  static final long BUDGET_NS=40_000_000L;
  static int phase=0,column=0;static long startNs,placeNs;static int[] tileOf;static short[][] stacks;static int[] heights;static BlockState[] palette;
+ /** a prop anchor of the build (a tile's "anchors", tools/sectionmap.py): the command block's world cell and its Command text */
+ record Anchor(BlockPos pos,String cmd){}
+ static final List<Anchor> anchors=new ArrayList<>();
+ public static int lastProps=-1;
  static int[] readSolid,readWater;public static List<String> lastIssues=List.of();public static long lastBuildMs=-1;
 
  static int worldW(){return 2*GravesAndGlory.R.worldHalfX()+1;}
@@ -119,6 +125,20 @@ public final class EngineMaps {
   }
   palette=pal.toArray(BlockState[]::new);
  }
+ /** The prop anchors a packed map's tiles hold, in world cells (read from the tiles on their own so a standalone check needs no Minecraft world). */
+ static void loadAnchors()throws Exception{
+  anchors.clear();
+  for(var tile:map.tiles){NbtCompound tag;try(InputStream in=map.files.open(tile.file())){tag=NbtIo.readCompressed(in);}
+   NbtList a=tag.getList("anchors",NbtElement.COMPOUND_TYPE);
+   for(int i=0;i<a.size();i++){NbtCompound c=a.getCompound(i);anchors.add(new Anchor(new BlockPos(tile.x()+c.getInt("x"),map.floorY+c.getInt("y"),tile.z()+c.getInt("z")),c.getString("cmd")));}}
+ }
+ /** Writes the anchors' Command text into the command blocks the tiles placed (a block state alone carries no text), once every column is placed. */
+ static int armAnchors(ServerWorld w){
+  int n=0;
+  for(var a:anchors){if(!w.getBlockState(a.pos()).isOf(Blocks.COMMAND_BLOCK)||!(w.getBlockEntity(a.pos()) instanceof CommandBlockBlockEntity cb)){System.out.println("[Graves and Glory] prop anchor at "+a.pos().toShortString()+" is not a command block in the world");continue;}
+   cb.getCommandExecutor().setCommand(a.cmd());cb.setAuto(false);cb.markDirty();n++;}
+  return n;
+ }
  /** the block of canvas column (cx, cz) at y, or air */
  static BlockState at(int cx,int cz,int y){int t=tileOf[cz*map.width+cx];var tile=map.tiles.get(t);int ly=y-map.floorY;if(ly<0||ly>=heights[t])return Blocks.AIR.getDefaultState();
   short s=stacks[t][((cz-(tile.z()-map.oz))*tile.sx()+cx-(tile.x()-map.ox))*heights[t]+ly];return s<0?Blocks.AIR.getDefaultState():palette[s];}
@@ -135,7 +155,7 @@ public final class EngineMaps {
  public static boolean step(ServerWorld w){
   long t0=System.nanoTime();
   if(phase==0){startNs=t0;column=0;map=current();
-   try{load();}catch(Exception e){throw new IllegalStateException("engine map tiles not read: "+e.getMessage(),e);}
+   try{load();loadAnchors();}catch(Exception e){throw new IllegalStateException("engine map tiles not read: "+e.getMessage(),e);}
    System.out.println("[Graves and Glory] engine map "+map.id+": "+map.tiles.size()+" tiles read in "+(System.nanoTime()-t0)/1_000_000+" ms");phase=2;return false;}
   var R=GravesAndGlory.R;var pos=new BlockPos.Mutable();
   if(phase==2){int total=worldW()*worldD();
@@ -162,7 +182,7 @@ public final class EngineMaps {
    }
    if(column>=total){placeNs=System.nanoTime()-startNs;phase=3;}
    return false;}
-  if(phase==3){w.setTimeOfDay(3000);
+  if(phase==3){w.setTimeOfDay(3000);int armed=armAnchors(w);if(!anchors.isEmpty())System.out.println("[Graves and Glory] engine map "+map.id+": "+armed+" of "+anchors.size()+" prop anchors armed");
    for(var p:Spec.POINTS){
     if(map!=optIn){Arena.flag(w,p,-1);continue;} // a bundled map draws its own point rings and pads
     for(int dx=-p.radius();dx<=p.radius();dx++)for(int dz=-p.radius();dz<=p.radius();dz++){double d=Math.hypot(dx,dz);int x=p.x()+dx,z=p.z()+dz;
@@ -184,6 +204,11 @@ public final class EngineMaps {
    System.out.println("[Graves and Glory] "+head);for(String s:lastIssues)System.out.println("[Graves and Glory]   "+s);
    try{Files.writeString(Path.of("engine-map-check.txt"),head+"\n"+String.join("\n",lastIssues)+(lastIssues.isEmpty()?"":"\n"),StandardCharsets.UTF_8);}catch(Exception e){System.out.println("[Graves and Glory] engine-map-check.txt not written: "+e.getMessage());}
    Diagnostics.report("engine-map-check",lastIssues.isEmpty(),lastIssues.isEmpty()?null:String.join("; ",lastIssues.subList(0,Math.min(5,lastIssues.size()))));
+   if(!anchors.isEmpty()){ // the props: every anchor gets its parts once the ground is placed and read back (the light blocks it restores must not read as ground)
+    lastProps=Props.scanBox(w,new BlockBox(map.ox,w.getBottomY(),map.oz,map.ox+map.width-1,w.getTopY()-1,map.oz+map.depth-1));
+    System.out.println("[Graves and Glory] engine map "+map.id+": props "+lastProps+" found by Props.scanBox over "+anchors.size()+" anchors");}
+   else lastProps=0;
+   anchors.clear();
    stacks=null;tileOf=null;readSolid=null;readWater=null;phase=0;map=null;return true;}
   phase=0;return false;
  }

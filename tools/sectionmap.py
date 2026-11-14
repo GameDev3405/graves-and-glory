@@ -11,7 +11,10 @@ spawns and the capture points. SECTIONS_DIR holds the section templates (Kingsfi
   nav.bin.gz      the floors of every column (floors_of), for the mod's route field (NavField): written by pack and by `python tools/sectionmap.py nav MAPDIR`
   <section>.stk   one gzip nbt per section: size, palette, and "stack" (big-endian int16 palette index per cell, -1 none,
                   cell (z*sx + x)*sy + y), the layout EngineMaps keeps in memory. A structure template of the same
-                  section is ~20 times larger (a compound per block).
+                  section is ~20 times larger (a compound per block). A section whose template holds prop anchors (a command block whose
+                  Command starts gravesandglory:prop/, Props.java) also gets "anchors": a list of {x, y, z (cells of the section), cmd}, which
+                  EngineMaps writes back into the command blocks' block entities and then runs Props.scanBox over the map. No anchors, no key:
+                  the sections of a map without props (Kingsfield, Rivergate) pack to the same bytes as before.
 Deterministic: same sections and settings, same bytes.
 """
 import gzip
@@ -137,7 +140,22 @@ def bake_nav(mapdir):
     print(f"{NAV}: {len(floors)} columns with floors, {(pathlib.Path(mapdir) / NAV).stat().st_size // 1024} KiB in {mapdir}")
 
 
-def pack_tile(path, size, palette, stack):
+PROP_PREFIX = 'gravesandglory:prop/'
+
+
+def anchors_of(blocks, palette):
+    """[(x, y, z, Command)] of the prop anchors of a template's blocks [(pos, palette index, block entity tag)], sorted."""
+    out = []
+    for (x, y, z), idx, be in blocks:
+        if be is None or block_name(palette[idx]) != 'minecraft:command_block':
+            continue
+        cmd = be.value.get('Command')
+        if cmd is not None and cmd.value.startswith(PROP_PREFIX):
+            out.append((x, y, z, cmd.value))
+    return sorted(out)
+
+
+def pack_tile(path, size, palette, stack, anchors=()):
     pal = []
     for state in palette:
         name, props = parse_state(state)
@@ -151,6 +169,9 @@ def pack_tile(path, size, palette, stack):
     out.write(b'\x0a\x00\x00')
     for key in ('size', 'palette'):
         nbt._write_named(out, key, root.value[key])
+    if anchors:
+        nbt._write_named(out, 'anchors', nbt.list_(nbt.COMPOUND, [nbt.compound({'x': nbt.int_(x), 'y': nbt.int_(y), 'z': nbt.int_(z), 'cmd': nbt.string(c)})
+                                                                  for x, y, z, c in anchors]))
     raw = stack.astype('>i2').tobytes()
     out.write(struct.pack('>bH', 7, 5) + b'stack' + struct.pack('>i', len(raw)) + raw)  # TAG_Byte_Array
     out.write(b'\x00')
@@ -194,7 +215,7 @@ def main(settings_path, sections_dir, out_dir):
                 grid[r * size:(r + 1) * size, c * size:(c + 1) * size] = np.where(hit, floor + top, NONE)
             for (z, x), ys in floors_of(stack, palette, floor).items():
                 floors[(r * size + z, c * size + x)] = ys
-            pack_tile(out / f'{name}.stk', (sx, sy, sz), palette, stack)
+            pack_tile(out / f'{name}.stk', (sx, sy, sz), palette, stack, anchors_of(s.blocks, s.palette))
             digest.update((out / f'{name}.stk').read_bytes())
             tiles.append({'file': f'{name}.stk', 'format': 'stack', 'x': c * size, 'z': r * size, 'size': [sx, sy, sz]})
 
