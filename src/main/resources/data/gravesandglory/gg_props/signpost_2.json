@@ -1,0 +1,14 @@
+{
+  "id": "signpost_2",
+  "category": "roads",
+  "name": "Signpost, Two Arms",
+  "size": [1, 3, 1],
+  "parts": [
+    {"model": "signpost_2", "cmd": 7311601, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

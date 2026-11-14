@@ -1,0 +1,15 @@
+{
+  "id": "stocks",
+  "category": "yard",
+  "name": "Stocks",
+  "size": [2, 2, 1],
+  "parts": [
+    {"model": "stocks", "cmd": 7311671, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

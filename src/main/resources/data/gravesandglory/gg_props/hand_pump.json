@@ -1,0 +1,15 @@
+{
+  "id": "hand_pump",
+  "category": "yard",
+  "name": "Hand Pump",
+  "size": [2, 3, 1],
+  "parts": [
+    {"model": "hand_pump", "cmd": 7311631, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0],
+    [1, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

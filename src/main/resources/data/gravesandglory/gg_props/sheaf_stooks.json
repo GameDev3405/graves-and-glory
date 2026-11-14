@@ -1,0 +1,12 @@
+{
+  "id": "sheaf_stooks",
+  "category": "farm",
+  "name": "Sheaf Stooks",
+  "size": [2, 2, 2],
+  "parts": [
+    {"model": "sheaf_stooks", "cmd": 7311651, "glow": false}
+  ],
+  "solid": [],
+  "lights": [],
+  "effects": []
+}

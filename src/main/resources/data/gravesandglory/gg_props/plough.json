@@ -1,0 +1,15 @@
+{
+  "id": "plough",
+  "category": "farm",
+  "name": "Plough",
+  "size": [1, 2, 3],
+  "parts": [
+    {"model": "plough", "cmd": 7311661, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 1],
+    [0, 0, 2]
+  ],
+  "lights": [],
+  "effects": []
+}

@@ -1,0 +1,14 @@
+{
+  "id": "milestone",
+  "category": "roads",
+  "name": "Milestone",
+  "size": [1, 2, 1],
+  "parts": [
+    {"model": "milestone", "cmd": 7311621, "glow": false}
+  ],
+  "solid": [
+    [0, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}

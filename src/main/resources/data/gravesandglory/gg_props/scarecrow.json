@@ -1,0 +1,14 @@
+{
+  "id": "scarecrow",
+  "category": "farm",
+  "name": "Scarecrow",
+  "size": [3, 3, 1],
+  "parts": [
+    {"model": "scarecrow", "cmd": 7311641, "glow": false}
+  ],
+  "solid": [
+    [1, 0, 0]
+  ],
+  "lights": [],
+  "effects": []
+}
