@@ -72,3 +72,48 @@ after rows of hit_* are not like for like (check fault, reported to the lead).
 - **Looked at:** three-view sheets of high thrust, low sweep, thrust, hit_medium_front, fallback and stun (work/render/),
   every second tick, not every tick.
 
+
+## Own moves 2026-11-13/14
+
+Admiral Vael's three attacks are his own (`art/anim/tc_admiral/build_own_attacks.py`, swapped in as the last step of
+`build_spear_anims.py` main() for tc_admiral only, deployed with `--deploy=` the six clips). Length 1.1 s, play once,
+impact markers 7/7/8 and the first and last key of every bone are the family clips' (`tools/anim/own_attacks_tc_admiral_fixed.json`,
+`tools/anim/test_own_attacks_tc_admiral.py`). Character: the tide, slow heavy gathers and sudden surges.
+
+- **Thrust (crouch, surge, haul)**: a low rolling crouch (pelvis down 2 px, back over the rear foot), the trident drawn far
+  back along the right hip with the tines by the lead knee (tip 5.4 px up at t5.2); the surge drives the rear leg straight
+  and the pelvis 6 px forward, torso pitched in, into the contact at t7; the haul back (the undertow) as before.
+- **High thrust (coming down)**: tines 31 deg up over the head at t5.6; the body drops onto the lead foot (pelvis 10.9 ->
+  9.4 -> 8.4 px) and the tines come down to 10 deg up at the contact (t7) and 7 deg below level at t8.6. The family's stab
+  rises (6 -> 20 -> 22 deg). Hit point 27.9 px up (family 28.7; was 2.8 px under it).
+- **Low sweep (the returning tide)**: a backhand from the left. The lead foot steps out wide left, the chest coils LEFT (the
+  family coils right), the trident out past the left hip, tines low; the hips then the chest unwind to the right and the
+  shaft sweeps left to right through the shins (t8, tip 7.3 px up), carried round to the right with no stop, the rear foot
+  stepping back under the turn; then the ebb back to guard.
+
+Difference from the family clip (hips / torso / weapon direction / lead foot; counted at 15 deg or 2 px):
+
+| attack | wind-up | impact | follow-through |
+|---|---|---|---|
+| thrust | t5.2: 8.3 (1.5 px) / 17.6 / 22.9 / 2.4 -> 3 | t7: 16.3 / 29.1 / 12.7 / 1.9 -> 2 | t11: 21.6 (2.1 px) / 47.1 / 19.1 / 1.0 -> 3 |
+| high | t5.6: 2.5 (2.3 px) / 15.3 / 24.8 / 0.4 -> 3 | t7: 7.9 (2.2 px) / 38.0 / 10.4 / 1.0 -> 2 | t8.6: 10.4 (3.0 px) / 33.5 / 29.5 / 1.0 -> 3 |
+| sweep | t6: 37.8 / 94.7 / 100.2 / 2.5 -> 4 | t8: 16.1 / 14.3 / 25.1 / 2.5 -> 4 | t10.6: 35.1 / 73.0 / 92.6 / 0.7 -> 3 |
+
+Impact tip along the facing axis, own vs family: thrust 42.8 / 43.3, high 39.8 / 41.1, sweep 33.1 / 34.3 px.
+
+Checks on the exported file: scorecard `--troop tc_admiral` 31 clips, 0 failing (exit 0); focus_check 0 FAIL rows on the
+six clips, no new row on any other clip (against the same run on 8e1cd793's file); `python -m unittest discover -s
+tools/anim` 159 OK. wm_tusk and tc_tideguard rebuilt: their out/ files are byte-identical to what the 8e1cd793 builder
+makes, but not to their committed out/ (wm_tusk's death_left/right are stale in out/; tc_tideguard re-keys the 17 clips its
+tabard model fix predicted, see TC_TIDEGUARD-REVIEW.md); neither was deployed or committed, both out/ files left as at HEAD. Only the six clips differ from 8e1cd793 in the exported file and in out/. The FAIL rows of the first
+build were cleared with keys and the admiral's own focus fixes: thrust hair_back off the drawn-back right arm (forward and up
+1-1.5 px, 14 deg), left_fringe smoothed; high thrust left_forearm smoothed (jitter 8.2), right_pauldron and head turned
+off each other (2.02 -> WARN); sweep right_arm up to 1 px out from the chest where the carried arm crossed it, the right
+epaulette 1-1.5 px fore/aft off the chest's top.
+
+Open (not blocking): the tines cannot point below level at the moment of a head-height contact on this rig (the fists
+cannot rise high enough), so the high thrust comes down through the contact rather than arriving pointed down; the
+sweep's rear fist misses its planned spot by up to 3.9 px (t7.5-13, the solver holds the lead fist and the shaft, the rear
+fist slides); WARN rows: thrust phases "no follow-through" (the crest is 1.2 ticks), high point_lead 28.9, kelp_hat pop
+11.6, sweep elbow 122 at t10.5, tails_l still. Sheets: `work/ownmoves/` (untracked). Not run: the game, the geo-knight
+harness, verify.py.

@@ -12,6 +12,8 @@ butt to tip), and how far up the shaft the left fist holds (Ls px ahead of the r
 together so the left fist stays on the shaft, and the right wrist turns the spear onto d with the blade's flat upright.
 
 The thrusts slide the shaft through the left fist: the rear hand drives, the leading hand guides.
+
+tc_admiral's three attacks are its own (art/anim/tc_admiral/build_own_attacks.py): main() swaps them in as its last step.
 """
 import json, math, os, sys
 from pathlib import Path
@@ -2201,6 +2203,13 @@ def main():
     if FIXES or SWINGS or SMOOTHS:
         print("focus pass")
         focus_extras({"animations": anims}, set(anims) - SHARED)
+    if TROOP == "tc_admiral":
+        # Admiral Vael's own three attacks (2026-11-13, art/anim/tc_admiral/build_own_attacks.py) replace the family's,
+        # after the focus pass: their clips() runs its own fixes, so the shipped clips equal clips() exactly.
+        sys.modules.setdefault("build_spear_anims", sys.modules[__name__])
+        sys.path.insert(0, str(HERE.parent / "tc_admiral"))
+        import build_own_attacks   # noqa: E402
+        anims.update(build_own_attacks.clips())
     K.OUT.parent.mkdir(parents=True, exist_ok=True)
     K.OUT.write_text(json.dumps({"format_version": "1.8.0", "animations": anims}, indent=1), encoding="utf-8")
     print("wrote", K.OUT, "clips:", ", ".join(anims))
