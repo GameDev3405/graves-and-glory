@@ -105,3 +105,8 @@ Put `a.state` in the template palette and `a.nbt` in the block's `nbt` (mapforge
 Template cells are relative to the template's min corner, so subtract it from `a.pos` and the cells. Keep every solid and light cell
 air (or structure void) in the template so the scanner can fill it. The template box must contain the anchor block: `Structures.place`
 scans the footprint box of the whole piece.
+
+## Testing a map in a client
+
+- A test client shows props as paper dots unless the prop pack (`dist/props/gg-props-<sha8>.zip`, from `python tools/build_prop_pack.py`) is in the run's `resourcepacks/` folder **and** listed in its `options.txt` `resourcePacks`.
+- Real matches restore props by themselves: `Structures.place` scans each placed piece and `MapAdoption` scans each adopted chunk box. A vanilla `/place template` into chunks that are already loaded does not, so its props have no collision or light until something calls `Props.scanBox` on that box (the maps harness has a `props x0 y0 z0 x1 y1 z1` verb in `MapForgeHarness`).
