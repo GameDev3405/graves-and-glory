@@ -98,17 +98,45 @@ def pat_crystal(face, P, c, r, w, h):
     return 0
 
 
+DIRON = make_ramp("3e3c46")       # blackened giant iron (slot fins), darker than the stone so the fins recede
+
+
+def pat_peg(face, P, c, r, w, h):
+    """Bone peg with form: lit top half, shaded underside, and a bronze collar where it meets the plate (z >= 10)."""
+    x, y, z = P
+    if z >= 10 and face not in ("north", "south"):
+        return BRONZE[{"up": 3, "down": 0, "east": 2, "west": 1}[face]]
+    if face == "north":
+        if h >= 4: return 1 if r == 0 else (-1 if r >= h - 1 else 0)
+        return 0 if r == 0 else -1
+    return 0
+
+
+def pat_fin(face, P, c, r, w, h):
+    """Slot fin: dark iron, a thin bronze cap on its top 2 px."""
+    x, y, z = P
+    if face == "up": return BRONZE[3]
+    if y >= PY(9.5) - 2: return BRONZE[{"north": 3, "east": 3, "west": 1, "down": 0}.get(face, 2)]
+    return 0
+
+
+class RampMat(Mat):
+    def __init__(s, ramp, base, pattern, extra, **kw):
+        Mat.__init__(s, ramp, base, pattern, **kw); s.ramps = extra
+
+
 STONE = Mat(DSTONE, 2, pat_stone, top=0)
 PLATE = Mat(DSTONE, 2, pat_plate, top=0)
 PILLAR = Mat(DSTONE, 2, pat_pillar, top=0)
 BRZ = Mat(BRONZE, 2, pat_iron)
-PEG = Mat(BONE, 2)
+PEG = RampMat(BONE, 2, pat_peg, (BRONZE,), edges=False)
+FIN = RampMat(DIRON, 1, pat_fin, (BRONZE,))
 CRYS = Mat(GLIM, 3, pat_crystal, edges=False, lit=False)
 VEIN = Mat(GLIM, 3, lambda f, P, c, r, w, h: (1 if (r % 6 == 0 and f == "north") else 0), edges=False, lit=False)
 
 # ---- rune plaques ------------------------------------------------------------------------------------------------
 MULT = (10, 5, 3, 2, 1, 2, 3, 5, 10)                          # slot 0..8, left to right seen from the front
-COLOUR = {1: "96969e", 2: "78bee6", 3: "5adcc8", 5: "b078ff", 10: "ffecaa"}
+COLOUR = {1: "dcdce4", 2: "78bee6", 3: "5adcc8", 5: "b078ff", 10: "ffecaa"}
 
 
 def plaque_ramp(hexc):
@@ -118,40 +146,46 @@ def plaque_ramp(hexc):
     return [sc(0.16), sc(0.34), sc(0.62), (r, g, b, 255), hi]
 
 
-FONT = {"x": ("...", "...", "#.#", ".#.", "#.#"), "0": ("###", "#.#", "#.#", "#.#", "###"),
-        "1": (".#", "##", ".#", ".#", ".#"), "2": ("###", "..#", "###", "#..", "###"),
-        "3": ("###", "..#", ".##", "..#", "###"), "5": ("###", "#..", "###", "..#", "###")}
-FLOURISH_TOP = ("...#.##.#...", "....#..#....")
-FLOURISH_BOT = ("....#..#....", "...#.##.#...")
-PW, PH = 12, 15                                                 # plaque size (px)
+FH = 7                                                          # numeral height (px)
+FONT = {"x": ("...", "...", "...", "#.#", ".#.", ".#.", "#.#"),
+        "0": (".##.", "#..#", "#..#", "#..#", "#..#", "#..#", ".##."),
+        "1": (".#", "##", ".#", ".#", ".#", ".#", ".#"),
+        "2": (".##.", "#..#", "...#", "..#.", ".#..", "#...", "####"),
+        "3": ("###.", "...#", "...#", ".##.", "...#", "...#", "###."),
+        "5": ("####", "#...", "###.", "...#", "...#", "#..#", ".##.")}
+FLOURISH_TOP = ("..............", "....#.##.#....")
+FLOURISH_BOT = ("....#.##.#....", "..............")
+PW, PH = 14, 20                                                 # plaque size (px): the whole slot width between fins
 
 
 def text_grid(s):
     cols = []
     for i, ch in enumerate(s):
         g = FONT[ch]
-        if i: cols.append("." * 5)
-        for k in range(len(g[0])): cols.append("".join(g[row][k] for row in range(5)))
-    return cols                                                  # list of columns, each 5 rows
+        if i and not (s[i - 1] == "x" and ch == "1"): cols.append("." * FH)   # "1" tucks against the "x" (fits x10)
+        for k in range(len(g[0])): cols.append("".join(g[row][k] for row in range(FH)))
+    return cols                                                  # list of columns, each FH rows
 
 
 class PlaquePaint:
-    """A glowing rune plaque on the back plate: frame, a rune flourish above and below, the multiplier in pixel digits.
+    """A glowing rune plaque on the back plate: a dark field in a coloured frame, a faint rune flourish above and below,
+    the multiplier in large bright pixel numerals (body in the multiplier colour, a highlight on each stroke's top).
     Painted as seen from the front (north): column 0 is at the plaque's max x (the viewer's left)."""
     def __init__(s, mult, xmax, ytop):
         s.ramp = plaque_ramp(COLOUR[mult]); s.ramps = (s.ramp,)
         s.xmax, s.ytop = xmax, ytop
-        cols = text_grid("x%d" % mult); x0 = (PW - len(cols)) // 2
+        cols = text_grid("x%d" % mult); x0 = (PW - len(cols) + 1) // 2; y0 = 6
         s.grid = [["."] * PW for _ in range(PH)]
         for i, col in enumerate(cols):
-            for row in range(5):
-                if col[row] == "#": s.grid[5 + row][x0 + i] = "D"
+            for row in range(FH):
+                if col[row] == "#":
+                    s.grid[y0 + row][x0 + i] = "H" if row == 0 or col[row - 1] != "#" else "D"
         for k, line in enumerate(FLOURISH_TOP):
             for i, ch in enumerate(line):
                 if ch == "#": s.grid[2 + k][i] = "F"
         for k, line in enumerate(FLOURISH_BOT):
             for i, ch in enumerate(line):
-                if ch == "#": s.grid[11 + k][i] = "F"
+                if ch == "#": s.grid[15 + k][i] = "F"
         for i in range(PW): s.grid[0][i] = s.grid[PH - 1][i] = "B"
         for j in range(PH): s.grid[j][0] = s.grid[j][PW - 1] = "B"
 
@@ -160,7 +194,7 @@ class PlaquePaint:
         if face != "north": return s.ramp[1]
         gx, gy = int(math.floor(s.xmax - x)), int(math.floor(s.ytop - y))
         ch = s.grid[gy][gx] if 0 <= gy < PH and 0 <= gx < PW else "B"
-        return {"D": s.ramp[3], "F": s.ramp[2], "B": s.ramp[1]}.get(ch, s.ramp[0])
+        return {"H": s.ramp[4], "D": s.ramp[3], "F": s.ramp[1], "B": s.ramp[2]}.get(ch, s.ramp[0])
 
 
 # ---- the build ---------------------------------------------------------------------------------------------------
@@ -228,9 +262,10 @@ def build():
         els += buttress(1.5 + r, True) + buttress(1.5 + r, False)
     # slot fins at board x 1..8 from y 9.5 to the floor (y 11)
     for k in range(1, 9):
-        els += [E((PX(k) - 1, 0, ZF), (PX(k) + 1, PY(9.5), ZP), BRZ, skip="down south", name="slot fin")]
+        els += [E((PX(k) - 1, 0, ZF), (PX(k) + 1, PY(9.5), ZP), FIN, skip="down south", name="slot fin")]
     # rune plaques on the back plate inside each slot (board y about 9.94..10.88), glowing in the multiplier's colour
     for i, m in enumerate(MULT):
-        xmax = PX(i) - 2; xmin = xmax - PW
-        glow += [E((xmin, 2, ZP - 1), (xmax, 2 + PH, ZP), PlaquePaint(m, xmax, 2 + PH), skip="south", name="rune plaque x%d" % m)]
+        xmax = PX(i) - 1; xmin = xmax - PW
+        glow += [E((xmin, 2, ZP - 1), (xmax, 2 + PH, ZP), PlaquePaint(m, xmax, 2 + PH), skip="south east west",
+                   name="rune plaque x%d" % m)]
     return Prop.split("drop_altar", els, SIZE, glow=glow)
