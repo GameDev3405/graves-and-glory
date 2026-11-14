@@ -6,17 +6,13 @@ cells are open air, walk-under height), so every part is modelled in the real fr
 A ceiling plate at y 62..64, two interlocked 2 px links, a 3 px stepped bail arching over the fire, and a deep iron bowl
 with a banded belly and a rim hoop. Three parts, the last two full-bright:
   chain_brazier        the iron: plate, chain, bail, bowl
-  chain_brazier_coals  the coal bed and heap in the bowl (glow)
-  chain_brazier_flame  the static flame, its own part so a live animated flame can replace it later (glow)
+  chain_brazier_coals  the coal bed and heap in the bowl (glow, animated embers)
+  chain_brazier_flame  the flame: crossed animated planes (glow, FIRE_ANIM), its own part
 Build:  python art/props/build_props.py chain_brazier      Card:  python tools/prop_card.py chain_brazier
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOT   # noqa: F401
-
-FLAME = Mat(HOT, 3, edges=False, lit=False)
-FLAME_HOT = Mat(HOT, 4, edges=False, lit=False)
-FLAME_EDGE = Mat(HOT, 2, edges=False, lit=False)
+from proplib import E, Prop, Mat, MAT, make_ramp, fixed, h3, HOT, Anim, FIRE_ANIM, flames   # noqa: F401
 
 
 def build():
@@ -40,17 +36,13 @@ def build():
         E((2, 41, 4), (4, 43, 12), "iron", name="rim"), E((12, 41, 4), (14, 43, 12), "iron", name="rim"),
     ]
     c = [
-        E((4, 41, 4), (12, 43, 12), "coal", skip="down", name="coal bed"),
-        E((5, 43, 5), (11, 45, 11), "coal", skip="down", name="coal heap"),
-        E((6, 45, 6), (10, 46, 10), "coal", skip="down", name="coal crest"),
+        E((4, 41, 4), (12, 43, 12), "embers", skip="down", name="coal bed"),
+        E((5, 43, 5), (11, 45, 11), "embers", skip="down", name="coal heap"),
+        E((6, 45, 6), (10, 46, 10), "embers", skip="down", name="coal crest"),
     ]
-    f = [
-        E((6, 46, 6), (10, 50, 10), FLAME, skip="down", name="flame body"),
-        E((7, 50, 7), (9, 52, 9), FLAME_HOT, name="flame tip"),
-        E((4, 46, 6), (6, 49, 9), FLAME_EDGE, skip="down", name="flame lick west"),
-        E((10, 46, 7), (12, 48, 10), FLAME_EDGE, skip="down", name="flame lick east"),
-        E((7, 46, 10), (9, 49, 12), FLAME_EDGE, skip="down", name="flame lick back"),
-    ]
+    # live fire: crossed flame planes rising from the crest, a broad tongue under the bail steps and a narrow one between them
+    f = flames(8, 8, 45, 50, 4, "flame") + flames(8, 8, 50, 53, 1, "flame tip")
     shift = {"chain_brazier": (0, 32, 0), "chain_brazier_coals": (0, 32, 0), "chain_brazier_flame": (0, 32, 0)}
     return Prop("chain_brazier", {"chain_brazier": b, "chain_brazier_coals": c, "chain_brazier_flame": f},
-                glow=("chain_brazier_coals", "chain_brazier_flame"), shift=shift)
+                glow=("chain_brazier_coals", "chain_brazier_flame"), shift=shift,
+                anim={"chain_brazier_coals": Anim(**FIRE_ANIM), "chain_brazier_flame": Anim(**FIRE_ANIM)})
