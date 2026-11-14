@@ -126,6 +126,10 @@ public final class EngineMap {
   int low=g;for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++)low=Math.min(low,solid(x+dx,z+dz));
   return g-low<=1;
  }
+ /** How far from its base spawn a spot still counts as that base's yard (straight distance). A deploy or lineup spot farther out is a mode's
+  *  forward field base (Siege: the defenders' yard lineup and their respawn by the keep), guarded like a forward deploy, not pulled back into the yard. */
+ public static final double YARD=80;
+ public boolean inYard(Spawn home,double x,double z){return Math.hypot(x-home.x(),z-home.z())<=YARD;}
  /** Half the width a troop's body takes on its spot, with a hair to spare (a 0.6-wide troop): inside keeps it this far off a bad neighbour. */
  public static final double BODY=0.31;
  /** The spot (x, z), pulled inside its own cell so a body of half width h does not reach into a neighbouring cell (the eight round it) that

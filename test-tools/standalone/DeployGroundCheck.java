@@ -26,6 +26,8 @@ public final class DeployGroundCheck {
    for(EngineMap.Spawn s:m.spawns){int sx=(int)Math.floor(s.x()),sz=(int)Math.floor(s.z()),side=s.team().equals("dawn")?1:-1;
     check(m.home(s.x())==s,row.id()+" "+s.team()+": the spawn is its own side's home");
     check(m.stands(sx,sz,s.y())&&m.nearHome(s,sx,sz),row.id()+" "+s.team()+": the spawn itself is yard ground");
+    for(int u=0;u<=24;u++)for(int dz=-56;dz<=56;dz+=8)check(m.inYard(s,sx+side*u,sz+dz),row.id()+" "+s.team()+": base deploy cell "+(sx+side*u)+","+(sz+dz)+" counts as its yard");
+    for(EngineMap.Point p:m.points)check(!m.inYard(s,p.x(),p.z()),row.id()+" "+s.team()+": point "+p.name()+" is a forward spot, not its yard");
     int sampled=0,moved=0,off=0;
     for(int u=0;u<=24;u++)for(int dz=-56;dz<=56;dz++){int x=sx+side*u,z=sz+dz;sampled++;
      if(!m.stands(x,z,s.y())||!m.nearHome(s,x,z))off++;

@@ -203,6 +203,7 @@ public final class Arena {
     public static Vec3d standing(ServerWorld w,double x,double z,double homeX){
         var e=EngineMaps.current();if(e==null)return legacyStanding(w,x,z,homeX);
         var home=e.home(homeX);if(home==null)return legacyStanding(w,x,z,homeX);
+        if(!e.inYard(home,x,z)){Vec3d f=forward(w,x,z,homeX);if(f!=null)return f;} // a mode's forward field base: ground no higher than its nearest point's, not the yard
         Vec3d at=guarded(w,e,x,z,homeX,home.y(),home);
         if(at!=null)return at;
         warnOnce("no yard ground within 48 of "+(int)x+","+(int)z+": the troop stands at its base spawn");
