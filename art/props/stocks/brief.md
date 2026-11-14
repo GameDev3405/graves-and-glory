@@ -3,7 +3,7 @@
 Fill every field before modelling. The reviewer checks the card against this page, so vague answers make a vague review.
 
 - **Use:** dressing (map dressing (battle maps): read at 15-40 m, silhouette first, never blocks a lane by accident).
-- **What it is, in one line:** village stocks: two stout posts on ground sills with a lower and a hinged upper board between them holding two ankle holes, iron hinge straps at one end, a hasp and padlock at the other, and a low bench behind.
+- **What it is, in one line:** village stocks: two stout posts on ground sills with a lower and a hinged upper board between them holding two ankle holes, iron hinge straps at one end, a small hasp and padlock at the other, a dark gap behind the holes, and a low bench behind.
 - **Where it goes:** village greens, market squares and gatehouse yards on any battle map; lobby streets as set dressing.
 - **Setting / House:** any village green
 - **Footprint (cells, x east * y up * z south):** 2 x 2 x 1. Front faces north. Anchor cell (0, 0, 0).

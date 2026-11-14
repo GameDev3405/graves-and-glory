@@ -7,7 +7,7 @@ Fill every field before modelling. The reviewer checks the card against this pag
 - **Where it goes:** main crossroads and village greens on any battle map; lobby and camp lanes as set dressing.
 - **Setting / House:** any road or crossroads
 - **Footprint (cells, x east * y up * z south):** 1 x 3 x 1. Front faces north. Anchor cell (0, 0, 0).
-- **Scale against a troop:** 45 px to the finial (1.3 Knights); boards at 35-42, 27-34 and 19-26 px, 14 px long each.
+- **Scale against a troop:** 45 px to the finial (1.3 Knights); boards at 36-43, 23-30 and 15-22 px (the front pair spread well apart so it reads differently from signpost_2), 14 px long each.
 - **Silhouette at 15 m:** a post bristling with three pointed boards at different heights: the most signposted thing in the lane.
 - **Close-up story at 3 m:** three stepped points with engraved arrows, the lowest board on the back where only a walk-around finds it, grain and splits, the rubble footing.
 - **Materials and ramps (proplib):** same as signpost_1: `swood_*`, the carved board painter on `WOOD` (art/props/signlib.py), `stone`/`stone_top`.

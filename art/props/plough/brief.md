@@ -10,7 +10,7 @@ Fill every field before modelling. The reviewer checks the card against this pag
 - **Scale against a troop:** 29 px tall at the grip (waist height on a Knight), 48 px long and 14 px wide: three blocks long, a plough fit for a pair of oxen.
 - **Silhouette at 15 m:** a long low timber frame with a slanted pair of handles at one end and a pointed iron nose at the other.
 - **Close-up story at 3 m:** the iron share and coulter, the stepped mouldboard, the landside plank, the hitch bracket at the beam tip, the stake propping the beam.
-- **Materials and ramps (proplib):** `wood_z`, `swood_y`, `swood_z`, `plank_z`, `wood_y`, `wood_x` (frame), `iron`, `steel` (share, coulter, bracket).
+- **Materials and ramps (proplib):** `plank_z` (landside, mouldboard), a lighter bleached-wood painter in `art/props/plough/model.py` (beam, runner, standards, stilts, rung, grip), `iron`, `steel` (share, coulter, bracket).
 - **Budget:** at most 64 elements in total (hard limit 96); sheet at most 128 px (256 only for props over 8 cells).
 - **Collision:** the two rear cells (0,0,1) and (0,0,2) are solid (runner, landside, standards and stilts); the front cell (0,0,0) is open (a thin beam and stake), so troops can pass along the beam.
 - **Light and effects:** none.

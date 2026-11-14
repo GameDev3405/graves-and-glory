@@ -81,6 +81,17 @@ public final class PropDefCheck {
   check(r!=null&&!r.isEmpty(),"A def missing its fields is refused: "+r);
   r=refusal("not json");
   check(r!=null,"Unreadable JSON is refused");
+  // prop menu tab paging: every category is reachable exactly once, at any count; up to TAB_SLOTS categories need no arrows
+  for(int n=0;n<=40;n++){
+   boolean[] seen=new boolean[n];
+   for(int pg=0;pg<TabPaging.pageCount(n);pg++)
+    for(int sl=0;sl<TabPaging.SLOTS;sl++){
+     int i=TabPaging.tabIndex(sl,n,pg);
+     if(i>=0){check(i<n&&!seen[i],"Tab index "+i+" shown once (count "+n+")");seen[i]=true;check(TabPaging.pageOf(i,n)==pg,"Category "+i+" lives on its own page (count "+n+")");}
+    }
+   for(int i=0;i<n;i++)check(seen[i],"Category "+i+" of "+n+" is reachable from the tab bar");
+   check(n>TabPaging.SLOTS?TabPaging.hasNext(n,0)&&!TabPaging.hasPrev(n,0)&&TabPaging.hasPrev(n,TabPaging.pageCount(n)-1)&&!TabPaging.hasNext(n,TabPaging.pageCount(n)-1):!TabPaging.hasNext(n,0)&&!TabPaging.hasPrev(n,0),"Arrows only when more than "+TabPaging.SLOTS+" categories ("+n+")");
+  }
   System.out.println("PASS "+count+" prop def scenarios");
  }
 }

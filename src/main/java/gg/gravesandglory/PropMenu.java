@@ -62,7 +62,7 @@ import java.util.UUID;
 public final class PropMenu {
     private PropMenu(){}
     public static final String GHOST_TAG="gg_prop_ghost";
-    static final int WHITE=0xFFFFFF,RED=0xFF4040,ROWS=6,TAB_SLOTS=9;
+    static final int WHITE=0xFFFFFF,RED=0xFF4040,ROWS=6,TAB_SLOTS=TabPaging.SLOTS;
 
     /** A player's placement in progress. */
     static final class Placing{
@@ -158,8 +158,15 @@ public final class PropMenu {
     }
     static String title(String category){return category.isEmpty()?"":Character.toUpperCase(category.charAt(0))+category.substring(1).replace('_',' ');}
 
-    static void open(ServerPlayerEntity p,String category){
-        p.openHandledScreen(new SimpleNamedScreenHandlerFactory((syncId,inv,player)->new Menu(syncId,inv,category),Text.literal("Props")));
+    static void open(ServerPlayerEntity p,String category){open(p,category,TabPaging.pageOf(categories().indexOf(category),categories().size()));}
+    static void open(ServerPlayerEntity p,String category,int page){
+        p.openHandledScreen(new SimpleNamedScreenHandlerFactory((syncId,inv,player)->new Menu(syncId,inv,category,page),Text.literal("Props")));
+    }
+
+    static ItemStack arrow(boolean next){
+        ItemStack s=new ItemStack(Items.ARROW);
+        s.setCustomName(Text.literal(next?"More tabs":"Previous tabs").styled(st->st.withItalic(false)));
+        return s;
     }
 
     static ItemStack tab(String category,boolean open){
@@ -182,19 +189,30 @@ public final class PropMenu {
     /** A read-only 6-row chest: every click is cancelled; a tab click switches category, a prop click starts placing. */
     static final class Menu extends GenericContainerScreenHandler{
         final String category;
+        final int page;
         final List<String> tabs;
         final List<PropDef> items;
-        Menu(int syncId,PlayerInventory inv,String category){
+        Menu(int syncId,PlayerInventory inv,String category,int page){
             super(ScreenHandlerType.GENERIC_9X6,syncId,inv,new SimpleInventory(9*ROWS),ROWS);
             this.category=category;this.tabs=categories();this.items=props(category);
-            for(int i=0;i<tabs.size()&&i<TAB_SLOTS;i++)getInventory().setStack(i,tab(tabs.get(i),tabs.get(i).equals(category)));
+            this.page=Math.max(0,Math.min(page,TabPaging.pageCount(tabs.size())-1));
+            for(int slot=0;slot<TAB_SLOTS;slot++){
+                int i=TabPaging.tabIndex(slot,tabs.size(),this.page);
+                if(i>=0)getInventory().setStack(slot,tab(tabs.get(i),tabs.get(i).equals(category)));
+            }
+            if(TabPaging.hasPrev(tabs.size(),this.page))getInventory().setStack(TabPaging.PREV_SLOT,arrow(false));
+            if(TabPaging.hasNext(tabs.size(),this.page))getInventory().setStack(TabPaging.NEXT_SLOT,arrow(true));
             for(int i=0;i<items.size()&&i<9*(ROWS-1);i++)getInventory().setStack(TAB_SLOTS+i,icon(items.get(i)));
         }
         @Override public void onSlotClick(int slot,int button,SlotActionType action,PlayerEntity player){
             if(!(player instanceof ServerPlayerEntity p)||action!=SlotActionType.PICKUP)return;
-            if(slot>=0&&slot<TAB_SLOTS&&slot<tabs.size()){
-                String c=tabs.get(slot);
-                if(!c.equals(category))START.put(p.getUuid(),"tab:"+c);
+            if(slot>=0&&slot<TAB_SLOTS){
+                int i=TabPaging.tabIndex(slot,tabs.size(),page);
+                if(i>=0){
+                    String c=tabs.get(i);
+                    if(!c.equals(category))START.put(p.getUuid(),"tab:"+c);
+                }else if(slot==TabPaging.PREV_SLOT&&TabPaging.hasPrev(tabs.size(),page))START.put(p.getUuid(),"page:"+(page-1)+":"+category);
+                else if(slot==TabPaging.NEXT_SLOT&&TabPaging.hasNext(tabs.size(),page))START.put(p.getUuid(),"page:"+(page+1)+":"+category);
             }else if(slot>=TAB_SLOTS&&slot-TAB_SLOTS<items.size())START.put(p.getUuid(),items.get(slot-TAB_SLOTS).id());
         }
         @Override public ItemStack quickMove(PlayerEntity player,int slot){return ItemStack.EMPTY;}
@@ -240,6 +258,7 @@ public final class PropMenu {
                 ServerPlayerEntity p=server.getPlayerManager().getPlayer(s.getKey());
                 if(p==null)continue;
                 if(s.getValue().startsWith("tab:"))open(p,s.getValue().substring(4));
+                else if(s.getValue().startsWith("page:")){String[] v=s.getValue().split(":",3);open(p,v[2],Integer.parseInt(v[1]));}
                 else{p.closeHandledScreen();start(p,s.getValue());}
             }
             START.clear();

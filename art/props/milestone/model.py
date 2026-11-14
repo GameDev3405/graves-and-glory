@@ -2,8 +2,8 @@
 
 Frame (art/props/README.md): model px, 16 = 1 block, origin = min corner of the anchor cell, x east, y up, z south,
 FRONT FACES NORTH (-z). Footprint x 0..16, y 0..32, z 0..16 px.
-A squat roadside stone, 22 px tall: a wide footing, a body, stepped shoulders and a rounded top; moss creeps up the
-foot, the front carries a carved ring with a cross and a row of tally cuts. No lettering.
+A squared roadside marker stone, 28 px tall: a wide footing, a plinth, a tapering body and a flat overhanging cap; moss
+creeps up the foot, the front carries a V notch over three number cuts. No lettering. Cells stay 1x2x1 (28 px does not fit 1x1x1).
 Build:  python art/props/build_props.py milestone      Card:  python tools/prop_card.py milestone
 """
 import math, os, sys
@@ -23,14 +23,13 @@ def pat_rock(face, P, c, r, w, h):
 
 
 def pat_carved(face, P, c, r, w, h):
-    """Front face of the body (x 3..13, y 5..16): a carved ring with a cross in it, tally cuts below the ring."""
+    """Front face of the upper body (x 4..12, y 14..25): a V notch cut near the top and three tally strokes under it."""
     x, y = (int(math.floor(P[i])) for i in (0, 1))
     if face == "north":
-        d = math.hypot(x + 0.5 - 8, y + 0.5 - 11.5)
-        if 2.4 <= d < 3.5: return -2
-        if x in (7, 8) and 9 <= y <= 13 and d < 2.4: return -2 if x == 7 else -1
-        if y == 11 and 6 <= x <= 9 and d < 2.4: return -2
-        if y in (6, 7) and x in (5, 7, 9, 11): return -2          # tally cuts
+        if y == 22 and 5 <= x <= 10: return -2                   # notch, widest row
+        if y == 21 and 6 <= x <= 9: return -2
+        if y == 20 and 7 <= x <= 8: return -2
+        if 14 <= y <= 18 and x in (5, 7, 9) and h3(x, y, 0, 3) < 0.97: return -2   # number cuts
     return pat_rock(face, P, c, r, w, h)
 
 
@@ -40,11 +39,11 @@ CARVED = Mat(STONE, 2, pat_carved, top=0); CARVED.ramps = (MOSS,)
 
 def build():
     els = [
-        E((2, 0, 2), (14, 5, 14), ROCK, skip="down", name="footing"),
-        E((3, 5, 3), (13, 15, 13), ROCK, faces={"north": CARVED}, name="body"),
-        E((4, 15, 4), (12, 18, 12), ROCK, name="shoulder"),
-        E((5, 18, 5), (11, 20, 11), ROCK, name="crown"),
-        E((6, 20, 6), (10, 22, 10), ROCK, name="top"),
+        E((2, 0, 2), (14, 4, 14), ROCK, skip="down", name="footing"),
+        E((3, 4, 3), (13, 14, 13), ROCK, name="plinth"),
+        E((4, 14, 4), (12, 25, 12), ROCK, faces={"north": CARVED}, name="body"),
+        E((3, 25, 3), (13, 27, 13), ROCK, name="cap"),
+        E((5, 27, 5), (11, 28, 11), ROCK, name="cap top"),
         E((1, 0, 5), (3, 3, 9), ROCK, skip="down", name="fallen chip"),
         E((12, 0, 1), (15, 2, 4), ROCK, skip="down", name="fallen chip"),
     ]

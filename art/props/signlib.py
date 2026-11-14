@@ -31,7 +31,6 @@ def board(side, east, y0, name="arm", carve=True, h=7):
     """One arm board with a stepped point, `h` tall (odd), at y0..y0+h, 14 px long. Returns a list of E."""
     ym = y0 + h // 2
     z0, z1 = (4, 6) if side == "front" else (10, 12)
-    skip_face = "south" if side == "front" else "north"
     a, b = (2, 16) if east else (0, 14)
     m = board_mat(b if east else a, ym, east, carve)
     if east:
@@ -41,7 +40,7 @@ def board(side, east, y0, name="arm", carve=True, h=7):
         parts = [((a + 3, y0, z0), (b, y0 + h, z1)), ((a + 2, y0 + 1, z0), (a + 3, y0 + h - 1, z1)),
                  ((a + 1, y0 + 2, z0), (a + 2, y0 + h - 2, z1)), ((a, ym, z0), (a + 1, ym + 1, z1))]
     names = (name, name + " step", name + " step", name + " point")
-    return [E(f, t, m, skip=skip_face, name=nm) for (f, t), nm in zip(parts, names)]
+    return [E(f, t, m, name=nm) for (f, t), nm in zip(parts, names)]
 
 
 def sign(pid, boards, extra=()):

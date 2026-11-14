@@ -8,7 +8,10 @@ Build:  python art/props/build_props.py stocks      Card:  python tools/prop_car
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from proplib import E, Prop, Mat, MAT, make_ramp, h3   # noqa: F401
+from proplib import E, Prop, Mat, MAT, make_ramp, h3, WOOD   # noqa: F401
+
+
+DARK = Mat(WOOD, 0, lit=False, edges=False)   # the shadowed gap behind the ankle holes, so they read as holes
 
 
 def build():
@@ -29,11 +32,12 @@ def build():
         E((15, 17, 6), (17, 20, 10), "wood_x", name="upper board"),
         E((22, 17, 6), (26, 20, 10), "wood_x", name="upper board"),
         E((6, 20, 6), (26, 23, 10), "wood_x", name="upper board"),
+        E((10, 14, 10), (22, 20, 11), DARK, skip="up down", name="hole backing"),
         # hinge straps at the west end (viewer's right), hasp and padlock at the east end (viewer's left)
         E((6, 13, 5), (13, 15, 6), "iron", name="hinge strap"),
         E((6, 20, 5), (13, 22, 6), "iron", name="hinge strap"),
-        E((23, 14, 5), (25, 22, 6), "iron", name="hasp strap"),
-        E((23, 10, 4), (26, 14, 5), "steel", name="padlock"),
+        E((23, 15, 5), (25, 19, 6), "iron", name="hasp strap"),
+        E((23, 12, 4), (25, 15, 5), "steel", name="padlock"),
         # low bench behind on two legs
         E((6, 8, 11), (26, 10, 16), "plank_x", name="bench seat"),
         E((8, 0, 12), (11, 8, 15), "wood_y", skip="down", name="bench leg"),
