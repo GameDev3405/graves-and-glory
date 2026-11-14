@@ -267,7 +267,7 @@ public final class Props {
         return true;
     }
 
-    /** The anchor cell of the prop whose solid cell, light cell or anchor block is {@code cell}, or null. */
+    /** The anchor cell of the prop whose anchor cell, solid cell, light cell or anchor block is {@code cell}, or null. */
     public static BlockPos owner(ServerWorld w,BlockPos cell){
         int r=1;
         for(PropDef d:DEFS.values())r=Math.max(r,Math.max(d.sx(),Math.max(d.sy(),d.sz())));
@@ -278,7 +278,7 @@ public final class Props {
             Live l=readBase(w,p);
             if(l==null)continue;
             BlockPos anchor=l.anchor();
-            if(cell.equals(p))return anchor;
+            if(cell.equals(p)||cell.equals(anchor))return anchor; // a walk-in prop's anchor cell is open floor, not a solid cell
             for(BlockPos c:solidCells(l.def(),anchor,l.facing()))if(c.equals(cell))return anchor;
             for(PropDef.Light li:l.def().lights())if(lightCell(l.def(),anchor,l.facing(),li).equals(cell))return anchor;
         }
