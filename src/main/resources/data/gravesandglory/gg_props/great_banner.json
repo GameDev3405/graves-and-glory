@@ -1,0 +1,36 @@
+{
+  "id": "great_banner",
+  "category": "yard",
+  "name": "Great Banner",
+  "size": [
+    3,
+    6,
+    1
+  ],
+  "parts": [
+    {
+      "model": "great_banner",
+      "cmd": 7310841,
+      "glow": false
+    },
+    {
+      "model": "great_banner_top",
+      "cmd": 7310842,
+      "glow": false
+    },
+    {
+      "model": "great_banner_cloth",
+      "cmd": 7310843,
+      "glow": false
+    }
+  ],
+  "solid": [
+    [
+      1,
+      0,
+      0
+    ]
+  ],
+  "lights": [],
+  "effects": []
+}
