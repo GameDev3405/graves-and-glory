@@ -16,6 +16,23 @@ on GeckoLib, every other troop on the old model) and saves every client tick of 
 Before/after videos (before on the left): `C:/Users/kortt/Melty/status/booth-videos/oldmodel_rise.mp4`,
 `oldmodel_cast.mp4` and `oldmodel_sweep.mp4`, built from the before and after frames.
 
+## Two scope calls (2026-11-14, the animation session's, delegated by Kort)
+
+Kort left both to the animation session ("you decide that/the session should decide that", relayed by the
+coordinator, recorded in `status/DECISIONS-2026-11-09.md`). Both calls keep what this branch already does, which is
+also what Kort said on 2026-11-11 when he asked for the fixes.
+
+1. **Gap 1 covers every troop that can rise, not only the Hollow King.** Rise Again on any Graveborn troop and the
+   Hollow King's Undying King go through the same stun and the same code path, and on GeckoLib DeathController
+   plays the fall and the rise for every troop. Fixing only the Hollow King would leave a revenant, reaper, stalker,
+   bonebow or hexer standing idle through its own rise, the same fault on the troops a player sees it on most.
+2. **Gap 3: the old-model cast releases on the tick the bolt leaves, not when the spell bursts.** On the old model
+   the bolt starts at the caster's eyes, so the release gesture and the bolt leaving are one visible moment; moved
+   to the burst, the gesture would come 10 to 20 ticks after the bolt is already in the air. It is what the old
+   clip has always done (no timing changes), and it is checked. GeckoLib casters release on the burst because their
+   bolt leaves the staff tip at the start of a longer clip made for that; that is their own approved timing and is
+   not changed here. The two models therefore differ by design while both are in the game.
+
 ## Which model draws a troop: GeoTroops
 
 The approved and preview sets and the `-Dgravesandglory.geoTroops` flag moved from `GeoTroopRenderer` (client
