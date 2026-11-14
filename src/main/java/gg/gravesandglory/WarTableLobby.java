@@ -217,6 +217,7 @@ final class WarTableLobby {
     /** Builds the widgets (CampScreen.init on page lobby): again whenever the camp state changes. The first build without a room asks the server for one (social:lobby). */
     void init() {
         buttons.clear();
+        if (inRoom()) asked = true; // a room already open was asked for: coming back from the Banner page must not open another after a leave
         if (!inRoom() && !asked) { asked = true; if (!joining && send("social:lobby")) requestAt = ticks; }
         joining = false;
         int[] o = columnAt();

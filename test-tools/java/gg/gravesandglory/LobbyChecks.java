@@ -35,6 +35,7 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
     static boolean press(MinecraftClient c,String name){var l=lobby(c);var b=l==null?null:l.button(name);if(b==null||!b.active)return false;WarTableRecruit.press(b);return true;}
     static boolean active(MinecraftClient c,String name){var l=lobby(c);var b=l==null?null:l.button(name);return b!=null&&b.active;}
     static String kinds(int team){StringBuilder s=new StringBuilder();for(var seat:WarTableLobby.seats(team))s.append(s.length()==0?"":",").append(seat.kind());return s.toString();}
+    double[] mouse0;
     void next(){stage++;}
     /** Joins the join-by-code chain's next stage (stages 81 to 84 follow one another). */
     void next81(){stage++;}
@@ -211,10 +212,10 @@ final class LobbyChecks implements Phase1Checks.Suite, Phase1Checks.ServerWatch 
                     boolean tip=b!=null&&(b.getTooltip()!=null)==empty;dimOk&=drawn==empty&&tip;dims.append(id).append(drawn?" dim":" lit").append(tip?"":"(TIP WRONG)").append(' ');}
                 report("p1-lobby-house-dim",dimOk&&"true".equals(t.get("house-tidecallers-dim"))&&"false".equals(t.get("house-gilded-dim")),"Houses: "+dims.toString().trim()+" (dim exactly where the banner has no troops, tooltip only on those)");
                 report("p1-lobby-house-dim-words",WarTableLobby.noTroops("tidecallers").equals("Your banner has no Tidecallers troops.")&&WarTableLobby.noTroops("wildmoot").equals("Your banner has no Wildmoot troops."),"tooltip words \""+WarTableLobby.noTroops("wildmoot")+"\"");
-                var wm=l==null?null:l.button("house-wildmoot");if(wm!=null){int[] box=UiCanvas.guiBox(wm.canvasBox()[0],wm.canvasBox()[1],wm.canvasBox()[2],wm.canvasBox()[3]);BarracksUiChecks.hover(c,box[0]+box[2]/2.0,box[1]+box[3]/2.0);}
+                var wm=l==null?null:l.button("house-wildmoot");mouse0=new double[]{c.mouse.getX()*c.getWindow().getScaledWidth()/(double)c.getWindow().getWidth(),c.mouse.getY()*c.getWindow().getScaledHeight()/(double)c.getWindow().getHeight()};if(wm!=null){int[] box=UiCanvas.guiBox(wm.canvasBox()[0],wm.canvasBox()[1],wm.canvasBox()[2],wm.canvasBox()[3]);BarracksUiChecks.hover(c,box[0]+box[2]/2.0,box[1]+box[3]/2.0);}
                 stage=24;
             }
-            case 24->{if(k<30)return;shot(c,"lobby-1080-host-no-house");BarracksUiChecks.hover(c,1,1);
+            case 24->{if(k<30)return;shot(c,"lobby-1080-host-no-house");if(mouse0!=null)BarracksUiChecks.hover(c,mouse0[0],mouse0[1]);
                 if(!press(c,"change")){fail(c,"p1-lobby-change","Change is not live on the host's sheet");return;}
                 stage=25;
             }
