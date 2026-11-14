@@ -1,0 +1,20 @@
+{
+  "id": "trophy_rack",
+  "category": "hall",
+  "name": "Trophy Rack",
+  "size": [
+    2,
+    2,
+    1
+  ],
+  "parts": [
+    {
+      "model": "trophy_rack",
+      "cmd": 7311511,
+      "glow": false
+    }
+  ],
+  "solid": [],
+  "lights": [],
+  "effects": []
+}
