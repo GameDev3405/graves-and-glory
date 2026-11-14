@@ -1,0 +1,21 @@
+{
+  "id": "helmet_grave_marker",
+  "category": "relics",
+  "name": "Giant's Helmet Grave",
+  "size": [3, 2, 3],
+  "parts": [
+    {"model": "helmet_grave_marker", "cmd": 7311581, "glow": false}
+  ],
+  "solid": [
+    [1, 0, 0],
+    [0, 0, 1],
+    [1, 0, 1],
+    [2, 0, 1],
+    [1, 0, 2],
+    [0, 1, 1],
+    [1, 1, 1],
+    [2, 1, 1]
+  ],
+  "lights": [],
+  "effects": []
+}
