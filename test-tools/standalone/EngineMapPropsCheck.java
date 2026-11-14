@@ -62,7 +62,7 @@ public final class EngineMapPropsCheck {
    System.out.println(row.source()+": "+anchors+" prop anchors "+ids);
    if(row.source().equals("ironhold_ip")){
     check(anchors==29,"ironhold_ip holds 29 prop anchors, not "+anchors);
-    check(ids.equals(Map.of("tent_soldier_large",8,"tent_pavilion_large",1,"trebuchet",2,"supply_wagon",1,"supply_wagon_barrels",1,"supply_wagon_covered",1,"supply_wagon_hay",1,"supply_wagon_shot",1,"handcart_ore",1,"brazier",12)),"ironhold_ip prop ids "+ids);}
+    check(ids.equals(Map.of("tent_soldier_large_weathered",8,"tent_pavilion_large_dawn",1,"trebuchet",2,"supply_wagon",1,"supply_wagon_barrels",1,"supply_wagon_covered",1,"supply_wagon_hay",1,"supply_wagon_shot",1,"handcart_ore",1,"brazier",12)),"ironhold_ip prop ids "+ids);}
    else if(row.source().equals("kingsfield_cq")||row.source().equals("rivergate_ey"))check(anchors==0,row.source()+" has no props, not "+anchors);}
   check(total.containsKey("ironhold_ip"),"ironhold_ip is a bundled map");
   System.out.println("EngineMapPropsCheck PASS ("+count+" checks)");
