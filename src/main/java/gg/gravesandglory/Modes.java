@@ -49,7 +49,6 @@ public final class Modes {
     public static String ruleLine(String id){return RULE_LINES.computeIfAbsent(id,k->create(k).rule());}
     /** Whether a mode may be played on a map: its maps cell lists the map indexes it hosts. */
     public static boolean hosts(String id,int map){
-        if(EngineMaps.on(map)&&!id.equals(DOMINATION))return false; // an engine map slot plays Domination only
         for(String part:row(id).maps().split(","))if(!part.isBlank()&&Integer.parseInt(part.trim())==map)return true;
         return false;
     }

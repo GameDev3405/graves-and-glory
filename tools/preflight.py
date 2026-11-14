@@ -164,9 +164,12 @@ for s in data.get('modeSites',[]):
     where=f'modeSites/{s["id"]}'
     if s['mode'] not in mode_ids: errors.append(f'{where}: mode {s["mode"]} is not a modes id')
     if s['map'] not in range(len(data['maps'])): errors.append(f'{where}: map {s["map"]} is not a map index')
-    if s['kind'] not in ('road','base','stage','gate','ward','shrine','rise'): errors.append(f'{where}: kind {s["kind"]} is not road, base, stage, gate, ward, shrine or rise')
-    if s['piece']!='-' and s['piece'] not in piece_ids: errors.append(f'{where}: piece {s["piece"]} is not a pieces id')
-    if s['kind'] in ('gate','ward') and s['piece']=='-': errors.append(f'{where}: a {s["kind"]} row needs its piece')
+    if s['kind'] not in ('road','base','stage','gate','ward','shrine','rise','plug','post'): errors.append(f'{where}: kind {s["kind"]} is not road, base, stage, gate, ward, shrine, rise, plug or post')
+    if s['kind']=='plug':  # an engine map's gate: the piece column is the block the passage is filled with; radius half width, seconds thickness, hp height
+        if s['mode']!='siege' or s['piece']=='-' or s['radius']<=0 or s['seconds']<=0 or s['hp']<=0 or s['y']<=0: errors.append(f'{where}: a plug row is a siege row with a block, a radius, a thickness (seconds), a height (hp) and a floor y above 0')
+    elif s['piece']!='-' and s['piece'] not in piece_ids: errors.append(f'{where}: piece {s["piece"]} is not a pieces id')
+    if s['kind']=='ward' and s['piece']=='-': errors.append(f'{where}: a {s["kind"]} row needs its piece')
+    if s['kind']=='gate' and s['piece']=='-' and not any(q['kind']=='plug' and q['mode']==s['mode'] and q['map']==s['map'] for q in data['modeSites']): errors.append(f'{where}: a gate row needs its piece, or plug rows on its map')
     if s['rotation'] not in (0,90,180,270): errors.append(f'{where}: rotation {s["rotation"]} is not 0, 90, 180 or 270')
     if s['hp']<0 or s['seconds']<0: errors.append(f'{where}: hp and seconds cannot be negative')
     if s['kind']=='road': roads.setdefault((s['mode'],s['map']),[]).append(s)

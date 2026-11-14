@@ -43,13 +43,26 @@ public final class SiegeMode extends BattleMode {
 
     /** The modeSites siege row of Ironhold of this kind and stage; preflight requires the stage and gate rows. */
     static Spec.ModeSitesRow site(String kind, int stage) {
-        for (var s : Spec.MODESITES) if (s.mode().equals(Modes.SIEGE) && s.map() == 1 && s.kind().equals(kind) && s.stage() == stage) return s;
-        throw new IllegalStateException("no modeSites siege " + kind + " row for stage " + stage);
+        return site(1, kind, stage);
+    }
+    /** The modeSites siege row of a map of this kind and stage; null when the map has none. */
+    static Spec.ModeSitesRow find(int map, String kind, int stage) {
+        for (var s : Spec.MODESITES) if (s.mode().equals(Modes.SIEGE) && s.map() == map && s.kind().equals(kind) && s.stage() == stage) return s;
+        return null;
+    }
+    static Spec.ModeSitesRow site(int map, String kind, int stage) {
+        var s = find(map, kind, stage);
+        if (s == null) throw new IllegalStateException("no modeSites siege " + kind + " row for map " + map + " stage " + stage);
+        return s;
     }
     /** The ward rows of Ironhold, in sheet order. */
     static List<Spec.ModeSitesRow> wards() {
+        return rows(1, "ward");
+    }
+    /** The siege rows of a map of one kind, in sheet order. */
+    static List<Spec.ModeSitesRow> rows(int map, String kind) {
         var rows = new java.util.ArrayList<Spec.ModeSitesRow>();
-        for (var s : Spec.MODESITES) if (s.mode().equals(Modes.SIEGE) && s.map() == 1 && s.kind().equals("ward")) rows.add(s);
+        for (var s : Spec.MODESITES) if (s.mode().equals(Modes.SIEGE) && s.map() == map && s.kind().equals(kind)) rows.add(s);
         return rows;
     }
     /** The tag a ward saved box is filed under. */
@@ -65,6 +78,79 @@ public final class SiegeMode extends BattleMode {
     static final double DONJON_X = 12, DONJON_Z = 34, MOUTH_X = -31.5, MOUTH_Z = .5;
     /** How far east of the yard's centre the defenders' lineup point stands, so reinforce's rows (5 to 20 forward of it) form across the yard. */
     static final double YARD_LINEUP = 12;
+
+    /**
+     * The numbers of the map a round is on, read from its modeSites siege rows. The old Ironhold's gate is its landmark piece (ironhold/gate, shut by
+     * ironhold/gate_intact between the ward walls); a bundled engine map's gate is the gate row's passage, closed with its plug rows (a filled box of blocks per
+     * passage: the gate and the postern doors beside it), saved and put back like a piece. Map 1's numbers are the constants above, unchanged.
+     */
+    static final class Sites {
+        final int map;
+        final Spec.ModeSitesRow yard, gate, keep;
+        final double yardX, yardZ, yardRadius, keepX, keepZ, keepRadius, gateX, gateZ, donjonX, donjonZ, donjonY;
+        final int yardSeconds, keepSeconds, floor, pass, passZ, passHeight;
+        final float gateHp;
+        /** The gate's landmark (map 1), or null on an engine map. */
+        final Spec.LandmarksRow landmark;
+        final List<Spec.ModeSitesRow> wards, plugs, posts;
+
+        private Sites(int map) {
+            this.map = map;
+            yard = site(map, "stage", 0);
+            gate = site(map, "gate", 1);
+            keep = site(map, "stage", 2);
+            yardX = yard.x(); yardZ = yard.z(); yardRadius = yard.radius(); yardSeconds = yard.seconds();
+            keepX = keep.x(); keepZ = keep.z(); keepRadius = keep.radius(); keepSeconds = keep.seconds();
+            gateHp = (float) gate.hp();
+            Spec.LandmarksRow lm = null;
+            for (var r : Spec.LANDMARKS) if (r.map() == map && r.template().equals(GATE)) lm = r;
+            landmark = lm;
+            wards = rows(map, "ward");
+            plugs = rows(map, "plug");
+            posts = rows(map, "post");
+            if (lm != null) { // the old Ironhold: the gate piece's passage and the donjon, as constants
+                gateX = lm.x(); gateZ = lm.z(); floor = lm.elevation();
+                pass = PASSAGE_X; passZ = PASSAGE_Z; passHeight = PASSAGE_HEIGHT;
+                donjonX = DONJON_X; donjonZ = DONJON_Z; donjonY = 65;
+            } else { // an engine map: the gate row's own plug sets the passage it shuts
+                gateX = gate.x(); gateZ = gate.z(); floor = (int) gate.y();
+                Spec.ModeSitesRow own = null;
+                for (var p : plugs) if (p.x() == gate.x() && p.z() == gate.z()) own = p;
+                pass = own == null ? PASSAGE_X : own.seconds() / 2 + 1;
+                passZ = own == null ? PASSAGE_Z : (int) own.radius();
+                passHeight = own == null ? PASSAGE_HEIGHT : (int) own.hp();
+                var base = find(map, "base", 1); // Dusk's field base: the old donjon's place
+                donjonX = base != null ? base.x() : gate.x() + 40;
+                donjonZ = base != null ? base.z() : gate.z();
+                donjonY = base != null ? base.y() + 1 : floor + 1;
+            }
+        }
+
+        private static final java.util.Map<Integer, Sites> CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+        /** The sites of a map; a map without siege rows answers Ironhold's. */
+        static Sites of(int map) {
+            return CACHE.computeIfAbsent(find(map, "gate", 1) != null ? map : 1, Sites::new);
+        }
+        /** The attackers' base once the gate is breached: two blocks inside the gate's far face (Ironhold's MOUTH constants are this at pass 3). */
+        Vec3d mouth() {
+            return landmark != null ? at(MOUTH_X, MOUTH_Z) : at(gateX + pass + 2.5, gateZ + .5);
+        }
+        /** Whether the round has a gate to shut: the landmark piece, or a plug row. */
+        boolean closable() {
+            return landmark != null || !plugs.isEmpty();
+        }
+        /** The gate-sight stand of a defenders' ranged troop: the post row of that side on an engine map, else the old gate tower's top. */
+        Vec3d post(int side) {
+            for (var p : posts) if (p.stage() == side) return new Vec3d(p.x(), p.y() + 1, p.z());
+            return landmark == null ? null : SiegeMode.post(landmark, side);
+        }
+    }
+    /** The sites of the map the round is on, which a round's first call resolves (a mode object lives for one round). */
+    Sites sites = Sites.of(1);
+    Sites s(GravesAndGlory.Battle b) {
+        if (b != null && sites.map != b.campaign.map) sites = Sites.of(b.campaign.map);
+        return sites;
+    }
 
     /** The round's stage (0 yard, 1 gate, 2 keep, 3 taken) and the current ring's hold seconds. A mode object lives for one round. */
     int stage;
@@ -142,6 +228,8 @@ public final class SiegeMode extends BattleMode {
     }
 
     /** The gate's landmark row on Ironhold, or null when the map has no gate. */
+    /** The tag a plug's saved box is filed under; breach() restores every box tagged this way. */
+    static final String PLUG_TAG = "siege-plug-";
     static Spec.LandmarksRow gate() {
         for (var r : Spec.LANDMARKS) if (r.map() == 1 && r.template().equals(GATE)) return r;
         return null;
@@ -155,15 +243,17 @@ public final class SiegeMode extends BattleMode {
     public void setup(GravesAndGlory.Battle b) {
         breachCued = false;
         for (var p : b.points) Arena.unflag(b.world, p.spec);
-        var row = gate();
-        if (row == null) return;
+        var st = s(b);
+        var row = st.landmark;
+        if (row == null && !st.closable()) return;
         // A gate snapshot an earlier teardown could not restore still holds the open gate: keep it and shut again, never re-save over it.
-        if (b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) {
+        // An engine map's plugs save their boxes when they close (drop), so setup has nothing of the gate to save there.
+        if (row != null && b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) {
             var saved = Structures.placeSaving(b.world, GATE, row.x(), row.elevation(), row.z(), row.rotation(), GATE_TAG);
             if (saved == null) return; // no snapshot, no shut gate: a closed gate that cannot be recovered is worse than an open one
             b.saves.add(saved);
         }
-        for (var ward : wards()) {
+        for (var ward : st.wards) {
             String tag = wardTag(ward);
             if (b.saves.stream().anyMatch(s -> s.tag().equals(tag))) { Structures.place(b.world, ward.piece(), (int) ward.x(), (int) ward.y(), (int) ward.z(), ward.rotation()); continue; }
             var saved = Structures.placeSaving(b.world, ward.piece(), (int) ward.x(), (int) ward.y(), (int) ward.z(), ward.rotation(), tag);
@@ -184,17 +274,19 @@ public final class SiegeMode extends BattleMode {
     @Override
     public boolean onObjective(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Vec3d pos) {
         if (stage >= 3) return false;
-        if (GravesAndGlory.Battle.horizontalDistance(pos, new Vec3d(KEEP_X, 65, KEEP_Z)) < KEEP_RADIUS * KEEP_RADIUS) return true;
-        return stage == 0 ? GravesAndGlory.Battle.horizontalDistance(pos, new Vec3d(YARD_X, 65, YARD_Z)) < YARD_RADIUS * YARD_RADIUS
-            : stage == 1 && GravesAndGlory.Battle.horizontalDistance(pos, new Vec3d(GATE_SITE.x(), 65, GATE_SITE.z())) < GATE_OBJECTIVE_RADIUS * GATE_OBJECTIVE_RADIUS;
+        var st = s(b);
+        if (GravesAndGlory.Battle.horizontalDistance(pos, new Vec3d(st.keepX, 65, st.keepZ)) < st.keepRadius * st.keepRadius) return true;
+        return stage == 0 ? GravesAndGlory.Battle.horizontalDistance(pos, new Vec3d(st.yardX, 65, st.yardZ)) < st.yardRadius * st.yardRadius
+            : stage == 1 && GravesAndGlory.Battle.horizontalDistance(pos, new Vec3d(st.gate.x(), 65, st.gate.z())) < GATE_OBJECTIVE_RADIUS * GATE_OBJECTIVE_RADIUS;
     }
 
     /** Stages taken, then the current stage's strength in percent. */
     @Override
     public int[] ledger(GravesAndGlory.Battle b) {
-        double progress = stage == 0 ? held / (double) YARD_SECONDS : stage == 2 ? held / (double) KEEP_SECONDS : 0;
-        float hp = target == null ? (dropAt >= 0 ? GATE_HP : 0) : Math.max(0, target.hp()); // the gate is whole until the portcullis drops
-        return new int[]{stage, ModeMath.siegeStrength(stage, progress, hp, GATE_HP)};
+        var st = s(b);
+        double progress = stage == 0 ? held / (double) st.yardSeconds : stage == 2 ? held / (double) st.keepSeconds : 0;
+        float hp = target == null ? (dropAt >= 0 ? st.gateHp : 0) : Math.max(0, target.hp()); // the gate is whole until the portcullis drops
+        return new int[]{stage, ModeMath.siegeStrength(stage, progress, hp, st.gateHp)};
     }
 
     @Override
@@ -211,8 +303,9 @@ public final class SiegeMode extends BattleMode {
     @Override
     public List<GravesAndGlory.Anchor> anchors(GravesAndGlory.Battle b, int team) {
         boolean ours = team == 1 ? stage == 0 : stage >= 1;
-        if (!ours || Morale.enemyWithin(b, team, new Vec3d(YARD_X, 65, YARD_Z), YARD_RADIUS)) return List.of();
-        return List.of(new GravesAndGlory.Anchor(YARD_X, YARD_Z, "the Outer Yard", team));
+        var st = s(b);
+        if (!ours || Morale.enemyWithin(b, team, new Vec3d(st.yardX, 65, st.yardZ), st.yardRadius)) return List.of();
+        return List.of(new GravesAndGlory.Anchor(st.yardX, st.yardZ, "the Outer Yard", team));
     }
 
     /**
@@ -222,34 +315,37 @@ public final class SiegeMode extends BattleMode {
      */
     @Override
     public Vec3d botTarget(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
-        var row = gate();
-        if (stage == 0) return at(YARD_X, YARD_Z);
-        if (stage == 1 && row != null) {
-            if (s.team == 0) return at(row.x() - PASSAGE_X - (dropAt >= 0 ? 10 : 4), row.z());
-            boolean low = target != null && target.hp() <= GATE_HP * BREACH_SHARE;
-            return at(row.x() + PASSAGE_X + (low ? .5 : 2.5), row.z() + .5);
+        var st = s(b);
+        if (stage == 0) return at(st.yardX, st.yardZ);
+        if (stage == 1 && st.closable()) {
+            if (s.team == 0) return at(st.gateX - st.pass - (dropAt >= 0 ? 10 : 4), st.gateZ);
+            boolean low = target != null && target.hp() <= st.gateHp * BREACH_SHARE;
+            return at(st.gateX + st.pass + (low ? .5 : 2.5), st.gateZ + .5);
         }
-        return at(KEEP_X, KEEP_Z);
+        return at(st.keepX, st.keepZ);
     }
 
     /** Spec 5: defenders respawn at the donjon; attackers at their base, then the yard once it falls, then the gate's east mouth once it is breached. */
     @Override
     public Vec3d fieldBase(GravesAndGlory.Battle b, int team) {
-        if (team == 1) return at(DONJON_X, DONJON_Z);
+        var st = s(b);
+        if (team == 1) return at(st.donjonX, st.donjonZ);
         if (stage == 0) return super.fieldBase(b, team);
-        return stage == 1 ? at(YARD_X, YARD_Z) : at(MOUTH_X, MOUTH_Z);
+        return stage == 1 ? at(st.yardX, st.yardZ) : st.mouth();
     }
 
     /** The defenders' barracks is the donjon. */
     @Override
     public Vec3d fieldBarracks(GravesAndGlory.Battle b, int team) {
-        return team == 1 ? new Vec3d(DONJON_X, 65, DONJON_Z) : super.fieldBarracks(b, team);
+        var st = s(b);
+        return team == 1 ? new Vec3d(st.donjonX, st.donjonY, st.donjonZ) : super.fieldBarracks(b, team);
     }
 
     /** The defenders' lineup forms in the yard while it stands; the attackers' at their base. */
     @Override
     public Vec3d lineup(GravesAndGlory.Battle b, int team) {
-        return team == 1 && stage == 0 ? at(YARD_X + YARD_LINEUP, YARD_Z) : super.lineup(b, team);
+        var st = s(b);
+        return team == 1 && stage == 0 ? at(st.yardX + YARD_LINEUP, st.yardZ) : super.lineup(b, team);
     }
 
     /** A spot on the ground. */
@@ -275,15 +371,16 @@ public final class SiegeMode extends BattleMode {
      * While the portcullis is pending the attackers hold where they wait.     */
     @Override
     public void botPlan(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.BotCommandRow tier) {
-        var row = gate();
-        if (row == null || stage >= 3) return;
+        var st = s(b);
+        if (!st.closable() || stage >= 3) return;
         if (s.team == 1 && stage != 1) {
             s.order = "attack";
             return;
         }
         if (stage != 1) return;
         if (s.team == 1) {
-            if (stations(tier)) put(s, "ranged", "attack", post(row, Math.floorMod(s.owner.hashCode(), 2)), -1).perch = true;
+            Vec3d stand = st.post(Math.floorMod(s.owner.hashCode(), 2));
+            if (stand != null && stations(tier)) put(s, "ranged", "attack", stand, -1).perch = true;
             return;
         }
         if (dropAt >= 0 || target == null) {
@@ -291,12 +388,12 @@ public final class SiegeMode extends BattleMode {
             return;
         }
         int gateId = target.getId();
-        double face = row.x() - PASSAGE_X - 1;
+        double face = st.gateX - st.pass - 1;
         put(s, "infantry", "attack", s.target, gateId);
         put(s, "cavalry", "attack", s.target, gateId);
-        if (stations(tier)) put(s, "siege", "hold", at(face - STANDOFF, row.z() + .5), gateId);
+        if (stations(tier)) put(s, "siege", "hold", at(face - STANDOFF, st.gateZ + .5), gateId);
         else put(s, "siege", "attack", s.target, gateId);
-        put(s, "ranged", "attack", at(face - RANGED_STANDOFF, row.z() + .5), -1);
+        put(s, "ranged", "attack", at(face - RANGED_STANDOFF, st.gateZ + .5), -1);
     }
 
     /** Once the yard has fallen the defenders' base is the donjon behind the gate they hold: they fight on there rather than fall back and wait to rally (the 2026-11 sims had them sit out the gate and keep). */
@@ -318,12 +415,13 @@ public final class SiegeMode extends BattleMode {
     @Override
     public void tick(GravesAndGlory.Battle b) {
         if (b.time % 20 != 0 || stage >= 3) return;
+        var st = s(b);
         if (stage == 0) {
-            if (hold(b, YARD_X, YARD_Z, YARD_RADIUS, YARD_SECONDS, false)) fall(b);
+            if (hold(b, st.yardX, st.yardZ, st.yardRadius, st.yardSeconds, false)) fall(b);
         } else if (stage == 1) {
             if (dropAt >= 0) { if (b.time >= dropAt) drop(b); }
             else if (target == null || !target.isAlive() || target.isRemoved()) breach(b);
-        } else if (hold(b, KEEP_X, KEEP_Z, KEEP_RADIUS, KEEP_SECONDS, true)) {
+        } else if (hold(b, st.keepX, st.keepZ, st.keepRadius, st.keepSeconds, true)) {
             stage = 3;
             keepSecond = second(b);
             staged(b, "keep", keepSecond);
@@ -362,10 +460,10 @@ public final class SiegeMode extends BattleMode {
         b.roundSeconds += STAGE_BONUS;
         feed(b, "yard_taken", "team", attackers(b));
         Audio.captured(b, "yard", 0);
-        var row = gate();
+        var st = s(b);
         GravesAndGlory.Squad defender = null;
         for (var s : b.squads.values()) if (s.seated && s.team == 1) { defender = s; break; }
-        if (row == null || defender == null || b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) { breach(b); return; } // no saved gate to shut and break
+        if (!st.closable() || defender == null || st.landmark != null && b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) { breach(b); return; } // no saved gate to shut and break
         dropAt = b.time + R.portcullisSeconds() * 20L;
         // The gate's crash is 2.3 s into its sound, so the cue starts that much ahead of the drop and the two land together.
         Audio.later(b, (int) (dropAt - b.time) - AudioCues.GATE_SHUT_LEAD_TICKS, () -> Audio.all(b, AudioCues.Cue.GATE_SHUT, "gate"));
@@ -375,18 +473,21 @@ public final class SiegeMode extends BattleMode {
     /** The portcullis drops: units in the passage go to the nearer side, the intact gate replaces the open one and its target goes up on its west face. */
     void drop(GravesAndGlory.Battle b) {
         dropAt = -1;
-        var row = gate();
+        var st = s(b);
+        var row = st.landmark;
         GravesAndGlory.Squad defender = null;
         for (var s : b.squads.values()) if (s.seated && s.team == 1) { defender = s; break; }
-        if (row == null || defender == null) { breach(b); return; }
-        clearPassage(b, row);
-        Structures.place(b.world, GATE_INTACT, row.x(), row.elevation(), row.z(), row.rotation());
+        if (!st.closable() || defender == null) { breach(b); return; }
+        if (row != null) {
+            clearPassage(b, st.gateX, st.gateZ, st.floor, st.pass, st.passZ, st.passHeight);
+            Structures.place(b.world, GATE_INTACT, row.x(), row.elevation(), row.z(), row.rotation());
+        } else if (!plug(b, st)) { breach(b); return; } // a plug that could not be saved shuts nothing: the gate is down at once rather than closed for good
         feed(b, "gate_shut"); // the shut cue itself started GATE_SHUT_LEAD_TICKS ago (fall)
         var e = new GateTarget(b.world);
         e.squad = defender;
         e.mode = this;
-        e.hp = GATE_HP;
-        e.refreshPositionAndAngles(row.x() - PASSAGE_X - 1 + .5, row.elevation() + 1, row.z() + .5, 90, 0);
+        e.hp = st.gateHp;
+        e.refreshPositionAndAngles(st.gateX - st.pass - 1 + .5, st.floor + 1, st.gateZ + .5, 90, 0);
         e.setNoGravity(true);
         e.setInvisible(true);
         e.addCommandTag("gravesandglory");
@@ -400,18 +501,48 @@ public final class SiegeMode extends BattleMode {
 
     /** Moves everything standing in the gate passage to the side of it that is nearer (by x), just clear of the grilles. */
     static void clearPassage(GravesAndGlory.Battle b, Spec.LandmarksRow row) {
-        double lo = row.x() - PASSAGE_X - 1, hi = row.x() + PASSAGE_X + 2;
-        var box = new net.minecraft.util.math.Box(lo, row.elevation() - 1, row.z() - PASSAGE_Z - 1, hi, row.elevation() + PASSAGE_HEIGHT + 2, row.z() + PASSAGE_Z + 2);
-        for (var e : b.world.getEntitiesByClass(net.minecraft.entity.LivingEntity.class, box, x -> true)) {
-            double side = e.getX() < row.x() ? row.x() - PASSAGE_X - 3 : row.x() + PASSAGE_X + 3;
-            e.requestTeleport(side, row.elevation() + 1, e.getZ());
+        clearPassage(b, row.x(), row.z(), row.elevation(), PASSAGE_X, PASSAGE_Z, PASSAGE_HEIGHT);
+    }
+
+    /** The same for a passage centred at (x, z) on a floor: pass blocks each side of the centre are the shut part, passZ half its width, height its height. */
+    static void clearPassage(GravesAndGlory.Battle b, double x, double z, int floor, int pass, int passZ, int height) {
+        double lo = x - pass - 1, hi = x + pass + 2;
+        var box = new net.minecraft.util.math.Box(lo, floor - 1, z - passZ - 1, hi, floor + height + 2, z + passZ + 2);
+        for (var e : b.world.getEntitiesByClass(net.minecraft.entity.LivingEntity.class, box, v -> true)) {
+            double side = e.getX() < x ? x - pass - 3 : x + pass + 3;
+            e.requestTeleport(side, floor + 1, e.getZ());
         }
+    }
+
+    /**
+     * Shuts an engine map's passages (its plug rows): everything standing in a plug's box goes to the nearer side, each box is saved (Structures.snapshot, filed
+     * under PLUG_TAG and listed in the crash marker) and filled with the row's block. False, with nothing shut, when a box cannot be saved.
+     */
+    boolean plug(GravesAndGlory.Battle b, Sites st) {
+        var saved = new java.util.ArrayList<Structures.Saved>();
+        for (var p : st.plugs) {
+            int x0 = (int) p.x() - p.seconds() / 2, z0 = (int) p.z() - (int) p.radius(), y0 = (int) p.y() + 1;
+            var snap = Structures.snapshot(b.world, new net.minecraft.util.math.BlockPos(x0, y0, z0), new net.minecraft.util.math.Vec3i(p.seconds(), (int) p.hp(), (int) p.radius() * 2 + 1), PLUG_TAG + p.id().substring(p.id().lastIndexOf('_') + 1));
+            if (snap == null) { for (var s : saved) Structures.restore(b.world, s); return false; }
+            saved.add(snap);
+        }
+        for (var p : st.plugs) clearPassage(b, p.x() + .5, p.z() + .5, (int) p.y(), p.seconds() / 2 + 1, (int) p.radius(), (int) p.hp());
+        for (int i = 0; i < st.plugs.size(); i++) {
+            var p = st.plugs.get(i);
+            var block = net.minecraft.registry.Registries.BLOCK.get(new net.minecraft.util.Identifier(p.piece())).getDefaultState();
+            var o = saved.get(i).origin();
+            for (int x = 0; x < p.seconds(); x++) for (int y = 0; y < (int) p.hp(); y++) for (int z = 0; z <= (int) p.radius() * 2; z++)
+                b.world.setBlockState(o.add(x, y, z), block);
+        }
+        b.saves.addAll(saved);
+        mark(b);
+        return true;
     }
 
     /** The gate falls: the open gate returns as the breach, time is added and the keep can be taken. */
     void breach(GravesAndGlory.Battle b) {
         for (int i = b.saves.size() - 1; i >= 0; i--)
-            if (b.saves.get(i).tag().equals(GATE_TAG) && Structures.restore(b.world, b.saves.get(i))) b.saves.remove(i);
+            if ((b.saves.get(i).tag().equals(GATE_TAG) || b.saves.get(i).tag().startsWith(PLUG_TAG)) && Structures.restore(b.world, b.saves.get(i))) b.saves.remove(i);
         if (target != null && !target.isRemoved()) target.discard();
         target = null;
         stage = 2;

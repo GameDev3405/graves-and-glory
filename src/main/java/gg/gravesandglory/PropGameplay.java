@@ -231,7 +231,7 @@ public final class PropGameplay {
         if(b.time>=until)return "Too late: barricades go up in the first "+g.siegeSeconds()+" seconds.";
         if(placed(b,s.owner)>=g.siegeCap())return "You have placed all "+g.siegeCap()+" barricades.";
         if(at!=null){
-            double x=at.getX()+.5-SiegeMode.YARD_X,z=at.getZ()+.5-SiegeMode.YARD_Z;
+            var yard=((SiegeMode)b.mode).s(b);double x=at.getX()+.5-yard.yardX,z=at.getZ()+.5-yard.yardZ; // the yard of the map the Siege is on
             if(x*x+z*z>g.siegeRadius()*g.siegeRadius())return "Too far from the Outer Yard.";
         }
         return "";
