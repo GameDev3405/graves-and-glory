@@ -147,47 +147,53 @@ asset byte for byte and the export leaves it unchanged. Never run stances/reacti
 Kort's decision "Own moves for all three": the Templar no longer swings the knight's cuts. Source
 `art/anim/sentinel/build_own_attacks.py` (fullbody.py); `art/anim/knight/rebuild_out.py` step 8 swaps the six clips into
 out/ in both modes. Gameplay unchanged: 22 ticks, not looping, impact 7 / 10 / 8, guard at both ends (unit test
-`tools/anim/test_own_attacks_sentinel.py`).
+`tools/anim/test_own_attacks_sentinel.py`). Fix round 1 (2026-11-14) after the independent review is folded in below.
 
-- **attack_thrust (body), a covered stab.** 0-1.8 tell (shield fist closes up); 1.8-5 draw (sword level beside the
-  shield's right edge, hips sink back, square); 4.6-6.8 short lead step, shield first; 5.6-7 stab past the shield rim,
-  hips square; 7-8 carry; 8-10.5 snap back behind the shield; 9-11.5 rear foot drags up; 12-22 walk home.
-- **attack_overhead (head), a hammer chop.** 0-2.6 brace (rear foot out wide, shield low and forward); 1.5-6 sword raised
-  upright beside the helm; 6-8 hold; 8-10 weight drops through both knees, blade falls in its own vertical plane; 10-13.8
-  controlled stop at waist height in front (decelerates over three ticks); 13.8-15 settle; 15-22 recover.
-- **attack_low_cut (legs), a shield check and reap.** 0-1.5 tell; 1.5-5.4 shield presses forward and up, sword hand drops
-  to the right hip with the blade held upright; 5.4-8 long reaching step, knee dip (pelvis down 3 px), blade falls
-  forward off the hip into a low cut under the shield's lower edge; 8-10.5 carries across; 10.5-13 back behind the shield;
-  13-22 walk home. Departure from the brief's wording: the Templar's hilt is 9 px long (a 5x5 pommel 4-9 px behind the
-  grip), so any blade laid level and pointing outward beside the body puts the pommel in the hip or chest (focus FAIL
-  1.9-2.0 px in every level variant tried). The wind-up therefore holds the blade upright, not laid back.
+- **attack_thrust (body), a covered stab.** 0-1.8 tell; 1.8-5 draw (sword level beside the shield's right edge, square);
+  4.6-6.8 short lead step, shield first; 5.6-7 stab past the shield rim, torso leaning in (lean 15-17) and turned so the
+  lead shoulder follows, shield rim dipping aside; 7-8.6 the point carries 1.8 px on past the impact; 8.6-10.5 snap back
+  behind the shield; 9.2-11.5 rear foot drags up; 12-22 walk home. Cape follow-through (cape_t2 swings 5-6 deg).
+- **attack_overhead (head), a hammer chop.** 0-2.6 brace; 1.5-4 sword raised upright beside the helm; 4-7.6 wind-up
+  hold with life (knees sink 0.6 px, hilt rises 1.6 px, blade tips 7 deg forward); 7.6-10 weight drops through both
+  knees; t10 the blade is still falling at 31 deg below level, edge leading, on the sword side (yaw -10); 10-12 it comes
+  to rest at waist height (hand y 13.6); 10-13 hold (3 ticks); 13-16.5 heavy rise behind the shield; 16-21 recover step.
+  The right pauldron is capped to slide at most 1.2 px (plan key `plate_slide`) and the head turns away at t9.5 so the
+  plate seats on the shoulder from t10.5.
+- **attack_low_cut (legs), a shield check and reap.** 0-1.5 tell; 1.5-3 the shield punches forward and up with the torso
+  turned shield-shoulder-in and leaning 19 deg behind it, held through the cut; 1.5-3.5 the sword hand drops low and wide
+  of the sword hip (hand y 13.8, elbow out) and the blade lays down and back past the rear leg (pitch 14 below level,
+  pointing back, tip y 9, clear of the ground and the cape); 5.6-7.8 long reaching step; 6.4-8 the reap swings low and
+  round from the sword side with the hips turning, the hand wide (x -12) so the long hilt stays clear of the body; t8
+  shin-height cut under the shield's lower edge (tip y 9.5); 8-11 carries across past the shield side, low (tip x +13.8,
+  y 9); 8.6-10.9 the rear foot takes a clear step (lifts 1.2 px) and plants; 11-15 the blade comes back across low and out to the sword side, then up behind the shield; 13-22
+  walk home. The blade goes out and comes back by the same low path on the sword side (path twist 32 deg, was 158), so
+  the wrist never turns past 111 deg from the guard and the clip ends on the guard's own angles. The load uses the down-and-back option of the brief, with the hand outside the hip (both together): the 9 px
+  hilt only clears the hip and chest when the hand is wide.
 
-Impact point vs the present clip (exported file, probe): thrust t7 z 32.3 vs 31.6 (y 14.1 vs 14.3); overhead t10 z 30.6
-vs 30.9 (y 17.7, head line; the present clip's tip is already at 6.9); low cut t8 z 32.9 vs 33.6 (y 10.0 vs 9.7).
+Impact point vs the present clip (exported file, probe): thrust t7 z 32.4 vs 31.6 (y 13.9 vs 14.3); overhead t10 z 29.7
+vs 30.9 (y 5.7 vs 6.9; the arm cannot lift the cutting part to head height with the tip on that line, so it lands at the
+family's height); low cut t8 z 32.4 vs 33.6 (y 9.5 vs 9.7). Weapon direction at the impact vs the family: 21 / 17 / 17 deg.
 
 Difference from the present clip (2 of 4 must reach 15 deg or 2 px):
 
 | attack | phase (tick) | hips px / yaw deg | torso yaw / lean deg | weapon dir deg | lead foot px | differ |
 |---|---|---|---|---|---|---|
 | thrust | wind-up (5) | 1.1 / 12 | 23 / 12 | 44 | 0.1 | 2/4 |
-| thrust | impact (7) | 1.1 / 6 | 31 / 4 | 21 | 0.8 | 2/4 |
-| thrust | follow (8) | 2.3 / 8 | 34 / 6 | 25 | 0.8 | 3/4 |
-| overhead | wind-up (8) | 1.1 / 12 | 19 / 10 | 71 | 1.8 | 2/4 |
-| overhead | impact (10) | 1.1 / 6 | 17 / 0 | 30 | 3.1 | 3/4 |
-| overhead | follow (12) | 1.4 / 8 | 22 / 5 | 18 | 3.1 | 3/4 |
-| low_cut | wind-up (5) | 0.7 / 11 | 23 / 17 | 32 | 0.6 | 2/4 |
-| low_cut | impact (8) | 2.0 / 8 | 21 / 4 | 4 | 3.8 | 3/4 |
-| low_cut | follow (10) | 1.1 / 10 | 33 / 3 | 27 | 3.8 | 3/4 |
+| thrust | impact (7) | 1.0 / 6 | 20 / 7 | 21 | 0.8 | 2/4 |
+| thrust | follow (8) | 1.7 / 7 | 23 / 7 | 25 | 0.8 | 2/4 |
+| overhead | wind-up (8) | 1.0 / 12 | 20 / 9 | 100 | 1.8 | 2/4 |
+| overhead | impact (10) | 1.0 / 6 | 17 / 5 | 17 | 3.1 | 3/4 |
+| overhead | follow (12) | 0.6 / 8 | 22 / 8 | 12 | 3.1 | 2/4 |
+| low_cut | wind-up (5) | 0.8 / 11 | 22 / 1 | 98 | 0.6 | 2/4 |
+| low_cut | impact (8) | 2.6 / 8 | 23 / 2 | 17 | 3.8 | 4/4 |
+| low_cut | follow (10) | 1.2 / 10 | 35 / 10 | 20 | 3.8 | 3/4 |
 
-Checks: scorecard --troop sentinel exit 0 (41 clips, 0 fail; arms 121 / 116 / 122 of 136.2 deg/100ms). focus_check
---troop sentinel exit 0, 0 FAIL; `python -m unittest discover -s tools/anim` 161 tests OK; no row on any other clip added, removed or changed against the committed asset. Six-clip
-WARNs: thrust weapon_in_body 1.3 t6 (helm), phases 7.44 (stops at the impact), secondary_life 3.01; overhead
-weapon_in_body 1.13 t18.25 (helm), limb_in_body 1.32 t8, floor 0.79 t11, armour_clip 1.76 t7.5; low cut weapon_in_body
-0.78 t9.75 (shin), floor 0.74 t8.25, secondary_life 3.73. Baseline drift: a whole-file rebuild with no edits changes
-only the cape rotation of hit_pulled, stun_upper, hit_medium_back and hit_block (reproduced twice); the committed out/ was
-kept for those and the six clips were rebuilt with `--only`. A whole-file run with step 8 gives the same six clips.
+Checks (fix 1): scorecard --troop sentinel exit 0 (41 clips, 0 fail; overhead right_hand peak 128 of 136.2 deg/100ms,
+low cut legs 49 of 51.4). focus_check --troop sentinel exit 0, 0 FAIL; only the six clips' rows changed against the
+round-0 run. Six-clip WARNs: thrust weapon_in_body 1.36 t6.25 (helm; the phases and secondary_life WARNs are gone);
+overhead weapon_in_body 1.17 t17.75 (helm), limb_in_body 1.26 t7.25, floor 0.79 t11.5 (knee), armour_clip 1.83 t8;
+low cut weapon_in_body 1.4 t6.75 (pommel at the chest edge as the reap turns), limb_in_body 1.09 t11, floor 0.69 t9.5
+(knee; secondary_life gone). Built with `--only` over the committed out/ (the four drifted cape clips stay as committed).
 
-Open items: right pauldron slides 2.5 px off the helm around overhead t9.5-11 (its dark underside shows in the front and
-three-quarter views at t10-11); thrust has no follow-through by focus_check's phases rule (the snap back is the
-character); cape still on thrust and low cut (secondary_life WARN, cape keys are not authored); the low-cut wind-up holds
-the blade upright rather than laid back (hilt length, above).
+Open items: the right pauldron's underside still shows for about one tick at overhead t9-10 (front view) while the arm
+unwinds from the raised branch; it is seated from t10.5. Overhead impact is at the family's tip height, not head height.
