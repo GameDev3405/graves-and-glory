@@ -11,33 +11,33 @@ def where(*args):
     r = subprocess.run([sys.executable, str(TOOLS/'where.py'), *args], cwd=ROOT, capture_output=True, encoding='utf-8', errors='replace')
     return r.stdout, time.time()-t
 
-def _ref_secs():
-    # fixed CPU-bound reference workload, best of 3; ~0.2s on an idle machine
-    best = 9e9
-    for _ in range(3):
-        t = time.perf_counter(); s = 0
-        for i in range(3_000_000): s += i*i % 7
-        best = min(best, time.perf_counter()-t)
-    return best
-REF_IDLE, EXTRACT_LIMIT = 0.2, 30   # extract takes ~11s idle; limit is 30s idle
+# Wall-clock time is meaningless on a busy machine (other clients/sims made the extract take 55-150s), so the extract runs under a tiny
+# wrapper that reports its own CPU time (time.process_time, ~6.5s idle). That does not grow with load, but still grows with a real
+# algorithmic slowdown. The limit is ~3x the idle figure.
+EXTRACT_CPU_LIMIT = 20
+_CPU_WRAPPER = r'''import runpy, sys, time
+sys.argv = sys.argv[1:]
+try:
+    runpy.run_path(sys.argv[0], run_name='__main__')
+finally:
+    sys.stderr.write('\nCPU_SECS=%.3f\n' % time.process_time())
+'''
 
 class Where(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # always rebuild: the overlay must match this checkout's tools and sheet
-        ref_before = _ref_secs()
         cls.t = time.time()
-        r = subprocess.run([sys.executable, str(TOOLS/'where_extract.py')], cwd=ROOT, capture_output=True, encoding='utf-8', errors='replace')
+        r = subprocess.run([sys.executable, '-c', _CPU_WRAPPER, str(TOOLS/'where_extract.py')], cwd=ROOT, capture_output=True, encoding='utf-8', errors='replace')
         cls.extract_secs = time.time()-cls.t
-        # Wall-clock is meaningless on a busy machine (other clients/sims), so scale the limit by how much slower the same fixed
-        # workload runs right now (worse of before/after the extract). A real algorithmic slowdown still exceeds the scaled limit.
-        cls.extract_limit = EXTRACT_LIMIT * max(1.0, max(ref_before, _ref_secs())/REF_IDLE)
         cls.extract_out = r.stdout
+        m = re.search(r'CPU_SECS=([0-9.]+)', r.stderr)
+        cls.extract_cpu = float(m.group(1)) if m else float('inf')
         assert r.returncode == 0, r.stderr
         where('warmup')   # builds the AST index cache if it is missing
 
     def test_extract_is_fast_and_covers_every_troop_and_section(self):
-        self.assertLess(self.extract_secs, self.extract_limit, 'extract %.1fs, load-scaled limit %.1fs' % (self.extract_secs, self.extract_limit))
+        self.assertLess(self.extract_cpu, EXTRACT_CPU_LIMIT, 'extract used %.1fs CPU (wall %.1fs)' % (self.extract_cpu, self.extract_secs))
         import json
         o = json.loads((ROOT/'work'/'where'/'overlay.json').read_text(encoding='utf-8'))
         troops = [r['id'] for r in json.loads((ROOT/'sheets'/'design.json').read_text(encoding='utf-8'))['troops']]
