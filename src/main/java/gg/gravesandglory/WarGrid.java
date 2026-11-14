@@ -161,6 +161,7 @@ public final class WarGrid {
      */
     public static SortedMap<Integer, String> arrange(Map<Integer, String> table) {
         List<String> troops = new ArrayList<>(table.values());
+        troops.sort(Comparator.comparingInt(WarGrid::role).thenComparing(Comparator.naturalOrder())); // by role then id, so arranging an arranged banner changes nothing
         SortedMap<Integer, String> out = place(troops, WarGrid::role);
         return out.size() == troops.size() ? out : packed(troops, WarGrid::role);
     }

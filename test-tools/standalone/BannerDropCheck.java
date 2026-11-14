@@ -95,6 +95,9 @@ public final class BannerDropCheck {
         int mid = WarGrid.centreOut().get(0), second = WarGrid.centreOut().get(1);
         check(a.result().equals(new TreeMap<>(Map.of(WarGrid.index(mid, 0), shield, WarGrid.index(second, 0), shield, WarGrid.index(mid, 1), melee, WarGrid.index(mid, 2), ranged))), "Shields in front, then melee, then ranged, centred: " + a.result());
         check(!BannerDrop.arrange(a.result(), ALL).ok() && BannerDrop.arrange(a.result(), ALL).why().equals("Already in order"), "An arranged banner is refused as already in order");
+        var same = new TreeMap<Integer, String>(Map.of(0, "knight", 1, "sentinel", 2, "knight", 3, "sentinel", 4, "longbow"));
+        var once = BannerDrop.arrange(same, ALL).result();
+        check(!BannerDrop.arrange(once, ALL).ok(), "Two troops of one role in different kinds: arranging an arranged banner changes nothing, so the button goes inactive");
         check(!BannerDrop.arrange(new TreeMap<>(), ALL).ok(), "An empty banner has nothing to arrange");
         check(a.withBanner(2).command().equals("banner:arrange:2"), "withBanner addresses arrange: " + a.withBanner(2).command());
         // arrange never loses a troop, even when every rank would want its own rows

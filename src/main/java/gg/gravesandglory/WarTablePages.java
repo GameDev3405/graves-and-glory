@@ -53,7 +53,7 @@ final class WarTablePages {
     static final int REAR_DY = 300, SUB_DY = 48;
     static final int TABS_X = 20, TABS_Y = 313, ACTS_Y = 336, TAB_W = 68, TAB_H = 18, TAB_GAP = 6,
         GROUP_W = 50, GROUP_GAP = 4, MAIN_W = 124, MAIN_H = 24,
-        TOOL_Y = 30, TOOL_H = 16, ARRANGE_W = 88, CLEAR_W = 52, TOOL_GAP = 4,
+        TOOL_Y = 33, TOOL_H = 12, ARRANGE_W = 88, CLEAR_W = 52, TOOL_GAP = 4,
         PIN_PAD = 5, PIN_STEP = 11, PIN_LINES = 6, PIN_BTN_W = 80, PIN_BTN_H = 24;
     static final int CLASS_X = 760, CLASS_Y = 140, CLASS_STEP = 40, CLASS_W = 120, BONUS_Y = 374, BONUS_W = 144;
     /** What a seat click places when the Clear tag is armed: the server's word for an empty seat. */
@@ -727,10 +727,10 @@ final class WarTablePages {
         // The fast tools, right-aligned in the sheet's header row: Auto-arrange and Clear (two presses, like Delete).
         int toolsRight = sh[0] + SHEET_X + TABS_X + BANNER_PAPER_W, toolsY = sh[1] + SHEET_Y + TOOL_Y;
         var arrange = add("arrange", new UiButton(toolsRight - CLEAR_W - TOOL_GAP - ARRANGE_W, toolsY, ARRANGE_W, TOOL_H, Text.literal("Auto-arrange"), bb -> act("arrange"),
-            (g, x, y, w, h, hot) -> vellum(g, "arrange", x, y, w, h, "Auto-arrange", false)));
+            (g, x, y, w, h, hot) -> vellum(g, "arrange", x, y, w, h, "Auto-arrange", false, true)));
         arrange.setTooltip(Tooltip.of(Text.literal("Set the troops out: shields in front, then melee, then ranged and casters behind")));
         var clear = add("clear", new UiButton(toolsRight - CLEAR_W, toolsY, CLEAR_W, TOOL_H, Text.literal("Clear"), bb -> act("clear"),
-            (g, x, y, w, h, hot) -> vellum(g, "clear", x, y, w, h, clearArmed > ticks && clearArmedBanner == shownBanner() ? "Sure?" : "Clear", false)));
+            (g, x, y, w, h, hot) -> vellum(g, "clear", x, y, w, h, clearArmed > ticks && clearArmedBanner == shownBanner() ? "Sure?" : "Clear", false, true)));
         clear.setTooltip(Tooltip.of(Text.literal("Take every troop off this banner (press twice)")));
         // The pinned note's button (placed and shown by bannerTick while the profile holds an unread notice).
         var understood = add("understood", new UiButton(0, 0, PIN_BTN_W, PIN_BTN_H, Text.literal("Understood"), bb -> act("understood"),

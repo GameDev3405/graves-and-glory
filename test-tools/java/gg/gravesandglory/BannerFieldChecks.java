@@ -171,7 +171,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
             ||k.startsWith("army-")||k.startsWith("trait-")||k.equals("colour-label")||k.startsWith("price-")||k.equals("roll-empty")||k.equals("roll-hint")||k.equals("rename-help"))keys.add(k);
         for(var k:keys){var b=all.get(k);if(b[0]<0||b[1]<0||b[0]+b[2]>w||b[1]+b[3]>h)bad.add(k+" off the "+w+"x"+h+" canvas");}
         for(int i=0;i<keys.size();i++)for(int j=i+1;j<keys.size();j++)if(UiHomeChecks.overlap(all.get(keys.get(i)),all.get(keys.get(j))))bad.add(keys.get(i)+"/"+keys.get(j));
-        for(var k:keys)for(var e:UiPagesChecks.boxes(c).entrySet())if(!e.getKey().startsWith("cell-")&&!e.getKey().equals("gold-tip")&&!e.getKey().startsWith("row-")&&UiHomeChecks.overlap(all.get(k),e.getValue()))bad.add(k+" meets widget "+e.getKey());
+        for(var k:keys)for(var e:UiPagesChecks.boxes(c).entrySet())if(!e.getKey().startsWith("cell-")&&!e.getKey().equals("gold-tip")&&!e.getKey().startsWith("row-")&&!(k.equals("banner-note")&&e.getKey().equals("understood"))&&UiHomeChecks.overlap(all.get(k),e.getValue()))bad.add(k+" meets widget "+e.getKey());
         return bad;
     }
 
@@ -359,7 +359,7 @@ final class BannerFieldChecks implements Phase1Checks.Suite, Phase1Checks.Server
         if(k==0){ts=0;tAt=0;}
         int d=k-tAt;
         switch(ts){
-            case 0->{if(d==0)gilded(c);if(d>=6){ts=1;tAt=k+1;}}
+            case 0->{if(d==0){gilded(c);UiPagesChecks.click(c,UiPagesChecks.box(c,"tab-0"));}if(d>=6){ts=1;tAt=k+1;}}
             case 1->{if(d==0)UiPagesChecks.click(c,row(c,"knight"));if(d>=4){ts=2;tAt=k+1;}}
             case 2->{ // a lifted sentinel from cell 20 to the empty cell 30
                 if(d==0){sent0=WarTablePages.sent().size();press(c,20);drag(c,25);drag(c,30);}
