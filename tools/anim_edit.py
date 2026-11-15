@@ -195,7 +195,7 @@ def cmd_preview(args):
     print(f"""Renders {family} in the real game through the engine layers (no one-clip filter; find '{clip}' in the solo sheet).
 At most 1 client; check first that few Minecraft javas run; stop after 30 minutes. From a git bash in the repo root:
 
-  export JAVA_HOME="C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot"
+  export JAVA_HOME="C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.11.10-hotspot"
   G=$(ls -d ~/.gradle/wrapper/dists/gradle-8.8-bin/*/gradle-8.8/bin/gradle)
   export GRAVES_ROADMAP_TEST_ROOT="$PWD/work/grade-run"      # absolute, new and empty
   mkdir -p "$GRAVES_ROADMAP_TEST_ROOT"/{{run,evidence,runtime}}

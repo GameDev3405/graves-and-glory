@@ -16,7 +16,7 @@ def verify():
         names=pack.namelist()
         assert len(names)==len(set(names))
         index=json.loads(pack.read('modrinth.index.json'));validate_index(index)
-        assert index['versionId']==version() and index['dependencies']=={'minecraft':'1.20.1','fabric-loader':'0.16.14'}
+        assert index['versionId']==version() and index['dependencies']=={'minecraft':'1.21.1','fabric-loader':'0.19.5'}
         assert len(index['files'])==len(lock)
         for file in index['files']:
             row=lock[file['path']];data=resolve_local_path(ROOT,row['localPath']).read_bytes()

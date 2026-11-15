@@ -1,6 +1,6 @@
 # How to edit Graves and Glory
 
-Guide for people and AI helpers changing this project. Project root: `C:\Users\kortt\Melty\bannerbound`. Minecraft 1.20.1, Fabric Loader 0.16.14, Fabric API 0.92.2+1.20.1, Yarn mappings 1.20.1+build.10, Loom 1.7.4, Java 17 target.
+Guide for people and AI helpers changing this project. Project root: `C:\Users\kortt\Melty\bannerbound`. Minecraft 1.21.1, Fabric Loader 0.19.5, Fabric API 0.116.18+1.21.1, Yarn mappings 1.21.1+build.3, Loom 1.17.21, Java 21 target (1.21.1 port branch).
 
 ## 1. Rules to follow
 
@@ -152,7 +152,7 @@ python tools/export_server.py         -> dist/graves-and-glory-<version>-server.
 Never run migration experiments on a live player save. Back up after normal shutdown before deployment. The helper is exercised against temporary filesystem fixtures without launching Minecraft:
 
 ```
-javac --release 17 -d build/migration-checks src/main/java/gg/gravesandglory/LegacyDataMigration.java test-tools/standalone/LegacyDataMigrationCheck.java
+javac --release 21 -d build/migration-checks src/main/java/gg/gravesandglory/LegacyDataMigration.java test-tools/standalone/LegacyDataMigrationCheck.java
 java -cp build/migration-checks gg.gravesandglory.LegacyDataMigrationCheck
 python test-tools/standalone/test_release_integrity.py
 ```

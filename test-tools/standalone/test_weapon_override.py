@@ -43,7 +43,7 @@ class WeaponOverride(unittest.TestCase):
         look = (JAVA / 'LookPacks.java').read_text(encoding='utf8')
         adds = re.findall(r'out\.add\((EXCALIBUR|ARMORY|WEAPONS)\)', look)
         self.assertEqual(adds, ['EXCALIBUR', 'ARMORY', 'WEAPONS'], 'ours must come after (above) Excalibur')
-        self.assertIn('Excalibur_V1.20.zip', look)
+        self.assertIn('Excalibur_V1.21.1.zip', look)
         self.assertIn('CLIENT_STARTED.register(LookPacks::apply)', client)
 
     def test_excalibur_zip_name_matches_pin(self):

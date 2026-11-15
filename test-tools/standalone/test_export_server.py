@@ -165,10 +165,10 @@ class ServerKitChecks(unittest.TestCase):
 
     def test_readme_is_the_one_accurate_readme(self):
         readme=self.text('README.md')
-        for needle in ('Java 17','setup.ps1','start.ps1','stop.ps1','backup.ps1','update.ps1','25580','Read https://aka.ms/MinecraftEULA yourself'):
+        for needle in ('Java 21','setup.ps1','start.ps1','stop.ps1','backup.ps1','update.ps1','25580','Read https://aka.ms/MinecraftEULA yourself'):
             self.assertIn(needle,readme)
         self.assertIn('No script in this kit writes that line',readme)
-        for stale in ('Java 21','Starlink','candidate','server-port=25565','127.0.0.1:25565','overlay','setup-server','start-server','delete the extracted','tools/export_server.py'):
+        for stale in ('Java 17','Starlink','candidate','server-port=25565','127.0.0.1:25565','overlay','setup-server','start-server','delete the extracted','tools/export_server.py'):
             self.assertNotIn(stale,readme)
 
     def test_drifted_launcher_pin_stops_the_export(self):

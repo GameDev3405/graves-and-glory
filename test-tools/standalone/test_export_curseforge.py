@@ -66,8 +66,8 @@ class CurseForgeChecks(unittest.TestCase):
         manifest=export_curseforge.build_manifest(rows,entries,RELEASE)
         self.assertEqual(manifest['manifestType'],'minecraftModpack')
         self.assertEqual(manifest['manifestVersion'],1)
-        self.assertEqual(manifest['minecraft']['version'],'1.20.1')
-        self.assertEqual(manifest['minecraft']['modLoaders'],[{'id':'fabric-0.16.14','primary':True}])
+        self.assertEqual(manifest['minecraft']['version'],'1.21.1')
+        self.assertEqual(manifest['minecraft']['modLoaders'],[{'id':'fabric-0.19.5','primary':True}])
         self.assertEqual(manifest['version'],RELEASE);self.assertEqual(manifest['overrides'],'overrides')
         self.assertEqual(manifest['files'],[{'projectID':111,'fileID':2221,'required':True},{'projectID':112,'fileID':2222,'required':True}])
 

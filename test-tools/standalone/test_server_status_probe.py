@@ -18,8 +18,8 @@ def free_port():
         return s.getsockname()[1]
 
 
-def status_packet(max_players=None, protocol=763):
-    body = json.dumps({"version": {"name": "1.20.1", "protocol": protocol},
+def status_packet(max_players=None, protocol=767):
+    body = json.dumps({"version": {"name": "1.21.1", "protocol": protocol},
                        "players": {"max": max_players or probe.expected_max_players(), "online": 0}}).encode()
     payload = probe.varint(0) + probe.varint(len(body)) + body
     return probe.varint(len(payload)) + payload

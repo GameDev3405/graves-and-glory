@@ -16,7 +16,7 @@ def verify():
         assert len(names)==len(set(names))
         manifest=json.loads(pack.read('manifest.json'))
         assert manifest==build_manifest(rows,entries,release)
-        assert manifest['manifestType']=='minecraftModpack' and manifest['minecraft']['version']=='1.20.1'
+        assert manifest['manifestType']=='minecraftModpack' and manifest['minecraft']['version']=='1.21.1'
         pairs=[(f['projectID'],f['fileID']) for f in manifest['files']]
         listed,bundled_rows=split_rows(rows);bundled=check_bundled(bundled_rows,ROOT)
         assert len(pairs)==len(set(pairs))==len(listed) and all(f['required'] is True for f in manifest['files'])

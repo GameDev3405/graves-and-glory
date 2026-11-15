@@ -7,8 +7,8 @@ from release_config import ROOT, version, source_identity, validate_player_jar
 from release_files import resolve_local_path
 import build_skins
 
-FABRIC_URL='https://meta.fabricmc.net/v2/versions/loader/1.20.1/0.16.14/1.1.2/server/jar'
-FABRIC_SHA256='856a5f9fe4809ac1972778ff5bac71f8995b7ae0513caa6d0be94288b92cf113'
+FABRIC_URL='https://meta.fabricmc.net/v2/versions/loader/1.21.1/0.19.5/1.1.2/server/jar'
+FABRIC_SHA256='UNVERIFIED-pin-before-release'  # launcher hash not computed on port/tools (no downloads); keep in step with setup.ps1 and setup.sh
 # tools/server-kit/setup.ps1 and setup.sh carry these two values literally; export() refuses if they drift.
 KIT_SKIP={'.gitattributes'}
 KIT_REQUIRED={'README.md','setup.ps1','setup.sh','start.ps1','start.sh','stop.ps1','stop.sh','backup.ps1','backup.sh','restore.ps1','restore.sh',

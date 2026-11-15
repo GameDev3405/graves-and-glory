@@ -313,7 +313,7 @@ def ping_status(host, port, timeout=5.0):
     with socket.create_connection((host, port), timeout=timeout) as sock:
         sock.settimeout(timeout)
         h = b'localhost'
-        hello = _varint(0) + _varint(763) + _varint(len(h)) + h + struct.pack('>H', port) + _varint(1)
+        hello = _varint(0) + _varint(767) + _varint(len(h)) + h + struct.pack('>H', port) + _varint(1)
         sock.sendall(_varint(len(hello)) + hello + b'\x01\x00')
         length = _read_varint(sock)
         if length > 1 << 20:

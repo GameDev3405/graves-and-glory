@@ -18,7 +18,7 @@ EXCALIBUR = {'slug': 'excalibur', 'title': 'Excalibur', 'version': '1.0', 'fileN
 def archive(deps, version='0.5.0', extra=()):
     """A clean synthetic archive for deps: (names, texts)."""
     names = ['docs/LICENSE', 'docs/README.md', 'docs/AUDIO-CREDITS.md', 'docs/THIRD_PARTY.md', 'mods/graves-and-glory-%s.jar' % version,
-             'mods/fabric-api-0.92.2+1.20.1.jar', *extra]
+             'mods/fabric-api-0.116.18+1.21.1.jar', *extra]
     credits = 'Fabric API\nPixabay Content Licence\n' +''.join('## %s %s\nMaffhew CC BY-NC-ND\n' % (d['title'], d['version']) for d in deps)
     for d in deps:
         names.append('docs/third-party/%s/LICENSE' % d['slug'])
@@ -42,13 +42,13 @@ class PackagePolicyChecks(unittest.TestCase):
 
     def test_checked_in_platform_pins_are_exact(self):
         self.assertEqual(pin_errors(GRADLE), [])
-        for bad in ('0.92.2+1.20.1', '1.20.1'):
-            loose = GRADLE.replace("fabric-api:" + bad, "fabric-api:[0.92,)") if bad in GRADLE else GRADLE
+        for bad in ('0.116.18+1.21.1', '1.21.1'):
+            loose = GRADLE.replace("fabric-api:" + bad, "fabric-api:[0.116,)") if bad in GRADLE else GRADLE
             if loose != GRADLE:
                 self.assertTrue(pin_errors(loose))
                 break
-        self.assertTrue(pin_errors(GRADLE.replace("fabric-loader:0.16.14", "fabric-loader:0.16.+")))
-        self.assertTrue(pin_errors(GRADLE.replace("minecraft:1.20.1", "minecraft:1.20.1-SNAPSHOT")))
+        self.assertTrue(pin_errors(GRADLE.replace("fabric-loader:0.19.5", "fabric-loader:0.19.+")))
+        self.assertTrue(pin_errors(GRADLE.replace("minecraft:1.21.1", "minecraft:1.21.1-SNAPSHOT")))
 
     def test_every_pinned_dependency_has_sha_licence_and_source(self):
         for dep in DEPS:
@@ -65,7 +65,7 @@ class PackagePolicyChecks(unittest.TestCase):
         self.assertTrue(self.errors(DEPS, name='graves-and-glory-0.5.0-stopgap.zip'))
         self.assertTrue(self.errors(DEPS, extra=['mods/local-integration-DO-NOT-SHIP.jar']))
         self.assertTrue(self.errors(DEPS, extra=['mods/surprise.jar']))
-        self.assertTrue(self.errors(DEPS, drop=['mods/fabric-api-0.92.2+1.20.1.jar']))
+        self.assertTrue(self.errors(DEPS, drop=['mods/fabric-api-0.116.18+1.21.1.jar']))
 
     def test_every_third_party_file_needs_credit_and_licence(self):
         names, texts = archive(DEPS)

@@ -15,7 +15,7 @@ here="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$here" || exit 9
 # Other worktrees run servers too: refuse a port something already listens on.
 if netstat -ano 2>/dev/null | grep LISTENING | grep -qE "[:.]$port[[:space:]]"; then echo "port $port is in use; pick another"; exit 8; fi
-export JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"
+export JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot"
 G=$(ls -d ~/.gradle/wrapper/dists/gradle-8.8-bin/*/gradle-8.8/bin/gradle | head -1)
 root="$here/work/method/$name-$(date +%H%M%S)"
 mkdir -p "$root"
