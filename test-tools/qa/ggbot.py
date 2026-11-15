@@ -216,7 +216,7 @@ class Bot:
     def log(self, text):
         with self.lock:
             self.events.append((time.time(), text))
-        if self.trace:
+        if self.trace or text.startswith("could not handle"):  # handler errors always show: otherwise a decode bug looks like a hang
             print("[ggbot %s] %s" % (self.name, text), flush=True)
 
     # ---- framing ----
@@ -495,7 +495,8 @@ class Bot:
 
     def gate_events(self):
         with self.lock:
-            return [e for _, e in self.events if "release_check" in e or "login query" in e or "refused" in e or "channels" in e]
+            return [e for _, e in self.events if "release_check" in e or "login query" in e or "refused" in e or "channels" in e
+                    or e.startswith("could not handle")]
 
 
 # ---- self-test: a scripted fake server (framing and the phase machine only; not the real server's behaviour) ----
