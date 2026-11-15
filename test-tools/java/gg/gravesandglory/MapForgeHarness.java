@@ -75,8 +75,8 @@ public final class MapForgeHarness implements ClientModInitializer {
                 case "note"->log("note "+rest);
                 case "practice"->{var id=c.player.getUuid();log("practice round on map "+b.campaign.map);pause=200;
                     server.execute(()->{var p=server.getPlayerManager().getPlayer(id);if(p!=null){b.campaign.handle(p,"camp:practice");b.campaign.introUntil=b.time;}});}
-                case "mode"->{var id=c.player.getUuid();String mode=rest.trim();pause=20; // mode ID: the battle mode the next practice plays (the camp's own battlemode command, so a map that does not host it refuses)
-                    server.execute(()->{var p=server.getPlayerManager().getPlayer(id);if(p!=null)b.campaign.handle(p,"battlemode:"+mode);log("mode "+b.campaign.battleMode+" on map "+b.campaign.map);});}
+                case "mode"->{String mode=rest.trim();pause=20; // mode ID: the battle mode the next practice plays, when the map hosts it (set as the mode checks set it: the script's player leads no party)
+                    server.execute(()->{if(Modes.registered(mode)&&Modes.hosts(mode,b.campaign.map))b.campaign.battleMode=mode;log("mode "+b.campaign.battleMode+" on map "+b.campaign.map+(b.campaign.battleMode.equals(mode)?"":" (the map does not host "+mode+")"));});}
                 case "round"->log("round running "+b.running+" mode "+(b.mode==null?"-":b.mode.id())+" time "+b.time+" winner "+b.campaign.lastWinner+" scores "+b.scores[0]+"-"+b.scores[1]); // the round's state, for a script that plays one through
                 case "hudshot"->{String[] a=rest.trim().split("\\s+");
                     if(a.length!=7){end(c,false,"hudshot NAME x y z lookX lookY lookZ: "+line);return;}
