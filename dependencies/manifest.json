@@ -2,14 +2,14 @@
   {
     "slug": "iris",
     "title": "Iris Shaders",
-    "version": "1.7.6+1.20.1",
-    "versionId": "s5eFLITc",
-    "path": "dependencies/mods/iris-1.7.6+mc1.20.1.jar",
-    "fileName": "iris-1.7.6+mc1.20.1.jar",
-    "size": 2726899,
-    "sha256": "9eb15e563e0c9ae6eff15b7863f8432dd290cf9f724c7373e9b15b14aa829ed5",
-    "sha512": "f1337b0441c31269bd3bfcb28647d521326a83e73128c1ac8d065615f8a5a4ca1e8c96a468b356584236ece5b164ec8d8a52b1878064f4e391ecf4f32885e301",
-    "download": "https://cdn.modrinth.com/data/YL57xq9U/versions/s5eFLITc/iris-1.7.6%2Bmc1.20.1.jar",
+    "version": "1.8.14-beta.1+1.21.1-fabric",
+    "versionId": "bAo1Qhte",
+    "path": "dependencies/mods/iris-fabric-1.8.14-beta.1+mc1.21.1.jar",
+    "fileName": "iris-fabric-1.8.14-beta.1+mc1.21.1.jar",
+    "size": 2791343,
+    "sha256": null,
+    "sha512": "a7fbb629793c52f0be8b049f787cb598879239b1ad8e1de62e103c8b9efff140e3232b93ef1f14e505d262897d8cf9505b1126396429ad4056bff969c8674e52",
+    "download": "https://cdn.modrinth.com/data/YL57xq9U/versions/bAo1Qhte/iris-fabric-1.8.14-beta.1%2Bmc1.21.1.jar",
     "project": "https://modrinth.com/mod/iris",
     "source": "https://github.com/IrisShaders/Iris",
     "licenseMetadata": {
@@ -20,117 +20,29 @@
     "notices": {
       "LICENSE": "                   GNU LESSER GENERAL PUBLIC LICENSE\n                       Version 3, 29 June 2007\n\n Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>\n Everyone is permitted to copy and distribute verbatim copies\n of this license document, but changing it is not allowed.\n\n\n  This version of the GNU Lesser General Public License incorporates\nthe terms and conditions of version 3 of the GNU General Public\nLicense, supplemented by the additional permissions listed below.\n\n  0. Additional Definitions.\n\n  As used herein, \"this License\" refers to version 3 of the GNU Lesser\nGeneral Public License, and the \"GNU GPL\" refers to version 3 of the GNU\nGeneral Public License.\n\n  \"The Library\" refers to a covered work governed by this License,\nother than an Application or a Combined Work as defined below.\n\n  An \"Application\" is any work that makes use of an interface provided\nby the Library, but which is not otherwise based on the Library.\nDefining a subclass of a class defined by the Library is deemed a mode\nof using an interface provided by the Library.\n\n  A \"Combined Work\" is a work produced by combining or linking an\nApplication with the Library.  The particular version of the Library\nwith which the Combined Work was made is also called the \"Linked\nVersion\".\n\n  The \"Minimal Corresponding Source\" for a Combined Work means the\nCorresponding Source for the Combined Work, excluding any source code\nfor portions of the Combined Work that, considered in isolation, are\nbased on the Application, and not on the Linked Version.\n\n  The \"Corresponding Application Code\" for a Combined Work means the\nobject code and/or source code for the Application, including any data\nand utility programs needed for reproducing the Combined Work from the\nApplication, but excluding the System Libraries of the Combined Work.\n\n  1. Exception to Section 3 of the GNU GPL.\n\n  You may convey a covered work under sections 3 and 4 of this License\nwithout being bound by section 3 of the GNU GPL.\n\n  2. Conveying Modified Versions.\n\n  If you modify a copy of the Library, and, in your modifications, a\nfacility refers to a function or data to be supplied by an Application\nthat uses the facility (other than as an argument passed when the\nfacility is invoked), then you may convey a copy of the modified\nversion:\n\n   a) under this License, provided that you make a good faith effort to\n   ensure that, in the event an Application does not supply the\n   function or data, the facility still operates, and performs\n   whatever part of its purpose remains meaningful, or\n\n   b) under the GNU GPL, with none of the additional permissions of\n   this License applicable to that copy.\n\n  3. Object Code Incorporating Material from Library Header Files.\n\n  The object code form of an Application may incorporate material from\na header file that is part of the Library.  You may convey such object\ncode under terms of your choice, provided that, if the incorporated\nmaterial is not limited to numerical parameters, data structure\nlayouts and accessors, or small macros, inline functions and templates\n(ten or fewer lines in length), you do both of the following:\n\n   a) Give prominent notice with each copy of the object code that the\n   Library is used in it and that the Library and its use are\n   covered by this License.\n\n   b) Accompany the object code with a copy of the GNU GPL and this license\n   document.\n\n  4. Combined Works.\n\n  You may convey a Combined Work under terms of your choice that,\ntaken together, effectively do not restrict modification of the\nportions of the Library contained in the Combined Work and reverse\nengineering for debugging such modifications, if you also do each of\nthe following:\n\n   a) Give prominent notice with each copy of the Combined Work that\n   the Library is used in it and that the Library and its use are\n   covered by this License.\n\n   b) Accompany the Combined Work with a copy of the GNU GPL and this license\n   document.\n\n   c) For a Combined Work that displays copyright notices during\n   execution, include the copyright notice for the Library among\n   these notices, as well as a reference directing the user to the\n   copies of the GNU GPL and this license document.\n\n   d) Do one of the following:\n\n       0) Convey the Minimal Corresponding Source under the terms of this\n       License, and the Corresponding Application Code in a form\n       suitable for, and under terms that permit, the user to\n       recombine or relink the Application with a modified version of\n       the Linked Version to produce a modified Combined Work, in the\n       manner specified by section 6 of the GNU GPL for conveying\n       Corresponding Source.\n\n       1) Use a suitable shared library mechanism for linking with the\n       Library.  A suitable mechanism is one that (a) uses at run time\n       a copy of the Library already present on the user's computer\n       system, and (b) will operate properly with a modified version\n       of the Library that is interface-compatible with the Linked\n       Version.\n\n   e) Provide Installation Information, but only if you would otherwise\n   be required to provide such information under section 6 of the\n   GNU GPL, and only to the extent that such information is\n   necessary to install and execute a modified version of the\n   Combined Work produced by recombining or relinking the\n   Application with a modified version of the Linked Version. (If\n   you use option 4d0, the Installation Information must accompany\n   the Minimal Corresponding Source and Corresponding Application\n   Code. If you use option 4d1, you must provide the Installation\n   Information in the manner specified by section 6 of the GNU GPL\n   for conveying Corresponding Source.)\n\n  5. Combined Libraries.\n\n  You may place library facilities that are a work based on the\nLibrary side by side in a single library together with other library\nfacilities that are not Applications and are not covered by this\nLicense, and convey such a combined library under terms of your\nchoice, if you do both of the following:\n\n   a) Accompany the combined library with a copy of the same work based\n   on the Library, uncombined with any other library facilities,\n   conveyed under the terms of this License.\n\n   b) Give prominent notice with the combined library that part of it\n   is a work based on the Library, and explaining where to find the\n   accompanying uncombined form of the same work.\n\n  6. Revised Versions of the GNU Lesser General Public License.\n\n  The Free Software Foundation may publish revised and/or new versions\nof the GNU Lesser General Public License from time to time. Such new\nversions will be similar in spirit to the present version, but may\ndiffer in detail to address new problems or concerns.\n\n  Each version is given a distinguishing version number. If the\nLibrary as you received it specifies that a certain numbered version\nof the GNU Lesser General Public License \"or any later version\"\napplies to it, you have the option of following the terms and\nconditions either of that published version or of any later version\npublished by the Free Software Foundation. If the Library as you\nreceived it does not specify a version number of the GNU Lesser\nGeneral Public License, you may choose any version of the GNU Lesser\nGeneral Public License ever published by the Free Software Foundation.\n\n  If the Library as you received it specifies that a proxy can decide\nwhether future versions of the GNU Lesser General Public License shall\napply, that proxy's public statement of acceptance of any version is\npermanent authorization for you to choose that version for the\nLibrary."
     },
-    "manifest": {
-      "schemaVersion": 1,
-      "id": "iris",
-      "version": "1.7.6+mc1.20.1",
-      "name": "Iris",
-      "description": "A modern shaders mod for Minecraft intended to be compatible with existing OptiFine shader packs",
-      "authors": [
-        "coderbot",
-        "IMS212",
-        "Justsnoopy30",
-        "FoundationGames"
-      ],
-      "contact": {
-        "homepage": "https://github.com/IrisShaders/Iris",
-        "sources": "https://github.com/IrisShaders/Iris.git",
-        "issues": "https://github.com/IrisShaders/Iris/issues"
-      },
-      "license": "LGPL-3.0-only",
-      "icon": "assets/iris/iris-logo.png",
-      "environment": "client",
-      "entrypoints": {
-        "modmenu": [
-          "net.irisshaders.iris.compat.modmenu.ModMenuIntegration"
-        ]
-      },
-      "mixins": [
-        "mixins.iris.json",
-        "iris-batched-entity-rendering.mixins.json",
-        "mixins.iris.fantastic.json",
-        "mixins.iris.vertexformat.json",
-        "mixins.iris.bettermipmaps.json",
-        "mixins.iris.compat.indigo.json",
-        "mixins.iris.compat.sodium.json",
-        "mixins.iris.compat.indium.json",
-        "mixins.iris.fixes.maxfpscrash.json"
-      ],
-      "accessWidener": "iris.accesswidener",
-      "depends": {
-        "fabricloader": ">=0.12.3",
-        "minecraft": [
-          "1.20.1"
-        ],
-        "sodium": [
-          "0.5.x"
-        ]
-      },
-      "breaks": {
-        "iris-explorer": "*",
-        "originsenhanced": "<=1.3.2",
-        "colormatic": "<=3.0.0",
-        "bedrockwaters": "<=1.6.0",
-        "batchedentityrendering": "*",
-        "canvas": "*",
-        "optifabric": "*",
-        "worldeditcui": "<1.18.1",
-        "physicsmod": "<=3.0.13",
-        "distanthorizons": "<=2.0.1",
-        "immersive_portals": "<=1.4.2"
-      },
-      "custom": {
-        "sodium:options": {
-          "mixin.features.render.world.sky": false,
-          "mixin.features.render.entity": false,
-          "mixin.features.render.gui.font": false
-        },
-        "mc-publish": {
-          "loaders": [
-            "fabric",
-            "quilt"
-          ]
-        }
-      },
-      "jars": [
-        {
-          "file": "META-INF/jars/antlr4-runtime-4.13.1.jar"
-        },
-        {
-          "file": "META-INF/jars/fabric-api-base-0.4.31+1802ada577.jar"
-        },
-        {
-          "file": "META-INF/jars/fabric-key-binding-api-v1-1.0.37+1802ada577.jar"
-        },
-        {
-          "file": "META-INF/jars/glsl-transformer-2.0.1.jar"
-        },
-        {
-          "file": "META-INF/jars/jcpp-1.4.14.jar"
-        }
-      ]
-    },
+    "manifest": null,
     "dependencies": [
       {
-        "version_id": "ryOMVRuG",
+        "version_id": "SMxNOGZ6",
         "project_id": "AANobbMI",
         "file_name": null,
         "dependency_type": "required"
       }
     ],
-    "status": "candidate - requires integration testing and source/notice packaging"
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download",
+    "modrinthPublished": "2026-06-13"
   },
   {
     "slug": "sodium",
     "title": "Sodium",
-    "version": "mc1.20.1-0.5.13-fabric",
-    "versionId": "OihdIimA",
-    "path": "dependencies/mods/sodium-fabric-0.5.13+mc1.20.1.jar",
-    "fileName": "sodium-fabric-0.5.13+mc1.20.1.jar",
-    "size": 971552,
-    "sha256": "688c26029ce69f0b1f7cf936866656ca6723228ac46c4aef5b5f793b1e6abd22",
-    "sha512": "81c64f9c2d3402dfa43ee54d8f5a054f5243bfb08984e3addcab9fe885073c79c43c1c8c41e8f30b625d26a656f82a8e5f370bbbbf222ff1c08f4b324edb7ea4",
-    "download": "https://cdn.modrinth.com/data/AANobbMI/versions/OihdIimA/sodium-fabric-0.5.13%2Bmc1.20.1.jar",
+    "version": "mc1.21.1-0.8.13-fabric",
+    "versionId": "SMxNOGZ6",
+    "path": "dependencies/mods/sodium-fabric-0.8.13+mc1.21.1.jar",
+    "fileName": "sodium-fabric-0.8.13+mc1.21.1.jar",
+    "size": 1574609,
+    "sha256": null,
+    "sha512": "8614a374593698069a80ac74de8cd9c28f3928d16819a0e0d6320b538e823f7e54e8be06d5ea5a9c268beb0e02073209d1f831a02dede851588b972367680853",
+    "download": "https://cdn.modrinth.com/data/AANobbMI/versions/SMxNOGZ6/sodium-fabric-0.8.13%2Bmc1.21.1.jar",
     "project": "https://modrinth.com/mod/sodium",
     "source": "https://github.com/CaffeineMC/sodium",
     "licenseMetadata": {
@@ -141,140 +53,22 @@
     "notices": {
       "LICENSE.md": "# PolyForm Shield License 1.0.0\n\n<https://polyformproject.org/licenses/shield/1.0.0>\n\n## Acceptance\n\nIn order to get any license under these terms, you must agree\nto them as both strict obligations and conditions to all\nyour licenses.\n\n## Copyright License\n\nThe licensor grants you a copyright license for the\nsoftware to do everything you might do with the software\nthat would otherwise infringe the licensor's copyright\nin it for any permitted purpose.  However, you may\nonly distribute the software according to [Distribution\nLicense](#distribution-license) and make changes or new works\nbased on the software according to [Changes and New Works\nLicense](#changes-and-new-works-license).\n\n## Distribution License\n\nThe licensor grants you an additional copyright license\nto distribute copies of the software.  Your license\nto distribute covers distributing the software with\nchanges and new works permitted by [Changes and New Works\nLicense](#changes-and-new-works-license).\n\n## Notices\n\nYou must ensure that anyone who gets a copy of any part of\nthe software from you also gets a copy of these terms or the\nURL for them above, as well as copies of any plain-text lines\nbeginning with `Required Notice:` that the licensor provided\nwith the software.  For example:\n\n> Required Notice: Copyright Yoyodyne, Inc. (http://example.com)\n\n## Changes and New Works License\n\nThe licensor grants you an additional copyright license to\nmake changes and new works based on the software for any\npermitted purpose.\n\n## Patent License\n\nThe licensor grants you a patent license for the software that\ncovers patent claims the licensor can license, or becomes able\nto license, that you would infringe by using the software.\n\n## Noncompete\n\nAny purpose is a permitted purpose, except for providing any\nproduct that competes with the software or any product the\nlicensor or any of its affiliates provides using the software.\n\n## Competition\n\nGoods and services compete even when they provide functionality\nthrough different kinds of interfaces or for different technical\nplatforms.  Applications can compete with services, libraries\nwith plugins, frameworks with development tools, and so on,\neven if they're written in different programming languages\nor for different computer architectures.  Goods and services\ncompete even when provided free of charge.  If you market a\nproduct as a practical substitute for the software or another\nproduct, it definitely competes.\n\n## New Products\n\nIf you are using the software to provide a product that does\nnot compete, but the licensor or any of its affiliates brings\nyour product into competition by providing a new version of\nthe software or another product using the software, you may\ncontinue using versions of the software available under these\nterms beforehand to provide your competing product, but not\nany later versions.\n\n## Discontinued Products\n\nYou may begin using the software to compete with a product\nor service that the licensor or any of its affiliates has\nstopped providing, unless the licensor includes a plain-text\nline beginning with `Licensor Line of Business:` with the\nsoftware that mentions that line of business.  For example:\n\n> Licensor Line of Business: YoyodyneCMS Content Management\nSystem (http://example.com/cms)\n\n## Sales of Business\n\nIf the licensor or any of its affiliates sells a line of\nbusiness developing the software or using the software\nto provide a product, the buyer can also enforce\n[Noncompete](#noncompete) for that product.\n\n## Fair Use\n\nYou may have \"fair use\" rights for the software under the\nlaw. These terms do not limit them.\n\n## No Other Rights\n\nThese terms do not allow you to sublicense or transfer any of\nyour licenses to anyone else, or prevent the licensor from\ngranting licenses to anyone else.  These terms do not imply\nany other licenses.\n\n## Patent Defense\n\nIf you make any written claim that the software infringes or\ncontributes to infringement of any patent, your patent license\nfor the software granted under these terms ends immediately. If\nyour company makes such a claim, your patent license ends\nimmediately for work on behalf of your company.\n\n## Violations\n\nThe first time you are notified in writing that you have\nviolated any of these terms, or done anything with the software\nnot covered by your licenses, your licenses can nonetheless\ncontinue if you come into full compliance with these terms,\nand take practical steps to correct past violations, within\n32 days of receiving notice.  Otherwise, all your licenses\nend immediately.\n\n## No Liability\n\n***As far as the law allows, the software comes as is, without\nany warranty or condition, and the licensor will not be liable\nto you for any damages arising out of these terms or the use\nor nature of the software, under any kind of legal claim.***\n\n## Definitions\n\nThe **licensor** is the individual or entity offering these\nterms, and the **software** is the software the licensor makes\navailable under these terms.\n\nA **product** can be a good or service, or a combination\nof them.\n\n**You** refers to the individual or entity agreeing to these\nterms.\n\n**Your company** is any legal entity, sole proprietorship,\nor other kind of organization that you work for, plus all\nits affiliates.\n\n**Affiliates** means the other organizations than an\norganization has control over, is under the control of, or is\nunder common control with.\n\n**Control** means ownership of substantially all the assets of\nan entity, or the power to direct its management and policies\nby vote, contract, or otherwise.  Control can be direct or\nindirect.\n\n**Your licenses** are all the licenses granted to you for the\nsoftware under these terms.\n\n**Use** means anything you do with the software requiring one\nof your licenses.\n"
     },
-    "manifest": {
-      "schemaVersion": 1,
-      "id": "sodium",
-      "version": "0.5.13+mc1.20.1",
-      "name": "Sodium",
-      "description": "Sodium is a powerful rendering engine for Minecraft which greatly improves frame rates and micro-stutter, while fixing many graphical issues",
-      "authors": [
-        {
-          "name": "JellySquid (jellysquid3)",
-          "contact": {
-            "email": "jellysquid@pm.me",
-            "homepage": "https://jellysquid.me"
-          }
-        }
-      ],
-      "contributors": [
-        "IMS212",
-        "bytzo",
-        "PepperCode1",
-        "FlashyReese",
-        "altrisi",
-        "Grayray75",
-        "Madis0",
-        "Johni0702",
-        "comp500",
-        "coderbot16",
-        "Moulberry",
-        "MCRcortex",
-        "Altirix",
-        "embeddedt",
-        "pajicadvance",
-        "Kroppeb",
-        "douira",
-        "burgerindividual",
-        "TwistedZero",
-        "Leo40Git",
-        "haykam821",
-        "muzikbike"
-      ],
-      "contact": {
-        "homepage": "https://github.com/CaffeineMC/sodium-fabric",
-        "sources": "https://github.com/CaffeineMC/sodium-fabric",
-        "issues": "https://github.com/CaffeineMC/sodium-fabric/issues"
-      },
-      "license": "Polyform-Shield-1.0.0",
-      "icon": "assets/sodium/icon.png",
-      "environment": "client",
-      "entrypoints": {
-        "client": [
-          "me.jellysquid.mods.sodium.client.SodiumClientMod"
-        ],
-        "preLaunch": [
-          "me.jellysquid.mods.sodium.client.SodiumPreLaunch"
-        ]
-      },
-      "custom": {
-        "fabric-renderer-api-v1:contains_renderer": true,
-        "modmenu": {
-          "links": {
-            "modmenu.donate": "https://caffeinemc.net/donate",
-            "modmenu.discord": "https://caffeinemc.net/discord",
-            "modmenu.github_releases": "https://github.com/CaffeineMC/sodium-fabric/releases",
-            "modmenu.kofi": "https://caffeinemc.net/donate",
-            "modmenu.modrinth": "https://modrinth.com/mod/sodium"
-          }
-        }
-      },
-      "accessWidener": "sodium.accesswidener",
-      "mixins": [
-        "sodium.mixins.json"
-      ],
-      "depends": {
-        "minecraft": "1.20.1",
-        "fabricloader": ">=0.12.0",
-        "fabric-rendering-data-attachment-v1": ">=0.1",
-        "fabric-rendering-fluids-v1": ">=0.1"
-      },
-      "breaks": {
-        "optifabric": "*",
-        "canvas": "*",
-        "sodium-blendingregistry": "*",
-        "ocrenderfix_sodium": "*",
-        "betterfpsdist": "<1.20.1-3.8",
-        "bobby": "<5.0.1",
-        "cauldron_dyeing": "<1.0.11",
-        "cullleaves": "<=3.1.0",
-        "custom_hud": "<=3.1.0+1.20",
-        "dashloader": "<5.0.0-beta.2",
-        "farsight": "<1.20.1-4.0",
-        "fluidvoidfading": "<1.1.2",
-        "iceberg": "<1.1.14",
-        "iris": "<1.7.6",
-        "immersive_portals": "<=5.1.3",
-        "indium": "<1.0.36",
-        "notenoughcrashes": "<4.4.6",
-        "noxesium": "<1.0.2",
-        "rayon": "<=1.7.2+1.20.1",
-        "reeses-sodium-options": "<1.7.1",
-        "sodium-extra": "<0.5.4",
-        "sspb": "<3.2.0",
-        "supplementaries": "<=1.20-2.7.32"
-      },
-      "jars": [
-        {
-          "file": "META-INF/jars/fabric-api-base-0.4.31+1802ada577.jar"
-        },
-        {
-          "file": "META-INF/jars/fabric-block-view-api-v2-1.0.1+1802ada577.jar"
-        },
-        {
-          "file": "META-INF/jars/fabric-rendering-data-attachment-v1-0.3.37+92a0d36777.jar"
-        },
-        {
-          "file": "META-INF/jars/fabric-rendering-fluids-v1-3.0.28+1802ada577.jar"
-        },
-        {
-          "file": "META-INF/jars/fabric-resource-loader-v0-0.11.11+fb82e9d777.jar"
-        }
-      ]
-    },
+    "manifest": null,
     "dependencies": [],
-    "status": "candidate - requires integration testing and source/notice packaging"
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download",
+    "modrinthPublished": "2026-08-28"
   },
   {
     "slug": "lithium",
     "title": "Lithium",
-    "version": "mc1.20.1-0.11.4-fabric",
-    "versionId": "iEcXOkz4",
-    "path": "dependencies/mods/lithium-fabric-mc1.20.1-0.11.4.jar",
-    "fileName": "lithium-fabric-mc1.20.1-0.11.4.jar",
-    "size": 691483,
-    "sha256": "76133efe92aea907cf75562d9e26517deb170e2580e1ecd4979da2c8902de782",
-    "sha512": "31938b7e849609892ffa1710e41f2e163d11876f824452540658c4b53cd13c666dbdad8d200989461932bd9952814c5943e64252530c72bdd5d8641775151500",
-    "download": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/iEcXOkz4/lithium-fabric-mc1.20.1-0.11.4.jar",
+    "version": "mc1.21.1-0.15.4-fabric",
+    "versionId": "N08Z8wog",
+    "path": "dependencies/mods/lithium-fabric-0.15.4+mc1.21.1.jar",
+    "fileName": "lithium-fabric-0.15.4+mc1.21.1.jar",
+    "size": 797454,
+    "sha256": null,
+    "sha512": "182064b00e6315e2255b857eaab8eb759e6b042ebd4cc8b855ff0d93f875a5a7188fac49f878d7b29d4ef7e6b6341190ad7f6f6f39f4a6d2c62003468b08e4c6",
+    "download": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/N08Z8wog/lithium-fabric-0.15.4%2Bmc1.21.1.jar",
     "project": "https://modrinth.com/mod/lithium",
     "source": "https://github.com/caffeinemc/lithium-fabric",
     "licenseMetadata": {
@@ -285,55 +79,22 @@
     "notices": {
       "LICENSE.txt": "                   GNU LESSER GENERAL PUBLIC LICENSE\n                       Version 3, 29 June 2007\n\n Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>\n Everyone is permitted to copy and distribute verbatim copies\n of this license document, but changing it is not allowed.\n\n\n  This version of the GNU Lesser General Public License incorporates\nthe terms and conditions of version 3 of the GNU General Public\nLicense, supplemented by the additional permissions listed below.\n\n  0. Additional Definitions.\n\n  As used herein, \"this License\" refers to version 3 of the GNU Lesser\nGeneral Public License, and the \"GNU GPL\" refers to version 3 of the GNU\nGeneral Public License.\n\n  \"The Library\" refers to a covered work governed by this License,\nother than an Application or a Combined Work as defined below.\n\n  An \"Application\" is any work that makes use of an interface provided\nby the Library, but which is not otherwise based on the Library.\nDefining a subclass of a class defined by the Library is deemed a mode\nof using an interface provided by the Library.\n\n  A \"Combined Work\" is a work produced by combining or linking an\nApplication with the Library.  The particular version of the Library\nwith which the Combined Work was made is also called the \"Linked\nVersion\".\n\n  The \"Minimal Corresponding Source\" for a Combined Work means the\nCorresponding Source for the Combined Work, excluding any source code\nfor portions of the Combined Work that, considered in isolation, are\nbased on the Application, and not on the Linked Version.\n\n  The \"Corresponding Application Code\" for a Combined Work means the\nobject code and/or source code for the Application, including any data\nand utility programs needed for reproducing the Combined Work from the\nApplication, but excluding the System Libraries of the Combined Work.\n\n  1. Exception to Section 3 of the GNU GPL.\n\n  You may convey a covered work under sections 3 and 4 of this License\nwithout being bound by section 3 of the GNU GPL.\n\n  2. Conveying Modified Versions.\n\n  If you modify a copy of the Library, and, in your modifications, a\nfacility refers to a function or data to be supplied by an Application\nthat uses the facility (other than as an argument passed when the\nfacility is invoked), then you may convey a copy of the modified\nversion:\n\n   a) under this License, provided that you make a good faith effort to\n   ensure that, in the event an Application does not supply the\n   function or data, the facility still operates, and performs\n   whatever part of its purpose remains meaningful, or\n\n   b) under the GNU GPL, with none of the additional permissions of\n   this License applicable to that copy.\n\n  3. Object Code Incorporating Material from Library Header Files.\n\n  The object code form of an Application may incorporate material from\na header file that is part of the Library.  You may convey such object\ncode under terms of your choice, provided that, if the incorporated\nmaterial is not limited to numerical parameters, data structure\nlayouts and accessors, or small macros, inline functions and templates\n(ten or fewer lines in length), you do both of the following:\n\n   a) Give prominent notice with each copy of the object code that the\n   Library is used in it and that the Library and its use are\n   covered by this License.\n\n   b) Accompany the object code with a copy of the GNU GPL and this license\n   document.\n\n  4. Combined Works.\n\n  You may convey a Combined Work under terms of your choice that,\ntaken together, effectively do not restrict modification of the\nportions of the Library contained in the Combined Work and reverse\nengineering for debugging such modifications, if you also do each of\nthe following:\n\n   a) Give prominent notice with each copy of the Combined Work that\n   the Library is used in it and that the Library and its use are\n   covered by this License.\n\n   b) Accompany the Combined Work with a copy of the GNU GPL and this license\n   document.\n\n   c) For a Combined Work that displays copyright notices during\n   execution, include the copyright notice for the Library among\n   these notices, as well as a reference directing the user to the\n   copies of the GNU GPL and this license document.\n\n   d) Do one of the following:\n\n       0) Convey the Minimal Corresponding Source under the terms of this\n       License, and the Corresponding Application Code in a form\n       suitable for, and under terms that permit, the user to\n       recombine or relink the Application with a modified version of\n       the Linked Version to produce a modified Combined Work, in the\n       manner specified by section 6 of the GNU GPL for conveying\n       Corresponding Source.\n\n       1) Use a suitable shared library mechanism for linking with the\n       Library.  A suitable mechanism is one that (a) uses at run time\n       a copy of the Library already present on the user's computer\n       system, and (b) will operate properly with a modified version\n       of the Library that is interface-compatible with the Linked\n       Version.\n\n   e) Provide Installation Information, but only if you would otherwise\n   be required to provide such information under section 6 of the\n   GNU GPL, and only to the extent that such information is\n   necessary to install and execute a modified version of the\n   Combined Work produced by recombining or relinking the\n   Application with a modified version of the Linked Version. (If\n   you use option 4d0, the Installation Information must accompany\n   the Minimal Corresponding Source and Corresponding Application\n   Code. If you use option 4d1, you must provide the Installation\n   Information in the manner specified by section 6 of the GNU GPL\n   for conveying Corresponding Source.)\n\n  5. Combined Libraries.\n\n  You may place library facilities that are a work based on the\nLibrary side by side in a single library together with other library\nfacilities that are not Applications and are not covered by this\nLicense, and convey such a combined library under terms of your\nchoice, if you do both of the following:\n\n   a) Accompany the combined library with a copy of the same work based\n   on the Library, uncombined with any other library facilities,\n   conveyed under the terms of this License.\n\n   b) Give prominent notice with the combined library that part of it\n   is a work based on the Library, and explaining where to find the\n   accompanying uncombined form of the same work.\n\n  6. Revised Versions of the GNU Lesser General Public License.\n\n  The Free Software Foundation may publish revised and/or new versions\nof the GNU Lesser General Public License from time to time. Such new\nversions will be similar in spirit to the present version, but may\ndiffer in detail to address new problems or concerns.\n\n  Each version is given a distinguishing version number. If the\nLibrary as you received it specifies that a certain numbered version\nof the GNU Lesser General Public License \"or any later version\"\napplies to it, you have the option of following the terms and\nconditions either of that published version or of any later version\npublished by the Free Software Foundation. If the Library as you\nreceived it does not specify a version number of the GNU Lesser\nGeneral Public License, you may choose any version of the GNU Lesser\nGeneral Public License ever published by the Free Software Foundation.\n\n  If the Library as you received it specifies that a proxy can decide\nwhether future versions of the GNU Lesser General Public License shall\napply, that proxy's public statement of acceptance of any version is\npermanent authorization for you to choose that version for the\nLibrary.\n"
     },
-    "manifest": {
-      "schemaVersion": 1,
-      "id": "lithium",
-      "version": "0.11.4",
-      "name": "Lithium",
-      "description": "Lithium is a free and open-source optimization mod for Minecraft which makes a wide range of performance improvements to the game.",
-      "authors": [
-        "JellySquid",
-        "2No2Name"
-      ],
-      "contact": {
-        "homepage": "https://jellysquid.me/projects/",
-        "sources": "https://github.com/CaffeineMC/lithium-fabric",
-        "issues": "https://github.com/CaffeineMC/lithium-fabric/issues"
-      },
-      "license": "LGPL-3.0-only",
-      "icon": "assets/lithium/icon.png",
-      "environment": "*",
-      "entrypoints": {
-        "main": [
-          "me.jellysquid.mods.lithium.common.LithiumMod"
-        ]
-      },
-      "mixins": [
-        "lithium.mixins.json"
-      ],
-      "accessWidener": "lithium.accesswidener",
-      "depends": {
-        "fabricloader": ">=0.12.11",
-        "minecraft": "1.20.1"
-      },
-      "breaks": {
-        "optifabric": "*"
-      }
-    },
+    "manifest": null,
     "dependencies": [],
-    "status": "candidate - requires integration testing and source/notice packaging"
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download",
+    "modrinthPublished": "2026-06-27"
   },
   {
     "slug": "ferrite-core",
     "title": "FerriteCore",
-    "version": "6.0.1",
-    "versionId": "unerR5MN",
-    "path": "dependencies/mods/ferritecore-6.0.1-fabric.jar",
-    "fileName": "ferritecore-6.0.1-fabric.jar",
-    "size": 125197,
-    "sha256": "c7ba1118a05b2da900d1c369fbe1017a3e3ec3cafe5e51398b851279b9becf24",
-    "sha512": "9b7dc686bfa7937815d88c7bbc6908857cd6646b05e7a96ddbdcada328a385bd4ba056532cd1d7df9d2d7f4265fd48bd49ff683f217f6d4e817177b87f6bc457",
-    "download": "https://cdn.modrinth.com/data/uXXizFIs/versions/unerR5MN/ferritecore-6.0.1-fabric.jar",
+    "version": "7.0.3-fabric",
+    "versionId": "sOzRw3CG",
+    "path": "dependencies/mods/ferritecore-7.0.3-fabric.jar",
+    "fileName": "ferritecore-7.0.3-fabric.jar",
+    "size": 123450,
+    "sha256": null,
+    "sha512": "3ad31620fac4ff44327dc7dedbe162b2d978f3f246dc16255a6e400ce9592a0d326fe36a626f3c1bf30a11f813093cbb4dcc107af039cff724d0cdf648541fdf",
+    "download": "https://cdn.modrinth.com/data/uXXizFIs/versions/sOzRw3CG/ferritecore-7.0.3-fabric.jar",
     "project": "https://modrinth.com/mod/ferrite-core",
     "source": "https://github.com/malte0811/FerriteCore",
     "licenseMetadata": {
@@ -342,61 +103,22 @@
       "url": null
     },
     "notices": {},
-    "manifest": {
-      "schemaVersion": 1,
-      "id": "ferritecore",
-      "version": "6.0.1",
-      "name": "FerriteCore",
-      "description": "Reduces memory usage",
-      "icon": "logo.png",
-      "authors": [
-        "malte0811"
-      ],
-      "contact": {
-        "issues": "https://github.com/malte0811/FerriteCore/issues",
-        "source": "https://github.com/malte0811/FerriteCore",
-        "homepage": "https://www.curseforge.com/minecraft/mc-mods/ferritecore-fabric"
-      },
-      "license": "MIT",
-      "environment": "*",
-      "depends": {
-        "fabricloader": ">=0.14.21",
-        "minecraft": ">=1.20 <1.21"
-      },
-      "breaks": {
-        "hydrogen": "<=0.3"
-      },
-      "mixins": [
-        "ferritecore.blockstatecache.mixin.json",
-        "ferritecore.dedupmultipart.mixin.json",
-        "ferritecore.fastmap.mixin.json",
-        "ferritecore.mrl.mixin.json",
-        "ferritecore.predicates.mixin.json",
-        "ferritecore.dedupbakedquad.mixin.json",
-        "ferritecore.threaddetec.mixin.json",
-        "ferritecore.modelsides.mixin.json",
-        "ferritecore.fabric.mixin.json"
-      ],
-      "custom": {
-        "lithium:options": {
-          "mixin.alloc.blockstate": false
-        }
-      }
-    },
+    "manifest": null,
     "dependencies": [],
-    "status": "candidate - requires integration testing and source/notice packaging"
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download",
+    "modrinthPublished": "2026-01-25"
   },
   {
     "slug": "immediatelyfast",
     "title": "ImmediatelyFast",
-    "version": "1.5.5+1.20.4-fabric",
-    "versionId": "iwYUrQJO",
-    "path": "dependencies/mods/ImmediatelyFast-Fabric-1.5.5+1.20.4.jar",
-    "fileName": "ImmediatelyFast-Fabric-1.5.5+1.20.4.jar",
-    "size": 348818,
-    "sha256": "5eea426af467564618e017e8f3a62f1c5c4224ab32a0a1726313de130a2d783d",
-    "sha512": "8733e4f1fcd64581979f93f2580ae9f530e64ba21e90b2a46d4c1bdcb802e5a53a49a160e4dae06ec9e4d7829ea34715c9c9e1c2bfd7238b4de7fccfbc482ffd",
-    "download": "https://cdn.modrinth.com/data/5ZwdcRci/versions/iwYUrQJO/ImmediatelyFast-Fabric-1.5.5%2B1.20.4.jar",
+    "version": "1.6.15+1.21.1-fabric",
+    "versionId": "aLnBqxFW",
+    "path": "dependencies/mods/ImmediatelyFast-Fabric-1.6.15+1.21.1.jar",
+    "fileName": "ImmediatelyFast-Fabric-1.6.15+1.21.1.jar",
+    "size": 342235,
+    "sha256": null,
+    "sha512": "d4ac2d574d80000cd59b0b362706a6f86778bfc717748dca854f05ee8d09ce158738488e58c6b8ee05d5e54017f05b6c66c3bcaa3fa357d38cbfd75893dda9f4",
+    "download": "https://cdn.modrinth.com/data/5ZwdcRci/versions/aLnBqxFW/ImmediatelyFast-Fabric-1.6.15%2B1.21.1.jar",
     "project": "https://modrinth.com/mod/immediatelyfast",
     "source": "https://github.com/RaphiMC/ImmediatelyFast",
     "licenseMetadata": {
@@ -407,75 +129,22 @@
     "notices": {
       "LICENSE_ImmediatelyFast": "                   GNU LESSER GENERAL PUBLIC LICENSE\r\n                       Version 3, 29 June 2007\r\n\r\n Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>\r\n Everyone is permitted to copy and distribute verbatim copies\r\n of this license document, but changing it is not allowed.\r\n\r\n\r\n  This version of the GNU Lesser General Public License incorporates\r\nthe terms and conditions of version 3 of the GNU General Public\r\nLicense, supplemented by the additional permissions listed below.\r\n\r\n  0. Additional Definitions.\r\n\r\n  As used herein, \"this License\" refers to version 3 of the GNU Lesser\r\nGeneral Public License, and the \"GNU GPL\" refers to version 3 of the GNU\r\nGeneral Public License.\r\n\r\n  \"The Library\" refers to a covered work governed by this License,\r\nother than an Application or a Combined Work as defined below.\r\n\r\n  An \"Application\" is any work that makes use of an interface provided\r\nby the Library, but which is not otherwise based on the Library.\r\nDefining a subclass of a class defined by the Library is deemed a mode\r\nof using an interface provided by the Library.\r\n\r\n  A \"Combined Work\" is a work produced by combining or linking an\r\nApplication with the Library.  The particular version of the Library\r\nwith which the Combined Work was made is also called the \"Linked\r\nVersion\".\r\n\r\n  The \"Minimal Corresponding Source\" for a Combined Work means the\r\nCorresponding Source for the Combined Work, excluding any source code\r\nfor portions of the Combined Work that, considered in isolation, are\r\nbased on the Application, and not on the Linked Version.\r\n\r\n  The \"Corresponding Application Code\" for a Combined Work means the\r\nobject code and/or source code for the Application, including any data\r\nand utility programs needed for reproducing the Combined Work from the\r\nApplication, but excluding the System Libraries of the Combined Work.\r\n\r\n  1. Exception to Section 3 of the GNU GPL.\r\n\r\n  You may convey a covered work under sections 3 and 4 of this License\r\nwithout being bound by section 3 of the GNU GPL.\r\n\r\n  2. Conveying Modified Versions.\r\n\r\n  If you modify a copy of the Library, and, in your modifications, a\r\nfacility refers to a function or data to be supplied by an Application\r\nthat uses the facility (other than as an argument passed when the\r\nfacility is invoked), then you may convey a copy of the modified\r\nversion:\r\n\r\n   a) under this License, provided that you make a good faith effort to\r\n   ensure that, in the event an Application does not supply the\r\n   function or data, the facility still operates, and performs\r\n   whatever part of its purpose remains meaningful, or\r\n\r\n   b) under the GNU GPL, with none of the additional permissions of\r\n   this License applicable to that copy.\r\n\r\n  3. Object Code Incorporating Material from Library Header Files.\r\n\r\n  The object code form of an Application may incorporate material from\r\na header file that is part of the Library.  You may convey such object\r\ncode under terms of your choice, provided that, if the incorporated\r\nmaterial is not limited to numerical parameters, data structure\r\nlayouts and accessors, or small macros, inline functions and templates\r\n(ten or fewer lines in length), you do both of the following:\r\n\r\n   a) Give prominent notice with each copy of the object code that the\r\n   Library is used in it and that the Library and its use are\r\n   covered by this License.\r\n\r\n   b) Accompany the object code with a copy of the GNU GPL and this license\r\n   document.\r\n\r\n  4. Combined Works.\r\n\r\n  You may convey a Combined Work under terms of your choice that,\r\ntaken together, effectively do not restrict modification of the\r\nportions of the Library contained in the Combined Work and reverse\r\nengineering for debugging such modifications, if you also do each of\r\nthe following:\r\n\r\n   a) Give prominent notice with each copy of the Combined Work that\r\n   the Library is used in it and that the Library and its use are\r\n   covered by this License.\r\n\r\n   b) Accompany the Combined Work with a copy of the GNU GPL and this license\r\n   document.\r\n\r\n   c) For a Combined Work that displays copyright notices during\r\n   execution, include the copyright notice for the Library among\r\n   these notices, as well as a reference directing the user to the\r\n   copies of the GNU GPL and this license document.\r\n\r\n   d) Do one of the following:\r\n\r\n       0) Convey the Minimal Corresponding Source under the terms of this\r\n       License, and the Corresponding Application Code in a form\r\n       suitable for, and under terms that permit, the user to\r\n       recombine or relink the Application with a modified version of\r\n       the Linked Version to produce a modified Combined Work, in the\r\n       manner specified by section 6 of the GNU GPL for conveying\r\n       Corresponding Source.\r\n\r\n       1) Use a suitable shared library mechanism for linking with the\r\n       Library.  A suitable mechanism is one that (a) uses at run time\r\n       a copy of the Library already present on the user's computer\r\n       system, and (b) will operate properly with a modified version\r\n       of the Library that is interface-compatible with the Linked\r\n       Version.\r\n\r\n   e) Provide Installation Information, but only if you would otherwise\r\n   be required to provide such information under section 6 of the\r\n   GNU GPL, and only to the extent that such information is\r\n   necessary to install and execute a modified version of the\r\n   Combined Work produced by recombining or relinking the\r\n   Application with a modified version of the Linked Version. (If\r\n   you use option 4d0, the Installation Information must accompany\r\n   the Minimal Corresponding Source and Corresponding Application\r\n   Code. If you use option 4d1, you must provide the Installation\r\n   Information in the manner specified by section 6 of the GNU GPL\r\n   for conveying Corresponding Source.)\r\n\r\n  5. Combined Libraries.\r\n\r\n  You may place library facilities that are a work based on the\r\nLibrary side by side in a single library together with other library\r\nfacilities that are not Applications and are not covered by this\r\nLicense, and convey such a combined library under terms of your\r\nchoice, if you do both of the following:\r\n\r\n   a) Accompany the combined library with a copy of the same work based\r\n   on the Library, uncombined with any other library facilities,\r\n   conveyed under the terms of this License.\r\n\r\n   b) Give prominent notice with the combined library that part of it\r\n   is a work based on the Library, and explaining where to find the\r\n   accompanying uncombined form of the same work.\r\n\r\n  6. Revised Versions of the GNU Lesser General Public License.\r\n\r\n  The Free Software Foundation may publish revised and/or new versions\r\nof the GNU Lesser General Public License from time to time. Such new\r\nversions will be similar in spirit to the present version, but may\r\ndiffer in detail to address new problems or concerns.\r\n\r\n  Each version is given a distinguishing version number. If the\r\nLibrary as you received it specifies that a certain numbered version\r\nof the GNU Lesser General Public License \"or any later version\"\r\napplies to it, you have the option of following the terms and\r\nconditions either of that published version or of any later version\r\npublished by the Free Software Foundation. If the Library as you\r\nreceived it does not specify a version number of the GNU Lesser\r\nGeneral Public License, you may choose any version of the GNU Lesser\r\nGeneral Public License ever published by the Free Software Foundation.\r\n\r\n  If the Library as you received it specifies that a proxy can decide\r\nwhether future versions of the GNU Lesser General Public License shall\r\napply, that proxy's public statement of acceptance of any version is\r\npermanent authorization for you to choose that version for the\r\nLibrary."
     },
-    "manifest": {
-      "schemaVersion": 1,
-      "id": "immediatelyfast",
-      "version": "1.5.5+1.20.4",
-      "name": "ImmediatelyFast",
-      "description": "Speed up and optimize immediate mode rendering in Minecraft",
-      "authors": [
-        {
-          "name": "RK_01",
-          "contact": {
-            "homepage": "https://github.com/RaphiMC"
-          }
-        }
-      ],
-      "contact": {
-        "homepage": "https://github.com/RaphiMC/ImmediatelyFast",
-        "sources": "https://github.com/RaphiMC/ImmediatelyFast",
-        "issues": "https://github.com/RaphiMC/ImmediatelyFast/issues"
-      },
-      "license": "LGPL-3.0-or-later",
-      "icon": "assets/immediatelyfast/icon.png",
-      "environment": "client",
-      "mixins": [
-        "immediatelyfast-common.mixins.json",
-        "immediatelyfast-fabric.mixins.json"
-      ],
-      "accessWidener": "immediatelyfast.accesswidener",
-      "depends": {
-        "java": ">=17",
-        "minecraft": ">=1.20 <=1.20.4",
-        "fabricloader": ">=0.15.0"
-      },
-      "breaks": {
-        "optifabric": "*",
-        "vulkanmod": "*",
-        "memoryleakfix": "<=1.1.1"
-      },
-      "custom": {
-        "modmenu": {
-          "links": {
-            "modmenu.discord": "https://raphimc.net/discord",
-            "modmenu.donate": "https://raphimc.net/donate",
-            "modmenu.kofi": "https://ko-fi.com/rk_01",
-            "modmenu.github_releases": "https://github.com/RaphiMC/ImmediatelyFast/releases",
-            "modmenu.modrinth": "https://modrinth.com/mod/immediatelyfast",
-            "modmenu.curseforge": "https://www.curseforge.com/minecraft/mc-mods/immediatelyfast"
-          }
-        }
-      },
-      "jars": [
-        {
-          "file": "META-INF/jars/Reflect-1.6.2.jar"
-        }
-      ]
-    },
+    "manifest": null,
     "dependencies": [],
-    "status": "candidate - requires integration testing and source/notice packaging"
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download",
+    "modrinthPublished": "2026-10-13"
   },
   {
     "slug": "modernfix",
     "title": "ModernFix",
-    "version": "5.25.2+mc1.20.1",
-    "versionId": "rPmgLeZC",
-    "path": "dependencies/mods/modernfix-fabric-5.25.2+mc1.20.1.jar",
-    "fileName": "modernfix-fabric-5.25.2+mc1.20.1.jar",
-    "size": 545175,
-    "sha256": "5c1f852046e62a17056bb6b571164e61644076c5eb9029c92b31e337cc62c0d9",
-    "sha512": "878e39d182767ffd08ad6a3539fae780739129db133abe02b9b73dc3df6e1ac9ddbe509620356b0aae5e7bfbed535d0e18741703334317a16fefef820269da2d",
-    "download": "https://cdn.modrinth.com/data/nmDcB62a/versions/rPmgLeZC/modernfix-fabric-5.25.2%2Bmc1.20.1.jar",
+    "version": "5.25.1+mc1.21.1",
+    "versionId": "NnNX8LBn",
+    "path": "dependencies/mods/modernfix-fabric-5.25.1+mc1.21.1.jar",
+    "fileName": "modernfix-fabric-5.25.1+mc1.21.1.jar",
+    "size": 471258,
+    "sha256": null,
+    "sha512": "dc67d6e023e1fcdeaf7837917c477cba212c611dfc2463c6ea021319c644087c79b477e0ea8194e113ddd7332fd5c6d82baa47c291eaac7f4a86252507b4e19f",
+    "download": "https://cdn.modrinth.com/data/nmDcB62a/versions/NnNX8LBn/modernfix-fabric-5.25.1%2Bmc1.21.1.jar",
     "project": "https://modrinth.com/mod/modernfix",
     "source": "https://github.com/embeddedt/ModernFix",
     "licenseMetadata": {
@@ -484,76 +153,22 @@
       "url": null
     },
     "notices": {},
-    "manifest": {
-      "schemaVersion": 1,
-      "id": "modernfix",
-      "version": "5.25.2+mc1.20.1",
-      "name": "ModernFix",
-      "description": "Egregious, yet effective performance improvements for modern Minecraft",
-      "authors": [
-        "embeddedt"
-      ],
-      "contact": {
-        "sources": "https://github.com/embeddedt/ModernFix",
-        "homepage": "https://modrinth.com/mod/modernfix",
-        "issues": "https://github.com/embeddedt/ModernFix/issues"
-      },
-      "license": "LGPL-3.0",
-      "icon": "icon.png",
-      "custom": {
-        "modmenu": {
-          "links": {
-            "modmenu.kofi": "https://ko-fi.com/embeddedt",
-            "modmenu.github_releases": "https://github.com/embeddedt/ModernFix/releases",
-            "modmenu.curseforge": "https://www.curseforge.com/minecraft/mc-mods/modernfix"
-          }
-        }
-      },
-      "environment": "*",
-      "entrypoints": {
-        "main": [
-          "org.embeddedt.modernfix.ModernFixFabric"
-        ],
-        "client": [
-          "org.embeddedt.modernfix.ModernFixClientFabric"
-        ],
-        "modmenu": [
-          "org.embeddedt.modernfix.fabric.modmenu.ModernFixModMenuApiImpl"
-        ],
-        "preLaunch": [
-          "org.embeddedt.modernfix.ModernFixPreLaunchFabric"
-        ],
-        "jei_mod_plugin": [
-          "org.embeddedt.modernfix.searchtree.JEIRuntimeCapturer"
-        ]
-      },
-      "mixins": [
-        "modernfix-fabric.mixins.json",
-        "modernfix-common.mixins.json"
-      ],
-      "depends": {
-        "minecraft": ">=1.16.2",
-        "fabricloader": ">=0.16.10"
-      },
-      "breaks": {
-        "dashloader": "<5.0.0-beta.1"
-      },
-      "accessWidener": "modernfix.accesswidener"
-    },
+    "manifest": null,
     "dependencies": [],
-    "status": "candidate - requires integration testing and source/notice packaging"
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download",
+    "modrinthPublished": "2025-11-08"
   },
   {
     "slug": "entity-model-features",
     "title": "[EMF] Entity Model Features",
-    "version": "3.3.12-fabric-1.20.1",
-    "versionId": "kIXaZJr8",
-    "path": "dependencies/mods/entity_model_features-3.3.12-1.20.1-fabric.jar",
-    "fileName": "entity_model_features-3.3.12-1.20.1-fabric.jar",
-    "size": 652640,
-    "sha256": "0a2e4cf5a1c15e4ff726d1ebee3ed4f177f00cb27a2aee687193a4a4dfc071d1",
-    "sha512": "5782ea103b3d6791564b3022760bae57aa2dc017b6f4d4a28e493bae1ea3fa1232c19a8a9614df604d3fe0a871540dd76d4f9150c2186047961ed520c9c041ce",
-    "download": "https://cdn.modrinth.com/data/4I1XuqiY/versions/kIXaZJr8/entity_model_features-3.3.12-1.20.1-fabric.jar",
+    "version": "3.3.12-fabric-1.21",
+    "versionId": "90RfzkYP",
+    "path": "dependencies/mods/entity_model_features-3.3.12-1.21-fabric.jar",
+    "fileName": "entity_model_features-3.3.12-1.21-fabric.jar",
+    "size": 653743,
+    "sha256": null,
+    "sha512": "0ab99fec33bb27334adf002b911f2834bd5cecc1e9a02acb6b7eda1b5e989cc704b7c35a0ee716fe86d43e4f20b5307a2dd55766b1018c4e1422c863d411c013",
+    "download": "https://cdn.modrinth.com/data/4I1XuqiY/versions/90RfzkYP/entity_model_features-3.3.12-1.21-fabric.jar",
     "project": "https://modrinth.com/mod/entity-model-features",
     "source": "https://github.com/Traben-0/Entity_Model_Features",
     "licenseMetadata": {
@@ -562,65 +177,7 @@
       "url": null
     },
     "notices": {},
-    "manifest": {
-      "schemaVersion": 1,
-      "id": "entity_model_features",
-      "version": "3.3.12",
-      "name": "Entity Model Features",
-      "description": "This is an expansion of the ETF mod, it adds support for OptiFine format Custom Entity Model (CEM) resource packs.\nWhile still allowing you to disable this to use a different model mod :)",
-      "authors": [
-        {
-          "name": "Traben",
-          "contact": {
-            "homepage": "https://www.curseforge.com/members/traben_0/projects",
-            "discord": "https://discord.gg/rURmwrzUcz"
-          }
-        }
-      ],
-      "contact": {
-        "homepage": "https://www.curseforge.com/minecraft/mc-mods/entity-model-features",
-        "sources": "https://github.com/Traben-0/Entity_Model_Features",
-        "issues": "https://github.com/Traben-0/Entity_Model_Features/issues",
-        "discord": "https://discord.gg/rURmwrzUcz"
-      },
-      "license": "LGPL-3.0",
-      "icon": "icon.png",
-      "environment": "client",
-      "entrypoints": {
-        "client": [
-          "traben.entity_model_features.EMFInit"
-        ],
-        "modmenu": [
-          "traben.entity_model_features.config.EMFModMenu"
-        ],
-        "ebe_v1": [
-          "traben.entity_model_features.mod_compat.EBEConfigModifier"
-        ]
-      },
-      "mixins": [
-        "entity_model_features.mixins.json"
-      ],
-      "depends": {
-        "fabricloader": "*",
-        "minecraft": "*",
-        "entity_texture_features": ">=7.2"
-      },
-      "breaks": {
-        "optifabric": "*",
-        "cem": "*",
-        "entity_texture_features": "<7.2",
-        "entity_sound_features": "<0.8.2"
-      },
-      "custom": {
-        "modmenu": {
-          "links": {
-            "modmenu.website": "https://www.curseforge.com/members/traben_0/projects",
-            "modmenu.discord": "https://discord.gg/rURmwrzUcz"
-          }
-        }
-      },
-      "accessWidener": "entity_model_features_3.accesswidener"
-    },
+    "manifest": null,
     "dependencies": [
       {
         "version_id": null,
@@ -629,19 +186,20 @@
         "dependency_type": "required"
       }
     ],
-    "status": "candidate - requires integration testing and source/notice packaging"
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download",
+    "modrinthPublished": "2026-10-15"
   },
   {
     "slug": "entitytexturefeatures",
     "title": "[ETF] Entity Texture Features",
-    "version": "7.2.6-fabric-1.20.1",
-    "versionId": "kWWzrS7Z",
-    "path": "dependencies/mods/entity_texture_features-7.2.6-1.20.1-fabric.jar",
-    "fileName": "entity_texture_features-7.2.6-1.20.1-fabric.jar",
-    "size": 808025,
-    "sha256": "839e95070dd232222b8a7782b57351f5a20e01c2b0e6c0c2b9bfaddb59fa96e4",
-    "sha512": "0070d561237b874d00c92e7907e594cba690c725fa8eea8b1f77c40de88af0f13f3dd4e6a22fd8aaf60dcef1f005fdb4c77cd7c601fd5c80cd13a1ed4d39f431",
-    "download": "https://cdn.modrinth.com/data/BVzZfTc1/versions/kWWzrS7Z/entity_texture_features-7.2.6-1.20.1-fabric.jar",
+    "version": "7.2.6-fabric-1.21",
+    "versionId": "LNZeTHJf",
+    "path": "dependencies/mods/entity_texture_features-7.2.6-1.21-fabric.jar",
+    "fileName": "entity_texture_features-7.2.6-1.21-fabric.jar",
+    "size": 800215,
+    "sha256": null,
+    "sha512": "5258b3c2bd7894b20f9597af78a7aa83a1f84a54956ed32febc1d04864336372b98ef282a0a3b9d85f60e745d93ee0b3bc2be664fc9a6227c6d2c28e031617b5",
+    "download": "https://cdn.modrinth.com/data/BVzZfTc1/versions/LNZeTHJf/entity_texture_features-7.2.6-1.21-fabric.jar",
     "project": "https://modrinth.com/mod/entitytexturefeatures",
     "source": "https://github.com/Traben-0/Entity_Texture_Features",
     "licenseMetadata": {
@@ -650,78 +208,22 @@
       "url": null
     },
     "notices": {},
-    "manifest": {
-      "schemaVersion": 1,
-      "id": "entity_texture_features",
-      "version": "7.2.6",
-      "name": "Entity Texture Features",
-      "description": "Adds support for resource-pack driven features for entity textures including some OptiFine features\nSupports OptiFine:\n - Random & Custom textures\n - Emissive textures\nWith more features such as:\n - Blinking textures\n - Player Skin support",
-      "authors": [
-        {
-          "name": "Traben",
-          "contact": {
-            "homepage": "https://www.curseforge.com/members/traben_0/projects",
-            "discord": "https://discord.gg/rURmwrzUcz"
-          }
-        }
-      ],
-      "contributors": [],
-      "license": "LGPL-3.0",
-      "icon": "assets/entity_texture_features/textures/gui/icon.png",
-      "contact": {
-        "homepage": "https://www.curseforge.com/minecraft/mc-mods/entity-texture-features-fabric",
-        "sources": "https://github.com/Traben-0/Entity_Texture_Features",
-        "issues": "https://github.com/Traben-0/Entity_Texture_Features/issues",
-        "discord": "https://discord.gg/rURmwrzUcz"
-      },
-      "environment": "client",
-      "entrypoints": {
-        "client": [
-          "traben.entity_texture_features.ETFInit"
-        ],
-        "modmenu": [
-          "traben.entity_texture_features.config.ETFModMenu"
-        ]
-      },
-      "mixins": [
-        "entity_texture_features.mixins.json"
-      ],
-      "depends": {
-        "fabricloader": "*",
-        "minecraft": "*"
-      },
-      "suggests": {
-        "modmenu": "*"
-      },
-      "breaks": {
-        "optifabric": "*",
-        "entity_model_features": "<3.3",
-        "entity_sound_features": "<0.8.2"
-      },
-      "custom": {
-        "modmenu": {
-          "links": {
-            "modmenu.website": "https://www.curseforge.com/members/traben_0/projects",
-            "modmenu.discord": "https://discord.gg/rURmwrzUcz"
-          }
-        }
-      },
-      "accessWidener": "entity_texture_features_3.accesswidener"
-    },
+    "manifest": null,
     "dependencies": [],
-    "status": "candidate - requires integration testing and source/notice packaging"
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download",
+    "modrinthPublished": "2026-10-15"
   },
   {
     "slug": "presence-footsteps",
     "title": "Presence Footsteps",
-    "version": "1.10.1+1.20.1",
-    "versionId": "k0t6DSmw",
-    "path": "dependencies/mods/PresenceFootsteps-1.10.1+1.20.1.jar",
-    "fileName": "PresenceFootsteps-1.10.1+1.20.1.jar",
-    "size": 5664952,
-    "sha256": "70f354e5ecd8993908601fcdfcb4e98f7b81f42192287282a5b86712e9a6be95",
-    "sha512": "c306f96496aadc30abcaac0bd35e22f870e974fe532eaf1f2b66bfd5e7e5e7f6276d58b393bcd6521e8ea74b38a52b54246e2cd0344d9acf8ed4cb233f9a1e1d",
-    "download": "https://cdn.modrinth.com/data/rcTfTZr3/versions/k0t6DSmw/PresenceFootsteps-1.10.1%2B1.20.1.jar",
+    "version": "1.11.2+1.21",
+    "versionId": "CrvsDgLW",
+    "path": "dependencies/mods/PresenceFootsteps-1.11.2+1.21.jar",
+    "fileName": "PresenceFootsteps-1.11.2+1.21.jar",
+    "size": 5694024,
+    "sha256": null,
+    "sha512": "524e5fd9c063d3ee81baaf4dbe553982a906b9b315dffae4aa64332db22a1f2fa0bb13b339c74ac7c5ddf9a8453b6fdaa9e93abac3c8bc1a9a347405e382f1c5",
+    "download": "https://cdn.modrinth.com/data/rcTfTZr3/versions/CrvsDgLW/PresenceFootsteps-1.11.2%2B1.21.jar",
     "project": "https://modrinth.com/mod/presence-footsteps",
     "source": "https://github.com/Sollace/Presence-Footsteps",
     "licenseMetadata": {
@@ -732,81 +234,10 @@
     "notices": {
       "LICENSE": "The MIT License (MIT)\n\nCopyright (c) 2019 Mine Little Pony\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"
     },
-    "manifest": {
-      "schemaVersion": 1,
-      "id": "presencefootsteps",
-      "version": "1.10.1+1.20.1",
-      "name": "Presence Footsteps",
-      "description": "An overly complicated sound mod.",
-      "authors": [
-        "Hurricaaane (Ha3)",
-        "Sollace"
-      ],
-      "contact": {
-        "sources": "https://github.com/Sollace/Presence-Footsteps",
-        "issues": "https://github.com/Sollace/Presence-Footsteps/issues"
-      },
-      "license": "MIT",
-      "icon": "logo.png",
-      "environment": "client",
-      "entrypoints": {
-        "client": [
-          "eu.ha3.presencefootsteps.PresenceFootsteps"
-        ],
-        "modmenu": [
-          "eu.ha3.presencefootsteps.PFModMenuFactory"
-        ]
-      },
-      "mixins": [
-        "presencefootsteps.mixin.json"
-      ],
-      "depends": {
-        "minecraft": ">=1.20.0",
-        "fabricloader": ">=0.15.3",
-        "java": ">=17",
-        "fabric-api": ">=0.91.0+1.20.1",
-        "kirin": ">=1.15.6+1.20.1"
-      },
-      "suggests": {
-        "minelp": ">=4.11.7+1.20.1"
-      },
-      "custom": {
-        "modmenu": {
-          "links": {
-            "modmenu.discord": "https://discord.gg/zKSZ8Mg",
-            "modmenu.github_releases": "https://github.com/Sollace/Presence-Footsteps/releases",
-            "modmenu.modrinth": "https://modrinth.com/mod/presence-footsteps"
-          },
-          "update_checker": true
-        }
-      },
-      "jars": [
-        {
-          "file": "META-INF/jars/kirin-1.15.6+1.20.1.jar"
-        }
-      ]
-    },
-    "dependencies": [
-      {
-        "version_id": null,
-        "project_id": "9aNz8Zqn",
-        "file_name": null,
-        "dependency_type": "embedded"
-      },
-      {
-        "version_id": null,
-        "project_id": "P7dR8mSH",
-        "file_name": null,
-        "dependency_type": "required"
-      },
-      {
-        "version_id": null,
-        "project_id": "JBjInUXM",
-        "file_name": null,
-        "dependency_type": "optional"
-      }
-    ],
-    "status": "candidate - requires integration testing and source/notice packaging"
+    "manifest": null,
+    "dependencies": [],
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download",
+    "modrinthPublished": "2026-06-23"
   },
   {
     "slug": "complementary-reimagined",
@@ -886,14 +317,14 @@
   {
     "slug": "excalibur",
     "title": "Excalibur",
-    "version": "V1.20",
-    "versionId": "yVpdNmnj",
-    "path": "dependencies/resourcepacks/Excalibur_V1.20.zip",
-    "fileName": "Excalibur_V1.20.zip",
-    "size": 17107369,
-    "sha256": "ccf01766c56ad287071c795452ebdb6a33bf35a74f098d5191475cd479292d49",
-    "sha512": "a2080ab27a954a95b9c4b7450bdfa3ecd18c5ceecc88d9dcc981aae1a98394f8e7a617cea6a3254c6a363c192a9dd2ac7602d236655f2afde57b1e4e13dd244e",
-    "download": "https://cdn.modrinth.com/data/hJAzl1Bs/versions/yVpdNmnj/Excalibur_V1.20.zip",
+    "version": "1.21.1",
+    "versionId": "ZRWxgeyn",
+    "path": "dependencies/resourcepacks/Excalibur_V1.21.1.zip",
+    "fileName": "Excalibur_V1.21.1.zip",
+    "size": 18103896,
+    "sha256": null,
+    "sha512": "858c0367346ec6d58e34ecd2f3b69b73e779d655a49ca12bcdd0113106bf4516f378013bab74331ad1f02ba0b0c2c465374802210ebb3f1f6d26b1cc8936a591",
+    "download": "https://cdn.modrinth.com/data/hJAzl1Bs/versions/ZRWxgeyn/Excalibur_V1.21.1.zip",
     "project": "https://modrinth.com/resourcepack/excal",
     "source": "https://modrinth.com/resourcepack/excal",
     "licenseMetadata": {
@@ -904,6 +335,74 @@
     "notices": {},
     "manifest": null,
     "dependencies": [],
-    "status": "approved by Kort 2026-11-01; Maffhew permission 2026-10-28 (paid features not covered); unmodified"
+    "status": "permission to re-confirm by Kort: approval 2026-11-01 and Maffhew permission 2026-10-28 were for V1.20 (paid features not covered); not yet re-confirmed for Excalibur 1.21.1. 1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+  },
+  {
+    "slug": "entityculling",
+    "title": "Entity Culling",
+    "project": "https://modrinth.com/mod/entityculling",
+    "source": "https://github.com/tr7zw/EntityCulling",
+    "notices": {},
+    "version": "1.12.1",
+    "versionId": "ePsqkPkO",
+    "path": "dependencies/mods/entityculling-fabric-1.12.1-mc1.21.1.jar",
+    "fileName": "entityculling-fabric-1.12.1-mc1.21.1.jar",
+    "size": 1533262,
+    "sha256": null,
+    "sha512": "8b0e2a54a4b08edeb2aaf2dd4d6d20f152f7a88ddc266525f79661b46bfd00638d7ff03a628f258d0f27f2f99728ce1ffc182c0d547a686df7d3544b549d2b9b",
+    "download": "https://cdn.modrinth.com/data/NNAgCjsB/versions/ePsqkPkO/entityculling-fabric-1.12.1-mc1.21.1.jar",
+    "licenseMetadata": {
+      "id": "LicenseRef-tr7zw-Protective-License",
+      "name": "",
+      "url": "https://github.com/tr7zw/EntityCulling/blob/1.18/LICENSE-EntityCulling"
+    },
+    "manifest": null,
+    "dependencies": [
+      {
+        "version_id": null,
+        "project_id": "P7dR8mSH",
+        "file_name": null,
+        "dependency_type": "required"
+      }
+    ],
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download; new player-pack addition (Kort); licence text still to vendor",
+    "modrinthPublished": "2026-11-13"
+  },
+  {
+    "slug": "modmenu",
+    "title": "Mod Menu",
+    "project": "https://modrinth.com/mod/modmenu",
+    "source": "https://github.com/TerraformersMC/ModMenu",
+    "notices": {},
+    "version": "11.0.5",
+    "versionId": "6lgOkclV",
+    "path": "dependencies/mods/modmenu-11.0.5.jar",
+    "fileName": "modmenu-11.0.5.jar",
+    "size": 975846,
+    "sha256": null,
+    "sha512": "92e8e96267ff18d320903090f2ad9b32408a218919f5a0d578e232ad774c89d49a34a8271806652be7d6283f24e98432bc4af7f95855e78b843f9100d68696c7",
+    "download": "https://cdn.modrinth.com/data/mOgUt4GM/versions/6lgOkclV/modmenu-11.0.5.jar",
+    "licenseMetadata": {
+      "id": "MIT",
+      "name": "MIT License",
+      "url": null
+    },
+    "manifest": null,
+    "dependencies": [
+      {
+        "version_id": null,
+        "project_id": "eXts2L7r",
+        "file_name": null,
+        "dependency_type": "required"
+      },
+      {
+        "version_id": null,
+        "project_id": "P7dR8mSH",
+        "file_name": null,
+        "dependency_type": "required"
+      }
+    ],
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download; new player-pack addition (Kort); licence text still to vendor",
+    "modrinthPublished": "2026-09-24"
   }
 ]

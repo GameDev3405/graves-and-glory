@@ -2,18 +2,18 @@
   {
     "slug": "iris",
     "projectId": "YL57xq9U",
-    "versionId": "s5eFLITc",
-    "version": "1.7.6+1.20.1",
-    "fileName": "iris-1.7.6+mc1.20.1.jar",
-    "localPath": "dependencies/mods/iris-1.7.6+mc1.20.1.jar",
-    "fileSize": 2726899,
+    "versionId": "bAo1Qhte",
+    "version": "1.8.14-beta.1+1.21.1-fabric",
+    "fileName": "iris-fabric-1.8.14-beta.1+mc1.21.1.jar",
+    "localPath": "dependencies/mods/iris-fabric-1.8.14-beta.1+mc1.21.1.jar",
+    "fileSize": 2791343,
     "hashes": {
-      "sha1": "880c0b9ce38bb4997645793407c1801df83f4233",
-      "sha512": "f1337b0441c31269bd3bfcb28647d521326a83e73128c1ac8d065615f8a5a4ca1e8c96a468b356584236ece5b164ec8d8a52b1878064f4e391ecf4f32885e301"
+      "sha1": "6776c0340845887477bfa463acc736ce7fcb6de5",
+      "sha512": "a7fbb629793c52f0be8b049f787cb598879239b1ad8e1de62e103c8b9efff140e3232b93ef1f14e505d262897d8cf9505b1126396429ad4056bff969c8674e52"
     },
-    "sha256": "9eb15e563e0c9ae6eff15b7863f8432dd290cf9f724c7373e9b15b14aa829ed5",
+    "sha256": null,
     "downloads": [
-      "https://cdn.modrinth.com/data/YL57xq9U/versions/s5eFLITc/iris-1.7.6%2Bmc1.20.1.jar"
+      "https://cdn.modrinth.com/data/YL57xq9U/versions/bAo1Qhte/iris-fabric-1.8.14-beta.1%2Bmc1.21.1.jar"
     ],
     "kind": "mod",
     "env": {
@@ -28,27 +28,29 @@
     "projectUrl": "https://modrinth.com/mod/iris",
     "sourceUrl": "https://github.com/IrisShaders/Iris",
     "gameVersions": [
-      "1.20.1"
+      "1.21.1"
     ],
     "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
     "curseforgeProjectId": null,
-    "curseforgeFileId": null
+    "curseforgeFileId": null,
+    "modrinthPublished": "2026-06-13",
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
   },
   {
     "slug": "sodium",
     "projectId": "AANobbMI",
-    "versionId": "OihdIimA",
-    "version": "mc1.20.1-0.5.13-fabric",
-    "fileName": "sodium-fabric-0.5.13+mc1.20.1.jar",
-    "localPath": "dependencies/mods/sodium-fabric-0.5.13+mc1.20.1.jar",
-    "fileSize": 971552,
+    "versionId": "SMxNOGZ6",
+    "version": "mc1.21.1-0.8.13-fabric",
+    "fileName": "sodium-fabric-0.8.13+mc1.21.1.jar",
+    "localPath": "dependencies/mods/sodium-fabric-0.8.13+mc1.21.1.jar",
+    "fileSize": 1574609,
     "hashes": {
-      "sha512": "81c64f9c2d3402dfa43ee54d8f5a054f5243bfb08984e3addcab9fe885073c79c43c1c8c41e8f30b625d26a656f82a8e5f370bbbbf222ff1c08f4b324edb7ea4",
-      "sha1": "bcdbf37d9494e405cba210d7a80ed58e756297b5"
+      "sha1": "003c114c85ca88ef3362e018deb6aca0c682d6a1",
+      "sha512": "8614a374593698069a80ac74de8cd9c28f3928d16819a0e0d6320b538e823f7e54e8be06d5ea5a9c268beb0e02073209d1f831a02dede851588b972367680853"
     },
-    "sha256": "688c26029ce69f0b1f7cf936866656ca6723228ac46c4aef5b5f793b1e6abd22",
+    "sha256": null,
     "downloads": [
-      "https://cdn.modrinth.com/data/AANobbMI/versions/OihdIimA/sodium-fabric-0.5.13%2Bmc1.20.1.jar"
+      "https://cdn.modrinth.com/data/AANobbMI/versions/SMxNOGZ6/sodium-fabric-0.8.13%2Bmc1.21.1.jar"
     ],
     "kind": "mod",
     "env": {
@@ -63,32 +65,34 @@
     "projectUrl": "https://modrinth.com/mod/sodium",
     "sourceUrl": "https://github.com/CaffeineMC/sodium",
     "gameVersions": [
-      "1.20.1"
+      "1.21.1"
     ],
     "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
     "curseforgeProjectId": null,
-    "curseforgeFileId": null
+    "curseforgeFileId": null,
+    "modrinthPublished": "2026-08-28",
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
   },
   {
     "slug": "lithium",
     "projectId": "gvQqBUqZ",
-    "versionId": "iEcXOkz4",
-    "version": "mc1.20.1-0.11.4-fabric",
-    "fileName": "lithium-fabric-mc1.20.1-0.11.4.jar",
-    "localPath": "dependencies/mods/lithium-fabric-mc1.20.1-0.11.4.jar",
-    "fileSize": 691483,
+    "versionId": "N08Z8wog",
+    "version": "mc1.21.1-0.15.4-fabric",
+    "fileName": "lithium-fabric-0.15.4+mc1.21.1.jar",
+    "localPath": "dependencies/mods/lithium-fabric-0.15.4+mc1.21.1.jar",
+    "fileSize": 797454,
     "hashes": {
-      "sha512": "31938b7e849609892ffa1710e41f2e163d11876f824452540658c4b53cd13c666dbdad8d200989461932bd9952814c5943e64252530c72bdd5d8641775151500",
-      "sha1": "048227ed60a3005cf9fa55880dfe0cf20b0ba680"
+      "sha1": "7d82a004403b7780d4443d8e40361a55cfd0ae63",
+      "sha512": "182064b00e6315e2255b857eaab8eb759e6b042ebd4cc8b855ff0d93f875a5a7188fac49f878d7b29d4ef7e6b6341190ad7f6f6f39f4a6d2c62003468b08e4c6"
     },
-    "sha256": "76133efe92aea907cf75562d9e26517deb170e2580e1ecd4979da2c8902de782",
+    "sha256": null,
     "downloads": [
-      "https://cdn.modrinth.com/data/gvQqBUqZ/versions/iEcXOkz4/lithium-fabric-mc1.20.1-0.11.4.jar"
+      "https://cdn.modrinth.com/data/gvQqBUqZ/versions/N08Z8wog/lithium-fabric-0.15.4%2Bmc1.21.1.jar"
     ],
     "kind": "mod",
     "env": {
-      "client": "required",
-      "server": "required"
+      "client": "optional",
+      "server": "optional"
     },
     "license": {
       "id": "LGPL-3.0-only",
@@ -98,32 +102,34 @@
     "projectUrl": "https://modrinth.com/mod/lithium",
     "sourceUrl": "https://github.com/caffeinemc/lithium-fabric",
     "gameVersions": [
-      "1.20.1"
+      "1.21.1"
     ],
     "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
     "curseforgeProjectId": null,
-    "curseforgeFileId": null
+    "curseforgeFileId": null,
+    "modrinthPublished": "2026-06-27",
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
   },
   {
     "slug": "ferrite-core",
     "projectId": "uXXizFIs",
-    "versionId": "unerR5MN",
-    "version": "6.0.1",
-    "fileName": "ferritecore-6.0.1-fabric.jar",
-    "localPath": "dependencies/mods/ferritecore-6.0.1-fabric.jar",
-    "fileSize": 125197,
+    "versionId": "sOzRw3CG",
+    "version": "7.0.3-fabric",
+    "fileName": "ferritecore-7.0.3-fabric.jar",
+    "localPath": "dependencies/mods/ferritecore-7.0.3-fabric.jar",
+    "fileSize": 123450,
     "hashes": {
-      "sha512": "9b7dc686bfa7937815d88c7bbc6908857cd6646b05e7a96ddbdcada328a385bd4ba056532cd1d7df9d2d7f4265fd48bd49ff683f217f6d4e817177b87f6bc457",
-      "sha1": "8fa3b84fc5860dbc30fdf8cced02af68dffcf3fa"
+      "sha1": "a8a6a34fcda177da2828cedef44e0e538cf78aad",
+      "sha512": "3ad31620fac4ff44327dc7dedbe162b2d978f3f246dc16255a6e400ce9592a0d326fe36a626f3c1bf30a11f813093cbb4dcc107af039cff724d0cdf648541fdf"
     },
-    "sha256": "c7ba1118a05b2da900d1c369fbe1017a3e3ec3cafe5e51398b851279b9becf24",
+    "sha256": null,
     "downloads": [
-      "https://cdn.modrinth.com/data/uXXizFIs/versions/unerR5MN/ferritecore-6.0.1-fabric.jar"
+      "https://cdn.modrinth.com/data/uXXizFIs/versions/sOzRw3CG/ferritecore-7.0.3-fabric.jar"
     ],
     "kind": "mod",
     "env": {
-      "client": "required",
-      "server": "required"
+      "client": "optional",
+      "server": "optional"
     },
     "license": {
       "id": "MIT",
@@ -133,29 +139,29 @@
     "projectUrl": "https://modrinth.com/mod/ferrite-core",
     "sourceUrl": "https://github.com/malte0811/FerriteCore",
     "gameVersions": [
-      "1.20",
-      "1.20.1",
-      "1.20.2"
+      "1.21.1"
     ],
     "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
     "curseforgeProjectId": null,
-    "curseforgeFileId": null
+    "curseforgeFileId": null,
+    "modrinthPublished": "2026-01-25",
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
   },
   {
     "slug": "immediatelyfast",
     "projectId": "5ZwdcRci",
-    "versionId": "iwYUrQJO",
-    "version": "1.5.5+1.20.4-fabric",
-    "fileName": "ImmediatelyFast-Fabric-1.5.5+1.20.4.jar",
-    "localPath": "dependencies/mods/ImmediatelyFast-Fabric-1.5.5+1.20.4.jar",
-    "fileSize": 348818,
+    "versionId": "aLnBqxFW",
+    "version": "1.6.15+1.21.1-fabric",
+    "fileName": "ImmediatelyFast-Fabric-1.6.15+1.21.1.jar",
+    "localPath": "dependencies/mods/ImmediatelyFast-Fabric-1.6.15+1.21.1.jar",
+    "fileSize": 342235,
     "hashes": {
-      "sha512": "8733e4f1fcd64581979f93f2580ae9f530e64ba21e90b2a46d4c1bdcb802e5a53a49a160e4dae06ec9e4d7829ea34715c9c9e1c2bfd7238b4de7fccfbc482ffd",
-      "sha1": "9f0110b60dc752ca093f2fc10a72d221b6dc8ac3"
+      "sha1": "5067bdff1d5cc6d2dd89986f98bd8bd7ae62fb98",
+      "sha512": "d4ac2d574d80000cd59b0b362706a6f86778bfc717748dca854f05ee8d09ce158738488e58c6b8ee05d5e54017f05b6c66c3bcaa3fa357d38cbfd75893dda9f4"
     },
-    "sha256": "5eea426af467564618e017e8f3a62f1c5c4224ab32a0a1726313de130a2d783d",
+    "sha256": null,
     "downloads": [
-      "https://cdn.modrinth.com/data/5ZwdcRci/versions/iwYUrQJO/ImmediatelyFast-Fabric-1.5.5%2B1.20.4.jar"
+      "https://cdn.modrinth.com/data/5ZwdcRci/versions/aLnBqxFW/ImmediatelyFast-Fabric-1.6.15%2B1.21.1.jar"
     ],
     "kind": "mod",
     "env": {
@@ -170,36 +176,35 @@
     "projectUrl": "https://modrinth.com/mod/immediatelyfast",
     "sourceUrl": "https://github.com/RaphiMC/ImmediatelyFast",
     "gameVersions": [
-      "1.20",
-      "1.20.1",
-      "1.20.2",
-      "1.20.3",
-      "1.20.4"
+      "1.21",
+      "1.21.1"
     ],
     "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
     "curseforgeProjectId": null,
-    "curseforgeFileId": null
+    "curseforgeFileId": null,
+    "modrinthPublished": "2026-10-13",
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
   },
   {
     "slug": "modernfix",
     "projectId": "nmDcB62a",
-    "versionId": "rPmgLeZC",
-    "version": "5.25.2+mc1.20.1",
-    "fileName": "modernfix-fabric-5.25.2+mc1.20.1.jar",
-    "localPath": "dependencies/mods/modernfix-fabric-5.25.2+mc1.20.1.jar",
-    "fileSize": 545175,
+    "versionId": "NnNX8LBn",
+    "version": "5.25.1+mc1.21.1",
+    "fileName": "modernfix-fabric-5.25.1+mc1.21.1.jar",
+    "localPath": "dependencies/mods/modernfix-fabric-5.25.1+mc1.21.1.jar",
+    "fileSize": 471258,
     "hashes": {
-      "sha512": "878e39d182767ffd08ad6a3539fae780739129db133abe02b9b73dc3df6e1ac9ddbe509620356b0aae5e7bfbed535d0e18741703334317a16fefef820269da2d",
-      "sha1": "be03b9eb570c1e9df7593e68623f0fecbd039460"
+      "sha1": "4ab39e9c736e7204146792c545ec5b29fc0a3872",
+      "sha512": "dc67d6e023e1fcdeaf7837917c477cba212c611dfc2463c6ea021319c644087c79b477e0ea8194e113ddd7332fd5c6d82baa47c291eaac7f4a86252507b4e19f"
     },
-    "sha256": "5c1f852046e62a17056bb6b571164e61644076c5eb9029c92b31e337cc62c0d9",
+    "sha256": null,
     "downloads": [
-      "https://cdn.modrinth.com/data/nmDcB62a/versions/rPmgLeZC/modernfix-fabric-5.25.2%2Bmc1.20.1.jar"
+      "https://cdn.modrinth.com/data/nmDcB62a/versions/NnNX8LBn/modernfix-fabric-5.25.1%2Bmc1.21.1.jar"
     ],
     "kind": "mod",
     "env": {
-      "client": "required",
-      "server": "required"
+      "client": "optional",
+      "server": "optional"
     },
     "license": {
       "id": "LGPL-3.0-only",
@@ -209,27 +214,29 @@
     "projectUrl": "https://modrinth.com/mod/modernfix",
     "sourceUrl": "https://github.com/embeddedt/ModernFix",
     "gameVersions": [
-      "1.20.1"
+      "1.21.1"
     ],
     "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
     "curseforgeProjectId": null,
-    "curseforgeFileId": null
+    "curseforgeFileId": null,
+    "modrinthPublished": "2025-11-08",
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
   },
   {
     "slug": "entity-model-features",
     "projectId": "4I1XuqiY",
-    "versionId": "kIXaZJr8",
-    "version": "3.3.12-fabric-1.20.1",
-    "fileName": "entity_model_features-3.3.12-1.20.1-fabric.jar",
-    "localPath": "dependencies/mods/entity_model_features-3.3.12-1.20.1-fabric.jar",
-    "fileSize": 652640,
+    "versionId": "90RfzkYP",
+    "version": "3.3.12-fabric-1.21",
+    "fileName": "entity_model_features-3.3.12-1.21-fabric.jar",
+    "localPath": "dependencies/mods/entity_model_features-3.3.12-1.21-fabric.jar",
+    "fileSize": 653743,
     "hashes": {
-      "sha1": "e26f59d1fc5a2015e99d09e148640664fec70470",
-      "sha512": "5782ea103b3d6791564b3022760bae57aa2dc017b6f4d4a28e493bae1ea3fa1232c19a8a9614df604d3fe0a871540dd76d4f9150c2186047961ed520c9c041ce"
+      "sha1": "1528d24c0c6577ac23408c661639a0a03a5207f3",
+      "sha512": "0ab99fec33bb27334adf002b911f2834bd5cecc1e9a02acb6b7eda1b5e989cc704b7c35a0ee716fe86d43e4f20b5307a2dd55766b1018c4e1422c863d411c013"
     },
-    "sha256": "0a2e4cf5a1c15e4ff726d1ebee3ed4f177f00cb27a2aee687193a4a4dfc071d1",
+    "sha256": null,
     "downloads": [
-      "https://cdn.modrinth.com/data/4I1XuqiY/versions/kIXaZJr8/entity_model_features-3.3.12-1.20.1-fabric.jar"
+      "https://cdn.modrinth.com/data/4I1XuqiY/versions/90RfzkYP/entity_model_features-3.3.12-1.21-fabric.jar"
     ],
     "kind": "mod",
     "env": {
@@ -244,28 +251,30 @@
     "projectUrl": "https://modrinth.com/mod/entity-model-features",
     "sourceUrl": "https://github.com/Traben-0/Entity_Model_Features",
     "gameVersions": [
-      "1.20",
-      "1.20.1"
+      "1.21",
+      "1.21.1"
     ],
     "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
     "curseforgeProjectId": null,
-    "curseforgeFileId": null
+    "curseforgeFileId": null,
+    "modrinthPublished": "2026-10-15",
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
   },
   {
     "slug": "entitytexturefeatures",
     "projectId": "BVzZfTc1",
-    "versionId": "kWWzrS7Z",
-    "version": "7.2.6-fabric-1.20.1",
-    "fileName": "entity_texture_features-7.2.6-1.20.1-fabric.jar",
-    "localPath": "dependencies/mods/entity_texture_features-7.2.6-1.20.1-fabric.jar",
-    "fileSize": 808025,
+    "versionId": "LNZeTHJf",
+    "version": "7.2.6-fabric-1.21",
+    "fileName": "entity_texture_features-7.2.6-1.21-fabric.jar",
+    "localPath": "dependencies/mods/entity_texture_features-7.2.6-1.21-fabric.jar",
+    "fileSize": 800215,
     "hashes": {
-      "sha512": "0070d561237b874d00c92e7907e594cba690c725fa8eea8b1f77c40de88af0f13f3dd4e6a22fd8aaf60dcef1f005fdb4c77cd7c601fd5c80cd13a1ed4d39f431",
-      "sha1": "bf685607e3cdfd0c3f39fcba2821ab91bced2ec2"
+      "sha1": "1ec5508fe8252234bf175c1dc48f099530d687d3",
+      "sha512": "5258b3c2bd7894b20f9597af78a7aa83a1f84a54956ed32febc1d04864336372b98ef282a0a3b9d85f60e745d93ee0b3bc2be664fc9a6227c6d2c28e031617b5"
     },
-    "sha256": "839e95070dd232222b8a7782b57351f5a20e01c2b0e6c0c2b9bfaddb59fa96e4",
+    "sha256": null,
     "downloads": [
-      "https://cdn.modrinth.com/data/BVzZfTc1/versions/kWWzrS7Z/entity_texture_features-7.2.6-1.20.1-fabric.jar"
+      "https://cdn.modrinth.com/data/BVzZfTc1/versions/LNZeTHJf/entity_texture_features-7.2.6-1.21-fabric.jar"
     ],
     "kind": "mod",
     "env": {
@@ -280,28 +289,30 @@
     "projectUrl": "https://modrinth.com/mod/entitytexturefeatures",
     "sourceUrl": "https://github.com/Traben-0/Entity_Texture_Features",
     "gameVersions": [
-      "1.20",
-      "1.20.1"
+      "1.21",
+      "1.21.1"
     ],
     "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
     "curseforgeProjectId": null,
-    "curseforgeFileId": null
+    "curseforgeFileId": null,
+    "modrinthPublished": "2026-10-15",
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
   },
   {
     "slug": "presence-footsteps",
     "projectId": "rcTfTZr3",
-    "versionId": "k0t6DSmw",
-    "version": "1.10.1+1.20.1",
-    "fileName": "PresenceFootsteps-1.10.1+1.20.1.jar",
-    "localPath": "dependencies/mods/PresenceFootsteps-1.10.1+1.20.1.jar",
-    "fileSize": 5664952,
+    "versionId": "CrvsDgLW",
+    "version": "1.11.2+1.21",
+    "fileName": "PresenceFootsteps-1.11.2+1.21.jar",
+    "localPath": "dependencies/mods/PresenceFootsteps-1.11.2+1.21.jar",
+    "fileSize": 5694024,
     "hashes": {
-      "sha1": "8f88195dea52509564fabc3dfac966b09290d905",
-      "sha512": "c306f96496aadc30abcaac0bd35e22f870e974fe532eaf1f2b66bfd5e7e5e7f6276d58b393bcd6521e8ea74b38a52b54246e2cd0344d9acf8ed4cb233f9a1e1d"
+      "sha1": "2e0228905a1e5a2ddecb00d40d764a64a4600a6e",
+      "sha512": "524e5fd9c063d3ee81baaf4dbe553982a906b9b315dffae4aa64332db22a1f2fa0bb13b339c74ac7c5ddf9a8453b6fdaa9e93abac3c8bc1a9a347405e382f1c5"
     },
-    "sha256": "70f354e5ecd8993908601fcdfcb4e98f7b81f42192287282a5b86712e9a6be95",
+    "sha256": null,
     "downloads": [
-      "https://cdn.modrinth.com/data/rcTfTZr3/versions/k0t6DSmw/PresenceFootsteps-1.10.1%2B1.20.1.jar"
+      "https://cdn.modrinth.com/data/rcTfTZr3/versions/CrvsDgLW/PresenceFootsteps-1.11.2%2B1.21.jar"
     ],
     "kind": "mod",
     "env": {
@@ -316,12 +327,14 @@
     "projectUrl": "https://modrinth.com/mod/presence-footsteps",
     "sourceUrl": "https://github.com/Sollace/Presence-Footsteps",
     "gameVersions": [
-      "1.20",
-      "1.20.1"
+      "1.21",
+      "1.21.1"
     ],
     "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
     "curseforgeProjectId": null,
-    "curseforgeFileId": null
+    "curseforgeFileId": null,
+    "modrinthPublished": "2026-06-23",
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
   },
   {
     "slug": "complementary-reimagined",
@@ -598,23 +611,23 @@
   {
     "slug": "fabric-api",
     "projectId": "P7dR8mSH",
-    "versionId": "P7uGFii0",
-    "version": "0.92.2+1.20.1",
-    "fileName": "fabric-api-0.92.2+1.20.1.jar",
-    "localPath": "C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\net.fabricmc.fabric-api\\fabric-api\\0.92.2+1.20.1\\625ee015ee426d9b677382a7bb661383d89c0807\\fabric-api-0.92.2+1.20.1.jar",
-    "fileSize": 2107289,
+    "versionId": "5SwzqWUu",
+    "version": "0.116.18+1.21.1",
+    "fileName": "fabric-api-0.116.18+1.21.1.jar",
+    "localPath": null,
+    "fileSize": 2453884,
     "hashes": {
-      "sha1": "625ee015ee426d9b677382a7bb661383d89c0807",
-      "sha512": "a9b461e9e28871002072337adc69e829f5a59c05a39ffe1f6a27df7daff392ac25c8e5a6c01ff340b3eef99cecc42b21c012766a7c87446ca442f9ea1b04aca6"
+      "sha1": "584d303f646287ee6be059ecb2fc451255be9ee9",
+      "sha512": "9f721c253ae2e9823cb548e8ec132c9928f80a65184e9b8dcfc489a8d632df20cbfea1e65ff8a4333bdb295c41fbe2228b43e4d41c7355d42ed4637a785840a1"
     },
-    "sha256": "4500f844c45573d039d68d3963c9885aa9de7712670216e0ad3e5df16c6770fc",
+    "sha256": null,
     "downloads": [
-      "https://cdn.modrinth.com/data/P7dR8mSH/versions/P7uGFii0/fabric-api-0.92.2%2B1.20.1.jar"
+      "https://cdn.modrinth.com/data/P7dR8mSH/versions/5SwzqWUu/fabric-api-0.116.18%2B1.21.1.jar"
     ],
     "kind": "mod",
     "env": {
-      "client": "required",
-      "server": "required"
+      "client": "optional",
+      "server": "optional"
     },
     "license": {
       "id": "Apache-2.0",
@@ -624,27 +637,105 @@
     "projectUrl": "https://modrinth.com/mod/fabric-api",
     "sourceUrl": "https://github.com/FabricMC/fabric-api",
     "gameVersions": [
-      "1.20.1"
+      "1.21.1"
     ],
     "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
     "curseforgeProjectId": null,
-    "curseforgeFileId": null
+    "curseforgeFileId": null,
+    "modrinthPublished": "2026-11-09",
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download",
+    "gradleCoordinate": "net.fabricmc.fabric-api:fabric-api:0.116.18+1.21.1"
+  },
+  {
+    "slug": "entityculling",
+    "kind": "mod",
+    "redistributionReview": "tr7zw Protective License: read it before shipping in the pack (Modrinth link download only until reviewed)",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null,
+    "projectId": "NNAgCjsB",
+    "versionId": "ePsqkPkO",
+    "version": "1.12.1",
+    "fileName": "entityculling-fabric-1.12.1-mc1.21.1.jar",
+    "localPath": "dependencies/mods/entityculling-fabric-1.12.1-mc1.21.1.jar",
+    "fileSize": 1533262,
+    "hashes": {
+      "sha1": "1a28b70786ba203b160a406080232ef9834e500c",
+      "sha512": "8b0e2a54a4b08edeb2aaf2dd4d6d20f152f7a88ddc266525f79661b46bfd00638d7ff03a628f258d0f27f2f99728ce1ffc182c0d547a686df7d3544b549d2b9b"
+    },
+    "sha256": null,
+    "downloads": [
+      "https://cdn.modrinth.com/data/NNAgCjsB/versions/ePsqkPkO/entityculling-fabric-1.12.1-mc1.21.1.jar"
+    ],
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "LicenseRef-tr7zw-Protective-License",
+      "name": "",
+      "url": "https://github.com/tr7zw/EntityCulling/blob/1.18/LICENSE-EntityCulling"
+    },
+    "projectUrl": "https://modrinth.com/mod/entityculling",
+    "sourceUrl": "https://github.com/tr7zw/EntityCulling",
+    "gameVersions": [
+      "1.21.1"
+    ],
+    "modrinthPublished": "2026-11-13",
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+  },
+  {
+    "slug": "modmenu",
+    "kind": "mod",
+    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "curseforgeProjectId": null,
+    "curseforgeFileId": null,
+    "projectId": "mOgUt4GM",
+    "versionId": "6lgOkclV",
+    "version": "11.0.5",
+    "fileName": "modmenu-11.0.5.jar",
+    "localPath": "dependencies/mods/modmenu-11.0.5.jar",
+    "fileSize": 975846,
+    "hashes": {
+      "sha1": "2321d890a25b5985eba576d7cd8fe9a9c136e33d",
+      "sha512": "92e8e96267ff18d320903090f2ad9b32408a218919f5a0d578e232ad774c89d49a34a8271806652be7d6283f24e98432bc4af7f95855e78b843f9100d68696c7"
+    },
+    "sha256": null,
+    "downloads": [
+      "https://cdn.modrinth.com/data/mOgUt4GM/versions/6lgOkclV/modmenu-11.0.5.jar"
+    ],
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "MIT",
+      "name": "MIT License",
+      "url": null
+    },
+    "projectUrl": "https://modrinth.com/mod/modmenu",
+    "sourceUrl": "https://github.com/TerraformersMC/ModMenu",
+    "gameVersions": [
+      "1.21",
+      "1.21.1"
+    ],
+    "modrinthPublished": "2026-09-24",
+    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
   },
   {
     "slug": "excalibur",
     "projectId": "hJAzl1Bs",
-    "versionId": "yVpdNmnj",
-    "version": "V1.20",
-    "fileName": "Excalibur_V1.20.zip",
-    "localPath": "dependencies/resourcepacks/Excalibur_V1.20.zip",
-    "fileSize": 17107369,
+    "versionId": "ZRWxgeyn",
+    "version": "1.21.1",
+    "fileName": "Excalibur_V1.21.1.zip",
+    "localPath": "dependencies/resourcepacks/Excalibur_V1.21.1.zip",
+    "fileSize": 18103896,
     "hashes": {
-      "sha512": "a2080ab27a954a95b9c4b7450bdfa3ecd18c5ceecc88d9dcc981aae1a98394f8e7a617cea6a3254c6a363c192a9dd2ac7602d236655f2afde57b1e4e13dd244e",
-      "sha1": "5a49050cd16d898a29d329c21a3006b2381a0dcc"
+      "sha512": "858c0367346ec6d58e34ecd2f3b69b73e779d655a49ca12bcdd0113106bf4516f378013bab74331ad1f02ba0b0c2c465374802210ebb3f1f6d26b1cc8936a591",
+      "sha1": "32e930dd065d2278587c1cc810ca6eaba5afd125"
     },
-    "sha256": "ccf01766c56ad287071c795452ebdb6a33bf35a74f098d5191475cd479292d49",
+    "sha256": null,
     "downloads": [
-      "https://cdn.modrinth.com/data/hJAzl1Bs/versions/yVpdNmnj/Excalibur_V1.20.zip"
+      "https://cdn.modrinth.com/data/hJAzl1Bs/versions/ZRWxgeyn/Excalibur_V1.21.1.zip"
     ],
     "kind": "resourcepack",
     "env": {
@@ -659,6 +750,10 @@
     "projectUrl": "https://modrinth.com/resourcepack/excal",
     "sourceUrl": "https://modrinth.com/resourcepack/excal",
     "curseforgeOverride": true,
-    "redistributionReview": "Maffhew permission 2026-10-28, unmodified; paid features not covered. CC BY-NC-ND 3.0."
+    "redistributionReview": "PERMISSION TO RE-CONFIRM BY KORT: Maffhew permission 2026-10-28 was for V1.20; ask again for the 1.21.1 file. Unmodified; paid features not covered. CC BY-NC-ND 3.0.",
+    "gameVersions": [
+      "1.21",
+      "1.21.1"
+    ]
   }
 ]

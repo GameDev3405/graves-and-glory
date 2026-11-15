@@ -4,93 +4,104 @@
   "entries": {
     "iris": {
       "name": "Iris Shaders",
-      "status": "resolved",
+      "status": "unverified-1.21.1",
       "projectID": 455508,
-      "fileID": 6258195,
-      "fileName": "iris-1.7.6+mc1.20.1.jar",
+      "fileID": null,
+      "fileName": "iris-fabric-1.8.14-beta.1+mc1.21.1.jar",
       "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/irisshaders",
-      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/irisshaders/files/6258195"
+      "sourceUrl": null,
+      "note": "projectID read from the 2026-11-02 file pages; the 1.21.1 fileID has not been read from a file page. Never guess an ID."
     },
     "sodium": {
       "name": "Sodium",
-      "status": "resolved",
+      "status": "unverified-1.21.1",
       "projectID": 394468,
-      "fileID": 6260639,
-      "fileName": "sodium-fabric-0.5.13+mc1.20.1.jar",
+      "fileID": null,
+      "fileName": "sodium-fabric-0.8.13+mc1.21.1.jar",
       "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/sodium",
-      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/sodium/files/6260639"
+      "sourceUrl": null,
+      "note": "projectID read from the 2026-11-02 file pages; the 1.21.1 fileID has not been read from a file page. Never guess an ID.",
+      "candidateFileID": "8756581 (seen in a summarised CurseForge listing for Sodium 0.8.13 Fabric 1.21.1; not confirmed on the file page)"
     },
     "lithium": {
       "name": "Lithium",
-      "status": "resolved",
+      "status": "unverified-1.21.1",
       "projectID": 360438,
-      "fileID": 7268114,
-      "fileName": "lithium-fabric-mc1.20.1-0.11.4.jar",
+      "fileID": null,
+      "fileName": "lithium-fabric-0.15.4+mc1.21.1.jar",
       "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/lithium",
-      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/lithium/files/7268114"
+      "sourceUrl": null,
+      "note": "projectID read from the 2026-11-02 file pages; the 1.21.1 fileID has not been read from a file page. Never guess an ID."
     },
     "ferrite-core": {
       "name": "FerriteCore (Fabric)",
-      "status": "resolved",
+      "status": "unverified-1.21.1",
       "projectID": 459857,
-      "fileID": 4810977,
-      "fileName": "ferritecore-6.0.1-fabric.jar",
+      "fileID": null,
+      "fileName": "ferritecore-7.0.3-fabric.jar",
       "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/ferritecore-fabric",
-      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/ferritecore-fabric/files/4810977"
+      "sourceUrl": null,
+      "note": "projectID read from the 2026-11-02 file pages; the 1.21.1 fileID has not been read from a file page. Never guess an ID."
     },
     "immediatelyfast": {
       "name": "ImmediatelyFast",
-      "status": "resolved",
+      "status": "unverified-1.21.1",
       "projectID": 686911,
-      "fileID": 8348480,
-      "fileName": "ImmediatelyFast-Fabric-1.5.5+1.20.4.jar",
+      "fileID": null,
+      "fileName": "ImmediatelyFast-Fabric-1.6.15+1.21.1.jar",
       "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/immediatelyfast",
-      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/immediatelyfast/files/8348480"
+      "sourceUrl": null,
+      "note": "projectID read from the 2026-11-02 file pages; the 1.21.1 fileID has not been read from a file page. Never guess an ID."
     },
     "modernfix": {
       "name": "ModernFix",
-      "status": "resolved",
+      "status": "unverified-1.21.1",
       "projectID": 790626,
-      "fileID": 7306748,
-      "fileName": "modernfix-fabric-5.25.2+mc1.20.1.jar",
+      "fileID": null,
+      "fileName": "modernfix-fabric-5.25.1+mc1.21.1.jar",
       "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/modernfix",
-      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/modernfix/files/7306748"
+      "sourceUrl": null,
+      "note": "projectID read from the 2026-11-02 file pages; the 1.21.1 fileID has not been read from a file page. Never guess an ID."
     },
     "entity-model-features": {
       "name": "Entity Model Features",
-      "status": "resolved",
+      "status": "unverified-1.21.1",
       "projectID": 844662,
-      "fileID": 9188519,
-      "fileName": "entity_model_features-3.3.12-1.20.1-fabric.jar",
+      "fileID": null,
+      "fileName": "entity_model_features-3.3.12-1.21-fabric.jar",
       "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/entity-model-features",
-      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/entity-model-features/files/9188519"
+      "sourceUrl": null,
+      "note": "projectID read from the 2026-11-02 file pages; the 1.21.1 fileID has not been read from a file page. Never guess an ID."
     },
     "entitytexturefeatures": {
       "name": "Entity Texture Features (Fabric)",
-      "status": "resolved",
+      "status": "unverified-1.21.1",
       "projectID": 568563,
-      "fileID": 9188404,
-      "fileName": "entity_texture_features-7.2.6-1.20.1-fabric.jar",
+      "fileID": null,
+      "fileName": "entity_texture_features-7.2.6-1.21-fabric.jar",
       "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/entity-texture-features-fabric",
-      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/entity-texture-features-fabric/files/9188404"
+      "sourceUrl": null,
+      "note": "projectID read from the 2026-11-02 file pages; the 1.21.1 fileID has not been read from a file page. Never guess an ID."
     },
     "presence-footsteps": {
       "name": "Presence Footsteps",
-      "status": "resolved",
+      "status": "unverified-1.21.1",
       "projectID": 334259,
-      "fileID": 5956100,
-      "fileName": "PresenceFootsteps-1.10.1+1.20.1.jar",
+      "fileID": null,
+      "fileName": "PresenceFootsteps-1.11.2+1.21.jar",
       "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/presence-footsteps",
-      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/presence-footsteps/files/5956100"
+      "sourceUrl": null,
+      "note": "projectID read from the 2026-11-02 file pages; the 1.21.1 fileID has not been read from a file page. Never guess an ID."
     },
     "fabric-api": {
       "name": "Fabric API",
-      "status": "resolved",
+      "status": "unverified-1.21.1",
       "projectID": 306612,
-      "fileID": 5383715,
-      "fileName": "fabric-api-0.92.2+1.20.1.jar",
+      "fileID": null,
+      "fileName": "fabric-api-0.116.18+1.21.1.jar",
       "projectUrl": "https://www.curseforge.com/minecraft/mc-mods/fabric-api",
-      "sourceUrl": "https://www.curseforge.com/minecraft/mc-mods/fabric-api/files/5383715"
+      "sourceUrl": null,
+      "note": "projectID read from the 2026-11-02 file pages; the 1.21.1 fileID has not been read from a file page. Never guess an ID."
     },
     "complementary-reimagined": {
       "name": "Complementary Reimagined",
@@ -118,6 +129,23 @@
       "fileName": "MakeUp-UltraFast-9.5g.zip",
       "projectUrl": "https://www.curseforge.com/minecraft/shaders/makeup-ultra-fast-shader",
       "sourceUrl": "https://www.curseforge.com/minecraft/shaders/makeup-ultra-fast-shader/files/9054810"
+    },
+    "entityculling": {
+      "name": "Entity Culling",
+      "status": "unverified-1.21.1",
+      "projectID": null,
+      "fileID": null,
+      "fileName": "entityculling-fabric-1.12.1-mc1.21.1.jar",
+      "note": "new player-pack addition (Kort); CurseForge ids not looked up"
+    },
+    "modmenu": {
+      "name": "Mod Menu",
+      "status": "unverified-1.21.1",
+      "projectID": null,
+      "fileID": null,
+      "fileName": "modmenu-11.0.5.jar",
+      "note": "new player-pack addition (Kort); CurseForge ids not looked up"
     }
-  }
+  },
+  "_port_note": "port/tools 2026-11-15: 1.21.1 builds recorded; every non-shader entry is unverified-1.21.1 so tools/export_curseforge.py refuses until file pages are read."
 }
