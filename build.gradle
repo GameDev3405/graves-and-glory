@@ -5,7 +5,7 @@ base { archivesName = 'graves-and-glory' }
 repositories {
  mavenCentral()
  // GeckoLib (approved by Kort for the unit animation rebuild).
- maven { url 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' }
+ maven { url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' }
 }
 dependencies {
  minecraft 'com.mojang:minecraft:1.21.1'
@@ -93,10 +93,12 @@ tasks.register('generateReleaseIdentity', Exec) {
  commandLine 'python', 'tools/build_identity.py', releaseResources.get().file('gravesandglory-build.json').asFile
 }
 sourceSets.main.resources.srcDir releaseResources
+// Read at configuration time: Gradle 9 deprecates Task.project inside an execution-time closure.
+def modVersion = project.version
 processResources {
  dependsOn generateReleaseIdentity
- inputs.property('version', project.version)
- filesMatching('fabric.mod.json') { expand(version: project.version) }
+ inputs.property('version', modVersion)
+ filesMatching('fabric.mod.json') { expand(version: modVersion) }
 }
 tasks.withType(JavaCompile).configureEach { options.release = 21; options.compilerArgs += ['-Xmaxerrs', '10000'] }
 java { withSourcesJar() }
