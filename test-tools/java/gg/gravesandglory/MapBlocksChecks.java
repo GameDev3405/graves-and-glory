@@ -108,7 +108,7 @@ final class MapBlocksChecks implements Phase1Checks.Suite {
         report("walk-control", free[0] > wall + 1.5, String.format("control: the same walk with no fence reaches x %.2f", free[0]));
         // shapes
         BlockPos lo = new BlockPos(ox + FENCE, oy, oz + 4), hi = lo.up();
-        var arrow = new ArrowEntity(w, ox, oy, oz);
+        var arrow = new ArrowEntity(w, ox, oy, oz, new net.minecraft.item.ItemStack(net.minecraft.item.Items.ARROW), null);
         var fenceState = w.getBlockState(lo);
         boolean cubes = Block.isShapeFullCube(fenceState.getCollisionShape(w, lo, ShapeContext.of(fake))) && Block.isShapeFullCube(w.getBlockState(hi).getCollisionShape(w, hi, ShapeContext.of(z)))
             && fenceState.isOf(MapBlocks.TROOP_FENCE) && w.getBlockState(hi).isOf(MapBlocks.TROOP_FENCE);
@@ -143,7 +143,7 @@ final class MapBlocksChecks implements Phase1Checks.Suite {
         launched = true;
     }
     static ArrowEntity shoot(ServerWorld w, double x, double y, double z, double vx, double vy) {
-        var a = new ArrowEntity(w, x, y, z);
+        var a = new ArrowEntity(w, x, y, z, new net.minecraft.item.ItemStack(net.minecraft.item.Items.ARROW), null);
         a.setNoGravity(true); a.setVelocity(vx, vy, 0); a.pickupType = net.minecraft.entity.projectile.PersistentProjectileEntity.PickupPermission.DISALLOWED;
         w.spawnEntity(a);
         return a;
@@ -196,7 +196,7 @@ final class MapBlocksChecks implements Phase1Checks.Suite {
 
     void clientView(MinecraftClient c) {
         var w = c.world; BlockPos lo = new BlockPos(ox + FENCE, oy, oz + 4);
-        var arrow = new ArrowEntity(w, ox, oy, oz);
+        var arrow = new ArrowEntity(w, ox, oy, oz, new net.minecraft.item.ItemStack(net.minecraft.item.Items.ARROW), null);
         var s = w.getBlockState(lo);
         report("client-agrees", s.isOf(MapBlocks.TROOP_FENCE) && Block.isShapeFullCube(s.getCollisionShape(w, lo, ShapeContext.of(c.player))) && s.getCollisionShape(w, lo, ShapeContext.of(arrow)).isEmpty()
             && s.getOutlineShape(w, lo, ShapeContext.of(c.player)).isEmpty() && w.getBlockState(new BlockPos(ox + POOL_X, oy, oz + POOL_Z)).isOf(MapBlocks.STILL_WATER),

@@ -5,10 +5,10 @@ import net.minecraft.util.Identifier;
 import software.bernie.geckolib.cache.GeckoLibCache;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.cache.object.GeoBone;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.Animation;
-import software.bernie.geckolib.core.keyframe.BoneAnimation;
-import software.bernie.geckolib.core.state.BoneSnapshot;
+import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.animation.Animation;
+import software.bernie.geckolib.animation.keyframe.BoneAnimation;
+import software.bernie.geckolib.animation.state.BoneSnapshot;
 import software.bernie.geckolib.loading.object.BakedAnimations;
 
 import java.util.ArrayList;
@@ -149,7 +149,7 @@ final class GeoLayerRest {
         final List<GeoBone> bones = new ArrayList<>();
         final List<float[]> left = new ArrayList<>();
         final List<GeoBone> all = new ArrayList<>();
-        final Map<String, CoreGeoBone> byName = new HashMap<>();
+        final Map<String, GeoBone> byName = new HashMap<>();
         Animation walk, run;
         double walkLeft = -1, runLeft = -1;
         String note = "";
@@ -170,7 +170,7 @@ final class GeoLayerRest {
             Identifier id = null;
             for (Map.Entry<Identifier, BakedGeoModel> en : GeckoLibCache.getBakedModels().entrySet()) if (en.getValue() == m) id = en.getKey();
             if (id == null) return l;
-            BakedAnimations baked = GeckoLibCache.getBakedAnimations().get(new Identifier(id.getNamespace(), id.getPath().replace("geo/", "animations/").replace(".geo.json", ".animation.json")));
+            BakedAnimations baked = GeckoLibCache.getBakedAnimations().get(Identifier.of(id.getNamespace(), id.getPath().replace("geo/", "animations/").replace(".geo.json", ".animation.json")));
             l.walk = baked == null ? null : baked.getAnimation("walk_legs");
             if (l.walk == null) return l;
             l.run = baked.getAnimation("run_legs");
@@ -178,7 +178,7 @@ final class GeoLayerRest {
             // the legs a standing troop's gait layer holds: the idle clip's first frame on the leg bones the walk keys (rest where the idle keys none)
             Map<String, float[]> idlePose = new HashMap<>();
             for (BoneAnimation b : l.walk.boneAnimations()) {
-                CoreGeoBone bone = l.byName.get(b.boneName());
+                GeoBone bone = l.byName.get(b.boneName());
                 if (GaitController.legWeight(b.boneName()) == 0 || bone == null || b.rotationKeyFrames().xKeyframes().isEmpty()) continue;
                 idlePose.put(b.boneName(), pose(bone, idle, b.boneName(), 0));
             }
@@ -199,7 +199,7 @@ final class GeoLayerRest {
     }
 
     /** Rest plus the clip's rotation on {@code name} at {@code t} (rest alone when the clip is missing or does not key it). */
-    private static float[] pose(CoreGeoBone bone, Animation clip, String name, double t) {
+    private static float[] pose(GeoBone bone, Animation clip, String name, double t) {
         BoneSnapshot init = bone.getInitialSnapshot();
         float[] p = {init.getRotX(), init.getRotY(), init.getRotZ()};
         if (clip != null) for (BoneAnimation b : clip.boneAnimations()) {

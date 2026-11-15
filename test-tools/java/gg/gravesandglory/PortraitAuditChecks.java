@@ -88,7 +88,7 @@ public class PortraitAuditChecks implements CommandUiChecks.Suite {
                     e.bodyYaw = yaws[i]; e.headYaw = yaws[i]; e.setYaw(yaws[i]); e.prevBodyYaw = yaws[i]; e.prevHeadYaw = yaws[i];
                     var cam = new org.joml.Quaternionf();
                     var body = new org.joml.Quaternionf().rotateZ((float) Math.PI);
-                    net.minecraft.client.gui.screen.ingame.InventoryScreen.drawEntity(g, x + 80, y + 150, 60, body, cam, e);
+                    net.minecraft.client.gui.screen.ingame.InventoryScreen.drawEntity(g, (float) (x + 80), (float) (y + 150), 60f, new org.joml.Vector3f(), body, cam, e);
                     e.bodyYaw = by; e.headYaw = hy; e.setYaw(yy); e.prevBodyYaw = by; e.prevHeadYaw = hy;
                     g.drawText(f, "yaw " + (int) yaws[i], x + 2, y + 2, 0xffe8dcc0, false);
                 }

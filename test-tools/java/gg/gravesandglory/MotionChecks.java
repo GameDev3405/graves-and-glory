@@ -129,7 +129,7 @@ public final class MotionChecks {
     }
     /** R61: the partial tick the last frame was drawn at (WorldRenderContext.tickDelta, the renderer's own; paused, the client's pausedTickDelta), from the harness's own listener; NaN before the first frame. */
     static volatile float frameDelta = Float.NaN; static boolean tracking;
-    static void track() { if (tracking) return; tracking = true; net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.END.register(ctx -> frameDelta = ctx.tickDelta()); }
+    static void track() { if (tracking) return; tracking = true; net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.END.register(ctx -> frameDelta = ctx.tickCounter().getTickDelta(true)); }
     /** mo-fade-smoke (R57): the body watched for poofs (its middle), whether the count is on, and the poofs within 2 blocks of it (and anywhere) counted. */
     static volatile net.minecraft.util.math.Vec3d SMOKE_AT; static volatile boolean smokeCounting; static int smokePoofs, smokeAll;
     /** ParticleCountMixin: each particle the client asks to spawn; a poof within 2 blocks of the watched body counts while counting is on. */
@@ -941,7 +941,7 @@ public final class MotionChecks {
             switch (ls) {
                 case 0 -> {
                     String family = u.spec.family(); var rows = Tactics.variants(family);
-                    var anims = software.bernie.geckolib.cache.GeckoLibCache.getBakedAnimations().get(new net.minecraft.util.Identifier("gravesandglory", "animations/troop/knight.animation.json"));
+                    var anims = software.bernie.geckolib.cache.GeckoLibCache.getBakedAnimations().get(net.minecraft.util.Identifier.of("gravesandglory", "animations/troop/knight.animation.json"));
                     double best = Double.NEGATIVE_INFINITY;
                     for (int v = 0; v < rows.size(); v++) {
                         var clip = anims == null ? null : anims.getAnimation(AttackController.clipName(family, rows.get(v).id()));
@@ -1029,7 +1029,7 @@ public final class MotionChecks {
             net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.END.register(ctx -> {
                 LightProbe p = PROBE; if (p == null || p.changedFrame >= 0) return;
                 MinecraftClient c = MinecraftClient.getInstance(); p.frames++;
-                int light = lightOf(c, p.e, ctx.tickDelta()), drew = BodyCache.drewLight(p.e);
+                int light = lightOf(c, p.e, ctx.tickCounter().getTickDelta(true)), drew = BodyCache.drewLight(p.e);
                 var d = TroopRenderer.drawn(p.e); int count = d == null ? -1 : d.count; boolean drawn = count != p.lastCount; p.lastCount = count;
                 if (light == p.before) { p.drewBefore = drew; p.cachedBefore = drew == p.before; return; }
                 p.changedFrame = p.frames; p.now = light; p.drew = drew; p.counted = drawn;

@@ -504,8 +504,8 @@ public final class Phase1Checks implements ClientModInitializer {
                     System.out.println("[p1] tick-cost fixture: "+b.squads.values().stream().filter(s->s.seated&&s.bot).count()+" bot armies, "+troops+" troops around "+centre.id());next(b,15);
                 }
                 case 15->{
-                    tickSum+=b.server.getTickTime();tickSamples++;
-                    if(b.time-stageAt>=600){double avg=tickSum/tickSamples;float now=b.server.getTickTime();
+                    tickSum+=b.server.getAverageTickTime();tickSamples++;
+                    if(b.time-stageAt>=600){double avg=tickSum/tickSamples;float now=b.server.getAverageTickTime();
                         System.out.println("[p1] tick-cost avg="+String.format("%.2f",avg));
                         report("p1-tick-cost",now<40,"server tick "+String.format("%.2f",now)+" ms (600-tick mean "+String.format("%.2f",avg)+" ms) with "+troops+" troops at start, "+b.units.size()+" at end");
                         handBack(b);next(b,16);}
@@ -3048,7 +3048,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** A left click in the middle of a canvas box as Mouse.onMouseButton sends it: the navigation turns to the mouse's first. */
         static void click(MinecraftClient c,int[] b){c.setNavigationType(net.minecraft.client.gui.navigation.GuiNavigationType.MOUSE);UiHomeChecks.click(c,b);}
         /** The wheel turned by amount over the roll, as Mouse.onMouseScroll hands it to the screen. */
-        static void wheel(MinecraftClient c,double amount){if(c.currentScreen!=null)c.currentScreen.mouseScrolled(UiHomeChecks.gui(c,176),UiHomeChecks.gui(c,300),amount);}
+        static void wheel(MinecraftClient c,double amount){if(c.currentScreen!=null)c.currentScreen.mouseScrolled(UiHomeChecks.gui(c,176),UiHomeChecks.gui(c,300),0.0,amount);}
         static java.lang.reflect.Field mouseField(String name){try{var f=net.minecraft.client.Mouse.class.getDeclaredField(name);f.setAccessible(true);return f;}catch(NoSuchFieldException e){throw new IllegalStateException(e);}}
         /** The game's pointer at canvas (x, y), where GLFW's cursor callback would leave it (the OS cursor stays where it is): hover
          *  on the page is read from the pointer when a frame draws, not from the events the suite sends. */

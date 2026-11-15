@@ -88,7 +88,7 @@ public final class StructureStudio implements ModInitializer {
         return new ArrayList<>(ids);
     }
     static String text(MinecraftServer s,String id){
-        var resource=s.getResourceManager().getResource(new Identifier(NS,"functions/"+id+".mcfunction"));
+        var resource=s.getResourceManager().getResource(Identifier.of(NS,"functions/"+id+".mcfunction"));
         if(resource.isEmpty())throw new StudioException("no script "+NS+":"+id);
         try(InputStream in=resource.get().getInputStream()){return new String(in.readAllBytes(),StandardCharsets.UTF_8);}
         catch(Exception e){throw new StudioException("script "+id+" unreadable: "+e);}
@@ -155,7 +155,7 @@ public final class StructureStudio implements ModInitializer {
     public static Path out(){return Path.of(System.getProperty("gravesandglory.studioOut","studio-out"));}
     static Path write(NbtCompound nbt,String id){
         Path file=out().resolve(id+".nbt");
-        try{Files.createDirectories(file.getParent());NbtIo.writeCompressed(nbt,file.toFile());}
+        try{Files.createDirectories(file.getParent());NbtIo.writeCompressed(nbt,file);}
         catch(Exception e){throw new StudioException("could not write "+file+": "+e);}
         return file;
     }
@@ -164,7 +164,7 @@ public final class StructureStudio implements ModInitializer {
     /** Empty when the script of a piece rebuilds to exactly the shipped structure file (NBT equals), else what differs. */
     public static String stale(MinecraftServer s,String id){
         var shipped=Structures.read(s,id);
-        if(shipped.isEmpty())return "no structure file data/gravesandglory/structures/"+id+".nbt";
+        if(shipped.isEmpty())return "no structure file data/gravesandglory/structure/"+id+".nbt";
         NbtCompound fresh=save(s,id,build(s,id));
         return fresh.equals(shipped.get())?"":"the script no longer builds the shipped file: "+difference(fresh,shipped.get());
     }
@@ -259,8 +259,8 @@ public final class StructureStudio implements ModInitializer {
                 .then(CommandManager.literal("dump").then(CommandManager.argument("id",IdentifierArgumentType.identifier()).suggests(PIECES).executes(context->act(context,(source,id)->{
                     // The vanilla manager reads <world>/generated first, which is where a structure block saves, and the mod's own copy after:
                     // an edit of Kort's is what gets dumped. (Structures.template reads the mod only, by design, so it would dump the stale piece.)
-                    var server=source.getServer();Path generated=server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structures/"+id+".nbt");
-                    var template=server.getStructureTemplateManager().getTemplate(new Identifier(Structures.NS,id));
+                    var server=source.getServer();Path generated=server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structure/"+id+".nbt");
+                    var template=server.getStructureTemplateManager().getTemplate(Identifier.of(Structures.NS,id));
                     if(template.isEmpty())throw new StudioException("no structure file for "+id+": not in "+generated+" and not in the mod resources");
                     String script=dump(template.get());Path file=out().resolve(id+".mcfunction");
                     Files.createDirectories(file.getParent());Files.writeString(file,script,StandardCharsets.UTF_8);

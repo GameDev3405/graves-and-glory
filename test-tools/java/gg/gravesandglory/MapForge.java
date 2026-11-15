@@ -59,7 +59,7 @@ public final class MapForge implements ModInitializer {
     static void finish(boolean ok,String text){lastOk=ok;last=text+" ("+(System.nanoTime()-jobStart)/1_000_000+" ms)";log((ok?"":"FAILED ")+last);}
     static void start(String name,Job j){jobName=name;jobStart=System.nanoTime();lastOk=true;last="running "+name;job=j;}
 
-    static Path dir(){return server.getRunDirectory().toPath().resolve("mapforge");}
+    static Path dir(){return server.getRunDirectory().resolve("mapforge");}
     static Path file(String name){
         if(name.contains("..")||name.contains(":")||name.startsWith("/")||name.startsWith("\\"))throw new IllegalArgumentException("file names stay inside mapforge/: "+name);
         return dir().resolve(name);
@@ -123,7 +123,7 @@ public final class MapForge implements ModInitializer {
                     }
                     for(int y=y0;y<=y1;y++){
                         BlockState st=w.getBlockState(p.set(x,y,z));r.add(x,z,y,1,MapRuns.name(st));
-                        if(st.hasBlockEntity()){var e=w.getBlockEntity(p);if(e!=null)r.be.put(p.toImmutable(),MapRuns.encode(e.createNbt()));}
+                        if(st.hasBlockEntity()){var e=w.getBlockEntity(p);if(e!=null)r.be.put(p.toImmutable(),MapRuns.encode(e.createNbt(w.getRegistryManager())));}
                     }
                     cells+=y1-y0+1;
                     if(++z>z1){z=z0;x++;}

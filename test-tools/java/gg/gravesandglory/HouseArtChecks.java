@@ -34,7 +34,7 @@ final class HouseArtChecks implements Phase1Checks.Suite {
     void next(int tick, int s) { stage = s; at = tick; }
 
     static ItemStack stand(int slot, String item, int rarity) {
-        ItemStack s = new ItemStack(Registries.ITEM.get(new Identifier(STAND_IN[slot])));
+        ItemStack s = new ItemStack(Registries.ITEM.get(Identifier.of(STAND_IN[slot])));
         var nbt = s.getOrCreateNbt();
         nbt.putString(GearLooks.ITEM, item); nbt.putInt(GearLooks.RARITY, rarity); nbt.putBoolean("Unbreakable", true);
         return s;

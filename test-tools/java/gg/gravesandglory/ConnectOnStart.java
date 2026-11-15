@@ -2,7 +2,7 @@ package gg.gravesandglory;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.client.gui.screen.ConnectScreen;
+import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
 import net.minecraft.client.network.ServerAddress;
 import net.minecraft.client.network.ServerInfo;
 
@@ -20,7 +20,7 @@ public final class ConnectOnStart implements ClientModInitializer {
             if(started||++ticks<100||c.getOverlay()!=null)return;
             started=true;
             System.out.println("[connect-on-start] connecting to "+address);
-            ConnectScreen.connect(new FrontMenuScreen(),c,ServerAddress.parse(address),new ServerInfo("Harness join",address,false),false);
+            ConnectScreen.connect(new FrontMenuScreen(),c,ServerAddress.parse(address),new ServerInfo("Harness join",address, ServerInfo.ServerType.OTHER), false, null);
         });
     }
 }

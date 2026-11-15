@@ -11,7 +11,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ConnectScreen;
+import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
 import net.minecraft.client.network.ServerAddress;
 import net.minecraft.client.network.ServerInfo;
 import java.lang.management.ManagementFactory;
@@ -64,7 +64,7 @@ public final class PerfClient implements ClientModInitializer {
         if (Files.exists(dir.resolve("done.txt"))) { note("done, stopping"); c.scheduleStop(); return; }
         if (c.getOverlay() != null) return;
         if (!started) {
-            if (clock > 100) { started = true; note("connecting " + address); ConnectScreen.connect(new FrontMenuScreen(), c, ServerAddress.parse(address), new ServerInfo("Perf baseline", address, false), false); }
+            if (clock > 100) { started = true; note("connecting " + address); ConnectScreen.connect(new FrontMenuScreen(), c, ServerAddress.parse(address), new ServerInfo("Perf baseline", address, ServerInfo.ServerType.OTHER), false, null); }
             return;
         }
         if (c.player == null || c.world == null || c.getNetworkHandler() == null) { if (clock % 200 == 0) note("not in world yet screen=" + (c.currentScreen == null ? "none" : c.currentScreen.getClass().getSimpleName())); return; }

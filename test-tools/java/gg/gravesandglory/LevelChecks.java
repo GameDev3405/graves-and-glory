@@ -1528,10 +1528,10 @@ final class LevelChecks {
             if (!ids(a).equals(all.subList(0, shown))) bad.append("the first rows are " + ids(a) + "; ");
             click(s, a.arrows.get(1)); a = s.page;
             if (a.first != 1 || !ids(a).equals(all.subList(1, 1 + shown)) || !a.arrows.get(0).live()) bad.append("after the down arrow the first row is " + a.first + " showing " + ids(a) + "; ");
-            for (int i = 0; i < n + 3; i++) s.mouseScrolled(120 * s.uiScale, 200 * s.uiScale, -1.0);
+            for (int i = 0; i < n + 3; i++) s.mouseScrolled(120 * s.uiScale, 200 * s.uiScale, 0.0, -1.0);
             a = s.page;
             if (a.first != n - shown || !ids(a).equals(all.subList(n - shown, n)) || a.arrows.get(1).live()) bad.append("the wheel down to the end left the first row at " + a.first + " (want " + (n - shown) + ") and the down arrow " + a.arrows.get(1).live() + "; ");
-            s.mouseScrolled(120 * s.uiScale, 200 * s.uiScale, 1.0); a = s.page;
+            s.mouseScrolled(120 * s.uiScale, 200 * s.uiScale, 0.0, 1.0); a = s.page;
             if (a.first != n - shown - 1) bad.append("the wheel up from the end left the first row at " + a.first + "; ");
             s.keyPressed(GLFW.GLFW_KEY_PAGE_DOWN, 0, 0); a = s.page;
             if (a.first != n - shown) bad.append("Page Down left the first row at " + a.first + "; ");

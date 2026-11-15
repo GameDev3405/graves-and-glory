@@ -114,9 +114,9 @@ final class MotionGrade extends Phase2Checks.Stage {
             if (WATCH.isEmpty()) return;
             try {
                 var c = MinecraftClient.getInstance(); if (c.world == null) return;
-                Snap s = new Snap(); s.n = renders; s.proj = new Matrix4f(ctx.projectionMatrix()); s.view = new Matrix4f(ctx.matrixStack().peek().getPositionMatrix());
+                Snap s = new Snap(); s.n = renders; s.proj = new Matrix4f(ctx.projectionMatrix()); s.view = new Matrix4f(ctx.positionMatrix());
                 s.cam = ctx.camera().getPos(); var fb = c.getFramebuffer(); s.w = fb.textureWidth; s.h = fb.textureHeight;
-                float td = ctx.tickDelta();
+                float td = ctx.tickCounter().getTickDelta(true);
                 for (int id : WATCH) { Entity e = c.world.getEntityById(id); if (e != null) s.ents.put(id, ent(e, td)); }
                 LAST = s;
             } catch (RuntimeException x) { System.out.println("[mo-grade] recorder: " + x); }

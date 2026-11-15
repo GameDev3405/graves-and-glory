@@ -11,7 +11,7 @@ import java.util.*;
  * In a practice battle the server lays a grass platform above the map, places each prop through the real path ({@link Props#place}: anchor,
  * barriers, lights, display parts, effects) facing north, and stands a frozen Knight beside each. Shots p1-prop-<id>-<near|far>-<day|night>.png
  * from the front-left at about 3 m and 15 m, by day and lantern-lit night, then a lineup. Needs the prop pack enabled as a client resource pack
- * (tools/prop_shot.py does it). Compare: GRAVES_PROPCMP=<id>=<group/name>;... places that structure template (data/gravesandglory/structures/
+ * (tools/prop_shot.py does it). Compare: GRAVES_PROPCMP=<id>=<group/name>;... places that structure template (data/gravesandglory/structure/
  * group/name.nbt, the maps' plain-block version, through {@link Structures#place}) 2 blocks east of the prop and takes the same four views of
  * the pair, p1-prop-<id>-cmp-<near|far>-<day|night>.png; an id without a template is skipped with a line saying so. GRAVES_PROPFRAMES=1 adds
  * p1-prop-<id>-near-day-t3/t6/t9.png, the near-day view 3, 6 and 9 ticks later (animated flame and lamp textures). GRAVES_PROPTURN=1 replaces the
@@ -39,7 +39,7 @@ final class PropLookChecks implements Phase1Checks.Suite {
 
     static int cmd(GravesAndGlory.Battle b, ServerPlayerEntity p, String line) {
         var src = b.server.getCommandSource().withWorld(p.getServerWorld()).withSilent().withLevel(4);
-        return b.server.getCommandManager().executeWithPrefix(src, line);
+        return HarnessCommand.run(b.server, src, line);
     }
 
     /** Anchor cell of prop i (its pivot cell). */
@@ -67,7 +67,7 @@ final class PropLookChecks implements Phase1Checks.Suite {
             for (int k = 0; k < PROPS.size(); k++) if (PROPS.get(k).id().equals(id)) i = k;
             if (i < 0) { say("compare " + id + ": not one of the props shot, skipped"); continue; }
             var tpl = Structures.template(w, tid);
-            if (tpl.isEmpty()) { say("compare " + id + ": no structure template " + tid + " (data/gravesandglory/structures/" + tid + ".nbt), skipped");
+            if (tpl.isEmpty()) { say("compare " + id + ": no structure template " + tid + " (data/gravesandglory/structure/" + tid + ".nbt), skipped");
                 Phase1Checks.report("p1-prop-cmp-" + id, true, "skipped: no structure template " + tid); continue; }
             var s = tpl.get().getSize(); out.add(new Cmp(i, tid, s.getX(), s.getY(), s.getZ()));
         }
@@ -161,7 +161,7 @@ final class PropLookChecks implements Phase1Checks.Suite {
         if (def == null || file == null) { Phase1Checks.report("p1-prop-example-template", false, def == null ? "no supply_wagon def" : "docs/props/examples/prop_facings.nbt not found"); return; }
         try {
             net.minecraft.nbt.NbtCompound nbt;
-            try (var in = java.nio.file.Files.newInputStream(file)) { nbt = net.minecraft.nbt.NbtIo.readCompressed(in); }
+            try (var in = java.nio.file.Files.newInputStream(file)) { nbt = net.minecraft.nbt.NbtIo.readCompressed(in, net.minecraft.nbt.NbtSizeTracker.ofUnlimitedBytes()); }
             var tpl = w.getStructureTemplateManager().createTemplate(nbt);
             String id = "propcheck/prop_facings";
             Structures.CACHE.put(id, new Structures.Loaded(tpl, nbt.getList("blocks", net.minecraft.nbt.NbtElement.COMPOUND_TYPE).size()));

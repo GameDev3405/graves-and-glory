@@ -103,9 +103,9 @@ public final class MapForgeHarness implements ClientModInitializer {
                 case "map"->{int target=Integer.parseInt(rest.trim());building=true;buildWait=0;log("building map "+target);
                     server.execute(()->{b.campaign.returnLobby();if(b.campaign.map!=target)b.campaign.switchMap(target);else{b.ready=false;b.buildColumn=0;Structures.clearQueue();b.placing=false;}});}
                 case "mc"->{current=line;expectFail=false;waitingJob=false;result=null;MapForge.lastOk=true;MapForge.last="mc "+rest;
-                    server.execute(()->result=server.getCommandManager().executeWithPrefix(server.getCommandSource(),rest));}
+                    server.execute(()->result=HarnessCommand.run(server,server.getCommandSource(),rest));}
                 case "cmd","fail"->{current=line;expectFail=v[0].equals("fail");waitingJob=false;result=null;
-                    server.execute(()->result=server.getCommandManager().executeWithPrefix(server.getCommandSource(),"mapforge "+rest));}
+                    server.execute(()->result=HarnessCommand.run(server,server.getCommandSource(),"mapforge "+rest));}
                 default->end(c,false,"unknown script line "+line);
             }
         });

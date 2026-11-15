@@ -21,7 +21,7 @@ import java.util.*;
 final class ScratchFlags {
     static final boolean NO_HURT_COOLDOWN = Boolean.getBoolean("gravesandglory.scratchNoHurtCooldown");
     static final boolean TROOP_BYPASS_ARMOR = Boolean.getBoolean("gravesandglory.scratchTroopBypassArmor");
-    static final UUID ARMOR = UUID.fromString("5c7a0b3e-0000-4000-8000-00000000a001"), TOUGH = UUID.fromString("5c7a0b3e-0000-4000-8000-00000000a002");
+    static final net.minecraft.util.Identifier ARMOR = net.minecraft.util.Identifier.of("gravesandglory_local_test_tools", "scratch_no_armor"), TOUGH = net.minecraft.util.Identifier.of("gravesandglory_local_test_tools", "scratch_no_toughness");
     private static final Set<Projectiles.Shot> seen = Collections.newSetFromMap(new IdentityHashMap<>());
     /** troop id -> {fired, dropped}. */
     static final Map<String, long[]> shots = new TreeMap<>();
@@ -40,10 +40,10 @@ final class ScratchFlags {
     private static void strip(LivingEntity e) {
         var armor = e.getAttributeInstance(EntityAttributes.GENERIC_ARMOR);
         if (armor != null && armor.getModifier(ARMOR) == null)
-            armor.addTemporaryModifier(new EntityAttributeModifier(ARMOR, "scratch no armor", -1024, EntityAttributeModifier.Operation.ADDITION));
+            armor.addTemporaryModifier(new EntityAttributeModifier(ARMOR, -1024, EntityAttributeModifier.Operation.ADD_VALUE));
         var tough = e.getAttributeInstance(EntityAttributes.GENERIC_ARMOR_TOUGHNESS);
         if (tough != null && tough.getModifier(TOUGH) == null)
-            tough.addTemporaryModifier(new EntityAttributeModifier(TOUGH, "scratch no toughness", -1024, EntityAttributeModifier.Operation.ADDITION));
+            tough.addTemporaryModifier(new EntityAttributeModifier(TOUGH, -1024, EntityAttributeModifier.Operation.ADD_VALUE));
     }
 
     /** Once per tick during a fight: a queued shot that has left the queue before its landing tick, with its target dead or removed, was dropped. */

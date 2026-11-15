@@ -173,9 +173,9 @@ public final class TitleDemos implements Phase1Checks.Suite,Phase1Checks.ServerW
             var entry=c.getNetworkHandler()==null?null:c.getNetworkHandler().getPlayerListEntry(c.player.getUuid());
             if(entry==null)return false;
             if(steveTexture==null){
-                var stream=c.getDefaultResourcePack().open(ResourceType.CLIENT_RESOURCES,new Identifier("minecraft","textures/entity/player/wide/steve.png"));
+                var stream=c.getDefaultResourcePack().open(ResourceType.CLIENT_RESOURCES,Identifier.of("minecraft","textures/entity/player/wide/steve.png"));
                 if(stream==null)return false;
-                try(var in=stream.get()){var id=new Identifier("gravesandglory_test","title_demo/steve");c.getTextureManager().registerTexture(id,new NativeImageBackedTexture(NativeImage.read(in)));steveTexture=id;}
+                try(var in=stream.get()){var id=Identifier.of("gravesandglory_test","title_demo/steve");c.getTextureManager().registerTexture(id,new NativeImageBackedTexture(NativeImage.read(in)));steveTexture=id;}
             }
             entry.getSkinTexture(); // starts the profile's own skin lookup first, so it cannot replace ours afterwards
             var textures=PlayerListEntry.class.getDeclaredField("textures");textures.setAccessible(true);
@@ -341,7 +341,7 @@ public final class TitleDemos implements Phase1Checks.Suite,Phase1Checks.ServerW
             if(byCamera)continue;
             var pos=new BlockPos(x,top+1,z);if(!w.getBlockState(pos.down()).isOf(Blocks.GRASS_BLOCK))continue;
             int k=hash(x,z,7);
-            if(k<16)set(pos,Blocks.GRASS.getDefaultState(),b);
+            if(k<16)set(pos,Blocks.SHORT_GRASS.getDefaultState(),b);
             else if(k<19)set(pos,Blocks.FERN.getDefaultState(),b);
             else if(k<21){set(pos,Blocks.TALL_GRASS.getDefaultState().with(TallPlantBlock.HALF,DoubleBlockHalf.LOWER),b);set(pos.up(),Blocks.TALL_GRASS.getDefaultState().with(TallPlantBlock.HALF,DoubleBlockHalf.UPPER),b);}
             else if(k==21)set(pos,Blocks.POPPY.getDefaultState(),b);

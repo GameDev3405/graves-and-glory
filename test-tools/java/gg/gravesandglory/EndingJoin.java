@@ -3,7 +3,7 @@ package gg.gravesandglory;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ConnectScreen;
+import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
 import net.minecraft.client.network.ServerAddress;
 import net.minecraft.client.network.ServerInfo;
 
@@ -40,7 +40,7 @@ public final class EndingJoin implements ClientModInitializer {
             case 0 -> {
                 if (!(c.currentScreen instanceof FrontMenuScreen) || clock < 60 || !Files.exists(dir.resolve("address.txt"))) return;
                 String address = Files.readString(dir.resolve("address.txt")).trim();
-                ConnectScreen.connect(new FrontMenuScreen(), c, ServerAddress.parse(address), new ServerInfo("Ending sync", address, false), false);
+                ConnectScreen.connect(new FrontMenuScreen(), c, ServerAddress.parse(address), new ServerInfo("Ending sync", address, ServerInfo.ServerType.OTHER), false, null);
                 stage = 1;
             }
             case 1 -> { if (c.player != null && GravesAndGloryClient.ready) stage = 2; }

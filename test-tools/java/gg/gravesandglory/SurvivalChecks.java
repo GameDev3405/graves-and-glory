@@ -142,8 +142,8 @@ final class SurvivalChecks implements Phase4Checks.Suite, Phase4Checks.ServerWat
                 p.teleport(p.getServerWorld(), c.x + far, b.world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, (int) (c.x + far), (int) c.z) + 1, c.z, 90, 0);
                 boolean one = false;
                 for (var u : b.units) if (u.mob.isAlive()) {
-                    if (u.squad == m.director && !one) { one = true; u.mob.teleport(c.x + 1, SurvivalMode.surface(b, c.x + 1, c.z).y, c.z); }
-                    else if (u.squad != m.director && GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(), c) < far * far) u.mob.teleport(c.x - far, SurvivalMode.surface(b, c.x - far, c.z).y, c.z);
+                    if (u.squad == m.director && !one) { one = true; u.mob.requestTeleport(c.x + 1, SurvivalMode.surface(b, c.x + 1, c.z).y, c.z); }
+                    else if (u.squad != m.director && GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(), c) < far * far) u.mob.requestTeleport(c.x - far, SurvivalMode.surface(b, c.x - far, c.z).y, c.z);
                 }
                 if (b.running) { if (b.time - at > (m.shrine(b).seconds() + 30) * 20L) end("the shrine was never lost, lost " + m.lost); return; }
                 Phase4Checks.report("p4-surv-end-lost", b.campaign.lastWinner == 1, "winner " + b.campaign.lastWinner + ", lost " + m.lost);

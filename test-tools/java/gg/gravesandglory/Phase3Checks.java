@@ -136,6 +136,14 @@ public final class Phase3Checks implements ClientModInitializer {
     }
     static BlockState at(ServerWorld w,int x,int y,int z){return w.getBlockState(new BlockPos(x,y,z));}
     static String name(BlockState s){return net.minecraft.registry.Registries.BLOCK.getId(s.getBlock()).getPath();}
+    /** 1.21: a banner's layers come from getPatterns() (a registry-entry component), not NBT Patterns/Pattern/Color. Each entry is {1.20.1 pattern code, DyeColor id}; the code is recovered from the registry id through Battle.LEGACY_PATTERNS, so the expectations below stay in the sheets' 1.20.1 vocabulary. */
+    static List<String[]> bannerLayers(BannerBlockEntity be){
+        List<String[]> out=new ArrayList<>();
+        for(var l:be.getPatterns().layers()){String path=l.pattern().getKey().map(k->k.getValue().getPath()).orElse("?");String code=path;
+            for(var en:GravesAndGlory.Battle.LEGACY_PATTERNS.entrySet())if(en.getValue().equals(path)){code=en.getKey();break;}
+            out.add(new String[]{code,String.valueOf(l.color().getId())});}
+        return out;
+    }
     static Direction facing(BlockState s){return s.contains(Properties.HORIZONTAL_FACING)?s.get(Properties.HORIZONTAL_FACING):null;}
     static String xyz(BlockPos p){return "("+p.getX()+","+p.getY()+","+p.getZ()+")";}
     /** What a command said: its feedback and its errors both arrive here. */
@@ -156,7 +164,7 @@ public final class Phase3Checks implements ClientModInitializer {
         w.setBlockState(scratch,Blocks.GOLD_BLOCK.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
         var gold=new StructureTemplate();gold.saveFromWorld(w,scratch,new Vec3i(1,1,1),false,Blocks.STRUCTURE_VOID);
         w.setBlockState(scratch,Blocks.AIR.getDefaultState(),Block.NOTIFY_LISTENERS|Block.FORCE_STATE);
-        Files.createDirectories(file.getParent());NbtIo.writeCompressed(gold.writeNbt(new NbtCompound()),file.toFile());
+        Files.createDirectories(file.getParent());NbtIo.writeCompressed(gold.writeNbt(new NbtCompound()),file);
     }
 
     /** Task 1: the placer. The 5x5x5 test marker is placed four ways in the real world and read back block by block; the camera then looks at it. */
@@ -224,9 +232,9 @@ public final class Phase3Checks implements ClientModInitializer {
             bad=new StringBuilder();String patterns="";
             var be=w.getBlockEntity(new BlockPos(1000,66,1099));
             if(be instanceof BannerBlockEntity bannerEntity){
-                NbtList list=bannerEntity.createNbt().getList(BannerBlockEntity.PATTERNS_KEY,NbtElement.COMPOUND_TYPE);
-                for(int i=0;i<list.size();i++){var e=list.getCompound(i);patterns+=(i>0?" then ":"")+e.getString(BannerBlockEntity.PATTERN_KEY)+" "+DyeColor.byId(e.getInt(BannerBlockEntity.COLOR_KEY)).getName();}
-                if(list.size()!=2||!list.getCompound(0).getString("Pattern").equals("sc")||list.getCompound(0).getInt("Color")!=4||!list.getCompound(1).getString("Pattern").equals("bo")||list.getCompound(1).getInt("Color")!=11)bad.append("patterns are ").append(patterns).append(" (want sc yellow then bo blue); ");
+                var list=bannerLayers(bannerEntity);
+                for(int i=0;i<list.size();i++){var e=list.get(i);patterns+=(i>0?" then ":"")+e[0]+" "+DyeColor.byId(Integer.parseInt(e[1])).getName();}
+                if(list.size()!=2||!list.get(0)[0].equals("sc")||!list.get(0)[1].equals("4")||!list.get(1)[0].equals("bo")||!list.get(1)[1].equals("11"))bad.append("patterns are ").append(patterns).append(" (want sc yellow then bo blue); ");
             }else bad.append("no banner block entity at (1000,66,1099): ").append(be).append("; ");
             report("p3-block-entity",bad.length()==0,bad.length()==0?"the banner at (1000,66,1099) holds "+patterns:bad.toString());
 
@@ -249,8 +257,8 @@ public final class Phase3Checks implements ClientModInitializer {
 
             // p3-no-generated-override: a file in the generated folder of the world wins for the vanilla manager, never for Structures
             bad=new StringBuilder();String vanilla="?";
-            var manager=w.getStructureTemplateManager();var id=new Identifier(Structures.NS,MARKER);
-            Path generated=b.server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structures/"+MARKER+".nbt");
+            var manager=w.getStructureTemplateManager();var id=Identifier.of(Structures.NS,MARKER);
+            Path generated=b.server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structure/"+MARKER+".nbt");
             try{
                 writeGoldOverride(w,new BlockPos(1000,80,1100),generated);
                 Structures.clearCache();manager.unloadTemplate(id);
@@ -340,7 +348,7 @@ public final class Phase3Checks implements ClientModInitializer {
             if(exporting){
                 try{
                     Path file=StructureStudio.export(b.server,id);Vec3i header=StructureStudio.size(b.server,id);
-                    Vec3i got=b.world.getStructureTemplateManager().createTemplate(NbtIo.readCompressed(file.toFile())).getSize();
+                    Vec3i got=b.world.getStructureTemplateManager().createTemplate(NbtIo.readCompressed(file,net.minecraft.nbt.NbtSizeTracker.ofUnlimitedBytes())).getSize();
                     boolean ok=Files.isRegularFile(file)&&Files.size(file)>0&&got.equals(header);
                     report("p3-export-"+slug,ok,ok?"wrote "+file+" ("+Files.size(file)+" bytes), size "+got.toShortString()+" equals the header":"wrote "+file+" but its size is "+got.toShortString()+" and the header says "+header.toShortString());
                     if(ok){size=header;stage=3;return;}
@@ -360,7 +368,7 @@ public final class Phase3Checks implements ClientModInitializer {
         void dumpTrip(GravesAndGlory.Battle b){
             String id=pieces.get(index),slug=slug(id);
             try{
-                NbtCompound reference=exporting?NbtIo.readCompressed(StructureStudio.out().resolve(id+".nbt").toFile()):Structures.read(b.server,id).orElseThrow(()->new IllegalStateException("no structure file for "+id));
+                NbtCompound reference=exporting?NbtIo.readCompressed(StructureStudio.out().resolve(id+".nbt"),net.minecraft.nbt.NbtSizeTracker.ofUnlimitedBytes()):Structures.read(b.server,id).orElseThrow(()->new IllegalStateException("no structure file for "+id));
                 String script=StructureStudio.dump(b.world.getStructureTemplateManager().createTemplate(reference));
                 Path file=StructureStudio.out().resolve("dumps").resolve(id+".mcfunction");
                 Files.createDirectories(file.getParent());Files.writeString(file,script);
@@ -427,8 +435,8 @@ public final class Phase3Checks implements ClientModInitializer {
          *  without it "# size 5 5 5", and the feedback says which one it used. */
         void dumpGenerated(GravesAndGlory.Battle b){
             var bad=new StringBuilder();String withFile="",withoutFile="";
-            var manager=b.world.getStructureTemplateManager();var id=new Identifier(Structures.NS,MARKER);
-            Path generated=b.server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structures/"+MARKER+".nbt");
+            var manager=b.world.getStructureTemplateManager();var id=Identifier.of(Structures.NS,MARKER);
+            Path generated=b.server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structure/"+MARKER+".nbt");
             try{
                 Path script=StructureStudio.out().resolve(MARKER+".mcfunction");
                 try{
@@ -540,7 +548,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 var saved=new Said();int saveResult=dispatch(b,b.server.getCommandSource(),saved,"studio save "+MARKER);
                 if(saveResult!=1)bad.append("studio save failed: ").append(saved.text()).append("; ");
                 Path file=StructureStudio.out().resolve(MARKER+".nbt");
-                NbtCompound onDisk=NbtIo.readCompressed(file.toFile());
+                NbtCompound onDisk=NbtIo.readCompressed(file,net.minecraft.nbt.NbtSizeTracker.ofUnlimitedBytes());
                 Vec3i wrote=w.getStructureTemplateManager().createTemplate(onDisk).getSize();
                 if(!wrote.equals(size))bad.append("studio save wrote size ").append(wrote.toShortString()).append(", the header says ").append(size.toShortString()).append("; ");
                 NbtCompound fresh=StructureStudio.save(b.server,MARKER,size);
@@ -732,7 +740,7 @@ public final class Phase3Checks implements ClientModInitializer {
             for(var row:Spec.CAMPLESSONS){
                 var d=clientDisplay(c,at(row.dx(),row.y(),row.dz()));
                 if(d==null){out.append(row.id()).append(": no display on the client; ");continue;}
-                String got=Text.Serializer.fromJson(d.writeNbt(new NbtCompound()).getString("text")).getString().replace("\n"," / ");
+                String got=Text.Serialization.fromJson(d.writeNbt(new NbtCompound()).getString("text"),d.getWorld().getRegistryManager()).getString().replace("\n"," / ");
                 var m=java.util.regex.Pattern.compile("\\{key:([a-z_]+)\\}").matcher(row.text());var want=new StringBuilder();int from=0;
                 while(m.find()){
                     want.append(row.text(),from,m.start());String id=m.group(1).equals("use")?"key.use":"key.gravesandglory."+m.group(1);String name=null;
@@ -761,7 +769,7 @@ public final class Phase3Checks implements ClientModInitializer {
             }
         }
         static Panel panel(MinecraftClient c,String id,net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity d){
-            var nbt=d.writeNbt(new NbtCompound());var text=Text.Serializer.fromJson(nbt.getString("text"));int lw=nbt.contains("line_width")?nbt.getInt("line_width"):200;
+            var nbt=d.writeNbt(new NbtCompound());var text=Text.Serialization.fromJson(nbt.getString("text"),d.getWorld().getRegistryManager());int lw=nbt.contains("line_width")?nbt.getInt("line_width"):200;
             float s=nbt.getCompound("transformation").getList("scale",net.minecraft.nbt.NbtElement.FLOAT_TYPE).getFloat(0);
             var lines=c.textRenderer.wrapLines(text,lw);int px=0;for(var l:lines)px=Math.max(px,c.textRenderer.getWidth(l));
             boolean fixed=nbt.getString("billboard").equals("fixed");double yaw=Math.toRadians(d.getYaw());
@@ -965,7 +973,7 @@ public final class Phase3Checks implements ClientModInitializer {
                         net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity found=null;
                         for(var e:c.world.getEntities())if(e instanceof net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity d&&d.getPos().distanceTo(want)<=0.5)found=d;
                         if(found==null)why+="the client has no text display at the place of lesson 1; ";
-                        else{seen=Text.Serializer.fromJson(found.writeNbt(new NbtCompound()).getString("text")).getString();if(!seen.contains("Press K,"))why+="the client's lesson 1 reads \""+seen+"\" (want it to contain \"Press K,\"); ";}
+                        else{seen=Text.Serialization.fromJson(found.writeNbt(new NbtCompound()).getString("text"),found.getWorld().getRegistryManager()).getString();if(!seen.contains("Press K,"))why+="the client's lesson 1 reads \""+seen+"\" (want it to contain \"Press K,\"); ";}
                         report("p3-yard-lessons",why.isEmpty(),why.isEmpty()?"four lesson displays with the keybinds menu, formation, attack and key.use; with menu on K the client reads: "+seen:why);
                         GravesAndGloryClient.menu.setBoundKey(net.minecraft.client.util.InputUtil.fromTranslationKey(savedMenuKey));net.minecraft.client.option.KeyBinding.updateKeysByCode();savedMenuKey=null;
                         done=false;server(c,b->{replaceLessons(b.world);done=true;}); // fresh texts again, resolved with the key put back
@@ -1045,8 +1053,8 @@ public final class Phase3Checks implements ClientModInitializer {
             String block=want[0]+(wall?"_wall_banner":"_banner");
             if(!id.equals(block))return house+(wall?" wall":" standing")+" banner at "+xyz(p)+" is "+id+" (want "+block+"); ";
             var be=w.getBlockEntity(p);if(!(be instanceof BannerBlockEntity bb))return house+" banner at "+xyz(p)+" has no banner block entity; ";
-            NbtList list=bb.createNbt().getList(BannerBlockEntity.PATTERNS_KEY,NbtElement.COMPOUND_TYPE);var got=new StringBuilder();
-            for(int i=0;i<list.size();i++){var e=list.getCompound(i);got.append(i>0?" ":"").append(e.getString(BannerBlockEntity.PATTERN_KEY)).append(' ').append(e.getInt(BannerBlockEntity.COLOR_KEY));}
+            var list=bannerLayers(bb);var got=new StringBuilder();
+            for(int i=0;i<list.size();i++){var e=list.get(i);got.append(i>0?" ":"").append(e[0]).append(' ').append(e[1]);}
             String wantP=String.join(" ",Arrays.copyOfRange(want,1,want.length));
             return got.toString().equals(wantP)?"":house+" banner at "+xyz(p)+" holds ["+got+"] (want ["+wantP+"]); ";
         }

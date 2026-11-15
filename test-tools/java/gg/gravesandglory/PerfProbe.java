@@ -22,7 +22,7 @@ public final class PerfProbe implements ModInitializer {
     static final int WINDOW = 100;
     long tickStart, worldStart, worldNs, endStart;
     /** Runs before every mod's END_SERVER_TICK listener (and this probe's own runs after them), so a first-ticks row splits the tick into world ticks, mod end-of-tick listeners and the rest (network, players, autosave). */
-    static final Identifier EARLY = new Identifier("gravesandglory_local_test_tools", "perf_early"), LATE = new Identifier("gravesandglory_local_test_tools", "perf_late");
+    static final Identifier EARLY = Identifier.of("gravesandglory_local_test_tools", "perf_early"), LATE = Identifier.of("gravesandglory_local_test_tools", "perf_late");
     final List<Double> window = new ArrayList<>();
     final List<Double> phaseTicks = new ArrayList<>();
     String phase = "none";

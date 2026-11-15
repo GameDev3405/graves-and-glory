@@ -370,7 +370,7 @@ public final class BotSimulation implements ModInitializer {
      *  name visibility must be untouched; at 125 s the labels must have been refreshed about every 10 ticks and stand at their troops; at 130 s it is switched off, and 1 s later no label entity may be left,
      *  no refresh may have run since, and every surviving troop's name (as JSON) and visibility must equal what they were before it was on. Results: botsim/overlay-check.txt. */
     boolean overlayCheck;int overlayStage;final Map<GravesAndGlory.Unit,String> overlayNames=new IdentityHashMap<>();final Map<GravesAndGlory.Unit,Integer> overlayLevels=new IdentityHashMap<>();long refreshesAtOn,refreshesAtOff;final List<String> overlayLines=new ArrayList<>();boolean overlayFailed;
-    static String nameOf(GravesAndGlory.Unit u){var n=u.mob.getCustomName();return (n==null?"<none>":net.minecraft.text.Text.Serializer.toJson(n))+"|visible="+u.mob.isCustomNameVisible();}
+    static String nameOf(GravesAndGlory.Unit u){var n=u.mob.getCustomName();return (n==null?"<none>":net.minecraft.text.Text.Serialization.toJsonString(n,u.mob.getWorld().getRegistryManager()))+"|visible="+u.mob.isCustomNameVisible();}
     void overlayAssert(String what,boolean ok,String detail){overlayLines.add((ok?"PASS ":"FAIL ")+what+(detail.isEmpty()?"":": "+detail));if(!ok)overlayFailed=true;}
     void overlayCheck(GravesAndGlory.Battle b,long elapsed){
         java.util.regex.Pattern form=java.util.regex.Pattern.compile("^\\S+ \\S+ \\| (marching|fighting|holding|idle|stuck|retreating|refill-walking) \\| .+$");
@@ -441,7 +441,7 @@ public final class BotSimulation implements ModInitializer {
             var c=b.campaign;
             List<String> v=new ArrayList<>(List.of(String.valueOf(match+1),String.valueOf(maps[match%maps.length]),probeStartedAt,LocalTime.now().format(CLOCK),String.valueOf(n),
                 ms(n==0?0:Arrays.stream(t).average().orElse(0)/1e6),ms(pct(t,.50)),ms(pct(t,.95)),ms(pct(t,.99)),ms(n==0?0:t[n-1]/1e6),
-                String.valueOf(Arrays.stream(t).filter(x->x>50_000_000L).count()),String.valueOf(Arrays.stream(t).filter(x->x>100_000_000L).count()),ms(b.server.getTickTime()),
+                String.valueOf(Arrays.stream(t).filter(x->x>50_000_000L).count()),String.valueOf(Arrays.stream(t).filter(x->x>100_000_000L).count()),ms(b.server.getAverageTickTime()),
                 mb(before),mb(after),mb(rt.maxMemory()),String.valueOf(gcCount),String.valueOf(gcMillis),String.valueOf(ManagementFactory.getThreadMXBean().getThreadCount()),
                 String.valueOf(ManagementFactory.getClassLoadingMXBean().getLoadedClassCount()),mb(direct),mb(ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage().getUsed()),
                 String.valueOf(b.world.getChunkManager().getLoadedChunkCount()),String.valueOf(entities),String.valueOf(b.units.size()),String.valueOf(b.shots.size()),
