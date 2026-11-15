@@ -35,7 +35,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Unshipped piece studio: builds a piece from its command script (data/gravesandglory_studio/functions/GROUP/NAME.mcfunction) in the world at ORIGIN,
+/** Unshipped piece studio: builds a piece from its command script (data/gravesandglory_studio/function/GROUP/NAME.mcfunction) in the world at ORIGIN,
  *  saves it with the vanilla structure saver, writes it back as a script, and registers /studio. Pieces are authored as scripts, exported here, and
  *  shipped as plain structure files. Never included in releases. */
 public final class StructureStudio implements ModInitializer {
@@ -82,13 +82,13 @@ public final class StructureStudio implements ModInitializer {
     /** Every script, as GROUP/NAME, in order. */
     public static List<String> scripts(MinecraftServer s){
         var ids=new TreeSet<String>();
-        for(Identifier id:s.getResourceManager().findResources("functions",i->i.getNamespace().equals(NS)&&i.getPath().endsWith(".mcfunction")).keySet()){
-            String path=id.getPath();ids.add(path.substring("functions/".length(),path.length()-".mcfunction".length()));
+        for(Identifier id:s.getResourceManager().findResources("function",i->i.getNamespace().equals(NS)&&i.getPath().endsWith(".mcfunction")).keySet()){
+            String path=id.getPath();ids.add(path.substring("function/".length(),path.length()-".mcfunction".length()));
         }
         return new ArrayList<>(ids);
     }
     static String text(MinecraftServer s,String id){
-        var resource=s.getResourceManager().getResource(Identifier.of(NS,"functions/"+id+".mcfunction"));
+        var resource=s.getResourceManager().getResource(Identifier.of(NS,"function/"+id+".mcfunction"));
         if(resource.isEmpty())throw new StudioException("no script "+NS+":"+id);
         try(InputStream in=resource.get().getInputStream()){return new String(in.readAllBytes(),StandardCharsets.UTF_8);}
         catch(Exception e){throw new StudioException("script "+id+" unreadable: "+e);}

@@ -118,6 +118,10 @@ public final class Phase1Checks implements ClientModInitializer {
         });
     }
 
+    /** 1.20.1's CommandManager.executeWithPrefix returned the command's integer result; in 1.21.1 it is void. This runs the same call and captures the result through the source's ReturnValueConsumer (0 when the command failed). A command runs to completion inside executeWithPrefix, so the value is set when it returns. */
+    static int command(net.minecraft.server.MinecraftServer server,net.minecraft.server.command.ServerCommandSource source,String command){
+        int[] result={0};server.getCommandManager().executeWithPrefix(source.withReturnValueConsumer((success,value)->result[0]=success?value:0),command);return result[0];
+    }
     static int tagged(GravesAndGlory.Battle b){int n=0;for(var e:b.world.iterateEntities())if(e.getCommandTags().contains(Projectiles.TAG))n++;return n;}
     static double segmentDistance(Vec3d p,Vec3d a,Vec3d z){Vec3d ab=z.subtract(a);double t=Math.max(0,Math.min(1,p.subtract(a).dotProduct(ab)/Math.max(1e-9,ab.lengthSquared())));return p.distanceTo(a.add(ab.multiply(t)));}
     static Spec.TroopsRow troop(String id){return Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(id)).findFirst().orElseThrow();}

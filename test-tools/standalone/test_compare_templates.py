@@ -8,7 +8,7 @@ import compare_templates as ct
 from mapforge.structure import Structure
 from release_config import validate_player_jar
 
-SHIPPED = ROOT / 'src' / 'main' / 'resources' / 'data' / 'gravesandglory' / 'structures'
+SHIPPED = ROOT / 'src' / 'main' / 'resources' / 'data' / 'gravesandglory' / 'structure'
 
 
 class CompareFixtures(unittest.TestCase):

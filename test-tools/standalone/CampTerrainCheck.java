@@ -17,7 +17,7 @@ public final class CampTerrainCheck {
     static final Spec.CampRow C=Spec.CAMP[0];
 
     public static void main(String[] args) throws Exception{
-        parade(Path.of(args.length>0?args[0]:"test-tools/resources/data/gravesandglory_studio/functions/camp/parade.mcfunction"));
+        parade(Path.of(args.length>0?args[0]:"test-tools/resources/data/gravesandglory_studio/function/camp/parade.mcfunction"));
         welcome();
         terrain();
         System.out.println(failed==0?"PASS "+count+" of "+count+" camp ground scenarios":"FAILED "+failed+" of "+count+" camp ground scenarios");

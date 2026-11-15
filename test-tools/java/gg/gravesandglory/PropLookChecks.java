@@ -39,7 +39,7 @@ final class PropLookChecks implements Phase1Checks.Suite {
 
     static int cmd(GravesAndGlory.Battle b, ServerPlayerEntity p, String line) {
         var src = b.server.getCommandSource().withWorld(p.getServerWorld()).withSilent().withLevel(4);
-        return HarnessCommand.run(b.server, src, line);
+        return Phase1Checks.command(b.server, src, line);
     }
 
     /** Anchor cell of prop i (its pivot cell). */

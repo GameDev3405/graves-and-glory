@@ -28,7 +28,7 @@ class WeaponOverride(unittest.TestCase):
 
     def test_weapons_pack_covers_ranged_shield_trident_arrow(self):
         root = PACKS / 'weapons'
-        self.assertEqual(json.loads((root / 'pack.mcmeta').read_text())['pack']['pack_format'], 15)
+        self.assertEqual(json.loads((root / 'pack.mcmeta').read_text())['pack']['pack_format'], 34)  # 1.21.1 resource pack format (was 15 on 1.20.1)
         need = ['textures/item/%s.png' % n for n in ('bow', 'bow_pulling_0', 'bow_pulling_1', 'bow_pulling_2', 'crossbow_standby', 'crossbow_pulling_0',
                 'crossbow_pulling_1', 'crossbow_pulling_2', 'crossbow_arrow', 'crossbow_firework', 'trident', 'arrow', 'spectral_arrow')]
         need += ['textures/entity/%s.png' % n for n in ('trident', 'shield_base', 'shield_base_nopattern', 'shield/base', 'projectiles/arrow')]
@@ -39,7 +39,7 @@ class WeaponOverride(unittest.TestCase):
     def test_packs_registered_and_ordered_above_excalibur(self):
         client = (JAVA / 'GravesAndGloryClient.java').read_text(encoding='utf8')
         for name in ('armory', 'weapons'):
-            self.assertRegex(client, r'registerBuiltinResourcePack\(new Identifier\("gravesandglory","%s"\).*DEFAULT_ENABLED' % name)
+            self.assertRegex(client, r'registerBuiltinResourcePack\((?:new Identifier|Identifier\.of)\("gravesandglory","%s"\).*DEFAULT_ENABLED' % name)
         look = (JAVA / 'LookPacks.java').read_text(encoding='utf8')
         adds = re.findall(r'out\.add\((EXCALIBUR|ARMORY|WEAPONS)\)', look)
         self.assertEqual(adds, ['EXCALIBUR', 'ARMORY', 'WEAPONS'], 'ours must come after (above) Excalibur')
