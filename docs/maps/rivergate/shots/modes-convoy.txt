@@ -1,0 +1,18 @@
+# Convoy on slot 6: a practice round played to its end (the player gives no orders, so the clock ends it), with a look at the wagon's start, every stop and the road's end.
+note Convoy on map 6
+map 6
+mc time set 6000
+mode convoy
+practice
+wait 200
+round
+hudshot rg-cv-start -102.5 65 -72.5 -109.5 66 -79.5
+shot rg-cv-stop1 12.5 74 -78.5 0.5 66 -90.5
+shot rg-cv-stop2 12.5 74 12.5 0.5 66 0.5
+shot rg-cv-stop3 12.5 74 103.5 0.5 66 91.5
+shot rg-cv-stop4 118.5 74 72.5 106.5 66 60.5
+shot rg-cv-road 22.5 89 113.5 0.5 66 91.5
+wait 8000
+round
+hudshot rg-cv-end -102.5 65 -72.5 -109.5 66 -79.5
+wait 60

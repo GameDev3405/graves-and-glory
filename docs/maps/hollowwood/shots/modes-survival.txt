@@ -1,0 +1,19 @@
+# Survival on slot 9: a practice round played to its end, with a look at the shrine and each rise site.
+note Survival on map 9
+map 9
+mc time set 13000
+mode survival
+practice
+wait 200
+round
+hudshot hw-sv-shrine 9.5 63 9.5 0.5 64 0.5
+shot hw-sv-shrine-top 16.5 79 16.5 0.5 64 0.5
+shot hw-sv-rise-north_Root_Run 20.5 81 -85.5 10.5 74 -95.5
+shot hw-sv-rise-south_Root_Run 0.5 81 106.5 -9.5 74 96.5
+shot hw-sv-rise-west_stair -139.5 81 34.5 -149.5 74 24.5
+shot hw-sv-rise-east_stair 160.5 81 -13.5 150.5 74 -23.5
+wait 2400
+shot hw-sv-fight 14.5 75 14.5 0.5 64 0.5
+wait 11000
+round
+wait 60

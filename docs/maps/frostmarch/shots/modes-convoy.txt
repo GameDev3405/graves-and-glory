@@ -1,0 +1,18 @@
+# Convoy on slot 8: a practice round played to its end (the player gives no orders, so the clock ends it), with a look at the wagon's start, every stop and the road's end.
+note Convoy on map 8
+map 8
+mc time set 6000
+mode convoy
+practice
+wait 200
+round
+hudshot fm-cv-start -169.0 66 -37.0 -176.0 67 -44.0
+shot fm-cv-stop1 -88.0 80 -60.0 -100.0 72 -72.0
+shot fm-cv-stop2 12.0 82 12.0 0.0 74 0.0
+shot fm-cv-stop3 112.0 80 84.0 100.0 72 72.0
+shot fm-cv-stop4 188.0 75 56.0 176.0 67 44.0
+shot fm-cv-road 22.0 97 22.0 0.0 74 0.0
+wait 8000
+round
+hudshot fm-cv-end -169.0 66 -37.0 -176.0 67 -44.0
+wait 60

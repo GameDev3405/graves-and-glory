@@ -1,0 +1,19 @@
+# Survival on slot 6: a practice round played to its end, with a look at the shrine and each rise site.
+note Survival on map 6
+map 6
+mc time set 13000
+mode survival
+practice
+wait 200
+round
+hudshot rg-sv-shrine 9.5 65 100.5 0.5 66 91.5
+shot rg-sv-shrine-top 16.5 81 107.5 0.5 66 91.5
+shot rg-sv-rise-west_bank -62.5 73 32.5 -72.5 66 22.5
+shot rg-sv-rise-east_bank 82.5 73 32.5 72.5 66 22.5
+shot rg-sv-rise-graveyard 10.5 73 160.5 0.5 66 150.5
+shot rg-sv-rise-old_road -60.5 73 145.5 -70.5 66 135.5
+wait 2400
+shot rg-sv-fight 14.5 77 105.5 0.5 66 91.5
+wait 11000
+round
+wait 60

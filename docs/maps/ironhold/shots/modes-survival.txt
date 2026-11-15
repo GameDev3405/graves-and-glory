@@ -1,0 +1,19 @@
+# Survival on slot 7: a practice round played to its end, with a look at the shrine and each rise site.
+note Survival on map 7
+map 7
+mc time set 13000
+mode survival
+practice
+wait 200
+round
+hudshot ih-sv-shrine 121.5 77 9.5 112.5 78 0.5
+shot ih-sv-shrine-top 128.5 93 16.5 112.5 78 0.5
+shot ih-sv-rise-Outwork -101.5 73 10.5 -111.5 66 0.5
+shot ih-sv-rise-north_postern 60.5 85 -56.5 50.5 78 -66.5
+shot ih-sv-rise-south_postern 68.5 85 59.5 58.5 78 49.5
+shot ih-sv-rise-Muster_Yard 10.5 79 10.5 0.5 72 0.5
+wait 2400
+shot ih-sv-fight 126.5 89 14.5 112.5 78 0.5
+wait 11000
+round
+wait 60

@@ -120,10 +120,14 @@ public final class SurvivalMode extends BattleMode {
     /** The shrine's centre at the world's surface. */
     Vec3d shrineCentre(GravesAndGlory.Battle b) { var s = shrine(b); return surface(b, s.x(), s.z()); }
     static Vec3d surface(GravesAndGlory.Battle b, double x, double z) {
-        int y = b.world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(x), (int) Math.floor(z));
-        return new Vec3d(x, y, z);
+        int cx = (int) Math.floor(x), cz = (int) Math.floor(z);
+        if (EngineMaps.current() == null) return new Vec3d(x, b.world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, cx, cz), z);
+        // An engine map: the floor a troop is put on (Arena.floor: the ground under the Yoke, a roof or the canopy, never the top of the column), the nearest such column when this one has none.
+        int[] f = Arena.floor(b.world, cx, cz, x, z);
+        return f[0] == cx && f[1] == cz ? new Vec3d(x, f[2], z) : new Vec3d(f[0] + .5, f[2], f[1] + .5);
     }
-    /** The court is the defenders' base, respawn and barracks; the dead fall back on the shrine they want. */
+    /** The standing height of a column, as surface has it. */
+    static int top(GravesAndGlory.Battle b, int x, int z) {return (int) surface(b, x + .5, z + .5).y;}
     @Override public Vec3d fieldBase(GravesAndGlory.Battle b, int team) {
         if (team == DEFENDERS) { if (courtBase == null) { var c = court(b); courtBase = surface(b, c.x(), c.z()); } return courtBase; }
         return shrineCentre(b);
@@ -180,7 +184,7 @@ public final class SurvivalMode extends BattleMode {
     void raisePole(GravesAndGlory.Battle b) {
         var c = court(b);
         fieldBase(b, DEFENDERS); // read the court's surface before the pole tops it
-        int x = (int) Math.floor(c.x()), z = (int) Math.floor(c.z()), y = b.world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
+        int x = (int) Math.floor(c.x()), z = (int) Math.floor(c.z()), y = top(b, x, z) - 1;
         for (int dy = 1; dy <= Arena.POINT_POLE + 1; dy++) if (!b.world.getBlockState(new BlockPos(x, y + dy, z)).isAir()) return;
         for (int dx = 1; dx <= 3; dx++) for (int dy = Arena.POINT_POLE - 2; dy < Arena.POINT_POLE; dy++) if (!b.world.getBlockState(new BlockPos(x + dx, y + dy, z)).isAir()) return;
         Arena.flag(b.world, x, y, z, DEFENDERS);

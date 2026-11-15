@@ -20,6 +20,8 @@ import java.util.Deque;
  *   shot NAME x y z lookX lookY lookZ   the same, aimed at a point
  *   shot NAME x y z yaw pitch   move the player there as a spectator, wait for the chunks, save
  *                   (run folder)/mapforge/screenshots/NAME.png with the HUD hidden
+ *   mode ID         the battle mode the next practice plays (convoy, siege, survival, domination)
+ *   round           log whether a round runs, its mode, the last winner and the scores
  *   practice        start a practice round (camp:practice, as MapTour does): bots field, the point flags and the battle HUD show
  *   hudshot NAME x y z lookX lookY lookZ   teleport the player there in its own game mode and save NAME.png with the HUD shown
  *   points          a line in the evidence with each point (id, name, x, y, z, owner) and the scores
@@ -73,6 +75,9 @@ public final class MapForgeHarness implements ClientModInitializer {
                 case "note"->log("note "+rest);
                 case "practice"->{var id=c.player.getUuid();log("practice round on map "+b.campaign.map);pause=200;
                     server.execute(()->{var p=server.getPlayerManager().getPlayer(id);if(p!=null){b.campaign.handle(p,"camp:practice");b.campaign.introUntil=b.time;}});}
+                case "mode"->{var id=c.player.getUuid();String mode=rest.trim();pause=20; // mode ID: the battle mode the next practice plays (the camp's own battlemode command, so a map that does not host it refuses)
+                    server.execute(()->{var p=server.getPlayerManager().getPlayer(id);if(p!=null)b.campaign.handle(p,"battlemode:"+mode);log("mode "+b.campaign.battleMode+" on map "+b.campaign.map);});}
+                case "round"->log("round running "+b.running+" mode "+(b.mode==null?"-":b.mode.id())+" time "+b.time+" winner "+b.campaign.lastWinner+" scores "+b.scores[0]+"-"+b.scores[1]); // the round's state, for a script that plays one through
                 case "hudshot"->{String[] a=rest.trim().split("\\s+");
                     if(a.length!=7){end(c,false,"hudshot NAME x y z lookX lookY lookZ: "+line);return;}
                     shotName=a[0];pause=120;c.options.hudHidden=false;b.campaign.leash=false;String tp="tp @a "+a[1]+" "+a[2]+" "+a[3]+" facing "+a[4]+" "+a[5]+" "+a[6];
