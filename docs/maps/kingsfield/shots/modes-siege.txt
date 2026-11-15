@@ -1,0 +1,19 @@
+# Siege on slot 5: a practice round played to its end (the player gives no orders, so the clock ends it), with a look at the yard, the gate, the keep and the passages the round shuts.
+note Siege on map 5
+map 5
+mc time set 6000
+mode siege
+practice
+wait 200
+round
+hudshot kf-sg-start -190.5 72 0.5 -153.5 66 0.5
+shot kf-sg-gate -166.5 70 0.5 -153.5 66 0.5
+shot kf-sg-keep -128.5 90 20.5 -128.5 65 0.5
+shot kf-sg-ndoor -128.5 72 -40.5 -128.5 66 -27.5
+shot kf-sg-sdoor -128.5 72 40.5 -128.5 66 26.5
+wait 3600
+shot kf-sg-gate-late -166.5 70 0.5 -153.5 66 0.5
+wait 600
+round
+hudshot kf-sg-end -190.5 72 0.5 -153.5 66 0.5
+wait 60

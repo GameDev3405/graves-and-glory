@@ -1,0 +1,18 @@
+# Siege on slot 6: a practice round played to its end (the player gives no orders, so the clock ends it), with a look at the yard, the gate, the keep and the passages the round shuts.
+note Siege on map 6
+map 6
+mc time set 6000
+mode siege
+practice
+wait 200
+round
+hudshot rg-sg-start 0.5 70 -85.5 0.5 66 -55.5
+shot rg-sg-gate 0.5 68 -66.5 0.5 66 -52.5
+shot rg-sg-keep 12.5 80 -14.5 0.5 65 0.5
+shot rg-sg-south 0.5 68 66.5 0.5 66 51.5
+wait 3600
+shot rg-sg-gate-late 0.5 68 -66.5 0.5 66 -52.5
+wait 7600
+round
+hudshot rg-sg-end 0.5 70 -85.5 0.5 66 -55.5
+wait 60

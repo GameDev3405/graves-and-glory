@@ -10,14 +10,18 @@ import java.util.List;
 /** Every Siege fort on a bundled engine map: the yard, the keep, the musters and the posts stand on floors a troop can reach at the height their rows
  *  state; with every plug shut no walk (four ways, steps of one block) leads from the yard to the keep or to the defenders' muster, so the gate is the
  *  only way in; with the gate's own plug open and the others shut the walk gets there through the gate; and the spot the gate's target stands on, one
- *  block off the plug's face on the attackers' side, is a floor at the gate row's height. The plug boxes are SiegeMode.plugBox's. */
+ *  block off the plug's face on the attackers' side, is a floor at the gate row's height. The yard lies before the gate and the keep behind it along
+ *  the gate row's direction, the gate's own plug lies across that direction, and the attackers walk from where they start (their camp row, else their
+ *  spawn) to the yard. A plug shuts a column for a troop whose body is in its filled heights only (a walk over or under it stays open); the boxes are
+ *  the ones SiegeMode.plugBox fills (kept in step by hand: SiegeMode needs the game's classes). */
 public final class SiegeSitesCheck {
  static int count;static void check(boolean pass,String text){count++;if(!pass)throw new AssertionError(text);}
  static long key(int x,int y,int z){return ((long)(x+4096)<<40)|((long)(z+4096)<<20)|(y+512);}
- /** A plug's columns: x0, z0, x1, z1 (thickness seconds along its passage, radius each side of the centre across it; rotation 90 or 270: the passage runs along z). */
+ /** A plug's box: x0, z0, x1, z1, lowest and highest filled y (thickness seconds along its passage, radius each side of the centre across it, hp high from the block over its floor; rotation 90 or 270: the passage runs along z). */
  static int[] box(Spec.ModeSitesRow p){
   int thick=p.seconds(),half=(int)p.radius();boolean turned=Math.floorMod(p.rotation(),180)==90;
-  return turned?new int[]{(int)p.x()-half,(int)p.z()-thick/2,(int)p.x()+half,(int)p.z()-thick/2+thick-1}:new int[]{(int)p.x()-thick/2,(int)p.z()-half,(int)p.x()-thick/2+thick-1,(int)p.z()+half};
+  int lo=(int)p.y()+1,hi=(int)p.y()+(int)p.hp();
+  return turned?new int[]{(int)p.x()-half,(int)p.z()-thick/2,(int)p.x()+half,(int)p.z()-thick/2+thick-1,lo,hi}:new int[]{(int)p.x()-thick/2,(int)p.z()-half,(int)p.x()-thick/2+thick-1,(int)p.z()+half,lo,hi};
  }
  /** Whether a walk from one floor reaches the column of another with the boxes shut. */
  static boolean walks(EngineMap m,int[] from,int[] to,List<int[]> shut){
@@ -25,7 +29,7 @@ public final class SiegeSitesCheck {
   int[][] d={{1,0},{-1,0},{0,1},{0,-1}};
   while(!q.isEmpty()){int[] c=q.poll();if(c[0]==to[0]&&c[2]==to[1]&&Math.abs(c[1]-to[2])<=1)return true;
    for(int[] e:d){int nx=c[0]+e[0],nz=c[2]+e[1],ny=m.nav.floorNear(nx,c[1],nz);if(ny==Integer.MIN_VALUE||Math.abs(ny-c[1])>1)continue;
-    boolean in=false;for(int[] b:shut)if(nx>=b[0]&&nx<=b[2]&&nz>=b[1]&&nz<=b[3])in=true;
+    boolean in=false;for(int[] b:shut)if(nx>=b[0]&&nx<=b[2]&&nz>=b[1]&&nz<=b[3]&&ny+1<=b[5]&&ny+2>=b[4])in=true;
     if(!in&&seen.add(key(nx,ny,nz)))q.add(new int[]{nx,ny,nz});}}
   return false;
  }
@@ -67,6 +71,11 @@ public final class SiegeSitesCheck {
    check(walks(m,y0,k0,others),id+": the gate alone does not open the way to the keep");
    int turn=Math.floorMod(gate.rotation(),360),ux=turn==0?1:turn==180?-1:0,uz=turn==90?1:turn==270?-1:0,pass=own.seconds()/2+1;
    int tx=(int)gate.x()-ux*(pass+1),tz=(int)gate.z()-uz*(pass+1),ty=m.nav.floorNear(tx,(int)gate.y(),tz);
+   check((yard.x()-gate.x())*ux+(yard.z()-gate.z())*uz<0&&(keep.x()-gate.x())*ux+(keep.z()-gate.z())*uz>0,id+": the yard lies before the gate and the keep behind it, the way the gate row faces");
+   check((Math.floorMod(own.rotation(),180)==90)==(uz!=0),id+": the gate's own plug lies across the gate's direction");
+   if(bases.size()<2){String team=muster.stage()==0?"dusk":"dawn";boolean walked=false;
+    for(var sp:m.spawns)if(sp.team().equals(team)){int sx=(int)Math.floor(sp.x()),sz=(int)Math.floor(sp.z());int[] f=m.nav.stand(sx,sz,m::solid,sx+.5,sz+.5,0);walked=f!=null&&walks(m,f,y0,List.of());}
+    check(walked,id+": the attackers' spawn walks to the yard");}
    check(ty==(int)gate.y(),id+": the gate's target stands at "+tx+","+tz+" on floor "+ty+", the gate row says "+(int)gate.y());
    check(walks(m,y0,new int[]{tx,tz,ty},shut),id+": the yard walks to the gate's face");
    maps++;System.out.println(id+": the fort is shut by "+plugs.size()+" plugs, "+(muster.stage()==0?"Dawn":"Dusk")+" defends");

@@ -77,6 +77,8 @@ public abstract class BattleMode {
     public Vec3d fieldBase(GravesAndGlory.Battle b,int team){return GravesAndGlory.Battle.base(team);}
     /** The point a team's lineup forms from (reinforce's rows stand 5 to 20 blocks forward of it): the field base unless the mode lines a team up elsewhere (Siege's defenders in the yard). */
     public Vec3d lineup(GravesAndGlory.Battle b,int team){return fieldBase(b,team);}
+    /** The way a team's lineup faces, a unit step {x, z}: its rows stand forward of the lineup point this way and its armies spread across it. Dawn east, Dusk west, unless the mode's ground lies otherwise (Siege on a gate that faces north or south). */
+    public double[] lineupFacing(GravesAndGlory.Battle b,int team){return new double[]{team==0?1:-1,0};}
     /** A team's barracks access point. */
     public Vec3d fieldBarracks(GravesAndGlory.Battle b,int team){var f=Spec.FACTIONS[team];return new Vec3d(f.barracksX(),65,f.barracksZ());}
     /** Round gold a squad earns per income tick: passive gold and held points, each scaled by the mode (Survival pays neither). */

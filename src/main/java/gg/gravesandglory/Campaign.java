@@ -1127,7 +1127,7 @@ public final class Campaign {
             botGuard.put(s.owner,guard);
         }else botGuard.remove(s.owner);
         if(guard>=0)hold=guard;
-        s.yaw=b.mode instanceof SiegeMode siege?siege.yaw(b,s.team):facing(s,center,seen.values(),retreating); // Siege lays its stage plan out along the x axis, so it keeps facing the enemy's side
+        s.yaw=b.mode instanceof SiegeMode siege?siege.yaw(b,s.team):facing(s,center,seen.values(),retreating); // Siege lays its stage plan out along the gate's line, so it keeps facing the enemy's side of it
         if(points)planGroups(s,center,mine,guard,guardGroup,seen.values());
         if(!retreating)b.mode.botPlan(b,s,tier); // a mode's per-group split of the order (Siege's stage plan)
         if(!s.order.equals(wasOrder)||!Objects.equals(s.target,wasTarget))s.arrived.clear(); // a new order or spot ends an arrival (Tactics.arrived); the same decision again keeps it

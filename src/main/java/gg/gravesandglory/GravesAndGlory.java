@@ -1271,11 +1271,11 @@ public final class GravesAndGlory implements ModInitializer {
                 if(ArmyMobs.tags(spec).contains("shield")){cells[i]=BattleMath.shieldCell(ArmyMobs.width(spec),wall);rowCell[i/cols]=Math.max(rowCell[i/cols],cells[i]);}else wallRow[i/cols]=false;}
             for(int r=0;r<rows;r++){wallRow[r]&=troops[r];if(wallRow[r])for(int i=r*cols;i<r*cols+cols;i++)if(i>=line.size()||Campaign.troop(line.get(i))==null)cells[i]=rowCell[r];}
             double[] depth=BattleMath.deployDepths(troops,wallRow,rowCell,3);
-            Vec3d from=mode.lineup(this,s.team);
+            Vec3d from=mode.lineup(this,s.team);double[] facing=mode.lineupFacing(this,s.team);
             for(int position=0;position<line.size()&&position<WarGrid.cells();position++){if(occupied.contains(position))continue;
                 var spec=Campaign.troop(line.get(position));if(spec==null)continue;
                 int r=position/cols;double row=BattleMath.deployRow(Arrays.copyOfRange(cells,r*cols,r*cols+cols))[position%cols];
-                double side=s.team==0?1:-1,x=from.x+side*(20-depth[r]),z=from.z+side*((index-(count-1)/2.0)*22+row); // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
+                double ahead=20-depth[r],across=(index-(count-1)/2.0)*22+row,x=from.x+facing[0]*ahead-facing[1]*across,z=from.z+facing[1]*ahead+facing[0]*across; // rows centred on the base for any army count; Dusk's mirror Dawn's, so army i forms on the side of its lane point (BattleMath.laneTarget)
                 spawn(s,spec,position,Arena.standing(world,x,z,from.x),false);
             }
             Houses.recompute(s); // once for the whole line (spawn(...,false) skips the per-troop pass: same traits, a fraction of the round-start tick)

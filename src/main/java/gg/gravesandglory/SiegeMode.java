@@ -151,7 +151,7 @@ public final class SiegeMode extends BattleMode {
         }
         /** A spot on the gate's line: along blocks past the gate's centre the way the attackers go (negative: on their side), across blocks to the side. */
         Vec3d off(double along, double across) {
-            return at(gateX + ux * along + Math.abs(uz) * across, gateZ + uz * along + Math.abs(ux) * across);
+            return at(gateX + .5 + ux * (along - .5) + Math.abs(uz) * (across - .5), gateZ + .5 + uz * (along - .5) + Math.abs(ux) * (across - .5)); // mirrored about the gate block's centre, so a west or north gate's spots sit as far off its faces as an east gate's
         }
         /** The yaw of a troop that looks the way the attackers go (with false: back at them). */
         float yaw(boolean attacking) {
@@ -372,6 +372,14 @@ public final class SiegeMode extends BattleMode {
     public Vec3d lineup(GravesAndGlory.Battle b, int team) {
         var st = s(b);
         return team == st.def && stage == 0 ? at(st.yardX + YARD_LINEUP * st.ux, st.yardZ + YARD_LINEUP * st.uz) : super.lineup(b, team);
+    }
+
+    /** The defenders' lineup faces out through the gate, at the attackers; the attackers' faces in through it once the yard is theirs (at their own camp: as on any field). */
+    @Override
+    public double[] lineupFacing(GravesAndGlory.Battle b, int team) {
+        var st = s(b);
+        if (st.landmark != null || team == st.att && stage == 0) return super.lineupFacing(b, team);
+        return team == st.def ? new double[]{-st.ux, -st.uz} : new double[]{st.ux, st.uz};
     }
 
     /** A spot on the ground. */
@@ -649,7 +657,7 @@ public final class SiegeMode extends BattleMode {
     }
 
     /** The round second now. */
-    /** A stage fell: a March stage_by bonus hears it (the commander's side, Dawn, attacks). */
+    /** A stage fell: a March stage_by bonus hears it (the commander's side attacks on the campaign's map). */
     static void staged(GravesAndGlory.Battle b, String stage, int second) {
         if (b.campaign.bonusTracker != null) b.campaign.bonusTracker.staged(stage, second);
     }

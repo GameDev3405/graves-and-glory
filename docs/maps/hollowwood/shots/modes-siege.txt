@@ -1,0 +1,19 @@
+# Siege on slot 9: a practice round played to its end (the player gives no orders, so the clock ends it), with a look at the yard, the gate, the keep and the passages the round shuts.
+note Siege on map 9
+map 9
+mc time set 6000
+mode siege
+practice
+wait 200
+round
+hudshot hw-sg-start -62.5 78 -100.5 -92.5 78 -100.5
+shot hw-sg-gate -80.5 80 -100.5 -92.5 78 -100.5
+shot hw-sg-keep -116.5 90 -84.5 -128.5 79 -96.5
+shot hw-sg-sw -168.5 80 -66.5 -156.5 77 -76.5
+shot hw-sg-sewalk -100.5 82 -80.5 -91.5 80 -71.5
+wait 3600
+shot hw-sg-gate-late -80.5 80 -100.5 -92.5 78 -100.5
+wait 7600
+round
+hudshot hw-sg-end -62.5 78 -100.5 -92.5 78 -100.5
+wait 60
