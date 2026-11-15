@@ -91,10 +91,11 @@ public final class VersionGate {
         }
     }
 
-    /** The configuration task: sends the empty request; the reply receiver completes it. */
-    record CheckTask() implements ServerPlayerConfigurationTask {
+    /** The configuration task: sends the empty request and only then accepts a reply from this player; the receiver completes it. */
+    record CheckTask(UUID player) implements ServerPlayerConfigurationTask {
         static final Key KEY = new Key(CONFIG_CHANNEL.toString());
         @Override public void sendPacket(Consumer<Packet<?>> sender) {
+            PENDING.add(player);
             sender.accept(ServerConfigurationNetworking.createS2CPacket(new Payloads.ReleaseCheckRequestPayload(new byte[0])));
         }
         @Override public Key getKey() { return KEY; }
@@ -110,8 +111,7 @@ public final class VersionGate {
         ServerConfigurationConnectionEvents.CONFIGURE.register((handler, server) -> {
             UUID id = handler.getDebugProfile().getId();
             if (ServerConfigurationNetworking.canSend(handler, Payloads.ReleaseCheckRequestPayload.ID)) {
-                PENDING.add(id);
-                handler.addTask(new CheckTask());
+                handler.addTask(new CheckTask(id));
                 return;
             }
             RESULTS.put(id, new Result(Kind.PLAIN, "", ""));
@@ -124,7 +124,7 @@ public final class VersionGate {
         ServerConfigurationNetworking.registerGlobalReceiver(Payloads.ReleaseCheckReplyPayload.ID, (payload, context) -> {
             var handler = context.networkHandler();
             UUID id = handler.getDebugProfile().getId();
-            if (!PENDING.remove(id)) return; // unsolicited or repeated: completeTask would throw for a task that is not current
+            if (!PENDING.remove(id)) return; // early, unsolicited or repeated: completeTask would throw for a task that is not current
             String[] reported = {"", ""};
             String failure = check(payload.buf(), reported);
             // The 1.20.1 gate refused a mismatch only while a battle existed; the same holds here.
