@@ -168,8 +168,11 @@ public final class ModeMath {
         }
         return out;
     }
-    /** The road floor at distance d from roadFloors' samples. */
-    public static int roadFloor(int[] floors,double step,double d) {return floors[Math.max(0,Math.min(floors.length-1,(int)Math.round(d/step)))];}
+    /** The road floor at distance d from roadFloors' samples; past the last whole step it is the end sample (which sits at the road's end, not on the step grid). */
+    public static int roadFloor(int[] floors,double step,double d) {
+        if(d>(floors.length-2)*step+1e-9)return floors[floors.length-1];
+        return floors[Math.max(0,(int)Math.round(d/step))];
+    }
     /** The forward speed factor on a segment that rises rise over run: up beyond maxGrade, down beyond -maxGrade, 1 between. */
     public static double gradeFactor(double rise,double run,double maxGrade,double up,double down) {
         if(run<=0)return 1;

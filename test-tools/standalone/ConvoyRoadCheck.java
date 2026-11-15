@@ -34,7 +34,7 @@ public final class ConvoyRoadCheck {
     low=Math.min(low,f[k]);high=Math.max(high,f[k]);}
    System.out.println(row.id()+": road "+(int)st[st.length-1]+" long, floors "+low+".."+high+", "+f.length+" samples");
   }
-  check(roads>0,"no engine map has a Convoy road");
+  check(roads>=5,"only "+roads+" engine maps have a Convoy road, five do");
   System.out.println("ConvoyRoadCheck OK: "+roads+" roads, "+count+" checks");
  }
 }
