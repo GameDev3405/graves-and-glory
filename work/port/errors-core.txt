@@ -1,0 +1,282 @@
+# compileJava errors on port/1.21.1 after the core lane: 137 errors in 47 files (javac -Xmaxerrs 10000, -PallErrors).
+# A floor, not a total: lambda bodies under a failed overload (the old 4- and 5-argument receivers) and code behind a failed line are not attributed yet.
+
+## Count per file
+  10  BodyCache.java
+   8  GearCombat.java
+   8  PlanMarkers.java
+   8  PropMenu.java
+   6  EndingClient.java
+   6  GearLooks.java
+   6  WagonEntity.java
+   5  Abilities.java
+   4  MotionEvents.java
+   4  TroopChevrons.java
+   3  BattleMapClient.java
+   3  BattleMapScreen.java
+   3  BuildHandbook.java
+   3  CampScreen.java
+   3  CampaignClient.java
+   3  LookPacks.java
+   3  MapRuns.java
+   3  OrderOutlines.java
+   3  RankSync.java
+   3  RecruitPages.java
+   3  Structures.java
+   2  ArmyCards.java
+   2  BattleMapNet.java
+   2  BuildMode.java
+   2  Campaign.java
+   2  ChargeCamera.java
+   2  CommandMode.java
+   2  CommandNet.java
+   2  EngineMaps.java
+   2  RecruitmentScreen.java
+   2  RelicEffects.java
+   2  TroopModel.java
+   2  WarTableHome.java
+   2  WarTablePages.java
+   1  AttackController.java
+   1  Audio.java
+   1  BattleEffects.java
+   1  CampWorld.java
+   1  DarkUi.java
+   1  FeedEvents.java
+   1  OrderRules.java
+   1  Projectiles.java
+   1  PropPack.java
+   1  PropTicker.java
+   1  TroopMesh.java
+   1  TroopRenderer.java
+   1  UiButton.java
+
+## Abilities.java (5)
+  769: incompatible types: UUID cannot be converted to Identifier
+  771: no suitable method found for removeModifier(UUID)
+  772: cannot find symbol  [symbol:   variable MULTIPLY_TOTAL; location: class Operation]
+  787: no suitable method found for removeModifier(UUID)
+  840: cannot find symbol  [symbol:   method getColorComponents(); location: variable d of type DyeColor]
+
+## ArmyCards.java (2)
+  66: cannot find symbol  [symbol:   class DyeableItem; location: class ArmyCards]
+  108: no suitable method found for drawEntity(DrawContext,int,int,int,float,float,MobEntity)
+
+## AttackController.java (1)
+  230: incompatible types: UUID cannot be converted to Identifier
+
+## Audio.java (1)
+  83: no suitable method found for playSound(SoundEvent,SoundCategory,float,float)
+
+## BattleEffects.java (1)
+  77: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+
+## BattleMapClient.java (3)
+  34: method registerGlobalReceiver in class ClientPlayNetworking cannot be applied to given types;  [required: Id<T>,PlayPayloadHandler<T>; found:    Identifier,(client,ha[...]}); }; reason: cannot infer type-variable(s) T]
+  45: method registerGlobalReceiver in class ClientPlayNetworking cannot be applied to given types;  [required: Id<T>,PlayPayloadHandler<T>; found:    Identifier,(client,ha[...]s); }; reason: cannot infer type-variable(s) T]
+  99: method send in class ClientPlayNetworking cannot be applied to given types;  [required: CustomPayload; found:    Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+
+## BattleMapNet.java (2)
+  55: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+  211: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+
+## BattleMapScreen.java (3)
+  154: method does not override or implement a method from a supertype
+  391: method does not override or implement a method from a supertype
+  924: method does not override or implement a method from a supertype
+
+## BodyCache.java (10)
+  168: cannot find symbol  [symbol:   class BuiltBuffer; location: class BufferBuilder]
+  244: cannot find symbol  [symbol:   class BuiltBuffer; location: class BufferBuilder]
+  262: constructor BufferBuilder in class BufferBuilder cannot be applied to given types;  [required: BufferAllocator,DrawMode,VertexFormat; found:    int; reason: actual and formal argument lists differ in length]
+  262: cannot find symbol  [symbol:   method begin(DrawMode,VertexFormat); location: variable bb of type BufferBuilder]
+  266: cannot find symbol  [symbol:   method isBuilding(); location: variable bb of type BufferBuilder]
+  284: cannot find symbol  [symbol:   method getInverseViewRotationMatrix(); location: class RenderSystem]
+  322: cannot find symbol  [symbol:   variable viewRotationMat; location: variable sh of type ShaderProgram]
+  473: cannot find symbol  [symbol:   variable viewRotationMat; location: variable sh of type ShaderProgram]
+  476: cannot find symbol  [symbol:   variable viewRotationMat; location: variable sh of type ShaderProgram]
+  500: cannot find symbol  [symbol:   method tickDelta(); location: variable ctx of type WorldRenderContext]
+
+## BuildHandbook.java (3)
+  25: cannot find symbol  [symbol:   method getOrCreateNbt(); location: variable stack of type ItemStack]
+  29: cannot find symbol  [symbol:   method toJson(MutableText); location: class Serializer]
+  53: cannot find symbol  [symbol:   method toPath(); location: interface Path]
+
+## BuildMode.java (2)
+  159: cannot find symbol  [symbol:   method toPath(); location: interface Path]
+  216: cannot find symbol  [symbol:   method toPath(); location: interface Path]
+
+## CampScreen.java (3)
+  214: method does not override or implement a method from a supertype
+  270: method does not override or implement a method from a supertype
+  270: method mouseScrolled in interface ParentElement cannot be applied to given types;  [required: double,double,double,double; found:    double,double,double; reason: actual and formal argument lists differ in length]
+
+## CampWorld.java (1)
+  267: cannot find symbol  [symbol:   method toJson(Text); location: class Serializer]
+
+## Campaign.java (2)
+  72: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+  703: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+
+## CampaignClient.java (3)
+  94: cannot find symbol  [symbol:   method getUuid(); location: class Session]
+  107: method send in class ClientPlayNetworking cannot be applied to given types;  [required: CustomPayload; found:    Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+  148: no suitable method found for playSound(SoundEvent,SoundCategory,float,int)
+
+## ChargeCamera.java (2)
+  263: method send in class ClientPlayNetworking cannot be applied to given types;  [required: CustomPayload; found:    Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+  285: cannot find symbol  [symbol:   method tickDelta(); location: variable context of type WorldRenderContext]
+
+## CommandMode.java (2)
+  75: method send in class ClientPlayNetworking cannot be applied to given types;  [required: CustomPayload; found:    Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+  87: method send in class ClientPlayNetworking cannot be applied to given types;  [required: CustomPayload; found:    Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+
+## CommandNet.java (2)
+  95: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+  122: method registerGlobalReceiver in class ClientPlayNetworking cannot be applied to given types;  [required: Id<T>,PlayPayloadHandler<T>; found:    Identifier,(client,ha[...]; } }; reason: cannot infer type-variable(s) T]
+
+## DarkUi.java (1)
+  163: method does not override or implement a method from a supertype
+
+## EndingClient.java (6)
+  18: cannot find symbol  [symbol:   class DyeableItem; location: package net.minecraft.item]
+  223: cannot find symbol  [symbol:   method getTickDelta(); location: class MinecraftClient]
+  229: cannot find symbol  [symbol:   method getTickDelta(); location: class MinecraftClient]
+  347: cannot find symbol  [symbol:   class DyeableItem; location: class EndingClient]
+  386: cannot find symbol  [symbol:   class DyeableItem; location: class EndingClient]
+  424: cannot find symbol  [symbol:   method getTickDelta(); location: variable c of type MinecraftClient]
+
+## EngineMaps.java (2)
+  112: no suitable method found for readCompressed(InputStream)
+  131: no suitable method found for readCompressed(InputStream)
+
+## FeedEvents.java (1)
+  115: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+
+## GearCombat.java (8)
+  89: incompatible types: EntityAttribute cannot be converted to RegistryEntry<EntityAttribute>
+  92: cannot find symbol  [symbol:   variable ADDITION; location: class Operation]
+  100: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+  101: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+  102: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+  103: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+  105: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+  320: setPierceLevel(byte) has private access in PersistentProjectileEntity
+
+## GearLooks.java (6)
+  46: cannot find symbol  [symbol:   method setCustomName(MutableText); location: variable s of type ItemStack]
+  47: cannot find symbol  [symbol:   method getOrCreateNbt(); location: variable s of type ItemStack]
+  59: cannot find symbol  [symbol:   method getNbt(); location: variable s of type ItemStack]
+  59: cannot infer type for local variable nbt
+  65: cannot find symbol  [symbol:   method getNbt(); location: variable s of type ItemStack]
+  65: cannot infer type for local variable nbt
+
+## LookPacks.java (3)
+  33: cannot find symbol  [symbol:   method getEnabledNames(); location: variable manager of type ResourcePackManager]
+  34: cannot find symbol  [symbol:   method getNames(); location: variable manager of type ResourcePackManager]
+  38: cannot find symbol  [symbol:   method getEnabledNames(); location: variable manager of type ResourcePackManager]
+
+## MapRuns.java (3)
+  198: incompatible types: DataInputStream cannot be converted to Path
+  253: method createNbt in class BlockEntity cannot be applied to given types;  [required: WrapperLookup; found:    no arguments; reason: actual and formal argument lists differ in length]
+  262: method readNbt in class BlockEntity cannot be applied to given types;  [required: NbtCompound,WrapperLookup; found:    NbtCompound; reason: actual and formal argument lists differ in length]
+
+## MotionEvents.java (4)
+  80: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+  103: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+  114: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+  131: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+
+## OrderOutlines.java (3)
+  262: cannot find symbol  [symbol:   method tickDelta(); location: variable context of type WorldRenderContext]
+  300: incompatible types: Matrix3f cannot be converted to Entry
+  301: incompatible types: Matrix3f cannot be converted to Entry
+
+## OrderRules.java (1)
+  145: no suitable method found for playSound(SoundEvent,SoundCategory,float,float)
+
+## PlanMarkers.java (8)
+  120: cannot find symbol  [symbol:   method next(); location: interface VertexConsumer]
+  121: cannot find symbol  [symbol:   method next(); location: interface VertexConsumer]
+  122: cannot find symbol  [symbol:   method next(); location: interface VertexConsumer]
+  123: cannot find symbol  [symbol:   method next(); location: interface VertexConsumer]
+  124: cannot find symbol  [symbol:   method next(); location: interface VertexConsumer]
+  125: cannot find symbol  [symbol:   method next(); location: interface VertexConsumer]
+  126: cannot find symbol  [symbol:   method next(); location: interface VertexConsumer]
+  127: cannot find symbol  [symbol:   method next(); location: interface VertexConsumer]
+
+## Projectiles.java (1)
+  251: incompatible types: double cannot be converted to LivingEntity
+
+## PropMenu.java (8)
+  168: cannot find symbol  [symbol:   method setCustomName(MutableText); location: variable s of type ItemStack]
+  174: cannot find symbol  [symbol:   method setCustomName(MutableText); location: variable s of type ItemStack]
+  175: cannot find symbol  [symbol:   method getOrCreateNbt(); location: variable s of type ItemStack]
+  180: cannot find symbol  [symbol:   method getOrCreateNbt(); location: variable s of type ItemStack]
+  181: cannot find symbol  [symbol:   method setCustomName(MutableText); location: variable s of type ItemStack]
+  183: cannot find symbol  [symbol:   method toJson(MutableText); location: class Serializer]
+  184: cannot find symbol  [symbol:   method toJson(MutableText); location: class Serializer]
+  185: cannot find symbol  [symbol:   method getOrCreateSubNbt(String); location: variable s of type ItemStack]
+
+## PropPack.java (1)
+  96: cannot find symbol  [symbol:   method sendResourcePackUrl(String,String,boolean,MutableText); location: variable player of type ServerPlayerEntity]
+
+## PropTicker.java (1)
+  57: cannot find symbol  [symbol:   method getTickTime(); location: class MinecraftServer]
+
+## RankSync.java (3)
+  71: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+  97: method send in class ServerPlayNetworking cannot be applied to given types;  [required: ServerPlayerEntity,CustomPayload; found:    ServerPlayerEntity,Identifier,PacketByteBuf; reason: actual and formal argument lists differ in length]
+  166: method registerGlobalReceiver in class ClientPlayNetworking cannot be applied to given types;  [required: Id<T>,PlayPayloadHandler<T>; found:    Identifier,(client,ha[...])); }; reason: cannot infer type-variable(s) T]
+
+## RecruitPages.java (3)
+  82: method does not override or implement a method from a supertype
+  97: method does not override or implement a method from a supertype
+  248: method does not override or implement a method from a supertype
+
+## RecruitmentScreen.java (2)
+  88: method does not override or implement a method from a supertype
+  88: method mouseScrolled in interface ParentElement cannot be applied to given types;  [required: double,double,double,double; found:    double,double,double; reason: actual and formal argument lists differ in length]
+
+## RelicEffects.java (2)
+  107: no suitable method found for removeModifier(UUID)
+  361: incompatible types: ServerWorld cannot be converted to EntityType<? extends ArrowEntity>
+
+## Structures.java (3)
+  64: no suitable method found for readCompressed(InputStream)
+  234: no suitable method found for writeCompressed(NbtCompound,File)
+  242: no suitable method found for readCompressed(File)
+
+## TroopChevrons.java (4)
+  76: cannot find symbol  [symbol:   method next(); location: interface VertexConsumer]
+  77: cannot find symbol  [symbol:   method next(); location: interface VertexConsumer]
+  78: cannot find symbol  [symbol:   method next(); location: interface VertexConsumer]
+  79: cannot find symbol  [symbol:   method next(); location: interface VertexConsumer]
+
+## TroopMesh.java (1)
+  137: no suitable method found for vertex(float,float,float,float,float,float,float,float,float,int,int,float,float,float)
+
+## TroopModel.java (2)
+  374: method does not override or implement a method from a supertype
+  379: no suitable method found for render(MatrixStack,VertexConsumer,int,int,float,float,float,float)
+
+## TroopRenderer.java (1)
+  171: method does not override or implement a method from a supertype
+
+## UiButton.java (1)
+  65: method does not override or implement a method from a supertype
+
+## WagonEntity.java (6)
+  30: WagonEntity is not abstract and does not override abstract method initDataTracker(Builder) in Entity
+  55: method does not override or implement a method from a supertype
+  60: method does not override or implement a method from a supertype
+  60: incompatible types: WagonEntity cannot be converted to RegistryByteBuf
+  64: method does not override or implement a method from a supertype
+  72: method does not override or implement a method from a supertype
+
+## WarTableHome.java (2)
+  162: cannot find symbol  [symbol:   method getTickDelta(); location: class MinecraftClient]
+  433: cannot find symbol  [symbol:   method getSkinTexture(); location: variable entry of type PlayerListEntry]
+
+## WarTablePages.java (2)
+  1908: cannot find symbol  [symbol:   method getTickDelta(); location: class MinecraftClient]
+  2356: cannot find symbol  [symbol:   method getSkinTexture(); location: variable entry of type PlayerListEntry]

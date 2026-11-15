@@ -1,0 +1,1479 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.5.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :
+Fabric Loom: 1.17.21
+
+> Task :preflight
+Preflight clean: 11616 filled cells; every row generates a Java record. Runtime verification pending.
+
+> Task :compileJava
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EndingClient.java:18: error: cannot find symbol
+import net.minecraft.item.DyeableItem;
+                         ^
+  symbol:   class DyeableItem
+  location: package net.minecraft.item
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Abilities.java:769: error: incompatible types: UUID cannot be converted to Identifier
+        var have = speed.getModifier(id);
+                                     ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Abilities.java:771: error: no suitable method found for removeModifier(UUID)
+        if (have != null) speed.removeModifier(id);
+                               ^
+    method EntityAttributeInstance.removeModifier(EntityAttributeModifier) is not applicable
+      (argument mismatch; UUID cannot be converted to EntityAttributeModifier)
+    method EntityAttributeInstance.removeModifier(Identifier) is not applicable
+      (argument mismatch; UUID cannot be converted to Identifier)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Abilities.java:772: error: cannot find symbol
+        if (value != 0) speed.addTemporaryModifier(new EntityAttributeModifier(id, name, value, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+                                                                                                                                 ^
+  symbol:   variable MULTIPLY_TOTAL
+  location: class Operation
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Abilities.java:787: error: no suitable method found for removeModifier(UUID)
+            else { u.howlUntil = 0; var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED); if (speed != null) speed.removeModifier(HOWL); }
+                                                                                                                                             ^
+    method EntityAttributeInstance.removeModifier(EntityAttributeModifier) is not applicable
+      (argument mismatch; UUID cannot be converted to EntityAttributeModifier)
+    method EntityAttributeInstance.removeModifier(Identifier) is not applicable
+      (argument mismatch; UUID cannot be converted to Identifier)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Abilities.java:840: error: cannot find symbol
+            float[] c = d.getColorComponents();
+                         ^
+  symbol:   method getColorComponents()
+  location: variable d of type DyeColor
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Campaign.java:72: error: method send in class ServerPlayNetworking cannot be applied to given types;
+        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,GravesAndGlory.GEAR,packet);
+                                                                  ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Campaign.java:703: error: method send in class ServerPlayNetworking cannot be applied to given types;
+            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,GravesAndGlory.ENDING_BEGIN,packet);}
+                                                                      ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapNet.java:55: error: method send in class ServerPlayNetworking cannot be applied to given types;
+        ServerPlayNetworking.send(p, GravesAndGlory.MAP_GRID, buf);
+                            ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapNet.java:211: error: method send in class ServerPlayNetworking cannot be applied to given types;
+            ServerPlayNetworking.send(p, GravesAndGlory.MAP_STATE, PacketByteBufs.copy(buf));
+                                ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Structures.java:64: error: no suitable method found for readCompressed(InputStream)
+            try(InputStream in=resource.get().getInputStream()){return Optional.of(NbtIo.readCompressed(in));}
+                                                                                        ^
+    method NbtIo.readCompressed(Path,NbtSizeTracker) is not applicable
+      (actual and formal argument lists differ in length)
+    method NbtIo.readCompressed(InputStream,NbtSizeTracker) is not applicable
+      (actual and formal argument lists differ in length)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Structures.java:234: error: no suitable method found for writeCompressed(NbtCompound,File)
+            NbtIo.writeCompressed(snapshot.writeNbt(new NbtCompound()),file.toFile());
+                 ^
+    method NbtIo.writeCompressed(NbtCompound,Path) is not applicable
+      (argument mismatch; File cannot be converted to Path)
+    method NbtIo.writeCompressed(NbtCompound,OutputStream) is not applicable
+      (argument mismatch; File cannot be converted to OutputStream)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Structures.java:242: error: no suitable method found for readCompressed(File)
+            NbtCompound nbt=NbtIo.readCompressed(saved.file().toFile());
+                                 ^
+    method NbtIo.readCompressed(Path,NbtSizeTracker) is not applicable
+      (actual and formal argument lists differ in length)
+    method NbtIo.readCompressed(InputStream,NbtSizeTracker) is not applicable
+      (actual and formal argument lists differ in length)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Projectiles.java:251: error: incompatible types: double cannot be converted to LivingEntity
+            PersistentProjectileEntity a=kind.equals("trident")?new TridentEntity(b.world,u.mob,new ItemStack(Items.TRIDENT)):new ArrowEntity(b.world,from.x,from.y,from.z);
+                                                                                                                                                          ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RecruitmentScreen.java:88: error: method does not override or implement a method from a supertype
+    @Override public boolean mouseScrolled(double x,double y,double amount){if(amount==0)return true;if(tab==1&&page.scroll(amount>0?-1:1))return true;if(tab==0&&barracks.scroll(amount>0?-1:1))return true;return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
+    ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RecruitmentScreen.java:88: error: method mouseScrolled in interface ParentElement cannot be applied to given types;
+    @Override public boolean mouseScrolled(double x,double y,double amount){if(amount==0)return true;if(tab==1&&page.scroll(amount>0?-1:1))return true;if(tab==0&&barracks.scroll(amount>0?-1:1))return true;return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
+                                                                                                                                                                                                                         ^
+  required: double,double,double,double
+  found:    double,double,double
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\UiButton.java:65: error: method does not override or implement a method from a supertype
+    @Override protected void renderButton(DrawContext g, int mouseX, int mouseY, float delta) {
+    ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\ArmyCards.java:66: error: cannot find symbol
+            var chest=new ItemStack(Registries.ITEM.get(Identifier.of(spec.chest())));if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,colour);e.equipStack(EquipmentSlot.CHEST,chest);
+                                                                                                                    ^
+  symbol:   class DyeableItem
+  location: class ArmyCards
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\ArmyCards.java:108: error: no suitable method found for drawEntity(DrawContext,int,int,int,float,float,MobEntity)
+        TroopModels.sized(e,size);InventoryScreen.drawEntity(g,x,bottom,size,mouseX,mouseY,e);
+                                                 ^
+    method InventoryScreen.drawEntity(DrawContext,int,int,int,int,int,float,float,float,LivingEntity) is not applicable
+      (actual and formal argument lists differ in length)
+    method InventoryScreen.drawEntity(DrawContext,float,float,float,Vector3f,Quaternionf,Quaternionf,LivingEntity) is not applicable
+      (actual and formal argument lists differ in length)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\AttackController.java:230: error: incompatible types: UUID cannot be converted to Identifier
+        boolean on = speed != null && speed.getModifier(Abilities.HOWL) != null;
+                                                                 ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Audio.java:83: error: no suitable method found for playSound(SoundEvent,SoundCategory,float,float)
+        if (p != null && e != null) p.playSound(e, category(cue), cue.volume, cue.pitch);
+                                     ^
+    method LivingEntity.playSound(SoundEvent) is not applicable
+      (actual and formal argument lists differ in length)
+    method PlayerEntity.playSound(SoundEvent,float,float) is not applicable
+      (actual and formal argument lists differ in length)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleEffects.java:77: error: method send in class ServerPlayNetworking cannot be applied to given types;
+                var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeFloat(Math.min(1,amount/8f));net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,GravesAndGlory.IMPACT,packet);
+                                                                                                                                                                                            ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CommandMode.java:75: error: method send in class ClientPlayNetworking cannot be applied to given types;
+    static void ping(String kind,double x,double z){if(ClientPlayNetworking.canSend(GravesAndGlory.PING)){var b=PacketByteBufs.create();b.writeString(kind);b.writeDouble(x);b.writeDouble(z);ClientPlayNetworking.send(GravesAndGlory.PING,b);}}
+                                                                                                                                                                                                                  ^
+  required: CustomPayload
+  found:    Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CommandMode.java:87: error: method send in class ClientPlayNetworking cannot be applied to given types;
+        ClientPlayNetworking.send(GravesAndGlory.TACTICAL_V2,b);ordersSent++;
+                            ^
+  required: CustomPayload
+  found:    Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapClient.java:34: error: method registerGlobalReceiver in class ClientPlayNetworking cannot be applied to given types;
+        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.MAP_GRID, (client, handler, buf, responder) -> {
+                            ^
+  required: Id<T>,PlayPayloadHandler<T>
+  found:    Identifier,(client,ha[...]}); }
+  reason: cannot infer type-variable(s) T
+    (argument mismatch; Identifier cannot be converted to Id<T>)
+  where T is a type-variable:
+    T extends CustomPayload declared in method <T>registerGlobalReceiver(Id<T>,PlayPayloadHandler<T>)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapClient.java:45: error: method registerGlobalReceiver in class ClientPlayNetworking cannot be applied to given types;
+        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.MAP_STATE, (client, handler, buf, responder) -> {
+                            ^
+  required: Id<T>,PlayPayloadHandler<T>
+  found:    Identifier,(client,ha[...]s); }
+  reason: cannot infer type-variable(s) T
+    (argument mismatch; Identifier cannot be converted to Id<T>)
+  where T is a type-variable:
+    T extends CustomPayload declared in method <T>registerGlobalReceiver(Id<T>,PlayPayloadHandler<T>)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapClient.java:99: error: method send in class ClientPlayNetworking cannot be applied to given types;
+        ClientPlayNetworking.send(GravesAndGlory.PLAN, buf);
+                            ^
+  required: CustomPayload
+  found:    Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapScreen.java:154: error: method does not override or implement a method from a supertype
+    @Override public boolean mouseScrolled(double mx, double my, double amount) {
+    ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapScreen.java:391: error: method does not override or implement a method from a supertype
+    @Override public void renderBackground(DrawContext g) {}
+    ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapScreen.java:924: error: method does not override or implement a method from a supertype
+        @Override public void renderButton(DrawContext g, int mx, int my, float delta) {
+        ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:168: error: cannot find symbol
+            BufferBuilder.BuiltBuffer built=en.getValue().endNullable();if(built==null)continue;
+                         ^
+  symbol:   class BuiltBuffer
+  location: class BufferBuilder
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:244: error: cannot find symbol
+            BufferBuilder.BuiltBuffer built=bb.endNullable();
+                         ^
+  symbol:   class BuiltBuffer
+  location: class BufferBuilder
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:262: error: constructor BufferBuilder in class BufferBuilder cannot be applied to given types;
+            if(bb==null){bb=pool.isEmpty()?new BufferBuilder(Math.max(layer.getExpectedBufferSize(),1<<16)):pool.pop();bb.begin(layer.getDrawMode(),layer.getVertexFormat());open.put(layer,bb);}
+                                           ^
+  required: BufferAllocator,DrawMode,VertexFormat
+  found:    int
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:262: error: cannot find symbol
+            if(bb==null){bb=pool.isEmpty()?new BufferBuilder(Math.max(layer.getExpectedBufferSize(),1<<16)):pool.pop();bb.begin(layer.getDrawMode(),layer.getVertexFormat());open.put(layer,bb);}
+                                                                                                                         ^
+  symbol:   method begin(DrawMode,VertexFormat)
+  location: variable bb of type BufferBuilder
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:266: error: cannot find symbol
+        void abandon(){for(BufferBuilder bb:open.values()){if(bb.isBuilding()){var built=bb.endNullable();if(built!=null)built.release();}}release();}
+                                                                ^
+  symbol:   method isBuilding()
+  location: variable bb of type BufferBuilder
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:266: error: cannot find symbol
+        void abandon(){for(BufferBuilder bb:open.values()){if(bb.isBuilding()){var built=bb.endNullable();if(built!=null)built.release();}}release();}
+                                                                                                                              ^
+  symbol:   method release()
+  location: variable built of type BuiltBuffer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:284: error: cannot find symbol
+        ENTITY_MV.set(RenderSystem.getModelViewMatrix());PROJ.set(RenderSystem.getProjectionMatrix());INV_VIEW.set(RenderSystem.getInverseViewRotationMatrix());
+                                                                                                                               ^
+  symbol:   method getInverseViewRotationMatrix()
+  location: class RenderSystem
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:322: error: cannot find symbol
+        if(sh.viewRotationMat!=null)sh.viewRotationMat.set(IDENTITY3);
+             ^
+  symbol:   variable viewRotationMat
+  location: variable sh of type ShaderProgram
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:322: error: cannot find symbol
+        if(sh.viewRotationMat!=null)sh.viewRotationMat.set(IDENTITY3);
+                                      ^
+  symbol:   variable viewRotationMat
+  location: variable sh of type ShaderProgram
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:473: error: cannot find symbol
+                if(f.body!=null){place(sh,f.body);if(sh.viewRotationMat!=null){sh.viewRotationMat.set(IDENTITY3);sh.viewRotationMat.upload();}}
+                                                       ^
+  symbol:   variable viewRotationMat
+  location: variable sh of type ShaderProgram
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:473: error: cannot find symbol
+                if(f.body!=null){place(sh,f.body);if(sh.viewRotationMat!=null){sh.viewRotationMat.set(IDENTITY3);sh.viewRotationMat.upload();}}
+                                                                                 ^
+  symbol:   variable viewRotationMat
+  location: variable sh of type ShaderProgram
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:473: error: cannot find symbol
+                if(f.body!=null){place(sh,f.body);if(sh.viewRotationMat!=null){sh.viewRotationMat.set(IDENTITY3);sh.viewRotationMat.upload();}}
+                                                                                                                   ^
+  symbol:   variable viewRotationMat
+  location: variable sh of type ShaderProgram
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:476: error: cannot find symbol
+                    if(sh.viewRotationMat!=null){sh.viewRotationMat.set(INV_VIEW);sh.viewRotationMat.upload();}
+                         ^
+  symbol:   variable viewRotationMat
+  location: variable sh of type ShaderProgram
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:476: error: cannot find symbol
+                    if(sh.viewRotationMat!=null){sh.viewRotationMat.set(INV_VIEW);sh.viewRotationMat.upload();}
+                                                   ^
+  symbol:   variable viewRotationMat
+  location: variable sh of type ShaderProgram
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:476: error: cannot find symbol
+                    if(sh.viewRotationMat!=null){sh.viewRotationMat.set(INV_VIEW);sh.viewRotationMat.upload();}
+                                                                                    ^
+  symbol:   variable viewRotationMat
+  location: variable sh of type ShaderProgram
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:500: error: cannot find symbol
+        float td=ctx.tickDelta();MatrixStack ms=ctx.matrixStack();var vc=mc.getBufferBuilders().getEntityVertexConsumers();
+                    ^
+  symbol:   method tickDelta()
+  location: variable ctx of type WorldRenderContext
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopRenderer.java:171: error: method does not override or implement a method from a supertype
+    @Override protected void setupTransforms(T e,MatrixStack matrices,float animationProgress,float bodyYaw,float tickDelta){matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f-bodyYaw));}
+    ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopModel.java:374: error: method does not override or implement a method from a supertype
+    @Override public void render(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
+    ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopModel.java:379: error: no suitable method found for render(MatrixStack,VertexConsumer,int,int,float,float,float,float)
+        super.render(m,vc,light,overlay,r,g,b,a);
+             ^
+    method Model.render(MatrixStack,VertexConsumer,int,int) is not applicable
+      (actual and formal argument lists differ in length)
+    method SinglePartEntityModel.render(MatrixStack,VertexConsumer,int,int,int) is not applicable
+      (actual and formal argument lists differ in length)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopMesh.java:137: error: no suitable method found for vertex(float,float,float,float,float,float,float,float,float,int,int,float,float,float)
+                vc.vertex(POS.x,POS.y,POS.z,r,g,b,a,uv[8*i+2*k],uv[8*i+2*k+1],overlay,light,nx,ny,nz);
+                  ^
+    method VertexConsumer.vertex(float,float,float) is not applicable
+      (actual and formal argument lists differ in length)
+    method VertexConsumer.vertex(float,float,float,int,float,float,int,int,float,float,float) is not applicable
+      (actual and formal argument lists differ in length)
+    method VertexConsumer.vertex(Vector3f) is not applicable
+      (actual and formal argument lists differ in length)
+    method VertexConsumer.vertex(Entry,Vector3f) is not applicable
+      (actual and formal argument lists differ in length)
+    method VertexConsumer.vertex(Entry,float,float,float) is not applicable
+      (actual and formal argument lists differ in length)
+    method VertexConsumer.vertex(Matrix4f,float,float,float) is not applicable
+      (actual and formal argument lists differ in length)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RankSync.java:71: error: method send in class ServerPlayNetworking cannot be applied to given types;
+            ServerPlayNetworking.send(p, CHANNEL, packet(u.mob.getId(), r));
+                                ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RankSync.java:97: error: method send in class ServerPlayNetworking cannot be applied to given types;
+            ServerPlayNetworking.send(p, CHANNEL, packet(CLEAR, new Rank(0, 0, 0)));
+                                ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RankSync.java:166: error: method registerGlobalReceiver in class ClientPlayNetworking cannot be applied to given types;
+            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(CHANNEL, (client, handler, buf, responder) -> {
+                                                                             ^
+  required: Id<T>,PlayPayloadHandler<T>
+  found:    Identifier,(client,ha[...])); }
+  reason: cannot infer type-variable(s) T
+    (argument mismatch; Identifier cannot be converted to Id<T>)
+  where T is a type-variable:
+    T extends CustomPayload declared in method <T>registerGlobalReceiver(Id<T>,PlayPayloadHandler<T>)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BuildHandbook.java:25: error: cannot find symbol
+        var tag=stack.getOrCreateNbt();
+                     ^
+  symbol:   method getOrCreateNbt()
+  location: variable stack of type ItemStack
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BuildHandbook.java:29: error: cannot find symbol
+        for(String p:HandbookText.pages(BuildMode.worlds()))pages.add(NbtString.of(Text.Serializer.toJson(page(p))));
+                                                                                                  ^
+  symbol:   method toJson(MutableText)
+  location: class Serializer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BuildHandbook.java:53: error: cannot find symbol
+        Path file=s.getRunDirectory().toPath().resolve(GIVEN);String uuid=player.getUuidAsString();
+                                     ^
+  symbol:   method toPath()
+  location: interface Path
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BuildMode.java:159: error: cannot find symbol
+        Path file=s.getRunDirectory().toPath().resolve(OPPED);String uuid=player.getUuidAsString();
+                                     ^
+  symbol:   method toPath()
+  location: interface Path
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BuildMode.java:216: error: cannot find symbol
+    static Path backups(){return server.getRunDirectory().toPath().resolve("backups").resolve(SAVE);}
+                                                         ^
+  symbol:   method toPath()
+  location: interface Path
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampaignClient.java:94: error: cannot find symbol
+    static Path collection(MinecraftClient c){return c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+c.getSession().getUuid()+".json");}
+                                                                                                                                                                                           ^
+  symbol:   method getUuid()
+  location: class Session
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampaignClient.java:107: error: method send in class ClientPlayNetworking cannot be applied to given types;
+            if(ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json,PROFILE_MAX_BYTES);ClientPlayNetworking.send(GravesAndGlory.PROFILE,packet);}
+                                                                                                                                                                       ^
+  required: CustomPayload
+  found:    Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampaignClient.java:148: error: no suitable method found for playSound(SoundEvent,SoundCategory,float,int)
+    static void sound(MinecraftClient c,String id,float volume){if(c.player!=null)c.player.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(net.minecraft.util.Identifier.of("gravesandglory",id)),SoundCategory.MASTER,volume,1);}
+                                                                                          ^
+    method LivingEntity.playSound(SoundEvent) is not applicable
+      (actual and formal argument lists differ in length)
+    method ClientPlayerEntity.playSound(SoundEvent,float,float) is not applicable
+      (actual and formal argument lists differ in length)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampScreen.java:214: error: method does not override or implement a method from a supertype
+        @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+        ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampScreen.java:270: error: method does not override or implement a method from a supertype
+    @Override public boolean mouseScrolled(double x,double y,double amount){if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);if(page.equals("gear")&&arsenal!=null&&arsenal.mouseScrolled(x,y,amount))return true;return super.mouseScrolled(x/scale,y/scale,amount);}
+    ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampScreen.java:270: error: method mouseScrolled in interface ParentElement cannot be applied to given types;
+    @Override public boolean mouseScrolled(double x,double y,double amount){if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);if(page.equals("gear")&&arsenal!=null&&arsenal.mouseScrolled(x,y,amount))return true;return super.mouseScrolled(x/scale,y/scale,amount);}
+                                                                                                                                                                                                                                                      ^
+  required: double,double,double,double
+  found:    double,double,double
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WarTableHome.java:162: error: cannot find symbol
+    double clock() { return ticks + MinecraftClient.getInstance().getTickDelta(); }
+                                                                 ^
+  symbol:   method getTickDelta()
+  location: class MinecraftClient
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WarTableHome.java:433: error: cannot find symbol
+                    PlayerSkinDrawer.draw(g, entry.getSkinTexture(), x + 4, y + 4, 40);
+                                                  ^
+  symbol:   method getSkinTexture()
+  location: variable entry of type PlayerListEntry
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WarTablePages.java:1908: error: cannot find symbol
+        double since = ticks + MinecraftClient.getInstance().getTickDelta() - slideAt;
+                                                            ^
+  symbol:   method getTickDelta()
+  location: class MinecraftClient
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WarTablePages.java:2356: error: cannot find symbol
+                if (entry != null) PlayerSkinDrawer.draw(g, entry.getSkinTexture(), x + 4, y + 4, 40);
+                                                                 ^
+  symbol:   method getSkinTexture()
+  location: variable entry of type PlayerListEntry
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RecruitPages.java:82: error: method does not override or implement a method from a supertype
+        @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+        ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RecruitPages.java:97: error: method does not override or implement a method from a supertype
+        @Override public void renderButton(DrawContext g,int mx,int my,float delta){if(isHovered()||isFocused())g.drawBorder(getX(),getY(),width,height,DarkUi.GOLD);DarkUi.focus(g,this);}
+        ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RecruitPages.java:248: error: method does not override or implement a method from a supertype
+        @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+        ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampWorld.java:267: error: cannot find symbol
+        var nbt=label.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putString("text",Text.Serializer.toJson(text));
+                                                                                                        ^
+  symbol:   method toJson(Text)
+  location: class Serializer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\ChargeCamera.java:263: error: method send in class ClientPlayNetworking cannot be applied to given types;
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(GravesAndGlory.CAMERA, b);
+                                                                         ^
+  required: CustomPayload
+  found:    Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\ChargeCamera.java:285: error: cannot find symbol
+        float d = context.tickDelta();
+                         ^
+  symbol:   method tickDelta()
+  location: variable context of type WorldRenderContext
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CommandNet.java:95: error: method send in class ServerPlayNetworking cannot be applied to given types;
+    static void send(ServerPlayerEntity p, PacketByteBuf b) { if (ServerPlayNetworking.canSend(p, COMMAND)) ServerPlayNetworking.send(p, COMMAND, b); }
+                                                                                                                                ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CommandNet.java:122: error: method registerGlobalReceiver in class ClientPlayNetworking cannot be applied to given types;
+            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(COMMAND, (client, handler, buf, responder) -> {
+                                                                             ^
+  required: Id<T>,PlayPayloadHandler<T>
+  found:    Identifier,(client,ha[...]; } }
+  reason: cannot infer type-variable(s) T
+    (argument mismatch; Identifier cannot be converted to Id<T>)
+  where T is a type-variable:
+    T extends CustomPayload declared in method <T>registerGlobalReceiver(Id<T>,PlayPayloadHandler<T>)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WagonEntity.java:30: error: WagonEntity is not abstract and does not override abstract method initDataTracker(Builder) in Entity
+public final class WagonEntity extends Entity {
+             ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WagonEntity.java:55: error: method does not override or implement a method from a supertype
+    @Override protected void initDataTracker() {}
+    ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WagonEntity.java:60: error: method does not override or implement a method from a supertype
+    @Override public Packet<ClientPlayPacketListener> createSpawnPacket() {return new EntitySpawnS2CPacket(this);}
+    ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WagonEntity.java:60: error: incompatible types: WagonEntity cannot be converted to RegistryByteBuf
+    @Override public Packet<ClientPlayPacketListener> createSpawnPacket() {return new EntitySpawnS2CPacket(this);}
+                                                                                                           ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WagonEntity.java:64: error: method does not override or implement a method from a supertype
+    @Override public boolean isImmuneToExplosion() {return true;}
+    ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WagonEntity.java:72: error: method does not override or implement a method from a supertype
+    @Override public void updateTrackedPositionAndAngles(double x, double y, double z, float yaw, float pitch, int steps, boolean interpolate) {
+    ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\DarkUi.java:163: error: method does not override or implement a method from a supertype
+        @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+        ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EndingClient.java:223: error: cannot find symbol
+    static double geoTick(Entity e) { return still(e) ? e.age + 1 - MinecraftClient.getInstance().getTickDelta() : e.age; }
+                                                                                                 ^
+  symbol:   method getTickDelta()
+  location: class MinecraftClient
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EndingClient.java:229: error: cannot find symbol
+    static double clock(Entity e) { return TroopMotion.time(e, e.age + (still(e) ? 1f : MinecraftClient.getInstance().getTickDelta())); }
+                                                                                                                     ^
+  symbol:   method getTickDelta()
+  location: class MinecraftClient
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EndingClient.java:347: error: cannot find symbol
+                if (chest.getItem() instanceof DyeableItem dye && faction != null) dye.setColor(chest, faction.color());
+                                               ^
+  symbol:   class DyeableItem
+  location: class EndingClient
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EndingClient.java:386: error: cannot find symbol
+        var s = new ItemStack(item); if (item instanceof DyeableItem d) d.setColor(s, colour); return s;
+                                                         ^
+  symbol:   class DyeableItem
+  location: class EndingClient
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EndingClient.java:424: error: cannot find symbol
+        float partial = c.getTickDelta();
+                         ^
+  symbol:   method getTickDelta()
+  location: variable c of type MinecraftClient
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EngineMaps.java:112: error: no suitable method found for readCompressed(InputStream)
+   try(InputStream in=map.files.open(tile.file())){tag=NbtIo.readCompressed(in);}
+                                                            ^
+    method NbtIo.readCompressed(Path,NbtSizeTracker) is not applicable
+      (actual and formal argument lists differ in length)
+    method NbtIo.readCompressed(InputStream,NbtSizeTracker) is not applicable
+      (actual and formal argument lists differ in length)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EngineMaps.java:131: error: no suitable method found for readCompressed(InputStream)
+  for(var tile:map.tiles){NbtCompound tag;try(InputStream in=map.files.open(tile.file())){tag=NbtIo.readCompressed(in);}
+                                                                                                   ^
+    method NbtIo.readCompressed(Path,NbtSizeTracker) is not applicable
+      (actual and formal argument lists differ in length)
+    method NbtIo.readCompressed(InputStream,NbtSizeTracker) is not applicable
+      (actual and formal argument lists differ in length)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\FeedEvents.java:115: error: method send in class ServerPlayNetworking cannot be applied to given types;
+        ServerPlayNetworking.send(p, GravesAndGlory.FEED, buf);
+                            ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:89: error: incompatible types: EntityAttribute cannot be converted to RegistryEntry<EntityAttribute>
+        var inst = pl.getAttributeInstance(a);
+                                           ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:92: error: cannot find symbol
+        if (value != 0) inst.addTemporaryModifier(new EntityAttributeModifier(id, name, value, EntityAttributeModifier.Operation.ADDITION));
+                                                                                                                                ^
+  symbol:   variable ADDITION
+  location: class Operation
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:100: error: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+        set(pl, EntityAttributes.GENERIC_MAX_HEALTH, HEALTH, "Graves and Glory gear health", GearStats.healthBonus(l));
+                                ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:101: error: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+        set(pl, EntityAttributes.GENERIC_ATTACK_DAMAGE, ATTACK, "Graves and Glory gear damage", GearStats.meleeBonus(l));
+                                ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:102: error: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+        set(pl, EntityAttributes.GENERIC_ARMOR, ARMOUR, "Graves and Glory gear armour", GearStats.armourBonus(l));
+                                ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:103: error: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+        set(pl, EntityAttributes.GENERIC_MOVEMENT_SPEED, SPEED, "Graves and Glory gear speed", GearStats.speedBonus(l));
+                                ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:105: error: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+        set(pl, EntityAttributes.GENERIC_ATTACK_SPEED, ATTACK_SPEED, "Graves and Glory gear attack speed", f == null ? 0 : f.attackSpeed() - BASE_ATTACK_SPEED);
+                                ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:320: error: setPierceLevel(byte) has private access in PersistentProjectileEntity
+        if (level > a.getPierceLevel()) a.setPierceLevel((byte) Math.min(127, level));
+                                         ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearLooks.java:46: error: cannot find symbol
+        s.setCustomName(Text.literal(it.name()).setStyle(Style.EMPTY.withColor(TextColor.fromRgb(colour)).withItalic(false)));
+         ^
+  symbol:   method setCustomName(MutableText)
+  location: variable s of type ItemStack
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearLooks.java:47: error: cannot find symbol
+        var nbt = s.getOrCreateNbt();
+                   ^
+  symbol:   method getOrCreateNbt()
+  location: variable s of type ItemStack
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearLooks.java:59: error: cannot find symbol
+        var nbt = s == null ? null : s.getNbt();
+                                      ^
+  symbol:   method getNbt()
+  location: variable s of type ItemStack
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearLooks.java:59: error: cannot infer type for local variable nbt
+        var nbt = s == null ? null : s.getNbt();
+            ^
+  (variable initializer is 'null')
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearLooks.java:65: error: cannot find symbol
+        var nbt = s == null || s.isEmpty() ? null : s.getNbt();
+                                                     ^
+  symbol:   method getNbt()
+  location: variable s of type ItemStack
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearLooks.java:65: error: cannot infer type for local variable nbt
+        var nbt = s == null || s.isEmpty() ? null : s.getNbt();
+            ^
+  (variable initializer is 'null')
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\LookPacks.java:33: error: cannot find symbol
+        List<String> now = new ArrayList<>(manager.getEnabledNames());
+                                                  ^
+  symbol:   method getEnabledNames()
+  location: variable manager of type ResourcePackManager
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\LookPacks.java:34: error: cannot find symbol
+        List<String> next = arrange(now, manager.getNames(), first);
+                                                ^
+  symbol:   method getNames()
+  location: variable manager of type ResourcePackManager
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\LookPacks.java:38: error: cannot find symbol
+            c.options.resourcePacks.addAll(manager.getEnabledNames());
+                                                  ^
+  symbol:   method getEnabledNames()
+  location: variable manager of type ResourcePackManager
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MapRuns.java:198: error: incompatible types: DataInputStream cannot be converted to Path
+        try(var i=new DataInputStream(new ByteArrayInputStream(Base64.getDecoder().decode(s)))){return NbtIo.read(i);}catch(IOException e){throw new UncheckedIOException(e);}
+                                                                                                                  ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MapRuns.java:253: error: method createNbt in class BlockEntity cannot be applied to given types;
+                    var old=w.getBlockEntity(pos);if(old!=null)undo.be.put(pos.toImmutable(),encode(old.createNbt()));
+                                                                                                       ^
+  required: WrapperLookup
+  found:    no arguments
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MapRuns.java:262: error: method readNbt in class BlockEntity cannot be applied to given types;
+                at.readNbt(decode(e.getValue()));at.markDirty();
+                  ^
+  required: NbtCompound,WrapperLookup
+  found:    NbtCompound
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MotionEvents.java:80: error: method send in class ServerPlayNetworking cannot be applied to given types;
+            ServerPlayNetworking.send(p, ATTACK, buf); sent++;
+                                ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MotionEvents.java:103: error: method send in class ServerPlayNetworking cannot be applied to given types;
+            ServerPlayNetworking.send(p, HIT, buf); sent++;
+                                ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MotionEvents.java:114: error: method send in class ServerPlayNetworking cannot be applied to given types;
+            ServerPlayNetworking.send(p, RISE, buf); sent++;
+                                ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MotionEvents.java:131: error: method send in class ServerPlayNetworking cannot be applied to given types;
+            ServerPlayNetworking.send(p, STANCE, buf); sent++;
+                                ^
+  required: ServerPlayerEntity,CustomPayload
+  found:    ServerPlayerEntity,Identifier,PacketByteBuf
+  reason: actual and formal argument lists differ in length
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\OrderOutlines.java:262: error: cannot find symbol
+            double age = (now - pulse.start()) + context.tickDelta();
+                                                        ^
+  symbol:   method tickDelta()
+  location: variable context of type WorldRenderContext
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\OrderOutlines.java:300: error: incompatible types: Matrix3f cannot be converted to Entry
+        lines.vertex(entry.getPositionMatrix(), (float) x0, (float) y0, (float) z0).color(R, G, B, alpha).normal(entry.getNormalMatrix(), nx, ny, nz).next();
+                                                                                                                                      ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\OrderOutlines.java:301: error: incompatible types: Matrix3f cannot be converted to Entry
+        lines.vertex(entry.getPositionMatrix(), (float) x1, (float) y1, (float) z1).color(R, G, B, alpha).normal(entry.getNormalMatrix(), nx, ny, nz).next();
+                                                                                                                                      ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\OrderRules.java:145: error: no suitable method found for playSound(SoundEvent,SoundCategory,float,float)
+        if (order.equals("retreat") || order.equals("charge")) BattleEffects.feedback(b, p, order); else if (order.equals("hold")) BattleEffects.feedback(b, p, "hold"); else p.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.PLAYERS, .6f, 1.1f);
+                                                                                                                                                                               ^
+    method LivingEntity.playSound(SoundEvent) is not applicable
+      (actual and formal argument lists differ in length)
+    method PlayerEntity.playSound(SoundEvent,float,float) is not applicable
+      (actual and formal argument lists differ in length)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:120: error: cannot find symbol
+        v.vertex(m, x0, y0, z).color(r, g, b, a).light(light).next();
+                                                             ^
+  symbol:   method next()
+  location: interface VertexConsumer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:121: error: cannot find symbol
+        v.vertex(m, x0, y1, z).color(r, g, b, a).light(light).next();
+                                                             ^
+  symbol:   method next()
+  location: interface VertexConsumer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:122: error: cannot find symbol
+        v.vertex(m, x1, y1, z).color(r, g, b, a).light(light).next();
+                                                             ^
+  symbol:   method next()
+  location: interface VertexConsumer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:123: error: cannot find symbol
+        v.vertex(m, x1, y0, z).color(r, g, b, a).light(light).next();
+                                                             ^
+  symbol:   method next()
+  location: interface VertexConsumer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:124: error: cannot find symbol
+        v.vertex(m, x1, y0, z).color(r, g, b, a).light(light).next();
+                                                             ^
+  symbol:   method next()
+  location: interface VertexConsumer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:125: error: cannot find symbol
+        v.vertex(m, x1, y1, z).color(r, g, b, a).light(light).next();
+                                                             ^
+  symbol:   method next()
+  location: interface VertexConsumer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:126: error: cannot find symbol
+        v.vertex(m, x0, y1, z).color(r, g, b, a).light(light).next();
+                                                             ^
+  symbol:   method next()
+  location: interface VertexConsumer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:127: error: cannot find symbol
+        v.vertex(m, x0, y0, z).color(r, g, b, a).light(light).next();
+                                                             ^
+  symbol:   method next()
+  location: interface VertexConsumer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:168: error: cannot find symbol
+        s.setCustomName(Text.literal(next?"More tabs":"Previous tabs").styled(st->st.withItalic(false)));
+         ^
+  symbol:   method setCustomName(MutableText)
+  location: variable s of type ItemStack
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:174: error: cannot find symbol
+        s.setCustomName(Text.literal(title(category)).styled(st->st.withItalic(false).withBold(open)));
+         ^
+  symbol:   method setCustomName(MutableText)
+  location: variable s of type ItemStack
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:175: error: cannot find symbol
+        if(open){NbtList glint=new NbtList();glint.add(new NbtCompound());s.getOrCreateNbt().put("Enchantments",glint);}
+                                                                           ^
+  symbol:   method getOrCreateNbt()
+  location: variable s of type ItemStack
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:180: error: cannot find symbol
+        s.getOrCreateNbt().putInt("CustomModelData",d.parts().get(0).cmd());
+         ^
+  symbol:   method getOrCreateNbt()
+  location: variable s of type ItemStack
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:181: error: cannot find symbol
+        s.setCustomName(Text.literal(d.name()).styled(st->st.withItalic(false)));
+         ^
+  symbol:   method setCustomName(MutableText)
+  location: variable s of type ItemStack
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:183: error: cannot find symbol
+        lore.add(NbtString.of(Text.Serializer.toJson(Text.literal("Size "+d.sx()+" x "+d.sy()+" x "+d.sz()).formatted(Formatting.GRAY).styled(st->st.withItalic(false)))));
+                                             ^
+  symbol:   method toJson(MutableText)
+  location: class Serializer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:184: error: cannot find symbol
+        lore.add(NbtString.of(Text.Serializer.toJson(Text.literal("Click to place").formatted(Formatting.DARK_GRAY))));
+                                             ^
+  symbol:   method toJson(MutableText)
+  location: class Serializer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:185: error: cannot find symbol
+        s.getOrCreateSubNbt("display").put("Lore",lore);
+         ^
+  symbol:   method getOrCreateSubNbt(String)
+  location: variable s of type ItemStack
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropPack.java:96: error: cannot find symbol
+        player.sendResourcePackUrl(url,p.sha1(),required(),Text.literal(PROMPT));
+              ^
+  symbol:   method sendResourcePackUrl(String,String,boolean,MutableText)
+  location: variable player of type ServerPlayerEntity
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropTicker.java:57: error: cannot find symbol
+                        w.getRegistryKey().getValue(),s.live,s.gated,s.played,s.keyframes,s.meanMicros(),s.maxMicros(),s.runs,w.getServer().getTickTime());
+                                                                                                                                           ^
+  symbol:   method getTickTime()
+  location: class MinecraftServer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RelicEffects.java:107: error: no suitable method found for removeModifier(UUID)
+            for (var u : b.units) if (u.squad == s) { var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED); if (speed != null) speed.removeModifier(RALLY); }
+                                                                                                                                                               ^
+    method EntityAttributeInstance.removeModifier(EntityAttributeModifier) is not applicable
+      (argument mismatch; UUID cannot be converted to EntityAttributeModifier)
+    method EntityAttributeInstance.removeModifier(Identifier) is not applicable
+      (argument mismatch; UUID cannot be converted to Identifier)
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RelicEffects.java:361: error: incompatible types: ServerWorld cannot be converted to EntityType<? extends ArrowEntity>
+                var a = new ArrowEntity(b.world, p);
+                                         ^
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopChevrons.java:76: error: cannot find symbol
+            vc.vertex(mat,x0,y0,0).color(red,green,blue,1f).texture(0,0).light(FULL_BRIGHT).next();
+                                                                                           ^
+  symbol:   method next()
+  location: interface VertexConsumer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopChevrons.java:77: error: cannot find symbol
+            vc.vertex(mat,x0,y1,0).color(red,green,blue,1f).texture(0,1).light(FULL_BRIGHT).next();
+                                                                                           ^
+  symbol:   method next()
+  location: interface VertexConsumer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopChevrons.java:78: error: cannot find symbol
+            vc.vertex(mat,x1,y1,0).color(red,green,blue,1f).texture(1,1).light(FULL_BRIGHT).next();
+                                                                                           ^
+  symbol:   method next()
+  location: interface VertexConsumer
+C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopChevrons.java:79: error: cannot find symbol
+            vc.vertex(mat,x1,y0,0).color(red,green,blue,1f).texture(1,0).light(FULL_BRIGHT).next();}
+                                                                                           ^
+  symbol:   method next()
+  location: interface VertexConsumer
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some messages have been simplified; recompile with -Xdiags:verbose to get full output
+143 errors
+
+> Task :compileJava FAILED
+
+[Incubating] Problems report is available at: file:///C:/Users/kortt/Melty/bb-port/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearLooks.java:59: error: cannot infer type for local variable nbt
+          var nbt = s == null ? null : s.getNbt();
+              ^
+    (variable initializer is 'null')
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearLooks.java:65: error: cannot infer type for local variable nbt
+          var nbt = s == null || s.isEmpty() ? null : s.getNbt();
+              ^
+    (variable initializer is 'null')
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Campaign.java:72: error: method send in class ServerPlayNetworking cannot be applied to given types;
+          net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,GravesAndGlory.GEAR,packet);
+                                                                    ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Campaign.java:703: error: method send in class ServerPlayNetworking cannot be applied to given types;
+              net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,GravesAndGlory.ENDING_BEGIN,packet);}
+                                                                        ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapNet.java:55: error: method send in class ServerPlayNetworking cannot be applied to given types;
+          ServerPlayNetworking.send(p, GravesAndGlory.MAP_GRID, buf);
+                              ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapNet.java:211: error: method send in class ServerPlayNetworking cannot be applied to given types;
+              ServerPlayNetworking.send(p, GravesAndGlory.MAP_STATE, PacketByteBufs.copy(buf));
+                                  ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RecruitmentScreen.java:88: error: method mouseScrolled in interface ParentElement cannot be applied to given types;
+      @Override public boolean mouseScrolled(double x,double y,double amount){if(amount==0)return true;if(tab==1&&page.scroll(amount>0?-1:1))return true;if(tab==0&&barracks.scroll(amount>0?-1:1))return true;return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
+                                                                                                                                                                                                                           ^
+    required: double,double,double,double
+    found:    double,double,double
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleEffects.java:77: error: method send in class ServerPlayNetworking cannot be applied to given types;
+                  var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeFloat(Math.min(1,amount/8f));net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,GravesAndGlory.IMPACT,packet);
+                                                                                                                                                                                              ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CommandMode.java:75: error: method send in class ClientPlayNetworking cannot be applied to given types;
+      static void ping(String kind,double x,double z){if(ClientPlayNetworking.canSend(GravesAndGlory.PING)){var b=PacketByteBufs.create();b.writeString(kind);b.writeDouble(x);b.writeDouble(z);ClientPlayNetworking.send(GravesAndGlory.PING,b);}}
+                                                                                                                                                                                                                    ^
+    required: CustomPayload
+    found:    Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CommandMode.java:87: error: method send in class ClientPlayNetworking cannot be applied to given types;
+          ClientPlayNetworking.send(GravesAndGlory.TACTICAL_V2,b);ordersSent++;
+                              ^
+    required: CustomPayload
+    found:    Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapClient.java:34: error: method registerGlobalReceiver in class ClientPlayNetworking cannot be applied to given types;
+          ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.MAP_GRID, (client, handler, buf, responder) -> {
+                              ^
+    required: Id<T>,PlayPayloadHandler<T>
+    found:    Identifier,(client,ha[...]}); }
+    reason: cannot infer type-variable(s) T
+      (argument mismatch; Identifier cannot be converted to Id<T>)
+    where T is a type-variable:
+      T extends CustomPayload declared in method <T>registerGlobalReceiver(Id<T>,PlayPayloadHandler<T>)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapClient.java:45: error: method registerGlobalReceiver in class ClientPlayNetworking cannot be applied to given types;
+          ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.MAP_STATE, (client, handler, buf, responder) -> {
+                              ^
+    required: Id<T>,PlayPayloadHandler<T>
+    found:    Identifier,(client,ha[...]s); }
+    reason: cannot infer type-variable(s) T
+      (argument mismatch; Identifier cannot be converted to Id<T>)
+    where T is a type-variable:
+      T extends CustomPayload declared in method <T>registerGlobalReceiver(Id<T>,PlayPayloadHandler<T>)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapClient.java:99: error: method send in class ClientPlayNetworking cannot be applied to given types;
+          ClientPlayNetworking.send(GravesAndGlory.PLAN, buf);
+                              ^
+    required: CustomPayload
+    found:    Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:262: error: constructor BufferBuilder in class BufferBuilder cannot be applied to given types;
+              if(bb==null){bb=pool.isEmpty()?new BufferBuilder(Math.max(layer.getExpectedBufferSize(),1<<16)):pool.pop();bb.begin(layer.getDrawMode(),layer.getVertexFormat());open.put(layer,bb);}
+                                             ^
+    required: BufferAllocator,DrawMode,VertexFormat
+    found:    int
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RankSync.java:71: error: method send in class ServerPlayNetworking cannot be applied to given types;
+              ServerPlayNetworking.send(p, CHANNEL, packet(u.mob.getId(), r));
+                                  ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RankSync.java:97: error: method send in class ServerPlayNetworking cannot be applied to given types;
+              ServerPlayNetworking.send(p, CHANNEL, packet(CLEAR, new Rank(0, 0, 0)));
+                                  ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RankSync.java:166: error: method registerGlobalReceiver in class ClientPlayNetworking cannot be applied to given types;
+              net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(CHANNEL, (client, handler, buf, responder) -> {
+                                                                               ^
+    required: Id<T>,PlayPayloadHandler<T>
+    found:    Identifier,(client,ha[...])); }
+    reason: cannot infer type-variable(s) T
+      (argument mismatch; Identifier cannot be converted to Id<T>)
+    where T is a type-variable:
+      T extends CustomPayload declared in method <T>registerGlobalReceiver(Id<T>,PlayPayloadHandler<T>)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampaignClient.java:107: error: method send in class ClientPlayNetworking cannot be applied to given types;
+              if(ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json,PROFILE_MAX_BYTES);ClientPlayNetworking.send(GravesAndGlory.PROFILE,packet);}
+                                                                                                                                                                         ^
+    required: CustomPayload
+    found:    Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampScreen.java:270: error: method mouseScrolled in interface ParentElement cannot be applied to given types;
+      @Override public boolean mouseScrolled(double x,double y,double amount){if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);if(page.equals("gear")&&arsenal!=null&&arsenal.mouseScrolled(x,y,amount))return true;return super.mouseScrolled(x/scale,y/scale,amount);}
+                                                                                                                                                                                                                                                        ^
+    required: double,double,double,double
+    found:    double,double,double
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\ChargeCamera.java:263: error: method send in class ClientPlayNetworking cannot be applied to given types;
+          net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(GravesAndGlory.CAMERA, b);
+                                                                           ^
+    required: CustomPayload
+    found:    Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CommandNet.java:95: error: method send in class ServerPlayNetworking cannot be applied to given types;
+      static void send(ServerPlayerEntity p, PacketByteBuf b) { if (ServerPlayNetworking.canSend(p, COMMAND)) ServerPlayNetworking.send(p, COMMAND, b); }
+                                                                                                                                  ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CommandNet.java:122: error: method registerGlobalReceiver in class ClientPlayNetworking cannot be applied to given types;
+              net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(COMMAND, (client, handler, buf, responder) -> {
+                                                                               ^
+    required: Id<T>,PlayPayloadHandler<T>
+    found:    Identifier,(client,ha[...]; } }
+    reason: cannot infer type-variable(s) T
+      (argument mismatch; Identifier cannot be converted to Id<T>)
+    where T is a type-variable:
+      T extends CustomPayload declared in method <T>registerGlobalReceiver(Id<T>,PlayPayloadHandler<T>)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\FeedEvents.java:115: error: method send in class ServerPlayNetworking cannot be applied to given types;
+          ServerPlayNetworking.send(p, GravesAndGlory.FEED, buf);
+                              ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MapRuns.java:253: error: method createNbt in class BlockEntity cannot be applied to given types;
+                      var old=w.getBlockEntity(pos);if(old!=null)undo.be.put(pos.toImmutable(),encode(old.createNbt()));
+                                                                                                         ^
+    required: WrapperLookup
+    found:    no arguments
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MapRuns.java:262: error: method readNbt in class BlockEntity cannot be applied to given types;
+                  at.readNbt(decode(e.getValue()));at.markDirty();
+                    ^
+    required: NbtCompound,WrapperLookup
+    found:    NbtCompound
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MotionEvents.java:80: error: method send in class ServerPlayNetworking cannot be applied to given types;
+              ServerPlayNetworking.send(p, ATTACK, buf); sent++;
+                                  ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MotionEvents.java:103: error: method send in class ServerPlayNetworking cannot be applied to given types;
+              ServerPlayNetworking.send(p, HIT, buf); sent++;
+                                  ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MotionEvents.java:114: error: method send in class ServerPlayNetworking cannot be applied to given types;
+              ServerPlayNetworking.send(p, RISE, buf); sent++;
+                                  ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MotionEvents.java:131: error: method send in class ServerPlayNetworking cannot be applied to given types;
+              ServerPlayNetworking.send(p, STANCE, buf); sent++;
+                                  ^
+    required: ServerPlayerEntity,CustomPayload
+    found:    ServerPlayerEntity,Identifier,PacketByteBuf
+    reason: actual and formal argument lists differ in length
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Abilities.java:771: error: no suitable method found for removeModifier(UUID)
+          if (have != null) speed.removeModifier(id);
+                                 ^
+      method EntityAttributeInstance.removeModifier(EntityAttributeModifier) is not applicable
+        (argument mismatch; UUID cannot be converted to EntityAttributeModifier)
+      method EntityAttributeInstance.removeModifier(Identifier) is not applicable
+        (argument mismatch; UUID cannot be converted to Identifier)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Abilities.java:787: error: no suitable method found for removeModifier(UUID)
+              else { u.howlUntil = 0; var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED); if (speed != null) speed.removeModifier(HOWL); }
+                                                                                                                                               ^
+      method EntityAttributeInstance.removeModifier(EntityAttributeModifier) is not applicable
+        (argument mismatch; UUID cannot be converted to EntityAttributeModifier)
+      method EntityAttributeInstance.removeModifier(Identifier) is not applicable
+        (argument mismatch; UUID cannot be converted to Identifier)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Structures.java:64: error: no suitable method found for readCompressed(InputStream)
+              try(InputStream in=resource.get().getInputStream()){return Optional.of(NbtIo.readCompressed(in));}
+                                                                                          ^
+      method NbtIo.readCompressed(Path,NbtSizeTracker) is not applicable
+        (actual and formal argument lists differ in length)
+      method NbtIo.readCompressed(InputStream,NbtSizeTracker) is not applicable
+        (actual and formal argument lists differ in length)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Structures.java:234: error: no suitable method found for writeCompressed(NbtCompound,File)
+              NbtIo.writeCompressed(snapshot.writeNbt(new NbtCompound()),file.toFile());
+                   ^
+      method NbtIo.writeCompressed(NbtCompound,Path) is not applicable
+        (argument mismatch; File cannot be converted to Path)
+      method NbtIo.writeCompressed(NbtCompound,OutputStream) is not applicable
+        (argument mismatch; File cannot be converted to OutputStream)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Structures.java:242: error: no suitable method found for readCompressed(File)
+              NbtCompound nbt=NbtIo.readCompressed(saved.file().toFile());
+                                   ^
+      method NbtIo.readCompressed(Path,NbtSizeTracker) is not applicable
+        (actual and formal argument lists differ in length)
+      method NbtIo.readCompressed(InputStream,NbtSizeTracker) is not applicable
+        (actual and formal argument lists differ in length)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\ArmyCards.java:108: error: no suitable method found for drawEntity(DrawContext,int,int,int,float,float,MobEntity)
+          TroopModels.sized(e,size);InventoryScreen.drawEntity(g,x,bottom,size,mouseX,mouseY,e);
+                                                   ^
+      method InventoryScreen.drawEntity(DrawContext,int,int,int,int,int,float,float,float,LivingEntity) is not applicable
+        (actual and formal argument lists differ in length)
+      method InventoryScreen.drawEntity(DrawContext,float,float,float,Vector3f,Quaternionf,Quaternionf,LivingEntity) is not applicable
+        (actual and formal argument lists differ in length)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Audio.java:83: error: no suitable method found for playSound(SoundEvent,SoundCategory,float,float)
+          if (p != null && e != null) p.playSound(e, category(cue), cue.volume, cue.pitch);
+                                       ^
+      method LivingEntity.playSound(SoundEvent) is not applicable
+        (actual and formal argument lists differ in length)
+      method PlayerEntity.playSound(SoundEvent,float,float) is not applicable
+        (actual and formal argument lists differ in length)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopModel.java:379: error: no suitable method found for render(MatrixStack,VertexConsumer,int,int,float,float,float,float)
+          super.render(m,vc,light,overlay,r,g,b,a);
+               ^
+      method Model.render(MatrixStack,VertexConsumer,int,int) is not applicable
+        (actual and formal argument lists differ in length)
+      method SinglePartEntityModel.render(MatrixStack,VertexConsumer,int,int,int) is not applicable
+        (actual and formal argument lists differ in length)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopMesh.java:137: error: no suitable method found for vertex(float,float,float,float,float,float,float,float,float,int,int,float,float,float)
+                  vc.vertex(POS.x,POS.y,POS.z,r,g,b,a,uv[8*i+2*k],uv[8*i+2*k+1],overlay,light,nx,ny,nz);
+                    ^
+      method VertexConsumer.vertex(float,float,float) is not applicable
+        (actual and formal argument lists differ in length)
+      method VertexConsumer.vertex(float,float,float,int,float,float,int,int,float,float,float) is not applicable
+        (actual and formal argument lists differ in length)
+      method VertexConsumer.vertex(Vector3f) is not applicable
+        (actual and formal argument lists differ in length)
+      method VertexConsumer.vertex(Entry,Vector3f) is not applicable
+        (actual and formal argument lists differ in length)
+      method VertexConsumer.vertex(Entry,float,float,float) is not applicable
+        (actual and formal argument lists differ in length)
+      method VertexConsumer.vertex(Matrix4f,float,float,float) is not applicable
+        (actual and formal argument lists differ in length)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampaignClient.java:148: error: no suitable method found for playSound(SoundEvent,SoundCategory,float,int)
+      static void sound(MinecraftClient c,String id,float volume){if(c.player!=null)c.player.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(net.minecraft.util.Identifier.of("gravesandglory",id)),SoundCategory.MASTER,volume,1);}
+                                                                                            ^
+      method LivingEntity.playSound(SoundEvent) is not applicable
+        (actual and formal argument lists differ in length)
+      method ClientPlayerEntity.playSound(SoundEvent,float,float) is not applicable
+        (actual and formal argument lists differ in length)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EngineMaps.java:112: error: no suitable method found for readCompressed(InputStream)
+     try(InputStream in=map.files.open(tile.file())){tag=NbtIo.readCompressed(in);}
+                                                              ^
+      method NbtIo.readCompressed(Path,NbtSizeTracker) is not applicable
+        (actual and formal argument lists differ in length)
+      method NbtIo.readCompressed(InputStream,NbtSizeTracker) is not applicable
+        (actual and formal argument lists differ in length)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EngineMaps.java:131: error: no suitable method found for readCompressed(InputStream)
+    for(var tile:map.tiles){NbtCompound tag;try(InputStream in=map.files.open(tile.file())){tag=NbtIo.readCompressed(in);}
+                                                                                                     ^
+      method NbtIo.readCompressed(Path,NbtSizeTracker) is not applicable
+        (actual and formal argument lists differ in length)
+      method NbtIo.readCompressed(InputStream,NbtSizeTracker) is not applicable
+        (actual and formal argument lists differ in length)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\OrderRules.java:145: error: no suitable method found for playSound(SoundEvent,SoundCategory,float,float)
+          if (order.equals("retreat") || order.equals("charge")) BattleEffects.feedback(b, p, order); else if (order.equals("hold")) BattleEffects.feedback(b, p, "hold"); else p.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.PLAYERS, .6f, 1.1f);
+                                                                                                                                                                                 ^
+      method LivingEntity.playSound(SoundEvent) is not applicable
+        (actual and formal argument lists differ in length)
+      method PlayerEntity.playSound(SoundEvent,float,float) is not applicable
+        (actual and formal argument lists differ in length)
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RelicEffects.java:107: error: no suitable method found for removeModifier(UUID)
+              for (var u : b.units) if (u.squad == s) { var speed = u.mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED); if (speed != null) speed.removeModifier(RALLY); }
+                                                                                                                                                                 ^
+      method EntityAttributeInstance.removeModifier(EntityAttributeModifier) is not applicable
+        (argument mismatch; UUID cannot be converted to EntityAttributeModifier)
+      method EntityAttributeInstance.removeModifier(Identifier) is not applicable
+        (argument mismatch; UUID cannot be converted to Identifier)
+  Note: Recompile with -Xlint:deprecation for details.
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WagonEntity.java:30: error: WagonEntity is not abstract and does not override abstract method initDataTracker(Builder) in Entity
+  public final class WagonEntity extends Entity {
+               ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Abilities.java:769: error: incompatible types: UUID cannot be converted to Identifier
+          var have = speed.getModifier(id);
+                                       ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Projectiles.java:251: error: incompatible types: double cannot be converted to LivingEntity
+              PersistentProjectileEntity a=kind.equals("trident")?new TridentEntity(b.world,u.mob,new ItemStack(Items.TRIDENT)):new ArrowEntity(b.world,from.x,from.y,from.z);
+                                                                                                                                                            ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\AttackController.java:230: error: incompatible types: UUID cannot be converted to Identifier
+          boolean on = speed != null && speed.getModifier(Abilities.HOWL) != null;
+                                                                   ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WagonEntity.java:60: error: incompatible types: WagonEntity cannot be converted to RegistryByteBuf
+      @Override public Packet<ClientPlayPacketListener> createSpawnPacket() {return new EntitySpawnS2CPacket(this);}
+                                                                                                             ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:89: error: incompatible types: EntityAttribute cannot be converted to RegistryEntry<EntityAttribute>
+          var inst = pl.getAttributeInstance(a);
+                                             ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:100: error: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+          set(pl, EntityAttributes.GENERIC_MAX_HEALTH, HEALTH, "Graves and Glory gear health", GearStats.healthBonus(l));
+                                  ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:101: error: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+          set(pl, EntityAttributes.GENERIC_ATTACK_DAMAGE, ATTACK, "Graves and Glory gear damage", GearStats.meleeBonus(l));
+                                  ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:102: error: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+          set(pl, EntityAttributes.GENERIC_ARMOR, ARMOUR, "Graves and Glory gear armour", GearStats.armourBonus(l));
+                                  ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:103: error: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+          set(pl, EntityAttributes.GENERIC_MOVEMENT_SPEED, SPEED, "Graves and Glory gear speed", GearStats.speedBonus(l));
+                                  ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:105: error: incompatible types: RegistryEntry<EntityAttribute> cannot be converted to EntityAttribute
+          set(pl, EntityAttributes.GENERIC_ATTACK_SPEED, ATTACK_SPEED, "Graves and Glory gear attack speed", f == null ? 0 : f.attackSpeed() - BASE_ATTACK_SPEED);
+                                  ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\MapRuns.java:198: error: incompatible types: DataInputStream cannot be converted to Path
+          try(var i=new DataInputStream(new ByteArrayInputStream(Base64.getDecoder().decode(s)))){return NbtIo.read(i);}catch(IOException e){throw new UncheckedIOException(e);}
+                                                                                                                    ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\OrderOutlines.java:300: error: incompatible types: Matrix3f cannot be converted to Entry
+          lines.vertex(entry.getPositionMatrix(), (float) x0, (float) y0, (float) z0).color(R, G, B, alpha).normal(entry.getNormalMatrix(), nx, ny, nz).next();
+                                                                                                                                        ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\OrderOutlines.java:301: error: incompatible types: Matrix3f cannot be converted to Entry
+          lines.vertex(entry.getPositionMatrix(), (float) x1, (float) y1, (float) z1).color(R, G, B, alpha).normal(entry.getNormalMatrix(), nx, ny, nz).next();
+                                                                                                                                        ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RelicEffects.java:361: error: incompatible types: ServerWorld cannot be converted to EntityType<? extends ArrowEntity>
+                  var a = new ArrowEntity(b.world, p);
+                                           ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EndingClient.java:18: error: cannot find symbol
+  import net.minecraft.item.DyeableItem;
+                           ^
+    symbol:   class DyeableItem
+    location: package net.minecraft.item
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Abilities.java:772: error: cannot find symbol
+          if (value != 0) speed.addTemporaryModifier(new EntityAttributeModifier(id, name, value, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+                                                                                                                                   ^
+    symbol:   variable MULTIPLY_TOTAL
+    location: class Operation
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\ArmyCards.java:66: error: cannot find symbol
+              var chest=new ItemStack(Registries.ITEM.get(Identifier.of(spec.chest())));if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,colour);e.equipStack(EquipmentSlot.CHEST,chest);
+                                                                                                                      ^
+    symbol:   class DyeableItem
+    location: class ArmyCards
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:168: error: cannot find symbol
+              BufferBuilder.BuiltBuffer built=en.getValue().endNullable();if(built==null)continue;
+                           ^
+    symbol:   class BuiltBuffer
+    location: class BufferBuilder
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:244: error: cannot find symbol
+              BufferBuilder.BuiltBuffer built=bb.endNullable();
+                           ^
+    symbol:   class BuiltBuffer
+    location: class BufferBuilder
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:322: error: cannot find symbol
+          if(sh.viewRotationMat!=null)sh.viewRotationMat.set(IDENTITY3);
+               ^
+    symbol:   variable viewRotationMat
+    location: variable sh of type ShaderProgram
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:322: error: cannot find symbol
+          if(sh.viewRotationMat!=null)sh.viewRotationMat.set(IDENTITY3);
+                                        ^
+    symbol:   variable viewRotationMat
+    location: variable sh of type ShaderProgram
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:473: error: cannot find symbol
+                  if(f.body!=null){place(sh,f.body);if(sh.viewRotationMat!=null){sh.viewRotationMat.set(IDENTITY3);sh.viewRotationMat.upload();}}
+                                                         ^
+    symbol:   variable viewRotationMat
+    location: variable sh of type ShaderProgram
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:473: error: cannot find symbol
+                  if(f.body!=null){place(sh,f.body);if(sh.viewRotationMat!=null){sh.viewRotationMat.set(IDENTITY3);sh.viewRotationMat.upload();}}
+                                                                                   ^
+    symbol:   variable viewRotationMat
+    location: variable sh of type ShaderProgram
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:473: error: cannot find symbol
+                  if(f.body!=null){place(sh,f.body);if(sh.viewRotationMat!=null){sh.viewRotationMat.set(IDENTITY3);sh.viewRotationMat.upload();}}
+                                                                                                                     ^
+    symbol:   variable viewRotationMat
+    location: variable sh of type ShaderProgram
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:476: error: cannot find symbol
+                      if(sh.viewRotationMat!=null){sh.viewRotationMat.set(INV_VIEW);sh.viewRotationMat.upload();}
+                           ^
+    symbol:   variable viewRotationMat
+    location: variable sh of type ShaderProgram
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:476: error: cannot find symbol
+                      if(sh.viewRotationMat!=null){sh.viewRotationMat.set(INV_VIEW);sh.viewRotationMat.upload();}
+                                                     ^
+    symbol:   variable viewRotationMat
+    location: variable sh of type ShaderProgram
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:476: error: cannot find symbol
+                      if(sh.viewRotationMat!=null){sh.viewRotationMat.set(INV_VIEW);sh.viewRotationMat.upload();}
+                                                                                      ^
+    symbol:   variable viewRotationMat
+    location: variable sh of type ShaderProgram
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EndingClient.java:347: error: cannot find symbol
+                  if (chest.getItem() instanceof DyeableItem dye && faction != null) dye.setColor(chest, faction.color());
+                                                 ^
+    symbol:   class DyeableItem
+    location: class EndingClient
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EndingClient.java:386: error: cannot find symbol
+          var s = new ItemStack(item); if (item instanceof DyeableItem d) d.setColor(s, colour); return s;
+                                                           ^
+    symbol:   class DyeableItem
+    location: class EndingClient
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:92: error: cannot find symbol
+          if (value != 0) inst.addTemporaryModifier(new EntityAttributeModifier(id, name, value, EntityAttributeModifier.Operation.ADDITION));
+                                                                                                                                  ^
+    symbol:   variable ADDITION
+    location: class Operation
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearCombat.java:320: error: setPierceLevel(byte) has private access in PersistentProjectileEntity
+          if (level > a.getPierceLevel()) a.setPierceLevel((byte) Math.min(127, level));
+                                           ^
+  Note: Some input files use or override a deprecated API.
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RecruitmentScreen.java:88: error: method does not override or implement a method from a supertype
+      @Override public boolean mouseScrolled(double x,double y,double amount){if(amount==0)return true;if(tab==1&&page.scroll(amount>0?-1:1))return true;if(tab==0&&barracks.scroll(amount>0?-1:1))return true;return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
+      ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\UiButton.java:65: error: method does not override or implement a method from a supertype
+      @Override protected void renderButton(DrawContext g, int mouseX, int mouseY, float delta) {
+      ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapScreen.java:154: error: method does not override or implement a method from a supertype
+      @Override public boolean mouseScrolled(double mx, double my, double amount) {
+      ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapScreen.java:391: error: method does not override or implement a method from a supertype
+      @Override public void renderBackground(DrawContext g) {}
+      ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BattleMapScreen.java:924: error: method does not override or implement a method from a supertype
+          @Override public void renderButton(DrawContext g, int mx, int my, float delta) {
+          ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopRenderer.java:171: error: method does not override or implement a method from a supertype
+      @Override protected void setupTransforms(T e,MatrixStack matrices,float animationProgress,float bodyYaw,float tickDelta){matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f-bodyYaw));}
+      ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopModel.java:374: error: method does not override or implement a method from a supertype
+      @Override public void render(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
+      ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampScreen.java:214: error: method does not override or implement a method from a supertype
+          @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+          ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampScreen.java:270: error: method does not override or implement a method from a supertype
+      @Override public boolean mouseScrolled(double x,double y,double amount){if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);if(page.equals("gear")&&arsenal!=null&&arsenal.mouseScrolled(x,y,amount))return true;return super.mouseScrolled(x/scale,y/scale,amount);}
+      ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RecruitPages.java:82: error: method does not override or implement a method from a supertype
+          @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+          ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RecruitPages.java:97: error: method does not override or implement a method from a supertype
+          @Override public void renderButton(DrawContext g,int mx,int my,float delta){if(isHovered()||isFocused())g.drawBorder(getX(),getY(),width,height,DarkUi.GOLD);DarkUi.focus(g,this);}
+          ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\RecruitPages.java:248: error: method does not override or implement a method from a supertype
+          @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+          ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WagonEntity.java:55: error: method does not override or implement a method from a supertype
+      @Override protected void initDataTracker() {}
+      ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WagonEntity.java:60: error: method does not override or implement a method from a supertype
+      @Override public Packet<ClientPlayPacketListener> createSpawnPacket() {return new EntitySpawnS2CPacket(this);}
+      ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WagonEntity.java:64: error: method does not override or implement a method from a supertype
+      @Override public boolean isImmuneToExplosion() {return true;}
+      ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WagonEntity.java:72: error: method does not override or implement a method from a supertype
+      @Override public void updateTrackedPositionAndAngles(double x, double y, double z, float yaw, float pitch, int steps, boolean interpolate) {
+      ^
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\DarkUi.java:163: error: method does not override or implement a method from a supertype
+          @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+          ^
+  Note: Some messages have been simplified; recompile with -Xdiags:verbose to get full output
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\Abilities.java:840: error: cannot find symbol
+              float[] c = d.getColorComponents();
+                           ^
+    symbol:   method getColorComponents()
+    location: variable d of type DyeColor
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:262: error: cannot find symbol
+              if(bb==null){bb=pool.isEmpty()?new BufferBuilder(Math.max(layer.getExpectedBufferSize(),1<<16)):pool.pop();bb.begin(layer.getDrawMode(),layer.getVertexFormat());open.put(layer,bb);}
+                                                                                                                           ^
+    symbol:   method begin(DrawMode,VertexFormat)
+    location: variable bb of type BufferBuilder
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:266: error: cannot find symbol
+          void abandon(){for(BufferBuilder bb:open.values()){if(bb.isBuilding()){var built=bb.endNullable();if(built!=null)built.release();}}release();}
+                                                                  ^
+    symbol:   method isBuilding()
+    location: variable bb of type BufferBuilder
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:266: error: cannot find symbol
+          void abandon(){for(BufferBuilder bb:open.values()){if(bb.isBuilding()){var built=bb.endNullable();if(built!=null)built.release();}}release();}
+                                                                                                                                ^
+    symbol:   method release()
+    location: variable built of type BuiltBuffer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:284: error: cannot find symbol
+          ENTITY_MV.set(RenderSystem.getModelViewMatrix());PROJ.set(RenderSystem.getProjectionMatrix());INV_VIEW.set(RenderSystem.getInverseViewRotationMatrix());
+                                                                                                                                 ^
+    symbol:   method getInverseViewRotationMatrix()
+    location: class RenderSystem
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BodyCache.java:500: error: cannot find symbol
+          float td=ctx.tickDelta();MatrixStack ms=ctx.matrixStack();var vc=mc.getBufferBuilders().getEntityVertexConsumers();
+                      ^
+    symbol:   method tickDelta()
+    location: variable ctx of type WorldRenderContext
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BuildHandbook.java:25: error: cannot find symbol
+          var tag=stack.getOrCreateNbt();
+                       ^
+    symbol:   method getOrCreateNbt()
+    location: variable stack of type ItemStack
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BuildHandbook.java:29: error: cannot find symbol
+          for(String p:HandbookText.pages(BuildMode.worlds()))pages.add(NbtString.of(Text.Serializer.toJson(page(p))));
+                                                                                                    ^
+    symbol:   method toJson(MutableText)
+    location: class Serializer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BuildHandbook.java:53: error: cannot find symbol
+          Path file=s.getRunDirectory().toPath().resolve(GIVEN);String uuid=player.getUuidAsString();
+                                       ^
+    symbol:   method toPath()
+    location: interface Path
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BuildMode.java:159: error: cannot find symbol
+          Path file=s.getRunDirectory().toPath().resolve(OPPED);String uuid=player.getUuidAsString();
+                                       ^
+    symbol:   method toPath()
+    location: interface Path
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\BuildMode.java:216: error: cannot find symbol
+      static Path backups(){return server.getRunDirectory().toPath().resolve("backups").resolve(SAVE);}
+                                                           ^
+    symbol:   method toPath()
+    location: interface Path
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampaignClient.java:94: error: cannot find symbol
+      static Path collection(MinecraftClient c){return c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+c.getSession().getUuid()+".json");}
+                                                                                                                                                                                             ^
+    symbol:   method getUuid()
+    location: class Session
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WarTableHome.java:162: error: cannot find symbol
+      double clock() { return ticks + MinecraftClient.getInstance().getTickDelta(); }
+                                                                   ^
+    symbol:   method getTickDelta()
+    location: class MinecraftClient
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WarTableHome.java:433: error: cannot find symbol
+                      PlayerSkinDrawer.draw(g, entry.getSkinTexture(), x + 4, y + 4, 40);
+                                                    ^
+    symbol:   method getSkinTexture()
+    location: variable entry of type PlayerListEntry
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WarTablePages.java:1908: error: cannot find symbol
+          double since = ticks + MinecraftClient.getInstance().getTickDelta() - slideAt;
+                                                              ^
+    symbol:   method getTickDelta()
+    location: class MinecraftClient
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\WarTablePages.java:2356: error: cannot find symbol
+                  if (entry != null) PlayerSkinDrawer.draw(g, entry.getSkinTexture(), x + 4, y + 4, 40);
+                                                                   ^
+    symbol:   method getSkinTexture()
+    location: variable entry of type PlayerListEntry
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\CampWorld.java:267: error: cannot find symbol
+          var nbt=label.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putString("text",Text.Serializer.toJson(text));
+                                                                                                          ^
+    symbol:   method toJson(Text)
+    location: class Serializer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\ChargeCamera.java:285: error: cannot find symbol
+          float d = context.tickDelta();
+                           ^
+    symbol:   method tickDelta()
+    location: variable context of type WorldRenderContext
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EndingClient.java:223: error: cannot find symbol
+      static double geoTick(Entity e) { return still(e) ? e.age + 1 - MinecraftClient.getInstance().getTickDelta() : e.age; }
+                                                                                                   ^
+    symbol:   method getTickDelta()
+    location: class MinecraftClient
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EndingClient.java:229: error: cannot find symbol
+      static double clock(Entity e) { return TroopMotion.time(e, e.age + (still(e) ? 1f : MinecraftClient.getInstance().getTickDelta())); }
+                                                                                                                       ^
+    symbol:   method getTickDelta()
+    location: class MinecraftClient
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\EndingClient.java:424: error: cannot find symbol
+          float partial = c.getTickDelta();
+                           ^
+    symbol:   method getTickDelta()
+    location: variable c of type MinecraftClient
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearLooks.java:46: error: cannot find symbol
+          s.setCustomName(Text.literal(it.name()).setStyle(Style.EMPTY.withColor(TextColor.fromRgb(colour)).withItalic(false)));
+           ^
+    symbol:   method setCustomName(MutableText)
+    location: variable s of type ItemStack
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearLooks.java:47: error: cannot find symbol
+          var nbt = s.getOrCreateNbt();
+                     ^
+    symbol:   method getOrCreateNbt()
+    location: variable s of type ItemStack
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearLooks.java:59: error: cannot find symbol
+          var nbt = s == null ? null : s.getNbt();
+                                        ^
+    symbol:   method getNbt()
+    location: variable s of type ItemStack
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\GearLooks.java:65: error: cannot find symbol
+          var nbt = s == null || s.isEmpty() ? null : s.getNbt();
+                                                       ^
+    symbol:   method getNbt()
+    location: variable s of type ItemStack
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\LookPacks.java:33: error: cannot find symbol
+          List<String> now = new ArrayList<>(manager.getEnabledNames());
+                                                    ^
+    symbol:   method getEnabledNames()
+    location: variable manager of type ResourcePackManager
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\LookPacks.java:34: error: cannot find symbol
+          List<String> next = arrange(now, manager.getNames(), first);
+                                                  ^
+    symbol:   method getNames()
+    location: variable manager of type ResourcePackManager
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\LookPacks.java:38: error: cannot find symbol
+              c.options.resourcePacks.addAll(manager.getEnabledNames());
+                                                    ^
+    symbol:   method getEnabledNames()
+    location: variable manager of type ResourcePackManager
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\OrderOutlines.java:262: error: cannot find symbol
+              double age = (now - pulse.start()) + context.tickDelta();
+                                                          ^
+    symbol:   method tickDelta()
+    location: variable context of type WorldRenderContext
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:120: error: cannot find symbol
+          v.vertex(m, x0, y0, z).color(r, g, b, a).light(light).next();
+                                                               ^
+    symbol:   method next()
+    location: interface VertexConsumer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:121: error: cannot find symbol
+          v.vertex(m, x0, y1, z).color(r, g, b, a).light(light).next();
+                                                               ^
+    symbol:   method next()
+    location: interface VertexConsumer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:122: error: cannot find symbol
+          v.vertex(m, x1, y1, z).color(r, g, b, a).light(light).next();
+                                                               ^
+    symbol:   method next()
+    location: interface VertexConsumer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:123: error: cannot find symbol
+          v.vertex(m, x1, y0, z).color(r, g, b, a).light(light).next();
+                                                               ^
+    symbol:   method next()
+    location: interface VertexConsumer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:124: error: cannot find symbol
+          v.vertex(m, x1, y0, z).color(r, g, b, a).light(light).next();
+                                                               ^
+    symbol:   method next()
+    location: interface VertexConsumer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:125: error: cannot find symbol
+          v.vertex(m, x1, y1, z).color(r, g, b, a).light(light).next();
+                                                               ^
+    symbol:   method next()
+    location: interface VertexConsumer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:126: error: cannot find symbol
+          v.vertex(m, x0, y1, z).color(r, g, b, a).light(light).next();
+                                                               ^
+    symbol:   method next()
+    location: interface VertexConsumer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PlanMarkers.java:127: error: cannot find symbol
+          v.vertex(m, x0, y0, z).color(r, g, b, a).light(light).next();
+                                                               ^
+    symbol:   method next()
+    location: interface VertexConsumer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:168: error: cannot find symbol
+          s.setCustomName(Text.literal(next?"More tabs":"Previous tabs").styled(st->st.withItalic(false)));
+           ^
+    symbol:   method setCustomName(MutableText)
+    location: variable s of type ItemStack
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:174: error: cannot find symbol
+          s.setCustomName(Text.literal(title(category)).styled(st->st.withItalic(false).withBold(open)));
+           ^
+    symbol:   method setCustomName(MutableText)
+    location: variable s of type ItemStack
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:175: error: cannot find symbol
+          if(open){NbtList glint=new NbtList();glint.add(new NbtCompound());s.getOrCreateNbt().put("Enchantments",glint);}
+                                                                             ^
+    symbol:   method getOrCreateNbt()
+    location: variable s of type ItemStack
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:180: error: cannot find symbol
+          s.getOrCreateNbt().putInt("CustomModelData",d.parts().get(0).cmd());
+           ^
+    symbol:   method getOrCreateNbt()
+    location: variable s of type ItemStack
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:181: error: cannot find symbol
+          s.setCustomName(Text.literal(d.name()).styled(st->st.withItalic(false)));
+           ^
+    symbol:   method setCustomName(MutableText)
+    location: variable s of type ItemStack
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:183: error: cannot find symbol
+          lore.add(NbtString.of(Text.Serializer.toJson(Text.literal("Size "+d.sx()+" x "+d.sy()+" x "+d.sz()).formatted(Formatting.GRAY).styled(st->st.withItalic(false)))));
+                                               ^
+    symbol:   method toJson(MutableText)
+    location: class Serializer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:184: error: cannot find symbol
+          lore.add(NbtString.of(Text.Serializer.toJson(Text.literal("Click to place").formatted(Formatting.DARK_GRAY))));
+                                               ^
+    symbol:   method toJson(MutableText)
+    location: class Serializer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropMenu.java:185: error: cannot find symbol
+          s.getOrCreateSubNbt("display").put("Lore",lore);
+           ^
+    symbol:   method getOrCreateSubNbt(String)
+    location: variable s of type ItemStack
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropPack.java:96: error: cannot find symbol
+          player.sendResourcePackUrl(url,p.sha1(),required(),Text.literal(PROMPT));
+                ^
+    symbol:   method sendResourcePackUrl(String,String,boolean,MutableText)
+    location: variable player of type ServerPlayerEntity
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\PropTicker.java:57: error: cannot find symbol
+                          w.getRegistryKey().getValue(),s.live,s.gated,s.played,s.keyframes,s.meanMicros(),s.maxMicros(),s.runs,w.getServer().getTickTime());
+                                                                                                                                             ^
+    symbol:   method getTickTime()
+    location: class MinecraftServer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopChevrons.java:76: error: cannot find symbol
+              vc.vertex(mat,x0,y0,0).color(red,green,blue,1f).texture(0,0).light(FULL_BRIGHT).next();
+                                                                                             ^
+    symbol:   method next()
+    location: interface VertexConsumer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopChevrons.java:77: error: cannot find symbol
+              vc.vertex(mat,x0,y1,0).color(red,green,blue,1f).texture(0,1).light(FULL_BRIGHT).next();
+                                                                                             ^
+    symbol:   method next()
+    location: interface VertexConsumer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopChevrons.java:78: error: cannot find symbol
+              vc.vertex(mat,x1,y1,0).color(red,green,blue,1f).texture(1,1).light(FULL_BRIGHT).next();
+                                                                                             ^
+    symbol:   method next()
+    location: interface VertexConsumer
+  C:\Users\kortt\Melty\bb-port\src\main\java\gg\gravesandglory\TroopChevrons.java:79: error: cannot find symbol
+              vc.vertex(mat,x1,y0,0).color(red,green,blue,1f).texture(1,0).light(FULL_BRIGHT).next();}
+                                                                                             ^
+    symbol:   method next()
+    location: interface VertexConsumer
+  143 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 11s
+2 actionable tasks: 2 executed
