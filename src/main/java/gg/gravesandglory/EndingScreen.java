@@ -85,6 +85,8 @@ final class EndingScreen extends Screen {
         return Math.max(0, Math.min(1, (ticks - rewardsAt + partial) / len));
     }
 
+    /** 1.21: Screen.render draws this (blur, dimming, the title panorama) before the widgets; 1.20.1 drew none here, and this screen draws its own. */
+    @Override public void renderBackground(DrawContext g,int mx,int my,float delta){}
     @Override public void render(DrawContext g, int mouseX, int mouseY, float delta) {
         g.fill(0, 0, width, height, DIM);
         UiCanvas.begin(g);

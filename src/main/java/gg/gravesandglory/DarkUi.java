@@ -160,7 +160,7 @@ final class DarkUi {
     static final class MapChoice extends net.minecraft.client.gui.widget.ButtonWidget {
         final int index;
         MapChoice(int index,int x,int y,int w,PressAction action){super(x,y,w,39,Text.literal(Spec.MAPS[index].name()),action,DEFAULT_NARRATION_SUPPLIER);this.index=index;}
-        @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+        @Override public void renderWidget(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY();frame(g,x,y,width,height);boolean selected=CampaignClient.map==index;
             if(selected||active&&(isHovered()||isFocused()))g.drawBorder(x+1,y+1,width-2,height-2,GOLD);
             focus(g,this);

@@ -15,7 +15,6 @@ import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.projectile.ProjectileEntity;
-import net.minecraft.item.DyeableItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.registry.Registries;
@@ -220,13 +219,13 @@ public final class EndingClient {
         return e instanceof ProjectileEntity || e instanceof MobEntity m && TroopModels.troopOf(m) != null;
     }
     /** GeckoLib's tick for a frozen troop: constant (GeoModel adds the frame's partial tick to it). */
-    static double geoTick(Entity e) { return still(e) ? e.age + 1 - MinecraftClient.getInstance().getTickDelta() : e.age; }
+    static double geoTick(Entity e) { return still(e) ? e.age + 1 - MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(true) : e.age; }
     /** A podium figure (ids -7100 down to -7111, never in the world). */
     public static boolean figure(Entity e) { int id = e.getId(); return id <= -7100 && id > -7112; }
     /** Whether this entity's animation stands still: frozen, and not a podium figure (the figures play their clips through the ending). */
     public static boolean still(Entity e) { return frozen() && !figure(e); }
     /** Harness only: the clock a troop's clips read now (seconds), as TroopRenderer would draw it this frame. */
-    static double clock(Entity e) { return TroopMotion.time(e, e.age + (still(e) ? 1f : MinecraftClient.getInstance().getTickDelta())); }
+    static double clock(Entity e) { return TroopMotion.time(e, e.age + (still(e) ? 1f : MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(true))); }
 
     // ---- the podium camera ---------------------------------------------------------------------------------------------------------
 
@@ -344,7 +343,7 @@ public final class EndingClient {
                 m.equipStack(EquipmentSlot.MAINHAND, new ItemStack(Registries.ITEM.get(Identifier.of(spec.weapon()))));
                 m.equipStack(EquipmentSlot.HEAD, new ItemStack(Registries.ITEM.get(Identifier.of(spec.helmet()))));
                 var chest = new ItemStack(Registries.ITEM.get(Identifier.of(spec.chest())));
-                if (chest.getItem() instanceof DyeableItem dye && faction != null) dye.setColor(chest, faction.color());
+                if (faction != null) GravesAndGlory.Battle.dye(chest, faction.color());
                 m.equipStack(EquipmentSlot.CHEST, chest);
                 if (ArmyMobs.tags(spec).contains("shield")) m.equipStack(EquipmentSlot.OFFHAND, GravesAndGlory.Battle.shield(spec, faction == null ? GravesAndGlory.Battle.PORTRAIT_FIELD : faction.dye()));
                 TroopModels.dress(m, side);
@@ -383,7 +382,7 @@ public final class EndingClient {
         } catch (RuntimeException e) { return new GameProfile(BOT, name); }
     }
     static ItemStack dyed(net.minecraft.item.Item item, int colour) {
-        var s = new ItemStack(item); if (item instanceof DyeableItem d) d.setColor(s, colour); return s;
+        var s = new ItemStack(item); GravesAndGlory.Battle.dye(s, colour); return s;
     }
     static Spec.TroopsRow troop(String id) { for (var t : Spec.TROOPS) if (t.id().equals(id)) return t; return null; }
     static Spec.FactionsRow faction(String id) { for (var f : Spec.FACTIONS) if (f.id().equals(id)) return f; return null; }
@@ -421,7 +420,7 @@ public final class EndingClient {
     public static void hud(DrawContext g, int w, int h) {
         var c = MinecraftClient.getInstance(); var font = c.textRenderer;
         MatchEnding.Step s = step(); if (s == null || c.currentScreen instanceof EndingScreen) return; // the screen draws its own hint
-        float partial = c.getTickDelta();
+        float partial = c.getRenderTickCounter().getTickDelta(false); // HUD time (D11)
         String hint = HintText.expand("{key:menu} or Escape to skip", GravesAndGloryClient::hint);
         if (s == MatchEnding.Step.PODIUM) {
             int bar = Math.max(18, h / 10);

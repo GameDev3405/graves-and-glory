@@ -211,7 +211,7 @@ final class CampScreen extends ArmyScreen {
         final String house;
         HouseTab(String house,int x,int y,int w){super(x,y,w,28,Text.literal(RosterMath.houseName(house)),b->CampScreen.this.pickHouse(house),DEFAULT_NARRATION_SUPPLIER);this.house=house;}
         boolean selected(){return CampScreen.this.house.equals(house);}
-        @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+        @Override public void renderWidget(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY();boolean chosen=selected(),focus=active&&(isHovered()||isFocused());
             g.fill(x,y,x+width,y+height,chosen?DarkUi.TAB_CHOSEN:focus?DarkUi.TAB_FOCUS:DarkUi.TAB_IDLE);g.drawBorder(x,y,width,height,chosen||focus?DarkUi.GOLD:DarkUi.TAB_EDGE);
             DarkUi.focus(g,this);
@@ -240,6 +240,8 @@ final class CampScreen extends ArmyScreen {
         String stats=font.trimToWidth(words[1],cell);int room=cell-font.getWidth(stats)-8;
         return new String[]{font.getWidth(words[0])<=room?words[0]:font.trimToWidth(words[0],Math.max(0,room-font.getWidth("...")))+"...",stats};
     }
+    /** 1.21: Screen.render draws this (blur, dimming, the title panorama) before the widgets; 1.20.1 drew none here, and this screen draws its own. */
+    @Override public void renderBackground(DrawContext g,int mx,int my,float delta){}
     @Override public void render(DrawContext g,int mx,int my,float delta){
         if(page.equals("home")&&home!=null){home.render(g);super.render(g,mx,my,delta);return;}
         if(page.equals("recruit")&&recruit!=null){recruit.render(g);super.render(g,mx,my,delta);recruit.overlay(g);return;} // the Odds note lies over the widgets
@@ -267,7 +269,8 @@ final class CampScreen extends ArmyScreen {
         g.getMatrices().pop();
     }
     @Override public boolean mouseClicked(double x,double y,int button){if(page.equals("troop")&&troopSheet==null&&CampaignClient.rollShowing()){CampaignClient.revealUntil=0;return true;}if(page.equals("recruit")&&recruit!=null&&recruit.clickCloses())return true;if(page.equals("gear")&&arsenal!=null&&arsenal.mouseClicked(x,y,button))return true;if(page.equals("lobby")&&lobby!=null)lobby.clicked(x,y);if(pages!=null&&pages.page.equals(page)){if(button==GLFW.GLFW_MOUSE_BUTTON_RIGHT&&pages.secondaryClick(x,y))return true;if(button==GLFW.GLFW_MOUSE_BUTTON_LEFT&&pages.press(x,y))return true;}return super.mouseClicked(x/scale,y/scale,button);}
-    @Override public boolean mouseScrolled(double x,double y,double amount){if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);if(page.equals("gear")&&arsenal!=null&&arsenal.mouseScrolled(x,y,amount))return true;return super.mouseScrolled(x/scale,y/scale,amount);}
+    @Override public boolean mouseScrolled(double x,double y,double horizontal,double amount){ // 1.20.2+: two axes; 1.20.1 handed the vertical one
+        if(page.equals("recruit")&&recruit!=null)return recruit.scrolled(amount);if(page.equals("gear")&&arsenal!=null&&arsenal.mouseScrolled(x,y,amount))return true;return super.mouseScrolled(x/scale,y/scale,horizontal,amount);}
     @Override public boolean mouseReleased(double x,double y,int button){boolean drop=pages!=null&&pages.page.equals(page)&&pages.released(x,y,button);return super.mouseReleased(x/scale,y/scale,button)||drop;}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){if(button==GLFW.GLFW_MOUSE_BUTTON_LEFT&&pages!=null&&pages.page.equals(page)&&pages.dragged(x,y))return true;return super.mouseDragged(x/scale,y/scale,button,dx/scale,dy/scale);}
     /** A key's press: the room code being written takes its keys first (so Backspace repeats as it is held), and so does a banner name being written (every key: R and Space are letters of it; the key that ends it, Enter or Esc, goes into held so it does not ride again); then a held key's repeats stop here (see held); then the page shown, whose keys count as held until released. */

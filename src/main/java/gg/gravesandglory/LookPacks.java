@@ -30,12 +30,12 @@ final class LookPacks {
         Path marker = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("gravesandglory-look.txt");
         boolean first = !Files.exists(marker);
         var manager = c.getResourcePackManager();
-        List<String> now = new ArrayList<>(manager.getEnabledNames());
-        List<String> next = arrange(now, manager.getNames(), first);
+        List<String> now = new ArrayList<>(manager.getEnabledIds());
+        List<String> next = arrange(now, manager.getIds(), first);
         if (!next.equals(now)) {
             manager.setEnabledProfiles(next);
             c.options.resourcePacks.clear();
-            c.options.resourcePacks.addAll(manager.getEnabledNames());
+            c.options.resourcePacks.addAll(manager.getEnabledIds());
             c.options.write();
             c.reloadResources();
         }
