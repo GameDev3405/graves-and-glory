@@ -146,6 +146,30 @@ public final class ModeMath {
         double len=stations[i+1]-stations[i],t=len<=0?0:(c-stations[i])/len;
         return new double[]{nodes[i][0]+(nodes[i+1][0]-nodes[i][0])*t,nodes[i][1]+(nodes[i+1][1]-nodes[i][1])*t};
     }
+    /** The floor block of a column nearest a height, or Integer.MIN_VALUE when the column has no floor (roadFloors). */
+    public interface FloorNear {int at(int x,int z,int y);}
+    /** The floor block under the road every step along it, start to end (the last sample is the road's end): each sample takes the floor of its
+     *  column nearest the sample before it, so the road keeps to its own level under a roof, a bridge or an arch and climbs a ramp a block at a
+     *  time. A node with a height of its own (nodeFloor, Integer.MIN_VALUE for none) sets the level from that node on; a column with no floor
+     *  keeps the level. */
+    public static int[] roadFloors(double[][] nodes,double[] stations,int[] nodeFloor,double step,int startFloor,FloorNear floors) {
+        double total=stations[stations.length-1];
+        int n=(int)Math.ceil(total/step)+1,last=-1,ref=startFloor;
+        int[] out=new int[n];
+        for(int k=0;k<n;k++){
+            double d=Math.min(total,k*step);
+            int seg=k==n-1?stations.length-1:segment(stations,d);
+            for(int i=last+1;i<=seg;i++)if(nodeFloor[i]!=Integer.MIN_VALUE)ref=nodeFloor[i];
+            last=Math.max(last,seg);
+            double[] p=along(nodes,stations,d);
+            int y=floors.at((int)Math.floor(p[0]),(int)Math.floor(p[1]),ref);
+            if(y!=Integer.MIN_VALUE)ref=y;
+            out[k]=ref;
+        }
+        return out;
+    }
+    /** The road floor at distance d from roadFloors' samples. */
+    public static int roadFloor(int[] floors,double step,double d) {return floors[Math.max(0,Math.min(floors.length-1,(int)Math.round(d/step)))];}
     /** The forward speed factor on a segment that rises rise over run: up beyond maxGrade, down beyond -maxGrade, 1 between. */
     public static double gradeFactor(double rise,double run,double maxGrade,double up,double down) {
         if(run<=0)return 1;

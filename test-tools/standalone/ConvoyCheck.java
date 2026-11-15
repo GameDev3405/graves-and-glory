@@ -25,6 +25,14 @@ public final class ConvoyCheck {
         check(ModeMath.segment(st, 0) == 0 && ModeMath.segment(st, 29.9) == 0 && ModeMath.segment(st, 30) == 1 && ModeMath.segment(st, 100) == 2 && ModeMath.segment(st, 500) == 2, "segment lookup clamps to the last segment");
         double[] p = ModeMath.along(road, st, 50), end = ModeMath.along(road, st, 999), start = ModeMath.along(road, st, -5);
         check(near(p[0], 30) && near(p[1], 20) && near(end[0], 60) && near(end[1], 40) && near(start[0], 0) && near(start[1], 0), "points along the road, clamped at both ends");
+        // the wagon's floor: a straight road 0..10 on x; floor 64, a bridge deck at 70 over x 4..6 (two floors there), a step up to 65 from x 8, no floor at x 3
+        ModeMath.FloorNear under = (x, z, y) -> x == 3 ? Integer.MIN_VALUE : x >= 8 ? 65 : x >= 4 && x <= 6 ? (Math.abs(70 - y) < Math.abs(64 - y) ? 70 : 64) : 64;
+        double[][] flat = {{0, 0}, {5, 0}, {10, 0}};
+        int[] none = {Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE};
+        int[] low = ModeMath.roadFloors(flat, ModeMath.stations(flat), none, 0.5, 64, under);
+        check(low.length == 21 && ModeMath.roadFloor(low, 0.5, 5) == 64 && ModeMath.roadFloor(low, 0.5, 3.4) == 64 && ModeMath.roadFloor(low, 0.5, 8.2) == 65 && ModeMath.roadFloor(low, 0.5, 99) == 65 && ModeMath.roadFloor(low, 0.5, -1) == 64, "the road keeps its level under a deck, holds it over a column with no floor, and climbs a step");
+        int[] deck = ModeMath.roadFloors(flat, ModeMath.stations(flat), new int[]{Integer.MIN_VALUE, 70, Integer.MIN_VALUE}, 0.5, 64, under);
+        check(ModeMath.roadFloor(deck, 0.5, 4.5) == 64 && ModeMath.roadFloor(deck, 0.5, 5) == 70 && ModeMath.roadFloor(deck, 0.5, 6.4) == 70, "a node with a height of its own moves the road to that level from the node on");
         check(ModeMath.gradeFactor(1, 3, 0.25, 0.75, 1.25) == 0.75 && ModeMath.gradeFactor(-1, 3, 0.25, 0.75, 1.25) == 1.25 && ModeMath.gradeFactor(1, 5, 0.25, 0.75, 1.25) == 1 && ModeMath.gradeFactor(5, 0, 0.25, 0.75, 1.25) == 1, "grade: slower up a steep segment, faster down, flat otherwise");
         check(near(ModeMath.advance(10, "moving", 1.2, 0.6, 10, 0, 100), 22) && near(ModeMath.advance(99, "moving", 1.8, 0.6, 1, 0, 100), 100), "moving adds speed times seconds, stopping at the destination");
         check(near(ModeMath.advance(40, "rollback", 1.2, 0.6, 10, 30, 100), 34) && near(ModeMath.advance(32, "rollback", 1.2, 0.6, 10, 30, 100), 30), "rolling back at 0.6 never passes the last checkpoint");

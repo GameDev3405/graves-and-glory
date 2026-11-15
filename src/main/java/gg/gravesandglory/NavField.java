@@ -300,6 +300,8 @@ public final class NavField {
 
     /** a floor block at world (wx, floorY, wz): a troop stands on it at floorY + 1 */
     public boolean floorAt(int wx, int floorY, int wz) { int x = wx - ox, z = wz - oz; if (x < 0 || x >= w || z < 0 || z >= d) return false; for (int i = start[z * w + x]; i < start[z * w + x + 1]; i++) if (ys[i] == floorY) return true; return false; }
+    /** the floor block of column (wx, wz) nearest floorY (the lower one on a tie), or Integer.MIN_VALUE when the column has none */
+    public int floorNear(int wx, int floorY, int wz) { int x = wx - ox, z = wz - oz, best = Integer.MIN_VALUE; if (x < 0 || x >= w || z < 0 || z >= d) return best; for (int i = start[z * w + x]; i < start[z * w + x + 1]; i++) if (best == Integer.MIN_VALUE || Math.abs(ys[i] - floorY) < Math.abs(best - floorY) || Math.abs(ys[i] - floorY) == Math.abs(best - floorY) && ys[i] < best) best = ys[i]; return best; }
     public boolean has(int wx, int wz) { int x = wx - ox, z = wz - oz; return x >= 0 && x < w && z >= 0 && z < d && start[z * w + x] < start[z * w + x + 1]; }
 
     /** The floor of column (wx, wz) a troop is put on, as {x, z, floor y}: the column's own top block (top) when it is a floor, else its lowest floor (the ground under a roof or a lintel);

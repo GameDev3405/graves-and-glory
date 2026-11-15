@@ -51,20 +51,8 @@ public final class ConvoyMode extends BattleMode {
     /** "The wagon is stopped" waits this long into a contest after a move, and is sent at most this often. */
     static final int STOPPED_AFTER = R.stoppedAfterSeconds() * 20, STOPPED_EVERY = R.stoppedEverySeconds() * 20;
 
-    /** A road node on the map: x, z and the checkpoint's name, or null for a plain node. The last node is the destination. */
-    record Node(double x, double z, String name) {}
-    /**
-     * The road of a map, its modeSites road rows in stage order (spec 5.1; Frostmarch's is the draft straight road Kort accepted
-     * 2026-11-01). A name of "-" is a plain node.
-     */
-    static List<Node> roadOf(int map) {
-        List<Spec.ModeSitesRow> rows = new ArrayList<>();
-        for (var s : Spec.MODESITES) if (s.mode().equals(Modes.CONVOY) && s.kind().equals("road") && s.map() == map) rows.add(s);
-        rows.sort(java.util.Comparator.comparingInt(Spec.ModeSitesRow::stage));
-        List<Node> out = new ArrayList<>();
-        for (var s : rows) out.add(new Node(s.x(), s.z(), s.name().equals("-") ? null : s.name()));
-        return out;
-    }
+    /** The road of a map (ConvoyRoad: its modeSites road rows in stage order, spec 5.1). The last node is the destination. */
+    static List<ConvoyRoad.Node> roadOf(int map) {return ConvoyRoad.of(map);}
     /** The map this round's road is on: the map standing, or the convoy row's first map when the standing one has no road. */
     static int roadMap(Spec.ModesRow row) {
         int map = CampaignMaps.selected;
@@ -94,7 +82,7 @@ public final class ConvoyMode extends BattleMode {
     long forcedChunk = Long.MIN_VALUE;
 
     final int map;
-    final List<Node> road;
+    final List<ConvoyRoad.Node> road;
 
     ConvoyMode(Spec.ModesRow row) {
         super(row);
@@ -121,7 +109,18 @@ public final class ConvoyMode extends BattleMode {
     /** The wagon's place on the road, at standing height. */
     Vec3d position(double d) {
         double[] p = ModeMath.along(nodes, stations, d);
-        return new Vec3d(p[0], Arena.ground((int) Math.floor(p[0]), (int) Math.floor(p[1])) + 1, p[1]);
+        int[] f = floors();
+        int ground = f != null ? ModeMath.roadFloor(f, ConvoyRoad.STEP, d) : Arena.ground((int) Math.floor(p[0]), (int) Math.floor(p[1]));
+        return new Vec3d(p[0], ground + 1, p[1]);
+    }
+    private int[] floors;
+    private String floorsOf;
+    /** The road's floor profile on an engine map (ConvoyRoad.floors), built once per map; null on a map made by code. */
+    private int[] floors() {
+        EngineMap e = EngineMaps.current();
+        if (e == null || e.nav == null) return null;
+        if (floors == null || !e.sha.equals(floorsOf)) {floors = ConvoyRoad.floors(e, road); floorsOf = e.sha;}
+        return floors;
     }
     /** The road point the given distance along, clamped, at standing height; bots and anchors use it. */
     Vec3d road(double d) {return position(Math.max(0, Math.min(total(), d)));}
@@ -136,7 +135,8 @@ public final class ConvoyMode extends BattleMode {
     @Override public Vec3d fieldBase(GravesAndGlory.Battle b, int team) {
         var s = base(map, team);
         if (s == null) return super.fieldBase(b, team);
-        return new Vec3d(s.x(), Arena.height((int) Math.floor(s.x()), (int) Math.floor(s.z())) + 1, s.z());
+        int x = (int) Math.floor(s.x()), z = (int) Math.floor(s.z());
+        return new Vec3d(s.x(), (EngineMaps.current() != null ? Arena.footing(x, z) : Arena.height(x, z)) + 1, s.z());
     }
     @Override public String howToSide(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {return s != null && s.team == ESCORT ? "attack" : "defend";}
     /** No draws: the clock running out with the wagon short of the destination is the defence's. */
