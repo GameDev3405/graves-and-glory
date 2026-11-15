@@ -794,10 +794,10 @@ public final class Campaign {
     /** Pass 3, the report's timeline: {interval, label, teams: [row 0, row 1]}, each row in MatchEnding.encodeRow's compact form (the report rides the size-limited camp
      *  snapshot); a mode without points adds each row's max and format, since its two numbers are not one scale. */
     JsonObject reportTimeline(){
-        JsonObject j=new JsonObject();var m=b.mode;boolean points=m.capturesPoints(b);var es=m.ledgerEntries(b);
+        JsonObject j=new JsonObject();var m=b.mode;boolean points=m.capturesPoints(b);var es=m.timelineEntries(b); // the lines by team, like the rows below
         j.addProperty("interval",timeline.interval);j.addProperty("label",points?"Score":es.size()>=2?es.get(0).label()+" / "+es.get(1).label():m.name());
         JsonArray teams=new JsonArray();for(int t=0;t<2;t++)teams.add(MatchEnding.encodeRow(timeline.row(t)));j.add("teams",teams);
-        if(!points){int[] mx=m.max(b);String[] f=m.formats();JsonArray max=new JsonArray(),format=new JsonArray();
+        if(!points){int[] mx=m.max(b);String[] f=m.formats(b);JsonArray max=new JsonArray(),format=new JsonArray();
             for(int t=0;t<2;t++){max.add(t<mx.length?mx[t]:0);format.add(t<f.length?f[t]:"plain");}j.add("max",max);j.add("format",format);}
         return j;
     }
@@ -874,7 +874,7 @@ public final class Campaign {
         if(m.capturesPoints(b))head=b.side(0).name()+" "+b.scores[0]+" / "+b.side(1).name()+" "+b.scores[1];
         else{var es=m.ledgerEntries(b);
             if(!es.isEmpty()){var e=es.get(0);head=(e.label()==null||e.label().isBlank()?"":e.label()+" ")+e.text();}
-            else{int[] l=m.ledger(b),mx=m.max(b);String[] f=m.formats();head=l.length==0?m.name():ModeMath.ledgerText(f.length>0?f[0]:"plain",l[0],mx.length>0?mx[0]:0);}}
+            else{int[] l=m.ledger(b),mx=m.max(b);String[] f=m.formats(b);head=l.length==0?m.name():ModeMath.ledgerText(f.length>0?f[0]:"plain",l[0],mx.length>0?mx[0]:0);}}
         return head+" \u00b7 "+Spec.MAPS[map].name()+" \u00b7 "+seconds/60+":"+(seconds%60<10?"0":"")+seconds%60;
     }
     static final RosterMath.Rewards NO_REWARDS=new RosterMath.Rewards(Map.of(),Map.of());
@@ -968,7 +968,7 @@ public final class Campaign {
         JsonArray ledger=new JsonArray(),max=new JsonArray(),format=new JsonArray();
         var entries=m.ledgerEntries(b); // the mode's ledger rows (ModeLines.Entry); a mode without them falls back to its ledger/max/formats arrays
         if(!entries.isEmpty())for(var e:entries){ledger.add(e.value());max.add(e.max());format.add(e.format());}
-        else{for(int n:m.ledger(b))ledger.add(n);for(int n:m.max(b))max.add(n);for(String f:m.formats())format.add(f);}
+        else{for(int n:m.ledger(b))ledger.add(n);for(int n:m.max(b))max.add(n);for(String f:m.formats(b))format.add(f);}
         j.add("ledger",ledger);j.add("max",max);j.add("format",format);
         return j;
     }

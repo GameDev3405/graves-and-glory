@@ -24,6 +24,8 @@ import java.util.Deque;
  *   round           log whether a round runs, its mode, the last winner and the scores
  *   practice        start a practice round (camp:practice, as MapTour does): bots field, the point flags and the battle HUD show
  *   hudshot NAME x y z lookX lookY lookZ   teleport the player there in its own game mode and save NAME.png with the HUD shown
+ *   practice [N [keepintro]]   as practice, waiting N ticks (default 200) and keeping the round's camera intro when keepintro
+ *   snap NAME       save NAME.png of what the client shows now (HUD shown, nobody moved)
  *   points          a line in the evidence with each point (id, name, x, y, z, owner) and the scores
  * Queue runs (tools/checkq.py) pass the script as --env GRAVES_MAPFORGE_SCRIPT=<path> in place of -PmapForge.
  * Evidence: (run folder)/mapforge/harness.txt; the client stops when the script ends, on the first failure, or after
@@ -73,8 +75,10 @@ public final class MapForgeHarness implements ClientModInitializer {
             String[] v=line.split("\\s+",2);String rest=v.length>1?v[1]:"";
             switch(v[0]){
                 case "note"->log("note "+rest);
-                case "practice"->{var id=c.player.getUuid();log("practice round on map "+b.campaign.map);pause=200;
-                    server.execute(()->{var p=server.getPlayerManager().getPlayer(id);if(p!=null){b.campaign.handle(p,"camp:practice");b.campaign.introUntil=b.time;}});}
+                case "practice"->{var id=c.player.getUuid();log("practice round on map "+b.campaign.map);
+                    String[] pa=rest.trim().isEmpty()?new String[0]:rest.trim().split("\\s+");boolean keepIntro=pa.length>1&&pa[1].equals("keepintro");pause=pa.length>0?Integer.parseInt(pa[0]):200; // practice [TICKS [keepintro]]: the wait after the start, and whether the round keeps its camera intro
+                    server.execute(()->{var p=server.getPlayerManager().getPlayer(id);if(p!=null){b.campaign.handle(p,"camp:practice");if(!keepIntro)b.campaign.introUntil=b.time;}});}
+                case "snap"->{shotName=rest.trim();pause=0;c.options.hudHidden=false;log("snap "+shotName);} // snap NAME: save NAME.png of what the client shows now, HUD shown, no teleport
                 case "mode"->{String mode=rest.trim();pause=20; // mode ID: the battle mode the next practice plays, when the map hosts it (set as the mode checks set it: the script's player leads no party)
                     server.execute(()->{if(Modes.registered(mode)&&Modes.hosts(mode,b.campaign.map))b.campaign.battleMode=mode;log("mode "+b.campaign.battleMode+" on map "+b.campaign.map+(b.campaign.battleMode.equals(mode)?"":" (the map does not host "+mode+")"));});}
                 case "round"->log("round running "+b.running+" mode "+(b.mode==null?"-":b.mode.id())+" time "+b.time+" winner "+b.campaign.lastWinner+" scores "+b.scores[0]+"-"+b.scores[1]); // the round's state, for a script that plays one through

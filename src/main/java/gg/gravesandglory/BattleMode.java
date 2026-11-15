@@ -107,10 +107,14 @@ public abstract class BattleMode {
      * adds its rows and overrides this; the default has none, so a mode that has not yet is simply without a ledger.
      */
     public List<ModeLines.Entry> ledgerEntries(GravesAndGlory.Battle b){return List.of();}
+    /** The ledger lines of the report's graph, one per team in the order of the rows it draws (index 0 Dawn, 1 Dusk); the ledger's own order unless a mode's two numbers belong to roles that change sides (Siege's attackers and defenders). */
+    public List<ModeLines.Entry> timelineEntries(GravesAndGlory.Battle b){return ledgerEntries(b);}
     /** The tracks' maxima. */
     public int[] max(GravesAndGlory.Battle b){return new int[]{row.winTarget(),row.winTarget()};}
     /** How each ledger number reads (ModeMath.ledgerText): plain, fraction or percent. */
     public String[] formats(){return new String[]{"plain","plain"};}
+    /** The formats of the round now running: formats() unless the order depends on the map (Siege puts the attackers' number on their team's side). */
+    public String[] formats(GravesAndGlory.Battle b){return formats();}
     /** The side a commander's how-to lines are written for (attack or defend). Domination asks the same of both sides. */
     public String howToSide(GravesAndGlory.Battle b,GravesAndGlory.Squad s){return "attack";}
     /** A bot army's goal in this mode, asked by Campaign.botDecide after its retreat check: a spot to attack toward, or null to
@@ -129,7 +133,7 @@ public abstract class BattleMode {
         JsonArray defend=new JsonArray();for(String line:ModeMath.howTo(row.howToDefend()))defend.add(line);j.add("howToDefend",defend);
         j.addProperty("side",howToSide(b,viewer));
         JsonArray max=new JsonArray();for(int n:max(b))max.add(n);j.add("max",max);
-        JsonArray formats=new JsonArray();for(String f:formats())formats.add(f);j.add("format",formats);
+        JsonArray formats=new JsonArray();for(String f:formats(b))formats.add(f);j.add("format",formats);
         j.addProperty("points",capturesPoints(b)); // the HUD hangs the point seals only in a mode that plays its points
         j.addProperty("overtime",b.inOvertime()); // the client swaps the battle music for overtime_music while true (a round that is running, its clock out, the mode holding it open)
         return j;

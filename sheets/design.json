@@ -13355,8 +13355,35 @@
       "mode": "siege",
       "event": "start",
       "kind": "notice",
-      "args": "-",
-      "text": "Take the Outer Yard, break the gate, seize the Keep.",
+      "args": "yard,keep",
+      "text": "Take {yard}, break the gate, seize {keep}.",
+      "status": "draft"
+    },
+    {
+      "id": "siege_sides",
+      "mode": "siege",
+      "event": "sides",
+      "kind": "notice",
+      "args": "team,defenders",
+      "text": "{team} attacks, {defenders} defends",
+      "status": "draft"
+    },
+    {
+      "id": "siege_sides_attack",
+      "mode": "siege",
+      "event": "sides_attack",
+      "kind": "notice",
+      "args": "team",
+      "text": "{team} attacks",
+      "status": "draft"
+    },
+    {
+      "id": "siege_sides_defend",
+      "mode": "siege",
+      "event": "sides_defend",
+      "kind": "notice",
+      "args": "defenders",
+      "text": "{defenders} defends",
       "status": "draft"
     },
     {
@@ -13364,8 +13391,8 @@
       "mode": "siege",
       "event": "yard_taken",
       "kind": "point",
-      "args": "team",
-      "text": "{team} took the Outer Yard",
+      "args": "team,yard",
+      "text": "{team} took {yard}",
       "status": "draft"
     },
     {
@@ -13382,8 +13409,8 @@
       "mode": "siege",
       "event": "gate_shut",
       "kind": "point",
-      "args": "-",
-      "text": "The Iron Gate is shut",
+      "args": "gate",
+      "text": "{gate} is shut",
       "status": "draft"
     },
     {
@@ -13391,8 +13418,17 @@
       "mode": "siege",
       "event": "gate_breached",
       "kind": "point",
-      "args": "-",
-      "text": "The Iron Gate is breached",
+      "args": "gate",
+      "text": "{gate} is breached",
+      "status": "draft"
+    },
+    {
+      "id": "siege_gate_breached_named",
+      "mode": "siege",
+      "event": "gate_breached_named",
+      "kind": "point",
+      "args": "gate",
+      "text": "{gate} breached",
       "status": "draft"
     },
     {
@@ -13400,8 +13436,8 @@
       "mode": "siege",
       "event": "keep_taken",
       "kind": "point",
-      "args": "team",
-      "text": "{team} took the Keep",
+      "args": "team,keep",
+      "text": "{team} took {keep}",
       "status": "draft"
     },
     {

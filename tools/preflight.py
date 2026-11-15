@@ -97,7 +97,7 @@ for m in modes:
 # the sheets, not in the mode classes. A feed line has a kind FeedLines.style knows, the {name} fields its args column lists, and a text
 # FeedLines.MAX_TEXT can carry; FeedFitCheck measures how wide each one draws on the feed leaf. A how-to part may name a key as {key:<id>}.
 FEED_KINDS=('point','loss','kill','down','up','laststand','deploy','notice')
-FEED_ARGS=('team','point','stop','n','site','gold')
+FEED_ARGS=('team','point','stop','n','site','gold','yard','gate','keep','defenders')
 HOWTO_KEYS={'menu','attack','follow','formation','map','rotate_left','rotate_right','confirm','cancel','use','hints'}
 copy_modes={m['id'] for m in modes}
 events=set()

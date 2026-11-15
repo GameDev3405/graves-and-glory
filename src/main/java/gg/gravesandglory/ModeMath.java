@@ -44,6 +44,67 @@ public final class ModeMath {
             default -> 0;
         };
     }
+    /** The map a Siege round's rows come from: this map when it has a gate row (modeSites siege, kind gate, stage 1), else Ironhold's (map 1), as SiegeMode.Sites does. */
+    public static int siegeMap(int map) {
+        for(var s:Spec.MODESITES)if(s.mode().equals("siege")&&s.map()==map&&s.kind().equals("gate")&&s.stage()==1)return map;
+        return 1;
+    }
+    /** The defending team of a Siege map (0 Dawn, 1 Dusk): on an engine map the team of the base row nearest the keep (its keep muster; a base row's stage is its team), else Dusk; the old Ironhold (its gate landmark piece) always Dusk. */
+    public static int siegeDefenders(int map) {
+        int m=siegeMap(map);
+        for(var r:Spec.LANDMARKS)if(r.map()==m&&r.template().equals("ironhold/gate"))return 1;
+        Spec.ModeSitesRow keep=null,near=null;
+        for(var s:Spec.MODESITES)if(s.mode().equals("siege")&&s.map()==m&&s.kind().equals("stage")&&s.stage()==2)keep=s;
+        if(keep==null)return 1;
+        for(var r:Spec.MODESITES)if(r.mode().equals("siege")&&r.map()==m&&r.kind().equals("base")&&(near==null||Math.hypot(r.x()-keep.x(),r.z()-keep.z())<Math.hypot(near.x()-keep.x(),near.z()-keep.z())))near=r;
+        return near!=null&&near.stage()==0?0:1;
+    }
+    /** The attacking team of a Siege map: the other one. Dawn attacks on Ironhold, Kingsfield and Frostmarch, Dusk on Rivergate and Hollowwood. */
+    public static int siegeAttackers(int map) {
+        return 1-siegeDefenders(map);
+    }
+    /**
+     * The names of a Siege map's yard, gate and keep (modeSites siege rows, stages 0, 1, 2) as its feed lines write them. The old Ironhold's three names, and any
+     * missing row or blank or "-" name, give the old copy's words: "the Outer Yard", "The Iron Gate" (it starts its line) and "the Keep", so those lines read as
+     * they always did; another map's names stand as the rows give them, like a Domination point's.
+     */
+    public static String[] siegeSiteNames(int map) {
+        int m=siegeMap(map);
+        String[] out={"Outer Yard","Iron Gate","Keep"};
+        String[] kinds={"stage","gate","stage"};int[] stages={0,1,2};
+        for(int i=0;i<3;i++)for(var s:Spec.MODESITES)
+            if(s.mode().equals("siege")&&s.map()==m&&s.kind().equals(kinds[i])&&s.stage()==stages[i]&&!s.name().isBlank()&&!s.name().equals("-"))out[i]=s.name();
+        if(out[0].equals("Outer Yard"))out[0]="the Outer Yard";
+        if(out[1].equals("Iron Gate"))out[1]="The Iron Gate";
+        if(out[2].equals("Keep"))out[2]="the Keep";
+        return out;
+    }
+    /** The feed event that says the gate is breached: "gate_breached" ("The Iron Gate is breached") while the map has no gate name of its own, "gate_breached_named" ("North Gatehouse breached", short enough for the feed row) where it has. */
+    public static String siegeBreachEvent(int map) {
+        return siegeSiteNames(map)[1].equals("The Iron Gate")?"gate_breached":"gate_breached_named";
+    }
+    /** The round intro's two Siege lines for a viewer on a team (-1: none), in capitals as the intro writes them: who attacks and who defends, by banner colour ("Gold", "Violet"), then the viewer's own part; the second is empty for a viewer without a team. */
+    public static String[] siegeIntro(int map,int viewerTeam,String attackers,String defenders) {
+        int a=siegeAttackers(map);
+        String you=viewerTeam!=0&&viewerTeam!=1?"":viewerTeam==a?"You attack":"You defend";
+        return new String[]{("Siege: "+attackers+" attacks, "+defenders+" defends").toUpperCase(java.util.Locale.ROOT),you.toUpperCase(java.util.Locale.ROOT)};
+    }
+    /** The most letters the two banner names can have together for the one-line sides row ("Gold attacks, Violet defends": 140 of the feed row's 144 px); a longer pair ("Crimson", "Violet") goes out as two short rows. FeedFitCheck measures both forms for every pair of banners. */
+    public static final int SIDES_LINE_LETTERS=10;
+    /** The modeLines siege events that announce the sides: "sides" alone, or "sides_attack" then "sides_defend" when the names are too long for one row. */
+    public static String[] siegeSidesEvents(String attackers,String defenders) {
+        return attackers.length()+defenders.length()<=SIDES_LINE_LETTERS?new String[]{"sides"}:new String[]{"sides_attack","sides_defend"};
+    }
+    /** The lines of Siege's round-start announcement for the two banner names, as the feed shows them ("Violet attacks, Gold defends"). */
+    public static java.util.List<String> siegeSides(String attackers,String defenders) {
+        java.util.List<String> out=new java.util.ArrayList<>();
+        for(String e:siegeSidesEvents(attackers,defenders))out.add(FeedLines.modeLine("siege",e,"team",attackers,"defenders",defenders));
+        return out;
+    }
+    /** A pair given as the attackers' then the defenders' put by team (index 0 Dawn, 1 Dusk), the other way round when Dusk attacks: how Siege's two ledger numbers (and their maxima, formats and graph lines) reach the HUD bar, the war map and the report graph, which read slot 0 as Dawn. attackers is the map's siegeAttackers. */
+    public static <T> java.util.List<T> byTeam(int attackers,T attackerValue,T defenderValue) {
+        return attackers==0?java.util.List.of(attackerValue,defenderValue):java.util.List.of(defenderValue,attackerValue);
+    }
     /**
      * The Convoy role of each banner of one side, humans first (spec 6). Escort: pushers = banners less round(banners*raidShare),
      * at least one, the rest screen. Defence: raiders = round(banners*raidShare), at least one, the rest block. Every human banner

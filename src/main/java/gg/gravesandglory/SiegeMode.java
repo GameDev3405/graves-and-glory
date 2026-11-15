@@ -112,11 +112,9 @@ public final class SiegeMode extends BattleMode {
             wards = rows(map, "ward");
             plugs = rows(map, "plug");
             posts = rows(map, "post");
-            // The defenders are the team of the base row nearest the keep (their keep muster; a base row's stage is its team); the other team's base row, if the
-            // map has one, is the attackers' forward camp. The gate row's rotation is the way in: 0 east, 90 south, 180 west, 270 north.
-            Spec.ModeSitesRow near = null;
-            if (lm == null) for (var r : rows(map, "base")) if (near == null || Math.hypot(r.x() - keepX, r.z() - keepZ) < Math.hypot(near.x() - keepX, near.z() - keepZ)) near = r;
-            def = near != null && near.stage() == 0 ? 0 : 1;
+            // The defenders are the team of the base row nearest the keep (their keep muster; a base row's stage is its team; ModeMath.siegeDefenders, which the client
+            // reads the same way); the other team's base row, if the map has one, is the attackers' forward camp. The gate row's rotation is the way in: 0 east, 90 south, 180 west, 270 north.
+            def = ModeMath.siegeDefenders(map);
             att = 1 - def;
             camp = lm == null ? find(map, "base", att) : null;
             int turn = lm != null ? 0 : Math.floorMod(gate.rotation(), 360);
@@ -171,6 +169,10 @@ public final class SiegeMode extends BattleMode {
             return landmark == null ? null : SiegeMode.post(landmark, side);
         }
     }
+    /** The names of the yard, gate and keep as the map's feed lines write them (ModeMath.siegeSiteNames: the sheet rows' own, the old copy where a map has none). */
+    static String[] names(GravesAndGlory.Battle b) {
+        return ModeMath.siegeSiteNames(b.campaign.map);
+    }
     /** The sites of the map the round is on, which a round's first call resolves (a mode object lives for one round). */
     Sites sites = Sites.of(1);
     Sites s(GravesAndGlory.Battle b) {
@@ -188,6 +190,8 @@ public final class SiegeMode extends BattleMode {
     /** What the round did, for the bot sim's report (read-only on the game): blows that hurt the gate and their damage, and the round second each stage fell (-1: never). */
     int gateBlows, yardSecond = -1, gateSecond = -1, keepSecond = -1;
     float gateDamage;
+    /** Whether the round's sides line (the feed's "Dusk attacks, Dawn defends") went out. */
+    boolean sidesSaid;
     /** Whether the felling blow already sounded the breach (GateTarget.structureCue), so breach() does not sound it a second time. */
     boolean breachCued;
 
@@ -306,23 +310,36 @@ public final class SiegeMode extends BattleMode {
             : stage == 1 && GravesAndGlory.Battle.horizontalDistance(pos, new Vec3d(st.gate.x(), 65, st.gate.z())) < GATE_OBJECTIVE_RADIUS * GATE_OBJECTIVE_RADIUS;
     }
 
-    /** Stages taken, then the current stage's strength in percent. */
-    @Override
-    public int[] ledger(GravesAndGlory.Battle b) {
+    /** Stages taken, then the current stage's strength in percent: the attackers' number, then the defenders'. */
+    int[] stageLedger(GravesAndGlory.Battle b) {
         var st = s(b);
         double progress = stage == 0 ? held / (double) st.yardSeconds : stage == 2 ? held / (double) st.keepSeconds : 0;
         float hp = target == null ? (dropAt >= 0 ? st.gateHp : 0) : Math.max(0, target.hp()); // the gate is whole until the portcullis drops
         return new int[]{stage, ModeMath.siegeStrength(stage, progress, hp, st.gateHp)};
     }
 
+    /** The two numbers by team, as the HUD's score bar (Dawn's, Dusk's) and the report's graph (a line per team) read them: the attackers' stages and the defenders' strength, whichever team attacks on the map. */
+    @Override
+    public int[] ledger(GravesAndGlory.Battle b) {
+        int[] l = stageLedger(b);
+        var t = ModeMath.byTeam(s(b).att, l[0], l[1]);
+        return new int[]{t.get(0), t.get(1)};
+    }
+
     @Override
     public int[] max(GravesAndGlory.Battle b) {
-        return new int[]{row.winTarget(), 100};
+        var t = ModeMath.byTeam(s(b).att, row.winTarget(), 100);
+        return new int[]{t.get(0), t.get(1)};
     }
 
     @Override
     public String[] formats() {
         return new String[]{"fraction", "percent"};
+    }
+
+    @Override
+    public String[] formats(GravesAndGlory.Battle b) {
+        return ModeMath.byTeam(s(b).att, "fraction", "percent").toArray(new String[0]);
     }
 
     /** Defenders deploy at the yard while it stands; attackers deploy there once it has fallen. Never with an enemy in the ring. */
@@ -448,6 +465,11 @@ public final class SiegeMode extends BattleMode {
     /** Each second: the current stage's hold or the gate's health, and the win when the keep falls. */
     @Override
     public void tick(GravesAndGlory.Battle b) {
+        if (!sidesSaid) { // the first tick after the intro: who attacks and who defends, on every player's feed (the client clears its feed as the round opens, so not at startLine)
+            sidesSaid = true;
+            String att = attackers(b), def = FeedLines.teamShort(b.side(s(b).def).name());
+            for (String event : ModeMath.siegeSidesEvents(att, def)) feed(b, event, "team", att, "defenders", def); // one row, or two when the banner names are too long for one
+        }
         if (b.time % 20 != 0 || stage >= 3) return;
         var st = s(b);
         if (stage == 0) {
@@ -460,7 +482,7 @@ public final class SiegeMode extends BattleMode {
             keepSecond = second(b);
             staged(b, "keep", keepSecond);
             b.scores[st.att] = stage;
-            feed(b, "keep_taken", "team", attackers(b));
+            feed(b, "keep_taken", "team", attackers(b), "keep", names(b)[2]);
             b.campaign.finish(st.att); // the victory and defeat stings play from Campaign.finish
         }
     }
@@ -494,7 +516,7 @@ public final class SiegeMode extends BattleMode {
         var st = s(b);
         b.scores[st.att] = stage;
         b.roundSeconds += STAGE_BONUS;
-        feed(b, "yard_taken", "team", attackers(b));
+        feed(b, "yard_taken", "team", attackers(b), "yard", names(b)[0]);
         Audio.captured(b, "yard", st.att);
         GravesAndGlory.Squad defender = null;
         for (var s : b.squads.values()) if (s.seated && s.team == st.def) { defender = s; break; }
@@ -517,7 +539,7 @@ public final class SiegeMode extends BattleMode {
             clearPassage(b, st.gateX, st.gateZ, st.floor, st.pass, st.passZ, st.passHeight);
             Structures.place(b.world, GATE_INTACT, row.x(), row.elevation(), row.z(), row.rotation());
         } else if (!plug(b, st)) { breach(b); return; } // a plug that could not be saved shuts nothing: the gate is down at once rather than closed for good
-        feed(b, "gate_shut"); // the shut cue itself started GATE_SHUT_LEAD_TICKS ago (fall)
+        feed(b, "gate_shut", "gate", names(b)[1]); // the shut cue itself started GATE_SHUT_LEAD_TICKS ago (fall)
         var e = new GateTarget(b.world);
         e.squad = defender;
         e.mode = this;
@@ -613,7 +635,7 @@ public final class SiegeMode extends BattleMode {
         held = 0;
         b.scores[s(b).att] = stage;
         b.roundSeconds += STAGE_BONUS;
-        feed(b, "gate_breached");
+        feed(b, ModeMath.siegeBreachEvent(b.campaign.map), "gate", names(b)[1]);
         if (!breachCued) Audio.all(b, AudioCues.Cue.GATE_BREACH, "gate"); // a felled gate sounded it with the blow (GateTarget.structureCue)
         breachCued = false;
         mark(b); // the marker stops listing the gate's snapshot once it is back
@@ -646,14 +668,22 @@ public final class SiegeMode extends BattleMode {
     /** The objective panel's opening line (the modeLines siege start row): the flags are down, so "Capture the objectives." would mislead. */
     @Override
     public String startLine(GravesAndGlory.Battle b) {
-        return FeedLines.modeLine(Modes.SIEGE, "start");
+        var n = names(b);
+        return FeedLines.modeLine(Modes.SIEGE, "start", "yard", n[0], "keep", n[2]);
     }
 
     /** The deciding numbers: stages taken of three, the defence's strength in percent, and the clock. */
     @Override
     public List<ModeLines.Entry> ledgerEntries(GravesAndGlory.Battle b) {
-        int[] l = ledger(b), m = max(b);
-        return List.of(ModeLines.entry("siege_stage", l[0], m[0]), ModeLines.entry("siege_strength", l[1], m[1]), ModeLines.entry("siege_time", clock(b), b.roundSeconds));
+        int[] l = stageLedger(b);
+        return List.of(ModeLines.entry("siege_stage", l[0], row.winTarget()), ModeLines.entry("siege_strength", l[1], 100), ModeLines.entry("siege_time", clock(b), b.roundSeconds));
+    }
+
+    /** The report graph's two lines by team like its rows (index 0 Dawn, 1 Dusk): Stages taken for the attackers, Defence holding for the defenders. */
+    @Override
+    public List<ModeLines.Entry> timelineEntries(GravesAndGlory.Battle b) {
+        var e = ledgerEntries(b);
+        return ModeMath.byTeam(s(b).att, e.get(0), e.get(1));
     }
 
     /** The round second now. */

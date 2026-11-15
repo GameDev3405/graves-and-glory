@@ -177,6 +177,12 @@ public final class CampaignClient {
         if(camera==null)return;var c=MinecraftClient.getInstance();int bar=Math.max(18,h/10);g.fill(0,0,w,bar,DarkUi.LETTERBOX);g.fill(0,h-bar,w,h,DarkUi.LETTERBOX);
         boolean march=battle.has("name");
         g.drawCenteredTextWithShadow(c.textRenderer,Spec.MAPS[map].name().toUpperCase()+"  /  "+(march?MarchMath.chapterName(marchRow(),Spec.CAMPAIGNCHAPTERS).toUpperCase():mode.equals("ai")?"PRACTICE":mode+" v "+mode),w/2,bar+12,DarkUi.GOLD);
+        if(modeId().equals(Modes.SIEGE)){ // who attacks and who defends, and the viewer's own part, under the map line (every Siege map has its attackers: ModeMath.siegeAttackers)
+            int att=ModeMath.siegeAttackers(map);
+            String[] sides=ModeMath.siegeIntro(map,GravesAndGloryClient.team,FeedLines.teamShort(DarkUi.side(att).name()),FeedLines.teamShort(DarkUi.side(1-att).name())); // the banner colours, as the feed lines name them
+            g.drawCenteredTextWithShadow(c.textRenderer,sides[0],w/2,bar+24,DarkUi.IVORY);
+            if(!sides[1].isEmpty())g.drawCenteredTextWithShadow(c.textRenderer,sides[1],w/2,bar+36,DarkUi.GOLD);
+        }
         if(march)briefing(g,c.textRenderer,w,h-bar-34);
         g.drawCenteredTextWithShadow(c.textRenderer,"YOUR BANNER. YOUR ARMY.",w/2,h-bar-24,DarkUi.IVORY);
         g.drawCenteredTextWithShadow(c.textRenderer,HintText.expand("{key:menu} or Escape to skip entrance",GravesAndGloryClient::hint),w/2,h-bar+6,DarkUi.MUTED);
