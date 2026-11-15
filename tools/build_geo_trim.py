@@ -99,6 +99,11 @@ def build(troop):
     unknown = set(recipe.get("tier_colours", {})) - {str(t) for m in recipe["marks"] for t in m["tiers"]}
     if unknown:
         raise TrimError(f"{troop}: tier_colours names tiers no mark paints: {sorted(unknown)}")
+    for where, tones in [("colours", recipe.get("colours"))] + [(f"tier_colours {t}", v) for t, v in sorted(recipe.get("tier_colours", {}).items())]:
+        for k in ("light", "dark"):
+            v = tones.get(k) if isinstance(tones, dict) else None
+            if not isinstance(v, str) or len(v.lstrip("#")) != 6 or any(ch not in "0123456789abcdefABCDEF" for ch in v.lstrip("#")):
+                raise TrimError(f"{troop}: {where} needs a six-digit hex '{k}', got {v!r}")
     tw, th = geo["description"]["texture_width"], geo["description"]["texture_height"]
     bones = {b["name"]: b for b in geo["bones"]}
     tiers = sorted({t for m in recipe["marks"] for t in m["tiers"]})

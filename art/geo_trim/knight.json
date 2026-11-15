@@ -1,6 +1,6 @@
 {
   "troop": "knight",
-  "note": "The Proven (Mastery II) veteran trim on the GeckoLib knight, the legacy knight_veteran.png's idea on the Geo sheets: a twisted brass edging (alternating light and dark texels) round the rim of the armour, and brass studs on the belt. Same palette as the legacy trim. One overlay per armour tier, side independent (no team bone carries trim). Built by tools/build_geo_trim.py.",
+  "note": "The Proven (Mastery II) veteran trim on the GeckoLib knight, the legacy knight_veteran.png's idea on the Geo sheets: a twisted rope edging (alternating light and dark texels) round the rim of the armour, and studs on the belt. Tiers I and II in the legacy trim's brass (colours); tier III, whose armour is gilt so brass does not read on it, in pale gold and dark (tier_colours; Kort, 2026-11-14). One overlay per armour tier, side independent (no team bone carries trim). Built by tools/build_geo_trim.py.",
   "colours": {
     "light": "dcb145",
     "dark": "b8852a"
@@ -28,7 +28,7 @@
       ]
     },
     {
-      "what": "brass edging round the greaves just above the sabaton (the shin's last row sits inside the foot), every tier",
+      "what": "rope edging round the greaves just above the sabaton (the shin's last row sits inside the foot), every tier",
       "bone": "right_shin",
       "cube": 0,
       "pattern": "rope",
@@ -42,7 +42,7 @@
       ]
     },
     {
-      "what": "brass edging round the greaves just above the sabaton, every tier",
+      "what": "rope edging round the greaves just above the sabaton, every tier",
       "bone": "left_shin",
       "cube": 0,
       "pattern": "rope",
@@ -56,7 +56,7 @@
       ]
     },
     {
-      "what": "brass edging on the sleeve just above the squire's glove",
+      "what": "rope edging on the sleeve just above the squire's glove",
       "bone": "right_forearm",
       "cube": 0,
       "pattern": "rope",
@@ -68,7 +68,7 @@
       ]
     },
     {
-      "what": "brass edging on the sleeve just above the squire's glove",
+      "what": "rope edging on the sleeve just above the squire's glove",
       "bone": "left_forearm",
       "cube": 0,
       "pattern": "rope",
@@ -80,7 +80,7 @@
       ]
     },
     {
-      "what": "brass edging on the gauntlet cuffs (plate tiers)",
+      "what": "rope edging on the gauntlet cuffs (plate tiers)",
       "bone": "right_cuff",
       "cube": 0,
       "pattern": "rope",
@@ -93,7 +93,7 @@
       ]
     },
     {
-      "what": "brass edging on the gauntlet cuffs (plate tiers)",
+      "what": "rope edging on the gauntlet cuffs (plate tiers)",
       "bone": "left_cuff",
       "cube": 0,
       "pattern": "rope",
@@ -106,7 +106,7 @@
       ]
     },
     {
-      "what": "brass edging round the great helm's lower rim (plate tiers)",
+      "what": "rope edging round the great helm's lower rim (plate tiers)",
       "bone": "helm_great",
       "cube": 0,
       "pattern": "rope",
@@ -119,7 +119,7 @@
       ]
     },
     {
-      "what": "brass edging on the pauldrons' lowest lame (tier II; tier III's pauldrons are already gilt)",
+      "what": "rope edging on the pauldrons' lowest lame (tier II; tier III's pauldrons are already gilt)",
       "bone": "right_pauldron",
       "cube": 2,
       "pattern": "rope",
@@ -131,7 +131,7 @@
       ]
     },
     {
-      "what": "brass edging on the pauldrons' lowest lame (tier II)",
+      "what": "rope edging on the pauldrons' lowest lame (tier II)",
       "bone": "left_pauldron",
       "cube": 2,
       "pattern": "rope",

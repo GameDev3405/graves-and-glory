@@ -41,6 +41,15 @@ class GeoTrimTest(unittest.TestCase):
             with self.assertRaises(B.TrimError):
                 B.build("knight")
 
+    def test_malformed_colours_refused_as_a_trim_error(self):
+        # a recipe slip must come out as the tool's FAIL line, not a traceback
+        recipe, geo, rig = B.load("knight")
+        for bad in ({"tier_colours": {"3": {"light": "fff0b4"}}}, {"tier_colours": {"3": {"light": "fff0b4", "dark": "brown"}}},
+                    {"tier_colours": {"3": "fff0b4"}}, {"colours": {"light": "dcb14", "dark": "b8852a"}}):
+            with mock.patch.object(B, "load", return_value=(dict(recipe, **bad), geo, rig)):
+                with self.assertRaises(B.TrimError, msg=bad):
+                    B.build("knight")
+
     def test_tier_sheets_are_untouched_by_the_trim(self):
         # The overlay is its own file: a fresh knight draws exactly the exporter's sheets, so building writes none of them.
         folder = B.ASSETS / "textures/entity/troop/knight_geo"
