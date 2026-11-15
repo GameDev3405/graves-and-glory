@@ -1,7 +1,7 @@
 #!/bin/sh
 # Update loop (task 2A.8): stop, back up, swap the mod jar, pin it, optionally restart.
 #   ./update.sh --jar PATH [--restart] [--memory-gb N] [--dry-run] [--root DIR]
-# The new jar is checked first (mod id, Minecraft 1.20.1, build record). The old jar is moved to
+# The new jar is checked first (mod id, Minecraft 1.21.1, build record). The old jar is moved to
 # mods-retired/, never deleted. Running this script is the human approval that re-pins mod-lock.json.
 # After a restart, join 25580 yourself as the smoke test. Maps and structures live in the world,
 # so a map change is a restore from a world archive (./restore.sh), not part of this script.

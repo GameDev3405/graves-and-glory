@@ -15,10 +15,10 @@ try {
 
     if (!(Test-Path -LiteralPath 'fabric-server-launch.jar')) { throw 'fabric-server-launch.jar is missing. Run .\setup.ps1 first (README.md, step 3).' }
     $java = Get-Command java -ErrorAction SilentlyContinue
-    if ($null -eq $java) { throw 'java not found. Install Java 17 or newer (README.md, step 1).' }
+    if ($null -eq $java) { throw 'java not found. Install Java 21 or newer (README.md, step 1).' }
     $javaMajor = Get-JavaMajor (cmd /c 'java -version 2>&1')
     if ($javaMajor -eq 0) { throw 'Could not read the Java version.' }
-    if ($javaMajor -lt 17) { throw "Java $javaMajor is too old; need 17 or newer." }
+    if ($javaMajor -lt 21) { throw "Java $javaMajor is too old; need 21 or newer." }
     if (Get-ServerProcess) { throw "Server already running (pid $((Get-Content -LiteralPath 'server.pid' -Raw).Trim()))." }
 
     [void](Test-Gate)

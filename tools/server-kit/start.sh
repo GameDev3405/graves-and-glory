@@ -21,11 +21,11 @@ export GG_DRY
 cd "$GG_ROOT" || exit 1
 
 [ -f fabric-server-launch.jar ] || gg_die "fabric-server-launch.jar is missing. Run ./setup.sh first (README.md, step 3)."
-command -v java >/dev/null 2>&1 || gg_die "java not found. Install Java 17 or newer (README.md, step 1)."
+command -v java >/dev/null 2>&1 || gg_die "java not found. Install Java 21 or newer (README.md, step 1)."
 # The first line may be a JAVA_TOOL_OPTIONS banner; take the first line that has: version "N"
 JV=$(java -version 2>&1 | sed -nE 's/.*version[[:space:]]+"([0-9]+)[."].*/\1/p' | head -n 1)
 case $JV in ''|*[!0-9]*) gg_die "Could not read the Java version.";; esac
-[ "$JV" -ge 17 ] || gg_die "Java $JV is too old; need 17 or newer."
+[ "$JV" -ge 21 ] || gg_die "Java $JV is too old; need 21 or newer."
 if gg_alive; then gg_die "Server already running (pid $(cat server.pid))."; fi
 
 gg_gate

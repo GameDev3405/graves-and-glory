@@ -1,8 +1,8 @@
 #!/bin/sh
 # Shared helpers for the Graves and Glory server kit. Sourced by the other scripts; not run directly.
-# Needs: sh, tar, unzip (or python3), sha256sum (or shasum), java 17+ for start.
+# Needs: sh, tar, unzip (or python3), sha256sum (or shasum), java 21+ for start.
 
-KIT_MC=1.20.1
+KIT_MC=1.21.1
 KIT_MOD_ID=gravesandglory
 KIT_PORT=25580
 

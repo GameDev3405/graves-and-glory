@@ -10,8 +10,8 @@ from release_config import ROOT, version, source_identity, validate_player_jar
 from release_files import resolve_local_path, mrpack_summary
 import build_skins
 
-MINECRAFT_VERSION='1.20.1'
-FABRIC_LOADER='0.16.14'  # the pin export_curseforge.py reuses
+MINECRAFT_VERSION='1.21.1'
+FABRIC_LOADER='0.19.5'  # the pin export_curseforge.py reuses
 ALLOWED_HOSTS={'cdn.modrinth.com','github.com','raw.githubusercontent.com','gitlab.com'}
 
 def validate_index(index):
@@ -75,7 +75,7 @@ def export(argv=()):
                           'server-ip=127.0.0.1','server-port=25565','spawn-protection=0','enable-rcon=false',''])
         pack.writestr('server-overrides/server.properties',server)
         pack.writestr('server-overrides/SERVER-README.txt',
-                      'Install Java 17+ and Fabric for Minecraft 1.20.1. Review the Minecraft server EULA yourself.\n'
+                      'Install Java 21+ and Fabric for Minecraft 1.21.1. Review the Minecraft server EULA yourself.\n'
                       'No EULA acceptance or credentials are supplied. This template binds localhost only.\n'
                       'Public matchmaking and centrally secured profiles are not implemented yet.\n')
     temp.replace(output)

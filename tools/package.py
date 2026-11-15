@@ -12,7 +12,7 @@ release_notes=require_release_notes(root,release_version)  # fail early, with a 
 jar=root/f'build/libs/graves-and-glory-{release_version}.jar'
 package=dist/build_skins.release_name(release_version,stopgap,'.zip')
 identity=source_identity()
-api=next((gradle_home()/'caches/modules-2/files-2.1/net.fabricmc.fabric-api/fabric-api/0.92.2+1.20.1').rglob('fabric-api-0.92.2+1.20.1.jar'))
+api=next((gradle_home()/'caches/modules-2/files-2.1/net.fabricmc.fabric-api/fabric-api/0.116.18+1.21.1').rglob('fabric-api-0.116.18+1.21.1.jar'))
 entries=[];files={}
 dependencies=json.loads((root/'dependencies/manifest.json').read_text(encoding='utf8'))
 research=json.loads((root/'dependencies/author-permissions.json').read_text(encoding='utf8'))

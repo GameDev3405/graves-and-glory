@@ -1,7 +1,7 @@
 # Shared helpers for the Graves and Glory server kit. Dot-sourced by the other scripts; not run directly.
-# Works in Windows PowerShell 5.1 and PowerShell 7. Needs Java 17+ only for start.ps1.
+# Works in Windows PowerShell 5.1 and PowerShell 7. Needs Java 21+ only for start.ps1.
 
-$script:KitMc = '1.20.1'
+$script:KitMc = '1.21.1'
 $script:KitModId = 'gravesandglory'
 $script:KitPort = 25580
 Add-Type -AssemblyName System.IO.Compression.FileSystem
