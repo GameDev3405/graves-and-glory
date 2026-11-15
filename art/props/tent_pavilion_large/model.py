@@ -1,7 +1,7 @@
 """Commander's Great Pavilion (`tent_pavilion_large`): 15x12x15 cells, anchor cell (7,0,7). Brief: art/props/tent_pavilion_large/brief.md.
 
 The large version of `tent_pavilion` (same look, same painter and octagon method; read that model's doc), sized to the
-block-built map pavilion (compare fixture structures/compare/tent_pavilion.nbt: 15x13x15 with its ground layer, tent
+block-built map pavilion (compare fixture structure/compare/tent_pavilion.nbt: 15x13x15 with its ground layer, tent
 11 blocks across at the eave and 12 tall above the floor). Footprint x -112..128, y 0..192, z -112..128 px; centre (8, 8).
 Walls apothem 72 (9 blocks across), eave apothem 86, valance 88 (11 blocks across), roof 3 px a step to y 152,
 finial tip at 191. Diagonal boxes longer than a 3-cell region are cut into pieces along the face; ropes crossing the

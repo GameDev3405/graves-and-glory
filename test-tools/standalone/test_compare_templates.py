@@ -8,7 +8,7 @@ import compare_templates as ct
 from mapforge.structure import Structure
 from release_config import validate_player_jar
 
-SHIPPED = ROOT / 'src' / 'main' / 'resources' / 'data' / 'gravesandglory' / 'structures'
+SHIPPED = ROOT / 'src' / 'main' / 'resources' / 'data' / 'gravesandglory' / 'structure'
 
 
 class CompareFixtures(unittest.TestCase):
@@ -49,7 +49,7 @@ class CompareFixtures(unittest.TestCase):
                 z.writestr('fabric.mod.json', json.dumps({'id': 'gravesandglory', 'version': '0.3.1', 'entrypoints': {'main': ['a.B'], 'client': ['a.C']}}))
                 z.writestr('gravesandglory-build.json', json.dumps(expected))
                 z.writestr('a/B.class', b'x'); z.writestr('a/C.class', b'x')
-                z.writestr('data/gravesandglory/structures/compare/trebuchet.nbt', b'x')
+                z.writestr('data/gravesandglory/structure/compare/trebuchet.nbt', b'x')
             with self.assertRaises(RuntimeError):
                 validate_player_jar(p, expected)
 

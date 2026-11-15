@@ -7,9 +7,9 @@ resource pack, runs `gradlew runClient` with the prop-look suite (GRAVES_PHASE1_
 each prop's screenshots to work/props/shots/<id>/ for tools/prop_card.py.
 
 --compare <id>=<group/name> (repeatable) also places that structure template (the maps' current plain-block version:
-src/main/resources/data/gravesandglory/structures/<group>/<name>.nbt, e.g. camp/tent_gilded, kit/market) 2 blocks east of the
+src/main/resources/data/gravesandglory/structure/<group>/<name>.nbt, e.g. camp/tent_gilded, kit/market) 2 blocks east of the
 prop and shoots the pair the same four ways: p1-prop-<id>-cmp-<near|far>-<day|night>.png. A missing template is skipped with a message. Exit 0 only when every placement and shot check passed.
-A template is looked up in the shipped structures and then in the unshipped test fixtures (test-tools/resources/.../structures/, e.g. compare/trebuchet).
+A template is looked up in the shipped structures and then in the unshipped test fixtures (test-tools/resources/.../structure/, e.g. compare/trebuchet).
 
 --compare-all pairs every prop id with the maps' plain-block fixture from tools/compare_templates.py (variants go to the base build:
 boulder_* to compare/boulder, supply_wagon_* to the nearest wagon, market_stall_* to compare/market_stall, giant bones to compare/giant_rib);
@@ -36,9 +36,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 
 
-STRUCTURES = ROOT / 'src' / 'main' / 'resources' / 'data' / 'gravesandglory' / 'structures'
+STRUCTURES = ROOT / 'src' / 'main' / 'resources' / 'data' / 'gravesandglory' / 'structure'
 # Test-only templates (the compare fixtures): carried by the unshipped local-integration jar, never by the release jar.
-FIXTURE_STRUCTURES = ROOT / 'test-tools' / 'resources' / 'data' / 'gravesandglory' / 'structures'
+FIXTURE_STRUCTURES = ROOT / 'test-tools' / 'resources' / 'data' / 'gravesandglory' / 'structure'
 
 
 def template_file(tid):
@@ -81,7 +81,7 @@ def main(argv=None):
     a.add_argument('--compare-all', action='store_true',
                    help='pair every id with the plain-block fixture of the maps (tools/compare_templates.py); ids without one are shot alone')
     a.add_argument('--compare', action='append', default=[], metavar='ID=GROUP/NAME',
-                   help='shoot the prop beside this structure template (data/gravesandglory/structures/GROUP/NAME.nbt); repeatable')
+                   help='shoot the prop beside this structure template (data/gravesandglory/structure/GROUP/NAME.nbt); repeatable')
     a.add_argument('--motion', default='', metavar='N[:TICKS[:FOCUS[:VIEW]]]',
                    help='also shoot N frames TICKS client ticks apart (default 4), FOCUS blocks from the motion pivots (default: whole prop), camera bearing VIEW degrees from the front (default 50), and make work/props/review/<id>-motion.gif')
     o = a.parse_args(argv)

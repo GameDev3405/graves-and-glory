@@ -1,4 +1,4 @@
-"""Structure template files (the vanilla structure-block format used in src/main/resources/data/gravesandglory/structures),
+"""Structure template files (the vanilla structure-block format used in src/main/resources/data/gravesandglory/structure),
 block state strings, and placement maths that matches gg.gravesandglory.Structures (pivot, turn, toWorld, footprint)."""
 import pathlib
 import re
@@ -9,7 +9,7 @@ DATA_VERSION = 3465  # Minecraft 1.20.1, as tools/preflight.py STRUCTURE_DATA_VE
 AIR = 'minecraft:air'
 VOID = 'minecraft:structure_void'
 REPO = pathlib.Path(__file__).resolve().parents[2]
-PIECES = REPO / 'src/main/resources/data/gravesandglory/structures'
+PIECES = REPO / 'src/main/resources/data/gravesandglory/structure'
 
 _STATE = re.compile(r'^([a-z0-9_.\-]+:)?([a-z0-9_./\-]+)(\[([a-z0-9_]+=[a-z0-9_]+(,[a-z0-9_]+=[a-z0-9_]+)*)?\])?$')
 
