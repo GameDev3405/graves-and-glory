@@ -1,6 +1,6 @@
 {
  "id": "rivergate_ey",
- "note": "What the game needs from Rivergate \"The Eyot\" (maps hand-over 2026-11-12, plan.md section 1). tools/sectionmap.py packs the 54 exported sections (test-tools/resources/data/ggmaps/structures/rg/sec) with this into src/main/resources/data/gravesandglory/sectionmaps/rivergate_ey.",
+ "note": "What the game needs from Rivergate \"The Eyot\" (maps hand-over 2026-11-12, plan.md section 1). tools/sectionmap.py packs the 54 exported sections (test-tools/resources/data/ggmaps/structure/rg/sec) with this into src/main/resources/data/gravesandglory/sectionmaps/rivergate_ey.",
  "sections": {"prefix": "rg_", "columns": "abcdefghi", "rows": 6, "x0": -288, "z0": -192, "y0": 56, "size": 64},
  "baseY": 64,
  "field": {"halfX": 270, "halfZ": 190},

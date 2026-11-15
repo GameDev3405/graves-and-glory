@@ -1,4 +1,4 @@
-"""Weapons stay out of Excalibur's look: our packs carry their own art and are ordered above Excalibur (Kort, 2026-11-05)."""
+"""Weapons keep their own look: our packs carry their own art and sit on top of the pack order, weapons last (Kort, 2026-11-05; Excalibur dropped 2026-11-15)."""
 import json
 import pathlib
 import re
@@ -23,12 +23,12 @@ class WeaponOverride(unittest.TestCase):
                 f = PACKS / ('armory/assets/minecraft/models/item/%s_%s.json' % (tier, tool))
                 self.assertTrue(f.exists(), f.name)
                 for key, ref in json.loads(f.read_text(encoding='utf8'))['textures'].items():
-                    self.assertTrue(ref.startswith('gravesandglory:item/armory/'), '%s %s -> %s (Excalibur re-skins minecraft:block/*)' % (f.name, key, ref))
+                    self.assertTrue(ref.startswith('gravesandglory:item/armory/'), '%s %s -> %s (other packs may re-skin minecraft:block/*)' % (f.name, key, ref))
                     self.assertTrue(tex_path('armory', ref).exists(), ref)
 
     def test_weapons_pack_covers_ranged_shield_trident_arrow(self):
         root = PACKS / 'weapons'
-        self.assertEqual(json.loads((root / 'pack.mcmeta').read_text())['pack']['pack_format'], 34)  # 1.21.1 resource pack format (was 15 on 1.20.1)
+        self.assertEqual(json.loads((root / 'pack.mcmeta').read_text())['pack']['pack_format'], 34)
         need = ['textures/item/%s.png' % n for n in ('bow', 'bow_pulling_0', 'bow_pulling_1', 'bow_pulling_2', 'crossbow_standby', 'crossbow_pulling_0',
                 'crossbow_pulling_1', 'crossbow_pulling_2', 'crossbow_arrow', 'crossbow_firework', 'trident', 'arrow', 'spectral_arrow')]
         need += ['textures/entity/%s.png' % n for n in ('trident', 'shield_base', 'shield_base_nopattern', 'shield/base', 'projectiles/arrow')]
@@ -36,19 +36,25 @@ class WeaponOverride(unittest.TestCase):
         for n in need:
             self.assertTrue((root / 'assets/minecraft' / n).exists(), n)
 
-    def test_packs_registered_and_ordered_above_excalibur(self):
+    def test_packs_registered_and_ordered_on_top(self):
         client = (JAVA / 'GravesAndGloryClient.java').read_text(encoding='utf8')
         for name in ('armory', 'weapons'):
-            self.assertRegex(client, r'registerBuiltinResourcePack\((?:new Identifier|Identifier\.of)\("gravesandglory","%s"\).*DEFAULT_ENABLED' % name)
+            self.assertRegex(client, r'registerBuiltinResourcePack\(Identifier\.of\("gravesandglory","%s"\).*DEFAULT_ENABLED' % name)
         look = (JAVA / 'LookPacks.java').read_text(encoding='utf8')
-        adds = re.findall(r'out\.add\((EXCALIBUR|ARMORY|WEAPONS)\)', look)
-        self.assertEqual(adds, ['EXCALIBUR', 'ARMORY', 'WEAPONS'], 'ours must come after (above) Excalibur')
-        self.assertIn('Excalibur_V1.21.1.zip', look)
+        adds = re.findall(r'out\.add\((\w+)\)', look)
+        self.assertEqual(adds, ['ARMORY', 'WEAPONS'], 'weapons must come last (top)')
+        for flag in ('armory', 'weapons'):
+            self.assertRegex(look, r'if \(%s && ' % flag, 'a pack the player switched off must stay off')
         self.assertIn('CLIENT_STARTED.register(LookPacks::apply)', client)
 
-    def test_excalibur_zip_name_matches_pin(self):
-        dep = next(d for d in json.loads((REPO / 'dependencies/manifest.json').read_text(encoding='utf8')) if d['slug'] == 'excalibur')
-        self.assertIn('file/' + dep['fileName'], (JAVA / 'LookPacks.java').read_text(encoding='utf8'))
+    def test_excalibur_is_never_switched_on_or_removed(self):
+        look = (JAVA / 'LookPacks.java').read_text(encoding='utf8')
+        code = re.sub(r'/\*.*?\*/', '', look, flags=re.S)
+        self.assertNotIn('EXCALIBUR', code)
+        self.assertNotIn('Excalibur', code)
+        self.assertNotIn('gravesandglory-look.txt', code)
+        dependencies = json.loads((REPO / 'dependencies/manifest.json').read_text(encoding='utf8'))
+        self.assertFalse([d for d in dependencies if d['slug'] == 'excalibur'])
 
 
 if __name__ == '__main__':

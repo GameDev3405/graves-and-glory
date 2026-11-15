@@ -7,9 +7,9 @@ maps/redesign; override with --maps or GG_MAPS_ROOT) and writes one small standa
 build, each on a small ground patch. Nothing of the generators is copied into this repo and nothing is written to the maps
 checkout (bytecode writing is off while they import).
 
-The fixtures are TEST FIXTURES: they live in test-tools/resources/data/gravesandglory/structures/compare/, which only the
+The fixtures are TEST FIXTURES: they live in test-tools/resources/data/gravesandglory/structure/compare/, which only the
 unshipped local-integration jar carries (build.gradle localTestToolsJar), never the release jar. tools/release_config.py
-refuses a jar that holds `structures/compare/`. The template id of a fixture is `compare/<name>`.
+refuses a jar that holds `structure/compare/`. The template id of a fixture is `compare/<name>`.
 
 `fixture_for(prop_id)` maps a prop id to its fixture (variants to the base build); tools/prop_shot.py --compare-all uses it.
 The sheet (default work/compare/fixtures.png) shows every fixture top-down and isometric, rendered offline by
@@ -19,7 +19,7 @@ import argparse, os, pathlib, random, sys, types
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 GROUP = 'compare'
-OUT = ROOT / 'test-tools' / 'resources' / 'data' / 'gravesandglory' / 'structures' / GROUP
+OUT = ROOT / 'test-tools' / 'resources' / 'data' / 'gravesandglory' / 'structure' / GROUP
 SHEET = ROOT / 'work' / 'compare' / 'fixtures.png'
 DEFAULT_MAPS = r'C:\Users\kortt\Melty\bb-maps'
 

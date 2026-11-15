@@ -28,7 +28,7 @@ for line in out.stdout.splitlines():
         name, box = p[0], p[1:]
         dst = os.path.join(HERE, '..', 'pieces', name + '.nbt')
         run('export', '--world', world, '--min', *box[:3], '--max', *box[3:], '--out', dst)
-        shutil.copy(dst, os.path.join(ROOT, 'test-tools', 'resources', 'data', 'ggmaps', 'structures', 'kf', name + '.nbt'))
+        shutil.copy(dst, os.path.join(ROOT, 'test-tools', 'resources', 'data', 'ggmaps', 'structure', 'kf', name + '.nbt'))
         print('piece', name, box)
 run('render', world, '--out', os.path.join(work, tag + '-iso.png'), '--view', 'iso', '--min', str(lo[0]), '63', str(lo[2]), '--max', str(hi[0]), '96', str(hi[2]))
 print('picture', os.path.join(work, tag + '-iso.png'))

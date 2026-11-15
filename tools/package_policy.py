@@ -33,29 +33,6 @@ def _version_tuple(text):
     return tuple(int(x) for x in re.match(r'(\d+)\.(\d+)\.(\d+)', text).groups())
 
 
-def excalibur_errors(names, texts, deps, release_version):
-    """Excalibur (CC BY-NC-ND 3.0) is required from 1.0.0 on. Wherever it is present it must be the pinned,
-    byte-identical upstream file (the dependency checksum check proves that) with its licence id and author credit."""
-    rows = [d for d in deps if 'excalibur' in d['slug'].lower() or 'excalibur' in d['title'].lower()]
-    if not rows:
-        if _version_tuple(release_version) >= (1, 0, 0):
-            return ['Excalibur is not in dependencies/manifest.json (required from 1.0.0)']
-        return []
-    errors = []
-    for dep in rows:
-        if '/mods/' in dep['path'] or '/shaders/' in dep['path']:
-            errors.append('Excalibur must be a resource pack, not ' + dep['path'])
-        licence = (dep.get('licenseMetadata') or {}).get('id', '')
-        if 'NC-ND' not in licence.upper():
-            errors.append('Excalibur licence id must record CC BY-NC-ND, got: ' + repr(licence))
-        notice = [n for n in names if n.startswith('docs/third-party/%s/' % dep['slug'])]
-        blob = texts.get('docs/THIRD_PARTY.md', '') + ''.join(texts.get(n, '') for n in notice)
-        for token in ('Maffhew', 'NC-ND'):
-            if token.lower() not in blob.lower():
-                errors.append('Excalibur credit/licence text lacks ' + token)
-    return errors
-
-
 def package_policy_errors(names, texts, deps, release_version, file_name, gradle_text):
     """Problems that make an archive unfit for a strict release; [] when clean.
     names: archive entry paths; texts: {path: str} for text entries; deps: dependencies/manifest.json rows."""
@@ -88,5 +65,4 @@ def package_policy_errors(names, texts, deps, release_version, file_name, gradle
         errors.append('Pixabay audio credit missing: THIRD_PARTY.md must credit Pixabay and docs/AUDIO-CREDITS.md must be packaged')
     if 'Fabric API' not in credits:
         errors.append('THIRD_PARTY.md does not credit Fabric API')
-    errors += excalibur_errors(names, texts, deps, release_version)
     return errors

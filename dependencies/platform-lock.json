@@ -720,40 +720,5 @@
     ],
     "modrinthPublished": "2026-09-24",
     "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
-  },
-  {
-    "slug": "excalibur",
-    "projectId": "hJAzl1Bs",
-    "versionId": "ZRWxgeyn",
-    "version": "1.21.1",
-    "fileName": "Excalibur_V1.21.1.zip",
-    "localPath": "dependencies/resourcepacks/Excalibur_V1.21.1.zip",
-    "fileSize": 18103896,
-    "hashes": {
-      "sha512": "858c0367346ec6d58e34ecd2f3b69b73e779d655a49ca12bcdd0113106bf4516f378013bab74331ad1f02ba0b0c2c465374802210ebb3f1f6d26b1cc8936a591",
-      "sha1": "32e930dd065d2278587c1cc810ca6eaba5afd125"
-    },
-    "sha256": null,
-    "downloads": [
-      "https://cdn.modrinth.com/data/hJAzl1Bs/versions/ZRWxgeyn/Excalibur_V1.21.1.zip"
-    ],
-    "kind": "resourcepack",
-    "env": {
-      "client": "required",
-      "server": "unsupported"
-    },
-    "license": {
-      "id": "CC-BY-NC-ND-3.0",
-      "name": "Creative Commons Attribution-NonCommercial-NoDerivs 3.0 Unported",
-      "url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
-    },
-    "projectUrl": "https://modrinth.com/resourcepack/excal",
-    "sourceUrl": "https://modrinth.com/resourcepack/excal",
-    "curseforgeOverride": true,
-    "redistributionReview": "PERMISSION TO RE-CONFIRM BY KORT: Maffhew permission 2026-10-28 was for V1.20; ask again for the 1.21.1 file. Unmodified; paid features not covered. CC BY-NC-ND 3.0.",
-    "gameVersions": [
-      "1.21",
-      "1.21.1"
-    ]
   }
 ]

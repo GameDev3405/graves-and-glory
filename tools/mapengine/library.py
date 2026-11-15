@@ -1,5 +1,5 @@
 """Signature building library: an index of the mod's approved structure pieces (id, footprint, door side, group),
-generated from the .nbt files in src/main/resources/data/gravesandglory/structures. Never hand-edit library.json;
+generated from the .nbt files in src/main/resources/data/gravesandglory/structure. Never hand-edit library.json;
 correct a door guess in library_overrides.json and rerun `python tools/mapengine library`."""
 import functools
 import hashlib
