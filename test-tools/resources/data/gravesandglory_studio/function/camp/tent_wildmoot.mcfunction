@@ -208,5 +208,5 @@ setblock ~0 ~2 ~9 minecraft:lantern
 setblock ~12 ~2 ~9 minecraft:lantern
 
 # the banners: the House wall banner on the gable, the House standing banner on the pole
-setblock ~0 ~7 ~10 minecraft:brown_banner[rotation=0]{Patterns:[{Pattern:"tts",Color:0},{Pattern:"bts",Color:0},{Pattern:"mr",Color:1}]}
-setblock ~6 ~9 ~9 minecraft:brown_wall_banner[facing=south]{Patterns:[{Pattern:"tts",Color:0},{Pattern:"bts",Color:0},{Pattern:"mr",Color:1}]}
+setblock ~0 ~7 ~10 minecraft:brown_banner[rotation=0]{patterns:[{pattern:"minecraft:triangles_top",color:"white"},{pattern:"minecraft:triangles_bottom",color:"white"},{pattern:"minecraft:rhombus",color:"orange"}]}
+setblock ~6 ~9 ~9 minecraft:brown_wall_banner[facing=south]{patterns:[{pattern:"minecraft:triangles_top",color:"white"},{pattern:"minecraft:triangles_bottom",color:"white"},{pattern:"minecraft:rhombus",color:"orange"}]}

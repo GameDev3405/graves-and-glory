@@ -204,8 +204,8 @@ setblock ~2 ~2 ~14 minecraft:campfire[lit=true]
 setblock ~22 ~2 ~14 minecraft:campfire[lit=true]
 
 # banners: the camp standard on its pole, the war council banners over the table, the sigil on the front gable
-setblock ~7 ~4 ~1 minecraft:black_wall_banner[facing=south]{Patterns:[{Pattern:"bs",Color:7},{Pattern:"bo",Color:4},{Pattern:"mr",Color:4}]}
-setblock ~17 ~4 ~1 minecraft:black_wall_banner[facing=south]{Patterns:[{Pattern:"bs",Color:7},{Pattern:"bo",Color:4},{Pattern:"mr",Color:4}]}
-setblock ~12 ~5 ~1 minecraft:black_wall_banner[facing=south]{Patterns:[{Pattern:"bo",Color:4},{Pattern:"mc",Color:4}]}
-setblock ~12 ~11 ~14 minecraft:black_wall_banner[facing=south]{Patterns:[{Pattern:"bo",Color:4},{Pattern:"mc",Color:4}]}
-setblock ~16 ~12 ~14 minecraft:black_banner[rotation=0]{Patterns:[{Pattern:"bo",Color:4},{Pattern:"mc",Color:4}]}
+setblock ~7 ~4 ~1 minecraft:black_wall_banner[facing=south]{patterns:[{pattern:"minecraft:stripe_bottom",color:"gray"},{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:rhombus",color:"yellow"}]}
+setblock ~17 ~4 ~1 minecraft:black_wall_banner[facing=south]{patterns:[{pattern:"minecraft:stripe_bottom",color:"gray"},{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:rhombus",color:"yellow"}]}
+setblock ~12 ~5 ~1 minecraft:black_wall_banner[facing=south]{patterns:[{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:circle",color:"yellow"}]}
+setblock ~12 ~11 ~14 minecraft:black_wall_banner[facing=south]{patterns:[{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:circle",color:"yellow"}]}
+setblock ~16 ~12 ~14 minecraft:black_banner[rotation=0]{patterns:[{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:circle",color:"yellow"}]}

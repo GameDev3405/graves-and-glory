@@ -122,8 +122,8 @@ fill ~12 ~1 ~0 ~12 ~3 ~0 minecraft:birch_fence[north=false,east=false,south=true
 setblock ~0 ~3 ~0 minecraft:birch_fence[north=false,east=true,south=true,west=false]
 fill ~0 ~4 ~0 ~0 ~9 ~0 minecraft:birch_fence[north=false,east=false,south=false,west=false]
 fill ~12 ~4 ~0 ~12 ~9 ~0 minecraft:birch_fence[north=false,east=false,south=false,west=false]
-setblock ~0 ~10 ~0 minecraft:white_banner[rotation=8]{Patterns:[{Pattern:"cbo",Color:4},{Pattern:"bo",Color:4}]}
-setblock ~12 ~10 ~0 minecraft:white_banner[rotation=8]{Patterns:[{Pattern:"cbo",Color:4},{Pattern:"bo",Color:4}]}
+setblock ~0 ~10 ~0 minecraft:white_banner[rotation=8]{patterns:[{pattern:"minecraft:curly_border",color:"yellow"},{pattern:"minecraft:border",color:"yellow"}]}
+setblock ~12 ~10 ~0 minecraft:white_banner[rotation=8]{patterns:[{pattern:"minecraft:curly_border",color:"yellow"},{pattern:"minecraft:border",color:"yellow"}]}
 
 # the porch posts at its four corners (the west front one is the dark oak fence pole of the standard)
 setblock ~0 ~1 ~8 minecraft:birch_fence[north=false,east=false,south=true,west=false]
@@ -212,5 +212,5 @@ setblock ~6 ~7 ~2 minecraft:lantern[hanging=true]
 fill ~6 ~8 ~2 ~6 ~9 ~2 minecraft:chain[axis=y]
 
 # the banners: the House wall banner on the gable, the House standing banner on the pole
-setblock ~0 ~7 ~10 minecraft:white_banner[rotation=0]{Patterns:[{Pattern:"sc",Color:4},{Pattern:"bo",Color:4}]}
-setblock ~6 ~9 ~9 minecraft:white_wall_banner[facing=south]{Patterns:[{Pattern:"sc",Color:4},{Pattern:"bo",Color:4}]}
+setblock ~0 ~7 ~10 minecraft:white_banner[rotation=0]{patterns:[{pattern:"minecraft:straight_cross",color:"yellow"},{pattern:"minecraft:border",color:"yellow"}]}
+setblock ~6 ~9 ~9 minecraft:white_wall_banner[facing=south]{patterns:[{pattern:"minecraft:straight_cross",color:"yellow"},{pattern:"minecraft:border",color:"yellow"}]}

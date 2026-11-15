@@ -826,4 +826,4 @@ setblock ~4 ~10 ~1 minecraft:dead_bush
 setblock ~20 ~10 ~1 minecraft:dead_bush
 
 # the Graveborn banner on the back wall of the colonnade over the arch
-setblock ~11 ~4 ~18 minecraft:black_wall_banner[facing=south]{Patterns:[{Pattern:"gru",Color:13},{Pattern:"sku",Color:0},{Pattern:"bo",Color:15}]}
+setblock ~11 ~4 ~18 minecraft:black_wall_banner[facing=south]{patterns:[{pattern:"minecraft:gradient_up",color:"green"},{pattern:"minecraft:skull",color:"white"},{pattern:"minecraft:border",color:"black"}]}

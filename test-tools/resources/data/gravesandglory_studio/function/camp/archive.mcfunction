@@ -602,8 +602,8 @@ setblock ~16 ~3 ~24 minecraft:candle[candles=3,lit=true]
 setblock ~16 ~1 ~9 minecraft:campfire[lit=true]
 
 # banners: on the poles before the portal and beside the Stone, and over the hearth
-setblock ~1 ~4 ~5 minecraft:black_banner[rotation=4]{Patterns:[{Pattern:"bs",Color:7},{Pattern:"bo",Color:4},{Pattern:"mr",Color:4}]}
-setblock ~1 ~4 ~13 minecraft:black_banner[rotation=4]{Patterns:[{Pattern:"bs",Color:7},{Pattern:"bo",Color:4},{Pattern:"mr",Color:4}]}
-setblock ~18 ~4 ~21 minecraft:black_banner[rotation=4]{Patterns:[{Pattern:"bo",Color:4},{Pattern:"cbo",Color:15},{Pattern:"mr",Color:4}]}
-setblock ~18 ~4 ~25 minecraft:black_banner[rotation=4]{Patterns:[{Pattern:"bo",Color:4},{Pattern:"cbo",Color:15},{Pattern:"mr",Color:4}]}
-setblock ~14 ~8 ~9 minecraft:black_wall_banner[facing=west]{Patterns:[{Pattern:"bo",Color:4},{Pattern:"mc",Color:4}]}
+setblock ~1 ~4 ~5 minecraft:black_banner[rotation=4]{patterns:[{pattern:"minecraft:stripe_bottom",color:"gray"},{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:rhombus",color:"yellow"}]}
+setblock ~1 ~4 ~13 minecraft:black_banner[rotation=4]{patterns:[{pattern:"minecraft:stripe_bottom",color:"gray"},{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:rhombus",color:"yellow"}]}
+setblock ~18 ~4 ~21 minecraft:black_banner[rotation=4]{patterns:[{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:curly_border",color:"black"},{pattern:"minecraft:rhombus",color:"yellow"}]}
+setblock ~18 ~4 ~25 minecraft:black_banner[rotation=4]{patterns:[{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:curly_border",color:"black"},{pattern:"minecraft:rhombus",color:"yellow"}]}
+setblock ~14 ~8 ~9 minecraft:black_wall_banner[facing=west]{patterns:[{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:circle",color:"yellow"}]}
