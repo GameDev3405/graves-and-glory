@@ -20,8 +20,9 @@ def bot(name, repo, port):
 
 
 def chat_command(bot, cmd):
-    # 1.20.1 serverbound chat command: command, timestamp, salt, no argument signatures, message offset 0, empty 20-bit acknowledgement set.
-    bot.send(0x04, ggbot.mstr(cmd) + int(time.time() * 1000).to_bytes(8, "big") + (0).to_bytes(8, "big") + ggbot.vi(0) + ggbot.vi(0) + b"\0\0\0")
+    # 1.21.1 serverbound unsigned command (CommandExecutionC2SPacket, play 0x04): the command string only. 1.20.1 also sent a
+    # timestamp, salt and an empty signature set; the signed form is now its own packet and unsigned commands do not need it.
+    bot.chat_command(cmd)
 
 
 def main():

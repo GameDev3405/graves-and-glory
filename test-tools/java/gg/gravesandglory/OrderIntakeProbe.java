@@ -2,7 +2,7 @@ package gg.gravesandglory;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.minecraft.util.Identifier;
+import gg.gravesandglory.net.Payloads;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.UUID;
@@ -28,20 +28,18 @@ public final class OrderIntakeProbe {
     /** The multi-group order packet (tactical_v2), written by hand as an old or a harness client would: action, formation, yaw, target, then
      *  n x (group, x, z). Returns whether the channel was open (false while the server has no tactical_v2). */
     public static boolean sendMany(String action, String formation, float yaw, java.util.List<At> groups) {
-        var id = new Identifier("gravesandglory", "tactical_v2");
-        if (!ClientPlayNetworking.canSend(id)) return false;
+        if (!ClientPlayNetworking.canSend(Payloads.TacticalV2Payload.ID)) return false;
         var b = PacketByteBufs.create(); b.writeString(action); b.writeString(formation); b.writeFloat(yaw); b.writeInt(-1);
         b.writeInt(groups.size()); for (var g : groups) { b.writeString(g.group()); b.writeDouble(g.x()); b.writeDouble(g.z()); }
-        ClientPlayNetworking.send(id, b);
+        ClientPlayNetworking.send(Payloads.TacticalV2Payload.of(b));
         return true;
     }
 
     /** An old client's single-group tactical_v1 packet, written by hand (the command keys no longer send it). */
     public static boolean sendV1(String group, String action, String formation, double x, double z, float yaw) {
-        var id = new Identifier("gravesandglory", "tactical_v1");
-        if (!ClientPlayNetworking.canSend(id)) return false;
+        if (!ClientPlayNetworking.canSend(Payloads.TacticalPayload.ID)) return false;
         var b = PacketByteBufs.create(); b.writeString(group); b.writeString(action); b.writeString(formation); b.writeDouble(x); b.writeDouble(z); b.writeFloat(yaw); b.writeInt(-1);
-        ClientPlayNetworking.send(id, b);
+        ClientPlayNetworking.send(Payloads.TacticalPayload.of(b));
         return true;
     }
 

@@ -2,7 +2,7 @@
 Needs a development dedicated server started with  gradlew runServer -PrewardDriver=<CTL> -I test-tools/isolated-server.gradle
 (GRAVES_ROADMAP_SERVER_ROOT=<absolute server root>, server-port in <root>/server.properties).
 Usage: k7_rewards.py <repo> <CTL> <port> <evidence file>
-Four offline protocol-763 bots play; RewardDriver (test-tools) only moves the clock back and calls the real Campaign.finish.
+Four offline protocol-767 (1.21.1) bots play; RewardDriver (test-tools) only moves the clock back and calls the real Campaign.finish.
 Expected gold is computed here from sheets/design.json, not from the game."""
 import sys, os, json, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

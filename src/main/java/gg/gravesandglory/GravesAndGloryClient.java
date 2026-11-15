@@ -424,6 +424,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     abstract static class ArmyScreen extends Screen {
         ArmyScreen(String title){super(Text.literal(title));}
         @Override public boolean shouldPause(){return false;}
+        @Override public void renderBackground(DrawContext g,int mx,int my,float delta){} // 1.21: Screen.render would blur and dim under the widgets; army screens draw their own backgrounds
         @Override public boolean keyPressed(int key,int scan,int mods){if(menu.matchesKey(key,scan)||key==GLFW.GLFW_KEY_ESCAPE){close();return true;}if(mapKey.matchesKey(key,scan)&&battleActive()){client.setScreen(new BattleMapScreen(this));return true;}return super.keyPressed(key,scan,mods);}
         ButtonWidget primary(String label,int x,int y,int w,java.util.function.Consumer<ButtonWidget> action){var b=new FantasyButton(x,y,w,26,Text.literal(label),action::accept);b.primary=true;return addDrawableChild(b);}
         ButtonWidget button(String label,int x,int y,int w,java.util.function.Consumer<ButtonWidget> action){return addDrawableChild(new FantasyButton(x,y,w,20,Text.literal(label),action::accept));}
@@ -434,7 +435,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         @Override protected void init(){button("Return to Minecraft",width/2-100,height/2+40,200,b->client.setScreen(new TitleScreen()));}
         // Seen once: leaving by button, Esc or any other screen change clears the startup error so the next title goes to the front menu.
         @Override public void removed(){error="";}
-        @Override public void render(DrawContext g,int x,int y,float d){super.render(g,x,y,d);g.drawCenteredTextWithShadow(textRenderer,why,width/2,height/2,DarkUi.ALARM_TEXT);} // 1.21: super.render draws the background first (a second blur in a frame throws)
+        @Override public void renderBackground(DrawContext g,int mx,int my,float delta){} // 1.21: no blur or dimming (port lane B rule for every screen)
+        @Override public void render(DrawContext g,int x,int y,float d){super.render(g,x,y,d);g.drawCenteredTextWithShadow(textRenderer,why,width/2,height/2,DarkUi.ALARM_TEXT);} // 1.21: super.render calls renderBackground first; never call it twice in a frame (a second blur throws)
     }
 }
 

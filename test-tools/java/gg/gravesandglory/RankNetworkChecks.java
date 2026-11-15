@@ -3,7 +3,7 @@ package gg.gravesandglory;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ConnectScreen;
+import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
 import net.minecraft.client.network.ServerAddress;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.entity.Entity;
@@ -193,7 +193,7 @@ public final class RankNetworkChecks implements ClientModInitializer {
             if (c.currentScreen instanceof FrontMenuScreen && clock >= 60 && has(control, "address.txt")) {
                 started = true;
                 String address = get(control, "address.txt");
-                ConnectScreen.connect(new FrontMenuScreen(), c, ServerAddress.parse(address), new ServerInfo("Rank network check", address, false), false);
+                ConnectScreen.connect(new FrontMenuScreen(), c, ServerAddress.parse(address), new ServerInfo("Rank network check", address, ServerInfo.ServerType.OTHER), false, null);
             }
             return;
         }

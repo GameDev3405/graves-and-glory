@@ -93,7 +93,7 @@ def run(args):
             with ThreadPoolExecutor(max(1,min(6,cpus//4))) as pool: futures=[pool.submit(run_check,t) for t in checks]
             errors=[f.exception() for f in futures if f.exception()]
             if errors: raise errors[0]
-        canon=['preflight','python-tests','ui-standard','ui-assets','skin-assets','zfight','clips','java-compile',*(t.stem for t in checks),'build']
+        canon=['preflight','python-tests','ui-standard','ui-assets','skin-assets','zfight','clips','java-compile',*(t.stem for t in checks),'build','payload-roundtrip']
         together(canon,
             # One process per test module (slow modules split by recorded times); the same discovery, every id accounted for.
             lambda: step('python-tests',[sys.executable,'tools/parallel_tests.py','test-tools/standalone','--pattern','test_*.py','--times',ROOT/'work/verify/python-test-times.json']),
@@ -106,6 +106,9 @@ def run(args):
             lambda: step('clips',[sys.executable,'tools/clips.py','--verify']),
             java_lane,
             lambda: (game_guard(),step('build',[*gradle,'build','compileLocalTestTools','-x','test'],1200)))  # the guard again right before Gradle, as before
+        # 1.21.1 port: every CustomPayload codec round-trips the channel's 1.20.1 body (26 types, no game). After the build, so it checks
+        # the real compiled classes (full mode); it needs the build's Loom cache (mapped jar, remapped Fabric networking) and fails without it.
+        step('payload-roundtrip',[sys.executable,'work/port/lane-a/run_payload_check.py'])
         if args.tier=='release':
             # Strict package gate; no stopgap bypass and no upload.
             step('package',[sys.executable,'tools/package.py'])
