@@ -26,12 +26,12 @@ public final class UiTex {
      *  sheet; l, t, r, b the slice insets from the PNG's edges; frames the equal horizontal cells of a sheet. */
     public record Entry(Identifier id, int w, int h, int ox, int oy, String kind, int l, int t, int r, int b, int frames) {}
 
-    static final Identifier ATLAS = new Identifier("gravesandglory", "textures/gui/atlas.json");
+    static final Identifier ATLAS = Identifier.of("gravesandglory", "textures/gui/atlas.json");
     private static volatile Map<String, Entry> entries = Map.of();
 
     /** Reads atlas.json at every resource reload; GravesAndGloryClient.onInitializeClient registers it. */
     public static final SimpleSynchronousResourceReloadListener RELOADER = new SimpleSynchronousResourceReloadListener() {
-        @Override public Identifier getFabricId() { return new Identifier("gravesandglory", "ui_atlas"); }
+        @Override public Identifier getFabricId() { return Identifier.of("gravesandglory", "ui_atlas"); }
         @Override public void reload(ResourceManager manager) { load(manager); }
     };
 
@@ -45,7 +45,7 @@ public final class UiTex {
             JsonObject textures = JsonParser.parseReader(reader).getAsJsonObject().getAsJsonObject("textures");
             for (var e : textures.entrySet()) {
                 JsonObject o = e.getValue().getAsJsonObject();
-                next.put(e.getKey(), new Entry(new Identifier("gravesandglory", "textures/gui/" + e.getKey() + ".png"),
+                next.put(e.getKey(), new Entry(Identifier.of("gravesandglory", "textures/gui/" + e.getKey() + ".png"),
                     o.get("w").getAsInt(), o.get("h").getAsInt(), o.get("ox").getAsInt(), o.get("oy").getAsInt(), o.get("kind").getAsString(),
                     o.get("l").getAsInt(), o.get("t").getAsInt(), o.get("r").getAsInt(), o.get("b").getAsInt(), o.get("frames").getAsInt()));
             }

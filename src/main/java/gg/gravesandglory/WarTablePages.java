@@ -1142,7 +1142,7 @@ final class WarTablePages {
             var say = UiMath.lines("No " + RosterMath.houseName(shownHouse()) + " troops yet.", ROLL_HINT_W, 2, s -> font().getWidth(DarkUi.body(s)));
             int top = oy + ROW_TOP + ROW_H + 16 - 13 * say.size() / 2;
             for (var row : Spec.HOUSES) if (row.id().equals(shownHouse()))
-                g.drawTexture(new Identifier(row.glyph()), x + ROLL_HINT_CX - 8, top - 26, 0f, 0f, 16, 16, 16, 16);
+                g.drawTexture(Identifier.of(row.glyph()), x + ROLL_HINT_CX - 8, top - 26, 0f, 0f, 16, 16, 16, 16);
             for (int i = 0; i < say.size(); i++) WarTableHome.centred(g, DarkUi.body(say.get(i)), x + ROLL_HINT_CX, top + 13 * i, DarkUi.INK_TEXT);
             textsDrawn.put("roll-empty", String.join(" ", say));
             rectsDrawn.put("roll-empty", new int[]{x + ROLL_HINT_CX - ROLL_HINT_W / 2, top, ROLL_HINT_W, 13 * say.size() - 4});
@@ -1431,7 +1431,7 @@ final class WarTablePages {
             var r = rows.get(i);
             String id = r.house().id();
             int accent = UiMath.accentText(r.house().accent()), top0 = y;
-            g.drawTexture(new Identifier(r.house().glyph()), x, y, 12, 12, 0f, 0f, 16, 16, 16, 16);
+            g.drawTexture(Identifier.of(r.house().glyph()), x, y, 12, 12, 0f, 0f, 16, 16, 16, 16);
             String name = UiMath.trim(RosterMath.houseName(id) + (r.tier() > 0 ? " " + MatchStats.roman(r.tier()) : ""), w - 16, t -> font.getWidth(DarkUi.heading(t)));
             g.drawText(font, DarkUi.heading(name), x + 16, y + 1, r.tier() > 0 ? accent : DarkUi.MUTED, false);
             String progress = traitLabel(r);
@@ -1620,7 +1620,7 @@ final class WarTablePages {
         String tex = on ? "table/chip-house-on" : "table/chip-house";
         UiTex.nine(g, tex, x, y, w + 1, on ? h + CHIP_RULE : h + 2);
         for (var row : Spec.HOUSES)
-            if (row.id().equals(id)) g.drawTexture(new Identifier(row.glyph()), x + CHIP_PAD, y + 4 + dy, 0f, 0f, CHIP_SEAL, CHIP_SEAL, CHIP_SEAL, CHIP_SEAL);
+            if (row.id().equals(id)) g.drawTexture(Identifier.of(row.glyph()), x + CHIP_PAD, y + 4 + dy, 0f, 0f, CHIP_SEAL, CHIP_SEAL, CHIP_SEAL, CHIP_SEAL);
         if (on) UiTex.draw(g, "table/ready-check", x + CHIP_PAD + 8, y + 4 + dy + 9);
         var label = DarkUi.body(name);
         int tx = x + CHIP_PAD + CHIP_SEAL + CHIP_SEAL_GAP, ty = y + 6 + dy;
@@ -1659,7 +1659,7 @@ final class WarTablePages {
         String tex = on ? "table/chip-house-on" : "table/chip-house";
         UiTex.nine(g, tex, x, y, w + 1, on ? h + CHIP_RULE : h + 2);
         for (var row : Spec.HOUSES)
-            if (row.id().equals(id)) g.drawTexture(new Identifier(row.glyph()), x + CHIP_PAD, y + 4 + dy, 0f, 0f, CHIP_SEAL, CHIP_SEAL, CHIP_SEAL, CHIP_SEAL);
+            if (row.id().equals(id)) g.drawTexture(Identifier.of(row.glyph()), x + CHIP_PAD, y + 4 + dy, 0f, 0f, CHIP_SEAL, CHIP_SEAL, CHIP_SEAL, CHIP_SEAL);
         if (on) UiTex.draw(g, "table/ready-check", x + CHIP_PAD + 8, y + 4 + dy + 9);
         if (on) {
             var label = DarkUi.body(name);

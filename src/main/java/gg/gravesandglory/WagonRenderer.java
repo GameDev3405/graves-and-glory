@@ -30,7 +30,7 @@ import java.util.Map;
  * cubes) on its 1-texel-per-pixel texture. The wheel_* parts turn with WagonEntity's eased wheel angle.
  */
 public final class WagonRenderer extends EntityRenderer<WagonEntity> {
-    static final Identifier TEXTURE = new Identifier("gravesandglory", "textures/entity/supply_wagon.png");
+    static final Identifier TEXTURE = Identifier.of("gravesandglory", "textures/entity/supply_wagon.png");
     static final String MODEL = "/assets/gravesandglory/models/entity/supply_wagon.json";
 
     final ModelPart root;

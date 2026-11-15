@@ -39,7 +39,7 @@ final class DarkUi {
     /** The banner page: an empty cell's wash and line, a held cell's ground, the gold bar's track, the rename strip, a refused cell's tint (hover, then flash). */
     static final int CELL_WASH=0x2a5c4a32, CELL_LINE=0x665c4a32, CELL_HELD=0xff2b2620, BAR_TRACK=0xffe8dcc0, RENAME_STRIP=0xfff3ead2, REFUSE_HOVER=0x40e47a64, REFUSE_FLASH=0x66e47a64;
     static final int RARE_INK=0xff8fb8d8, EPIC_INK=0xffc79be0, CARD_SHADE=0x33000000, DROP_VEIL=0x77160c0d, DROP_DIM=0xaa160c0d, DROP_LIFT=0x66000000, CARD_FADE=0x00181820, CARD_DIM=0x99111119, TAB_CHOSEN=0xff30474a, TAB_FOCUS=0xff39464b, TAB_IDLE=0xff252f34, TAB_EDGE=0xff455156, OPAQUE=0xff000000, POPOVER_DIM=0x99000000;
-    static final Identifier TITLE=new Identifier("gravesandglory","title"), FOCAL=new Identifier("gravesandglory","focal"), BODY=new Identifier("gravesandglory","body"), SMALL=new Identifier("gravesandglory","small");
+    static final Identifier TITLE=Identifier.of("gravesandglory","title"), FOCAL=Identifier.of("gravesandglory","focal"), BODY=Identifier.of("gravesandglory","body"), SMALL=Identifier.of("gravesandglory","small");
     /** The Lato body style: body and label draw in it. */
     static final Style BODY_STYLE=Style.EMPTY.withFont(BODY);
     /** Lato at 11 px, the battle HUD's lesson note (UI Task 8c): BattleHud wraps the lesson in it. */
@@ -96,7 +96,7 @@ final class DarkUi {
     /** A House's 16x16 glyph (houses.glyph) with its trait tier in Roman numerals beside it, in the accent's text ink (UiMath.accentText). Nothing is drawn for a House the sheet lacks. */
     static void houseMark(DrawContext g,String house,int tier,int x,int y){
         Spec.HousesRow row=null;for(var h:Spec.HOUSES)if(h.id().equals(house))row=h;if(row==null)return;
-        g.drawTexture(new Identifier(row.glyph()),x,y,0f,0f,16,16,16,16);
+        g.drawTexture(Identifier.of(row.glyph()),x,y,0f,0f,16,16,16,16);
         g.drawTextWithShadow(MinecraftClient.getInstance().textRenderer,MatchStats.roman(tier),x+19,y+4,UiMath.accentText(row.accent()));
     }
     private static final String[] DOT={".xxx.","xxxxx","xxxxx","xxxxx",".xxx."};

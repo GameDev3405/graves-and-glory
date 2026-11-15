@@ -26,7 +26,7 @@ public final class GearModels implements SimpleSynchronousResourceReloadListener
     static final List<String> PARTS = List.of("head", "body", "right_arm", "left_arm", "right_leg", "left_leg");
     /** The sides a gear cloth sheet is painted for (art/hand/common/handlib.SIDES). */
     static final List<String> SIDES = List.of("gold", "violet", "crimson", "teal", "company", "linen");
-    @Override public Identifier getFabricId() { return new Identifier(TroopModels.NAMESPACE, "gear_models"); }
+    @Override public Identifier getFabricId() { return Identifier.of(TroopModels.NAMESPACE, "gear_models"); }
 
     /** A gear bone: its part, whether it draws in the side's cloth, and the rarities it shows at (empty: every one). */
     record Bone(ModelPart part, boolean team, Set<Integer> stages) {}
@@ -38,7 +38,7 @@ public final class GearModels implements SimpleSynchronousResourceReloadListener
     record Rarity(TroopMesh mesh, String texture, Identifier glow) {}
     /** A weapon: the biped part it rides on, the hands it takes, whether its sheet is per side, its rarities, and a two-hander's arm poses (clip -> part -> pitch, yaw, roll in degrees). */
     record Weapon(String item, String parent, int hands, boolean side, Map<Integer, Rarity> rarities, Map<String, Map<String, float[]>> pose) {
-        Identifier texture(Rarity r, String team) { return side ? TroopModels.cloth(r.texture, team) : new Identifier(r.texture); }
+        Identifier texture(Rarity r, String team) { return side ? TroopModels.cloth(r.texture, team) : Identifier.of(r.texture); }
     }
 
     private static volatile Map<String, Armour> armour = Map.of();
@@ -116,8 +116,8 @@ public final class GearModels implements SimpleSynchronousResourceReloadListener
             TroopMesh mesh = TroopMesh.parse(r.getAsJsonArray("quads"), sheet[0], sheet[1]);
             String tex = TroopModelLoader.str(r, "texture");
             if (side) for (String s : SIDES) TroopModelLoader.texture(manager, TroopModels.cloth(tex, s));
-            else TroopModelLoader.texture(manager, new Identifier(tex));
-            Identifier glow = TroopModelLoader.str(r, "glow").isEmpty() ? null : new Identifier(TroopModelLoader.str(r, "glow"));
+            else TroopModelLoader.texture(manager, Identifier.of(tex));
+            Identifier glow = TroopModelLoader.str(r, "glow").isEmpty() ? null : Identifier.of(TroopModelLoader.str(r, "glow"));
             if (glow != null) TroopModelLoader.texture(manager, glow);
             rar.put(Integer.parseInt(e.getKey()), new Rarity(mesh, tex, glow));
         }
@@ -136,7 +136,7 @@ public final class GearModels implements SimpleSynchronousResourceReloadListener
     static Map<Integer, Identifier> sheets(ResourceManager manager, JsonObject j, String key) {
         Map<Integer, Identifier> out = new HashMap<>();
         if (j.has(key)) for (var e : j.getAsJsonObject(key).entrySet()) {
-            Identifier id = new Identifier(e.getValue().getAsString()); TroopModelLoader.texture(manager, id); out.put(Integer.parseInt(e.getKey()), id);
+            Identifier id = Identifier.of(e.getValue().getAsString()); TroopModelLoader.texture(manager, id); out.put(Integer.parseInt(e.getKey()), id);
         }
         return Map.copyOf(out);
     }

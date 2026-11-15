@@ -249,7 +249,7 @@ final class RecruitPages {
             int x=getX(),y=getY();boolean on=selected(),focus=isHovered()||isFocused();
             g.fill(x,y,x+width,y+height,on?0xff30474a:focus?0xff39464b:0xff252f34);g.drawBorder(x,y,width,height,on||focus?DarkUi.GOLD:0xff455156);
             DarkUi.focus(g,this);
-            for(var row:Spec.HOUSES)if(row.id().equals(house))g.drawTexture(new Identifier(row.glyph()),x+(width-16)/2,y+(height-16)/2,0f,0f,16,16,16,16);
+            for(var row:Spec.HOUSES)if(row.id().equals(house))g.drawTexture(Identifier.of(row.glyph()),x+(width-16)/2,y+(height-16)/2,0f,0f,16,16,16,16);
             if(on)g.fill(x+2,y+height-3,x+width-2,y+height-1,DarkUi.GOLD);
         }
     }

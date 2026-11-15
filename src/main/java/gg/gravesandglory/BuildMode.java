@@ -72,7 +72,7 @@ final class BuildMode {
 
     static void init(){
         // The seven flat canvases. Registered only here, so outside build mode no dimension is added.
-        ResourceManagerHelper.registerBuiltinResourcePack(new Identifier("gravesandglory","gg_build"),FabricLoader.getInstance().getModContainer("gravesandglory").orElseThrow(),
+        ResourceManagerHelper.registerBuiltinResourcePack(Identifier.of("gravesandglory","gg_build"),FabricLoader.getInstance().getModContainer("gravesandglory").orElseThrow(),
             Text.literal("Graves and Glory builder worlds"),ResourcePackActivationType.ALWAYS_ENABLED);
         ServerLifecycleEvents.SERVER_STARTED.register(BuildMode::start);
         ServerLifecycleEvents.SERVER_STOPPING.register(s->{if(ready&&changed)backup(s,"stop");});

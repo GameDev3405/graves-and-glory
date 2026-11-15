@@ -55,7 +55,7 @@ public final class BattleEffects {
         if(last!=null&&b.time>=last&&b.time-last<Spec.COMBATDISCIPLINE[0].hornCooldownSeconds()*20L)return false;
         var shout=kind.equals("charge")?AudioCues.Cue.ORDER_CHARGE_SHOUT:kind.equals("hold")?AudioCues.Cue.ORDER_HOLD_SHOUT:null;
         // "hold" has no horn, only its shout; the other kinds keep their horn.
-        var sound=kind.equals("hold")?null:net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory",kind.equals("retreat")?"horn_rout":"horn_"+kind));
+        var sound=kind.equals("hold")?null:net.minecraft.registry.Registries.SOUND_EVENT.get(net.minecraft.util.Identifier.of("gravesandglory",kind.equals("retreat")?"horn_rout":"horn_"+kind));
         if(sound==null&&shout==null)return false;
         mine.put(kind,b.time);
         if(sound!=null){
@@ -63,7 +63,7 @@ public final class BattleEffects {
             heard.add(new Heard(p.getUuid(),kind,b.time));
         }
         if(shout!=null){
-            var shoutSound=net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory",shout.id));
+            var shoutSound=net.minecraft.registry.Registries.SOUND_EVENT.get(net.minecraft.util.Identifier.of("gravesandglory",shout.id));
             if(shoutSound!=null)b.world.playSound(null,p.getX(),p.getY(),p.getZ(),shoutSound,SoundCategory.PLAYERS,shout.volume,shout.pitch);
         }
         return true;

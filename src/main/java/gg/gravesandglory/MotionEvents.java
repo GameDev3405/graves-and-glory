@@ -34,22 +34,22 @@ public final class MotionEvents {
      * Variant MotionInput.CANCEL (-1) is a cancel (coordinator 2026-11-11): the announced attack that began on that tick will not land (Projectiles.dropDraw), so the
      * client fades it out. Same layout, same id: an old client drops it as an invalid variant (as hit_v1's newer flag bits are ignored).
      */
-    public static final Identifier ATTACK = new Identifier("gravesandglory", "attack_v1");
+    public static final Identifier ATTACK = Identifier.of("gravesandglory", "attack_v1");
     /** A blow that struck a troop: a varInt entity id, byte kind (KINDS), byte zone (ZONES), float signed bearing (BattleMath.signedBearing), byte weight (0-2), byte flags (1 blocked, 2 lethal, 4 knockback: the blow also threw the troop, Abilities.knock; 8 pulled: the blow also dragged the troop toward its
      * striker, Abilities.pull; an old client ignores the bits it does not know), varLong world tick. */
-    public static final Identifier HIT = new Identifier("gravesandglory", "hit_v1");
+    public static final Identifier HIT = Identifier.of("gravesandglory", "hit_v1");
     /**
      * A troop's stance: a varInt entity id, byte index into STANCES and a float aimPitch (Projectiles.aimPitch: degrees, positive down as MotionInput.aimPitch
      * and Minecraft's pitch, so a lofted volley is negative; 0 unless ranged_aim). The client stores it as sent and MotionInput reads it unchanged. Replaces stance_v1.
      */
-    public static final Identifier STANCE = new Identifier("gravesandglory", "stance_v2");
+    public static final Identifier STANCE = Identifier.of("gravesandglory", "stance_v2");
     /**
      * A troop rose instead of dying (Houses.allowDeath: Rise Again, the Hollow King's Undying King): a varInt entity id, a varLong world tick the rise fired on and a
      * varInt window, the ticks the server keeps it out of the fight (its stun: Unit.stunnedUntil less the battle time; 0 when it fights on at once). Presentation
      * only: a client whose model has fake_death and rise plays them (DeathController) instead of the stun; one without them keeps the stun. An old client never
      * registers the channel, so it is never sent one and keeps the stun; a new client on an old server hears none and keeps the stun.
      */
-    public static final Identifier RISE = new Identifier("gravesandglory", "rise_v1");
+    public static final Identifier RISE = Identifier.of("gravesandglory", "rise_v1");
     public static final List<String> STANCES = BattleMath.STANCES, KINDS = BattleMath.KINDS, ZONES = BattleMath.ZONES;
     /** Packets sent since the server started, for the live checks: attacks, hits, stances on a change, stances and attacks on START_TRACKING, and on a late channel registration. */
     static volatile int attackSends, hitSends, stanceSends, trackingSends, registerSends, riseSends, pulledSends;

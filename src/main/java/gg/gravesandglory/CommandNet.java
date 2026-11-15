@@ -27,7 +27,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public final class CommandNet {
     private CommandNet() {}
-    public static final Identifier COMMAND = new Identifier("gravesandglory", "command_v1");
+    public static final Identifier COMMAND = Identifier.of("gravesandglory", "command_v1");
     public static final int COOLDOWN = 0, OUTLINE = 1, ACK = 2;
     /**
      * For the harness: per recipient owner and kind (COOLDOWN, OUTLINE, ACK), how many command_v1 records the server addressed to him, counted

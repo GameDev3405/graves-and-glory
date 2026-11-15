@@ -36,35 +36,35 @@ import net.minecraft.entity.ai.pathing.PathNodeType;
 import java.util.*;
 
 public final class GravesAndGlory implements ModInitializer {
-    public static final Identifier CAMP = new Identifier("gravesandglory", "camp_station");
-    public static final Identifier ORDER = new Identifier("gravesandglory", "order_v4");
-    public static final Identifier PROFILE = new Identifier("gravesandglory", "profile_v1");
-    public static final Identifier IMPACT = new Identifier("gravesandglory", "impact_v1");
-    public static final Identifier PING = new Identifier("gravesandglory", "ping_v1");
+    public static final Identifier CAMP = Identifier.of("gravesandglory", "camp_station");
+    public static final Identifier ORDER = Identifier.of("gravesandglory", "order_v4");
+    public static final Identifier PROFILE = Identifier.of("gravesandglory", "profile_v1");
+    public static final Identifier IMPACT = Identifier.of("gravesandglory", "impact_v1");
+    public static final Identifier PING = Identifier.of("gravesandglory", "ping_v1");
     /** The overhead Charge camera's position (three doubles), sent by a client every 10 ticks while the camera is up: the server cannot see it, and a troop in its view is watched (Tactics.watched). */
-    public static final Identifier CAMERA = new Identifier("gravesandglory", "camera_v1");
+    public static final Identifier CAMERA = Identifier.of("gravesandglory", "camera_v1");
     /** The battle map (BattleMapNet): the field grid once per match (S2C), the allied armies and plans every 20 ticks (S2C), and a player's plan or direct order (C2S). */
-    public static final Identifier MAP_GRID = new Identifier("gravesandglory", "battlemap_grid_v1");
-    public static final Identifier MAP_STATE = new Identifier("gravesandglory", "battlemap_v1");
-    public static final Identifier PLAN = new Identifier("gravesandglory", "battleplan_v1");
-    public static final Identifier TACTICAL = new Identifier("gravesandglory", "tactical_v1");
+    public static final Identifier MAP_GRID = Identifier.of("gravesandglory", "battlemap_grid_v1");
+    public static final Identifier MAP_STATE = Identifier.of("gravesandglory", "battlemap_v1");
+    public static final Identifier PLAN = Identifier.of("gravesandglory", "battleplan_v1");
+    public static final Identifier TACTICAL = Identifier.of("gravesandglory", "tactical_v1");
     /** One order to several groups (command UI Task 3b): action, formation, float yaw, int target, int n, then n x (String group, double x, z), each
      *  group with its own point. The command keys send only this; tactical_v1 (one group) stays accepted for old clients, bots and tests. */
-    public static final Identifier TACTICAL_V2 = new Identifier("gravesandglory", "tactical_v2");
+    public static final Identifier TACTICAL_V2 = Identifier.of("gravesandglory", "tactical_v2");
     /** The battle state, server to client every 10 ticks: its layout is Battle.sendState's (state_v9 added the in-match progression fields there; state_v10 sends 3 to 5 group records, Riders and Siege when fielded), and GravesAndGloryClient reads it. */
-    public static final Identifier STATE = new Identifier("gravesandglory", "state_v10");
-    public static final Identifier OPEN_BARRACKS = new Identifier("gravesandglory", "barracks_v1");
-    public static final Identifier PARTY = new Identifier("gravesandglory", "party_v1");
+    public static final Identifier STATE = Identifier.of("gravesandglory", "state_v10");
+    public static final Identifier OPEN_BARRACKS = Identifier.of("gravesandglory", "barracks_v1");
+    public static final Identifier PARTY = Identifier.of("gravesandglory", "party_v1");
     /** Server to client when the match ending begins (Campaign.beginEnding): the outcome word and the score line, so the client freezes and shows the banner on that tick. */
-    public static final Identifier ENDING_BEGIN = new Identifier("gravesandglory", "ending_begin_v1");
+    public static final Identifier ENDING_BEGIN = Identifier.of("gravesandglory", "ending_begin_v1");
     /** A troop's stance, server to client: stance_v2 (MotionEvents.STANCE), which retired stance_v1. */
     public static final Identifier STANCE = MotionEvents.STANCE;
     /** S2C battle event feed lines (FeedEvents): kind, the event's team, text. */
-    public static final Identifier FEED = new Identifier("gravesandglory", "feed_v1");
+    public static final Identifier FEED = Identifier.of("gravesandglory", "feed_v1");
     /** Server to client: the commander's gear as one GearWire string, sent when it changes (kept out of the camp snapshot, which has a client size limit). */
-    public static final Identifier GEAR = new Identifier("gravesandglory", "gear_v1");
+    public static final Identifier GEAR = Identifier.of("gravesandglory", "gear_v1");
     /** Server to client: the commander's relic slots (gear-combat Task 5), sent with each state and on a relic's start: a byte n, then per slot String relic id ("" empty), int ticks until ready (-1: empty or no behaviour), int ticks left running. */
-    public static final Identifier RELICS = new Identifier("gravesandglory", "relics_v1");
+    public static final Identifier RELICS = Identifier.of("gravesandglory", "relics_v1");
     public static Battle battle;
     /** Sends a seated commander his relic slots (relics_v1); nothing to a bot, an unseated squad or a client without the channel. */
     static void sendRelics(Battle b,Squad s){
@@ -692,12 +692,12 @@ public final class GravesAndGlory implements ModInitializer {
         public void joinSide(MobEntity mob,int team){
             var board=server.getScoreboard();String name=sideTeam(side(team));
             net.minecraft.scoreboard.Team t=board.getTeam(name);if(t==null)t=board.addTeam(name);
-            board.addPlayerToTeam(mob.getEntityName(),t);
+            board.addPlayerToTeam(mob.getNameForScoreboard(),t);
         }
         /** Takes an entity off its gg_ side team: a no-op for one that is on none. The ENTITY_UNLOAD hook calls it for every troop that leaves the world and is the backstop; AFTER_DEATH and the call sites that discard a troop call it too, harmlessly repeating it, so the membership is gone however a troop was removed. */
         public static void leaveSide(Entity e){
-            var board=e.getWorld().getScoreboard();var t=board.getPlayerTeam(e.getEntityName());
-            if(t!=null&&t.getName().startsWith("gg_"))board.removePlayerFromTeam(e.getEntityName(),t);
+            var board=e.getWorld().getScoreboard();var t=board.getPlayerTeam(e.getNameForScoreboard());
+            if(t!=null&&t.getName().startsWith("gg_"))board.removePlayerFromTeam(e.getNameForScoreboard(),t);
         }
         /** Empties the four side teams (startRound, Campaign.returnLobby and switchMap). */
         public void clearSides(){
@@ -814,9 +814,9 @@ public final class GravesAndGlory implements ModInitializer {
                     mob.getAttributeInstance(EntityAttributes.GENERIC_FOLLOW_RANGE).setBaseValue(Spec.NAVIGATION[0].searchRange());
                     mob.setPathfindingPenalty(PathNodeType.WATER,(float)Spec.NAVIGATION[0].waterPenalty());
                     if(ArmyMobs.tags(spec).contains("shield"))mob.equipStack(EquipmentSlot.OFFHAND,shield(spec,side(0).dye()));
-                    mob.equipStack(EquipmentSlot.MAINHAND,unbreakable(Registries.ITEM.get(new Identifier(spec.weapon()))));
-                    mob.equipStack(EquipmentSlot.HEAD,unbreakable(Registries.ITEM.get(new Identifier(spec.helmet()))));
-                    ItemStack chest=unbreakable(Registries.ITEM.get(new Identifier(spec.chest())));
+                    mob.equipStack(EquipmentSlot.MAINHAND,unbreakable(Registries.ITEM.get(Identifier.of(spec.weapon()))));
+                    mob.equipStack(EquipmentSlot.HEAD,unbreakable(Registries.ITEM.get(Identifier.of(spec.helmet()))));
+                    ItemStack chest=unbreakable(Registries.ITEM.get(Identifier.of(spec.chest())));
                     if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,side(0).color());
                     mob.equipStack(EquipmentSlot.CHEST,chest);
                     mob.discard();built++;
@@ -1291,9 +1291,9 @@ public final class GravesAndGlory implements ModInitializer {
             mob.getAttributeInstance(EntityAttributes.GENERIC_FOLLOW_RANGE).setBaseValue(Spec.NAVIGATION[0].searchRange());
             mob.setPathfindingPenalty(PathNodeType.WATER,(float)Spec.NAVIGATION[0].waterPenalty());
             if(ArmyMobs.tags(spec).contains("shield"))mob.equipStack(EquipmentSlot.OFFHAND,shield(spec,side(s.team).dye()));
-            mob.equipStack(EquipmentSlot.MAINHAND,unbreakable(Registries.ITEM.get(new Identifier(spec.weapon()))));
-            mob.equipStack(EquipmentSlot.HEAD,unbreakable(Registries.ITEM.get(new Identifier(spec.helmet()))));
-            ItemStack chest=unbreakable(Registries.ITEM.get(new Identifier(spec.chest())));
+            mob.equipStack(EquipmentSlot.MAINHAND,unbreakable(Registries.ITEM.get(Identifier.of(spec.weapon()))));
+            mob.equipStack(EquipmentSlot.HEAD,unbreakable(Registries.ITEM.get(Identifier.of(spec.helmet()))));
+            ItemStack chest=unbreakable(Registries.ITEM.get(Identifier.of(spec.chest())));
             if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,side(s.team).color());
             mob.equipStack(EquipmentSlot.CHEST,chest);
             for(EquipmentSlot eq:EquipmentSlot.values())mob.setEquipmentDropChance(eq,0);

@@ -5,15 +5,15 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributes;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animatable.model.CoreGeoModel;
-import software.bernie.geckolib.core.animation.Animation;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.keyframe.BoneAnimation;
-import software.bernie.geckolib.core.keyframe.Keyframe;
-import software.bernie.geckolib.core.object.PlayState;
-import software.bernie.geckolib.core.state.BoneSnapshot;
+import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.model.GeoModel;
+import software.bernie.geckolib.animation.Animation;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.keyframe.BoneAnimation;
+import software.bernie.geckolib.animation.keyframe.Keyframe;
+import software.bernie.geckolib.animation.PlayState;
+import software.bernie.geckolib.animation.state.BoneSnapshot;
 
 import java.util.Collections;
 import java.util.List;
@@ -128,7 +128,7 @@ final class AttackController extends AnimationController<GeoTroop> {
     }
 
     @Override
-    public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
+    public void process(GeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, GeoBone> bones,
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e == null || e.getWorld() == null || family.isEmpty()) return;
@@ -225,7 +225,7 @@ final class AttackController extends AnimationController<GeoTroop> {
      * (the attribute sync can trail the howl by a tick or two). A Seer first seen with the modifier on, or coming back into view, does not
      * howl. The clip blends over the swings like one, its _legs footwork over the standing legs.
      */
-    private void howl(CoreGeoModel<GeoTroop> model, LivingEntity l, double now, boolean wasDrawn, Map<String, CoreGeoBone> bones, double death) {
+    private void howl(GeoModel<GeoTroop> model, LivingEntity l, double now, boolean wasDrawn, Map<String, GeoBone> bones, double death) {
         var speed = l.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
         boolean on = speed != null && speed.getModifier(Abilities.HOWL) != null;
         if (on && !howlOn && howlSeenOff && wasDrawn) howlAt = Math.floor(now);
@@ -255,9 +255,9 @@ final class AttackController extends AnimationController<GeoTroop> {
     }
 
     /** Lerps every bone the clip keys toward the clip's pose at tick {@code t}, by weight {@code w}. */
-    static void apply(Animation clip, double t, Map<String, CoreGeoBone> bones, float w) {
+    static void apply(Animation clip, double t, Map<String, GeoBone> bones, float w) {
         for (BoneAnimation b : clip.boneAnimations()) {
-            CoreGeoBone bone = bones.get(b.boneName());
+            GeoBone bone = bones.get(b.boneName());
             if (bone == null) continue;
             var rot = b.rotationKeyFrames();
             if (!rot.xKeyframes().isEmpty()) {

@@ -11,7 +11,7 @@ import net.minecraft.util.Identifier;
 /** Ordinary launcher entry point. Starting a world or connection always takes a click. */
 public final class FrontMenuScreen extends Screen {
     /** The approved key art (board 4F.3), 1920x1080, drawn cover-scaled behind every page of this menu. */
-    private static final Identifier KEY_ART=new Identifier("gravesandglory","textures/gui/title/key_art.png");
+    private static final Identifier KEY_ART=Identifier.of("gravesandglory","textures/gui/title/key_art.png");
     private final String page;
     public FrontMenuScreen(){this("home");}
     FrontMenuScreen(String page){super(Text.literal("Graves and Glory / "+page));this.page=page;}

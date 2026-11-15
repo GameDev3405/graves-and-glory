@@ -1,0 +1,31 @@
+TOTAL unique errors: 465  files with errors: 78
+    172  GeckoLib API
+    109  Identifier constructor
+     62  rendering / UI
+     48  networking
+     29  item NBT -> components
+     22  entity / attributes / sound
+     12  renamed vanilla API (small)
+      6  NbtIo
+      4  other
+      1  registries
+TOP FILES
+    55  GaitController.java   GeckoLib API:55
+    45  GravesAndGlory.java   Identifier constructor:24, networking:12, item NBT -> components:4
+    29  AttackController.java   GeckoLib API:29
+    26  StanceController.java   GeckoLib API:26
+    24  GravesAndGloryClient.java   networking:14, rendering / UI:8, Identifier constructor:2
+    23  HitController.java   GeckoLib API:23
+    20  DeathController.java   GeckoLib API:20
+    15  GeoTroopRenderer.java   GeckoLib API:9, Identifier constructor:6
+    10  GeoTroop.java   GeckoLib API:10
+    10  EndingClient.java   Identifier constructor:4, item NBT -> components:3, rendering / UI:3
+    10  BodyCache.java   rendering / UI:10
+     8  GearCombat.java   entity / attributes / sound:8
+     8  MotionEvents.java   Identifier constructor:4, networking:4
+     8  PlanMarkers.java   rendering / UI:8
+     8  PropMenu.java   item NBT -> components:8
+OTHER \Abilities.java 769 incompatible types: UUID cannot be converted to Identifier | 
+OTHER \WagonEntity.java 60 method does not override or implement a method from a supertype | 
+OTHER \WagonEntity.java 64 method does not override or implement a method from a supertype | 
+OTHER \WagonEntity.java 72 method does not override or implement a method from a supertype | 

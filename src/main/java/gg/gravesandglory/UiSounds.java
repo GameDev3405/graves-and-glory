@@ -21,7 +21,7 @@ public final class UiSounds {
     static void play(AudioCues.Cue cue) {
         var client = MinecraftClient.getInstance();
         if (client == null || !THROTTLE.allow(cue, "ui", System.currentTimeMillis() / 50)) return;
-        var event = Registries.SOUND_EVENT.get(new Identifier("gravesandglory", cue.id));
+        var event = Registries.SOUND_EVENT.get(Identifier.of("gravesandglory", cue.id));
         if (event != null) client.getSoundManager().play(PositionedSoundInstance.master(event, cue.pitch, cue.volume));
     }
 }

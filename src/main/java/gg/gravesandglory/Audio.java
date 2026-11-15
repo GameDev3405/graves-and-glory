@@ -23,14 +23,14 @@ public final class Audio {
     /** Registers every event of the table (GravesAndGlory.onInitialize); the ids are the sounds.json keys. */
     public static void register() {
         for (String path : AudioCues.ids()) {
-            var id = new Identifier("gravesandglory", path);
+            var id = Identifier.of("gravesandglory", path);
             Registry.register(Registries.SOUND_EVENT, id, SoundEvent.of(id));
         }
     }
 
     /** The registered event of a cue, or null before registration. */
     public static SoundEvent event(AudioCues.Cue cue) {
-        return Registries.SOUND_EVENT.get(new Identifier("gravesandglory", cue.id));
+        return Registries.SOUND_EVENT.get(Identifier.of("gravesandglory", cue.id));
     }
 
     static SoundCategory category(AudioCues.Cue cue) {

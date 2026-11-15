@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class RankSync {
     private RankSync() {}
-    public static final Identifier CHANNEL = new Identifier("gravesandglory", "rank_v1");
+    public static final Identifier CHANNEL = Identifier.of("gravesandglory", "rank_v1");
     /** The entity id that means "forget every rank". */
     public static final int CLEAR = -1;
 

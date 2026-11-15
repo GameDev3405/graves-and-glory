@@ -1,0 +1,20 @@
+mixin references checked: 98  problems: 0
+signature drift (old -> new): 6
+  ChatHudMixin.java ChatHud.render 
+     old: ['(Lnet/minecraft/client/gui/DrawContext;III)V'] 
+     new: ['(Lnet/minecraft/client/gui/DrawContext;IIIZ)V']
+  CinematicHudMixin.java InGameHud.render 
+     old: ['(Lnet/minecraft/client/gui/DrawContext;F)V'] 
+     new: ['(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V']
+  CinematicHudMixin.java InGameHud.renderHotbar 
+     old: ['(FLnet/minecraft/client/gui/DrawContext;)V'] 
+     new: ['(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V']
+  EndingViewMixin.java GameRenderer.renderHand 
+     old: ['(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/Camera;F)V'] 
+     new: ['(Lnet/minecraft/client/render/Camera;FLorg/joml/Matrix4f;)V']
+  TroopAmphibiousPathMixin.java AmphibiousPathNodeMaker.getDefaultNodeType 
+     old: ['(Lnet/minecraft/world/BlockView;III)Lnet/minecraft/entity/ai/pathing/PathNodeType;'] 
+     new: ['(Lnet/minecraft/entity/ai/pathing/PathContext;III)Lnet/minecraft/entity/ai/pathing/PathNodeType;']
+  TroopPathMixin.java LandPathNodeMaker.getDefaultNodeType 
+     old: ['(Lnet/minecraft/world/BlockView;III)Lnet/minecraft/entity/ai/pathing/PathNodeType;'] 
+     new: ['(Lnet/minecraft/entity/ai/pathing/PathContext;III)Lnet/minecraft/entity/ai/pathing/PathNodeType;']

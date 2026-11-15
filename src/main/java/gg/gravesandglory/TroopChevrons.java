@@ -23,7 +23,7 @@ import java.util.Map;
  */
 final class TroopChevrons {
     private TroopChevrons() {}
-    static final Identifier TEXTURE=new Identifier(TroopModels.NAMESPACE,"textures/entity/troop/chevron.png");
+    static final Identifier TEXTURE=Identifier.of(TroopModels.NAMESPACE,"textures/entity/troop/chevron.png");
     /** Presentation constants (the plan's only code constants besides effect kinds): the texture's size in texels, the chevron's width in blocks, its lift over the head in blocks, how many texel rows the second chevron sits above the first, and the camera distance in blocks past which the chevron grows with the distance (so it keeps the size it has there on screen, and still reads at the 24-block range). */
     static final int TEX_W=17,TEX_H=7,STACK=4;
     static final float WIDTH=0.55f,LIFT=0.2f,GROW_FROM=16f;

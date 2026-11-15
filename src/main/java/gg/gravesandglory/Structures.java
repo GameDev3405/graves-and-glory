@@ -59,7 +59,7 @@ public final class Structures {
      *  its packs. A world generated folder is never read. Empty when there is no such file or it cannot be read. */
     public static Optional<NbtCompound> read(MinecraftServer server,String id){
         try{
-            var resource=server.getResourceManager().getResource(new Identifier(NS,"structures/"+id+".nbt"));
+            var resource=server.getResourceManager().getResource(Identifier.of(NS,"structures/"+id+".nbt"));
             if(resource.isEmpty())return Optional.empty();
             try(InputStream in=resource.get().getInputStream()){return Optional.of(NbtIo.readCompressed(in));}
         }catch(Exception e){System.err.println("[Graves and Glory] structure unreadable: "+id+": "+e);return Optional.empty();}

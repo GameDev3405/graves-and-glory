@@ -320,7 +320,7 @@ final class ArmouryTab {
                 UiTex.draw(g, "table/frame-back-48", pb.x(), pb.y());
                 int edge = house == null ? DarkUi.SEPIA : 0xff000000 | house.accent(); // the frame in the House's own colour
                 g.drawBorder(pb.x() - 1, pb.y() - 1, pb.w() + 2, pb.h() + 2, edge);
-                if (house != null) g.drawTexture(new Identifier(house.glyph()), pb.x() + pb.w() + 6, card.y() + (card.h() - 16) / 2, 0, 0, 16, 16, 16, 16);
+                if (house != null) g.drawTexture(Identifier.of(house.glyph()), pb.x() + pb.w() + 6, card.y() + (card.h() - 16) / 2, 0, 0, 16, 16, 16, 16);
                 var nb = nameBoxes.get(r); var lines = UiMath.lines(t.name(), nb.w(), 2, w);
                 if (lines.size() == 1) lines = List.of(lines.get(0), kind(t));
                 int ty = card.y() + (card.h() - LINE * lines.size()) / 2 + 1;

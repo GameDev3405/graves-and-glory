@@ -215,7 +215,7 @@ final class CampScreen extends ArmyScreen {
             int x=getX(),y=getY();boolean chosen=selected(),focus=active&&(isHovered()||isFocused());
             g.fill(x,y,x+width,y+height,chosen?DarkUi.TAB_CHOSEN:focus?DarkUi.TAB_FOCUS:DarkUi.TAB_IDLE);g.drawBorder(x,y,width,height,chosen||focus?DarkUi.GOLD:DarkUi.TAB_EDGE);
             DarkUi.focus(g,this);
-            for(var row:Spec.HOUSES)if(row.id().equals(house))g.drawTexture(new Identifier(row.glyph()),x+6,y+6,0f,0f,16,16,16,16);
+            for(var row:Spec.HOUSES)if(row.id().equals(house))g.drawTexture(Identifier.of(row.glyph()),x+6,y+6,0f,0f,16,16,16,16);
             var font=textRenderer;g.drawText(font,font.trimToWidth(getMessage().getString(),width-34),x+28,y+10,chosen?DarkUi.PAPER:DarkUi.MUTED,false);
             if(chosen)g.fill(x,y+height-2,x+width,y+height,DarkUi.GOLD);
         }

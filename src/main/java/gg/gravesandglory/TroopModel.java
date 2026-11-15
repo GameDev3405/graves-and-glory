@@ -523,7 +523,7 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
     }
 
     private static String str(JsonObject o,String key){return o.has(key)&&!o.get(key).isJsonNull()?o.get(key).getAsString():"";}
-    private static Identifier id(String s){return s.isEmpty()?null:new Identifier(s);}
+    private static Identifier id(String s){return s.isEmpty()?null:Identifier.of(s);}
     private static double[] vec(JsonObject o,String key){JsonArray a=o.getAsJsonArray(key);double[] v=new double[a.size()];for(int i=0;i<v.length;i++)v[i]=a.get(i).getAsDouble();return v;}
     /** Whether the model carries its own shield (bones tagged shield), drawn in place of the vanilla shield item (TroopFeatures.Shield). */
     boolean ownShield(){for(Bone b:info.values())if("shield".equals(b.tag()))return true;return false;}

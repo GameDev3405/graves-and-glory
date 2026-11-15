@@ -62,8 +62,8 @@ final class ArmyCards {
             MobEntity e=ArmyMobs.portrait(spec.entity(),c.world);
             e.setCustomName(Text.literal(ArmyMobs.levelName(spec,1)));e.setCustomNameVisible(false);e.setPersistent();e.setSilent(true);
             RankSync.setLocal(e,new RankSync.Rank(1,weaponTier,armourTier));
-            e.equipStack(EquipmentSlot.MAINHAND,new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))));e.equipStack(EquipmentSlot.HEAD,new ItemStack(Registries.ITEM.get(new Identifier(spec.helmet()))));
-            var chest=new ItemStack(Registries.ITEM.get(new Identifier(spec.chest())));if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,colour);e.equipStack(EquipmentSlot.CHEST,chest);
+            e.equipStack(EquipmentSlot.MAINHAND,new ItemStack(Registries.ITEM.get(Identifier.of(spec.weapon()))));e.equipStack(EquipmentSlot.HEAD,new ItemStack(Registries.ITEM.get(Identifier.of(spec.helmet()))));
+            var chest=new ItemStack(Registries.ITEM.get(Identifier.of(spec.chest())));if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,colour);e.equipStack(EquipmentSlot.CHEST,chest);
             if(ArmyMobs.tags(spec).contains("shield"))e.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(spec,GravesAndGlory.Battle.PORTRAIT_FIELD));
             TroopModels.dress(e,"company");MADE.put(e,new Object[]{spec,weaponTier,armourTier,colour,key});return e;
         }

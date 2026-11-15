@@ -27,7 +27,7 @@ public final class ClipLibrary implements SimpleSynchronousResourceReloadListene
 
     public ClipLibrary(Map<String,List<String>> variantOrder){order=Map.copyOf(variantOrder);}
 
-    @Override public Identifier getFabricId(){return new Identifier(TroopModels.NAMESPACE,"clips");}
+    @Override public Identifier getFabricId(){return Identifier.of(TroopModels.NAMESPACE,"clips");}
 
     @Override public void reload(ResourceManager manager){
         Map<String,Clip> loaded=new TreeMap<>();

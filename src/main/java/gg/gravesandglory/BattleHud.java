@@ -127,7 +127,7 @@ public final class BattleHud {
     /** At every resource reload (fonts and the atlas can change there): wrap the lesson again, and try the HUD again after a texture
      *  stop. GravesAndGloryClient registers it. */
     public static final SimpleSynchronousResourceReloadListener RELOADER=new SimpleSynchronousResourceReloadListener(){
-        @Override public Identifier getFabricId(){return new Identifier("gravesandglory","battle_hud");}
+        @Override public Identifier getFabricId(){return Identifier.of("gravesandglory","battle_hud");}
         @Override public void reload(ResourceManager manager){wrappedCopy=null;stopped=false;}
     };
 
@@ -197,7 +197,7 @@ public final class BattleHud {
             int tier=tiers.get(id);String numeral=MatchStats.roman(tier);
             // the parchment chip the readout and the other small plates use, cut to the chip's width: its left end, then its right end (art 5 px wider than the box, as the readout's)
             int lw=27,rw=box[2]+5-lw;UiTex.part(g,"hud/chip-plain",box[0]-1,box[1]-1,0,0,lw,24);UiTex.part(g,"hud/chip-plain",box[0]-1+lw,box[1]-1,181-rw,0,rw,24);
-            g.drawTexture(new Identifier(row.glyph()),box[0]+3,box[1]+1,0f,0f,16,16,16,16);
+            g.drawTexture(Identifier.of(row.glyph()),box[0]+3,box[1]+1,0f,0f,16,16,16,16);
             g.drawText(font,numeral,box[0]+22,box[1]+5,DarkUi.INK_TEXT,false);
             r.put("trait-"+id,box);tx.put("trait-"+id,numeral);
         }

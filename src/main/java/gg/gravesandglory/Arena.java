@@ -351,7 +351,7 @@ public final class Arena {
             boolean clear=!road(x,z)&&h<84&&Math.abs(x-riverX(z))>15&&surface==natural(h); // no plant on the stone and the dirt of a steep margin
             for(var p:Spec.POINTS)if(Math.hypot(x-p.x(),z-p.z())<deco.avoidPointRadius())clear=false;
             for(var s:Spec.STRUCTURES)if(Math.abs(x-s.x())<s.width()/2+deco.structureMargin()&&Math.abs(z-s.z())<s.depth()/2+deco.structureMargin())clear=false;
-            if(clear&&hash%deco.plantEvery()==0)put(w,x,h+1,z,CampaignMaps.selected==2?Blocks.SNOW:CampaignMaps.selected==3?Blocks.FERN:hash%deco.flowerEvery()==0?Blocks.POPPY:Blocks.GRASS);
+            if(clear&&hash%deco.plantEvery()==0)put(w,x,h+1,z,CampaignMaps.selected==2?Blocks.SNOW:CampaignMaps.selected==3?Blocks.FERN:hash%deco.flowerEvery()==0?Blocks.POPPY:Blocks.SHORT_GRASS);
         }
         if(Math.abs(x)==Field.halfX()||Math.abs(z)==Field.halfZ())box(w,x,h+1,z,1,6,1,Blocks.BARRIER);
     }

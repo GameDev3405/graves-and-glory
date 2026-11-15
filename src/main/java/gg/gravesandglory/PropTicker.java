@@ -5,7 +5,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import gg.gravesandglory.mixin.DisplayPoseAccessor;
 import net.minecraft.entity.decoration.DisplayEntity;
-import net.minecraft.particle.DefaultParticleType;
+import net.minecraft.particle.SimpleParticleType;
 import net.minecraft.particle.ParticleType;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.command.CommandManager;
@@ -42,7 +42,7 @@ public final class PropTicker {
         double maxMicros(){long m=0;for(int i=0;i<runs;i++)m=Math.max(m,nanos[i]);return m/1000.0;}
     }
     private static final Map<World,Stats> STATS=new HashMap<>();
-    /** Resolved effect ids: a DefaultParticleType, a SoundEvent, or Boolean.FALSE for an id that names neither. */
+    /** Resolved effect ids: a SimpleParticleType, a SoundEvent, or Boolean.FALSE for an id that names neither. */
     private static final Map<String,Object> IDS=new HashMap<>();
 
     public static void init(){
@@ -180,7 +180,7 @@ public final class PropTicker {
         if(kind==Boolean.FALSE)return;
         double[] p=PropEffects.at(l.def(),l.facing(),e);
         double x=l.anchor().getX()+p[0],y=l.anchor().getY()+p[1],z=l.anchor().getZ()+p[2];
-        if(kind instanceof DefaultParticleType t)w.spawnParticles(t,x,y,z,e.count(),e.spread(),e.spread()*.5,e.spread(),0.01);
+        if(kind instanceof SimpleParticleType t)w.spawnParticles(t,x,y,z,e.count(),e.spread(),e.spread()*.5,e.spread(),0.01);
         else if(kind instanceof SoundEvent s)w.playSound(null,x,y,z,s,SoundCategory.BLOCKS,e.volume(),e.pitch());
     }
 
@@ -190,10 +190,10 @@ public final class PropTicker {
         if(o!=null)return o;
         o=Boolean.FALSE;
         try{
-            Identifier id=new Identifier(e.id());
+            Identifier id=Identifier.of(e.id());
             if(e.kind().equals("particle")){
                 ParticleType<?> t=Registries.PARTICLE_TYPE.get(id);
-                if(t instanceof DefaultParticleType d&&Registries.PARTICLE_TYPE.getId(t).equals(id))o=d;
+                if(t instanceof SimpleParticleType d&&Registries.PARTICLE_TYPE.getId(t).equals(id))o=d;
             }else if(Registries.SOUND_EVENT.containsId(id))o=Registries.SOUND_EVENT.get(id);
         }catch(InvalidIdentifierException x){/* stays FALSE */}
         if(o==Boolean.FALSE)Props.LOG.warn("[props] effect {} {} is not a plain vanilla particle or sound; skipped",e.kind(),e.id());

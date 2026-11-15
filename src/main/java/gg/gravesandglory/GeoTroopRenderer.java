@@ -15,8 +15,8 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.animation.AnimationState;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.model.data.EntityModelData;
 import software.bernie.geckolib.renderer.GeoReplacedEntityRenderer;
@@ -92,7 +92,7 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
     /** The veteran trim a Look draws through this renderer: its armour tier's overlay when it is a veteran and the troop has one, else null. */
     private Identifier trimFor(TroopModels.Look l) {
         if (!l.veteran()) return null;
-        Identifier id = new Identifier(MOD, "textures/entity/troop/" + animatable.troop + "_geo/veteran_t" + armour + ".png");
+        Identifier id = Identifier.of(MOD, "textures/entity/troop/" + animatable.troop + "_geo/veteran_t" + armour + ".png");
         if (trims[armour] == null) trims[armour] = MinecraftClient.getInstance().getResourceManager().getResource(id).isPresent();
         return trims[armour] ? id : null;
     }
@@ -105,7 +105,7 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
         face = TroopFaces.pick(e.getUuid(), faces, -1, 0, TroopModels.dressed(e), TroopModels.forcedFace(e));
         shieldShown = !e.getOffHandStack().isEmpty();
         String cloth = TroopModels.clothOf(e, l), side = cloth != null && SIDES.contains(cloth) ? cloth : "linen";
-        geo.texture = new Identifier(MOD, "textures/entity/troop/" + animatable.troop + "_geo/t" + armour + "_" + side + ".png");
+        geo.texture = Identifier.of(MOD, "textures/entity/troop/" + animatable.troop + "_geo/t" + armour + "_" + side + ".png");
         trim = e.isInvisible() ? null : trimFor(l);
         trimDrawn = null;
         render(e, yaw, tickDelta, matrices, consumers, light);
@@ -144,7 +144,7 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
         if (rules != null) return;
         List<Rule> out = new ArrayList<>();
         int count = 1;
-        Identifier id = new Identifier(MOD, "troop_rig/" + animatable.troop + ".json");
+        Identifier id = Identifier.of(MOD, "troop_rig/" + animatable.troop + ".json");
         var res = MinecraftClient.getInstance().getResourceManager().getResource(id);
         if (res.isPresent()) {
             try (Reader reader = res.get().getReader()) {
@@ -181,9 +181,9 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
         /** The bow's draw-frame bones and their frame (0 rest to 3 full draw); empty for a troop without a bow. Set by rules(). */
         java.util.Map<String, Integer> drawBones = java.util.Map.of();
         Model(String troop) {
-            model = new Identifier(MOD, "geo/troop/" + troop + ".geo.json");
-            animations = new Identifier(MOD, "animations/troop/" + troop + ".animation.json");
-            texture = new Identifier(MOD, "textures/entity/troop/" + troop + "_geo/t1_linen.png");
+            model = Identifier.of(MOD, "geo/troop/" + troop + ".geo.json");
+            animations = Identifier.of(MOD, "animations/troop/" + troop + ".animation.json");
+            texture = Identifier.of(MOD, "textures/entity/troop/" + troop + "_geo/t1_linen.png");
         }
         @Override public Identifier getModelResource(GeoTroop animatable) { return model; }
         @Override public Identifier getTextureResource(GeoTroop animatable) { return texture; }
@@ -198,12 +198,12 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
         public void setCustomAnimations(GeoTroop animatable, long instanceId, AnimationState<GeoTroop> state) {
             // The bow shows the draw frame the clips key on the "draw" bone's x position. This runs per troop after its controllers
             // (preRender runs before them and shows the tier's frames), so it only hides the frames not drawn now.
-            CoreGeoBone draw = drawBones.isEmpty() ? null : getAnimationProcessor().getBone("draw");
+            GeoBone draw = drawBones.isEmpty() ? null : getAnimationProcessor().getBone("draw");
             if (draw != null) {
                 int frame = MathHelper.clamp(Math.round(Math.abs(draw.getPosX())), 0, FRAMES.size() - 1);
-                for (var d : drawBones.entrySet()) if (d.getValue() != frame) { CoreGeoBone b = getAnimationProcessor().getBone(d.getKey()); if (b != null) b.setHidden(true); }
+                for (var d : drawBones.entrySet()) if (d.getValue() != frame) { GeoBone b = getAnimationProcessor().getBone(d.getKey()); if (b != null) b.setHidden(true); }
             }
-            CoreGeoBone head = getAnimationProcessor().getBone("head");
+            GeoBone head = getAnimationProcessor().getBone("head");
             EntityModelData data = state.getData(DataTickets.ENTITY_MODEL_DATA);
             if (head == null || data == null) return;
             if (state.getData(DataTickets.ENTITY) instanceof net.minecraft.entity.LivingEntity l && (l.isDead() || l.deathTime > 0)) return;

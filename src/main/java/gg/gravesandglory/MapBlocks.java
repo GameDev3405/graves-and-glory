@@ -52,18 +52,18 @@ public final class MapBlocks {
     public static final String MOD = "gravesandglory";
     /** The one place that names each block's vanilla stand-in for a plain client (the later Polymer layer reads this). */
     public static final Map<Identifier, Identifier> STAND_INS = Map.of(
-        new Identifier(MOD, "troop_fence"), new Identifier("minecraft", "barrier"),
-        new Identifier(MOD, "still_water"), new Identifier("minecraft", "barrier"));
+        Identifier.of(MOD, "troop_fence"), Identifier.of("minecraft", "barrier"),
+        Identifier.of(MOD, "still_water"), Identifier.of("minecraft", "barrier"));
 
     /** The still-water top, in blocks above the block floor (14/16, as vanilla water draws). */
     public static final double SURFACE = 14 / 16.0;
     /** How far (blocks) a recorded standing place may be and still be used to put an entity back; farther, it is moved to the nearest bank instead. */
     static final double RETURN_RANGE = 8, BANK_RANGE = 12;
 
-    public static final Block TROOP_FENCE = Registry.register(Registries.BLOCK, new Identifier(MOD, "troop_fence"), new Fence(settings()));
-    public static final Block STILL_WATER = Registry.register(Registries.BLOCK, new Identifier(MOD, "still_water"), new StillWater(settings()));
-    public static final Item TROOP_FENCE_ITEM = Registry.register(Registries.ITEM, new Identifier(MOD, "troop_fence"), new BlockItem(TROOP_FENCE, new Item.Settings()));
-    public static final Item STILL_WATER_ITEM = Registry.register(Registries.ITEM, new Identifier(MOD, "still_water"), new BlockItem(STILL_WATER, new Item.Settings()));
+    public static final Block TROOP_FENCE = Registry.register(Registries.BLOCK, Identifier.of(MOD, "troop_fence"), new Fence(settings()));
+    public static final Block STILL_WATER = Registry.register(Registries.BLOCK, Identifier.of(MOD, "still_water"), new StillWater(settings()));
+    public static final Item TROOP_FENCE_ITEM = Registry.register(Registries.ITEM, Identifier.of(MOD, "troop_fence"), new BlockItem(TROOP_FENCE, new Item.Settings()));
+    public static final Item STILL_WATER_ITEM = Registry.register(Registries.ITEM, Identifier.of(MOD, "still_water"), new BlockItem(STILL_WATER, new Item.Settings()));
 
     /** What the still-water rule remembers of one living entity: where it last stood on anything else (and in which world), when it may next search for a bank, and how it was put back. */
     static final class Last {

@@ -3,14 +3,14 @@ package gg.gravesandglory;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animatable.model.CoreGeoModel;
-import software.bernie.geckolib.core.animation.Animation;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.keyframe.BoneAnimation;
-import software.bernie.geckolib.core.object.PlayState;
-import software.bernie.geckolib.core.state.BoneSnapshot;
+import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.model.GeoModel;
+import software.bernie.geckolib.animation.Animation;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.keyframe.BoneAnimation;
+import software.bernie.geckolib.animation.PlayState;
+import software.bernie.geckolib.animation.state.BoneSnapshot;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -128,7 +128,7 @@ final class StanceController extends AnimationController<GeoTroop> {
     }
 
     @Override
-    public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
+    public void process(GeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, GeoBone> bones,
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e == null || e.getWorld() == null) return;
@@ -238,9 +238,9 @@ final class StanceController extends AnimationController<GeoTroop> {
     }
 
     /** Adds an additive clip's offsets at {@code t} to every bone it keys (the clip starts and ends at zero). */
-    private static void addClip(Animation clip, double t, Map<String, CoreGeoBone> bones) {
+    private static void addClip(Animation clip, double t, Map<String, GeoBone> bones) {
         for (BoneAnimation b : clip.boneAnimations()) {
-            CoreGeoBone bone = bones.get(b.boneName());
+            GeoBone bone = bones.get(b.boneName());
             if (bone == null) continue;
             var rot = b.rotationKeyFrames();
             if (rot.xKeyframes().isEmpty()) continue;
@@ -257,9 +257,9 @@ final class StanceController extends AnimationController<GeoTroop> {
     }
 
     /** Adds the clip's pose at {@code t}, by weight {@code w}, into each keyed bone's accumulator. */
-    private void accumulate(Animation clip, double t, Map<String, CoreGeoBone> bones, float w) {
+    private void accumulate(Animation clip, double t, Map<String, GeoBone> bones, float w) {
         for (BoneAnimation b : clip.boneAnimations()) {
-            CoreGeoBone bone = bones.get(b.boneName());
+            GeoBone bone = bones.get(b.boneName());
             if (bone == null) continue;
             float[] a = acc.computeIfAbsent(b.boneName(), k -> new float[8]);
             var rot = b.rotationKeyFrames();
@@ -287,10 +287,10 @@ final class StanceController extends AnimationController<GeoTroop> {
      * Lerps each accumulated bone from what the gait wrote toward the weighted mean of the poses, by their summed weight (at most 1):
      * one pose alone at weight w is a plain lerp, two poses crossfading share the bone without overshooting.
      */
-    private void apply(Map<String, CoreGeoBone> bones) {
+    private void apply(Map<String, GeoBone> bones) {
         for (Map.Entry<String, float[]> en : acc.entrySet()) {
             float[] a = en.getValue();
-            CoreGeoBone bone = bones.get(en.getKey());
+            GeoBone bone = bones.get(en.getKey());
             if (bone == null) continue;
             if (a[6] > 0) {
                 float k = Math.min(1, a[6]);

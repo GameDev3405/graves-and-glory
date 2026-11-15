@@ -71,7 +71,7 @@ final class TroopKnowledge {
     static String item(String id) {
         if (id == null || id.isBlank() || id.equals("-")) return "";
         try {
-            var it = Registries.ITEM.get(new Identifier(id));
+            var it = Registries.ITEM.get(Identifier.of(id));
             if (it == net.minecraft.item.Items.AIR) return "";
             return it.getName().getString();
         } catch (Exception e) {

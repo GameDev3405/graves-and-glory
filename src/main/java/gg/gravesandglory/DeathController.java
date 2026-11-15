@@ -3,13 +3,13 @@ package gg.gravesandglory;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animatable.model.CoreGeoModel;
-import software.bernie.geckolib.core.animation.Animation;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.object.PlayState;
-import software.bernie.geckolib.core.state.BoneSnapshot;
+import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.model.GeoModel;
+import software.bernie.geckolib.animation.Animation;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.PlayState;
+import software.bernie.geckolib.animation.state.BoneSnapshot;
 
 import java.util.Collections;
 import java.util.Map;
@@ -96,7 +96,7 @@ final class DeathController extends AnimationController<GeoTroop> {
     static double[] riseAt(double elapsed, int window, double fake, double rise) { return MotionEngine.riseAt(elapsed, window, fake, rise); } // moved unchanged: the old model shares it (TroopMotion.rise)
 
     /** The rise the troop is in at world time {@code now} ({@link #riseAt}), or null: none heard, none in its span, or its model lacks either clip. */
-    static double[] rising(CoreGeoModel<GeoTroop> model, GeoTroop troop, Entity e, double now) {
+    static double[] rising(GeoModel<GeoTroop> model, GeoTroop troop, Entity e, double now) {
         MotionEvents.Rise r = MotionEvents.Client.rise(e.getId());
         if (r == null) return null;
         Animation fake = model.getAnimation(troop, FAKE), rise = model.getAnimation(troop, RISE);
@@ -105,7 +105,7 @@ final class DeathController extends AnimationController<GeoTroop> {
     }
 
     @Override
-    public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
+    public void process(GeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, GeoBone> bones,
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e == null) return;

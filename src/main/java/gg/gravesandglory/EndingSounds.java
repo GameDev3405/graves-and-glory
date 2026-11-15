@@ -25,7 +25,7 @@ final class EndingSounds {
     /** Plays the cue named, or nothing when no such cue (or no such sound event) exists; true when it played. */
     static boolean play(String name) {
         var cue = MatchEnding.cue(name);
-        var event = cue == null ? null : Registries.SOUND_EVENT.get(new Identifier("gravesandglory", cue.id));
+        var event = cue == null ? null : Registries.SOUND_EVENT.get(Identifier.of("gravesandglory", cue.id));
         record(event == null ? "-" + name : name);
         if (event == null) return false;
         var c = MinecraftClient.getInstance();

@@ -34,7 +34,7 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
     /** The most faces a troop may have, its canonical one included (the build's FACES_MAX). */
     static final int MAX_FACES=8;
     static final Logger LOG=LoggerFactory.getLogger("gravesandglory");
-    @Override public Identifier getFabricId(){return new Identifier(TroopModels.NAMESPACE,"troop_models");}
+    @Override public Identifier getFabricId(){return Identifier.of(TroopModels.NAMESPACE,"troop_models");}
 
     /** The three lists of index.json: rigs, weapons and troops, every member a name. */
     record Index(List<String> rigs,List<String> weapons,List<String> troops){}
@@ -61,13 +61,13 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
             checkTroop(j);
             JsonObject rig=rigFiles.get(str(j,"rig"));need(rig!=null,"its rig "+str(j,"rig")+" did not load");
             String weapon=str(j,"weapon");need(weapon.equals("none")||weapons.containsKey(weapon),"its weapon "+weapon+" did not load");
-            for(var e:j.getAsJsonObject("skins").entrySet())texture(manager,new Identifier(e.getValue().getAsString()));
-            for(String key:List.of("veteran","glow","outer"))if(!str(j,key).isEmpty())texture(manager,new Identifier(str(j,key)));
+            for(var e:j.getAsJsonObject("skins").entrySet())texture(manager,Identifier.of(e.getValue().getAsString()));
+            for(String key:List.of("veteran","glow","outer"))if(!str(j,key).isEmpty())texture(manager,Identifier.of(str(j,key)));
             // a troop of density above 1 ships a one-texel-a-px twin of each of its PNGs (<name>_far.png) for the draws past TroopDepth.NEAR_BLOCKS and the small cards
             int density=j.has("density")?j.get("density").getAsInt():1;need(density>=1&&density<=4,"density "+density+" is not 1 to 4");
             if(density>1){
-                for(var e:j.getAsJsonObject("skins").entrySet())texture(manager,TroopModels.twin(new Identifier(e.getValue().getAsString())));
-                for(String key:List.of("veteran","glow","outer"))if(!str(j,key).isEmpty())texture(manager,TroopModels.twin(new Identifier(str(j,key))));
+                for(var e:j.getAsJsonObject("skins").entrySet())texture(manager,TroopModels.twin(Identifier.of(e.getValue().getAsString())));
+                for(String key:List.of("veteran","glow","outer"))if(!str(j,key).isEmpty())texture(manager,TroopModels.twin(Identifier.of(str(j,key))));
             }
             boolean team=false;for(JsonElement b:j.getAsJsonArray("bones"))team|=b.getAsJsonObject().has("team")&&b.getAsJsonObject().get("team").getAsBoolean();
             String own=str(j,"cloth");
@@ -274,7 +274,7 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
             bigFacesFirst(far,"the far version");
         }else need(!w.has("far")||w.get("far").isJsonArray()&&w.getAsJsonArray("far").isEmpty(),"a sprite weapon has no far version");
         return new TroopModels.Weapon(str(w,"weapon"),List.copyOf(meshes),far,pull,ModelTransform.of(p[0],p[1],p[2],r[0]*MathHelper.RADIANS_PER_DEGREE,r[1]*MathHelper.RADIANS_PER_DEGREE,r[2]*MathHelper.RADIANS_PER_DEGREE),
-            List.copyOf(nocks),new Identifier(str(w,"texture")),glow.isEmpty()?null:new Identifier(glow));
+            List.copyOf(nocks),Identifier.of(str(w,"texture")),glow.isEmpty()?null:Identifier.of(glow));
     }
 
     /** A sprite's mesh (a sprite weapon's frame, a cube weapon's far version) opens with its two big faces, north then south, each spanning the mesh in x and y: a flat draw keeps the first two quads. */
@@ -287,7 +287,7 @@ public final class TroopModelLoader implements SimpleSynchronousResourceReloadLi
     }
 
     static JsonObject read(ResourceManager manager,String file)throws Exception{
-        var res=manager.getResource(new Identifier(TroopModels.NAMESPACE,FOLDER+file));if(res.isEmpty())throw new IllegalArgumentException("missing");
+        var res=manager.getResource(Identifier.of(TroopModels.NAMESPACE,FOLDER+file));if(res.isEmpty())throw new IllegalArgumentException("missing");
         try(Reader in=res.get().getReader()){return JsonParser.parseReader(in).getAsJsonObject();}
     }
     static Map<String,String> hands(JsonObject rig){JsonObject h=rig.getAsJsonObject("hands");need(h!=null&&h.has("right")&&h.has("left"),"hands must name right and left");return Map.of("right",str(h,"right"),"left",str(h,"left"));}

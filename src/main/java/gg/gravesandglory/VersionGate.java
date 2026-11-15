@@ -13,7 +13,7 @@ import net.minecraft.util.Identifier;
 
 /** Refuse incompatible clients during LOGIN, before any profile or battle packet. */
 public final class VersionGate {
-    public static final Identifier CHANNEL = new Identifier("gravesandglory", "release_check_v1");
+    public static final Identifier CHANNEL = Identifier.of("gravesandglory", "release_check_v1");
     public static final String VERSION = FabricLoader.getInstance().getModContainer("gravesandglory")
             .orElseThrow().getMetadata().getVersion().getFriendlyString();
     public static final String BUILD = readBuild();

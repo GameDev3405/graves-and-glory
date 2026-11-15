@@ -85,7 +85,7 @@ public final class Props {
 
     public static void init(){
         ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(new SimpleSynchronousResourceReloadListener(){
-            @Override public Identifier getFabricId(){return new Identifier("gravesandglory","props");}
+            @Override public Identifier getFabricId(){return Identifier.of("gravesandglory","props");}
             @Override public void reload(ResourceManager manager){DEFS=load(manager);}
         });
         ServerChunkEvents.CHUNK_LOAD.register((w,chunk)->PENDING_CHUNKS.computeIfAbsent(w,k->new HashMap<>()).put(chunk.getPos().toLong(),0));

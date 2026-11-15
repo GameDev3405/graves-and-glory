@@ -2,14 +2,14 @@ package gg.gravesandglory;
 
 import net.minecraft.entity.Entity;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animatable.model.CoreGeoModel;
-import software.bernie.geckolib.core.animation.Animation;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.keyframe.BoneAnimation;
-import software.bernie.geckolib.core.object.PlayState;
-import software.bernie.geckolib.core.state.BoneSnapshot;
+import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.model.GeoModel;
+import software.bernie.geckolib.animation.Animation;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.keyframe.BoneAnimation;
+import software.bernie.geckolib.animation.PlayState;
+import software.bernie.geckolib.animation.state.BoneSnapshot;
 
 import java.util.Collections;
 import java.util.Map;
@@ -64,7 +64,7 @@ final class HitController extends AnimationController<GeoTroop> {
     }
 
     @Override
-    public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
+    public void process(GeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, GeoBone> bones,
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e == null || e.getWorld() == null) return;
@@ -133,7 +133,7 @@ final class HitController extends AnimationController<GeoTroop> {
     }
 
     /** Adds the footwork under {@code clip} (its _legs clip: hips, legs and feet, rotations and the hips' drop), times {@code k}. */
-    private void legs(CoreGeoModel<GeoTroop> model, Animation clip, double t, Map<String, CoreGeoBone> bones, double k) {
+    private void legs(GeoModel<GeoTroop> model, Animation clip, double t, Map<String, GeoBone> bones, double k) {
         if (k <= 0) return;
         Animation legs = model.getAnimation(animatable, clip.name() + "_legs");
         if (legs == null || t >= legs.length()) return;
@@ -142,9 +142,9 @@ final class HitController extends AnimationController<GeoTroop> {
     }
 
     /** Adds the clip's offsets at {@code t}, times {@code k}, to every bone it keys. The clips start and end at zero. */
-    private static void add(Animation clip, double t, Map<String, CoreGeoBone> bones, float k) {
+    private static void add(Animation clip, double t, Map<String, GeoBone> bones, float k) {
         for (BoneAnimation b : clip.boneAnimations()) {
-            CoreGeoBone bone = bones.get(b.boneName());
+            GeoBone bone = bones.get(b.boneName());
             if (bone == null) continue;
             var rot = b.rotationKeyFrames();
             if (rot.xKeyframes().isEmpty()) continue;

@@ -22,7 +22,7 @@ final class BuildWorlds {
     record Plan(String id,RegistryKey<World> key,List<LobbyCanvas.Area> areas,List<LobbyCanvas.Line> lines,Map<String,double[]> warps){}
 
     static List<String> ids(){var all=new ArrayList<String>();all.add("lobby");for(var m:Spec.MAPS)all.add(m.id());return all;}
-    static RegistryKey<World> key(String id){return RegistryKey.of(RegistryKeys.WORLD,new Identifier("gravesandglory","build_"+id));}
+    static RegistryKey<World> key(String id){return RegistryKey.of(RegistryKeys.WORLD,Identifier.of("gravesandglory","build_"+id));}
     static String safe(String id){return id.toLowerCase().replaceAll("[^a-z0-9_-]","_");}
 
     /** Every plan, the lobby first, then the maps in Spec.MAPS order. Selects each map in turn (build mode has no battle to disturb). */

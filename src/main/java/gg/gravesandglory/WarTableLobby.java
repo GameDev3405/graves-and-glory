@@ -520,7 +520,7 @@ final class WarTableLobby {
 
     void seal(DrawContext g, String house, int x, int y, int size) {
         var h = houseRow(house);
-        if (h != null) g.drawTexture(new Identifier(h.glyph()), x, y, 0f, 0f, size, size, size, size);
+        if (h != null) g.drawTexture(Identifier.of(h.glyph()), x, y, 0f, 0f, size, size, size, size);
     }
 
     // ---- the council sheet ----

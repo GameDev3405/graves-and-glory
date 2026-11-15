@@ -28,7 +28,7 @@ import net.minecraft.world.World;
  * leaves at most an unsaved wagon in a loaded chunk, which ConvoyMode.recover removes by type and tag).
  */
 public final class WagonEntity extends Entity {
-    public static final EntityType<WagonEntity> TYPE = Registry.register(Registries.ENTITY_TYPE, new Identifier("gravesandglory", "supply_wagon"),
+    public static final EntityType<WagonEntity> TYPE = Registry.register(Registries.ENTITY_TYPE, Identifier.of("gravesandglory", "supply_wagon"),
         FabricEntityTypeBuilder.<WagonEntity>create(SpawnGroup.MISC, WagonEntity::new)
             .dimensions(EntityDimensions.fixed(2.0f, 2.5f)).trackRangeBlocks(160).trackedUpdateRate(1)
             .disableSummon().disableSaving().fireImmune().build());

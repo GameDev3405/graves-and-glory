@@ -226,7 +226,7 @@ final class Portrait {
 
     /** The head subtree of a GeckoLib rig (Bedrock geometry: px, y up from the ground, the face toward -z); null when unreadable. */
     private static Bounds geo(String troop) {
-        var id = new Identifier("gravesandglory", "geo/troop/" + troop + ".geo.json");
+        var id = Identifier.of("gravesandglory", "geo/troop/" + troop + ".geo.json");
         var res = MinecraftClient.getInstance().getResourceManager().getResource(id);
         if (res.isEmpty()) return null;
         try (Reader r = res.get().getReader()) {

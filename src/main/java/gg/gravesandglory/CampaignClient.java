@@ -145,7 +145,7 @@ public final class CampaignClient {
         sound(c,"battle_intro",AudioCues.Cue.BATTLE_INTRO.volume);
         sound(c,AudioCues.Cue.BATTLE_DRUMS.id,AudioCues.Cue.BATTLE_DRUMS.volume); // war drums layered under the horns
     }
-    static void sound(MinecraftClient c,String id,float volume){if(c.player!=null)c.player.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(new net.minecraft.util.Identifier("gravesandglory",id)),SoundCategory.MASTER,volume,1);}
+    static void sound(MinecraftClient c,String id,float volume){if(c.player!=null)c.player.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(net.minecraft.util.Identifier.of("gravesandglory",id)),SoundCategory.MASTER,volume,1);}
     static void tick(MinecraftClient c){
         if(camera==null)return;
         if(c.player==null||!GravesAndGloryClient.running||cameraTicks>=120||c.currentScreen!=null){end(c);return;}

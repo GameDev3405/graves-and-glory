@@ -39,7 +39,7 @@ final class GearLooks {
         var it = p == null ? null : Gear.item(p.item);
         var f = familyOf(p);
         if (it == null || f == null) return ItemStack.EMPTY;
-        ItemStack s = new ItemStack(Registries.ITEM.get(new Identifier(f.item())));
+        ItemStack s = new ItemStack(Registries.ITEM.get(Identifier.of(f.item())));
         if (s.isEmpty()) return ItemStack.EMPTY;
         var r = Gear.rarity(p.rarity);
         int colour = r == null ? 0xffffff : Integer.parseInt(r.border().substring(1), 16);

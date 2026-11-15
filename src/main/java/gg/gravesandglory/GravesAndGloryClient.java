@@ -59,8 +59,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static boolean preparingMap;
     @Override public void onInitializeClient(){
         ClientLoginNetworking.registerGlobalReceiver(VersionGate.CHANNEL,(client,handler,buffer,listeners)->CompletableFuture.completedFuture(VersionGate.response()));
-        net.fabricmc.fabric.api.resource.ResourceManagerHelper.registerBuiltinResourcePack(new Identifier("gravesandglory","armory"),net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("gravesandglory").orElseThrow(),net.fabricmc.fabric.api.resource.ResourcePackActivationType.DEFAULT_ENABLED);
-        net.fabricmc.fabric.api.resource.ResourceManagerHelper.registerBuiltinResourcePack(new Identifier("gravesandglory","weapons"),net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("gravesandglory").orElseThrow(),net.fabricmc.fabric.api.resource.ResourcePackActivationType.DEFAULT_ENABLED);
+        net.fabricmc.fabric.api.resource.ResourceManagerHelper.registerBuiltinResourcePack(Identifier.of("gravesandglory","armory"),net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("gravesandglory").orElseThrow(),net.fabricmc.fabric.api.resource.ResourcePackActivationType.DEFAULT_ENABLED);
+        net.fabricmc.fabric.api.resource.ResourceManagerHelper.registerBuiltinResourcePack(Identifier.of("gravesandglory","weapons"),net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("gravesandglory").orElseThrow(),net.fabricmc.fabric.api.resource.ResourcePackActivationType.DEFAULT_ENABLED);
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STARTED.register(LookPacks::apply);
         try { LegacyDataMigration.instance(net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir(), Diagnostics.active()); }
         catch (java.io.IOException migration) { error="Could not migrate old collection/settings. Your originals are unchanged. Check storage and permissions."; }

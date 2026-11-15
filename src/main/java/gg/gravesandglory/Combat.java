@@ -21,7 +21,7 @@ import java.util.*;
 public final class Combat {
     private Combat() {}
     /** The damage type of every troop blow (data/gravesandglory/damage_type/troop.json). */
-    public static final RegistryKey<DamageType> TROOP = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, new Identifier("gravesandglory", "troop"));
+    public static final RegistryKey<DamageType> TROOP = RegistryKey.of(RegistryKeys.DAMAGE_TYPE, Identifier.of("gravesandglory", "troop"));
     /** How many hits LAST keeps. */
     static final int LOG_SIZE = 64;
 

@@ -322,7 +322,7 @@ public final class EndingClient {
             boolean any = false;
             for (int k = 0; k < gear.size() && k < CommanderGearFeature.SLOTS.length; k++) {
                 String id = gear.get(k).getAsString(); if (id.isEmpty()) continue;
-                var item = Registries.ITEM.get(new Identifier(id)); if (item == Items.AIR) continue;
+                var item = Registries.ITEM.get(Identifier.of(id)); if (item == Items.AIR) continue;
                 cmd.equipStack(CommanderGearFeature.SLOTS[k], new ItemStack(item)); any = true;
             }
             if (!any) { // a bot (or a commander with nothing worn): leather in the side's colour and a sword
@@ -341,9 +341,9 @@ public final class EndingClient {
                 MobEntity m = ArmyMobs.portrait(spec.entity(), c.world);
                 m.setCustomName(Text.literal(ArmyMobs.levelName(spec, 1))); m.setCustomNameVisible(false); m.setSilent(true);
                 RankSync.setLocal(m, new RankSync.Rank(1, 1, 1));
-                m.equipStack(EquipmentSlot.MAINHAND, new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))));
-                m.equipStack(EquipmentSlot.HEAD, new ItemStack(Registries.ITEM.get(new Identifier(spec.helmet()))));
-                var chest = new ItemStack(Registries.ITEM.get(new Identifier(spec.chest())));
+                m.equipStack(EquipmentSlot.MAINHAND, new ItemStack(Registries.ITEM.get(Identifier.of(spec.weapon()))));
+                m.equipStack(EquipmentSlot.HEAD, new ItemStack(Registries.ITEM.get(Identifier.of(spec.helmet()))));
+                var chest = new ItemStack(Registries.ITEM.get(Identifier.of(spec.chest())));
                 if (chest.getItem() instanceof DyeableItem dye && faction != null) dye.setColor(chest, faction.color());
                 m.equipStack(EquipmentSlot.CHEST, chest);
                 if (ArmyMobs.tags(spec).contains("shield")) m.equipStack(EquipmentSlot.OFFHAND, GravesAndGlory.Battle.shield(spec, faction == null ? GravesAndGlory.Battle.PORTRAIT_FIELD : faction.dye()));

@@ -417,7 +417,7 @@ final class WarTableReport {
         Spec.HousesRow row = null;
         for (var s : Spec.HOUSES) if (s.id().equals(h.get("house").getAsString())) row = s;
         if (row == null) return y;
-        g.drawTexture(new net.minecraft.util.Identifier(row.glyph()), x, y - 2, 0f, 0f, 16, 16, 16, 16);
+        g.drawTexture(net.minecraft.util.Identifier.of(row.glyph()), x, y - 2, 0f, 0f, 16, 16, 16, 16);
         g.drawText(font, heading(row.name()), x + 22, y + 2, DarkUi.INK_TEXT, false);
         int tier = h.get("tier").getAsInt();
         String trait = tier > 0 ? "Trait " + MatchStats.roman(tier) + " held " + h.get("traitSeconds").getAsInt() + "s" : "No trait tier";

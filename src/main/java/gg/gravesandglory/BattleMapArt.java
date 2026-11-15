@@ -142,8 +142,8 @@ public final class BattleMapArt {
             if (block == null) { out[i] = 0x808080; continue; }
             BlockState s = block.getDefaultState();
             float[] sum = new float[4];
-            if (palette[i].equals("minecraft:water")) add(c, sum, new Identifier("minecraft", "block/water_still"), WATER_TINT);
-            else if (palette[i].equals("minecraft:lava")) add(c, sum, new Identifier("minecraft", "block/lava_still"), -1);
+            if (palette[i].equals("minecraft:water")) add(c, sum, Identifier.of("minecraft", "block/water_still"), WATER_TINT);
+            else if (palette[i].equals("minecraft:lava")) add(c, sum, Identifier.of("minecraft", "block/lava_still"), -1);
             else {
                 BakedModel m = c.getBlockRenderManager().getModel(s);
                 List<BakedQuad> quads = new ArrayList<>(m.getQuads(s, Direction.UP, rnd));
@@ -173,7 +173,7 @@ public final class BattleMapArt {
 
     /** {mean r, g, b weighted by alpha, total alpha} of a block sprite's first frame, read from its texture file. */
     private static float[] mean(MinecraftClient c, Identifier sprite) {
-        var res = c.getResourceManager().getResource(new Identifier(sprite.getNamespace(), "textures/" + sprite.getPath() + ".png"));
+        var res = c.getResourceManager().getResource(Identifier.of(sprite.getNamespace(), "textures/" + sprite.getPath() + ".png"));
         if (res.isEmpty()) return null;
         try (InputStream in = res.get().getInputStream(); NativeImage im = NativeImage.read(in)) {
             int w = im.getWidth(), h = Math.min(im.getHeight(), w); // an animated strip: its first square frame

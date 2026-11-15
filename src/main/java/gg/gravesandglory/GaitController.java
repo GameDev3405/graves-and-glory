@@ -2,13 +2,13 @@ package gg.gravesandglory;
 
 import net.minecraft.entity.Entity;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animatable.model.CoreGeoModel;
-import software.bernie.geckolib.core.animation.Animation;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.keyframe.BoneAnimation;
-import software.bernie.geckolib.core.state.BoneSnapshot;
+import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.model.GeoModel;
+import software.bernie.geckolib.animation.Animation;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.keyframe.BoneAnimation;
+import software.bernie.geckolib.animation.state.BoneSnapshot;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -90,7 +90,7 @@ final class GaitController extends AnimationController<GeoTroop> {
     }
 
     @Override
-    public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
+    public void process(GeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, GeoBone> bones,
                         Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
         Entity e = state.getData(DataTickets.ENTITY);
         if (e != null) gait.update(e, seekTime, state.getPartialTick());
@@ -127,14 +127,14 @@ final class GaitController extends AnimationController<GeoTroop> {
      * into it, then keeps what the layer now shows for the next blend to start from. Every bone it has ever keyed is kept, not only those of the clip playing: a bone
      * the idle clip leaves unkeyed would otherwise keep the stale mid-stride value of the moving clip, a pose the troop no longer holds.
      */
-    void after(Map<String, CoreGeoBone> bones, double seekTime) {
+    void after(Map<String, GeoBone> bones, double seekTime) {
         if (from != null && seekTime < fromAt) from = null;   // the animation time went back (the troop was tracked anew): nothing to finish
         if (from != null) {
             double k = fromLength <= 0 ? 1 : Math.min(1, (seekTime - fromAt) / fromLength);
             blendFrom(bones, fromEased ? AttackController.smooth(k) : k, k >= 1);
         }
         for (String name : keyed) {
-            CoreGeoBone bone = bones.get(name);
+            GeoBone bone = bones.get(name);
             if (bone == null) continue;
             float[] a = wrote.computeIfAbsent(name, n -> new float[6]);
             a[0] = bone.getRotX(); a[1] = bone.getRotY(); a[2] = bone.getRotZ();
@@ -143,10 +143,10 @@ final class GaitController extends AnimationController<GeoTroop> {
     }
 
     /** Keeps the legs as drawn this frame, for the next set-off (see {@link #shown}); called by {@link Shown} once every layer's pose is on the bones. */
-    void shown(Map<String, CoreGeoBone> bones) {
+    void shown(Map<String, GeoBone> bones) {
         if (legBones == null) legBones = bones.keySet().stream().filter(n -> legWeight(n) > 0).toArray(String[]::new);
         for (String name : legBones) {
-            CoreGeoBone bone = bones.get(name);
+            GeoBone bone = bones.get(name);
             if (bone == null) continue;
             float[] a = shown.computeIfAbsent(name, n -> new float[3]);
             a[0] = bone.getRotX(); a[1] = bone.getRotY(); a[2] = bone.getRotZ();
@@ -161,12 +161,12 @@ final class GaitController extends AnimationController<GeoTroop> {
         private final GaitController legs;
 
         Shown(GeoTroop troop, GaitController legs) {
-            super(troop, "gait_shown", 0, s -> software.bernie.geckolib.core.object.PlayState.STOP);
+            super(troop, "gait_shown", 0, s -> software.bernie.geckolib.animation.PlayState.STOP);
             this.legs = legs;
         }
 
         @Override
-        public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
+        public void process(GeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, GeoBone> bones,
                             Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
             legs.shown(bones);
         }
@@ -177,13 +177,13 @@ final class GaitController extends AnimationController<GeoTroop> {
         private final GaitController legs, upper;
 
         After(GeoTroop troop, GaitController legs, GaitController upper) {
-            super(troop, "gait_after", 0, s -> software.bernie.geckolib.core.object.PlayState.STOP);
+            super(troop, "gait_after", 0, s -> software.bernie.geckolib.animation.PlayState.STOP);
             this.legs = legs;
             this.upper = upper;
         }
 
         @Override
-        public void process(CoreGeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, CoreGeoBone> bones,
+        public void process(GeoModel<GeoTroop> model, AnimationState<GeoTroop> state, Map<String, GeoBone> bones,
                             Map<String, BoneSnapshot> snapshots, double seekTime, boolean crashWhenCantFindBone) {
             rest(bones);
             legs.after(bones, seekTime);
@@ -200,8 +200,8 @@ final class GaitController extends AnimationController<GeoTroop> {
      * different bones, and none does.) Setting a bone marks it changed, so GeckoLib's own end-of-tick reset (to this same pose: these bones' snapshots never leave rest) no
      * longer runs for them. The head keeps the mark the renderer's look sets after the tick, so its rotation is left to the upper gait clips, which all key it.
      */
-    static void rest(Map<String, CoreGeoBone> bones) {
-        for (CoreGeoBone bone : bones.values()) {
+    static void rest(Map<String, GeoBone> bones) {
+        for (GeoBone bone : bones.values()) {
             BoneSnapshot init = bone.getInitialSnapshot();
             if (!bone.hasRotationChanged()) { bone.setRotX(init.getRotX()); bone.setRotY(init.getRotY()); bone.setRotZ(init.getRotZ()); }
             if (!bone.hasPositionChanged()) { bone.setPosX(init.getOffsetX()); bone.setPosY(init.getOffsetY()); bone.setPosZ(init.getOffsetZ()); }
@@ -215,10 +215,10 @@ final class GaitController extends AnimationController<GeoTroop> {
     }
 
     /** Lerps each bone from the pose it held at the start (setting off: the idle pose; stopping: the stride) toward what the clip wrote this frame, by {@code w}; done once the blend has run its length. */
-    private void blendFrom(Map<String, CoreGeoBone> bones, double w, boolean done) {
+    private void blendFrom(Map<String, GeoBone> bones, double w, boolean done) {
         float k = (float) w;
         for (Map.Entry<String, float[]> en : from.entrySet()) {
-            CoreGeoBone bone = bones.get(en.getKey());
+            GeoBone bone = bones.get(en.getKey());
             if (bone == null) continue;
             float[] a = en.getValue();
             float[] r = AttackController.near(a[0], a[1], a[2], bone.getRotX(), bone.getRotY(), bone.getRotZ());
@@ -255,7 +255,7 @@ final class GaitController extends AnimationController<GeoTroop> {
      * that is the one nearest the drawn legs, not the idle legs under the stance. Until 2026-11-14 it was what the bones held when {@link #process} began, the last draw
      * of the model: a lone troop's own drawn legs, but in a battle another troop's.
      */
-    static double matchPhase(Animation clip, Map<String, CoreGeoBone> bones, Map<String, float[]> pose) {
+    static double matchPhase(Animation clip, Map<String, GeoBone> bones, Map<String, float[]> pose) {
         final int steps = 48;
         double best = Double.MAX_VALUE, at = 0;
         for (int i = 0; i < steps; i++) {
@@ -263,7 +263,7 @@ final class GaitController extends AnimationController<GeoTroop> {
             for (BoneAnimation b : clip.boneAnimations()) {
                 double w = legWeight(b.boneName());
                 float[] now = pose.get(b.boneName());
-                CoreGeoBone bone = bones.get(b.boneName());
+                GeoBone bone = bones.get(b.boneName());
                 var rot = b.rotationKeyFrames();
                 if (w == 0 || now == null || bone == null || rot.xKeyframes().isEmpty()) continue;
                 BoneSnapshot init = bone.getInitialSnapshot();

@@ -211,7 +211,7 @@ final class CampWorld {
                 w.setBlockState(pos.set(x,h-1,z),block(CampTerrain.underAt(kind,h,rock,x,z),Blocks.DIRT).getDefaultState(),flags);
                 w.setBlockState(pos.set(x,h,z),block(kind,Blocks.GRASS_BLOCK).getDefaultState(),flags);
                 int plant=CampTerrain.plant(c,dx,dz,h,kind);
-                if(plant!=0)w.setBlockState(pos.set(x,h+1,z),(plant==1?Blocks.GRASS:Blocks.FERN).getDefaultState(),flags);
+                if(plant!=0)w.setBlockState(pos.set(x,h+1,z),(plant==1?Blocks.SHORT_GRASS:Blocks.FERN).getDefaultState(),flags);
             }
             long t2=System.nanoTime();int trees=0;
             for(int i=0;i<width;i++)for(int k=0;k<depth;k++){
@@ -249,7 +249,7 @@ final class CampWorld {
         var c=Spec.CAMP[0];VillagerEntity v=new VillagerEntity(EntityType.VILLAGER,w);
         v.refreshPositionAndAngles(c.originX()+s.x(),s.y(),c.originZ()+s.z(),(float)s.yaw(),0);v.setHeadYaw((float)s.yaw());v.setBodyYaw((float)s.yaw());
         v.setAiDisabled(true);v.setInvulnerable(true);v.setSilent(true);v.setPersistent();
-        var profession=Registries.VILLAGER_PROFESSION.get(new Identifier("minecraft",s.npc()));
+        var profession=Registries.VILLAGER_PROFESSION.get(Identifier.of("minecraft",s.npc()));
         v.setVillagerData(v.getVillagerData().withProfession(profession).withLevel(5));
         v.setCustomName(Text.literal(s.label().split(" / ")[0]));v.setCustomNameVisible(false);
         v.addCommandTag(TAG);v.addCommandTag("camp-generation:"+generation);v.addCommandTag("camp:"+s.page());

@@ -23,7 +23,7 @@ import java.util.*;
  * "[gear-clips] <reason>" and leaves every arm to vanilla.
  */
 public final class CommanderClips {
-    static final Identifier FILE = new Identifier(TroopModels.NAMESPACE, "gear_clips.json");
+    static final Identifier FILE = Identifier.of(TroopModels.NAMESPACE, "gear_clips.json");
     static final int FORMAT = 1;
 
     record Key(float t, float[] rightArm, float[] rightHand, float[] leftArm) {}
