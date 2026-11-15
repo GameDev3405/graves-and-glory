@@ -192,7 +192,9 @@ public final class EngineMap {
    if(solid[i]!=m.solid[i]||wa!=wb||(wa&&water[i]!=m.water[i])){bad++;if(first<0)first=i;}}
   if(bad>0){int x=first%w+m.ox,z=first/w+m.oz;out.add("columns: "+bad+" columns differ from the design, first at "+x+","+z+" (ground "+solid[first]+", design "+m.solid[first]+")");}
   for(Point p:m.points){int i=m.cellZ(p.z())*w+m.cellX(p.x());
-   if(solid[i]+1!=p.y())out.add("moved: point "+p.name()+" stands at y "+(solid[i]+1)+", design "+p.y());
+   // a roofed point (Hollowwood's shrine under the Yoke): the design stands below the column top, on a floor the packer baked into the nav field
+   boolean roofed=m.floorRoutes&&p.y()<solid[i]+1&&m.nav!=null&&m.nav.floorAt((int)Math.floor(p.x()),p.y()-1,(int)Math.floor(p.z()));
+   if(solid[i]+1!=p.y()&&!roofed)out.add("moved: point "+p.name()+" stands at y "+(solid[i]+1)+", design "+p.y());
    if(wetCell(water[i],solid[i]))out.add("in_water: point "+p.name()+" is in water");}
   for(Spawn s:m.spawns){int i=m.cellZ(s.z())*w+m.cellX(s.x());
    if(solid[i]+1!=s.y())out.add("moved: spawn "+s.id()+" stands at y "+(solid[i]+1)+", design "+s.y());

@@ -156,7 +156,7 @@ public final class NavFieldCheck {
         check(Math.abs(l1.z() - l2.z()) >= 1.5 && Math.abs(l1.z() - door3.z()) <= 1.01 && Math.abs(l2.z() - door3.z()) <= 1.01, "the lanes are spread across the 3 wide door, clamped to (width - 1) / 2: " + l1 + " " + l2);
 
         // 5. the bundled maps: follow the waypoints from each spawn to each point
-        for (String id : new String[]{"kingsfield_cq", "rivergate_ey", "ironhold_ip"}) {
+        for (String id : new String[]{"kingsfield_cq", "rivergate_ey", "ironhold_ip", "frostmarch_sw", "hollowwood_th"}) {
             Path dir = Path.of("src/main/resources/data/gravesandglory/sectionmaps/" + id);
             if (!Files.exists(dir.resolve("map.json"))) dir = Path.of(System.getProperty("user.dir")).resolve(dir);
             EngineMap m = EngineMap.read(dir);

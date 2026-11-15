@@ -223,7 +223,13 @@ def main(settings_path, sections_dir, out_dir):
         return min(w - 1, max(0, int(math.floor(o['x'] - ox)))), min(d - 1, max(0, int(math.floor(o['z'] - oz))))
 
     def stand(o):
+        # the standing y: the top solid block of the column, unless the settings give "y" (a point under a roof or an arch: Hollowwood's shrine under the Yoke),
+        # which must be a floor of that column
         cx, cz = cell(o)
+        if 'y' in o:
+            if o['y'] - 1 not in floors.get((cz, cx), []):
+                raise SystemExit(f"{o['id']}: y {o['y']} is no floor of its column (floors {sorted(floors.get((cz, cx), []))})")
+            return int(o['y'])
         return int(solid[cz, cx]) + 1
 
     points = [{'id': p['id'], 'name': p['name'], 'x': p['x'] - ox, 'y': stand(p), 'z': p['z'] - oz, 'radius': p['radius']}
@@ -234,7 +240,7 @@ def main(settings_path, sections_dir, out_dir):
         dist = floor_distances(floors, w, d, cell(s), stand(s) - 1)
         for p in st['points']:
             cx, cz = cell(p)
-            walk = min([dist[(cx, cz, y)] for y in floors.get((cz, cx), []) if (cx, cz, y) in dist], default=-1)
+            walk = min([dist[(cx, cz, y)] for y in floors.get((cz, cx), []) if (cx, cz, y) in dist and y == p.get('y', y + 1) - 1], default=-1)
             routes.append({'spawn': s['id'], 'point': p['name'], 'straight': round(math.hypot(p['x'] - s['x'], p['z'] - s['z']), 2),
                            'walk': walk if walk >= 0 else None})
     (out / 'columns.bin.gz').write_bytes(gzip.compress(np.stack([solid, water]).astype('<i2').tobytes(), mtime=0))

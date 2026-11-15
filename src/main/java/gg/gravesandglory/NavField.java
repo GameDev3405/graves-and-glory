@@ -298,6 +298,8 @@ public final class NavField {
         return best;
     }
 
+    /** a floor block at world (wx, floorY, wz): a troop stands on it at floorY + 1 */
+    public boolean floorAt(int wx, int floorY, int wz) { int x = wx - ox, z = wz - oz; if (x < 0 || x >= w || z < 0 || z >= d) return false; for (int i = start[z * w + x]; i < start[z * w + x + 1]; i++) if (ys[i] == floorY) return true; return false; }
     public boolean has(int wx, int wz) { int x = wx - ox, z = wz - oz; return x >= 0 && x < w && z >= 0 && z < d && start[z * w + x] < start[z * w + x + 1]; }
 
     /** The floor of column (wx, wz) a troop is put on, as {x, z, floor y}: the column's own top block (top) when it is a floor, else its lowest floor (the ground under a roof or a lintel);
@@ -395,14 +397,25 @@ public final class NavField {
         double tDX = dx == 0 ? Double.MAX_VALUE : 1 / Math.abs(dx), tDZ = dz == 0 ? Double.MAX_VALUE : 1 / Math.abs(dz);
         int cy = y;
         for (int steps = adx + adz; steps > 0; steps--) {
-            if (tMaxX < tMaxZ) { x += sx; tMaxX += tDX; } else { z += sz; tMaxZ += tDZ; }
-            if (x < 0 || x >= w || z < 0 || z >= d) return false;
-            int c = z * w + x, found = Integer.MIN_VALUE;
-            for (int i = start[c]; i < start[c + 1]; i++) if (Math.abs(ys[i] - cy) <= 1) { found = ys[i]; break; }
+            if (tMaxX == tMaxZ && steps > 1) { // the line goes exactly through a corner: either cell beside the corner will do (a wall-hugging cell of a diagonal tunnel still sees along it), then the cell across
+                int side = near(x, z + sz, cy);
+                if (side == Integer.MIN_VALUE) side = near(x + sx, z, cy);
+                if (side == Integer.MIN_VALUE) return false;
+                cy = side; x += sx; z += sz; tMaxX += tDX; tMaxZ += tDZ; steps--;
+            } else if (tMaxX < tMaxZ) { x += sx; tMaxX += tDX; } else { z += sz; tMaxZ += tDZ; }
+            int found = near(x, z, cy);
             if (found == Integer.MIN_VALUE) return false;
             cy = found;
         }
         return true;
+    }
+
+    /** The floor of column (x, z), field coordinates, within one block of y; Integer.MIN_VALUE when there is none or the column is off the field. */
+    private int near(int x, int z, int y) {
+        if (x < 0 || x >= w || z < 0 || z >= d) return Integer.MIN_VALUE;
+        int c = z * w + x;
+        for (int i = start[c]; i < start[c + 1]; i++) if (Math.abs(ys[i] - y) <= 1) return ys[i];
+        return Integer.MIN_VALUE;
     }
 
     /** The point a troop at (x, feet y, z) walks to on its way to a goal at (gx, gy, gz): null when it can walk straight at the goal (the line over the floors is clear), when it or the goal
@@ -422,18 +435,23 @@ public final class NavField {
         int n = nf;
         Waypoint best = null;
         boolean through = false;
+        int door = -1;
         for (int hop = 0; hop < HOPS; hop++) {
             int a = f.arc[n];
             if (a < 0) break;
             int cell = arcCell[a], col = colOf[cell];
             double px = col % w + ox + .5, pz = col / w + oz + .5;
             boolean portal = arcWidth[a] < PORTAL;
-            if (hop == 0 && portal && Math.hypot(px - x, pz - z) < AT_PORTAL) { n = arcTo[a]; through = true; continue; } // already at the door: on to the far side, a waypoint that is not reached is never given again
+            if (hop == 0 && portal && Math.hypot(px - x, pz - z) < AT_PORTAL) { n = arcTo[a]; through = true; door = cell; continue; } // already at the door: on to the far side, a waypoint that is not reached is never given again
             if (hop == 0 && !line(x, z, ys[from], px, pz)) { // the crossing is out of sight (a 4 x 4 node can hold a wall, a tent's jamb): the way inside the node to it first
                 Waypoint in = inside(from, arcCell[arcRev[a]], x, z, portal, arcWidth[a]);
                 if (in != null) { routed++; return in; }
             }
             if (hop > 0 && !through && (Math.hypot(px - x, pz - z) > AHEAD || !line(x, z, ys[from], px, pz))) break;
+            if (through && !line(x, z, ys[from], px, pz)) { // past the door the next crossing is round a corner (a boulder beside the door): the way inside the far node to it first
+                Waypoint in = inside(door, arcCell[arcRev[a]], x, z, portal, arcWidth[a]);
+                if (in != null) { routed++; return in; }
+            }
             through = false;
             best = new Waypoint(px, ys[cell] + 1, pz, portal, arcWidth[a]);
             if (portal) break;

@@ -84,7 +84,7 @@ public final class EngineMaps {
  static void apply(){
   int index=CampaignMaps.selected;var map=map(index);
   var points=new ArrayList<Spec.PointsRow>();
-  for(var p:map.points){int x=(int)Math.floor(p.x()),z=(int)Math.floor(p.z());points.add(new Spec.PointsRow(p.id(),p.name(),x,z,p.radius(),8,map.solid(x,z)));}
+  for(var p:map.points){int x=(int)Math.floor(p.x()),z=(int)Math.floor(p.z());points.add(new Spec.PointsRow(p.id(),p.name(),x,z,p.radius(),8,p.y()-1));} // the point's own floor (EngineMap.check holds it to the column top unless it is roofed): Hollowwood's shrine lies under the Yoke
   var roads=new ArrayList<CampaignMaps.Road>();
   for(var r:map.roads)for(int i=0;i+1<r.path().size();i++){double[] a=r.path().get(i),b=r.path().get(i+1);roads.add(new CampaignMaps.Road((int)Math.round(a[0]),(int)Math.round(a[1]),(int)Math.round(b[0]),(int)Math.round(b[1]),(int)Math.ceil(r.width()/2)));}
   Spec.STRUCTURES=new Spec.StructuresRow[0];Spec.TERRAIN=new Spec.TerrainRow[0];Spec.SCENERY=new Spec.SceneryRow[0];

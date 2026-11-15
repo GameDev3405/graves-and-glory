@@ -1,0 +1,696 @@
+{
+ "baseY": 64,
+ "columns": "columns.bin.gz",
+ "depth": 384,
+ "design_sha256": "03266a902948bc6583578a52a4ba495ab723d52e4e4c9adb7ce7f1aca99d5186",
+ "field": {
+  "halfX": 270,
+  "halfZ": 190
+ },
+ "floorY": 60,
+ "format": 1,
+ "id": "hollowwood_th",
+ "origin": [
+  -288,
+  -192
+ ],
+ "points": [
+  {
+   "id": "A",
+   "name": "Great Stump",
+   "radius": 17,
+   "x": 160,
+   "y": 79,
+   "z": 96
+  },
+  {
+   "id": "B",
+   "name": "The Yoke",
+   "radius": 17,
+   "x": 288,
+   "y": 63,
+   "z": 192
+  },
+  {
+   "id": "C",
+   "name": "Drowned Stump",
+   "radius": 17,
+   "x": 416,
+   "y": 79,
+   "z": 288
+  }
+ ],
+ "roads": [],
+ "routes": [
+  {
+   "point": "Great Stump",
+   "spawn": "dawn",
+   "straight": 245.08,
+   "walk": 328
+  },
+  {
+   "point": "The Yoke",
+   "spawn": "dawn",
+   "straight": 266.59,
+   "walk": 412
+  },
+  {
+   "point": "Drowned Stump",
+   "spawn": "dawn",
+   "straight": 365.08,
+   "walk": 398
+  },
+  {
+   "point": "Great Stump",
+   "spawn": "dusk",
+   "straight": 365.08,
+   "walk": 398
+  },
+  {
+   "point": "The Yoke",
+   "spawn": "dusk",
+   "straight": 266.59,
+   "walk": 412
+  },
+  {
+   "point": "Drowned Stump",
+   "spawn": "dusk",
+   "straight": 245.08,
+   "walk": 328
+  }
+ ],
+ "routesBy": "floors",
+ "spawns": [
+  {
+   "id": "dawn",
+   "team": "dawn",
+   "x": 52,
+   "y": 73,
+   "z": 316
+  },
+  {
+   "id": "dusk",
+   "team": "dusk",
+   "x": 524,
+   "y": 73,
+   "z": 68
+  }
+ ],
+ "tiles": [
+  {
+   "file": "hw_a1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 0
+  },
+  {
+   "file": "hw_b1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 0
+  },
+  {
+   "file": "hw_c1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 0
+  },
+  {
+   "file": "hw_d1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 0
+  },
+  {
+   "file": "hw_e1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 0
+  },
+  {
+   "file": "hw_f1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 0
+  },
+  {
+   "file": "hw_g1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 0
+  },
+  {
+   "file": "hw_h1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 0
+  },
+  {
+   "file": "hw_i1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 0
+  },
+  {
+   "file": "hw_a2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 64
+  },
+  {
+   "file": "hw_b2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 64
+  },
+  {
+   "file": "hw_c2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 64
+  },
+  {
+   "file": "hw_d2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 64
+  },
+  {
+   "file": "hw_e2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 64
+  },
+  {
+   "file": "hw_f2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 64
+  },
+  {
+   "file": "hw_g2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 64
+  },
+  {
+   "file": "hw_h2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 64
+  },
+  {
+   "file": "hw_i2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 64
+  },
+  {
+   "file": "hw_a3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 128
+  },
+  {
+   "file": "hw_b3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 128
+  },
+  {
+   "file": "hw_c3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 128
+  },
+  {
+   "file": "hw_d3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 128
+  },
+  {
+   "file": "hw_e3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 128
+  },
+  {
+   "file": "hw_f3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 128
+  },
+  {
+   "file": "hw_g3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 128
+  },
+  {
+   "file": "hw_h3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 128
+  },
+  {
+   "file": "hw_i3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 128
+  },
+  {
+   "file": "hw_a4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 192
+  },
+  {
+   "file": "hw_b4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 192
+  },
+  {
+   "file": "hw_c4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 192
+  },
+  {
+   "file": "hw_d4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 192
+  },
+  {
+   "file": "hw_e4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 192
+  },
+  {
+   "file": "hw_f4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 192
+  },
+  {
+   "file": "hw_g4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 192
+  },
+  {
+   "file": "hw_h4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 192
+  },
+  {
+   "file": "hw_i4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 192
+  },
+  {
+   "file": "hw_a5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 256
+  },
+  {
+   "file": "hw_b5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 256
+  },
+  {
+   "file": "hw_c5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 256
+  },
+  {
+   "file": "hw_d5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 256
+  },
+  {
+   "file": "hw_e5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 256
+  },
+  {
+   "file": "hw_f5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 256
+  },
+  {
+   "file": "hw_g5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 256
+  },
+  {
+   "file": "hw_h5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 256
+  },
+  {
+   "file": "hw_i5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 256
+  },
+  {
+   "file": "hw_a6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 320
+  },
+  {
+   "file": "hw_b6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 320
+  },
+  {
+   "file": "hw_c6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 320
+  },
+  {
+   "file": "hw_d6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 320
+  },
+  {
+   "file": "hw_e6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 320
+  },
+  {
+   "file": "hw_f6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 320
+  },
+  {
+   "file": "hw_g6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 320
+  },
+  {
+   "file": "hw_h6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 320
+  },
+  {
+   "file": "hw_i6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 320
+  }
+ ],
+ "width": 576
+}

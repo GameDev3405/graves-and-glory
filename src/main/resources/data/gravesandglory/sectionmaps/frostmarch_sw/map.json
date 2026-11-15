@@ -1,0 +1,696 @@
+{
+ "baseY": 64,
+ "columns": "columns.bin.gz",
+ "depth": 384,
+ "design_sha256": "84e7a5d4d883207824f5e3e7bfd9bbd7207ce71560f61332c81e591c74594339",
+ "field": {
+  "halfX": 270,
+  "halfZ": 190
+ },
+ "floorY": 60,
+ "format": 1,
+ "id": "frostmarch_sw",
+ "origin": [
+  -288,
+  -192
+ ],
+ "points": [
+  {
+   "id": "A",
+   "name": "Signal Shelf",
+   "radius": 17,
+   "x": 288,
+   "y": 81,
+   "z": 80
+  },
+  {
+   "id": "B",
+   "name": "Spine Cut",
+   "radius": 17,
+   "x": 288,
+   "y": 73,
+   "z": 192
+  },
+  {
+   "id": "C",
+   "name": "Refuge Shelf",
+   "radius": 17,
+   "x": 288,
+   "y": 81,
+   "z": 304
+  }
+ ],
+ "roads": [],
+ "routes": [
+  {
+   "point": "Signal Shelf",
+   "spawn": "dawn",
+   "straight": 279.43,
+   "walk": 368
+  },
+  {
+   "point": "Spine Cut",
+   "spawn": "dawn",
+   "straight": 256.0,
+   "walk": 296
+  },
+  {
+   "point": "Refuge Shelf",
+   "spawn": "dawn",
+   "straight": 279.43,
+   "walk": 368
+  },
+  {
+   "point": "Signal Shelf",
+   "spawn": "dusk",
+   "straight": 279.43,
+   "walk": 368
+  },
+  {
+   "point": "Spine Cut",
+   "spawn": "dusk",
+   "straight": 256.0,
+   "walk": 296
+  },
+  {
+   "point": "Refuge Shelf",
+   "spawn": "dusk",
+   "straight": 279.43,
+   "walk": 368
+  }
+ ],
+ "routesBy": "floors",
+ "spawns": [
+  {
+   "id": "dawn",
+   "team": "dawn",
+   "x": 32,
+   "y": 65,
+   "z": 192
+  },
+  {
+   "id": "dusk",
+   "team": "dusk",
+   "x": 544,
+   "y": 65,
+   "z": 192
+  }
+ ],
+ "tiles": [
+  {
+   "file": "fm_a1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 0
+  },
+  {
+   "file": "fm_b1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 0
+  },
+  {
+   "file": "fm_c1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 0
+  },
+  {
+   "file": "fm_d1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 0
+  },
+  {
+   "file": "fm_e1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 0
+  },
+  {
+   "file": "fm_f1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 0
+  },
+  {
+   "file": "fm_g1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 0
+  },
+  {
+   "file": "fm_h1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 0
+  },
+  {
+   "file": "fm_i1.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 0
+  },
+  {
+   "file": "fm_a2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 64
+  },
+  {
+   "file": "fm_b2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 64
+  },
+  {
+   "file": "fm_c2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 64
+  },
+  {
+   "file": "fm_d2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 64
+  },
+  {
+   "file": "fm_e2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 64
+  },
+  {
+   "file": "fm_f2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 64
+  },
+  {
+   "file": "fm_g2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 64
+  },
+  {
+   "file": "fm_h2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 64
+  },
+  {
+   "file": "fm_i2.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 64
+  },
+  {
+   "file": "fm_a3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 128
+  },
+  {
+   "file": "fm_b3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 128
+  },
+  {
+   "file": "fm_c3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 128
+  },
+  {
+   "file": "fm_d3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 128
+  },
+  {
+   "file": "fm_e3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 128
+  },
+  {
+   "file": "fm_f3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 128
+  },
+  {
+   "file": "fm_g3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 128
+  },
+  {
+   "file": "fm_h3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 128
+  },
+  {
+   "file": "fm_i3.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 128
+  },
+  {
+   "file": "fm_a4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 192
+  },
+  {
+   "file": "fm_b4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 192
+  },
+  {
+   "file": "fm_c4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 192
+  },
+  {
+   "file": "fm_d4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 192
+  },
+  {
+   "file": "fm_e4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 192
+  },
+  {
+   "file": "fm_f4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 192
+  },
+  {
+   "file": "fm_g4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 192
+  },
+  {
+   "file": "fm_h4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 192
+  },
+  {
+   "file": "fm_i4.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 192
+  },
+  {
+   "file": "fm_a5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 256
+  },
+  {
+   "file": "fm_b5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 256
+  },
+  {
+   "file": "fm_c5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 256
+  },
+  {
+   "file": "fm_d5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 256
+  },
+  {
+   "file": "fm_e5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 256
+  },
+  {
+   "file": "fm_f5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 256
+  },
+  {
+   "file": "fm_g5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 256
+  },
+  {
+   "file": "fm_h5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 256
+  },
+  {
+   "file": "fm_i5.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 256
+  },
+  {
+   "file": "fm_a6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 0,
+   "z": 320
+  },
+  {
+   "file": "fm_b6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 64,
+   "z": 320
+  },
+  {
+   "file": "fm_c6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 128,
+   "z": 320
+  },
+  {
+   "file": "fm_d6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 192,
+   "z": 320
+  },
+  {
+   "file": "fm_e6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 256,
+   "z": 320
+  },
+  {
+   "file": "fm_f6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 320,
+   "z": 320
+  },
+  {
+   "file": "fm_g6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 384,
+   "z": 320
+  },
+  {
+   "file": "fm_h6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 448,
+   "z": 320
+  },
+  {
+   "file": "fm_i6.stk",
+   "format": "stack",
+   "size": [
+    64,
+    81,
+    64
+   ],
+   "x": 512,
+   "z": 320
+  }
+ ],
+ "width": 576
+}
