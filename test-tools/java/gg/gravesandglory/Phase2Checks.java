@@ -3384,7 +3384,7 @@ public final class Phase2Checks implements ClientModInitializer {
         /** The damage-number overlay: a text display over a spot, at twice its size, facing the camera; unlabel takes them down. Spawned only by this suite. */
         void label(GravesAndGlory.Battle b,Vec3d at,String text){
             var e=EntityType.TEXT_DISPLAY.create(b.world);if(e==null)return;
-            var nbt=new net.minecraft.nbt.NbtCompound();nbt.putString("text",net.minecraft.text.Text.Serialization.toJsonString(net.minecraft.text.Text.literal(text),b.world.getRegistryManager()));nbt.putString("billboard","center");nbt.putInt("background",0x90000000);nbt.putInt("line_width",300);
+            var nbt=new net.minecraft.nbt.NbtCompound();nbt.putString("text",net.minecraft.text.Text.Serialization.toJsonString(net.minecraft.text.Text.literal(text),b.world.getRegistryManager()));nbt.putString("billboard","center");nbt.putString("alignment","center");nbt.putInt("background",0x90000000);nbt.putInt("line_width",300);
             var tr=new net.minecraft.nbt.NbtCompound();var one=new net.minecraft.nbt.NbtList();for(float v:new float[]{0,0,0,1})one.add(net.minecraft.nbt.NbtFloat.of(v));
             var scale=new net.minecraft.nbt.NbtList();var shift=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++){scale.add(net.minecraft.nbt.NbtFloat.of(2f));shift.add(net.minecraft.nbt.NbtFloat.of(0f));}
             tr.put("left_rotation",one);tr.put("right_rotation",one.copy());tr.put("scale",scale);tr.put("translation",shift);nbt.put("transformation",tr);
