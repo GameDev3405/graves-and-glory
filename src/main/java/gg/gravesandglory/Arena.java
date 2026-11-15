@@ -282,7 +282,7 @@ public final class Arena {
      *  The hand-made maps: the ground there, as before. */
     public static Vec3d forward(ServerWorld w,double x,double z,double homeX){
         var e=EngineMaps.current();if(e==null)return new Vec3d(x,ground((int)Math.floor(x),(int)Math.floor(z))+1,z);
-        var p=e.nearestPoint(x,z);int max=p==null?Integer.MAX_VALUE:e.solid((int)Math.floor(p.x()),(int)Math.floor(p.z()))+1;
+        var p=e.nearestPoint(x,z);int max=p==null?Integer.MAX_VALUE:p.y(); // the point's own standing height: its column top plus one, or its floor under a roof (the Yoke)
         Vec3d at=guarded(w,e,x,z,homeX,max,null);
         if(at==null)warnOnce("no ground within 48 of the forward deploy "+(int)x+","+(int)z+": the troop deploys at the barracks");
         return at;
@@ -316,6 +316,9 @@ public final class Arena {
         }
         return best;
     }
+    /** The block a marker is drawn over at column (x, z): on an engine map the column's own floor a troop stands on (the ground under a tree crown, a roof or an arch; NavField.stand), else the
+     *  column's top block. The order outlines, the placement preview and the plan markers read this: under Hollowwood's canopy the top block is 30 up in the leaves. */
+    public static int footing(int x,int z){var e=EngineMaps.current();if(e!=null&&e.nav!=null){int[] f=e.nav.stand(x,z,e::solid,x+.5,z+.5,0);if(f!=null)return f[2];}return ground(x,z);}
     public static int ground(int x,int z){var e=EngineMaps.current();if(e!=null)return e.solid(x,z);for(var s:Spec.STRUCTURES)if(s.kind().equals("bridge")&&Math.abs(x-s.x())<=s.width()/2&&Math.abs(z-s.z())<=s.depth()/2)return s.elevation();return river(x,z)?Y-3:height(x,z);}
     public static int mapColor(int x,int z){
         int h=height(x,z),color=river(x,z)?0x416d88:road(x,z)?0xa79b75:h>79?0x687270:h>72?0x68815a:0x507b49;

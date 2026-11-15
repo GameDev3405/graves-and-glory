@@ -401,7 +401,7 @@ public final class NavField {
                 int side = near(x, z + sz, cy);
                 if (side == Integer.MIN_VALUE) side = near(x + sx, z, cy);
                 if (side == Integer.MIN_VALUE) return false;
-                cy = side; x += sx; z += sz; tMaxX += tDX; tMaxZ += tDZ; steps--;
+                x += sx; z += sz; tMaxX += tDX; tMaxZ += tDZ; steps--; // the troop does not step on the side cell: the cell across is held to the height it left
             } else if (tMaxX < tMaxZ) { x += sx; tMaxX += tDX; } else { z += sz; tMaxZ += tDZ; }
             int found = near(x, z, cy);
             if (found == Integer.MIN_VALUE) return false;

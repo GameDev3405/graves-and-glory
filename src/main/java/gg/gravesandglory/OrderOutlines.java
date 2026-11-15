@@ -135,7 +135,7 @@ public final class OrderOutlines {
     /** A place {side, back} from the point (x, z) turned to the facing (degrees), on the ground (CommandMode.tick's formula). */
     static Vec3d slot(double x, double z, float facing, double[] place) {
         double angle = Math.toRadians(facing), px = x + Math.cos(angle) * place[0] + Math.sin(angle) * place[1], pz = z + Math.sin(angle) * place[0] - Math.cos(angle) * place[1];
-        return new Vec3d(px, Arena.ground((int) Math.floor(px), (int) Math.floor(pz)) + 1.05, pz);
+        return new Vec3d(px, Arena.footing((int) Math.floor(px), (int) Math.floor(pz)) + 1.05, pz);
     }
 
     static Spec.FormationsRow formation(String id) {
@@ -153,7 +153,7 @@ public final class OrderOutlines {
             List<Vec3d> under = new ArrayList<>();
             if (c.world != null) for (int id : ack.units()) {
                 Entity e = c.world.getEntityById(id);
-                if (e != null && e.isAlive()) under.add(new Vec3d(e.getX(), Arena.ground((int) Math.floor(e.getX()), (int) Math.floor(e.getZ())) + 1.05, e.getZ()));
+                if (e != null && e.isAlive()) under.add(new Vec3d(e.getX(), Arena.footing((int) Math.floor(e.getX()), (int) Math.floor(e.getZ())) + 1.05, e.getZ()));
             }
             if (!under.isEmpty()) lit.add(new Lit(under, now + Spec.COMBATDISCIPLINE[0].outlineLitTicks(), own));
         }
@@ -277,7 +277,7 @@ public final class OrderOutlines {
     private static void heading(MatrixStack matrices, VertexConsumer lines, Vec3d at, float facing, float alpha) {
         if (at == null) return;
         double angle = Math.toRadians(facing), dx = -Math.sin(angle), dz = Math.cos(angle);
-        double y = Arena.ground((int) Math.floor(at.x), (int) Math.floor(at.z)) + 1.07;
+        double y = Arena.footing((int) Math.floor(at.x), (int) Math.floor(at.z)) + 1.07;
         line(matrices, lines, at.x, y, at.z, at.x + dx * 3, y, at.z + dz * 3, alpha);
         line(matrices, lines, at.x + dx * 3, y, at.z + dz * 3, at.x + dx * 2.3 + dz * .5, y, at.z + dz * 2.3 - dx * .5, alpha);
         line(matrices, lines, at.x + dx * 3, y, at.z + dz * 3, at.x + dx * 2.3 - dz * .5, y, at.z + dz * 2.3 + dx * .5, alpha);
@@ -285,7 +285,7 @@ public final class OrderOutlines {
 
     private static void ring(MatrixStack matrices, VertexConsumer lines, double cx, double cz, double radius, float alpha) {
         int segments = 28;
-        double y = Arena.ground((int) Math.floor(cx), (int) Math.floor(cz)) + 1.07;
+        double y = Arena.footing((int) Math.floor(cx), (int) Math.floor(cz)) + 1.07;
         for (int i = 0; i < segments; i++) {
             double a0 = Math.PI * 2 * i / segments, a1 = Math.PI * 2 * (i + 1) / segments;
             line(matrices, lines, cx + Math.cos(a0) * radius, y, cz + Math.sin(a0) * radius, cx + Math.cos(a1) * radius, y, cz + Math.sin(a1) * radius, alpha);

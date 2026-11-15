@@ -1,0 +1,23 @@
+# New Hollowwood as a playable map (slot 9): build it the way the game does, start a practice round, look at each point and both camps.
+note New Hollowwood wired
+map 9
+mc time set 6000
+practice
+wait 200
+points
+shot hw-b 26 76 22 0 63 0
+shot hw-b-close 10 67 9 0 63 0
+shot hw-b-under -12 66 -2 6 64 2
+shot hw-b-top 0 120 40 0 63 0
+shot hw-a -104 100 -72 -128 79 -96
+shot hw-a-close -116 86 -84 -128 80 -96
+shot hw-c 104 100 72 128 79 96
+shot hw-c-close 116 86 84 128 80 96
+shot hw-dawn -214 92 146 -236 74 124
+shot hw-dusk 214 92 -146 236 74 -124
+shot hw-run -40 80 80 -30 64 62
+shot hw-over 0 240 170 0 70 0
+hudshot hw-hud -226 76 118 -200 74 100
+wait 600
+points
+hudshot hw-hud-2 16 66 14 0 64 0

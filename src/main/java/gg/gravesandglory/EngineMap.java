@@ -104,7 +104,13 @@ public final class EngineMap {
  public boolean walkable(int wx,int wz){
   if(!inside(wx,wz))return false;
   if(walk==null){boolean[] r=new boolean[width*depth];List<int[]> seeds=new ArrayList<>();
-   for(Spawn s:spawns)seeds.add(new int[]{cellX(s.x()),cellZ(s.z())});for(Point p:points)seeds.add(new int[]{cellX(p.x()),cellZ(p.z())});
+   for(Spawn s:spawns)seeds.add(new int[]{cellX(s.x()),cellZ(s.z())});for(Point p:points){int px=cellX(p.x()),pz=cellZ(p.z());
+    if(solid[pz*width+px]+1==p.y()){seeds.add(new int[]{px,pz});continue;}
+    // a point under a roof (Hollowwood's shrine under the Yoke): its column top is the roof, so the seed is the nearest open column of its ring at the point's own height
+    int best=-1;long bd=Long.MAX_VALUE;
+    for(int dz=-p.radius();dz<=p.radius();dz++)for(int dx=-p.radius();dx<=p.radius();dx++){int x=px+dx,z=pz+dz;long dd=(long)dx*dx+(long)dz*dz;
+     if(x<0||x>=width||z<0||z>=depth||dd>=bd||solid[z*width+x]+1!=p.y())continue;bd=dd;best=z*width+x;}
+    if(best>=0)seeds.add(new int[]{best%width,best/width});}
    for(int[] c:seeds){if(r[c[1]*width+c[0]])continue;int[] d=distances(solid,water,width,depth,c[0],c[1]);for(int i=0;i<d.length;i++)if(d[i]>=0)r[i]=true;}
    walk=r;}
   return walk[(wz-oz)*width+(wx-ox)];

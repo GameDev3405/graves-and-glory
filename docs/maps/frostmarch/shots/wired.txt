@@ -1,0 +1,20 @@
+# New Frostmarch as a playable map (slot 8): build it the way the game does, start a practice round, look at each point and both camps.
+note New Frostmarch wired
+map 8
+mc time set 6000
+practice
+wait 200
+points
+shot fm-a 30 104 -140 0 81 -112
+shot fm-a-close 14 88 -100 0 82 -112
+shot fm-b 34 98 26 0 73 0
+shot fm-b-close 12 80 12 0 74 0
+shot fm-c 30 104 140 0 81 112
+shot fm-c-close 14 88 100 0 82 112
+shot fm-dawn -226 90 26 -256 66 0
+shot fm-dusk 226 90 -26 256 66 0
+shot fm-over 0 230 150 0 70 0
+hudshot fm-hud -236 68 6 -200 66 0
+wait 600
+points
+hudshot fm-hud-2 -40 84 -100 0 81 -112

@@ -45,8 +45,8 @@ public final class DeployGroundCheck {
       check(clear(m,q[0],q[1],0.3,s.y()),at+": a troop on "+(x+fx)+","+(z+fz)+" (kept at "+q[0]+","+q[1]+") overlaps a neighbour that is not yard ground (wall post, pile, water)");}}
     check(off==moved&&off>0,row.id()+" "+s.team()+": exactly the cells off the yard ground move ("+off+" off, "+moved+" moved)");
     System.out.println("DeployGroundCheck "+row.id()+" "+s.team()+": "+sampled+" base deploy cells, "+off+" off the yard ground (roof, wall, tree, pile, water, across the wall) and moved");}
-   for(EngineMap.Point p:m.points){int px=(int)Math.floor(p.x()),pz=(int)Math.floor(p.z()),max=m.solid(px,pz)+1,moved=0,n=0;
-    check(m.walkable(px,pz),row.id()+" point "+p.name()+" is walkable ground");
+   for(EngineMap.Point p:m.points){int px=(int)Math.floor(p.x()),pz=(int)Math.floor(p.z()),max=p.y(),moved=0,n=0;boolean roofed=p.y()!=m.solid(px,pz)+1; // Arena.forward's bound: the point's own standing height (its floor under a roof: Hollowwood's shrine under the Yoke)
+    check(roofed!=m.walkable(px,pz),row.id()+" point "+p.name()+(roofed?" stands under a roof: its column top is no ground":" is walkable ground"));
     for(int dx=-14;dx<=14;dx++)for(int dz=-14;dz<=14;dz++){if(dx*dx+dz*dz>14*14)continue;int x=px+dx,z=pz+dz;n++;
      int[] c=m.footing(x,z,m.spawns.get(0).x(),48,max,null,null);
      check(c!=null,row.id()+" point "+p.name()+": no ground for the forward deploy cell "+x+","+z);

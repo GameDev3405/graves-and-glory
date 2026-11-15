@@ -68,7 +68,7 @@ public final class PlanMarkers {
                 double x = pt.x() + .5, z = pt.z() + .5;
                 flag(c, matrices, consumers, cam, x, ground(pt, x, z) + POINT_LIFT, z, o.job(), pt.id(), true, planned[o.point()]);
             } else {
-                double y = Arena.ground(net.minecraft.util.math.MathHelper.floor(o.x()), net.minecraft.util.math.MathHelper.floor(o.z())) + PLACE_LIFT;
+                double y = Arena.footing(net.minecraft.util.math.MathHelper.floor(o.x()), net.minecraft.util.math.MathHelper.floor(o.z())) + PLACE_LIFT;
                 flag(c, matrices, consumers, cam, o.x(), y, o.z(), o.job(), "", true, false);
             }
         }
@@ -76,7 +76,7 @@ public final class PlanMarkers {
 
     /** The point's ground: the scanned or engine ground at its centre, never below the point's own elevation. */
     static double ground(Spec.PointsRow p, double x, double z) {
-        return Math.max(p.elevation(), Arena.ground(net.minecraft.util.math.MathHelper.floor(x), net.minecraft.util.math.MathHelper.floor(z)));
+        return Math.max(p.elevation(), Arena.footing(net.minecraft.util.math.MathHelper.floor(x), net.minecraft.util.math.MathHelper.floor(z)));
     }
 
     /** One flag with its pole's foot at (x, y, z), facing the camera. letter "" draws the glyph alone; left puts the cloth left of the pole. */
