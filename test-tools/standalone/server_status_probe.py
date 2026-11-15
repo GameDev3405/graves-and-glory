@@ -58,7 +58,7 @@ def probe(port,server_dir=None,timeout=10):
     try:
         with socket.create_connection(('127.0.0.1',port),timeout=timeout) as sock:
             sock.settimeout(timeout)
-            host=b'localhost';hello=varint(0)+varint(763)+varint(len(host))+host+struct.pack('>H',port)+varint(1)
+            host=b'localhost';hello=varint(0)+varint(767)+varint(len(host))+host+struct.pack('>H',port)+varint(1)
             sock.sendall(varint(len(hello))+hello+b'\x01\x00')
             packet_length=readint(sock)
             if packet_length>1048576:raise ValueError('Status too large')
@@ -68,8 +68,8 @@ def probe(port,server_dir=None,timeout=10):
             data=json.loads(exact(sock,size))
             version,players=data['version'],data['players']
             want=expected_max_players()
-            if version['protocol']!=763 or players['max']!=want:
-                return 1,{'result':'FAIL','reason':'Unexpected status: protocol %s (want 763), max players %s (want %s)'%(version['protocol'],players['max'],want),
+            if version['protocol']!=767 or players['max']!=want:
+                return 1,{'result':'FAIL','reason':'Unexpected status: protocol %s (want 767), max players %s (want %s)'%(version['protocol'],players['max'],want),
                           'port':port}
             return 0,{'result':'PASS','scope':'Local production server status; no authenticated player joined',
                       'version':version,'players':{'max':players['max'],'online':players['online']}}

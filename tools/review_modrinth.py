@@ -15,11 +15,11 @@ def review():
     dependencies=json.loads((ROOT/'dependencies/manifest.json').read_text(encoding='utf8'))
     ids=[d['versionId'] for d in dependencies]
     versions=get('versions?'+urllib.parse.urlencode({'ids':json.dumps(ids)}))
-    api=get('project/fabric-api/version/'+urllib.parse.quote('0.92.2+1.20.1',safe=''))
+    api=get('project/fabric-api/version/'+urllib.parse.quote('0.116.18+1.21.1',safe=''))
     versions.append(api)
     projects=get('projects?'+urllib.parse.urlencode({'ids':json.dumps(sorted({v['project_id'] for v in versions}))}))
     by_id={v['id']:v for v in versions};project_by_id={p['id']:p for p in projects}
-    api_path=next((pathlib.Path.home()/'.gradle/caches/modules-2/files-2.1/net.fabricmc.fabric-api/fabric-api/0.92.2+1.20.1').rglob('fabric-api-0.92.2+1.20.1.jar'))
+    api_path=next((pathlib.Path.home()/'.gradle/caches/modules-2/files-2.1/net.fabricmc.fabric-api/fabric-api/0.116.18+1.21.1').rglob('fabric-api-0.116.18+1.21.1.jar'))
     dependencies.append({'slug':'fabric-api','versionId':api['id'],'path':str(api_path),'fileName':api_path.name})
     rows=[]
     client_only={'iris','sodium','immediatelyfast','entity-model-features','entitytexturefeatures','presence-footsteps'}
@@ -34,8 +34,8 @@ def review():
             raise RuntimeError('Local pin mismatch: '+dependency['slug'])
         kind='mod' if path.suffix=='.jar' else 'shader' if '/shaders/' in dependency['path'] else 'resourcepack'
         server='unsupported' if kind!='mod' or dependency['slug'] in client_only else 'required'
-        if kind=='mod' and ('1.20.1' not in record['game_versions'] or 'fabric' not in record['loaders']):
-            raise RuntimeError('No upstream Fabric 1.20.1 support: '+dependency['slug'])
+        if kind=='mod' and ('1.21.1' not in record['game_versions'] or 'fabric' not in record['loaders']):
+            raise RuntimeError('No upstream Fabric 1.21.1 support: '+dependency['slug'])
         rows.append({'slug':dependency['slug'],'projectId':record['project_id'],'versionId':record['id'],
                      'version':record['version_number'],'fileName':file['filename'],'localPath':dependency['path'],
                      'fileSize':len(data),'hashes':file['hashes'],'sha256':hashlib.sha256(data).hexdigest(),
@@ -49,4 +49,4 @@ def review():
 if __name__=='__main__':
     rows=review()
     (ROOT/'dependencies/platform-lock.json').write_text(json.dumps(rows,indent=2,ensure_ascii=False)+'\n',encoding='utf8')
-    print('Verified',len(rows),'files against official SHA-1/SHA-512 and Fabric 1.20.1 mod metadata')
+    print('Verified',len(rows),'files against official SHA-1/SHA-512 and Fabric 1.21.1 mod metadata')

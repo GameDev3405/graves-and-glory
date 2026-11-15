@@ -56,9 +56,9 @@ def prism_zip(out, base_url, jars, version):
                      'iconKey=default', 'OverrideCommands=true', 'PreLaunchCommand=' + ini_value(pre_launch(base_url)),
                      'WrapperCommand=', 'PostExitCommand=', ''])
     pack = {'formatVersion': 1, 'components': [
-        {'uid': 'net.minecraft', 'version': '1.20.1', 'important': True, 'cachedName': 'Minecraft'},
-        {'uid': 'net.fabricmc.intermediary', 'version': '1.20.1', 'dependencyOnly': True, 'cachedName': 'Intermediary Mappings'},
-        {'uid': 'net.fabricmc.fabric-loader', 'version': '0.16.14', 'cachedName': 'Fabric Loader'}]}
+        {'uid': 'net.minecraft', 'version': '1.21.1', 'important': True, 'cachedName': 'Minecraft'},
+        {'uid': 'net.fabricmc.intermediary', 'version': '1.21.1', 'dependencyOnly': True, 'cachedName': 'Intermediary Mappings'},
+        {'uid': 'net.fabricmc.fabric-loader', 'version': '0.19.5', 'cachedName': 'Fabric Loader'}]}
     items = [('instance.cfg', cfg.encode('utf8')), ('mmc-pack.json', (json.dumps(pack, indent=2) + '\n').encode('utf8')),
              ('.minecraft/' + BOOTSTRAP, jars[BOOTSTRAP]), ('.minecraft/' + INSTALLER, jars[INSTALLER])]
     tmp = out.with_name(out.name + '.tmp')

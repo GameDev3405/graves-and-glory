@@ -7,7 +7,7 @@ import java.util.*;
  * wears (a splitmix64 hash of its UUID, floor-modded by the face count), what a card, a pinned troop and the harness's forced
  * variant show instead, and which face bones a variant shows. javac-only: no Minecraft, never shipped.
  *
- *   javac --release 17 -d build/faces-checks src/main/java/gg/gravesandglory/TroopFaces.java test-tools/standalone/TroopFacesCheck.java
+ *   javac --release 21 -d build/faces-checks src/main/java/gg/gravesandglory/TroopFaces.java test-tools/standalone/TroopFacesCheck.java
  *   java -cp build/faces-checks gg.gravesandglory.TroopFacesCheck
  */
 public final class TroopFacesCheck {

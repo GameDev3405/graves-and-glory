@@ -5,7 +5,7 @@
     {
       "slug": "minecraft-java",
       "role": "primary",
-      "version": "1.20.1"
+      "version": "1.21.1"
     }
   ],
   "components": [
@@ -21,7 +21,7 @@
     {
       "kind": "loader",
       "id": "fabric",
-      "version": "0.16.14"
+      "version": "0.19.5"
     }
   ],
   "mappings": [

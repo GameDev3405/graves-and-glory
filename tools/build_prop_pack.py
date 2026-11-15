@@ -28,7 +28,7 @@ import zlib
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DEFS = ROOT / 'src' / 'main' / 'resources' / 'data' / 'gravesandglory' / 'gg_props'
 PACKS = ROOT / 'src' / 'main' / 'resources' / 'resourcepacks'
-EXCALIBUR = ROOT / 'dependencies' / 'resourcepacks' / 'Excalibur_V1.20.zip'
+EXCALIBUR = ROOT / 'dependencies' / 'resourcepacks' / 'Excalibur_V1.21.1.zip'
 CMD_MIN, CMD_MAX = 7310001, 7319999
 LO, HI = -16, 32
 DATE = (1980, 1, 1, 0, 0, 0)

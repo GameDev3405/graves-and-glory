@@ -17,8 +17,8 @@ for dep in json.loads((ROOT/'dependencies/manifest.json').read_text(encoding='ut
                  'download':dep.get('download'),'licenseMetadata':dep['licenseMetadata']['id'],
                  'fabricEnvironment':environment,'curseforgeProjectId':None,
                  'curseforgeFileId':None,'platformReview':'Exact platform file/permission review still required'})
-api=next((pathlib.Path.home()/'.gradle/caches/modules-2/files-2.1/net.fabricmc.fabric-api/fabric-api/0.92.2+1.20.1').rglob('fabric-api-0.92.2+1.20.1.jar'))
-rows.append({'name':'Fabric API','version':'0.92.2+1.20.1','file':api.name,
+api=next((pathlib.Path.home()/'.gradle/caches/modules-2/files-2.1/net.fabricmc.fabric-api/fabric-api/0.116.18+1.21.1').rglob('fabric-api-0.116.18+1.21.1.jar'))
+rows.append({'name':'Fabric API','version':'0.116.18+1.21.1','file':api.name,
              'sha256':hashlib.sha256(api.read_bytes()).hexdigest(),
              'sha512':hashlib.sha512(api.read_bytes()).hexdigest(),
              'project':'https://modrinth.com/mod/fabric-api','licenseMetadata':'Apache-2.0',

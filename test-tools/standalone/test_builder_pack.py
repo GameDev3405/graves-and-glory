@@ -7,9 +7,9 @@ PACKWIZ = ROOT / 'tools' / 'builder-server' / 'make_packwiz.py'
 MODS = json.loads((ROOT / 'tools' / 'builder-server' / 'builder-mods.json').read_text(encoding='utf8'))['mods']
 PINS = json.loads((ROOT / 'tools' / 'builder-server' / 'packwiz-pins.json').read_text(encoding='utf8'))['files']
 LOCK = json.loads((ROOT / 'dependencies' / 'platform-lock.json').read_text(encoding='utf8'))
-BUNDLE = {'voicechat-fabric-1.20.1-2.6.22.jar': 'both',
-          'xaerominimap-fabric-1.20.1-26.6.0.jar': 'client',
-          'xaeroworldmap-fabric-1.20.1-1.47.0.jar': 'client'}
+BUNDLE = {'voicechat-fabric-1.21.1-2.6.22.jar': 'both',
+          'xaerominimap-fabric-1.21.1-26.6.0.jar': 'client',
+          'xaeroworldmap-fabric-1.21.1-1.47.0.jar': 'client'}
 
 
 def run(*args):
@@ -56,17 +56,17 @@ class BuilderPackChecks(unittest.TestCase):
             with zipfile.ZipFile(src, 'w') as z:
                 z.writestr('modrinth.index.json', json.dumps({'formatVersion': 1, 'game': 'minecraft', 'versionId': '0.5.1',
                                                                'name': 'Graves and Glory', 'files': [],
-                                                               'dependencies': {'minecraft': '1.20.1'}}))
+                                                               'dependencies': {'minecraft': '1.21.1'}}))
                 z.writestr('overrides/config/x.txt', 'x')
             out = pathlib.Path(tmp) / 'builder.mrpack'
             r = run('--source', str(src), '--out', str(out))
             self.assertEqual(r.returncode, 0, r.stderr)
             with zipfile.ZipFile(out) as z:
                 files = {f['path']: f for f in json.loads(z.read('modrinth.index.json'))['files']}
-        self.assertEqual(files['mods/voicechat-fabric-1.20.1-2.6.22.jar']['env'], {'client': 'required', 'server': 'required'})
-        for x in ('xaerominimap-fabric-1.20.1-26.6.0.jar', 'xaeroworldmap-fabric-1.20.1-1.47.0.jar'):
+        self.assertEqual(files['mods/voicechat-fabric-1.21.1-2.6.22.jar']['env'], {'client': 'required', 'server': 'required'})
+        for x in ('xaerominimap-fabric-1.21.1-26.6.0.jar', 'xaeroworldmap-fabric-1.21.1-1.47.0.jar'):
             self.assertEqual(files['mods/' + x]['env'], {'client': 'required', 'server': 'unsupported'})
-        self.assertIn('mods/DistantHorizons-3.3.3-1.20.1-fabric-forge.jar', files)
+        self.assertIn('mods/DistantHorizons-3.3.3-1.21.1-fabric-neoforge.jar', files)
         self.assertFalse([p for p in files if re.search('litematica', p, re.I)])
 
     def test_server_jars_listed(self):
@@ -78,7 +78,7 @@ class BuilderPackChecks(unittest.TestCase):
                 self.assertIn(m['filename'], lines)
             else:
                 self.assertNotIn(m['filename'], lines)
-        self.assertIn('voicechat-fabric-1.20.1-2.6.22.jar', lines)
+        self.assertIn('voicechat-fabric-1.21.1-2.6.22.jar', lines)
 
 
 class PackwizChecks(unittest.TestCase):
@@ -99,7 +99,7 @@ class PackwizChecks(unittest.TestCase):
         version, files = self.make()
         self.assertTrue(version.startswith('9.9.9-') and version.endswith('-20261108'))
         pack = tomllib.loads((self.out / 'pack.toml').read_text(encoding='utf8'))
-        self.assertEqual(pack['versions'], {'minecraft': '1.20.1', 'fabric': '0.16.14'})
+        self.assertEqual(pack['versions'], {'minecraft': '1.21.1', 'fabric': '0.19.5'})
         index_bytes = (self.out / 'index.toml').read_bytes()
         self.assertEqual(pack['index']['hash'], hashlib.sha256(index_bytes).hexdigest())
         index = tomllib.loads(index_bytes.decode('utf8'))
@@ -127,7 +127,7 @@ class PackwizChecks(unittest.TestCase):
             self.assertEqual(meta['download']['hash'], row['hashes']['sha512'])
             self.assertEqual(meta['update']['modrinth'], {'mod-id': row['projectId'], 'version': row['versionId']})
             self.assertEqual(meta['side'], 'client' if row['env']['server'] == 'unsupported' else 'both')
-        for name in ('Axiom-6.1.5-for-MC1.20.1.jar', 'DistantHorizons-3.3.3-1.20.1-fabric-forge.jar', 'fabric-api-0.92.2+1.20.1.jar', *BUNDLE):
+        for name in ('Axiom-6.1.5-for-MC1.21.1.jar', 'DistantHorizons-3.3.3-1.21.1-fabric-neoforge.jar', 'fabric-api-0.116.18+1.21.1.jar', *BUNDLE):
             self.assertIn(name, by_name)
         for name in ('worldedit-mod-7.2.15.jar', 'ledger-1.2.8.jar', 'fabric-language-kotlin-1.10.20+kotlin.1.9.24.jar'):
             self.assertNotIn(name, by_name)
@@ -224,7 +224,7 @@ class PrismZipChecks(unittest.TestCase):
         line = re.search('^PreLaunchCommand=(.*)$', cfg, re.M).group(1)
         self.assertEqual(re.sub(r'\\(.)', r'\1', line[1:-1]), self.bp.pre_launch('http://h.test:1/pack/'))
         comps = {c['uid']: c['version'] for c in pack['components']}
-        self.assertEqual(comps, {'net.minecraft': '1.20.1', 'net.fabricmc.intermediary': '1.20.1', 'net.fabricmc.fabric-loader': '0.16.14'})
+        self.assertEqual(comps, {'net.minecraft': '1.21.1', 'net.fabricmc.intermediary': '1.21.1', 'net.fabricmc.fabric-loader': '0.19.5'})
         again = self.bp.prism_zip(self.dir / 'q.zip', 'http://h.test:1/pack/', jars, '0.5.1')
         self.assertEqual(out.read_bytes(), again.read_bytes())
 

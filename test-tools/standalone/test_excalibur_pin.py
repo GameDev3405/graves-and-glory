@@ -11,9 +11,9 @@ sys.path.insert(0,str(REPO/'tools'))
 import export_curseforge
 import export_modrinth
 
-SHA512='a2080ab27a954a95b9c4b7450bdfa3ecd18c5ceecc88d9dcc981aae1a98394f8e7a617cea6a3254c6a363c192a9dd2ac7602d236655f2afde57b1e4e13dd244e'
-SIZE=17107369
-URL='https://cdn.modrinth.com/data/hJAzl1Bs/versions/yVpdNmnj/Excalibur_V1.20.zip'
+SHA512='858c0367346ec6d58e34ecd2f3b69b73e779d655a49ca12bcdd0113106bf4516f378013bab74331ad1f02ba0b0c2c465374802210ebb3f1f6d26b1cc8936a591'
+SIZE=18103896
+URL='https://cdn.modrinth.com/data/hJAzl1Bs/versions/ZRWxgeyn/Excalibur_V1.21.1.zip'
 
 def load(name):return json.loads((REPO/'dependencies'/name).read_text(encoding='utf8'))
 
@@ -33,7 +33,7 @@ class ExcaliburPin(unittest.TestCase):
         entry={'path':'resourcepacks/'+self.row['fileName'],'hashes':self.row['hashes'],'downloads':self.row['downloads'],
                'env':self.row['env'],'fileSize':SIZE}
         export_modrinth.validate_index({'formatVersion':1,'game':'minecraft','files':[entry]})
-        self.assertEqual(entry['path'],'resourcepacks/Excalibur_V1.20.zip')
+        self.assertEqual(entry['path'],'resourcepacks/Excalibur_V1.21.1.zip')
 
     def test_curseforge_bundles_instead_of_listing(self):
         self.assertEqual(export_curseforge.split_rows([self.row]),([],[self.row]))

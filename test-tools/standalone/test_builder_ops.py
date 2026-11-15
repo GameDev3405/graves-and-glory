@@ -218,7 +218,7 @@ class FakeStatusServer:
             with conn:
                 try:
                     conn.recv(4096)
-                    body = json.dumps({'version': {'name': '1.20.1', 'protocol': 763}, 'players': {'online': 2, 'max': 10}}).encode()
+                    body = json.dumps({'version': {'name': '1.21.1', 'protocol': 767}, 'players': {'online': 2, 'max': 10}}).encode()
                     payload = ops._varint(0) + ops._varint(len(body)) + body
                     conn.sendall(ops._varint(len(payload)) + payload)
                 except OSError:
@@ -252,7 +252,7 @@ class Health(unittest.TestCase):
                 (t / 'version-stamp.json').write_text(json.dumps({'startedAt': 'x', 'mods': {'m.jar': {'sha256': 'abcdef0123456789'}}}))
                 r = ops.health(t, NOW)
                 self.assertTrue(r['up'])
-                self.assertEqual((r['players'], r['maxPlayers'], r['version']), (2, 10, '1.20.1'))
+                self.assertEqual((r['players'], r['maxPlayers'], r['version']), (2, 10, '1.21.1'))
                 self.assertEqual(r['lastBackup']['ageMinutes'], 30)
                 self.assertEqual(r['status'], 'OK')
                 self.assertIsNone(r['tick']['tps'])

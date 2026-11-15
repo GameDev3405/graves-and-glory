@@ -5,12 +5,13 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 RESEARCH = json.loads((ROOT/'evidence/polish-research.json').read_text(encoding='utf8'))
 # No third-party resource packs are pinned: the modpack ships its own look (Kort, 2026-10-18).
 PINS = {
-    'iris': '1.7.6+1.20.1', 'sodium': 'mc1.20.1-0.5.13-fabric',
-    'lithium': 'mc1.20.1-0.11.4-fabric', 'ferrite-core': '6.0.1',
-    'immediatelyfast': '1.5.5+1.20.4-fabric', 'modernfix': '5.25.2+mc1.20.1',
-    'entity-model-features': '3.3.12-fabric-1.20.1',
-    'entitytexturefeatures': '7.2.6-fabric-1.20.1',
-    'presence-footsteps': '1.10.1+1.20.1',
+    'iris': '1.8.14-beta.1+1.21.1-fabric', 'sodium': 'mc1.21.1-0.8.13-fabric',
+    'lithium': 'mc1.21.1-0.15.4-fabric', 'ferrite-core': '7.0.3-fabric',
+    'immediatelyfast': '1.6.15+1.21.1-fabric', 'modernfix': '5.25.1+mc1.21.1',
+    'entity-model-features': '3.3.12-fabric-1.21',
+    'entitytexturefeatures': '7.2.6-fabric-1.21',
+    'presence-footsteps': '1.11.2+1.21',
+    'entityculling': '1.12.1', 'modmenu': '11.0.5',  # port/tools: evidence/polish-research.json must be regenerated for 1.21.1
     # 5.5.1 retains the author's explicit modpack redistribution grant.
     # 5.6+ disallows uploading the original pack outside CF/Modrinth systems.
     'complementary-reimagined': 'r5.5.1', 'complementary-unbound': 'r5.5.1',

@@ -1,114 +1,106 @@
 {
-  "minecraft": "1.20.1",
+  "minecraft": "1.21.1",
   "loader": "fabric",
   "requires": {
-    "fabric-loader": "0.16.14",
-    "fabric-api": "0.92.2+1.20.1 (already in the game pack)"
+    "fabric-loader": "0.19.5",
+    "fabric-api": "0.116.18+1.21.1 (already in the game pack)"
   },
   "approvedBy": "Kort 2026-11-03",
   "mods": [
     {
       "project": "axiom",
       "version": "6.1.5",
-      "filename": "Axiom-6.1.5-for-MC1.20.1.jar",
-      "url": "https://cdn.modrinth.com/data/N6n5dqoA/versions/rhzVjv9n/Axiom-6.1.5-for-MC1.20.1.jar",
-      "size": 47142832,
-      "sha1": "7e4561092b67fff70fa898c089e0eec24749dabd",
-      "sha512": "e3d43a88db12be87faaa6aa0bc99263c72983d0c379b4d761ceeda51170563b47b0adbf2e9a35d326fcec027c5754316530e23b887495dc760e4f8de8ed659dd",
+      "filename": "Axiom-6.1.5-for-MC1.21.1.jar",
+      "url": "https://cdn.modrinth.com/data/N6n5dqoA/versions/wgJEj8EH/Axiom-6.1.5-for-MC1.21.1.jar",
+      "size": 47182465,
+      "sha1": "450919d97afac784962376364ebb19f13fa90343",
+      "sha512": "1827d9e9ccb0a7ce2b80bd19e36f2e0e95d6006a6efb332bb42380fd14ce93d52679e772b4ba4d5c26561ba3e3c5de958e453f9b1e0e5578ea4ce6c46d255bd9",
       "side": "both",
       "note": "Builder editor. Required on server and client; the builder client pack carries it."
     },
     {
       "project": "worldedit",
-      "version": "7.2.15",
-      "filename": "worldedit-mod-7.2.15.jar",
-      "url": "https://cdn.modrinth.com/data/1u6JkXh5/versions/Wrlqaul6/worldedit-mod-7.2.15.jar",
-      "size": 5825402,
-      "sha1": "9c52765ca56f917ef8cbafc20e9a4f45c346508f",
-      "sha512": "2c41dcd9a622f948ed5409eecc485018fbf274945bdd1a9c0fdf4c4954f9a47dc311e6e0f9e445180d8b771e4a40947533d67bd66feb4ab8c8f87c2880dba7ef",
+      "version": "7.3.8",
+      "filename": "worldedit-mod-7.3.8.jar",
+      "url": "https://cdn.modrinth.com/data/1u6JkXh5/versions/WTAFvuRx/worldedit-mod-7.3.8.jar",
+      "size": 6222854,
+      "sha1": "924fe181a29bd66be6783f6d589968ab0ee02250",
+      "sha512": "e039492df0b486e7ce76d0eaf8cb11eadad2e78220600b8498ab8eef4642a29e310a6bcb4378257553b3639c6d0bc1ebf0f73df3a7a677c6af6baf86716b0bc7",
       "side": "server",
-      "note": "Server side; the client copy is optional."
+      "note": "Server side; the client copy is optional. 7.3.8 is the newest WorldEdit for 1.21.1 on Modrinth (2024-10-21)."
     },
     {
       "project": "ledger",
-      "version": "1.2.8",
-      "filename": "ledger-1.2.8.jar",
-      "url": "https://cdn.modrinth.com/data/LVN9ygNV/versions/pOxgWfwI/ledger-1.2.8.jar",
-      "size": 16743830,
-      "sha1": "6f07421ba3fbe99086f1471c7cc8d8c7fed5dd45",
-      "sha512": "8230ae7ef5495dd43b6ebc19fb212b7ffb10dc571fc586ecc7e2cc8177989daa41c102ac386d82586c83a0b48b9dba29f095ffa4b8d78e34d715e25830117f8d",
+      "version": "1.3.5",
+      "filename": "ledger-1.3.5.jar",
+      "url": "https://cdn.modrinth.com/data/LVN9ygNV/versions/t1AtqfxZ/ledger-1.3.5.jar",
+      "size": 20475069,
+      "sha1": "cd9b3722e540df48ba24b169a594132cbf1af1f3",
+      "sha512": "ab2407e568fd94d863ee178c6009e8a2f21887cc8a9b73d042f9bbc65ffd072848f426351c55e36ffa5430122e4487e7e5392b4a189fc530d62efa59a47f1234",
       "side": "server",
-      "note": "Block logging and rollback. Server only. 1.2.8 is pinned because 1.3.18-backport needs Fabric Loader 0.18.4 and Fabric API 0.92.6, newer than the pack (0.16.14, 0.92.2)."
+      "note": "Block logging and rollback. Server only. 1.3.5 is the newest Ledger build for 1.21.1 (Modrinth, 2024-11-13); it requires Fabric API and Fabric Language Kotlin. Not launched on 1.21.1 yet."
     },
     {
       "project": "fabric-language-kotlin",
-      "version": "1.10.20+kotlin.1.9.24",
-      "filename": "fabric-language-kotlin-1.10.20+kotlin.1.9.24.jar",
-      "url": "https://cdn.modrinth.com/data/Ha28R6CL/versions/a7MqDLdC/fabric-language-kotlin-1.10.20%2Bkotlin.1.9.24.jar",
-      "size": 6734770,
-      "sha1": "8a7e6a0cf1f31c0d2a819819ba78a0609e1577f9",
-      "sha512": "1cae905fe4a051a3a1c6c60d292ad7455d4564f1754b362318d7be3807b45673f4933f3a27e6cc4bc9b2fe94708daf54bd70a7c226d39e132dc48aaa356184dc",
+      "version": "1.14.2+kotlin.2.4.21",
+      "filename": "fabric-language-kotlin-1.14.2+kotlin.2.4.21.jar",
+      "url": "https://cdn.modrinth.com/data/Ha28R6CL/versions/SKW1BTL3/fabric-language-kotlin-1.14.2%2Bkotlin.2.4.21.jar",
+      "size": 8142878,
+      "sha1": "f1d4ab6ecd54d9782521333a87eb50724ecb03e0",
+      "sha512": "7fb475c4a7e7bdf8d0aca4b5798a58a354c51443d5b1fbde3e8cf34dfbf7191ef4238b5f07d08ec9490ec180b371624523326c3ad45d4ed2b2be541de9407e5d",
       "side": "server",
-      "note": "Library for Ledger. Server only. Pinned to the 1.10 line (Kotlin 1.9): newer builds either need Fabric Loader 0.19.5 (1.13.12+) or break Ledger 1.2.8 on shutdown (Kotlin 2.x lacks Duration.minutes)."
+      "note": "Library for Ledger. Server only. Newest build (Kotlin 2.4). The old 1.10/Kotlin 1.9 pin was for Ledger 1.2.8 on 1.20.1; Ledger 1.3.5 vs this Kotlin build is untested (fall back to a 1.12/1.13 build if Ledger fails to start)."
     },
     {
       "project": "distanthorizons",
-      "version": "3.3.3-1.20.1",
-      "filename": "DistantHorizons-3.3.3-1.20.1-fabric-forge.jar",
-      "url": "https://cdn.modrinth.com/data/uCdwusMi/versions/6UnEfsRQ/DistantHorizons-3.3.3-1.20.1-fabric-forge.jar",
-      "size": 27700542,
-      "sha1": "5447c4716571bfdba817c85278a9ce0d411573ec",
-      "sha512": "2ac0a2fd34fe17bb3a3764bb53838f00595998a7e0b4bd70c5068aa9244626c6b0e622af548f97a1614dbb0b7c3df29b6d313edfc890d572dc361591c2a176c0",
+      "version": "3.3.3-1.21.1",
+      "filename": "DistantHorizons-3.3.3-1.21.1-fabric-neoforge.jar",
+      "url": "https://cdn.modrinth.com/data/uCdwusMi/versions/9w34y8ai/DistantHorizons-3.3.3-1.21.1-fabric-neoforge.jar",
+      "size": 28289212,
+      "sha1": "4357b4d19fab818780c94f0e43dad1cc931634b2",
+      "sha512": "d14b32d3fd143a06514d6ad388eee11e9d657c84e1a937aaf8d033b1137fb43ef8b05cff1011a994cc42f3106823c51234f8bc18d72bb05bc317a20ea83c50ed",
       "side": "client",
-      "note": "Distant Horizons, client only (Kort 2026-11-03): far terrain for builders on their own machine, nothing on the server. Modrinth lists 3.3.3-1.20.1 for Minecraft 1.20.1, Fabric and Forge, no declared dependencies; the pack marks it server unsupported. Not launched in game yet."
-    },
-    {
-      "project": "indium",
-      "version": "1.0.36+mc1.20.1",
-      "filename": "indium-1.0.36+mc1.20.1.jar",
-      "url": "https://cdn.modrinth.com/data/Orvt0mRa/versions/nQHYSjxO/indium-1.0.36%2Bmc1.20.1.jar",
-      "size": 105382,
-      "sha1": "d824614e7a173d273167969f427702f51846aca7",
-      "sha512": "7c5a1851f1fc08ae69318e151d07151fabba6cda2a24616c9251e1a4e5b969453e88b97d60f926271d60e3511bfc6fa05a64a108466efb7f29bec4519547e0c9",
-      "side": "client",
-      "approvedBy": "Kort 2026-11-08",
-      "note": "Indium, client only (Kort 2026-11-08): Distant Horizons refuses to start with Sodium unless Indium is present. Its fabric.mod.json needs sodium ~0.5.11, which accepts the pack's 0.5.13."
+      "note": "Distant Horizons, client only (Kort 2026-11-03): far terrain for builders on their own machine, nothing on the server. Modrinth lists 3.3.3-1.21.1 for Minecraft 1.21.1 (fabric and neoforge), no declared dependencies; the pack marks it server unsupported. Not launched in game yet. Indium is not needed with Sodium 0.6 or newer."
     },
     {
       "project": "simple-voice-chat",
-      "version": "fabric-1.20.1-2.6.22",
-      "filename": "voicechat-fabric-1.20.1-2.6.22.jar",
-      "url": "https://cdn.modrinth.com/data/9eGKb6K1/versions/u5T0ji6n/voicechat-fabric-1.20.1-2.6.22.jar",
-      "size": 5279173,
-      "sha1": "389d1b23340cb3ef547b021cfd6378b1bb1bd22a",
-      "sha512": "e6d6a23b9e94a47446d8f2797182031f2f1c7710dc9540e0e3a7fea17a4fa675ca9655dd49566cbacc4b033b8a4b289f545846fba63e280970d8efa34891c7d2",
+      "version": "fabric-1.21.1-2.6.22",
+      "filename": "voicechat-fabric-1.21.1-2.6.22.jar",
+      "url": "https://cdn.modrinth.com/data/9eGKb6K1/versions/VS5X7jZd/voicechat-fabric-1.21.1-2.6.22.jar",
+      "size": 5369475,
+      "sha1": "2b3f229ed746955b756807a92e09e9a32d636776",
+      "sha512": "c44e69400ac7349ad6d4699263bde4d87359e03233c31a872eb02542658cfc73a185b46e4361c54cb1ac029a2991bd8eb4d4ea59b1c3e3b43f234087520b325a",
       "side": "both",
       "approvedBy": "Kort 2026-11-08",
-      "note": "Proximity and group voice chat (Kort 2026-11-08). Server and client. Listens on UDP 24454 by default; on Kinetic set port= in config/voicechat/voicechat-server.properties to an allocated port. Keys: V setup/menu, G groups, M mute, N off; push to talk has no default key (chosen on first V)."
+      "note": "Proximity and group voice chat (Kort 2026-11-08). Server and client. Listens on UDP 24454 by default; on Kinetic set port= in config/voicechat/voicechat-server.properties to an allocated port. Keys: V setup/menu, G groups, M mute, N off; push to talk has no default key (chosen on first V). (1.21.1: newest release-type build is 2.6.22; 2.6.23 to 2.6.27 are Modrinth betas.)"
     },
     {
       "project": "xaeros-minimap",
-      "version": "fabric-1.20.1-26.6.0",
-      "filename": "xaerominimap-fabric-1.20.1-26.6.0.jar",
-      "url": "https://cdn.modrinth.com/data/1bokaNcj/versions/PTqhBV8t/xaerominimap-fabric-1.20.1-26.6.0.jar",
-      "size": 2229001,
-      "sha1": "6f51d266bac01f03d8d3a36d3a68c68cb6313ce8",
-      "sha512": "8d8c3d69f13e62530b0046bf6620b72fb770c9ae63dff3b9f640481f379bae49bf0fc76f11f18a1cd088c2abc74bb7b09bdfbcfd18dffa3a6392c2aff160d4c3",
+      "version": "fabric-1.21.1-26.6.0",
+      "filename": "xaerominimap-fabric-1.21.1-26.6.0.jar",
+      "url": "https://cdn.modrinth.com/data/1bokaNcj/versions/W4dcLcUs/xaerominimap-fabric-1.21.1-26.6.0.jar",
+      "size": 2234556,
+      "sha1": "5fbb03dd3f22c0c3d5466d1366222d7d277a8df3",
+      "sha512": "bad6dfbdfa4fa83c10155380e44e7c7a181c86144cbb377548a3df94e1fdadb88a27dbf18dca89bf8748a49a1c485a03b458e1f74a7881029763297106ed26b7",
       "side": "client",
       "approvedBy": "Kort 2026-11-08",
       "note": "Minimap and waypoints for builders (Kort 2026-11-08). Client only, needs Fabric API. Keys: B new waypoint, U waypoints, Z enlarge."
     },
     {
       "project": "xaeros-world-map",
-      "version": "fabric-1.20.1-1.47.0",
-      "filename": "xaeroworldmap-fabric-1.20.1-1.47.0.jar",
-      "url": "https://cdn.modrinth.com/data/NcUtCpym/versions/rjV8OOdS/xaeroworldmap-fabric-1.20.1-1.47.0.jar",
-      "size": 1451783,
-      "sha1": "eab3fd66485e245c824de40657877c41df5d247d",
-      "sha512": "f8ad494c46ef1e557bf6ab68fbcbc409e25f4973725e0c2c4b8376e1e32ae66c494b4506c0eb55e1a6ea4cbe5ee1b1390e83565ff2fe60c17048b7429027c0f6",
+      "version": "fabric-1.21.1-1.47.0",
+      "filename": "xaeroworldmap-fabric-1.21.1-1.47.0.jar",
+      "url": "https://cdn.modrinth.com/data/NcUtCpym/versions/XIR7GzC3/xaeroworldmap-fabric-1.21.1-1.47.0.jar",
+      "size": 1456162,
+      "sha1": "db7ad23fe512dbc13a8286844fd9277c08a7ef5a",
+      "sha512": "7bdf96a45ab729ad5b8c56b1de421ab8c94006a65e62f21e45a4733a38a7a1655b8be03ef3bdfcdc52401c66894b9f4f80fc28b41d47a787a9fa45094629f5c7",
       "side": "client",
       "approvedBy": "Kort 2026-11-08",
       "note": "Full world map for builders (Kort 2026-11-08). Client only, needs Fabric API. Key M (same default as voice chat mute)."
     }
-  ]
+  ],
+  "removed": {
+    "indium": "Dropped for 1.21.1 (Kort-approved 2026-11-08 for 1.20.1): Sodium 0.6.0 and newer implements the Fabric Rendering API itself, so Distant Horizons no longer needs Indium (Sodium 0.6.0 changelog). Modrinth only has Indium 1.0.35 for 1.21 anyway."
+  },
+  "portNote": "port/tools 2026-11-15: metadata only. Sizes and hashes are from the Modrinth API; no jar was downloaded or launched. Re-approve (Kort) before the first builder-server move to 1.21.1."
 }
