@@ -1,6 +1,5 @@
 package gg.gravesandglory;
 
-import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import net.fabricmc.api.ClientModInitializer;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -177,12 +176,11 @@ public final class TitleDemos implements Phase1Checks.Suite,Phase1Checks.ServerW
                 if(stream==null)return false;
                 try(var in=stream.get()){var id=Identifier.of("gravesandglory_test","title_demo/steve");c.getTextureManager().registerTexture(id,new NativeImageBackedTexture(NativeImage.read(in)));steveTexture=id;}
             }
-            entry.getSkinTexture(); // starts the profile's own skin lookup first, so it cannot replace ours afterwards
-            var textures=PlayerListEntry.class.getDeclaredField("textures");textures.setAccessible(true);
-            @SuppressWarnings("unchecked") var map=(Map<MinecraftProfileTexture.Type,Identifier>)textures.get(entry);
-            map.put(MinecraftProfileTexture.Type.SKIN,steveTexture);
-            var model=PlayerListEntry.class.getDeclaredField("model");model.setAccessible(true);model.set(entry,"default");
-            return steveTexture.equals(c.player.getSkinTexture())&&"default".equals(c.player.getModel());
+            entry.getSkinTextures(); // 1.21: the skin is one SkinTextures from the entry's supplier; the profile's own lookup starts there, so it cannot replace ours afterwards
+            var supplier=PlayerListEntry.class.getDeclaredField("texturesSupplier");supplier.setAccessible(true);
+            var steveSkin=new net.minecraft.client.util.SkinTextures(steveTexture,null,null,null,net.minecraft.client.util.SkinTextures.Model.WIDE,true);
+            supplier.set(entry,(java.util.function.Supplier<net.minecraft.client.util.SkinTextures>)()->steveSkin);
+            return steveTexture.equals(c.player.getSkinTextures().texture())&&c.player.getSkinTextures().model()==net.minecraft.client.util.SkinTextures.Model.WIDE;
         }catch(Exception e){System.out.println("[p1] titledemo classic Steve failed: "+e);return false;}
     }
 

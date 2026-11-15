@@ -337,7 +337,7 @@ final class PropLookChecks implements Phase1Checks.Suite {
                     return;
                 }
                 if (k == 100) Phase1Checks.server(c, b -> { var p = b.server.getPlayerManager().getPlayer(player); if (p != null) build(b, p); });
-                if (k > 140 && built) { say("packs " + c.getResourcePackManager().getEnabledNames()); vi = 0; pi = 0; next(tick, TURN ? 5 : 2); }
+                if (k > 140 && built) { say("packs " + c.getResourcePackManager().getEnabledIds()); vi = 0; pi = 0; next(tick, TURN ? 5 : 2); }
             }
             case 2 -> {
                 String v = VIEWS[vi];

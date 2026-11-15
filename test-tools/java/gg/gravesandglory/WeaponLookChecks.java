@@ -39,7 +39,7 @@ final class WeaponLookChecks implements Phase1Checks.Suite {
                     return;
                 }
                 if (k > 80) {
-                    var on = new ArrayList<>(c.getResourcePackManager().getEnabledNames());
+                    var on = new ArrayList<>(c.getResourcePackManager().getEnabledIds());
                     int e = on.indexOf(LookPacks.EXCALIBUR), a = on.indexOf(LookPacks.ARMORY), w = on.indexOf(LookPacks.WEAPONS);
                     boolean ok = e >= 0 && a > e && w > e;
                     System.out.println("[p1] weapon-look: enabled packs " + on);

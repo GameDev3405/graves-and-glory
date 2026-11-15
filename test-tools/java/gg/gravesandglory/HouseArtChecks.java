@@ -35,8 +35,8 @@ final class HouseArtChecks implements Phase1Checks.Suite {
 
     static ItemStack stand(int slot, String item, int rarity) {
         ItemStack s = new ItemStack(Registries.ITEM.get(Identifier.of(STAND_IN[slot])));
-        var nbt = s.getOrCreateNbt();
-        nbt.putString(GearLooks.ITEM, item); nbt.putInt(GearLooks.RARITY, rarity); nbt.putBoolean("Unbreakable", true);
+        net.minecraft.component.type.NbtComponent.set(net.minecraft.component.DataComponentTypes.CUSTOM_DATA, s, nbt -> { nbt.putString(GearLooks.ITEM, item); nbt.putInt(GearLooks.RARITY, rarity); }); // 1.21: custom_data (was the stack's root tag)
+        s.set(net.minecraft.component.DataComponentTypes.UNBREAKABLE, new net.minecraft.component.type.UnbreakableComponent(true));
         return s;
     }
 

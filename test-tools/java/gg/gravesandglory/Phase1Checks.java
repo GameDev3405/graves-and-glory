@@ -126,7 +126,7 @@ public final class Phase1Checks implements ClientModInitializer {
     /** The ids of the sounds this client's own sound system played, in order (a SoundInstanceListener, registered once per client by listenSounds): what the player really hears. Every suite reads it. */
     public static final java.util.concurrent.CopyOnWriteArrayList<String> clientSounds=new java.util.concurrent.CopyOnWriteArrayList<>();
     static boolean soundsListened;
-    public static void listenSounds(MinecraftClient c){if(soundsListened)return;soundsListened=true;c.getSoundManager().registerListener((sound,set)->clientSounds.add(sound.getId().toString()));}
+    public static void listenSounds(MinecraftClient c){if(soundsListened)return;soundsListened=true;c.getSoundManager().registerListener((sound,set,range)->clientSounds.add(sound.getId().toString()));}
     /** How many times this client has played the sound. */
     public static long heardOnClient(String id){return clientSounds.stream().filter(id::equals).count();}
     /**
@@ -138,8 +138,8 @@ public final class Phase1Checks implements ClientModInitializer {
         public final List<net.minecraft.network.packet.Packet<?>> packets=new java.util.concurrent.CopyOnWriteArrayList<>();
         Listener(net.minecraft.server.world.ServerWorld w){
             super(w,new com.mojang.authlib.GameProfile(UUID.randomUUID(),"Listener"));
-            new net.minecraft.server.network.ServerPlayNetworkHandler(w.getServer(),new net.minecraft.network.ClientConnection(net.minecraft.network.NetworkSide.SERVERBOUND),this){
-                @Override public void sendPacket(net.minecraft.network.packet.Packet<?> packet,net.minecraft.network.PacketCallbacks callbacks){packets.add(packet);}
+            new net.minecraft.server.network.ServerPlayNetworkHandler(w.getServer(),new net.minecraft.network.ClientConnection(net.minecraft.network.NetworkSide.SERVERBOUND),this,net.minecraft.server.network.ConnectedClientData.createDefault(new com.mojang.authlib.GameProfile(getUuid(),"Listener"),false)){
+                @Override public void sendPacket(net.minecraft.network.packet.Packet<?> packet){packets.add(packet);}
             };
         }
         /** Stands at (x, y, z) in the battle's world and joins the server's player list. */

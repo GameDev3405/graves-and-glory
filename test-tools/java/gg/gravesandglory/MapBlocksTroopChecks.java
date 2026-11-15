@@ -103,19 +103,20 @@ final class MapBlocksTroopChecks implements Phase1Checks.Suite {
         var army = troop(w, fx - 2.5, py, sz + .5); var plain = vanilla(w, fx - 2.5, py, sz + .5);
         var armyMaker = new LandPathNodeMaker(); armyMaker.init(cache, army);
         var plainMaker = new LandPathNodeMaker(); plainMaker.init(cache, plain);
+        var armyCtx = new net.minecraft.entity.ai.pathing.PathContext(cache, army); var plainCtx = new net.minecraft.entity.ai.pathing.PathContext(cache, plain); // 1.21: the node makers take a PathContext (world + mob) instead of the cache
         int px = ox + POOL_X + 2, pz = oz + POOL_Z + 4;
-        PathNodeType[] a = {armyMaker.getDefaultNodeType(cache, fx, py, sz), armyMaker.getDefaultNodeType(cache, fx, py + 1, sz), armyMaker.getDefaultNodeType(cache, fx, py + 2, sz),
-            armyMaker.getDefaultNodeType(cache, px, py, pz), armyMaker.getDefaultNodeType(cache, px, py + 1, pz), armyMaker.getDefaultNodeType(cache, fx - 2, py, sz)};
-        PathNodeType[] v = {plainMaker.getDefaultNodeType(cache, fx, py, sz), plainMaker.getDefaultNodeType(cache, fx, py + 1, sz), plainMaker.getDefaultNodeType(cache, fx, py + 2, sz),
-            plainMaker.getDefaultNodeType(cache, px, py, pz), plainMaker.getDefaultNodeType(cache, px, py + 1, pz), plainMaker.getDefaultNodeType(cache, fx - 2, py, sz)};
+        PathNodeType[] a = {armyMaker.getDefaultNodeType(armyCtx, fx, py, sz), armyMaker.getDefaultNodeType(armyCtx, fx, py + 1, sz), armyMaker.getDefaultNodeType(armyCtx, fx, py + 2, sz),
+            armyMaker.getDefaultNodeType(armyCtx, px, py, pz), armyMaker.getDefaultNodeType(armyCtx, px, py + 1, pz), armyMaker.getDefaultNodeType(armyCtx, fx - 2, py, sz)};
+        PathNodeType[] v = {plainMaker.getDefaultNodeType(plainCtx, fx, py, sz), plainMaker.getDefaultNodeType(plainCtx, fx, py + 1, sz), plainMaker.getDefaultNodeType(plainCtx, fx, py + 2, sz),
+            plainMaker.getDefaultNodeType(plainCtx, px, py, pz), plainMaker.getDefaultNodeType(plainCtx, px, py + 1, pz), plainMaker.getDefaultNodeType(plainCtx, fx - 2, py, sz)};
         report("node-fence", a[0] == PathNodeType.BLOCKED && a[1] == PathNodeType.BLOCKED && a[2] == PathNodeType.BLOCKED, "troop node maker, fence cells 1 and 2 and the cell over the stack: " + a[0] + " " + a[1] + " " + a[2]);
         report("node-still-water", a[3] == PathNodeType.BLOCKED && a[4] == PathNodeType.BLOCKED, "troop node maker, a still_water cell and the cell over it: " + a[3] + " " + a[4]);
         report("node-open-control", a[5] != PathNodeType.BLOCKED && v[5] == a[5], "a plain cell keeps its vanilla type for a troop: " + a[5] + " (vanilla " + v[5] + ")");
         report("node-vanilla-untouched", v[0] != PathNodeType.BLOCKED && v[1] != PathNodeType.BLOCKED && v[3] != PathNodeType.BLOCKED && v[4] != PathNodeType.BLOCKED,
             "a vanilla zombie's node maker is unchanged (both blocks stay open for it, the reason the troop hook exists): fence " + v[0] + " " + v[1] + ", still_water " + v[3] + " " + v[4]);
         var drowned = new GravesAndGlory.ArmyDrowned(w); drowned.refreshPositionAndAngles(fx - 2.5, py, sz + .5, 0, 0);
-        var amph = new AmphibiousPathNodeMaker(false); amph.init(cache, drowned);
-        PathNodeType af = amph.getDefaultNodeType(cache, fx, py, sz), aw = amph.getDefaultNodeType(cache, px, py, pz);
+        var amph = new AmphibiousPathNodeMaker(false); amph.init(cache, drowned); var drownedCtx = new net.minecraft.entity.ai.pathing.PathContext(cache, drowned);
+        PathNodeType af = amph.getDefaultNodeType(drownedCtx, fx, py, sz), aw = amph.getDefaultNodeType(drownedCtx, px, py, pz);
         report("node-amphibious", af == PathNodeType.BLOCKED && aw == PathNodeType.BLOCKED, "a drowned troop's amphibious node maker also blocks the fence " + af + " and still_water " + aw);
         // ---- real paths: a troop does not walk through a full-width fence wall, a vanilla zombie's path does
         Path troopPath = army.getNavigation().findPathTo(fx + 4.5, py, sz + .5, 1);

@@ -616,7 +616,7 @@ final class GearCombatChecks implements Phase1Checks.Suite {
           boolean sameGroup = m1.spec.group().equals(group);
           double wantStep = 1 + GearStats.value2(only(gear, "formation_charge"), "formation_charge");
           Phase1Checks.report("p1-gear-combat-formation_charge", mod != null && close(mod.value(), wantMod, 1e-9) && (!sameGroup || outMod == null) && gone && close(withF / plainF, wantStep, 1e-6),
-              "inside on Attack speed " + (mod == null ? "none" : mod.value()) + " (want " + wantMod + "), outside " + (outMod == null ? "none" : outMod.getValue()) + (sameGroup ? "" : " (another group)") + ", gone without it " + gone + "; blows x" + (withF / plainF) + " (want " + wantStep + ")");
+              "inside on Attack speed " + (mod == null ? "none" : mod.value()) + " (want " + wantMod + "), outside " + (outMod == null ? "none" : outMod.value()) + (sameGroup ? "" : " (another group)") + ", gone without it " + gone + "; blows x" + (withF / plainF) + " (want " + wantStep + ")");
           put(b, f0, p.getX() - 60, p.getZ() + 60, 0); }
 
         // heal_over_time: each second an own troop inside the radius heals value1, one outside nothing

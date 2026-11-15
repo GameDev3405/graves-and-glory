@@ -4649,8 +4649,8 @@ public final class Phase2Checks implements ClientModInitializer {
             report("p2-spike-renderer",renderer,rw+"the unnamed husk: "+hr.getClass().getSimpleName()+", resolve null, vanilla() a HuskEntityRenderer and never drawn through a troop model="+huskOk+"; "+draws+" troop-model draws in all in those 20 ticks");
             report("p2-spike-names",named,nw.toString());
             server(c,b->{var board=b.server.getScoreboard();boolean ok=true;StringBuilder why=new StringBuilder();
-                for(int i=0;i<4;i++){var u=posted.get(i);var t=board.getPlayerTeam(u.mob.getNameForScoreboard());boolean on=t!=null&&t.getName().equals("gg_"+sides[i]);ok&=on;why.append(u.spec.id()).append(" (team ").append(u.squad.team).append(") on ").append(t==null?"no team":t.getName()).append(on?"":" (want gg_"+sides[i]+")").append("; ");}
-                var ht=board.getPlayerTeam(husk.getNameForScoreboard());ok&=ht==null;
+                for(int i=0;i<4;i++){var u=posted.get(i);var t=board.getScoreHolderTeam(u.mob.getNameForScoreboard());boolean on=t!=null&&t.getName().equals("gg_"+sides[i]);ok&=on;why.append(u.spec.id()).append(" (team ").append(u.squad.team).append(") on ").append(t==null?"no team":t.getName()).append(on?"":" (want gg_"+sides[i]+")").append("; ");}
+                var ht=board.getScoreHolderTeam(husk.getNameForScoreboard());ok&=ht==null;
                 report("p2-spike-teams",ok,why+"the husk on "+(ht==null?"no team":ht.getName()));});
             var km=TroopModels.model("knight");var sm=TroopModels.model("sentinel");
             // the rig's bones on both, and each troop's own helm and body cloth (the hand-authored models of 121baca: the Squire's
@@ -4767,11 +4767,11 @@ public final class Phase2Checks implements ClientModInitializer {
             boolean shield=shieldBase!=null&&shieldBase==net.minecraft.util.DyeColor.GRAY&&shieldLayers.size()==1&&shieldLayers.get(0)[1].equals("sc");
             report("p2-spike-portrait",look&&company&&noPennant&&shield,"ArmyCards.portrait(sentinel, 1, 1): named \""+(e==null?"":e.getCustomName().getString())+"\", resolves "+(l==null?"null":l.troop().id()+" stage "+l.armourTier()+" side "+l.side())+", no scoreboard team="+look
                 +"; drawn "+n+" times by the probe (want 5 or more), the last in cloth "+(last==null?"-":last.cloth())+" ("+tex+"; Kort's portrait ruling replaced linen with the company's navy)="+company
-                +"; the last draw showed the tier I tabard (tabard_t1) and no flag by part or name="+noPennant+" "+flags+" "+shown+"; shield "+(tag==null?"none":tag)+" (grey field, white straight cross)="+shield);
+                +"; the last draw showed the tier I tabard (tabard_t1) and no flag by part or name="+noPennant+" "+flags+" "+shown+"; shield "+(shieldBase==null?"none":shieldBase.getName()+" "+shieldLayers.stream().map(a->a[0]+":"+a[1]).toList())+" (grey field, white straight cross)="+shield);
         }
         void clean(GravesAndGlory.Battle b){
             var board=b.server.getScoreboard();boolean ok=true;StringBuilder why=new StringBuilder("killed: ");
-            for(var u:posted){u.mob.kill();var t=board.getPlayerTeam(u.mob.getNameForScoreboard());boolean off=!u.mob.isAlive()&&t==null;ok&=off;why.append(u.spec.id()).append(u.mob.isAlive()?" alive":" dead").append(t==null?" off its team":" still on "+t.getName()).append("; ");}
+            for(var u:posted){u.mob.kill();var t=board.getScoreHolderTeam(u.mob.getNameForScoreboard());boolean off=!u.mob.isAlive()&&t==null;ok&=off;why.append(u.spec.id()).append(u.mob.isAlive()?" alive":" dead").append(t==null?" off its team":" still on "+t.getName()).append("; ");}
             pins.clear();b.units.removeAll(posted);posted.clear();
             b.campaign.returnLobby();why.append("after returnLobby: ");
             for(var f:Spec.FACTIONS){var t=board.getTeam("gg_"+f.id());int n=t==null?0:t.getPlayerList().size();ok&=n==0;why.append("gg_").append(f.id()).append(t==null?" absent":" "+n+" members").append("; ");}
@@ -4934,7 +4934,7 @@ public final class Phase2Checks implements ClientModInitializer {
         }
         /** Moves a posted troop to a side's gg_ team, with that side's painted shield. */
         static void toSide(GravesAndGlory.Battle b,GravesAndGlory.Unit u,String side){
-            var board=b.server.getScoreboard();String team="gg_"+side;var t=board.getTeam(team);if(t==null)t=board.addTeam(team);board.addPlayerToTeam(u.mob.getNameForScoreboard(),t);
+            var board=b.server.getScoreboard();String team="gg_"+side;var t=board.getTeam(team);if(t==null)t=board.addTeam(team);board.addScoreHolderToTeam(u.mob.getNameForScoreboard(),t);
             for(var f:Spec.FACTIONS)if(f.id().equals(side))u.mob.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(u.spec,f.dye()));
         }
         /** p2-gilded-sides: the four Squires were last drawn each in its own side's cloth, with its body cloth (the tier I surcoat) and no flag; the crimson one was first drawn in gold, before its move. */
@@ -5813,7 +5813,7 @@ public final class Phase2Checks implements ClientModInitializer {
          */
         void layout(MinecraftClient c){
             StringBuilder bad=new StringBuilder();int top=RecruitPages.CARD_H-24,drawn=0,worst=0;
-            var s=new CampScreen("recruit");s.init(c,817,400);var g=new net.minecraft.client.gui.DrawContext(c,net.minecraft.client.render.VertexConsumerProvider.immediate(new net.minecraft.client.render.BufferBuilder(256)));
+            var s=new CampScreen("recruit");s.init(c,817,400);var g=new net.minecraft.client.gui.DrawContext(c,net.minecraft.client.render.VertexConsumerProvider.immediate(new net.minecraft.client.util.BufferAllocator(256)));
             CampScreen.probe=true;
             try{
                 for(int W:new int[]{817,960}){int cw=(W-194-22)/3-10;
@@ -6646,16 +6646,13 @@ public final class Phase2Checks implements ClientModInitializer {
         // ---- p2-depth-follow ----
         static final class Capture implements net.minecraft.client.render.VertexConsumer {
             final List<float[]> vertices=new ArrayList<>();
-            @Override public void vertex(float x,float y,float z,float r,float g,float b,float a,float u,float v,int overlay,int light,float nx,float ny,float nz){vertices.add(new float[]{x,y,z,u,v,nx,ny,nz});}
-            @Override public net.minecraft.client.render.VertexConsumer vertex(double x,double y,double z){return this;}
+            @Override public void vertex(float x,float y,float z,int argb,float u,float v,int overlay,int light,float nx,float ny,float nz){vertices.add(new float[]{x,y,z,u,v,nx,ny,nz});} // 1.21: one packed ARGB int where 1.20.1 had four floats
+            @Override public net.minecraft.client.render.VertexConsumer vertex(float x,float y,float z){return this;}
             @Override public net.minecraft.client.render.VertexConsumer color(int r,int g,int b,int a){return this;}
             @Override public net.minecraft.client.render.VertexConsumer texture(float u,float v){return this;}
             @Override public net.minecraft.client.render.VertexConsumer overlay(int u,int v){return this;}
             @Override public net.minecraft.client.render.VertexConsumer light(int u,int v){return this;}
             @Override public net.minecraft.client.render.VertexConsumer normal(float x,float y,float z){return this;}
-            @Override public void next(){}
-            @Override public void fixedColor(int r,int g,int b,int a){}
-            @Override public void unfixColor(){}
         }
         /** The knight posed by a forced clip, drawn bone by bone through a capturing consumer: every relief vertex of the bone, taken back into the bone's own frame, lies within 1.5 px of its cuboids. */
         void followCheck(MinecraftClient c){
