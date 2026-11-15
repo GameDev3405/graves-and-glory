@@ -13,6 +13,8 @@ import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gl.VertexBuffer;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.BuiltBuffer;
+import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.render.OutlineVertexConsumerProvider;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
@@ -89,6 +91,8 @@ public final class BodyCache {
     record Part(RenderLayer layer,VertexBuffer buffer){}
     static final class Body {
         Key key;final List<Part> parts=new ArrayList<>();int records;boolean normal;int lastFrame,verified=Integer.MIN_VALUE/2;double x,y,z;float yaw,shade=1f;Entity entity;TroopRenderer<?> renderer;net.minecraft.util.math.Box cull;
+        /** The mean fog distance of its recorded vertices from its feet, sphere and cylinder (1.21 fog: see fog()). */
+        float fogSphere,fogCylinder;
         void free(){for(Part p:parts)p.buffer.close();parts.clear();}
     }
     /**
@@ -165,8 +169,8 @@ public final class BodyCache {
     static void faded(Entity e,float alpha,float tickDelta){
         Fade f=new Fade(null,new ArrayList<>(),alpha);
         for(var en:LOOSE.rec.open.entrySet()){
-            BufferBuilder.BuiltBuffer built=en.getValue().endNullable();if(built==null)continue;
-            VertexBuffer vb=SPARE.isEmpty()?new VertexBuffer(VertexBuffer.Usage.DYNAMIC):SPARE.pop();vb.bind();vb.upload(built);f.parts.add(new Part(en.getKey(),vb));
+            BuiltBuffer built=en.getValue().endNullable();if(built==null)continue;
+            VertexBuffer vb=SPARE.isEmpty()?new VertexBuffer(VertexBuffer.Usage.DYNAMIC):SPARE.pop();vb.bind();vb.upload(built);f.parts.add(new Part(en.getKey(),vb)); // upload closes built
         }
         VertexBuffer.unbind();LOOSE.rec.release();LOOSE.outline=null;BufferRenderer.reset();
         if(!f.parts.isEmpty()){tag(f,e,2,tickDelta);f.d2=e.squaredDistanceTo(MinecraftClient.getInstance().gameRenderer.getCamera().getPos());f.x=e.getX();f.y=e.getY();f.z=e.getZ();f.reach=reach(e);FADES.add(f);}
@@ -238,36 +242,57 @@ public final class BodyCache {
         try{r.drawModel(e,yaw,tickDelta,new MatrixStack(),RECORDER,key.light());}
         catch(RuntimeException ex){RECORDER.abandon();throw ex;}
         finally{e.bodyYaw=by;e.prevBodyYaw=pby;e.headYaw=hy;e.prevHeadYaw=phy;}
-        boolean ok=true;
+        boolean ok=true;double sphere=0,cylinder=0;int verts=0;
         for(var en:RECORDER.open.entrySet()){
             RenderLayer layer=en.getKey();BufferBuilder bb=en.getValue();
-            BufferBuilder.BuiltBuffer built=bb.endNullable();
+            BuiltBuffer built=bb.endNullable();
             if(built==null)continue;
             // a glint scrolls with time and an outline needs its own pass: such a body is not still
-            String name=layerName(layer);if(name.contains("glint")||name.contains("outline")){built.release();ok=false;lastChange="refused layer "+name;continue;}
-            VertexBuffer vb=new VertexBuffer(VertexBuffer.Usage.STATIC);vb.bind();vb.upload(built);VertexBuffer.unbind();
+            String name=layerName(layer);if(name.contains("glint")||name.contains("outline")){built.close();ok=false;lastChange="refused layer "+name;continue;}
+            var fmt=layer.getVertexFormat();
+            if(fmt.has(net.minecraft.client.render.VertexFormatElement.POSITION)){ // its vertices' fog distances from the feet (1.21 fog: see fog())
+                java.nio.ByteBuffer data=built.getBuffer().duplicate().order(java.nio.ByteOrder.nativeOrder());int size=fmt.getVertexSizeByte(),at=fmt.getOffset(net.minecraft.client.render.VertexFormatElement.POSITION),n=built.getDrawParameters().vertexCount();
+                for(int i=0;i<n;i++){int o=data.position()+i*size+at;float px=data.getFloat(o),py=data.getFloat(o+4),pz=data.getFloat(o+8);
+                    sphere+=Math.sqrt(px*px+py*py+pz*pz);cylinder+=Math.max(Math.sqrt(px*px+pz*pz),Math.abs(py));}
+                verts+=n;
+            }
+            VertexBuffer vb=new VertexBuffer(VertexBuffer.Usage.STATIC);vb.bind();vb.upload(built);VertexBuffer.unbind(); // upload closes built
             b.parts.add(new Part(layer,vb));
         }
         RECORDER.release();BufferRenderer.reset();
+        b.fogSphere=verts>0?(float)(sphere/verts):0f;b.fogCylinder=verts>0?(float)(cylinder/verts):0f;
         return ok;
     }
 
     /** A layer's own name: RenderLayer.toString is "RenderType[name:phases]", and its phases name the outline mode of every entity layer. */
     static String layerName(RenderLayer layer){String s=layer.toString();int i=s.indexOf('['),j=s.indexOf(':');return i>=0&&j>i?s.substring(i+1,j):s;}
-    /** One BufferBuilder a layer, kept between records. */
+    /**
+     * One BufferBuilder a layer a record, each on its own BufferAllocator (1.21: a builder begins when made and is spent by its
+     * end; two builders open at once must not share an allocator). The allocators are kept between records; every builder
+     * open is ended exactly once (by the caller, then release, or by abandon), and its built buffer closed (VertexBuffer.upload
+     * closes it), which frees the allocator's batch for the next record.
+     */
     private static final class Recorder implements VertexConsumerProvider {
-        final Map<RenderLayer,BufferBuilder> open=new LinkedHashMap<>();final ArrayDeque<BufferBuilder> pool=new ArrayDeque<>();
+        final Map<RenderLayer,BufferBuilder> open=new LinkedHashMap<>();final List<BufferAllocator> used=new ArrayList<>();final ArrayDeque<BufferAllocator> pool=new ArrayDeque<>();
         @Override public VertexConsumer getBuffer(RenderLayer layer){
             BufferBuilder bb=open.get(layer);
-            if(bb==null){bb=pool.isEmpty()?new BufferBuilder(Math.max(layer.getExpectedBufferSize(),1<<16)):pool.pop();bb.begin(layer.getDrawMode(),layer.getVertexFormat());open.put(layer,bb);}
+            if(bb==null){
+                BufferAllocator a=pool.isEmpty()?new BufferAllocator(Math.max(layer.getExpectedBufferSize(),1<<16)):pool.pop();used.add(a);
+                bb=new BufferBuilder(a,layer.getDrawMode(),layer.getVertexFormat());open.put(layer,bb);
+            }
             return bb;
         }
-        void release(){pool.addAll(open.values());open.clear();}
-        void abandon(){for(BufferBuilder bb:open.values()){if(bb.isBuilding()){var built=bb.endNullable();if(built!=null)built.release();}}release();}
+        /** After every open builder was ended and its built buffer closed: the allocators back to the pool. */
+        void release(){pool.addAll(used);used.clear();open.clear();}
+        /** Ends what is open without drawing it; its allocators are closed, not pooled (a builder may have failed mid-vertex). */
+        void abandon(){
+            for(BufferBuilder bb:open.values()){try{BuiltBuffer built=bb.endNullable();if(built!=null)built.close();}catch(RuntimeException ignored){}}
+            for(BufferAllocator a:used)a.close();used.clear();open.clear();
+        }
     }
     private static final Recorder RECORDER=new Recorder();
 
-    private static final Matrix4f VIEW=new Matrix4f(),MV=new Matrix4f(),ENTITY_MV=new Matrix4f(),PROJ=new Matrix4f();private static final Matrix3f IDENTITY3=new Matrix3f(),INV_VIEW=new Matrix3f();
+    private static final Matrix4f VIEW=new Matrix4f(),MV=new Matrix4f(),ENTITY_MV=new Matrix4f(),PROJ=new Matrix4f();
     private static final Vector3f L0=new Vector3f(),L1=new Vector3f(),V0=new Vector3f(),V1=new Vector3f(),B0=new Vector3f(),B1=new Vector3f();private static final Matrix3f TURN=new Matrix3f();
     private static Vec3d cam=Vec3d.ZERO;
 
@@ -280,10 +305,12 @@ public final class BodyCache {
     static void flush(WorldRenderContext ctx){
         inWorld=false;
         cam=ctx.camera().getPos();
-        VIEW.set(RenderSystem.getModelViewMatrix()).mul(ctx.matrixStack().peek().getPositionMatrix());
-        ENTITY_MV.set(RenderSystem.getModelViewMatrix());PROJ.set(RenderSystem.getProjectionMatrix());INV_VIEW.set(RenderSystem.getInverseViewRotationMatrix());
-        Vector3f[] lights=RenderSystemAccessor.gravesandglory$lights();V0.set(lights[0]);V1.set(lights[1]);
-        INV_VIEW.transform(V0,L0);INV_VIEW.transform(V1,L1);
+        // 1.21: the camera's rotation is on RenderSystem's model-view stack, and the world pass's matrix stack is a fresh identity
+        VIEW.set(RenderSystem.getModelViewMatrix());if(ctx.matrixStack()!=null)VIEW.mul(ctx.matrixStack().peek().getPositionMatrix());
+        ENTITY_MV.set(RenderSystem.getModelViewMatrix());PROJ.set(RenderSystem.getProjectionMatrix());
+        FOG_START=RenderSystem.getShaderFogStart();FOG_END=RenderSystem.getShaderFogEnd();FOG_CYLINDER=RenderSystem.getShaderFogShape()==net.minecraft.client.render.FogShape.CYLINDER;
+        // 1.21: the lights are set in world axes (DiffuseLighting.enableForLevel takes no view matrix), as the entities' normals are
+        Vector3f[] lights=RenderSystemAccessor.gravesandglory$lights();V0.set(lights[0]);V1.set(lights[1]);L0.set(V0);L1.set(V1);
         if(QUEUE.isEmpty()&&SHADOWS.isEmpty()){sweep();return;}
         long t0=System.nanoTime();flushes++;flushBodies+=QUEUE.size();
         shadows(ctx,cam);
@@ -319,7 +346,6 @@ public final class BodyCache {
     /** The uniforms that hold for the whole frame (the projection, fog, time, screen, lights), and the colour modulator. */
     private static void frameUniforms(ShaderProgram sh,float[] color){
         set(sh.projectionMat,PROJ);
-        if(sh.viewRotationMat!=null)sh.viewRotationMat.set(IDENTITY3);
         if(sh.colorModulator!=null)sh.colorModulator.set(color);
         if(sh.glintAlpha!=null)sh.glintAlpha.set(RenderSystem.getShaderGlintAlpha());
         if(sh.fogStart!=null)sh.fogStart.set(RenderSystem.getShaderFogStart());
@@ -340,6 +366,24 @@ public final class BodyCache {
         TURN.rotationY(-turn); // the lights into the body's recorded axes
         if(sh.light0Direction!=null){sh.light0Direction.set(TURN.transform(L0,B0));sh.light0Direction.upload();}
         if(sh.light1Direction!=null){sh.light1Direction.set(TURN.transform(L1,B1));sh.light1Direction.upload();}
+        fog(sh,b);
+    }
+    private static float FOG_START,FOG_END;private static boolean FOG_CYLINDER;
+    /**
+     * 1.21's entity programs take a vertex's fog distance from its Position alone (fog_distance(Position, FogShape)), which in
+     * the frame's entity draws is the vertex from the camera in world axes; 1.20.1 put it through ModelViewMat and IViewRotMat.
+     * A cached body's vertices are in its own axes about its feet, so its fog range is moved by how far its feet are from the
+     * camera, less the mean distance of its vertices from its feet (the part each vertex adds itself): fog is a smoothstep of
+     * the distance between fogStart and fogEnd, so moving both by d is the same as adding d to every vertex's distance. Exact
+     * at the body's mean vertex distance; off by at most the body's own size (a block or two) elsewhere on it.
+     * body null: a caught normal draw, whose vertices are already from the camera: the frame's own range.
+     */
+    private static void fog(ShaderProgram sh,Body b){
+        float shift=0f;
+        if(b!=null){double dx=b.x-cam.x,dy=b.y-cam.y,dz=b.z-cam.z;
+            shift=FOG_CYLINDER?(float)Math.max(Math.sqrt(dx*dx+dz*dz),Math.abs(dy))-b.fogCylinder:(float)Math.sqrt(dx*dx+dy*dy+dz*dz)-b.fogSphere;}
+        if(sh.fogStart!=null){sh.fogStart.set(FOG_START-shift);sh.fogStart.upload();}
+        if(sh.fogEnd!=null){sh.fogEnd.set(FOG_END-shift);sh.fogEnd.upload();}
     }
     private static void set(GlUniform u,Matrix4f m){if(u!=null)u.set(m);}
 
@@ -470,10 +514,10 @@ public final class BodyCache {
             Fade f=ORDER[i];
             for(Part p:f.parts){
                 if(p.layer()!=layer)continue;
-                if(f.body!=null){place(sh,f.body);if(sh.viewRotationMat!=null){sh.viewRotationMat.set(IDENTITY3);sh.viewRotationMat.upload();}}
-                else{ // caught from a normal draw: its vertices are in the camera's axes, as the frame's entity draws
+                if(f.body!=null)place(sh,f.body);
+                else{ // caught from a normal draw: its vertices are from the camera in world axes, as the frame's entity draws (1.21)
                     if(sh.modelViewMat!=null){sh.modelViewMat.set(ENTITY_MV);sh.modelViewMat.upload();}
-                    if(sh.viewRotationMat!=null){sh.viewRotationMat.set(INV_VIEW);sh.viewRotationMat.upload();}
+                    fog(sh,null);
                     if(sh.light0Direction!=null){sh.light0Direction.set(V0);sh.light0Direction.upload();}
                     if(sh.light1Direction!=null){sh.light1Direction.set(V1);sh.light1Direction.upload();}
                 }
@@ -497,7 +541,7 @@ public final class BodyCache {
     private static void shadows(WorldRenderContext ctx,Vec3d cam){
         MinecraftClient mc=MinecraftClient.getInstance();var d=mc.getEntityRenderDispatcher();
         if(SHADOWS.isEmpty()||mc.world==null||!mc.options.getEntityShadows().getValue()||!((EntityRenderDispatcherAccessor)d).gravesandglory$renderShadows())return;
-        float td=ctx.tickDelta();MatrixStack ms=ctx.matrixStack();var vc=mc.getBufferBuilders().getEntityVertexConsumers();
+        float td=ctx.tickCounter().getTickDelta(true);MatrixStack ms=ctx.matrixStack();var vc=mc.getBufferBuilders().getEntityVertexConsumers();
         for(Body b:SHADOWS){
             Entity e=b.entity;float radius=b.renderer.shadowRadius(),opacity=b.renderer.shadowOpacity()*b.shade;if(radius<=0)continue;
             float o=(float)((1.0-cam.squaredDistanceTo(e.getX(),e.getY(),e.getZ())/256.0)*opacity);if(o<=0)continue;
