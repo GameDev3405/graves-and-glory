@@ -36,8 +36,8 @@ def structure_header(path):
         elif name=='size' and tag==9 and buf[pos]==3 and struct.unpack_from('>i',buf,pos+1)[0]==3: size=struct.unpack_from('>3i',buf,pos+5)
         pos=nbt_skip(buf,pos,tag)
     return version,size
-studio_scripts='test-tools/resources/data/gravesandglory_studio/functions'
-for folder in ('src/main/resources/data/gravesandglory/structures','test-tools/resources/data/gravesandglory/structures'):
+studio_scripts='test-tools/resources/data/gravesandglory_studio/function'
+for folder in ('src/main/resources/data/gravesandglory/structure','test-tools/resources/data/gravesandglory/structure'):
     if not (root/folder).is_dir(): continue
     for nbt in sorted((root/folder).rglob('*.nbt')):
         sid=nbt.relative_to(root/folder).with_suffix('').as_posix()
@@ -253,7 +253,7 @@ for f in data['formations']:
 if sorted(g['pill'] for g in data.get('groups',[]))!=list(range(1,len(data.get('groups',[]))+1)): errors.append('groups: pill must run 1, 2, 3 and on, each once')
 if data['combatDiscipline'][0]['chargeBonusMultiplier']<1: errors.append('combatDiscipline: chargeBonusMultiplier must be at least 1')
 # Troop textures. A gravesandglory: path must exist in the mod's assets. A minecraft: path must be one of VANILLA_TEXTURES, the
-# vanilla paths the sheet may name, each checked by hand against the Minecraft client jar of build.gradle (1.20.1); when Loom has
+# vanilla paths the sheet may name, each checked by hand against the Minecraft client jar of build.gradle (1.21.1); when Loom has
 # cached that jar (after the first build) the path must also be an entry of it, so a misspelled or renamed vanilla texture fails
 # here instead of showing as a missing-texture model in game. The list keeps the result the same on a machine without the jar:
 # naming a new vanilla texture in the sheet means adding it here.
@@ -696,7 +696,7 @@ elif not 0<=data['economyModel'][0]['winRate']<=1 or any(data['economyModel'][0]
 # Built world (Phase 3): the pieces sheet describes the structure files, campPieces places them, campStations names the people and boards of the camp.
 piece_rows={r['id']:r for r in data.get('pieces',[])}
 for r in piece_rows.values():
-    path=root/'src/main/resources/data/gravesandglory/structures'/(r['id']+'.nbt')
+    path=root/'src/main/resources/data/gravesandglory/structure'/(r['id']+'.nbt')
     if not path.is_file(): errors.append(f'pieces/{r["id"]}: no structure file {path.relative_to(root).as_posix()}'); continue
     try: version,size=structure_header(path)
     except Exception as e: errors.append(f'pieces/{r["id"]}: cannot read the NBT ({e})'); continue
