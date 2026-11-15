@@ -42,10 +42,10 @@ abstract class ChatHudMixin {
     }
 
     @Inject(method = "render", at = @At("HEAD"))
-    private void gravesandglory$begin(DrawContext g, int tick, int mouseX, int mouseY, CallbackInfo ci) { ChatPlacement.begin(); }
+    private void gravesandglory$begin(DrawContext g, int tick, int mouseX, int mouseY, boolean focused, CallbackInfo ci) { ChatPlacement.begin(); }
 
     @Inject(method = "render", at = @At("RETURN"))
-    private void gravesandglory$end(DrawContext g, int tick, int mouseX, int mouseY, CallbackInfo ci) { ChatPlacement.end(); }
+    private void gravesandglory$end(DrawContext g, int tick, int mouseX, int mouseY, boolean focused, CallbackInfo ci) { ChatPlacement.end(); }
 
     /** The first fill in render is each line's background: fill(-4, y - lineHeight, width + 8, y, colour). */
     @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/DrawContext;fill(IIIII)V", ordinal = 0))

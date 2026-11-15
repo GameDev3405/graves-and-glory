@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import net.minecraft.client.util.math.MatrixStack;
+import org.joml.Matrix4f;
 
 /** The podium shot's fixed field of view (EndingClient.FOV), whatever the player's FOV option; the plates project with the same value.
  *  And no first-person hand or held item while the match ending runs (the banner and the stage are seen bare). */
@@ -20,7 +20,7 @@ abstract class EndingViewMixin {
     }
 
     @Inject(method = "renderHand", at = @At("HEAD"), cancellable = true)
-    private void graves$endingHand(MatrixStack matrices, Camera camera, float tickDelta, CallbackInfo ci) {
+    private void graves$endingHand(Camera camera, float tickDelta, Matrix4f matrix, CallbackInfo ci) {
         if (EndingClient.step() != null) { EndingClient.handsHidden++; ci.cancel(); }
     }
 }
