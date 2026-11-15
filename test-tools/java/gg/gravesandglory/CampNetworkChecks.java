@@ -2,7 +2,7 @@ package gg.gravesandglory;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ConnectScreen;
+import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
 import net.minecraft.client.network.ServerAddress;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.world.GameMode;
@@ -15,7 +15,7 @@ public final class CampNetworkChecks implements ClientModInitializer {
  int clock,step,stageTicks;boolean started,rejoined,failed;UUID friend;String address;
  final Path control=Path.of(System.getProperty("gravesandglory.networkRoot","work/network"));
  void check(String id,boolean pass){MeltyTest.report("friends-"+id,pass,id);System.out.println("[friends-check] "+id+"="+pass);if(!pass)failed=true;}
- void connect(MinecraftClient c){ConnectScreen.connect(new FrontMenuScreen(),c,ServerAddress.parse(address),new ServerInfo("Isolated friends test",address,false),false);}
+ void connect(MinecraftClient c){ConnectScreen.connect(new FrontMenuScreen(),c,ServerAddress.parse(address),new ServerInfo("Isolated friends test",address, ServerInfo.ServerType.OTHER), false, null);}
  void server(MinecraftClient c,java.util.function.Consumer<GravesAndGlory.Battle> fn){c.getServer().execute(()->{try{fn.accept(GravesAndGlory.battle);}catch(Exception e){check("server-exception",false);e.printStackTrace();}});}
  public void onInitializeClient(){boolean host=Boolean.getBoolean("gravesandglory.networkHost"),join=Boolean.getBoolean("gravesandglory.networkJoin");if(!host&&!join)return;
   ClientTickEvents.END_CLIENT_TICK.register(c->{try{

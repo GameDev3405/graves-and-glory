@@ -8,7 +8,7 @@ FORBIDDEN = [
     (re.compile(r'Registry\s*\.\s*register'), 'Registry.register'),
     (re.compile(r'Registries\s*\.[^;]*register', re.S), 'Registries...register'),
     (re.compile(r'FabricBlockEntityTypeBuilder'), 'FabricBlockEntityTypeBuilder'),
-    (re.compile(r'SoundEvent\s*\.\s*of\s*\(\s*new\s+Identifier\s*\(\s*"gravesandglory"'), 'SoundEvent.of(new Identifier("gravesandglory"'),
+    (re.compile(r'SoundEvent\s*\.\s*of\s*\(\s*(?:new\s+Identifier|Identifier\s*\.\s*of)\s*\(\s*"gravesandglory"'), 'SoundEvent.of(new Identifier / Identifier.of("gravesandglory"'),
 ]
 
 

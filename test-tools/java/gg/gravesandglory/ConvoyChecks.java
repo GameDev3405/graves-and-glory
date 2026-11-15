@@ -37,7 +37,7 @@ final class ConvoyChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     /** The player beside the wagon, the defence's troops kept out of range so nothing contests it. */
     static void beside(GravesAndGlory.Battle b,ServerPlayerEntity p,ConvoyMode m){
         Vec3d w=m.position(m.distance);p.teleport(p.getServerWorld(),w.x,w.y,w.z+2,p.getYaw(),20);
-        for(var u:b.units)if(u.squad.team!=ConvoyMode.ESCORT&&u.mob.isAlive()&&u.mob.getPos().distanceTo(w)<20)u.mob.teleport(w.x,w.y+1,w.z+30);
+        for(var u:b.units)if(u.squad.team!=ConvoyMode.ESCORT&&u.mob.isAlive()&&u.mob.getPos().distanceTo(w)<20)u.mob.requestTeleport(w.x,w.y+1,w.z+30);
     }
     /** The player a few blocks off the wagon's front quarter, still in push range, looking at it: the close-up. */
     static void closeUp(GravesAndGlory.Battle b,ServerPlayerEntity p,ConvoyMode m){
@@ -51,7 +51,7 @@ final class ConvoyChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
     /** Keeps every troop and the player out of push range, so the wagon is alone. */
     static void clear(GravesAndGlory.Battle b,ServerPlayerEntity p,ConvoyMode m){
         Vec3d w=m.position(m.distance);
-        for(var u:b.units)if(u.mob.isAlive()&&u.mob.getPos().distanceTo(w)<20)u.mob.teleport(w.x,w.y+1,w.z+30);
+        for(var u:b.units)if(u.mob.isAlive()&&u.mob.getPos().distanceTo(w)<20)u.mob.requestTeleport(w.x,w.y+1,w.z+30);
         p.teleport(p.getServerWorld(),w.x,w.y+1,w.z-30,p.getYaw(),20);
     }
 

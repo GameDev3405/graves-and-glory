@@ -239,7 +239,7 @@ final class OldModelGaps implements Phase1Checks.Suite {
         sweeps += newSweeps(c);
         Entity e = c.world == null ? null : c.world.getEntityById(subjectId);
         if (e == null) { missing++; return; }
-        double nowTick = c.world.getTime() + c.getTickDelta();
+        double nowTick = c.world.getTime() + c.getRenderTickCounter().getTickDelta(false);
         MotionEngine.State st = TroopMotion.state(subjectId);
         if (st != null && !st.stances.isEmpty()) { var top = st.stances.get(st.stances.size() - 1); for (int k = 0; k < top.n; k++) if (top.clips[k] != null) stanceClips.add(top.clips[k].name()); }
         if (s.slug().startsWith("rise") && riseTick >= 0) {

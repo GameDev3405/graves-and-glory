@@ -241,7 +241,7 @@ final class GearScreenChecks implements Phase1Checks.Suite {
                     note = "synced at " + k;
                     var s = c.currentScreen;
                     int[] grid = WarTableGear.rects().get("grid");
-                    if (s != null && grid != null) for (int n = 0; n < 40; n++) s.mouseScrolled(UiHomeChecks.gui(c, grid[0] + grid[2] / 2.0), UiHomeChecks.gui(c, grid[1] + grid[3] / 2.0), -1); // one row per wheel notch
+                    if (s != null && grid != null) for (int n = 0; n < 40; n++) s.mouseScrolled(UiHomeChecks.gui(c, grid[0] + grid[2] / 2.0), UiHomeChecks.gui(c, grid[1] + grid[3] / 2.0), 0.0, -1); // one row per wheel notch
                     at = tick - 300; // the next tick is k 301
                 }
                 if (k == 306) {
@@ -260,7 +260,7 @@ final class GearScreenChecks implements Phase1Checks.Suite {
                     note += ", 113 synced";
                     var s = c.currentScreen;
                     int[] grid = WarTableGear.rects().get("grid");
-                    if (s != null && grid != null) for (int n = 0; n < 40; n++) s.mouseScrolled(UiHomeChecks.gui(c, grid[0] + grid[2] / 2.0), UiHomeChecks.gui(c, grid[1] + grid[3] / 2.0), -1); // one row per wheel notch
+                    if (s != null && grid != null) for (int n = 0; n < 40; n++) s.mouseScrolled(UiHomeChecks.gui(c, grid[0] + grid[2] / 2.0), UiHomeChecks.gui(c, grid[1] + grid[3] / 2.0), 0.0, -1); // one row per wheel notch
                     at = tick - 600;
                 }
                 if (k == 606 && a != null) {

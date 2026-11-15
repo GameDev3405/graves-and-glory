@@ -75,7 +75,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 viewWhy += "top bar sides '" + screen.drawnSides + "' (team " + GravesAndGloryClient.team + ", wanted '" + want + "'), bottom bar and key fit: " + screen.barFits() + "; ";
                 Phase4Checks.shot(c, "ui-map-fit-" + id);
                 double cx = screen.ax + screen.aw / 2.0, cy = screen.ay + screen.ah / 2.0, wx = v.worldX(cx), wz = v.worldZ(cy), before = v.scale();
-                screen.mouseScrolled(cx, cy, 3);
+                screen.mouseScrolled(cx, cy, 0.0, 3);
                 zoomUp = v.scale() > before * 1.9;
                 zoomKept = Math.abs(v.worldX(cx) - wx) < 1e-6 && Math.abs(v.worldZ(cy) - wz) < 1e-6;
                 viewWhy += "scroll +3 at the centre: scale " + r(before) + " -> " + r(v.scale()) + ", centre world point moved " + r(Math.hypot(v.worldX(cx) - wx, v.worldZ(cy) - wz)) + " blocks; ";
@@ -211,7 +211,7 @@ public final class MapScreenChecks implements Phase4Checks.Suite, Phase4Checks.S
                 next(20, tick);
             }
             // ---- the big window and the smallest one
-            case 20 -> { if (waited >= 8) { Phase4Checks.shot(c, "ui-map-fit-" + id + "-1080"); screen.mouseScrolled(screen.ax + screen.aw / 2.0, screen.ay + screen.ah / 2.0, 3); next(23, tick); } }
+            case 20 -> { if (waited >= 8) { Phase4Checks.shot(c, "ui-map-fit-" + id + "-1080"); screen.mouseScrolled(screen.ax + screen.aw / 2.0, screen.ay + screen.ah / 2.0, 0.0, 3); next(23, tick); } }
             case 23 -> { if (waited >= 4) { Phase4Checks.shot(c, "ui-map-zoom-" + id + "-1080"); screen.keyPressed(GLFW.GLFW_KEY_HOME, 0, 0); next(24, tick); } }
             case 24 -> { if (waited >= 3) { int[] p = screen.pointAt(1); if (p != null) screen.clickAt(p[0], p[1]); next(21, tick); } }
             case 21 -> { if (waited >= 3) { Phase4Checks.shot(c, "ui-map-plan-" + id + "-1080"); screen.popup = null; Phase1Checks.window(c, 854, 480, 2); next(22, tick); } }

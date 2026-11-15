@@ -584,7 +584,7 @@ final class EndingChecks implements Phase4Checks.Suite, Phase4Checks.ServerWatch
         var s = b.squads.get(player);
         if (stage == 2) {
             for (var u : b.units) if (u.mob.isAlive()) { pos.put(u.mob, u.mob.getPos()); hp.put(u.mob, u.mob.getHealth()); }
-            var a = new net.minecraft.entity.projectile.ArrowEntity(b.world, p.getX(), p.getY() + 6, p.getZ()); a.noClip = true; a.setNoGravity(true); a.setVelocity(0.6, 0, 0); b.world.spawnEntity(a);
+            var a = new net.minecraft.entity.projectile.ArrowEntity(b.world, p.getX(), p.getY() + 6, p.getZ(), new net.minecraft.item.ItemStack(net.minecraft.item.Items.ARROW), null); a.noClip = true; a.setNoGravity(true); a.setVelocity(0.6, 0, 0); b.world.spawnEntity(a);
             Vec3d from = a.getPos(); b.shots.add(new Projectiles.Shot(null, null, null, "arrow", 0, from, b.time, b.time + 10000, a, from)); arrow = a; arrowAt = from;
             s.stats.kills += 6; // army kills for the Butcher award, so the stats screen's Highlights has a line (ending-client-stats-fill)
             { var pr0 = c.profile(player); pr0.progression.xp = Progression.XP_PER_TIER * 3 - 30; xpSet = pr0.progression.xp; renownSet = new HashMap<>(pr0.renown); } // pass 2: 30 XP short of tier 3 (ending-progress, ending-client-bars)

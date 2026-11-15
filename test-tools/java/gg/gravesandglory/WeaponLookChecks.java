@@ -39,7 +39,7 @@ final class WeaponLookChecks implements Phase1Checks.Suite {
                     return;
                 }
                 if (k > 80) {
-                    var on = new ArrayList<>(c.getResourcePackManager().getEnabledNames());
+                    var on = new ArrayList<>(c.getResourcePackManager().getEnabledIds());
                     int e = on.indexOf(LookPacks.EXCALIBUR), a = on.indexOf(LookPacks.ARMORY), w = on.indexOf(LookPacks.WEAPONS);
                     boolean ok = e >= 0 && a > e && w > e;
                     System.out.println("[p1] weapon-look: enabled packs " + on);
@@ -52,7 +52,7 @@ final class WeaponLookChecks implements Phase1Checks.Suite {
                 if (k == 1) Phase1Checks.server(c, b -> {
                     var p = b.server.getPlayerManager().getPlayer(player);
                     if (p == null) return;
-                    p.equipStack(EquipmentSlot.MAINHAND, new ItemStack(Registries.ITEM.get(new Identifier("minecraft:" + item))));
+                    p.equipStack(EquipmentSlot.MAINHAND, new ItemStack(Registries.ITEM.get(Identifier.of("minecraft:" + item))));
                     p.equipStack(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
                 });
                 if (k == 2) { c.setScreen(null); c.options.hudHidden = false; c.options.setPerspective(Perspective.FIRST_PERSON); }

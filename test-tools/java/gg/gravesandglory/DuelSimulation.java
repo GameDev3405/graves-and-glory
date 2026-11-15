@@ -115,7 +115,7 @@ public final class DuelSimulation implements ModInitializer {
             Files.writeString(meta, "plan=" + planPath + "\nshard=" + shard + "/" + shards + "\nfights=" + fights.size() + "\nmap=" + map + "\noverride=" + SheetOverride.describe() + "\nfast=" + gg.gravesandglory.testing.SimSpeed.FAST + "\nseed=" + seed + "\n", StandardCharsets.UTF_8);
         } catch (IOException e) { throw new UncheckedIOException(e); }
         System.out.println("[duel] plan " + planPath + ": " + fights.size() + " fights (shard " + shard + "/" + shards + "), map " + map + ", override " + SheetOverride.describe() + ", seed " + seed);
-        Identifier late = new Identifier("gravesandglory_local_test_tools", "late");
+        Identifier late = Identifier.of("gravesandglory_local_test_tools", "late");
         ServerLivingEntityEvents.AFTER_DEATH.addPhaseOrdering(Event.DEFAULT_PHASE, late);
         ServerLivingEntityEvents.AFTER_DEATH.register(late, (entity, source) -> { ledger.onDeath(GravesAndGlory.battle, entity, source); if (phase == Phase.FIGHT) reforce(); });
         ScratchFlags.install();

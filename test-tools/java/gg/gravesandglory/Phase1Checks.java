@@ -118,6 +118,14 @@ public final class Phase1Checks implements ClientModInitializer {
         });
     }
 
+    /** The 1.20.1 banner pattern codes with their 1.21 registry ids: a test-side copy of vanilla 1.20.1 BannerPatterns (read from the 1.20.1 merged jar), kept apart from the mod's own Battle.LEGACY_PATTERNS so the shield and banner checks verify that table independently. */
+    static final Map<String,String> LEGACY_PATTERN_CODES;static{Map<String,String> m=new HashMap<>();for(String e:new String[]{"b:base","bl:square_bottom_left","br:square_bottom_right","tl:square_top_left","tr:square_top_right","bs:stripe_bottom","ts:stripe_top","ls:stripe_left","rs:stripe_right","cs:stripe_center","ms:stripe_middle","drs:stripe_downright","dls:stripe_downleft","ss:small_stripes","cr:cross","sc:straight_cross","bt:triangle_bottom","tt:triangle_top","bts:triangles_bottom","tts:triangles_top","ld:diagonal_left","rd:diagonal_up_right","lud:diagonal_up_left","rud:diagonal_right","mc:circle","mr:rhombus","vh:half_vertical","hh:half_horizontal","vhr:half_vertical_right","hhb:half_horizontal_bottom","bo:border","cbo:curly_border","gra:gradient","gru:gradient_up","bri:bricks","glb:globe","cre:creeper","sku:skull","flo:flower","moj:mojang","pig:piglin"}){String[] p=e.split(":");m.put(p[0],p[1]);}LEGACY_PATTERN_CODES=Map.copyOf(m);}
+    /** The 1.20.1 pattern code for a 1.21 pattern registry path (the path itself when unknown, so a mismatch fails the expectation). */
+    static String legacyCode(String path){for(var en:LEGACY_PATTERN_CODES.entrySet())if(en.getValue().equals(path))return en.getKey();return path;}
+    /** 1.20.1's CommandManager.executeWithPrefix returned the command's integer result; in 1.21.1 it is void. This runs the same call and captures the result through the source's ReturnValueConsumer (0 when the command failed). A command runs to completion inside executeWithPrefix, so the value is set when it returns. Only for a top-level call: the consumer keeps just the last result that was reported (a command that reports several, such as a function, yields its last), and when this is called from inside a command that is already running, executeWithPrefix queues the new one instead of running it, so the result comes back as 0. Every current caller is top level. */
+    static int command(net.minecraft.server.MinecraftServer server,net.minecraft.server.command.ServerCommandSource source,String command){
+        int[] result={0};server.getCommandManager().executeWithPrefix(source.withReturnValueConsumer((success,value)->result[0]=success?value:0),command);return result[0];
+    }
     static int tagged(GravesAndGlory.Battle b){int n=0;for(var e:b.world.iterateEntities())if(e.getCommandTags().contains(Projectiles.TAG))n++;return n;}
     static double segmentDistance(Vec3d p,Vec3d a,Vec3d z){Vec3d ab=z.subtract(a);double t=Math.max(0,Math.min(1,p.subtract(a).dotProduct(ab)/Math.max(1e-9,ab.lengthSquared())));return p.distanceTo(a.add(ab.multiply(t)));}
     static Spec.TroopsRow troop(String id){return Arrays.stream(Spec.TROOPS).filter(t->t.id().equals(id)).findFirst().orElseThrow();}
@@ -126,7 +134,7 @@ public final class Phase1Checks implements ClientModInitializer {
     /** The ids of the sounds this client's own sound system played, in order (a SoundInstanceListener, registered once per client by listenSounds): what the player really hears. Every suite reads it. */
     public static final java.util.concurrent.CopyOnWriteArrayList<String> clientSounds=new java.util.concurrent.CopyOnWriteArrayList<>();
     static boolean soundsListened;
-    public static void listenSounds(MinecraftClient c){if(soundsListened)return;soundsListened=true;c.getSoundManager().registerListener((sound,set)->clientSounds.add(sound.getId().toString()));}
+    public static void listenSounds(MinecraftClient c){if(soundsListened)return;soundsListened=true;c.getSoundManager().registerListener((sound,set,range)->clientSounds.add(sound.getId().toString()));}
     /** How many times this client has played the sound. */
     public static long heardOnClient(String id){return clientSounds.stream().filter(id::equals).count();}
     /**
@@ -138,8 +146,9 @@ public final class Phase1Checks implements ClientModInitializer {
         public final List<net.minecraft.network.packet.Packet<?>> packets=new java.util.concurrent.CopyOnWriteArrayList<>();
         Listener(net.minecraft.server.world.ServerWorld w){
             super(w,new com.mojang.authlib.GameProfile(UUID.randomUUID(),"Listener"));
-            new net.minecraft.server.network.ServerPlayNetworkHandler(w.getServer(),new net.minecraft.network.ClientConnection(net.minecraft.network.NetworkSide.SERVERBOUND),this){
-                @Override public void sendPacket(net.minecraft.network.packet.Packet<?> packet,net.minecraft.network.PacketCallbacks callbacks){packets.add(packet);}
+            new net.minecraft.server.network.ServerPlayNetworkHandler(w.getServer(),new net.minecraft.network.ClientConnection(net.minecraft.network.NetworkSide.SERVERBOUND),this,net.minecraft.server.network.ConnectedClientData.createDefault(new com.mojang.authlib.GameProfile(getUuid(),"Listener"),false)){
+                @Override public void sendPacket(net.minecraft.network.packet.Packet<?> packet){packets.add(packet);}
+                @Override public void send(net.minecraft.network.packet.Packet<?> packet,net.minecraft.network.PacketCallbacks callbacks){packets.add(packet);}
             };
         }
         /** Stands at (x, y, z) in the battle's world and joins the server's player list. */
@@ -504,8 +513,8 @@ public final class Phase1Checks implements ClientModInitializer {
                     System.out.println("[p1] tick-cost fixture: "+b.squads.values().stream().filter(s->s.seated&&s.bot).count()+" bot armies, "+troops+" troops around "+centre.id());next(b,15);
                 }
                 case 15->{
-                    tickSum+=b.server.getTickTime();tickSamples++;
-                    if(b.time-stageAt>=600){double avg=tickSum/tickSamples;float now=b.server.getTickTime();
+                    tickSum+=b.server.getAverageTickTime();tickSamples++;
+                    if(b.time-stageAt>=600){double avg=tickSum/tickSamples;float now=b.server.getAverageTickTime();
                         System.out.println("[p1] tick-cost avg="+String.format("%.2f",avg));
                         report("p1-tick-cost",now<40,"server tick "+String.format("%.2f",now)+" ms (600-tick mean "+String.format("%.2f",avg)+" ms) with "+troops+" troops at start, "+b.units.size()+" at end");
                         handBack(b);next(b,16);}
@@ -3048,7 +3057,7 @@ public final class Phase1Checks implements ClientModInitializer {
         /** A left click in the middle of a canvas box as Mouse.onMouseButton sends it: the navigation turns to the mouse's first. */
         static void click(MinecraftClient c,int[] b){c.setNavigationType(net.minecraft.client.gui.navigation.GuiNavigationType.MOUSE);UiHomeChecks.click(c,b);}
         /** The wheel turned by amount over the roll, as Mouse.onMouseScroll hands it to the screen. */
-        static void wheel(MinecraftClient c,double amount){if(c.currentScreen!=null)c.currentScreen.mouseScrolled(UiHomeChecks.gui(c,176),UiHomeChecks.gui(c,300),amount);}
+        static void wheel(MinecraftClient c,double amount){if(c.currentScreen!=null)c.currentScreen.mouseScrolled(UiHomeChecks.gui(c,176),UiHomeChecks.gui(c,300),0.0,amount);}
         static java.lang.reflect.Field mouseField(String name){try{var f=net.minecraft.client.Mouse.class.getDeclaredField(name);f.setAccessible(true);return f;}catch(NoSuchFieldException e){throw new IllegalStateException(e);}}
         /** The game's pointer at canvas (x, y), where GLFW's cursor callback would leave it (the OS cursor stays where it is): hover
          *  on the page is read from the pointer when a frame draws, not from the events the suite sends. */

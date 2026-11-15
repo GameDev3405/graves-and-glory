@@ -213,7 +213,7 @@ final class GearCombatChecks implements Phase1Checks.Suite {
         double want = BowItem.getPullProgress(drawn) * 3, vanilla = BowItem.getPullProgress(n) * 3;
         p.setPitch(0);
         var stack = p.getMainHandStack();
-        stack.onStoppedUsing(b.world, p, stack.getMaxUseTime() - n);
+        stack.onStoppedUsing(b.world, p, stack.getMaxUseTime(p) - n);
         PersistentProjectileEntity arrow = null;
         for (var e : b.world.iterateEntities()) if (e instanceof PersistentProjectileEntity a && a.getOwner() == p && (arrow == null || a.getId() > arrow.getId())) arrow = a;
         double speed = arrow == null ? 0 : arrow.getVelocity().length();
@@ -615,8 +615,8 @@ final class GearCombatChecks implements Phase1Checks.Suite {
           if (keep == null) s.assignments.remove(group); else s.assignments.put(group, keep);
           boolean sameGroup = m1.spec.group().equals(group);
           double wantStep = 1 + GearStats.value2(only(gear, "formation_charge"), "formation_charge");
-          Phase1Checks.report("p1-gear-combat-formation_charge", mod != null && close(mod.getValue(), wantMod, 1e-9) && (!sameGroup || outMod == null) && gone && close(withF / plainF, wantStep, 1e-6),
-              "inside on Attack speed " + (mod == null ? "none" : mod.getValue()) + " (want " + wantMod + "), outside " + (outMod == null ? "none" : outMod.getValue()) + (sameGroup ? "" : " (another group)") + ", gone without it " + gone + "; blows x" + (withF / plainF) + " (want " + wantStep + ")");
+          Phase1Checks.report("p1-gear-combat-formation_charge", mod != null && close(mod.value(), wantMod, 1e-9) && (!sameGroup || outMod == null) && gone && close(withF / plainF, wantStep, 1e-6),
+              "inside on Attack speed " + (mod == null ? "none" : mod.value()) + " (want " + wantMod + "), outside " + (outMod == null ? "none" : outMod.value()) + (sameGroup ? "" : " (another group)") + ", gone without it " + gone + "; blows x" + (withF / plainF) + " (want " + wantStep + ")");
           put(b, f0, p.getX() - 60, p.getZ() + 60, 0); }
 
         // heal_over_time: each second an own troop inside the radius heals value1, one outside nothing
@@ -668,7 +668,7 @@ final class GearCombatChecks implements Phase1Checks.Suite {
           want = 1 + GearStats.value1(s.gear, "last_light");
           Phase1Checks.report("p1-gear-combat-last_light", close(low / high, want, 1e-9), "below " + lowAt + " of his health x" + (low / high) + " (want " + want + ")");
           s.gear = only(gear, "hawkeye"); double farAt = GearStats.value2(s.gear, "hawkeye");
-          var shot = b.world.getDamageSources().arrow(new net.minecraft.entity.projectile.ArrowEntity(b.world, p), p);
+          var shot = b.world.getDamageSources().arrow(new net.minecraft.entity.projectile.ArrowEntity(b.world, p, new net.minecraft.item.ItemStack(net.minecraft.item.Items.ARROW), null), p);
           at(b, p, f0, farAt + 2, 0); double far = GearCombat.blowFactor(s, p, f0.mob, shot);
           at(b, p, f0, farAt - 5, 0); double nearF = GearCombat.blowFactor(s, p, f0.mob, shot);
           want = 1 + GearStats.value1(s.gear, "hawkeye");

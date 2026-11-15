@@ -58,7 +58,7 @@ public final class MapWalk implements ClientModInitializer {
             if(c.world==null){
                 if(!hosted&&++ticks>60){hosted=true;
                     var info=new LevelInfo("MapWalk",GameMode.CREATIVE,false,Difficulty.PEACEFUL,true,new GameRules(),DataConfiguration.SAFE_MODE);
-                    c.createIntegratedServerLoader().createAndStart("MapWalk-"+tag,info,new GeneratorOptions(1L,false,false),r->r.get(RegistryKeys.WORLD_PRESET).get(WorldPresets.FLAT).createDimensionsRegistryHolder());}
+                    c.createIntegratedServerLoader().createAndStart("MapWalk-"+tag,info,new GeneratorOptions(1L,false,false),r->r.get(RegistryKeys.WORLD_PRESET).get(WorldPresets.FLAT).createDimensionsRegistryHolder(),new net.minecraft.client.gui.screen.TitleScreen());}
                 return;
             }
             var server=c.getServer();if(server==null||c.player==null)return;

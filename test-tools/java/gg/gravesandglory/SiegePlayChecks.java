@@ -223,7 +223,7 @@ final class SiegePlayChecks implements Phase4Checks.Suite, Phase4Checks.ServerWa
                 go(b, p, SiegeMode.KEEP_X, SiegeMode.KEEP_Z, 0);
                 var own = b.squads.get(p.getUuid());
                 int brought = 0;
-                for (var u : b.units) if (u.squad == own && u.mob.isAlive()) { u.mob.teleport(SiegeMode.KEEP_X + (brought % 5) - 2, top(b, SiegeMode.KEEP_X, SiegeMode.KEEP_Z), SiegeMode.KEEP_Z + (brought / 5) - 2); brought++; }
+                for (var u : b.units) if (u.squad == own && u.mob.isAlive()) { u.mob.requestTeleport(SiegeMode.KEEP_X + (brought % 5) - 2, top(b, SiegeMode.KEEP_X, SiegeMode.KEEP_Z), SiegeMode.KEEP_Z + (brought / 5) - 2); brought++; }
                 notes.add("brought " + brought + " troops");
                 stageAt = b.time; sub = 8;
             }

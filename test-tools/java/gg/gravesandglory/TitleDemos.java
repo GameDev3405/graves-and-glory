@@ -1,6 +1,5 @@
 package gg.gravesandglory;
 
-import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import net.fabricmc.api.ClientModInitializer;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -173,16 +172,15 @@ public final class TitleDemos implements Phase1Checks.Suite,Phase1Checks.ServerW
             var entry=c.getNetworkHandler()==null?null:c.getNetworkHandler().getPlayerListEntry(c.player.getUuid());
             if(entry==null)return false;
             if(steveTexture==null){
-                var stream=c.getDefaultResourcePack().open(ResourceType.CLIENT_RESOURCES,new Identifier("minecraft","textures/entity/player/wide/steve.png"));
+                var stream=c.getDefaultResourcePack().open(ResourceType.CLIENT_RESOURCES,Identifier.of("minecraft","textures/entity/player/wide/steve.png"));
                 if(stream==null)return false;
-                try(var in=stream.get()){var id=new Identifier("gravesandglory_test","title_demo/steve");c.getTextureManager().registerTexture(id,new NativeImageBackedTexture(NativeImage.read(in)));steveTexture=id;}
+                try(var in=stream.get()){var id=Identifier.of("gravesandglory_test","title_demo/steve");c.getTextureManager().registerTexture(id,new NativeImageBackedTexture(NativeImage.read(in)));steveTexture=id;}
             }
-            entry.getSkinTexture(); // starts the profile's own skin lookup first, so it cannot replace ours afterwards
-            var textures=PlayerListEntry.class.getDeclaredField("textures");textures.setAccessible(true);
-            @SuppressWarnings("unchecked") var map=(Map<MinecraftProfileTexture.Type,Identifier>)textures.get(entry);
-            map.put(MinecraftProfileTexture.Type.SKIN,steveTexture);
-            var model=PlayerListEntry.class.getDeclaredField("model");model.setAccessible(true);model.set(entry,"default");
-            return steveTexture.equals(c.player.getSkinTexture())&&"default".equals(c.player.getModel());
+            entry.getSkinTextures(); // 1.21: the skin is one SkinTextures from the entry's supplier; the profile's own lookup starts there, so it cannot replace ours afterwards
+            var supplier=PlayerListEntry.class.getDeclaredField("texturesSupplier");supplier.setAccessible(true);
+            var steveSkin=new net.minecraft.client.util.SkinTextures(steveTexture,null,null,null,net.minecraft.client.util.SkinTextures.Model.WIDE,true);
+            supplier.set(entry,(java.util.function.Supplier<net.minecraft.client.util.SkinTextures>)()->steveSkin);
+            return steveTexture.equals(c.player.getSkinTextures().texture())&&c.player.getSkinTextures().model()==net.minecraft.client.util.SkinTextures.Model.WIDE;
         }catch(Exception e){System.out.println("[p1] titledemo classic Steve failed: "+e);return false;}
     }
 
@@ -341,7 +339,7 @@ public final class TitleDemos implements Phase1Checks.Suite,Phase1Checks.ServerW
             if(byCamera)continue;
             var pos=new BlockPos(x,top+1,z);if(!w.getBlockState(pos.down()).isOf(Blocks.GRASS_BLOCK))continue;
             int k=hash(x,z,7);
-            if(k<16)set(pos,Blocks.GRASS.getDefaultState(),b);
+            if(k<16)set(pos,Blocks.SHORT_GRASS.getDefaultState(),b);
             else if(k<19)set(pos,Blocks.FERN.getDefaultState(),b);
             else if(k<21){set(pos,Blocks.TALL_GRASS.getDefaultState().with(TallPlantBlock.HALF,DoubleBlockHalf.LOWER),b);set(pos.up(),Blocks.TALL_GRASS.getDefaultState().with(TallPlantBlock.HALF,DoubleBlockHalf.UPPER),b);}
             else if(k==21)set(pos,Blocks.POPPY.getDefaultState(),b);

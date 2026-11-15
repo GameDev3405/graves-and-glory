@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ConnectScreen;
+import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
 import net.minecraft.client.network.ServerAddress;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.text.Text;
@@ -53,7 +53,7 @@ public final class SliceClient implements ClientModInitializer {
         for (String line : lines) {
             line = line.trim();
             note("command " + line);
-            if (line.equals("connect")) ConnectScreen.connect(new FrontMenuScreen(), c, ServerAddress.parse(address), new ServerInfo("Slice dry run", address, false), false);
+            if (line.equals("connect")) ConnectScreen.connect(new FrontMenuScreen(), c, ServerAddress.parse(address), new ServerInfo("Slice dry run", address, ServerInfo.ServerType.OTHER), false, null);
             else if (line.equals("disconnect")) { if (c.getNetworkHandler() != null) c.getNetworkHandler().getConnection().disconnect(Text.literal("slice dry run: clean disconnect")); }
             else if (line.startsWith("send ")) GravesAndGloryClient.send(line.substring(5));
             else if (line.equals("quit")) c.scheduleStop();

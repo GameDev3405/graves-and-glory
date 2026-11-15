@@ -3,7 +3,7 @@ package gg.gravesandglory;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ConnectScreen;
+import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
 import net.minecraft.client.network.ServerAddress;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.texture.NativeImage;
@@ -54,7 +54,7 @@ public final class FeedbackMate implements ClientModInitializer {
             started = true;
             String address = Files.readString(control.resolve("address.txt")).trim();
             log("connecting " + address);
-            ConnectScreen.connect(new FrontMenuScreen(), c, ServerAddress.parse(address), new ServerInfo("Feedback host", address, false), false);
+            ConnectScreen.connect(new FrontMenuScreen(), c, ServerAddress.parse(address), new ServerInfo("Feedback host", address, ServerInfo.ServerType.OTHER), false, null);
             return;
         }
         if (disconnected) { afterDisconnect(c); return; }
