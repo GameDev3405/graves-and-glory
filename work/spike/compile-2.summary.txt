@@ -1,8 +1,8 @@
-TOTAL unique errors: 205  files with errors: 53
-     59  rendering / UI
+TOTAL errors: 214  files with errors: 53
+     65  rendering / UI
      48  networking
+     30  GeckoLib API
      29  item NBT -> components
-     27  GeckoLib API
      19  entity / attributes / sound
      10  renamed vanilla API (small)
       6  other
@@ -11,9 +11,9 @@ TOTAL unique errors: 205  files with errors: 53
 TOP FILES
     22  GravesAndGloryClient.java   networking:14, rendering / UI:8
     20  GravesAndGlory.java   networking:12, item NBT -> components:4, other:2
-    10  BodyCache.java   rendering / UI:10
-     8  AttackController.java   GeckoLib API:8
-     8  StanceController.java   GeckoLib API:8
+    16  BodyCache.java   rendering / UI:16
+     9  AttackController.java   GeckoLib API:9
+     9  StanceController.java   GeckoLib API:9
      8  GearCombat.java   entity / attributes / sound:8
      8  PlanMarkers.java   rendering / UI:8
      8  PropMenu.java   item NBT -> components:8
@@ -24,14 +24,3 @@ TOP FILES
      5  Abilities.java   entity / attributes / sound:3, other:1, item NBT -> components:1
      4  MotionEvents.java   networking:4
      4  TroopChevrons.java   rendering / UI:4
-     3  Structures.java   NbtIo:3
-     3  BattleMapClient.java   networking:3
-     3  BattleMapScreen.java   rendering / UI:3
-     3  RankSync.java   networking:3
-     3  GeoTroopRenderer.java   GeckoLib API:3
-OTHER \Abilities.java 769 incompatible types: UUID cannot be converted to Identifier | 
-OTHER \GravesAndGlory.java 695 cannot find symbol | symbol:   method addPlayerToTeam(String,Team) | location: variable board of type ServerScoreboard
-OTHER \GravesAndGlory.java 699 cannot find symbol | symbol:   method getPlayerTeam(String) | location: variable board of type Scoreboard
-OTHER \WagonEntity.java 60 method does not override or implement a method from a supertype | 
-OTHER \WagonEntity.java 64 method does not override or implement a method from a supertype | 
-OTHER \WagonEntity.java 72 method does not override or implement a method from a supertype | 

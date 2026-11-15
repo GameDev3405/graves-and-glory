@@ -2,6 +2,8 @@
 import re, sys, collections
 log = open(sys.argv[1], encoding='utf-8', errors='replace').read().splitlines()
 pat = re.compile(r'^(?:\s*)(\S.*?\.java):(\d+): error: (.*)$')
+stop = next((k for k, l in enumerate(log) if re.match(r'^\s*\d+ errors?$', l)), len(log))
+log = log[:stop]
 errs = []; seen = set()
 i = 0
 while i < len(log):
@@ -13,8 +15,7 @@ while i < len(log):
         while j < len(log) and not pat.match(log[j]) and j < i + 8:
             ctx.append(log[j].strip()); j += 1
         key = (f, ln, msg)
-        if key not in seen:
-            seen.add(key); errs.append((f, int(ln), msg, ctx))
+        errs.append((f, int(ln), msg, ctx))
         i = j; continue
     i += 1
 
@@ -39,7 +40,7 @@ for f, ln, msg, ctx in errs:
     c = cat(f, msg, ctx); cats[c] += 1
     n = f.replace(chr(92),'/').split('src/main/java/gg/gravesandglory/')[-1]
     byfile[n] += 1; filecat[n][c] += 1
-print('TOTAL unique errors:', len(errs), ' files with errors:', len(byfile))
+print('TOTAL errors:', len(errs), ' files with errors:', len(byfile))
 for c, n in cats.most_common(): print(f'  {n:5d}  {c}')
 print('TOP FILES')
 for f, n in byfile.most_common(int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 25):
