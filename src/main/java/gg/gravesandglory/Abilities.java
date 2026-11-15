@@ -768,7 +768,7 @@ final class Abilities {
         var speed = mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
         if (speed == null) return;
         var have = speed.getModifier(id);
-        if (have != null && Math.abs(have.getValue() - value) < 1e-9) return;
+        if (have != null && Math.abs(have.value() - value) < 1e-9) return;
         if (have != null) speed.removeModifier(id);
         if (value != 0) speed.addTemporaryModifier(new EntityAttributeModifier(id, value, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
     }
@@ -838,7 +838,8 @@ final class Abilities {
         DyeColor best = DyeColor.WHITE;
         double nearest = Double.MAX_VALUE;
         for (var d : DyeColor.values()) {
-            float[] c = d.getColorComponents();
+            int rgbOf = d.getEntityColor();
+            float[] c = {(rgbOf >> 16 & 255) / 255f, (rgbOf >> 8 & 255) / 255f, (rgbOf & 255) / 255f}; // the 1.20.1 getColorComponents
             double e = (c[0] - r) * (c[0] - r) + (c[1] - g) * (c[1] - g) + (c[2] - blue) * (c[2] - blue);
             if (e < nearest) { nearest = e; best = d; }
         }
