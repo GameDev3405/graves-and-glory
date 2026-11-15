@@ -259,7 +259,7 @@ public final class StructureStudio implements ModInitializer {
                 .then(CommandManager.literal("dump").then(CommandManager.argument("id",IdentifierArgumentType.identifier()).suggests(PIECES).executes(context->act(context,(source,id)->{
                     // The vanilla manager reads <world>/generated first, which is where a structure block saves, and the mod's own copy after:
                     // an edit of Kort's is what gets dumped. (Structures.template reads the mod only, by design, so it would dump the stale piece.)
-                    var server=source.getServer();Path generated=server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structure/"+id+".nbt");
+                    var server=source.getServer();Path generated=server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structures/"+id+".nbt");
                     var template=server.getStructureTemplateManager().getTemplate(Identifier.of(Structures.NS,id));
                     if(template.isEmpty())throw new StudioException("no structure file for "+id+": not in "+generated+" and not in the mod resources");
                     String script=dump(template.get());Path file=out().resolve(id+".mcfunction");

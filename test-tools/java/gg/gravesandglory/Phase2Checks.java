@@ -91,11 +91,10 @@ public final class Phase2Checks implements ClientModInitializer {
     static long alive(GravesAndGlory.Battle b,GravesAndGlory.Squad s,String id){return b.units.stream().filter(u->u.squad==s&&u.mob.isAlive()&&u.spec.id().equals(id)).count();}
     /** 1.21: a shield's field colour is the base_color component (1.20.1 kept it as BlockEntityTag.Base); null when the stack has none. */
     static net.minecraft.util.DyeColor shieldBase(ItemStack s){return s.get(net.minecraft.component.DataComponentTypes.BASE_COLOR);}
-    /** 1.21: a shield's layers are the banner_patterns component (1.20.1: BlockEntityTag.Patterns). Each entry is {colour name, 1.20.1 pattern code}, the code recovered from the registry id through Battle.LEGACY_PATTERNS. */
+    /** 1.21: a shield's layers are the banner_patterns component (1.20.1: BlockEntityTag.Patterns). Each entry is {colour name, 1.20.1 pattern code}, the code recovered from the registry id through the test-side table Phase1Checks.LEGACY_PATTERN_CODES. */
     static List<String[]> shieldLayers(ItemStack s){
         List<String[]> out=new ArrayList<>();var pc=s.get(net.minecraft.component.DataComponentTypes.BANNER_PATTERNS);if(pc==null)return out;
-        for(var l:pc.layers()){String path=l.pattern().getKey().map(k->k.getValue().getPath()).orElse("?");String code=path;
-            for(var en:GravesAndGlory.Battle.LEGACY_PATTERNS.entrySet())if(en.getValue().equals(path)){code=en.getKey();break;}
+        for(var l:pc.layers()){String path=l.pattern().getKey().map(k->k.getValue().getPath()).orElse("?");String code=Phase1Checks.legacyCode(path);
             out.add(new String[]{l.color().getName(),code});}
         return out;
     }

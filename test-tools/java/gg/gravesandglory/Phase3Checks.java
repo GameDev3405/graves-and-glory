@@ -136,11 +136,10 @@ public final class Phase3Checks implements ClientModInitializer {
     }
     static BlockState at(ServerWorld w,int x,int y,int z){return w.getBlockState(new BlockPos(x,y,z));}
     static String name(BlockState s){return net.minecraft.registry.Registries.BLOCK.getId(s.getBlock()).getPath();}
-    /** 1.21: a banner's layers come from getPatterns() (a registry-entry component), not NBT Patterns/Pattern/Color. Each entry is {1.20.1 pattern code, DyeColor id}; the code is recovered from the registry id through Battle.LEGACY_PATTERNS, so the expectations below stay in the sheets' 1.20.1 vocabulary. */
+    /** 1.21: a banner's layers come from getPatterns() (a registry-entry component), not NBT Patterns/Pattern/Color. Each entry is {1.20.1 pattern code, DyeColor id}; the code is recovered from the registry id through the test-side table Phase1Checks.LEGACY_PATTERN_CODES, so the expectations below stay in the sheets' 1.20.1 vocabulary. */
     static List<String[]> bannerLayers(BannerBlockEntity be){
         List<String[]> out=new ArrayList<>();
-        for(var l:be.getPatterns().layers()){String path=l.pattern().getKey().map(k->k.getValue().getPath()).orElse("?");String code=path;
-            for(var en:GravesAndGlory.Battle.LEGACY_PATTERNS.entrySet())if(en.getValue().equals(path)){code=en.getKey();break;}
+        for(var l:be.getPatterns().layers()){String path=l.pattern().getKey().map(k->k.getValue().getPath()).orElse("?");String code=Phase1Checks.legacyCode(path);
             out.add(new String[]{code,String.valueOf(l.color().getId())});}
         return out;
     }
@@ -258,7 +257,7 @@ public final class Phase3Checks implements ClientModInitializer {
             // p3-no-generated-override: a file in the generated folder of the world wins for the vanilla manager, never for Structures
             bad=new StringBuilder();String vanilla="?";
             var manager=w.getStructureTemplateManager();var id=Identifier.of(Structures.NS,MARKER);
-            Path generated=b.server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structure/"+MARKER+".nbt");
+            Path generated=b.server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structures/"+MARKER+".nbt");
             try{
                 writeGoldOverride(w,new BlockPos(1000,80,1100),generated);
                 Structures.clearCache();manager.unloadTemplate(id);
@@ -436,7 +435,7 @@ public final class Phase3Checks implements ClientModInitializer {
         void dumpGenerated(GravesAndGlory.Battle b){
             var bad=new StringBuilder();String withFile="",withoutFile="";
             var manager=b.world.getStructureTemplateManager();var id=Identifier.of(Structures.NS,MARKER);
-            Path generated=b.server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structure/"+MARKER+".nbt");
+            Path generated=b.server.getSavePath(WorldSavePath.GENERATED).resolve(Structures.NS+"/structures/"+MARKER+".nbt");
             try{
                 Path script=StructureStudio.out().resolve(MARKER+".mcfunction");
                 try{
