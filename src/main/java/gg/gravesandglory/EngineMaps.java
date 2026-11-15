@@ -5,6 +5,8 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.FenceBlock;
 import net.minecraft.block.entity.CommandBlockBlockEntity;
+import net.minecraft.datafixer.DataFixTypes;
+import net.minecraft.datafixer.Schemas;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtHelper;
@@ -111,6 +113,7 @@ public final class EngineMaps {
   tileOf=new int[map.width*map.depth];stacks=new short[map.tiles.size()][];heights=new int[map.tiles.size()];
   for(int t=0;t<map.tiles.size();t++){var tile=map.tiles.get(t);NbtCompound tag;
    try(InputStream in=map.files.open(tile.file())){tag=NbtIo.readCompressed(in,NbtSizeTracker.ofUnlimitedBytes());}
+   if(!tile.format().equals("stack"))tag=DataFixTypes.STRUCTURE.update(Schemas.getFixer(),tag,NbtHelper.getDataVersion(tag,500)); // a structure-format tile is read raw here, not through createTemplate: bring an older DataVersion up as vanilla does (a stack tile keeps its palette as packed and is converted by tools/port_resources_1211.py)
    NbtList p=tag.getList("palette",NbtElement.COMPOUND_TYPE);short[] local=new short[p.size()];
    for(int i=0;i<p.size();i++){BlockState s=NbtHelper.toBlockState(lookup,p.getCompound(i));Short k=index.get(s);if(k==null){k=(short)pal.size();pal.add(s);index.put(s,k);}local[i]=k;}
    int sx=tile.sx(),sy=tile.sy(),sz=tile.sz();short[] st=new short[sx*sz*sy];Arrays.fill(st,(short)-1);

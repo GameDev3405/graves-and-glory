@@ -57,7 +57,9 @@ public final class Structures {
     public static void clearCache(){CACHE.clear();}
 
     /** The structure file of a piece as NBT: data/gravesandglory/structure/ID.nbt through the resource manager of the server, which is the mod and
-     *  its packs. A world generated folder is never read. Empty when there is no such file or it cannot be read. */
+     *  its packs. A world generated folder is never read. Empty when there is no such file or it cannot be read. The NBT is the file as shipped (DataVersion
+ *  3465, 1.20.1): it is not upgraded here. load() hands it to StructureTemplateManager.createTemplate, which runs DataFixTypes.STRUCTURE.update from the
+ *  file's own DataVersion, so a template always holds 1.21.1 block states; a caller that reads "blocks" or "palette" from this NBT sees the 1.20.1 names. */
     public static Optional<NbtCompound> read(MinecraftServer server,String id){
         try{
             var resource=server.getResourceManager().getResource(Identifier.of(NS,"structure/"+id+".nbt"));
