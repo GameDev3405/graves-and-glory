@@ -72,7 +72,7 @@ public final class CommandMode {
         long now=net.minecraft.util.Util.getMeasuringTimeMs();var lines=EventFeed.lines(now);
         if(lines.isEmpty()||!lines.get(lines.size()-1).text().equals(why))EventFeed.push("notice",GravesAndGloryClient.team,why,now);
     }
-    static void ping(String kind,double x,double z){if(ClientPlayNetworking.canSend(GravesAndGlory.PING)){var b=PacketByteBufs.create();b.writeString(kind);b.writeDouble(x);b.writeDouble(z);ClientPlayNetworking.send(GravesAndGlory.PING,b);}}
+    static void ping(String kind,double x,double z){if(ClientPlayNetworking.canSend(GravesAndGlory.PING)){var b=PacketByteBufs.create();b.writeString(kind);b.writeDouble(x);b.writeDouble(z);ClientPlayNetworking.send(gg.gravesandglory.net.Payloads.PingPayload.of(b));}}
     /** Order packets this client has sent (for the harness: a multi-group order must be one packet). */
     static int ordersSent;
     /** One group's order: a one-entry tactical_v2 packet. */
@@ -84,7 +84,7 @@ public final class CommandMode {
         if(groups.isEmpty()||!GravesAndGloryClient.battleActive()||!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL_V2))return;
         var b=PacketByteBufs.create();b.writeString(action);b.writeString(form);b.writeFloat(yaw);b.writeInt(target);
         b.writeInt(groups.size());for(var g:groups){b.writeString(g.group());b.writeDouble(g.at().x);b.writeDouble(g.at().z);}
-        ClientPlayNetworking.send(GravesAndGlory.TACTICAL_V2,b);ordersSent++;
+        ClientPlayNetworking.send(gg.gravesandglory.net.Payloads.TacticalV2Payload.of(b));ordersSent++;
     }
     /** The team a unit fights for, read from its name colour (team 0 aqua, team 1 light purple; see GravesAndGlory.spawn), or -1. */
     static int nameTeam(net.minecraft.entity.Entity e){

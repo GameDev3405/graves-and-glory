@@ -74,7 +74,7 @@ public final class BattleEffects {
         var own=b.squads.get(player.getUuid());if(own==null)return;
         for(var unit:b.units)if(unit.mob==victim&&unit.squad.team!=own.team){
             if(net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player,GravesAndGlory.IMPACT)){
-                var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeFloat(Math.min(1,amount/8f));net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,GravesAndGlory.IMPACT,packet);
+                var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeFloat(Math.min(1,amount/8f));net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,gg.gravesandglory.net.Payloads.ImpactPayload.of(packet));
             }break;
         }
     }

@@ -69,7 +69,7 @@ public final class Campaign {
         String text=GearWire.encode(profile(p.getUuid()));
         if(text.equals(gearSent.get(p.getUuid())))return;
         var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeString(text,GearWire.LIMIT);
-        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,GravesAndGlory.GEAR,packet);
+        net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,gg.gravesandglory.net.Payloads.GearPayload.of(packet));
         gearSent.put(p.getUuid(),text);
     }
     /** How many notices each player has been sent; the snapshot carries it so a client can tell a notice sent again from one it has already shown. */
@@ -700,7 +700,7 @@ public final class Campaign {
             var sq=b.squads.get(id);if(sq==null||!sq.seated)sq=absentSeat.get(id);int team=sq==null?-1:sq.team;
             if(!net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(p,GravesAndGlory.ENDING_BEGIN))continue;
             var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeString(winner<0?"DRAW":team==winner?"VICTORY":"DEFEAT",16);packet.writeString(endingLine,512);
-            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,GravesAndGlory.ENDING_BEGIN,packet);}
+            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,gg.gravesandglory.net.Payloads.EndingBeginPayload.of(packet));}
         beginSentNanos=System.nanoTime();
     }
     /** Harness only: System.nanoTime when the last ending_begin packets went out. */

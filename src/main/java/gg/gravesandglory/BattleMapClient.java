@@ -3,6 +3,7 @@ package gg.gravesandglory;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.network.PacketByteBuf;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import gg.gravesandglory.net.Payloads;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +32,8 @@ public final class BattleMapClient {
         // stale grid or state from another server (or battle) never shows
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> clear());
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> clear());
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.MAP_GRID, (client, handler, buf, responder) -> {
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.MapGridPayload.ID, (payload, context) -> {
+            var client = context.client(); var buf = payload.buf();
             int n = buf.readInt();
             if (n < 0 || n > buf.readableBytes()) return;
             byte[] data = new byte[n];
@@ -42,7 +44,8 @@ public final class BattleMapClient {
                 BattleMapArt.request(grid); // paints both looks off-thread once per map build
             });
         });
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.MAP_STATE, (client, handler, buf, responder) -> {
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.MapStatePayload.ID, (payload, context) -> {
+            var client = context.client(); var buf = payload.buf();
             State s;
             try { s = readState(buf); } catch (RuntimeException bad) { return; }
             client.execute(() -> state = s);
@@ -96,7 +99,7 @@ public final class BattleMapClient {
         buf.writeByte(job);
         buf.writeDouble(x);
         buf.writeDouble(z);
-        ClientPlayNetworking.send(GravesAndGlory.PLAN, buf);
+        ClientPlayNetworking.send(Payloads.PlanPayload.of(buf));
     }
 
     /** The state while a round runs on this client, else null: a record left by an earlier round never shows. Everything that reads the

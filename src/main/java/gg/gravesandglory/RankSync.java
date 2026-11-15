@@ -68,7 +68,7 @@ public final class RankSync {
         int sent = 0;
         for (ServerPlayerEntity p : players) {
             if (!ServerPlayNetworking.canSend(p, CHANNEL)) continue;
-            ServerPlayNetworking.send(p, CHANNEL, packet(u.mob.getId(), r));
+            ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.RankPayload.of(packet(u.mob.getId(), r)));
             sent++;
         }
         if (sent > 0) out = true;
@@ -94,7 +94,7 @@ public final class RankSync {
         out = false;
         for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) {
             if (!ServerPlayNetworking.canSend(p, CHANNEL)) continue;
-            ServerPlayNetworking.send(p, CHANNEL, packet(CLEAR, new Rank(0, 0, 0)));
+            ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.RankPayload.of(packet(CLEAR, new Rank(0, 0, 0))));
             clearSends++;
         }
     }
@@ -163,7 +163,8 @@ public final class RankSync {
     static final class Client {
         private Client() {}
         static void register() {
-            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(CHANNEL, (client, handler, buf, responder) -> {
+            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(gg.gravesandglory.net.Payloads.RankPayload.ID, (payload, context) -> {
+                var client = context.client(); var buf = payload.buf();
                 int id = buf.readVarInt(), level = buf.readByte(), weapon = buf.readByte(), armour = buf.readByte();
                 client.execute(() -> accept(id, level, weapon, armour));
             });
