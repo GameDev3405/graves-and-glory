@@ -27,8 +27,13 @@ def classpath():
     mapped = [j for j in mapped if not j.name.endswith("-sources.jar")]
     if not mapped: sys.exit("No mapped 1.21.1 jar in .gradle/loom-cache; run compileJava once (through gradle_slot.py)")
     jars.append(mapped[-1])
-    net = sorted((ROOT / ".gradle/loom-cache/remapped_mods").rglob("fabric-networking-api-v1-*.jar"))
-    jars += net[-1:]
+    # Every remapped mod jar (Fabric API modules, GeckoLib): the networking API for both modes, and in full mode the interfaces
+    # vanilla classes gain by injection (e.g. AttachmentTarget), which loading the real mod classes resolves.
+    jars += sorted(j for j in (ROOT / ".gradle/loom-cache/remapped_mods").rglob("*.jar") if not j.name.endswith("-sources.jar"))
+    # Full mode loads the real id holders (GravesAndGlory implements ModInitializer), so the loader API must be on the path too.
+    loader = sorted(j for j in (HOME / ".gradle/caches/modules-2/files-2.1/net.fabricmc/fabric-loader").glob("*/*/fabric-loader-*.jar")
+                    if not j.name.endswith("-sources.jar"))
+    jars += loader[-1:]
     info = json.loads((HOME / ".gradle/caches/fabric-loom/1.21.1/mojang_minecraft_info.json").read_text(encoding="utf8"))
     modules = HOME / ".gradle/caches/modules-2/files-2.1"
     for lib in info["libraries"]:
