@@ -5,6 +5,12 @@
     "light": "dcb145",
     "dark": "b8852a"
   },
+  "tier_colours": {
+    "3": {
+      "light": "fff0b4",
+      "dark": "583513"
+    }
+  },
   "marks": [
     {
       "what": "studs on the belt, every tier",

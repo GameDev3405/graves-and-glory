@@ -7,6 +7,8 @@ python tools/build_geo_trim.py --check [troop]  rebuild in memory and fail if a 
 
 Input, one recipe per troop: art/geo_trim/<troop>.json
   colours  {"light": hex, "dark": hex}: the trim's two brass tones (the legacy knight_veteran.png's palette).
+  tier_colours  optional {"<tier>": {"light": hex, "dark": hex}}: that armour tier's own two tones, for every mark it paints
+           (the knight's tier III armour is gilt, so brass on it does not read: Kort chose pale gold and dark, 2026-11-14).
   marks    [{bone, cube, pattern, rows, tiers}]: a band on the side faces (east, north, west, south) of that box-UV cube.
            pattern "rope": every texel of the row, light and dark alternating (a twisted edging); "studs": every other
            column, dark (stud heads). rows: indices into the cube's side height, negative from the bottom. tiers: the
@@ -94,7 +96,9 @@ def can_show(rule, tier):
 def build(troop):
     """{tier: Image} of the troop's overlays, checked."""
     recipe, geo, rig = load(troop)
-    light, dark = hexrgb(recipe["colours"]["light"]), hexrgb(recipe["colours"]["dark"])
+    unknown = set(recipe.get("tier_colours", {})) - {str(t) for m in recipe["marks"] for t in m["tiers"]}
+    if unknown:
+        raise TrimError(f"{troop}: tier_colours names tiers no mark paints: {sorted(unknown)}")
     tw, th = geo["description"]["texture_width"], geo["description"]["texture_height"]
     bones = {b["name"]: b for b in geo["bones"]}
     tiers = sorted({t for m in recipe["marks"] for t in m["tiers"]})
@@ -119,6 +123,8 @@ def build(troop):
                     for y in range(y0, y0 + h):
                         for x in range(x0, x0 + w):
                             owners.setdefault((x, y), set()).add((b["name"], ci))
+        tones = recipe.get("tier_colours", {}).get(str(tier), recipe["colours"])
+        light, dark = hexrgb(tones["light"]), hexrgb(tones["dark"])
         img = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
         px = img.load()
         for m in recipe["marks"]:

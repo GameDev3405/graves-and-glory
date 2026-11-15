@@ -5,6 +5,7 @@ p1-geo-knight-veteran (GRAVES_PHASE1_CHECKS=geo-knight, GRAVES_GEO_CAPTURE=veter
 import copy
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -23,6 +24,22 @@ class GeoTrimTest(unittest.TestCase):
             alphas = set(img.getchannel("A").tobytes())
             self.assertLessEqual(alphas, {0, 255}, tier)
             self.assertTrue(B.target("knight", tier).exists(), tier)
+
+    def test_tier_three_has_its_own_tones(self):
+        # tier III armour is gilt: brass on it does not read, so its trim is pale gold and dark (Kort, 2026-11-14)
+        built = B.build("knight")
+        tones = lambda img: {c[:3] for _, c in img.getcolors(1 << 20) if c[3]}
+        brass = {B.hexrgb("dcb145")[:3], B.hexrgb("b8852a")[:3]}
+        self.assertEqual(tones(built[1]), brass)
+        self.assertEqual(tones(built[2]), brass)
+        self.assertEqual(tones(built[3]), {B.hexrgb("fff0b4")[:3], B.hexrgb("583513")[:3]})
+
+    def test_tier_colours_for_an_unpainted_tier_refused(self):
+        recipe, geo, rig = B.load("knight")
+        recipe = dict(recipe, tier_colours={"4": {"light": "ffffff", "dark": "000000"}})
+        with mock.patch.object(B, "load", return_value=(recipe, geo, rig)):
+            with self.assertRaises(B.TrimError):
+                B.build("knight")
 
     def test_tier_sheets_are_untouched_by_the_trim(self):
         # The overlay is its own file: a fresh knight draws exactly the exporter's sheets, so building writes none of them.
