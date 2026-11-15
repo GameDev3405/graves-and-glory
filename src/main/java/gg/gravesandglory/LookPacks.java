@@ -1,37 +1,29 @@
 package gg.gravesandglory;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import net.minecraft.client.MinecraftClient;
 
-/** Pack order for the 1.0 look (Kort, 2026-11-05): Excalibur styles the environment, our armory and weapons packs sit above it so weapons never
- *  take Excalibur's art. Excalibur is switched on once, on a first launch where its zip is installed; the order is repaired on every launch. */
+/** Pack order for the look (Kort, 2026-11-15: Excalibur is dropped on 1.21.1). Our armory and weapons packs go on top of whatever else the
+ *  player has enabled, weapons last. A player's own old Excalibur entry is left alone: it is never switched on and never removed. */
 final class LookPacks {
-    static final String EXCALIBUR = "file/Excalibur_V1.20.zip", ARMORY = "gravesandglory:armory", WEAPONS = "gravesandglory:weapons";
+    static final String ARMORY = "gravesandglory:armory", WEAPONS = "gravesandglory:weapons";
     private LookPacks() {}
 
-    /** Enabled packs, lowest priority first (the options.txt order). Ours go on top of Excalibur whenever it is enabled. */
-    static List<String> arrange(List<String> enabled, Collection<String> available, boolean firstLaunch) {
+    /** Enabled packs, lowest priority first (the options.txt order). Armory then weapons end up at the top. */
+    static List<String> arrange(List<String> enabled, Collection<String> available) {
         List<String> out = new ArrayList<>(enabled);
-        boolean excalibur = out.contains(EXCALIBUR) || (firstLaunch && available.contains(EXCALIBUR));
-        if (!excalibur) return out;
-        out.removeIf(n -> n.equals(EXCALIBUR) || n.equals(ARMORY) || n.equals(WEAPONS));
-        out.add(EXCALIBUR);
+        out.removeIf(n -> n.equals(ARMORY) || n.equals(WEAPONS));
         if (available.contains(ARMORY)) out.add(ARMORY);
         if (available.contains(WEAPONS)) out.add(WEAPONS);
         return out;
     }
 
     static void apply(MinecraftClient c) {
-        Path marker = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("gravesandglory-look.txt");
-        boolean first = !Files.exists(marker);
         var manager = c.getResourcePackManager();
         List<String> now = new ArrayList<>(manager.getEnabledIds());
-        List<String> next = arrange(now, manager.getIds(), first);
+        List<String> next = arrange(now, manager.getIds());
         if (!next.equals(now)) {
             manager.setEnabledProfiles(next);
             c.options.resourcePacks.clear();
@@ -39,6 +31,5 @@ final class LookPacks {
             c.options.write();
             c.reloadResources();
         }
-        if (first) try { Files.writeString(marker, "Excalibur is enabled once on a first launch; delete this file to repeat.\n"); } catch (IOException ignored) {}
     }
 }

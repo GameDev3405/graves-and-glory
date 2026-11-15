@@ -315,29 +315,6 @@
     "status": "candidate - requires integration testing and source/notice packaging"
   },
   {
-    "slug": "excalibur",
-    "title": "Excalibur",
-    "version": "1.21.1",
-    "versionId": "ZRWxgeyn",
-    "path": "dependencies/resourcepacks/Excalibur_V1.21.1.zip",
-    "fileName": "Excalibur_V1.21.1.zip",
-    "size": 18103896,
-    "sha256": null,
-    "sha512": "858c0367346ec6d58e34ecd2f3b69b73e779d655a49ca12bcdd0113106bf4516f378013bab74331ad1f02ba0b0c2c465374802210ebb3f1f6d26b1cc8936a591",
-    "download": "https://cdn.modrinth.com/data/hJAzl1Bs/versions/ZRWxgeyn/Excalibur_V1.21.1.zip",
-    "project": "https://modrinth.com/resourcepack/excal",
-    "source": "https://modrinth.com/resourcepack/excal",
-    "licenseMetadata": {
-      "id": "CC-BY-NC-ND-3.0",
-      "name": "Creative Commons Attribution-NonCommercial-NoDerivs 3.0 Unported",
-      "url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
-    },
-    "notices": {},
-    "manifest": null,
-    "dependencies": [],
-    "status": "permission to re-confirm by Kort: approval 2026-11-01 and Maffhew permission 2026-10-28 were for V1.20 (paid features not covered); not yet re-confirmed for Excalibur 1.21.1. 1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
-  },
-  {
     "slug": "entityculling",
     "title": "Entity Culling",
     "project": "https://modrinth.com/mod/entityculling",

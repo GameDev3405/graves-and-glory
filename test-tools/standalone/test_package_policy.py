@@ -6,13 +6,10 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools'))
-from package_policy import excalibur_errors, package_policy_errors, pin_errors
+from package_policy import package_policy_errors, pin_errors
 
 GRADLE = (ROOT / 'build.gradle').read_text(encoding='utf8')
-# The real Excalibur pin is covered by test_excalibur_pin.py; here DEPS is everything else so the optional/required cases stay synthetic.
-DEPS = [d for d in json.loads((ROOT / 'dependencies/manifest.json').read_text(encoding='utf8')) if d['slug'] != 'excalibur']
-EXCALIBUR = {'slug': 'excalibur', 'title': 'Excalibur', 'version': '1.0', 'fileName': 'Excalibur.zip',
-             'path': 'dependencies/resourcepacks/Excalibur.zip', 'licenseMetadata': {'id': 'CC-BY-NC-ND-3.0'}}
+DEPS = json.loads((ROOT / 'dependencies/manifest.json').read_text(encoding='utf8'))
 
 
 def archive(deps, version='0.5.0', extra=()):
@@ -75,19 +72,9 @@ class PackagePolicyChecks(unittest.TestCase):
         names = [n for n in names if not n.startswith('docs/third-party/%s/' % DEPS[0]['slug'])]
         self.assertTrue(package_policy_errors(names, texts, DEPS, '0.5.0', 'a.zip', GRADLE))
 
-    def test_excalibur_is_optional_before_1_0_0_and_required_after(self):
-        self.assertEqual(excalibur_errors([], {}, DEPS, '0.9.9'), [])
-        self.assertTrue(excalibur_errors([], {}, DEPS, '1.0.0'))
-        self.assertTrue(self.errors(DEPS, version='1.0.0'))
-
-    def test_excalibur_needs_licence_and_author_credit(self):
-        deps = DEPS + [EXCALIBUR]
-        self.assertEqual(self.errors(deps, version='1.0.0'), [])
-        names, texts = archive(deps, '1.0.0')
-        texts['docs/THIRD_PARTY.md'] = texts['docs/THIRD_PARTY.md'].replace('Maffhew', 'someone')
-        self.assertTrue(excalibur_errors(names, texts, deps, '1.0.0'))
-        self.assertTrue(excalibur_errors(names, texts, DEPS + [dict(EXCALIBUR, licenseMetadata={'id': 'MIT'})], '1.0.0'))
-        self.assertTrue(excalibur_errors(names, texts, DEPS + [dict(EXCALIBUR, path='dependencies/mods/E.jar')], '1.0.0'))
+    def test_excalibur_is_not_pinned_for_1_21_1(self):
+        self.assertFalse([d for d in DEPS if 'excalibur' in d['slug'].lower()])
+        self.assertEqual(self.errors(DEPS, version='1.0.0'), [])
 
 
 if __name__ == '__main__':

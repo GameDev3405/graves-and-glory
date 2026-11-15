@@ -9,9 +9,9 @@ import net.minecraft.util.Identifier;
 import java.util.*;
 
 /**
- * Weapons stay out of Excalibur's look (Kort, 2026-11-05). GRAVES_PHASE1_CHECKS=weapon-look. In a practice battle the server puts each
+ * Weapons keep their own look (Kort, 2026-11-05). GRAVES_PHASE1_CHECKS=weapon-look. In a practice battle the server puts each
  * weapon in the player's hand; first person and third person (front) shots are p1-weapon-<item>-<fp|tp>.png. Also checks that the
- * enabled pack order has our armory and weapons packs above Excalibur. Never shipped.
+ * enabled pack order has our armory and weapons packs on top, weapons last. Never shipped.
  */
 final class WeaponLookChecks implements Phase1Checks.Suite {
     static final String[] ITEMS = {"iron_sword", "golden_sword", "diamond_sword", "netherite_sword", "iron_axe", "bow", "crossbow", "trident", "shield"};
@@ -40,8 +40,8 @@ final class WeaponLookChecks implements Phase1Checks.Suite {
                 }
                 if (k > 80) {
                     var on = new ArrayList<>(c.getResourcePackManager().getEnabledNames());
-                    int e = on.indexOf(LookPacks.EXCALIBUR), a = on.indexOf(LookPacks.ARMORY), w = on.indexOf(LookPacks.WEAPONS);
-                    boolean ok = e >= 0 && a > e && w > e;
+                    int a = on.indexOf(LookPacks.ARMORY), w = on.indexOf(LookPacks.WEAPONS);
+                    boolean ok = a >= 0 && w > a && w == on.size() - 1;
                     System.out.println("[p1] weapon-look: enabled packs " + on);
                     Phase1Checks.report("p1-weapon-look-pack-order", ok, "enabled " + on);
                     i = 0; next(tick, 2);

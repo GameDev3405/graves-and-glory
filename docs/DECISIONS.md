@@ -114,3 +114,5 @@ Open carries: Task 13 (wiring the engine) takes the fps-check rewrite, the tabar
 5. Anti-cheat: our own combat and movement checks that flag to staff for review, with no automatic action (NET-11).
 6. Profile snapshots after every match, plus staff repair commands (NET-12).
 7. Ranked and seasons come after 1.0 (RANKED-1).
+
+Excalibur dropped for 1.21.1 (Kort, 2026-11-15): the 1.21.1 build and modpack ship without the Excalibur resource pack; LookPacks no longer switches it on. Our armory and weapons packs stay.
