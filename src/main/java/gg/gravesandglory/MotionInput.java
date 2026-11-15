@@ -45,11 +45,12 @@ public record MotionInput(double time, double limbAngle, double limbSpeed, doubl
     static Cancel cancelled(java.util.Collection<Cancel> done, long startTick) { for (Cancel c : done) if (c.startTick() == startTick) return c; return null; }
     /**
      * The cancel to keep for startTick heard at now (MotionEvents.Client.cancel), or null: an attack of that start is kept, none cancelled it yet, and its clip may
-     * still be playing (no more than maxAge ticks since it began: BattleMath.ATTACK_CLIP_MAX_TICKS). The server never cancels a shot that left, so a cancel heard
+     * still be playing (no more than maxAge ticks since it began: BattleMath.ATTACK_CLIP_MAX_TICKS; heard before it began is fine, AttackController gives such a clip weight 0:
+     * a stun between announces moves the beat and drawAhead cancels the old draw a tick or so before it starts). The server never cancels a shot that left, so a cancel heard
      * at or after the loose still takes (fix round 1: the draw it found, a release with no arrow, is lowered); one for an unknown or finished attack does nothing.
      */
     static Cancel cancel(java.util.Collection<Attack> kept, java.util.Collection<Cancel> done, long startTick, long now, int maxAge) {
-        return kept(kept, startTick) != null && cancelled(done, startTick) == null && now >= startTick && now - startTick <= maxAge ? new Cancel(startTick, now) : null;
+        return kept(kept, startTick) != null && cancelled(done, startTick) == null && now - startTick <= maxAge ? new Cancel(startTick, now) : null;
     }
     /** Whether an attack is kept: not a repeat of one kept (a catch-up and the live send) nor of a cancelled one (a late repeat of the announce never restarts the draw). */
     static boolean admits(java.util.Collection<Attack> kept, java.util.Collection<Cancel> done, Attack a) { return !kept.contains(a) && cancelled(done, a.startTick()) == null; }

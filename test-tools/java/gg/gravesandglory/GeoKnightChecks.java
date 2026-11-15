@@ -996,7 +996,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                     Phase1Checks.report("p1-geo-" + TROOP + "-attack-walk", walkSwingSamples > 10 && walkWrong.isEmpty() && impactSamples > 2 && minImpactW > .9 && foeBackMin > 0 && median(foeBack) > .1,
                         String.format("%d swinging samples, gait while swinging %s; weight at impact min %.3f over %d; foe backing speed min %.3f median %.3f",
                             walkSwingSamples, walkWrong.isEmpty() ? "always WALK" : "wrong " + walkWrong, minImpactW, impactSamples, foeBackMin, median(foeBack)));
-                    duel = null; next(tick, Tactics.drawsAhead(knights.get(2)) ? 14 : 7);
+                    duel = null;
+                    if (Tactics.drawsAhead(knights.get(2))) next(tick, 14);
+                    else { Phase1Checks.report("p1-geo-" + TROOP + "-attack-cancel", true, "skipped: " + TROOP + " is not a bow troop, so no draw is announced ahead and none can be dropped (run with GRAVES_GEO_CHECK_TROOP=archer to exercise the cancel in game)"); next(tick, 7); }
                 }
             }
             case 14 -> {
@@ -1026,7 +1028,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if ((cAccept >= 0 && now > cAccept + AttackController.FADE_OUT + 14) || k > 400) {
                     boolean loosed = own.swingTick != d.cSwing; int accepted = MotionEvents.Client.cancelsAccepted - cAccepted0;
                     double zeroIn = cZeroAt < 0 ? -1 : cZeroAt - cAccept;
-                    boolean pass = d.cDropped >= 1 && d.cSent >= 1 && accepted >= 1 && cAccept >= 0 && cMaxDrawW > 0 && cZeroAt >= 0 && zeroIn <= AttackController.FADE_OUT + 2 && cMaxAfterW == 0 && !loosed;
+                    boolean pass = d.cDropped >= 1 && d.cSent >= 1 && accepted >= 1 && cAccept >= 0 && cMaxDrawW > 0 && cZeroAt >= 0 && zeroIn <= AttackController.FADE_OUT + 2 && cMaxAfterW == 0 && !loosed
+                        && d.cDrop >= 0 && d.cDrop - (d.cAnnounce + Tactics.drawLead(own)) >= 0 && d.cDrop - (d.cAnnounce + Tactics.drawLead(own)) <= 1;
                     Phase1Checks.report("p1-geo-" + TROOP + "-attack-cancel", pass,
                         String.format("loose seed %d hold %d; world ticks: announce %d (start %d), stun %d, drop and send %d (beat %d); client: announce heard %d, cancel accepted %d, weight 0 at %.2f (%.2f after the accept, limit %.0f); draws dropped %d, cancels sent %d, accepted by the client %d; draw weight before the accept max %.3f, after weight 0 max %.3f; shot loosed %s",
                             Projectiles.looseTicks(own), Projectiles.hold(own), d.cAnnounce, start, d.cStun, d.cDrop, d.cAnnounce + Tactics.drawLead(own), cHeard, cAccept, cZeroAt, zeroIn, AttackController.FADE_OUT + 2, d.cDropped, d.cSent, accepted, cMaxDrawW, cMaxAfterW, loosed));

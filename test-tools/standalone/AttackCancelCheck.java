@@ -51,8 +51,10 @@ public final class AttackCancelCheck {
   var u=new Troop();
   check(!u.cancel(3000,3010)&&u.done.isEmpty(),"a cancel for an attack never heard of does nothing and keeps nothing");
   check(u.announce(0,3000),"an announce of that start afterwards still starts");
-  check(!u.cancel(3000,2999),"a cancel heard before its attack began does nothing");
-  check(!u.cancel(3000,3000+MAX+1)&&u.playing(3000),"a cancel for an attack whose clip has ended does nothing");
+  check(u.cancel(3000,2999)&&!u.playing(3000),"a cancel heard before its attack began is obeyed (a stun between announces moves the beat; the clip then has weight 0)");
+  check(!u.announce(0,3000),"and the late announce of that cancelled start does not bring it back");
+  var w=new Troop();w.announce(0,3000);
+  check(!w.cancel(3000,3000+MAX+1)&&w.playing(3000),"a cancel for an attack whose clip has ended does nothing");
   var k=new Troop();k.announce(1,4000);k.announce(1,4060);
   check(k.cancel(4000,4030)&&!k.playing(4000)&&k.playing(4060),"a cancel names only the shot of its start");
   // wire: the cancel rides attack_v1's variant field; an old client drops it as an invalid variant, and -2 stays invalid for HoldLineChecks' probe
