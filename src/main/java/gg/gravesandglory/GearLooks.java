@@ -66,7 +66,7 @@ final class GearLooks {
         nbt.putString(ITEM, p.item);
         nbt.putInt(RARITY, rarityNumber(p.rarity));
         s.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt));
-        s.set(DataComponentTypes.UNBREAKABLE, new UnbreakableComponent(false));
+        s.set(DataComponentTypes.UNBREAKABLE, new UnbreakableComponent(true));
         s.set(DataComponentTypes.ATTRIBUTE_MODIFIERS, NO_VANILLA_STATS);
         return s;
     }

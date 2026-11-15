@@ -1,6 +1,5 @@
 package gg.gravesandglory;
 
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.Identifier;
 import java.util.*;
@@ -316,16 +315,20 @@ public final class GearCombat {
 
     /** pierce (ENTITY_LOAD): an arrow a seated commander looses (his bow's or his Volley's) pierces GearEffects.pierceLevel foes, never fewer than it already would. */
     static void onEntityLoad(Entity e) {
+        if (e instanceof net.minecraft.server.network.ServerPlayerEntity sp) { // a player loading in: stand-ins upgraded from 1.20.1 get the zero-stats component back
+            var inv = sp.getInventory();
+            for (int i = 0; i < inv.size(); i++) {
+                var st = inv.getStack(i);
+                if (!st.isEmpty() && GearLooks.uid(st) >= 0) st.set(net.minecraft.component.DataComponentTypes.ATTRIBUTE_MODIFIERS, GearLooks.NO_VANILLA_STATS);
+            }
+            return;
+        }
         if (!(e instanceof PersistentProjectileEntity a) || !(a.getOwner() instanceof PlayerEntity pl)) return;
         var s = seated(pl);
         if (s == null) return;
         int level = GearEffects.pierceLevel(s.gear);
         if (level > a.getPierceLevel()) {
-            // 1.21.1 hides setPierceLevel (private); a round trip through the arrow's own save data sets it without touching any other field.
-            var data = new NbtCompound();
-            a.writeCustomDataToNbt(data);
-            data.putByte("PierceLevel", (byte) Math.min(127, level));
-            a.readCustomDataFromNbt(data);
+            ((gg.gravesandglory.mixin.PierceLevelInvoker) a).gravesandglory$setPierceLevel((byte) Math.min(127, level));
         }
     }
 
