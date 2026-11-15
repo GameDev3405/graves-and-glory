@@ -216,7 +216,7 @@ final class AbilityLevelChecks {
                     float lostV = hp0 - v.mob.getHealth(), lostW = hp1 - w.mob.getHealth();
                     boolean gone = !Statuses.has(b, v.mob, "bleed") && !Statuses.has(b, w.mob, "bleed");
                     Phase2Checks.report("p2-status-bleed", near(lostW, 4) && Statuses.bleedTicks - n0 == 8 && gone && near(d0, 80) && flag, "Rotten blade bleeds for " + (long) d0 + " ticks (want 80); over 100 ticks a Hearthguard lost " + fmt(lostW) + " (want 4: 1 every 20 ticks through the troop damage type), " + (Statuses.bleedTicks - n0) + " bleed ticks in all (want 8, both targets), both bleeds gone=" + gone + ", the striker in the target's credit log=" + flag);
-                    Phase2Checks.report("p2-status-bleed-undead", v.mob.isUndead() && near(lostV, 4), "a Risen (undead=" + v.mob.isUndead() + ") bleeding for 80 ticks lost " + fmt(lostV) + " (want 4: vanilla Poison would leave him whole)");
+                    Phase2Checks.report("p2-status-bleed-undead", v.mob.getType().isIn(net.minecraft.registry.tag.EntityTypeTags.UNDEAD) && near(lostV, 4), "a Risen (undead=" + v.mob.getType().isIn(net.minecraft.registry.tag.EntityTypeTags.UNDEAD) + ") bleeding for 80 ticks lost " + fmt(lostV) + " (want 4: vanilla Poison would leave him whole)");
                     clearFixture(b, "bleed"); next(b, 16);
                 }
                 case 16 -> { // p2-status-nostack

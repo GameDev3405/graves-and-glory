@@ -968,12 +968,12 @@ final class HoldLineChecks {
             RelicEffects.Muster.hasten(b, own, marshal);
             var rally = spd.getModifier(RelicEffects.RALLY); double both = spd.getValue();
             new RelicEffects.Muster().end(b, own, 0);
-            double after = spd.getValue(), m = rally == null ? Double.NaN : rally.getValue(), product = alone * (1 + m), sum = alone + base * m;
-            boolean ops = crawl != null && rally != null && crawl.getOperation() == net.minecraft.entity.attribute.EntityAttributeModifier.Operation.MULTIPLY_TOTAL && rally.getOperation() == net.minecraft.entity.attribute.EntityAttributeModifier.Operation.MULTIPLY_TOTAL;
+            double after = spd.getValue(), m = rally == null ? Double.NaN : rally.value(), product = alone * (1 + m), sum = alone + base * m;
+            boolean ops = crawl != null && rally != null && crawl.operation() == net.minecraft.entity.attribute.EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL && rally.operation() == net.minecraft.entity.attribute.EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL;
             boolean ok = ops && Math.abs(both - product) < 1e-9 && Math.abs(both - sum) > 1e-6 && Math.abs(after - alone) < 1e-12 && spd.getModifier(RelicEffects.RALLY) == null && spd.getModifier(Tactics.CRAWL_ID) != null;
             crawlPass &= ok;
             crawlWhy.add(String.format(Locale.ROOT, "crawl x Muster on a crawling Squire: base %.5f, crawl alone %.5f (modifier %s); Muster's hasten (rally_horn +%.2f: modifier %s) on it gives %.5f (want the product %.5f = crawl alone x (1 + %.5f), not the sum %.5f); Muster's end leaves %.5f (want the crawl alone again, the crawl still on)=%b",
-                base, alone, crawl == null ? "none" : String.format(Locale.ROOT, "%.5f %s", crawl.getValue(), crawl.getOperation()), marshal.value1(), rally == null ? "none" : String.format(Locale.ROOT, "%.5f %s", m, rally.getOperation()), both, product, m, sum, after, ok));
+                base, alone, crawl == null ? "none" : String.format(Locale.ROOT, "%.5f %s", crawl.value(), crawl.operation()), marshal.value1(), rally == null ? "none" : String.format(Locale.ROOT, "%.5f %s", m, rally.operation()), both, product, m, sum, after, ok));
         }
         /** Whether the troop carries the crawl's movement-speed modifier. */
         static boolean crawling(GravesAndGlory.Unit u) {
@@ -1339,7 +1339,7 @@ final class HoldLineChecks {
                     // first turns a new arrow to its velocity the flying way (setVelocityClient: +90), then eases a fifth of the way back to -90 each tick,
                     // so after 15 ticks it stands within 180 x 0.8^15 = 6.3 degrees of it. A battle shot's steering would hold it nose first at +90.
                     if (arcDecoy == null) {
-                        var a = new net.minecraft.entity.projectile.ArrowEntity(b.world, arcHome.x + 6, arcHome.y + 4, arcHome.z);
+                        var a = new net.minecraft.entity.projectile.ArrowEntity(b.world, arcHome.x + 6, arcHome.y + 4, arcHome.z, new net.minecraft.item.ItemStack(net.minecraft.item.Items.ARROW), null);
                         a.setNoGravity(true); a.setNoClip(true); a.pickupType = net.minecraft.entity.projectile.PersistentProjectileEntity.PickupPermission.DISALLOWED;
                         a.setVelocity(0.05, 0, 0); a.setYaw(-90f); a.setPitch(0f); a.prevYaw = -90f; a.prevPitch = 0f;
                         synchronized (arcClient) {arcClient.clear();}
@@ -1431,8 +1431,8 @@ final class HoldLineChecks {
             var hit = impHitLog(impLog); float h = m.getHealth(); int regen = m.timeUntilRegen; long gap = impStrike.landsAt() - impNext;
             float blow = hit == null ? 0 : (float) (hit.base() * hit.veteran() * hit.total());
             float armour = m.getArmor(), toughness = (float) m.getAttributeValue(net.minecraft.entity.attribute.EntityAttributes.GENERIC_ARMOR_TOUGHNESS);
-            float full = net.minecraft.entity.DamageUtil.getDamageLeft(blow, armour, toughness);
-            float want = blow <= pre ? 0 : net.minecraft.entity.DamageUtil.getDamageLeft(blow - pre, armour, toughness);
+            float full = net.minecraft.entity.DamageUtil.getDamageLeft(m, blow, b.world.getDamageSources().generic(), armour, toughness);
+            float want = blow <= pre ? 0 : net.minecraft.entity.DamageUtil.getDamageLeft(m, blow - pre, b.world.getDamageSources().generic(), armour, toughness);
             boolean vanilla = hit != null && Math.abs((impHealth - h) - want) < 0.01f && Tactics.strikesLanded == impLanded + 1 && impRegen == 20 && regen == 20 - gap && regen > 10;
             impPass &= vanilla;
             impWhy.add("a " + fmt(pre) + " hit " + gap + " ticks before the Squire's blow of " + fmt(blow) + " (" + fmt(full) + " through armour " + fmt(armour) + " when fresh) landed on " + impStrike.landsAt() + ": the dummy lost " + fmt(impHealth - h) + " (want " + fmt(want) + ", vanilla's hurt-cooldown rule), its hurt cooldown " + impRegen + " after the hit and " + regen + " after the blow (want 20 and " + (20 - gap) + ", not reset), blows landed " + (Tactics.strikesLanded - impLanded) + " (want 1)=" + vanilla);
@@ -1804,7 +1804,7 @@ final class HoldLineChecks {
         static void evRawHit(net.minecraft.server.network.ServerPlayerEntity p, int id, int weight, long tick) {
             var buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
             buf.writeVarInt(id); buf.writeByte(MotionEvents.KINDS.indexOf("blunt")); buf.writeByte(MotionEvents.ZONES.indexOf("body")); buf.writeFloat(0f); buf.writeByte(weight); buf.writeByte(0); buf.writeVarLong(tick);
-            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p, MotionEvents.HIT, buf);
+            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.HitPayload.of(buf));
         }
         /** The Dusk guard keeps its shield up: its group under fire (so Tactics leaves it raised off Hold) and Tactics.shield. */
         void evGuardUp(GravesAndGlory.Battle b) {
@@ -1814,8 +1814,8 @@ final class HoldLineChecks {
         /** The troop leaves every player's tracking (unloadEntity: its clients unload it) or is tracked again (loadEntity: START_TRACKING, then its spawn packet). */
         static void evTrack(GravesAndGlory.Battle b, GravesAndGlory.Unit u, boolean load) {
             try {
-                var m = net.minecraft.server.world.ThreadedAnvilChunkStorage.class.getDeclaredMethod(load ? "loadEntity" : "unloadEntity", net.minecraft.entity.Entity.class);
-                m.setAccessible(true); m.invoke(b.world.getChunkManager().threadedAnvilChunkStorage, u.mob);
+                var m = net.minecraft.server.world.ServerChunkLoadingManager.class.getDeclaredMethod(load ? "loadEntity" : "unloadEntity", net.minecraft.entity.Entity.class);
+                m.setAccessible(true); m.invoke(b.world.getChunkManager().chunkLoadingManager, u.mob);
             } catch (ReflectiveOperationException e) {throw new RuntimeException(e);}
         }
         /**
@@ -2262,7 +2262,7 @@ final class HoldLineChecks {
                 }
                 case 131 -> { // one death a tick for 200 ticks; measure for 340
                     long n = since(b);
-                    if (n > 0) {long[] t = b.server.lastTickLengths; double ms = t[(b.server.getTicks() + 99) % 100] / 1e6; cpServerSum += ms; cpSamples++; if (n > CP_PEAK_FROM && n <= CP_PEAK_FROM + CP_PEAK_TICKS) cpPeakSum += ms;}
+                    if (n > 0) {long[] t = b.server.getTickTimes(); double ms = t[(b.server.getTicks() + 99) % 100] / 1e6; cpServerSum += ms; cpSamples++; if (n > CP_PEAK_FROM && n <= CP_PEAK_FROM + CP_PEAK_TICKS) cpPeakSum += ms;}
                     if (n == CP_PEAK_FROM) {cpPeakWall0 = System.nanoTime(); cpPeakFrames0 = Phase2Checks.RenderCost.frames;}
                     if (n == CP_PEAK_FROM + CP_PEAK_TICKS) cpPeakFrame = (System.nanoTime() - cpPeakWall0) / 1e6 / Math.max(1, Phase2Checks.RenderCost.frames - cpPeakFrames0);
                     if (cpKilled < cpLoad.size()) fall(b, cpLoad.get(cpKilled++));

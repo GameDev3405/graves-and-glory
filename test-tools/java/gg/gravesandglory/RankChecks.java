@@ -115,7 +115,7 @@ final class RankChecks {
         static String mark(TroopChevrons.Mark m) { return m == null ? "no chevron" : m.chevrons() + " chevron(s) in #" + String.format("%06X", m.colour()) + String.format(Locale.ROOT, " at %.1f blocks", m.distance()); }
         /** The top of a GeckoLib troop rig's helm crown and crest cubes at rest (geo/troop/<id>.geo.json, 16 px a block), in blocks over the feet; -1 when unread. */
         static double geoCrown(MinecraftClient c, String troop) {
-            var res = c.getResourceManager().getResource(new Identifier(TroopModels.NAMESPACE, "geo/troop/" + troop + ".geo.json")); if (res.isEmpty()) return -1;
+            var res = c.getResourceManager().getResource(Identifier.of(TroopModels.NAMESPACE, "geo/troop/" + troop + ".geo.json")); if (res.isEmpty()) return -1;
             try (var in = new InputStreamReader(res.get().getInputStream(), StandardCharsets.UTF_8)) {
                 double top = -1;
                 for (var bone : JsonParser.parseReader(in).getAsJsonObject().getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject().getAsJsonArray("bones")) {
@@ -363,7 +363,7 @@ final class RankChecks {
 
         /** The Squire's generated model with these weaponTiers on its bones (stages cleared on them), built as TroopModelLoader does. */
         TroopModel<MobEntity> partsFixture(MinecraftClient c, Map<String, int[]> arms) throws Exception {
-            var res = c.getResourceManager().getResource(new Identifier(TroopModels.NAMESPACE, TroopModelLoader.FOLDER + "knight.json"));
+            var res = c.getResourceManager().getResource(Identifier.of(TroopModels.NAMESPACE, TroopModelLoader.FOLDER + "knight.json"));
             if (res.isEmpty()) throw new IllegalStateException("models/troop/knight.json is missing");
             JsonObject j; try (var in = new InputStreamReader(res.get().getInputStream(), StandardCharsets.UTF_8)) { j = JsonParser.parseReader(in).getAsJsonObject(); }
             for (var el : j.getAsJsonArray("bones")) { var b = el.getAsJsonObject(); int[] t = arms.get(b.get("name").getAsString()); if (t == null) continue;
