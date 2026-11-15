@@ -1,4 +1,4 @@
-plugins { id 'fabric-loom' version '1.7.4' }
+plugins { id 'fabric-loom' version '1.17.21' }
 version = project.property('mod_version')
 group = 'gg.gravesandglory'
 base { archivesName = 'graves-and-glory' }
@@ -7,20 +7,13 @@ repositories {
  // GeckoLib (approved by Kort for the unit animation rebuild).
  maven { url 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' }
 }
-// Loom's development launcher otherwise upgrades this game's native libraries.
-// Match Minecraft 1.20.1's official LWJGL version, as Sodium requires.
-configurations.configureEach {
- resolutionStrategy.eachDependency { details ->
-  if (details.requested.group == 'org.lwjgl') details.useVersion('3.3.1')
- }
-}
 dependencies {
- minecraft 'com.mojang:minecraft:1.20.1'
- mappings 'net.fabricmc:yarn:1.20.1+build.10:v2'
- modImplementation 'net.fabricmc:fabric-loader:0.16.14'
- modImplementation 'net.fabricmc.fabric-api:fabric-api:0.92.2+1.20.1'
- modImplementation 'software.bernie.geckolib:geckolib-fabric-1.20.1:4.8.4'
- include 'software.bernie.geckolib:geckolib-fabric-1.20.1:4.8.4'
+ minecraft 'com.mojang:minecraft:1.21.1'
+ mappings 'net.fabricmc:yarn:1.21.1+build.3:v2'
+ modImplementation 'net.fabricmc:fabric-loader:0.19.5'
+ modImplementation 'net.fabricmc.fabric-api:fabric-api:0.116.18+1.21.1'
+ modImplementation 'software.bernie.geckolib:geckolib-fabric-1.21.1:4.9.3'
+ include 'software.bernie.geckolib:geckolib-fabric-1.21.1:4.9.3'
  // GeckoLib's keyframe values are mclib IValues, shipped inside GeckoLib's jar; compile against them only.
  compileOnly 'com.eliotlash.mclib:mclib:20'
 }
@@ -32,7 +25,7 @@ tasks.register('compileLocalTestTools', JavaCompile) {
  classpath = sourceSets.main.compileClasspath + sourceSets.main.output
  dependsOn compileJava
  destinationDirectory = file('build/localTestTools/classes')
- options.release = 17
+ options.release = 21
 }
 tasks.register('localTestToolsJar', Jar) {
  dependsOn compileLocalTestTools
@@ -105,7 +98,7 @@ processResources {
  inputs.property('version', project.version)
  filesMatching('fabric.mod.json') { expand(version: project.version) }
 }
-tasks.withType(JavaCompile).configureEach { options.release = 17 }
+tasks.withType(JavaCompile).configureEach { options.release = 21; options.compilerArgs += ['-Xmaxerrs', '10000'] }
 java { withSourcesJar() }
 tasks.named('sourcesJar') { dependsOn generateReleaseIdentity }
 tasks.named('jar') { from('LICENSE') }
