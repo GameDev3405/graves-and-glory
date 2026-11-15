@@ -168,7 +168,8 @@ public final class TroopRenderer<T extends MobEntity> extends LivingEntityRender
         float len=up.length();tilt=len<1e-6f?180f:(float)Math.toDegrees(Math.acos(Math.max(-1f,Math.min(1f,-up.y/len))));
     }
     /** Only the body yaw: never the vanilla death tilt, sleep or riptide spin (Task 5b's clips own those). */
-    @Override protected void setupTransforms(T e,MatrixStack matrices,float animationProgress,float bodyYaw,float tickDelta){matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f-bodyYaw));}
+    @Override protected void setupTransforms(T e,MatrixStack matrices,float animationProgress,float bodyYaw,float tickDelta,float scale){ // 1.21: scale is the entity's (applied by render before this, 1 for a troop)
+        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f-bodyYaw));}
     /** As MobEntityRenderer: a hidden custom name shows only on the mob under the crosshair. */
     @Override protected boolean hasLabel(T e){return super.hasLabel(e)&&(e.shouldRenderName()||e.hasCustomName()&&e==dispatcher.targetedEntity);}
     /**
