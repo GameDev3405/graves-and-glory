@@ -1536,7 +1536,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 if (k == 1) {
                     GeoLayerRest.stop(); Phase1Checks.report("p1-geo-" + TROOP + "-layer-rest", GeoLayerRest.clean(), GeoLayerRest.result());
                     // and with another draw's legs left on the leg bones: a troop that set off must have matched its stride to its own
-                    Phase1Checks.report("p1-geo-" + TROOP + "-start-own-legs", GeoLayerRest.ownLegs(3), GeoLayerRest.startResult());
+                    // (the veteran capture only stands six knights in a line: nothing sets off there, so there is nothing to judge)
+                    if (!"veteran".equals(CAPTURE)) Phase1Checks.report("p1-geo-" + TROOP + "-start-own-legs", GeoLayerRest.ownLegs(3), GeoLayerRest.startResult());
                 }
                 if (k > 40) { Phase1Checks.finish(c, "geo-knight"); stage = 99; }
             }
