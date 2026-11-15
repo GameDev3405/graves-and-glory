@@ -15,6 +15,7 @@ Plan: [PLAN-TO-1.0.md](PLAN-TO-1.0.md), including the hosted network (Phase 7). 
 
 ## Awaiting Kort (decisions, not branch state)
 
+- The 1.21.1 port is under way (2026-11-15): freeze rules, versions, lanes and the Java-fix ledger are in `docs/PORT-1211.md`.
 - Walk the Old Hold in game (`feat/oldhold-wiring`, concept C, Q129) and lock the layout. No hub feature work starts before that.
 - Maps: Kort designs all five maps in the map engine editor and signs off each master layout. Agents do not build layouts.
 - Animation: the GeckoLib rebuild landed in `main` on 2026-11-09 (`a7811c4d`). Only the knight (approved 2026-11-07, template for other troops) plays on GeckoLib by default; the other rebuilt troops are behind `-Dgravesandglory.geoTroops=all` until each passes the review booth. Which units reuse which knight parts is still open.

@@ -70,6 +70,8 @@ Counts are from `main` `cc93e4b4`; "fragile" rankings are expectations, not chec
 
 Headline: about 38k lines, 24 mixins, 18 network channels, 74 identifier sites, 4 item-NBT sites, 94 test-harness files and 10 third-party pins to move.
 
+Recount 2026-11-15 (main 8d2388ed): 251 Java files / 54k lines, 38 mixins, 24 play channels, 112 `new Identifier(` sites, 8 item-NBT sites. GeckoLib 4.8.4 is now in use, in 7 classes (the engine is no longer custom). Details: `status/port-p0-freeze-v2.md`.
+
 ## 4. Plain-equivalents table
 
 The server already spawns troops as vanilla entity types (`Army*` subclasses built on vanilla `EntityType`s); the modded client overrides their renderers. So plain players already see vanilla mobs, but chosen by the sheet's `entity` column, not by role.
@@ -96,9 +98,9 @@ Efforts are estimates in elapsed weeks for one agent lane plus Kort's review tim
 
 | ID | Task | Acceptance |
 |---|---|---|
-| P0.1 | Declare the feature freeze. List what merges first (open lanes such as `anim/geckolib-rebuild` knight work and the animation rework, gear branches, Old Hold wiring) and what waits | A list in `docs/BOARD.md` or `HANDOFF.md`, agreed by Kort; bug fixes only on `main` during P1 |
+| P0.1 | Declare the feature freeze. List what merges first (open lanes such as `anim/geckolib-rebuild` knight work and the animation rework, gear branches, Old Hold wiring) and what waits | A list in `docs/BOARD.md` or `HANDOFF.md`, agreed by Kort; bug fixes only on `main` during P1. **Agreed by Kort 2026-11-15; see `docs/PORT-1211.md`.** |
 | P0.2 | Create the port branch and record the baseline: `verify.py fast` and `game` pass on 1.20.1 at the branch point | Baseline log with commit hash |
-| P0.3 | Spike setup decision: choose where the spike runs (Kort's PC, Velocity optional at this stage) and which Polymer modules are in play | One short note in this plan |
+| P0.3 | Spike setup decision: choose where the spike runs (Kort's PC, Velocity optional at this stage) and which Polymer modules are in play | One short note in this plan. **Written 2026-11-15: runs on Kort's PC after P1, Velocity optional, Polymer modules chosen then (see `docs/PORT-1211.md`).** |
 
 ### P1: Port to 1.21.1 (about 6 to 12 weeks, estimate)
 
