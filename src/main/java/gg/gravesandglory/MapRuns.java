@@ -195,7 +195,7 @@ final class MapRuns {
         return Base64.getEncoder().encodeToString(b.toByteArray());
     }
     static NbtCompound decode(String s){
-        try(var i=new DataInputStream(new ByteArrayInputStream(Base64.getDecoder().decode(s)))){return NbtIo.read(i);}catch(IOException e){throw new UncheckedIOException(e);}
+        try(var i=new DataInputStream(new ByteArrayInputStream(Base64.getDecoder().decode(s)))){return NbtIo.readCompound(i);}catch(IOException e){throw new UncheckedIOException(e);}
     }
 
     // ---- walking the cells ----
@@ -250,7 +250,7 @@ final class MapRuns {
                 if(now==want&&!beOnly)continue;
                 if(undo!=null){
                     undo.add(cur.x,cur.z,cur.y,1,name(now));
-                    var old=w.getBlockEntity(pos);if(old!=null)undo.be.put(pos.toImmutable(),encode(old.createNbt()));
+                    var old=w.getBlockEntity(pos);if(old!=null)undo.be.put(pos.toImmutable(),encode(old.createNbt(w.getRegistryManager())));
                 }
                 if(!beOnly){w.setBlockState(pos,want,FLAGS);changed++;}
             }
@@ -259,7 +259,7 @@ final class MapRuns {
         private void blockEntities(ServerWorld w){
             for(var e:be.entrySet()){
                 var at=w.getBlockEntity(e.getKey());if(at==null)continue;
-                at.readNbt(decode(e.getValue()));at.markDirty();
+                at.read(decode(e.getValue()),w.getRegistryManager());at.markDirty();
                 var st=w.getBlockState(e.getKey());w.updateListeners(e.getKey(),st,st,Block.NOTIFY_ALL);
             }
         }

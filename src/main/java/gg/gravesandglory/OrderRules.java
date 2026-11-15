@@ -142,7 +142,7 @@ final class OrderRules {
         b.campaign.tutorialDid(p, order.equals("attack") || order.equals("charge") ? 2 : order.equals("hold") ? 1 : 0); b.campaign.progressEvent(p.getUuid(), false); s.stats.orders++; // lessons: Attack or Charge, Formation (hold), else Follow me or Retreat
         // The command's feedback, as world sounds at this player (every player in range hears them; BattleEffects.feedback): Retreat's and Charge's
         // cues, Hold's shout (an old move arrives as hold), every other order the chime (to his connection only, a UI cue).
-        if (order.equals("retreat") || order.equals("charge")) BattleEffects.feedback(b, p, order); else if (order.equals("hold")) BattleEffects.feedback(b, p, "hold"); else p.playSound(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.PLAYERS, .6f, 1.1f);
+        if (order.equals("retreat") || order.equals("charge")) BattleEffects.feedback(b, p, order); else if (order.equals("hold")) BattleEffects.feedback(b, p, "hold"); else p.playSoundToPlayer(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.PLAYERS, .6f, 1.1f);
         Vec3d mid = mean(dests.values());
         p.sendMessage(Text.literal(String.join("+", moved) + " / " + order + " / " + (int) mid.x + ", " + (int) mid.z), true);
 

@@ -1,5 +1,6 @@
 package gg.gravesandglory;
 
+import net.minecraft.util.Identifier;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.registry.tag.DamageTypeTags;
@@ -115,7 +116,7 @@ final class Houses {
     }
 
     /** The fixed id of Riptide's speed modifier on a Tidecallers troop. */
-    static final UUID RIPTIDE = UUID.fromString("5a0f6c1e-2b7d-4c43-9f1a-7e3d8b94c2a6");
+    static final Identifier RIPTIDE = Identifier.of("gravesandglory", "riptide_speed");
 
     /**
      * Riptide's speed, on each of the troop's Tactics beats: the troop travels x(1 + value) of the army's tier while it touches water or it rains on the map, else

@@ -10,6 +10,10 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+import java.util.UUID;
+import net.minecraft.network.packet.s2c.common.ResourcePackSendS2CPacket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -30,6 +34,8 @@ public final class PropPack {
 
     static final String FILE="gg.propPack.file",URL="gg.propPack.url",PORT="gg.propPack.port",REQUIRED="gg.propPack.required",PACKWIZ="gg.packwiz.dir";
     static final String PROMPT="Graves and Glory props";
+    /** One fixed pack id, so a re-sent (reloaded) pack replaces the one a client already holds instead of stacking beside it (1.20.3+ keys packs by id). */
+    static final UUID PACK_ID=UUID.nameUUIDFromBytes("gravesandglory:props".getBytes(StandardCharsets.UTF_8));
 
     static volatile PropPackFile.Pack pack;
     static HttpServer http;
@@ -93,7 +99,7 @@ public final class PropPack {
     static boolean send(ServerPlayerEntity player){
         var p=pack;String url=url();
         if(p==null||url==null)return false;
-        player.sendResourcePackUrl(url,p.sha1(),required(),Text.literal(PROMPT));
+        player.networkHandler.sendPacket(new ResourcePackSendS2CPacket(PACK_ID,url,p.sha1(),required(),Optional.of(Text.literal(PROMPT))));
         return true;
     }
 

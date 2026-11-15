@@ -156,7 +156,7 @@ final class BuildMode {
 
     // ---- auto-op: every player is op once, on first join (Kort 2026-11-03); a later de-op sticks ----
     static void opOnce(MinecraftServer s,ServerPlayerEntity player){
-        Path file=s.getRunDirectory().toPath().resolve(OPPED);String uuid=player.getUuidAsString();
+        Path file=s.getRunDirectory().resolve(OPPED);String uuid=player.getUuidAsString();
         try{
             String seen=Files.exists(file)?Files.readString(file):"";
             if(seen.lines().anyMatch(uuid::equals))return;
@@ -213,7 +213,7 @@ final class BuildMode {
     }
 
     // ---- backups ----
-    static Path backups(){return server.getRunDirectory().toPath().resolve("backups").resolve(SAVE);}
+    static Path backups(){return server.getRunDirectory().resolve("backups").resolve(SAVE);}
 
     /** Saves, then zips the whole save folder (the overworld and every canvas dimension) on the server thread: a copy taken while a chunk is being written could be torn. */
     static void backup(MinecraftServer s,String why){

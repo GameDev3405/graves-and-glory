@@ -1,5 +1,8 @@
 package gg.gravesandglory;
 
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.util.Identifier;
 import java.util.*;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
@@ -31,9 +34,9 @@ public final class GearCombat {
     private GearCombat() {}
 
     /** Fixed ids, so a respawn or a new battle replaces the modifier and never stacks it. HEALTH and ATTACK keep the old class-passive ids. */
-    static final UUID HEALTH = UUID.fromString("e01516bb-07f8-49b1-86c4-873d30106609"), ATTACK = UUID.fromString("8352fccf-a081-4a35-a122-2f5e5de6e1de"),
-        ARMOUR = UUID.fromString("5b0f2b64-5a8e-4d1c-9a43-1f7c2e6a0b11"), SPEED = UUID.fromString("9e3c7a21-4b6f-4f0e-8d52-6a1b3c9e7f22"),
-        ATTACK_SPEED = UUID.fromString("c47d1e90-2a3b-4c5d-9e6f-7a8b9c0d1e33");
+    static final Identifier HEALTH = Identifier.of("gravesandglory", "gear_health"), ATTACK = Identifier.of("gravesandglory", "gear_damage"),
+        ARMOUR = Identifier.of("gravesandglory", "gear_armour"), SPEED = Identifier.of("gravesandglory", "gear_speed"),
+        ATTACK_SPEED = Identifier.of("gravesandglory", "gear_attack_speed");
 
     /** The vanilla attack speed a player starts from; gearFamilies.attackSpeed is the total, so the modifier is the difference. */
     static final double BASE_ATTACK_SPEED = 4.0;
@@ -85,11 +88,11 @@ public final class GearCombat {
         if (pl.networkHandler != null) pl.networkHandler.sendPacket(new UpdateSelectedSlotS2CPacket(0));
     }
 
-    static void set(ServerPlayerEntity pl, EntityAttribute a, UUID id, String name, double value) {
+    static void set(ServerPlayerEntity pl, RegistryEntry<EntityAttribute> a, Identifier id, String name, double value) {
         var inst = pl.getAttributeInstance(a);
         if (inst == null) return;
         inst.removeModifier(id);
-        if (value != 0) inst.addTemporaryModifier(new EntityAttributeModifier(id, name, value, EntityAttributeModifier.Operation.ADDITION));
+        if (value != 0) inst.addTemporaryModifier(new EntityAttributeModifier(id, value, EntityAttributeModifier.Operation.ADD_VALUE));
     }
 
     /** Removes every gear modifier (the lobby, between battles). Health above the new maximum is cut back to it. */
@@ -228,7 +231,7 @@ public final class GearCombat {
     // ---- Set bonuses and perks that act on their own (gear-combat plan Task 6). Each reads its gearSetBonuses or gearPerks row through GearStats.
 
     /** Fixed ids of the trailblazer speed on the commander and the formation_charge speed on his troops. */
-    static final UUID TRAIL = UUID.fromString("3f6a2c18-9b7e-4d05-a1c3-5e8f0b2d4a61"), FORMATION = UUID.fromString("b8d14e72-6c39-4a0f-9e15-2f7a3c6b8d94");
+    static final Identifier TRAIL = Identifier.of("gravesandglory", "trailblazer_speed"), FORMATION = Identifier.of("gravesandglory", "formation_charge_speed");
 
     /** How many foes (troops and seated commanders of the other side) stand within radius blocks of e. */
     static int foesNear(GravesAndGlory.Battle b, Entity e, int team, double radius) {
@@ -317,7 +320,13 @@ public final class GearCombat {
         var s = seated(pl);
         if (s == null) return;
         int level = GearEffects.pierceLevel(s.gear);
-        if (level > a.getPierceLevel()) a.setPierceLevel((byte) Math.min(127, level));
+        if (level > a.getPierceLevel()) {
+            // 1.21.1 hides setPierceLevel (private); a round trip through the arrow's own save data sets it without touching any other field.
+            var data = new NbtCompound();
+            a.writeCustomDataToNbt(data);
+            data.putByte("PierceLevel", (byte) Math.min(127, level));
+            a.readCustomDataFromNbt(data);
+        }
     }
 
     /**

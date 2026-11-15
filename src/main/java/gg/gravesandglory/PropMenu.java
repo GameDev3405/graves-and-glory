@@ -1,5 +1,8 @@
 package gg.gravesandglory;
 
+import net.minecraft.component.type.LoreComponent;
+import net.minecraft.component.type.CustomModelDataComponent;
+import net.minecraft.component.DataComponentTypes;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -165,24 +168,23 @@ public final class PropMenu {
 
     static ItemStack arrow(boolean next){
         ItemStack s=new ItemStack(Items.ARROW);
-        s.setCustomName(Text.literal(next?"More tabs":"Previous tabs").styled(st->st.withItalic(false)));
+        s.set(DataComponentTypes.CUSTOM_NAME,Text.literal(next?"More tabs":"Previous tabs").styled(st->st.withItalic(false)));
         return s;
     }
 
     static ItemStack tab(String category,boolean open){
         ItemStack s=new ItemStack(open?Items.SMITHING_TABLE:Items.CRAFTING_TABLE);
-        s.setCustomName(Text.literal(title(category)).styled(st->st.withItalic(false).withBold(open)));
-        if(open){NbtList glint=new NbtList();glint.add(new NbtCompound());s.getOrCreateNbt().put("Enchantments",glint);}
+        s.set(DataComponentTypes.CUSTOM_NAME,Text.literal(title(category)).styled(st->st.withItalic(false).withBold(open)));
+        if(open)s.set(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE,true); // the open tab glints (was an empty Enchantments entry)
         return s;
     }
     static ItemStack icon(PropDef d){
         ItemStack s=new ItemStack(Items.PAPER);
-        s.getOrCreateNbt().putInt("CustomModelData",d.parts().get(0).cmd());
-        s.setCustomName(Text.literal(d.name()).styled(st->st.withItalic(false)));
-        NbtList lore=new NbtList();
-        lore.add(NbtString.of(Text.Serializer.toJson(Text.literal("Size "+d.sx()+" x "+d.sy()+" x "+d.sz()).formatted(Formatting.GRAY).styled(st->st.withItalic(false)))));
-        lore.add(NbtString.of(Text.Serializer.toJson(Text.literal("Click to place").formatted(Formatting.DARK_GRAY))));
-        s.getOrCreateSubNbt("display").put("Lore",lore);
+        s.set(DataComponentTypes.CUSTOM_MODEL_DATA,new CustomModelDataComponent(d.parts().get(0).cmd()));
+        s.set(DataComponentTypes.CUSTOM_NAME,Text.literal(d.name()).styled(st->st.withItalic(false)));
+        s.set(DataComponentTypes.LORE,new LoreComponent(List.of(
+            Text.literal("Size "+d.sx()+" x "+d.sy()+" x "+d.sz()).formatted(Formatting.GRAY).styled(st->st.withItalic(false)),
+            Text.literal("Click to place").formatted(Formatting.DARK_GRAY))));
         return s;
     }
 
@@ -305,10 +307,7 @@ public final class PropMenu {
             double[] t=PropGeometry.partTransform(d,pl.facing,part);
             NbtCompound n=new NbtCompound();
             n.putString("id","minecraft:item_display");
-            NbtCompound item=new NbtCompound();
-            item.putString("id","minecraft:paper");item.putByte("Count",(byte)1);
-            NbtCompound tag=new NbtCompound();tag.putInt("CustomModelData",part.cmd());item.put("tag",tag);
-            n.put("item",item);
+            n.put("item",Props.partItem(w,part.cmd()));
             n.putString("item_display","fixed");
             n.putFloat("view_range",Props.VIEW_RANGE);
             n.putBoolean("Glowing",true);

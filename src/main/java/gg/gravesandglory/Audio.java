@@ -80,7 +80,7 @@ public final class Audio {
     /** The cue to one player's connection alone. */
     public static void to(ServerPlayerEntity p, AudioCues.Cue cue) {
         var e = event(cue);
-        if (p != null && e != null) p.playSound(e, category(cue), cue.volume, cue.pitch);
+        if (p != null && e != null) p.playSoundToPlayer(e, category(cue), cue.volume, cue.pitch);
     }
 
     /** The cue to every seated player of the round's team (team -1: both teams), once per key per cooldown. Returns whether it played. */

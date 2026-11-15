@@ -1,5 +1,8 @@
 package gg.gravesandglory;
 
+import net.minecraft.item.Items;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.Identifier;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.projectile.ArrowEntity;
 import net.minecraft.entity.projectile.PersistentProjectileEntity;
@@ -42,7 +45,7 @@ public final class RelicEffects {
     public static final String NOT_READY = "This command is not ready in this build.";
 
     /** The fixed id of Muster's speed modifier on its army's troops. */
-    static final UUID RALLY = UUID.fromString("8382ceb7-bd85-41fd-b662-34b5f1d36d95");
+    static final Identifier RALLY = Identifier.of("gravesandglory", "muster_speed");
 
     /** Puts this build's actives into ACTIVES (mod init): the Champion's Stand Fast, the Marshal's Muster (the sheet's active id rally_horn), the Warlock's Grave Bloom, the Quartermaster's Forward Supply, the Warden's Mark Prey and the Reaver's Bloodrush. */
     static void register() {
@@ -358,7 +361,7 @@ public final class RelicEffects {
             int n = (int) Math.max(1, Math.round(c.value1()));
             for (int i = 0; i < n; i++) {
                 float yaw = p.getYaw() + (n == 1 ? 0f : (float) (-c.value2() / 2 + c.value2() * i / (n - 1)));
-                var a = new ArrowEntity(b.world, p);
+                var a = new ArrowEntity(b.world, p, new ItemStack(Items.ARROW), null);
                 a.setVelocity(p, p.getPitch(), yaw, 0f, (float) c.value3(), 0f);
                 a.pickupType = PersistentProjectileEntity.PickupPermission.DISALLOWED;
                 b.world.spawnEntity(a);
