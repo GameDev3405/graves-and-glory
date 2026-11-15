@@ -571,8 +571,6 @@ public final class GravesAndGlory implements ModInitializer {
         @Override public boolean shouldSave(){return false;}
         @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
         @Override public void tickMovement(){super.tickMovement();if(isSitting())setSitting(false);if(isInSittingPose())setInSittingPose(false);}
-        /** Vanilla's wolf takes (amount + 1) / 2 of a blow whose attacker is neither a player nor an arrow; a troop's blow goes in as 2a - 1, so the half is a again. */
-        @Override public boolean damage(DamageSource source,float amount){Entity e=source.getAttacker();return super.damage(source,e!=null&&!(e instanceof PlayerEntity)&&!(e instanceof PersistentProjectileEntity)?amount*2-1:amount);}
         /** No taming, no seat on a click, no bone taken: a troop is not a pet. */
         @Override public ActionResult interactMob(PlayerEntity player,Hand hand){return ActionResult.PASS;}
         @Override public void setAngerTime(int ticks){super.setAngerTime(0);}
