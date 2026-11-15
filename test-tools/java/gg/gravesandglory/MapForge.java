@@ -154,7 +154,7 @@ public final class MapForge implements ModInitializer {
         return v;
     }
     static MapRuns diff(MapRuns base,MapRuns fin){
-        var out=new MapRuns("overlay");var baseCols=new HashMap<Long,int[]>();
+        var out=new MapRuns("overlay");out.header.put("dataVersion",fin.header.getOrDefault("dataVersion",new com.google.gson.JsonPrimitive(3465)));var baseCols=new HashMap<Long,int[]>();
         for(int[] c:base.columns())baseCols.put(key(c[0],c[1]),c);
         var md=MapRuns.sha();
         for(int[] c:fin.columns()){

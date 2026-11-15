@@ -268,7 +268,8 @@ final class MapRuns {
         private void blockEntities(ServerWorld w){
             for(var e:be.entrySet()){
                 var at=w.getBlockEntity(e.getKey());if(at==null)continue;
-                at.read(upgraded(decode(e.getValue())),w.getRegistryManager());at.markDirty();
+                var n=decode(e.getValue());if(!n.contains("id"))n.putString("id",net.minecraft.block.entity.BlockEntityType.getId(at.getType()).toString()); // createNbt writes no id; the datafixer's BLOCK_ENTITY type needs one (never stored back, so no hash sees it)
+                at.read(upgraded(n),w.getRegistryManager());at.markDirty();
                 var st=w.getBlockState(e.getKey());w.updateListeners(e.getKey(),st,st,Block.NOTIFY_ALL);
             }
         }

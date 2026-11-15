@@ -20,7 +20,7 @@ Clients must match the server's game version and build identity. A missing or
 incompatible pack receives an update instruction before entering the world.
 This compatibility check does not authenticate progression or prevent cheating.
 
-This modpack's look is its own built-in assets plus the shaders credited below, and one third-party resource pack: Excalibur 1.20, bundled unmodified and pinned by hash. Excalibur resource pack by Maffhew, used with permission, unmodified (CC BY-NC-ND 3.0).
+This modpack's look is its own built-in assets plus the shaders credited below, and no third-party resource pack.
 
 Upgrades copy legacy Bannerbound collections, deployment data and visual
 preferences into the current folders without overwriting current files. When
@@ -76,7 +76,7 @@ The war council, collection, gear role, command controls and battlefield panels 
 
 Visuals & sound in the lobby lets each player choose one shader: Complementary Reimagined r5.5.1, Complementary Unbound r5.5.1, MakeUp Ultra Fast 9.5g, or shaders off. Shader changes are saved locally. Shaders begin off for reliable battle performance on a range of PCs; selecting one loads it inside the game. Complementary's pinned releases have an explicit modpack distribution grant; the latest shader versions have different distribution terms and are not silently substituted.
 
-The look is the modpack's own plus the bundled Excalibur 1.20 resource pack. Minecraft's textures come from each player's own game, and the built-in armory and weapons packs sit above Excalibur, so weapons keep the game's own look and only the environment is Excalibur. Each player's graphics choices are independent in multiplayer.
+The look is the modpack's own built-in assets. Minecraft's textures come from each player's own game. Each player's graphics choices are independent in multiplayer.
 
 Confirmed commander hits receive a brief ink-and-gold contact accent and restrained camera recoil. Choose Off, Subtle (default), or Strong. Ambient troop fights never trigger repeated screen flashes; accents do not stop the simulation, change damage or interrupt other players. The camera entrance is sampled every rendered frame instead of stepping its coordinates at the simulation tick rate.
 
@@ -98,7 +98,7 @@ Development game runs exercise the physical lobby, paid unlocks, saved profiles,
 
 Concept and direction: Kort Tjepkema. Implementation, authored environments, animation adjustments, effects assisted by OpenAI Codex using Melty's modding kit. Sound effects are Pixabay samples (Pixabay Content License). Original Graves and Glory code and content: MIT; remixes allowed.
 
-Excalibur resource pack by Maffhew, used with permission, unmodified (CC BY-NC-ND 3.0).
+
 
 Inspired by Command an Army on Roblox; no Roblox code, assets or branding included. Minecraft belongs to Mojang/Microsoft. Minecraft models, equipment, textures, particles and stock sounds are read from each player's own game and are not redistributed.
 
