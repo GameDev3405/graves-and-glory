@@ -90,6 +90,10 @@ public final class SiegeMode extends BattleMode {
         final double yardX, yardZ, yardRadius, keepX, keepZ, keepRadius, gateX, gateZ, donjonX, donjonZ, donjonY;
         final int yardSeconds, keepSeconds, floor, pass, passZ, passHeight;
         final float gateHp;
+        /** The attacking and the defending team, and the way the attackers go through the gate (a unit step along x or z). Ironhold: Dawn attacks, eastward. */
+        final int att, def, ux, uz;
+        /** The attackers' forward camp while the yard stands (a base row of their team), or null: their own camp. */
+        final Spec.ModeSitesRow camp;
         /** The gate's landmark (map 1), or null on an engine map. */
         final Spec.LandmarksRow landmark;
         final List<Spec.ModeSitesRow> wards, plugs, posts;
@@ -108,6 +112,16 @@ public final class SiegeMode extends BattleMode {
             wards = rows(map, "ward");
             plugs = rows(map, "plug");
             posts = rows(map, "post");
+            // The defenders are the team of the base row nearest the keep (their keep muster; a base row's stage is its team); the other team's base row, if the
+            // map has one, is the attackers' forward camp. The gate row's rotation is the way in: 0 east, 90 south, 180 west, 270 north.
+            Spec.ModeSitesRow near = null;
+            if (lm == null) for (var r : rows(map, "base")) if (near == null || Math.hypot(r.x() - keepX, r.z() - keepZ) < Math.hypot(near.x() - keepX, near.z() - keepZ)) near = r;
+            def = near != null && near.stage() == 0 ? 0 : 1;
+            att = 1 - def;
+            camp = lm == null ? find(map, "base", att) : null;
+            int turn = lm != null ? 0 : Math.floorMod(gate.rotation(), 360);
+            ux = turn == 0 ? 1 : turn == 180 ? -1 : 0;
+            uz = turn == 90 ? 1 : turn == 270 ? -1 : 0;
             if (lm != null) { // the old Ironhold: the gate piece's passage and the donjon, as constants
                 gateX = lm.x(); gateZ = lm.z(); floor = lm.elevation();
                 pass = PASSAGE_X; passZ = PASSAGE_Z; passHeight = PASSAGE_HEIGHT;
@@ -119,9 +133,9 @@ public final class SiegeMode extends BattleMode {
                 pass = own == null ? PASSAGE_X : own.seconds() / 2 + 1;
                 passZ = own == null ? PASSAGE_Z : (int) own.radius();
                 passHeight = own == null ? PASSAGE_HEIGHT : (int) own.hp();
-                var base = find(map, "base", 1); // Dusk's field base: the old donjon's place
-                donjonX = base != null ? base.x() : gate.x() + 40;
-                donjonZ = base != null ? base.z() : gate.z();
+                var base = find(map, "base", def); // the defenders' field base: the old donjon's place
+                donjonX = base != null ? base.x() : gate.x() + 40 * ux;
+                donjonZ = base != null ? base.z() : gate.z() + 40 * uz;
                 donjonY = base != null ? base.y() + 1 : floor + 1;
             }
         }
@@ -133,8 +147,20 @@ public final class SiegeMode extends BattleMode {
         }
         /** The attackers' base once the gate is breached: two blocks inside the gate's far face (Ironhold's MOUTH constants are this at pass 3). */
         Vec3d mouth() {
-            return landmark != null ? at(MOUTH_X, MOUTH_Z) : at(gateX + pass + 2.5, gateZ + .5);
+            return landmark != null ? at(MOUTH_X, MOUTH_Z) : off(pass + 2.5, .5);
         }
+        /** A spot on the gate's line: along blocks past the gate's centre the way the attackers go (negative: on their side), across blocks to the side. */
+        Vec3d off(double along, double across) {
+            return at(gateX + ux * along + Math.abs(uz) * across, gateZ + uz * along + Math.abs(ux) * across);
+        }
+        /** The yaw of a troop that looks the way the attackers go (with false: back at them). */
+        float yaw(boolean attacking) {
+            int dx = attacking ? ux : -ux, dz = attacking ? uz : -uz;
+            return dx > 0 ? -90 : dx < 0 ? 90 : dz > 0 ? 0 : 180;
+        }
+        /** The gate's and the yard's names in a line: the rows' own on an engine map. */
+        String gateName() { return landmark != null ? "Iron Gate" : gate.name(); }
+        String yardName() { return landmark != null ? "the Outer Yard" : yard.name(); }
         /** Whether the round has a gate to shut: the landmark piece, or a plug row. */
         boolean closable() {
             return landmark != null || !plugs.isEmpty();
@@ -202,7 +228,7 @@ public final class SiegeMode extends BattleMode {
 
         @Override
         Text label() {
-            return Text.literal("Iron Gate " + (int) Math.ceil(hp())).formatted(Formatting.LIGHT_PURPLE);
+            return Text.literal((mode != null ? mode.sites.gateName() : "Iron Gate") + " " + (int) Math.ceil(hp())).formatted(Formatting.LIGHT_PURPLE);
         }
 
         /**
@@ -224,7 +250,7 @@ public final class SiegeMode extends BattleMode {
     /** Attackers take the yard, the gate and the keep; defenders hold them. */
     @Override
     public String howToSide(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
-        return s == null || s.team == 0 ? "attack" : "defend"; // the lobby's preview has no viewer squad (Campaign.snapshot)
+        return s == null || s.team == s(b).att ? "attack" : "defend"; // the lobby's preview has no viewer squad (Campaign.snapshot)
     }
 
     /** The gate's landmark row on Ironhold, or null when the map has no gate. */
@@ -302,10 +328,10 @@ public final class SiegeMode extends BattleMode {
     /** Defenders deploy at the yard while it stands; attackers deploy there once it has fallen. Never with an enemy in the ring. */
     @Override
     public List<GravesAndGlory.Anchor> anchors(GravesAndGlory.Battle b, int team) {
-        boolean ours = team == 1 ? stage == 0 : stage >= 1;
         var st = s(b);
+        boolean ours = team == st.def ? stage == 0 : stage >= 1;
         if (!ours || Morale.enemyWithin(b, team, new Vec3d(st.yardX, 65, st.yardZ), st.yardRadius)) return List.of();
-        return List.of(new GravesAndGlory.Anchor(st.yardX, st.yardZ, "the Outer Yard", team));
+        return List.of(new GravesAndGlory.Anchor(st.yardX, st.yardZ, st.yardName(), team));
     }
 
     /**
@@ -318,9 +344,9 @@ public final class SiegeMode extends BattleMode {
         var st = s(b);
         if (stage == 0) return at(st.yardX, st.yardZ);
         if (stage == 1 && st.closable()) {
-            if (s.team == 0) return at(st.gateX - st.pass - (dropAt >= 0 ? 10 : 4), st.gateZ);
+            if (s.team == st.att) return st.off(-st.pass - (dropAt >= 0 ? 10 : 4), 0);
             boolean low = target != null && target.hp() <= st.gateHp * BREACH_SHARE;
-            return at(st.gateX + st.pass + (low ? .5 : 2.5), st.gateZ + .5);
+            return st.off(st.pass + (low ? .5 : 2.5), .5);
         }
         return at(st.keepX, st.keepZ);
     }
@@ -329,8 +355,8 @@ public final class SiegeMode extends BattleMode {
     @Override
     public Vec3d fieldBase(GravesAndGlory.Battle b, int team) {
         var st = s(b);
-        if (team == 1) return at(st.donjonX, st.donjonZ);
-        if (stage == 0) return super.fieldBase(b, team);
+        if (team == st.def) return at(st.donjonX, st.donjonZ);
+        if (stage == 0) return st.camp != null ? at(st.camp.x(), st.camp.z()) : super.fieldBase(b, team);
         return stage == 1 ? at(st.yardX, st.yardZ) : st.mouth();
     }
 
@@ -338,14 +364,14 @@ public final class SiegeMode extends BattleMode {
     @Override
     public Vec3d fieldBarracks(GravesAndGlory.Battle b, int team) {
         var st = s(b);
-        return team == 1 ? new Vec3d(st.donjonX, st.donjonY, st.donjonZ) : super.fieldBarracks(b, team);
+        return team == st.def ? new Vec3d(st.donjonX, st.donjonY, st.donjonZ) : super.fieldBarracks(b, team);
     }
 
     /** The defenders' lineup forms in the yard while it stands; the attackers' at their base. */
     @Override
     public Vec3d lineup(GravesAndGlory.Battle b, int team) {
         var st = s(b);
-        return team == 1 && stage == 0 ? at(st.yardX + YARD_LINEUP, st.yardZ) : super.lineup(b, team);
+        return team == st.def && stage == 0 ? at(st.yardX + YARD_LINEUP * st.ux, st.yardZ + YARD_LINEUP * st.uz) : super.lineup(b, team);
     }
 
     /** A spot on the ground. */
@@ -373,12 +399,12 @@ public final class SiegeMode extends BattleMode {
     public void botPlan(GravesAndGlory.Battle b, GravesAndGlory.Squad s, Spec.BotCommandRow tier) {
         var st = s(b);
         if (!st.closable() || stage >= 3) return;
-        if (s.team == 1 && stage != 1) {
+        if (s.team == st.def && stage != 1) {
             s.order = "attack";
             return;
         }
         if (stage != 1) return;
-        if (s.team == 1) {
+        if (s.team == st.def) {
             Vec3d stand = st.post(Math.floorMod(s.owner.hashCode(), 2));
             if (stand != null && stations(tier)) put(s, "ranged", "attack", stand, -1).perch = true;
             return;
@@ -388,18 +414,18 @@ public final class SiegeMode extends BattleMode {
             return;
         }
         int gateId = target.getId();
-        double face = st.gateX - st.pass - 1;
+        double face = -st.pass - 1;
         put(s, "infantry", "attack", s.target, gateId);
         put(s, "cavalry", "attack", s.target, gateId);
-        if (stations(tier)) put(s, "siege", "hold", at(face - STANDOFF, st.gateZ + .5), gateId);
+        if (stations(tier)) put(s, "siege", "hold", st.off(face - STANDOFF, .5), gateId);
         else put(s, "siege", "attack", s.target, gateId);
-        put(s, "ranged", "attack", at(face - RANGED_STANDOFF, st.gateZ + .5), -1);
+        put(s, "ranged", "attack", st.off(face - RANGED_STANDOFF, .5), -1);
     }
 
     /** Once the yard has fallen the defenders' base is the donjon behind the gate they hold: they fight on there rather than fall back and wait to rally (the 2026-11 sims had them sit out the gate and keep). */
     @Override
     public boolean botRetreats(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
-        return s.team != 1 || stage == 0;
+        return s.team != s(b).def || stage == 0;
     }
 
     /** One group's order, keeping the formation the army already gave it (a shieldwall stays braced). */
@@ -425,9 +451,9 @@ public final class SiegeMode extends BattleMode {
             stage = 3;
             keepSecond = second(b);
             staged(b, "keep", keepSecond);
-            b.scores[0] = stage;
+            b.scores[st.att] = stage;
             feed(b, "keep_taken", "team", attackers(b));
-            b.campaign.finish(0); // the victory and defeat stings play from Campaign.finish
+            b.campaign.finish(st.att); // the victory and defeat stings play from Campaign.finish
         }
     }
 
@@ -438,6 +464,7 @@ public final class SiegeMode extends BattleMode {
      */
     boolean hold(GravesAndGlory.Battle b, double x, double z, double r, int seconds, boolean edge) {
         int[] in = {0, 0};
+        int a = s(b).att, d = 1 - a;
         Vec3d c = new Vec3d(x, 65, z);
         for (var u : b.units)
             if (u.mob.isAlive() && GravesAndGlory.Battle.horizontalDistance(u.mob.getPos(), c) < r * r) in[u.squad.team]++;
@@ -445,8 +472,8 @@ public final class SiegeMode extends BattleMode {
             var s = b.squads.get(p.getUuid());
             if (s != null && s.seated && !p.isSpectator() && GravesAndGlory.Battle.horizontalDistance(p.getPos(), c) < r * r) in[s.team]++;
         }
-        if (in[0] > 0 && (in[1] == 0 || edge && in[0] * R.keepEdgeDefenders() >= in[1] * R.keepEdgeAttackers())) held++;
-        else if (in[1] > 0 && in[0] == 0) held = Math.max(0, held - 1);
+        if (in[a] > 0 && (in[d] == 0 || edge && in[a] * R.keepEdgeDefenders() >= in[d] * R.keepEdgeAttackers())) held++;
+        else if (in[d] > 0 && in[a] == 0) held = Math.max(0, held - 1);
         return held >= seconds;
     }
 
@@ -456,13 +483,13 @@ public final class SiegeMode extends BattleMode {
         yardSecond = second(b);
         staged(b, "yard", yardSecond);
         held = 0;
-        b.scores[0] = stage;
+        var st = s(b);
+        b.scores[st.att] = stage;
         b.roundSeconds += STAGE_BONUS;
         feed(b, "yard_taken", "team", attackers(b));
-        Audio.captured(b, "yard", 0);
-        var st = s(b);
+        Audio.captured(b, "yard", st.att);
         GravesAndGlory.Squad defender = null;
-        for (var s : b.squads.values()) if (s.seated && s.team == 1) { defender = s; break; }
+        for (var s : b.squads.values()) if (s.seated && s.team == st.def) { defender = s; break; }
         if (!st.closable() || defender == null || st.landmark != null && b.saves.stream().noneMatch(s -> s.tag().equals(GATE_TAG))) { breach(b); return; } // no saved gate to shut and break
         dropAt = b.time + R.portcullisSeconds() * 20L;
         // The gate's crash is 2.3 s into its sound, so the cue starts that much ahead of the drop and the two land together.
@@ -476,7 +503,7 @@ public final class SiegeMode extends BattleMode {
         var st = s(b);
         var row = st.landmark;
         GravesAndGlory.Squad defender = null;
-        for (var s : b.squads.values()) if (s.seated && s.team == 1) { defender = s; break; }
+        for (var s : b.squads.values()) if (s.seated && s.team == st.def) { defender = s; break; }
         if (!st.closable() || defender == null) { breach(b); return; }
         if (row != null) {
             clearPassage(b, st.gateX, st.gateZ, st.floor, st.pass, st.passZ, st.passHeight);
@@ -487,7 +514,7 @@ public final class SiegeMode extends BattleMode {
         e.squad = defender;
         e.mode = this;
         e.hp = st.gateHp;
-        e.refreshPositionAndAngles(st.gateX - st.pass - 1 + .5, st.floor + 1, st.gateZ + .5, 90, 0);
+        e.refreshPositionAndAngles(st.gateX - st.ux * (st.pass + 1) + .5, st.floor + 1, st.gateZ - st.uz * (st.pass + 1) + .5, st.yaw(false), 0);
         e.setNoGravity(true);
         e.setInvisible(true);
         e.addCommandTag("gravesandglory");
@@ -506,12 +533,26 @@ public final class SiegeMode extends BattleMode {
 
     /** The same for a passage centred at (x, z) on a floor: pass blocks each side of the centre are the shut part, passZ half its width, height its height. */
     static void clearPassage(GravesAndGlory.Battle b, double x, double z, int floor, int pass, int passZ, int height) {
-        double lo = x - pass - 1, hi = x + pass + 2;
-        var box = new net.minecraft.util.math.Box(lo, floor - 1, z - passZ - 1, hi, floor + height + 2, z + passZ + 2);
+        clearPassage(b, x, z, floor, pass, passZ, height, false);
+    }
+    /** The same for a passage that runs along z (turned): pass is then its half thickness in z and passZ its half width in x. */
+    static void clearPassage(GravesAndGlory.Battle b, double x, double z, int floor, int pass, int passZ, int height, boolean turned) {
+        int px = turned ? passZ : pass, pz = turned ? pass : passZ;
+        var box = new net.minecraft.util.math.Box(x - px - 1, floor - 1, z - pz - 1, x + px + 2, floor + height + 2, z + pz + 2);
         for (var e : b.world.getEntitiesByClass(net.minecraft.entity.LivingEntity.class, box, v -> true)) {
-            double side = e.getX() < x ? x - pass - 3 : x + pass + 3;
-            e.requestTeleport(side, floor + 1, e.getZ());
+            if (turned) e.requestTeleport(e.getX(), floor + 1, e.getZ() < z ? z - pass - 3 : z + pass + 3);
+            else e.requestTeleport(e.getX() < x ? x - pass - 3 : x + pass + 3, floor + 1, e.getZ());
         }
+    }
+    /** Whether a plug's passage runs along z (its row's rotation 90 or 270): its thickness is then in z and its width in x. */
+    static boolean turned(Spec.ModeSitesRow p) {
+        return Math.floorMod(p.rotation(), 180) == 90;
+    }
+    /** A plug's box: corner and size (thickness seconds along its passage, radius each side of the centre across it, hp high). */
+    static int[] plugBox(Spec.ModeSitesRow p) {
+        int thick = p.seconds(), half = (int) p.radius(), wide = half * 2 + 1;
+        return turned(p) ? new int[]{(int) p.x() - half, (int) p.y() + 1, (int) p.z() - thick / 2, wide, (int) p.hp(), thick}
+            : new int[]{(int) p.x() - thick / 2, (int) p.y() + 1, (int) p.z() - half, thick, (int) p.hp(), wide};
     }
 
     /**
@@ -527,23 +568,26 @@ public final class SiegeMode extends BattleMode {
         }
         var saved = new java.util.ArrayList<Structures.Saved>();
         for (var p : st.plugs) {
-            int x0 = (int) p.x() - p.seconds() / 2, z0 = (int) p.z() - (int) p.radius(), y0 = (int) p.y() + 1;
-            var snap = Structures.snapshot(b.world, new net.minecraft.util.math.BlockPos(x0, y0, z0), new net.minecraft.util.math.Vec3i(p.seconds(), (int) p.hp(), (int) p.radius() * 2 + 1), PLUG_TAG + p.id().substring(p.id().lastIndexOf('_') + 1));
+            int[] box = plugBox(p);
+            var snap = Structures.snapshot(b.world, new net.minecraft.util.math.BlockPos(box[0], box[1], box[2]), new net.minecraft.util.math.Vec3i(box[3], box[4], box[5]), PLUG_TAG + p.id().substring(p.id().lastIndexOf('_') + 1));
             if (snap == null) { for (var s : saved) Structures.restore(b.world, s); return false; }
             saved.add(snap);
         }
         b.saves.addAll(saved); // saved and in the crash marker before a block changes
         mark(b);
-        for (var p : st.plugs) clearPassage(b, p.x() + .5, p.z() + .5, (int) p.y(), p.seconds() / 2 + 1, (int) p.radius(), (int) p.hp());
+        for (var p : st.plugs) clearPassage(b, p.x() + .5, p.z() + .5, (int) p.y(), p.seconds() / 2 + 1, (int) p.radius(), (int) p.hp(), turned(p));
         for (int i = 0; i < st.plugs.size(); i++) {
             var p = st.plugs.get(i);
             var block = states.get(i);
             var o = saved.get(i).origin();
-            for (int x = 0; x < p.seconds(); x++) for (int y = 0; y < (int) p.hp(); y++) for (int z = 0; z <= (int) p.radius() * 2; z++)
-                b.world.setBlockState(o.add(x, y, z), block);
-            for (int x = 0; x < p.seconds(); x++) for (int y = 0; y < (int) p.hp(); y++) for (int z = 0; z <= (int) p.radius() * 2; z++) { // bars and panes join their neighbours
+            int[] box = plugBox(p);
+            for (int x = 0; x < box[3]; x++) for (int y = 0; y < box[4]; y++) for (int z = 0; z < box[5]; z++) { // the passage only: a wall or floor block inside the box stays
                 var at = o.add(x, y, z);
-                b.world.setBlockState(at, net.minecraft.block.Block.postProcessState(b.world.getBlockState(at), b.world, at));
+                if (!b.world.getBlockState(at).isFullCube(b.world, at)) b.world.setBlockState(at, block);
+            }
+            for (int x = 0; x < box[3]; x++) for (int y = 0; y < box[4]; y++) for (int z = 0; z < box[5]; z++) { // bars and panes join their neighbours
+                var at = o.add(x, y, z);
+                if (b.world.getBlockState(at).isOf(block.getBlock())) b.world.setBlockState(at, net.minecraft.block.Block.postProcessState(b.world.getBlockState(at), b.world, at));
             }
         }
         return true;
@@ -559,7 +603,7 @@ public final class SiegeMode extends BattleMode {
         gateSecond = second(b);
         staged(b, "gate", gateSecond);
         held = 0;
-        b.scores[0] = stage;
+        b.scores[s(b).att] = stage;
         b.roundSeconds += STAGE_BONUS;
         feed(b, "gate_breached");
         if (!breachCued) Audio.all(b, AudioCues.Cue.GATE_BREACH, "gate"); // a felled gate sounded it with the blow (GateTarget.structureCue)
@@ -569,12 +613,26 @@ public final class SiegeMode extends BattleMode {
 
     /** A stage line (the modeLines siege row of this event, draft copy) on every player's feed, in the attackers' colour. */
     static void feed(GravesAndGlory.Battle b, String event, String... fields) {
-        FeedEvents.mode(b, 0, Modes.SIEGE, event, fields);
+        FeedEvents.mode(b, attacking(b), Modes.SIEGE, event, fields);
     }
 
     /** The attackers' short name for a feed line: "Gold" for the Gold Banner. */
     static String attackers(GravesAndGlory.Battle b) {
-        return FeedLines.teamShort(b.side(0).name());
+        return FeedLines.teamShort(b.side(attacking(b)).name());
+    }
+    /** The attacking team of the round's map. */
+    static int attacking(GravesAndGlory.Battle b) {
+        return b.mode instanceof SiegeMode m ? m.s(b).att : 0;
+    }
+    /** The clock running out is the defenders' win. */
+    @Override
+    public int timeoutWinner(GravesAndGlory.Battle b) {
+        return s(b).def;
+    }
+    /** The way a bot's army faces: at the enemy's side of the gate's line. */
+    float yaw(GravesAndGlory.Battle b, int team) {
+        var st = s(b);
+        return st.yaw(team == st.att);
     }
 
     /** The objective panel's opening line (the modeLines siege start row): the flags are down, so "Capture the objectives." would mislead. */

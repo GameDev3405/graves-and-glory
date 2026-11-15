@@ -226,13 +226,13 @@ public final class PropGameplay {
         PropDef.Gameplay g=d==null?null:d.gameplay();
         if(g==null||g.siegeCap()<=0)return "Defenders cannot place "+(d==null?id:d.name())+".";
         if(b==null||!b.running||!(b.mode instanceof SiegeMode))return "Barricades are placed only in a Siege.";
-        if(s==null||!s.seated||s.team!=1)return "Only the defenders place barricades.";
+        if(s==null||!s.seated||s.team!=((SiegeMode)b.mode).s(b).def)return "Only the defenders place barricades.";
         long until=b.campaign.introUntil+g.siegeSeconds()*20L;
         if(b.time>=until)return "Too late: barricades go up in the first "+g.siegeSeconds()+" seconds.";
         if(placed(b,s.owner)>=g.siegeCap())return "You have placed all "+g.siegeCap()+" barricades.";
         if(at!=null){
             var yard=((SiegeMode)b.mode).s(b);double x=at.getX()+.5-yard.yardX,z=at.getZ()+.5-yard.yardZ; // the yard of the map the Siege is on
-            if(x*x+z*z>g.siegeRadius()*g.siegeRadius())return "Too far from the Outer Yard.";
+            if(x*x+z*z>g.siegeRadius()*g.siegeRadius())return "Too far from "+yard.yardName()+".";
         }
         return "";
     }
