@@ -3,7 +3,10 @@ package gg.gravesandglory;
 import net.minecraft.item.ItemStack;
 import java.util.List;
 import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.AttributeModifierSlot;
 import net.minecraft.component.type.AttributeModifiersComponent;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.component.type.NbtComponent;
 import net.minecraft.component.type.UnbreakableComponent;
 import net.minecraft.nbt.NbtCompound;
@@ -16,7 +19,7 @@ import net.minecraft.util.Identifier;
 /**
  * The stand-in vanilla items a worn gear piece shows as in battle until the art track (part f) gives each its own model: the family's item
  * (gearFamilies.item) for a weapon, the slot's row for armour. The stack carries the item's name in its rarity colour (gearRarities.border), the
- * piece uid as custom_data gg_uid, the unbreakable component (tooltip hidden) and an empty attribute_modifiers component (tooltip hidden), so the vanilla item adds no damage,
+ * piece uid as custom_data gg_uid, the unbreakable component (tooltip hidden) and a one-entry zero attribute_modifiers component (tooltip hidden; see NO_VANILLA_STATS), so the vanilla item adds no damage,
  * speed or armour of its own: every number comes from GearCombat's modifiers. It also carries the item id (gg_item) and rarity number (gg_rarity, 1
  * Common to 5 Legendary), which CommanderGearFeature draws the piece's own model from; the custom_data component reaches every client already (equipment sync). No catalogue
  * data here; it all comes from the sheets.
@@ -25,6 +28,15 @@ final class GearLooks {
     private GearLooks() {}
 
     static final String UID = "gg_uid", ITEM = "gg_item", RARITY = "gg_rarity";
+
+    /**
+     * The attribute_modifiers that strip the vanilla item's own damage, speed and armour. An empty list is NOT enough in 1.21.1: ItemStack.applyAttributeModifier
+     * falls back to Item.getAttributeModifiers() when the component's list is empty (fixed only in 1.21.2), so a stand-in sword or chestplate would add its vanilla
+     * numbers on top of GearCombat's. One zero-value entry keeps the list non-empty; tooltip hidden, as HideFlags 2 hid it.
+     */
+    static final AttributeModifiersComponent NO_VANILLA_STATS = new AttributeModifiersComponent(List.of(new AttributeModifiersComponent.Entry(
+        EntityAttributes.GENERIC_ARMOR, new EntityAttributeModifier(Identifier.of("gravesandglory", "no_vanilla_stats"), 0, EntityAttributeModifier.Operation.ADD_VALUE),
+        AttributeModifierSlot.ANY)), false);
 
     /** What a stand-in stack draws as: the gear item and its rarity number (1 to 5). */
     record Art(String item, int rarity) {}
@@ -55,7 +67,7 @@ final class GearLooks {
         nbt.putInt(RARITY, rarityNumber(p.rarity));
         s.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt));
         s.set(DataComponentTypes.UNBREAKABLE, new UnbreakableComponent(false));
-        s.set(DataComponentTypes.ATTRIBUTE_MODIFIERS, new AttributeModifiersComponent(List.of(), false));
+        s.set(DataComponentTypes.ATTRIBUTE_MODIFIERS, NO_VANILLA_STATS);
         return s;
     }
 
