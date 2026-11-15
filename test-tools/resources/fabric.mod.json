@@ -15,7 +15,7 @@
       "gg.gravesandglory.PerfProbe",
       "gg.gravesandglory.SliceProbe",
       "gg.gravesandglory.RewardDriver",
-      "gg.gravesandglory.NetExchangeChecks",
+      "gg.gravesandglory.NetExchangeProbe",
       "gg.gravesandglory.AiPurposeOverlay"
     ],
     "client": [
