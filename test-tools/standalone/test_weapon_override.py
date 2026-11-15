@@ -43,6 +43,8 @@ class WeaponOverride(unittest.TestCase):
         look = (JAVA / 'LookPacks.java').read_text(encoding='utf8')
         adds = re.findall(r'out\.add\((\w+)\)', look)
         self.assertEqual(adds, ['ARMORY', 'WEAPONS'], 'weapons must come last (top)')
+        for flag in ('armory', 'weapons'):
+            self.assertRegex(look, r'if \(%s && ' % flag, 'a pack the player switched off must stay off')
         self.assertIn('CLIENT_STARTED.register(LookPacks::apply)', client)
 
     def test_excalibur_is_never_switched_on_or_removed(self):
