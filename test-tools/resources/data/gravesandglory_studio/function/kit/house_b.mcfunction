@@ -497,7 +497,7 @@ setblock ~14 ~1 ~4 minecraft:spruce_fence[north=true,east=false,south=false,west
 setblock ~14 ~1 ~8 minecraft:spruce_fence[north=false,east=false,south=true,west=false]
 fill ~14 ~1 ~9 ~14 ~3 ~9 minecraft:spruce_log[axis=y]
 setblock ~13 ~3 ~4 minecraft:lantern[hanging=true]
-setblock ~14 ~3 ~6 minecraft:spruce_hanging_sign[rotation=12,attached=false]{front_text:{messages:['{"text":""}','{"text":"ALE AND"}','{"text":"BREAD"}','{"text":""}']}}
+setblock ~14 ~3 ~6 minecraft:spruce_hanging_sign[rotation=12,attached=false]{front_text:{messages:["","ALE AND","BREAD",""]}}
 fill ~13 ~4 ~3 ~14 ~4 ~9 minecraft:dark_oak_slab[type=bottom]
 
 # the lean-to on the west: a spruce stair roof at y 3 over x 0..1, posts at x 0, a woodpile and a grindstone under it

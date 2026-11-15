@@ -583,9 +583,9 @@ setblock ~3 ~2 ~6 minecraft:campfire[lit=true]
 setblock ~33 ~2 ~6 minecraft:campfire[lit=true]
 
 # banners: hung on the jetties toward the camp, and flying from the tower ridges
-setblock ~4 ~4 ~8 minecraft:black_wall_banner[facing=north]{Patterns:[{Pattern:"cs",Color:7},{Pattern:"bo",Color:4}]}
-setblock ~32 ~4 ~8 minecraft:black_wall_banner[facing=north]{Patterns:[{Pattern:"cs",Color:7},{Pattern:"bo",Color:4}]}
-setblock ~12 ~9 ~4 minecraft:black_wall_banner[facing=north]{Patterns:[{Pattern:"bs",Color:7},{Pattern:"bo",Color:4},{Pattern:"mr",Color:4}]}
-setblock ~24 ~9 ~4 minecraft:black_wall_banner[facing=north]{Patterns:[{Pattern:"bs",Color:7},{Pattern:"bo",Color:4},{Pattern:"mr",Color:4}]}
-setblock ~12 ~15 ~7 minecraft:black_banner[rotation=8]{Patterns:[{Pattern:"bo",Color:4},{Pattern:"mc",Color:4}]}
-setblock ~24 ~15 ~7 minecraft:black_banner[rotation=8]{Patterns:[{Pattern:"bo",Color:4},{Pattern:"mc",Color:4}]}
+setblock ~4 ~4 ~8 minecraft:black_wall_banner[facing=north]{patterns:[{pattern:"minecraft:stripe_center",color:"gray"},{pattern:"minecraft:border",color:"yellow"}]}
+setblock ~32 ~4 ~8 minecraft:black_wall_banner[facing=north]{patterns:[{pattern:"minecraft:stripe_center",color:"gray"},{pattern:"minecraft:border",color:"yellow"}]}
+setblock ~12 ~9 ~4 minecraft:black_wall_banner[facing=north]{patterns:[{pattern:"minecraft:stripe_bottom",color:"gray"},{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:rhombus",color:"yellow"}]}
+setblock ~24 ~9 ~4 minecraft:black_wall_banner[facing=north]{patterns:[{pattern:"minecraft:stripe_bottom",color:"gray"},{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:rhombus",color:"yellow"}]}
+setblock ~12 ~15 ~7 minecraft:black_banner[rotation=8]{patterns:[{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:circle",color:"yellow"}]}
+setblock ~24 ~15 ~7 minecraft:black_banner[rotation=8]{patterns:[{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:circle",color:"yellow"}]}

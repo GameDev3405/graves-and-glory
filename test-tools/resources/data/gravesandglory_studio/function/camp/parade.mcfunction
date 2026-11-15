@@ -603,8 +603,8 @@ setblock ~15 ~2 ~2 minecraft:campfire[lit=true]
 setblock ~25 ~2 ~2 minecraft:campfire[lit=true]
 
 # banners: the camp standard on its pole, the avenue banners
-setblock ~16 ~4 ~8 minecraft:black_banner[rotation=0]{Patterns:[{Pattern:"cs",Color:7},{Pattern:"bo",Color:4}]}
-setblock ~16 ~4 ~18 minecraft:black_banner[rotation=0]{Patterns:[{Pattern:"cs",Color:7},{Pattern:"bo",Color:4}]}
-setblock ~24 ~4 ~8 minecraft:black_banner[rotation=0]{Patterns:[{Pattern:"cs",Color:7},{Pattern:"bo",Color:4}]}
-setblock ~24 ~4 ~18 minecraft:black_banner[rotation=0]{Patterns:[{Pattern:"cs",Color:7},{Pattern:"bo",Color:4}]}
-setblock ~20 ~5 ~2 minecraft:black_banner[rotation=0]{Patterns:[{Pattern:"bo",Color:4},{Pattern:"mc",Color:4}]}
+setblock ~16 ~4 ~8 minecraft:black_banner[rotation=0]{patterns:[{pattern:"minecraft:stripe_center",color:"gray"},{pattern:"minecraft:border",color:"yellow"}]}
+setblock ~16 ~4 ~18 minecraft:black_banner[rotation=0]{patterns:[{pattern:"minecraft:stripe_center",color:"gray"},{pattern:"minecraft:border",color:"yellow"}]}
+setblock ~24 ~4 ~8 minecraft:black_banner[rotation=0]{patterns:[{pattern:"minecraft:stripe_center",color:"gray"},{pattern:"minecraft:border",color:"yellow"}]}
+setblock ~24 ~4 ~18 minecraft:black_banner[rotation=0]{patterns:[{pattern:"minecraft:stripe_center",color:"gray"},{pattern:"minecraft:border",color:"yellow"}]}
+setblock ~20 ~5 ~2 minecraft:black_banner[rotation=0]{patterns:[{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:circle",color:"yellow"}]}

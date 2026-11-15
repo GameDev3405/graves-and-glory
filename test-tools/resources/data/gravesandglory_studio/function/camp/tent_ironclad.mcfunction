@@ -172,5 +172,5 @@ setblock ~6 ~4 ~3 minecraft:lantern[hanging=true]
 setblock ~6 ~5 ~3 minecraft:chain[axis=y]
 
 # the banners: the House wall banner on the gable, the House standing banner on the pole
-setblock ~0 ~7 ~10 minecraft:black_banner[rotation=0]{Patterns:[{Pattern:"bri",Color:7},{Pattern:"mc",Color:1},{Pattern:"bo",Color:4}]}
-setblock ~6 ~9 ~9 minecraft:black_wall_banner[facing=south]{Patterns:[{Pattern:"bri",Color:7},{Pattern:"mc",Color:1},{Pattern:"bo",Color:4}]}
+setblock ~0 ~7 ~10 minecraft:black_banner[rotation=0]{patterns:[{pattern:"minecraft:bricks",color:"gray"},{pattern:"minecraft:circle",color:"orange"},{pattern:"minecraft:border",color:"yellow"}]}
+setblock ~6 ~9 ~9 minecraft:black_wall_banner[facing=south]{patterns:[{pattern:"minecraft:bricks",color:"gray"},{pattern:"minecraft:circle",color:"orange"},{pattern:"minecraft:border",color:"yellow"}]}

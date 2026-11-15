@@ -558,19 +558,19 @@ setblock ~13 ~3 ~0 minecraft:stripped_birch_log[axis=x]
 # the toll board and the sign: a board of dark oak planks on two dark oak posts before the toll room wall beside the north mouth, four pale birch signs on its face, a hanging sign under the pentice over the passage
 fill ~2 ~1 ~1 ~2 ~4 ~1 minecraft:dark_oak_log[axis=y]
 fill ~5 ~1 ~1 ~5 ~4 ~1 minecraft:dark_oak_log[axis=y]
-setblock ~3 ~2 ~0 minecraft:birch_wall_sign[facing=north]{front_text:{messages:['{"text":"Halt"}','{"text":"at the bar"}','{"text":""}','{"text":""}']}}
+setblock ~3 ~2 ~0 minecraft:birch_wall_sign[facing=north]{front_text:{messages:["Halt","at the bar","",""]}}
 fill ~3 ~2 ~1 ~4 ~3 ~1 minecraft:dark_oak_planks
-setblock ~4 ~2 ~0 minecraft:birch_wall_sign[facing=north]{front_text:{messages:['{"text":"No pay,"}','{"text":"no road"}','{"text":""}','{"text":""}']}}
-setblock ~3 ~3 ~0 minecraft:birch_wall_sign[facing=north]{front_text:{messages:['{"text":"TOLL"}','{"text":"by order"}','{"text":"of the King"}','{"text":""}']}}
-setblock ~4 ~3 ~0 minecraft:birch_wall_sign[facing=north]{front_text:{messages:['{"text":"A cart: 2"}','{"text":"A beast: 1"}','{"text":"On foot: 1"}','{"text":""}']}}
+setblock ~4 ~2 ~0 minecraft:birch_wall_sign[facing=north]{front_text:{messages:["No pay,","no road","",""]}}
+setblock ~3 ~3 ~0 minecraft:birch_wall_sign[facing=north]{front_text:{messages:["TOLL","by order","of the King",""]}}
+setblock ~4 ~3 ~0 minecraft:birch_wall_sign[facing=north]{front_text:{messages:["A cart: 2","A beast: 1","On foot: 1",""]}}
 fill ~3 ~4 ~1 ~4 ~4 ~1 minecraft:dark_oak_slab[type=bottom]
-setblock ~10 ~4 ~1 minecraft:dark_oak_hanging_sign[rotation=8,attached=false]{front_text:{messages:['{"text":""}','{"text":"CUSTOMS"}','{"text":""}','{"text":""}']}}
+setblock ~10 ~4 ~1 minecraft:dark_oak_hanging_sign[rotation=8,attached=false]{front_text:{messages:["","CUSTOMS","",""]}}
 
 # the arms of the crown inside the arch: a red banner with a gold lozenge on each wall of the passage at both mouths (fix round 2: two banners over the two windows of a gable read as a face)
-setblock ~8 ~3 ~3 minecraft:red_wall_banner[facing=east]{Patterns:[{Pattern:"mr",Color:4},{Pattern:"bs",Color:15}]}
-setblock ~8 ~3 ~11 minecraft:red_wall_banner[facing=east]{Patterns:[{Pattern:"mr",Color:4},{Pattern:"bs",Color:15}]}
-setblock ~12 ~3 ~3 minecraft:red_wall_banner[facing=west]{Patterns:[{Pattern:"mr",Color:4},{Pattern:"bs",Color:15}]}
-setblock ~12 ~3 ~11 minecraft:red_wall_banner[facing=west]{Patterns:[{Pattern:"mr",Color:4},{Pattern:"bs",Color:15}]}
+setblock ~8 ~3 ~3 minecraft:red_wall_banner[facing=east]{patterns:[{pattern:"minecraft:rhombus",color:"yellow"},{pattern:"minecraft:stripe_bottom",color:"black"}]}
+setblock ~8 ~3 ~11 minecraft:red_wall_banner[facing=east]{patterns:[{pattern:"minecraft:rhombus",color:"yellow"},{pattern:"minecraft:stripe_bottom",color:"black"}]}
+setblock ~12 ~3 ~3 minecraft:red_wall_banner[facing=west]{patterns:[{pattern:"minecraft:rhombus",color:"yellow"},{pattern:"minecraft:stripe_bottom",color:"black"}]}
+setblock ~12 ~3 ~11 minecraft:red_wall_banner[facing=west]{patterns:[{pattern:"minecraft:rhombus",color:"yellow"},{pattern:"minecraft:stripe_bottom",color:"black"}]}
 
 # a lantern on a dark oak bracket over the middle of each gable, hung under the string course (one light on the axis of the gable)
 setblock ~0 ~5 ~7 minecraft:lantern[hanging=true]

@@ -418,4 +418,4 @@ setblock ~0 ~6 ~21 minecraft:lantern
 setblock ~0 ~6 ~25 minecraft:lantern
 
 # banners: the camp standard on the yard pole
-setblock ~21 ~5 ~2 minecraft:black_banner[rotation=8]{Patterns:[{Pattern:"bo",Color:4},{Pattern:"mc",Color:4}]}
+setblock ~21 ~5 ~2 minecraft:black_banner[rotation=8]{patterns:[{pattern:"minecraft:border",color:"yellow"},{pattern:"minecraft:circle",color:"yellow"}]}
