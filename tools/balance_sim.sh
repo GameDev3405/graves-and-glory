@@ -17,7 +17,7 @@ cd "$here" || exit 9
 # Other worktrees run servers too: refuse a port something already listens on.
 if netstat -ano 2>/dev/null | grep LISTENING | grep -qE "[:.]$port[[:space:]]"; then echo "port $port is in use; pick another"; exit 8; fi
 export JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot"
-G=$(ls -d ~/.gradle/wrapper/dists/gradle-8.8-bin/*/gradle-8.8/bin/gradle | head -1)
+G=./gradlew.bat  # the wrapper's Gradle (9.5.1 on 1.21.1; Loom 1.17 does not load on the old pinned 8.8)
 root="$here/work/method/$name-$(date +%H%M%S)"
 mkdir -p "$root"
 echo "eula=true" > "$root/eula.txt"
