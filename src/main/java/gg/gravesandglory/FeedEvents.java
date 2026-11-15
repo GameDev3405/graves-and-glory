@@ -112,7 +112,7 @@ public final class FeedEvents {
         buf.writeString(kind);
         buf.writeInt(team);
         buf.writeString(text.length() > MAX_TEXT ? text.substring(0, MAX_TEXT) : text);
-        ServerPlayNetworking.send(p, GravesAndGlory.FEED, buf);
+        ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.FeedPayload.of(buf));
         sent++;
     }
 }

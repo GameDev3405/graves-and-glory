@@ -77,7 +77,7 @@ public final class MotionEvents {
         for (ServerPlayerEntity p : players) {
             if (!ServerPlayNetworking.canSend(p, ATTACK)) continue;
             PacketByteBuf buf = PacketByteBufs.create(); buf.writeVarInt(u.mob.getId()); buf.writeVarInt(variantIndex); buf.writeVarLong(startTick);
-            ServerPlayNetworking.send(p, ATTACK, buf); sent++;
+            ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.AttackPayload.of(buf)); sent++;
         }
         attackSends += sent; return sent;
     }
@@ -100,7 +100,7 @@ public final class MotionEvents {
             if (!ServerPlayNetworking.canSend(p, HIT)) continue;
             PacketByteBuf buf = PacketByteBufs.create(); buf.writeVarInt(victim.getId()); buf.writeByte(k); buf.writeByte(z); buf.writeFloat(bearing);
             buf.writeByte(Math.max(0, Math.min(2, weight))); buf.writeByte((blocked ? 1 : 0) | (lethal ? 2 : 0) | (knockback ? 4 : 0) | (pulled ? 8 : 0)); buf.writeVarLong(tick);
-            ServerPlayNetworking.send(p, HIT, buf); sent++;
+            ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.HitPayload.of(buf)); sent++;
         }
         hitSends += sent; if (pulled) pulledSends += sent; return sent;
     }
@@ -111,7 +111,7 @@ public final class MotionEvents {
         for (ServerPlayerEntity p : players) {
             if (!ServerPlayNetworking.canSend(p, RISE)) continue;
             PacketByteBuf buf = PacketByteBufs.create(); buf.writeVarInt(u.mob.getId()); buf.writeVarLong(u.riseTick); buf.writeVarInt(u.riseWindow);
-            ServerPlayNetworking.send(p, RISE, buf); sent++;
+            ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.RisePayload.of(buf)); sent++;
         }
         riseSends += sent; return sent;
     }
@@ -128,7 +128,7 @@ public final class MotionEvents {
         for (ServerPlayerEntity p : players) {
             if (!ServerPlayNetworking.canSend(p, STANCE)) continue;
             PacketByteBuf buf = PacketByteBufs.create(); buf.writeVarInt(u.mob.getId()); buf.writeByte(index); buf.writeFloat(aimPitch);
-            ServerPlayNetworking.send(p, STANCE, buf); sent++;
+            ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.StancePayload.of(buf)); sent++;
         }
         stanceSends += sent; return sent;
     }

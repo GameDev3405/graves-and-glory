@@ -1,6 +1,7 @@
 package gg.gravesandglory;
 
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import gg.gravesandglory.net.Payloads;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -52,7 +53,7 @@ final class BattleMapNet {
         var buf = PacketByteBufs.create();
         buf.writeInt(b.mapGridBytes.length);
         buf.writeBytes(b.mapGridBytes);
-        ServerPlayNetworking.send(p, GravesAndGlory.MAP_GRID, buf);
+        ServerPlayNetworking.send(p, Payloads.MapGridPayload.of(buf));
         b.mapGridSent.put(p.getUuid(), b.mapGridKey);
     }
 
@@ -208,7 +209,7 @@ final class BattleMapNet {
         for (var p : to) {
             int team = b.squads.get(p.getUuid()).team;
             var buf = perTeam.computeIfAbsent(team, t -> writeState(b, t, armies, xz[0], xz[1]));
-            ServerPlayNetworking.send(p, GravesAndGlory.MAP_STATE, PacketByteBufs.copy(buf));
+            ServerPlayNetworking.send(p, Payloads.MapStatePayload.of(buf));
         }
     }
 

@@ -61,6 +61,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     @Override public void onInitializeClient(){
         GravesAndGlory.clientRegistries=()->{var w=MinecraftClient.getInstance().world;return w==null?null:w.getRegistryManager();}; // shields made on the client (portraits, the ending podium)
         ClientLoginNetworking.registerGlobalReceiver(VersionGate.CHANNEL,(client,handler,buffer,listeners)->CompletableFuture.completedFuture(VersionGate.response()));
+        ClientConfigurationNetworking.registerGlobalReceiver(Payloads.ReleaseCheckRequestPayload.ID,(payload,context)->context.responseSender().sendPacket(Payloads.ReleaseCheckReplyPayload.of(VersionGate.response()))); // the configuration gate (VersionGate); the login answer above stays while the server keeps its fallback
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.registerBuiltinResourcePack(Identifier.of("gravesandglory","armory"),net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("gravesandglory").orElseThrow(),net.fabricmc.fabric.api.resource.ResourcePackActivationType.DEFAULT_ENABLED);
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.registerBuiltinResourcePack(Identifier.of("gravesandglory","weapons"),net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("gravesandglory").orElseThrow(),net.fabricmc.fabric.api.resource.ResourcePackActivationType.DEFAULT_ENABLED);
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STARTED.register(LookPacks::apply);

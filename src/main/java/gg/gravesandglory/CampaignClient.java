@@ -91,7 +91,7 @@ public final class CampaignClient {
     static void reportOpened(String id){shownResult=id;dismissed="";}
     static boolean previousHud;
     static ArmorStandEntity camera;static Perspective previous;static int cameraTicks;
-    static Path collection(MinecraftClient c){return c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+c.getSession().getUuid()+".json");}
+    static Path collection(MinecraftClient c){return c.runDirectory.toPath().resolve((Diagnostics.active()?"gravesandglory/test-collections/":"gravesandglory/collections/")+(c.getSession().getUuidOrNull()==null?"unknown":com.mojang.util.UndashedUuid.toString(c.getSession().getUuidOrNull()))+".json");}
     /** The most UTF-8 bytes of collection JSON one profile_v1 packet carries: a client-to-server custom payload is capped at 32767 bytes, and the string's length prefix takes up to 3 of them. The server reads the string with the same cap (GravesAndGlory, Campaign.importProfile). */
     static final int PROFILE_MAX_BYTES=32000;
     /** Set once the player has been told the collection is too big to send, so the notice shows once per join, not with every snapshot. */
@@ -104,7 +104,7 @@ public final class CampaignClient {
             if(json.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>PROFILE_MAX_BYTES){
                 if(!profileTooLarge){profileTooLarge=true;if(c.player!=null)c.player.sendMessage(Text.literal("Your collection file is too large to sync with this world; it stays on disk unchanged."),true);System.err.println("[Graves and Glory] Collection is too large for one packet; not sent.");}
                 return;}
-            if(ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json,PROFILE_MAX_BYTES);ClientPlayNetworking.send(GravesAndGlory.PROFILE,packet);}
+            if(ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json,PROFILE_MAX_BYTES);ClientPlayNetworking.send(gg.gravesandglory.net.Payloads.ProfilePayload.of(packet));}
         }catch(Exception ignored){}
     }
     /** The snapshot's battleMode block (Campaign: the round's mode while one runs): the HUD reads its track maxima and number formats. */
@@ -145,7 +145,7 @@ public final class CampaignClient {
         sound(c,"battle_intro",AudioCues.Cue.BATTLE_INTRO.volume);
         sound(c,AudioCues.Cue.BATTLE_DRUMS.id,AudioCues.Cue.BATTLE_DRUMS.volume); // war drums layered under the horns
     }
-    static void sound(MinecraftClient c,String id,float volume){if(c.player!=null)c.player.playSound(net.minecraft.registry.Registries.SOUND_EVENT.get(net.minecraft.util.Identifier.of("gravesandglory",id)),SoundCategory.MASTER,volume,1);}
+    static void sound(MinecraftClient c,String id,float volume){if(c.player!=null&&c.world!=null)c.world.playSound(c.player.getX(),c.player.getY(),c.player.getZ(),net.minecraft.registry.Registries.SOUND_EVENT.get(net.minecraft.util.Identifier.of("gravesandglory",id)),SoundCategory.MASTER,volume,1,false);}
     static void tick(MinecraftClient c){
         if(camera==null)return;
         if(c.player==null||!GravesAndGloryClient.running||cameraTicks>=120||c.currentScreen!=null){end(c);return;}

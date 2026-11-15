@@ -92,7 +92,7 @@ public final class CommandNet {
     /** How many records of kind the server addressed to this owner since the tally was last cleared. */
     public static int sentTo(UUID to, int kind) { var n = sent.get(to); return n == null ? 0 : n[kind]; }
 
-    static void send(ServerPlayerEntity p, PacketByteBuf b) { if (ServerPlayNetworking.canSend(p, COMMAND)) ServerPlayNetworking.send(p, COMMAND, b); }
+    static void send(ServerPlayerEntity p, PacketByteBuf b) { if (ServerPlayNetworking.canSend(p, COMMAND)) ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.CommandPayload.of(b)); }
 
     /** What the client last heard on command_v1. Task 4 registers it; the panel (Task 7) and outlines and feedback (Task 9) read it. */
     public static final class Client {
@@ -119,7 +119,8 @@ public final class CommandNet {
         static synchronized void register() {
             if (registered) return;
             registered = true;
-            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(COMMAND, (client, handler, buf, responder) -> {
+            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(gg.gravesandglory.net.Payloads.CommandPayload.ID, (payload, context) -> {
+                var client = context.client(); var buf = payload.buf();
                 int kind = buf.readByte();
                 long now = net.minecraft.util.Util.getMeasuringTimeMs();
                 if (kind == COOLDOWN) {

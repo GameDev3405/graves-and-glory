@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.packet.CustomPayload;
+import net.minecraft.util.Identifier;
 
 /**
  * Every Graves and Glory play channel as a 1.21.1 CustomPayload (24: 17 server to client, 7 client to server). Channel ids are
@@ -17,13 +18,14 @@ import net.minecraft.network.packet.CustomPayload;
  *   send:    ServerPlayNetworking.send(p, Payloads.FeedPayload.of(buf));
  *   receive: ServerPlayNetworking.registerGlobalReceiver(Payloads.OrderPayload.ID, (payload, ctx) -> { var buf = payload.buf(); ... });
  * </pre>
- * Fabric runs 1.21 play handlers on the game thread (server or client), not the network thread. The login channel release_check_v1
- * is not a play payload (VersionGate; docs in status/port-core-lane.md).
+ * Fabric runs 1.21 play handlers on the game thread (server or client), not the network thread. Two configuration-phase payloads
+ * (release_check_v2, VersionGate) close the file; their handlers run on netty threads. The login query release_check_v1 is not a
+ * payload (VersionGate).
  */
 public final class Payloads {
     private Payloads() {}
 
-    /** Registers all 24 types, once, from the common initializer (GravesAndGlory.onInitialize): both sides need them. */
+    /** Registers all 26 types (24 play, 2 configuration), once, from the common initializer (GravesAndGlory.onInitialize): both sides need them. */
     public static void register() {
         PayloadTypeRegistry.playS2C().register(CampPayload.ID, CampPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(CommandPayload.ID, CommandPayload.CODEC);
@@ -49,6 +51,8 @@ public final class Payloads {
         PayloadTypeRegistry.playC2S().register(PlanPayload.ID, PlanPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(TacticalPayload.ID, TacticalPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(TacticalV2Payload.ID, TacticalV2Payload.CODEC);
+        PayloadTypeRegistry.configurationS2C().register(ReleaseCheckRequestPayload.ID, ReleaseCheckRequestPayload.CODEC);
+        PayloadTypeRegistry.configurationC2S().register(ReleaseCheckReplyPayload.ID, ReleaseCheckReplyPayload.CODEC);
     }
 
     // Server to client.
@@ -295,5 +299,32 @@ public final class Payloads {
         /** A fresh reader over the body, for a receive site. */
         public PacketByteBuf buf() { return RawBody.reader(body); }
         @Override public Id<TacticalV2Payload> getId() { return ID; }
+    }
+
+    // Configuration phase (VersionGate, port P1.3). Same id both ways; the registries are per direction.
+
+    /** release_check_v2. Defined here, not in VersionGate, whose class init needs Fabric Loader (keeps PayloadRoundTripCheck loader-free). */
+    public static final Identifier RELEASE_CHECK = Identifier.of("gravesandglory", "release_check_v2");
+
+    /** S2C configuration RELEASE_CHECK (VersionGate.CONFIG_CHANNEL): release_check_v2 request, empty body. */
+    public record ReleaseCheckRequestPayload(byte[] body) implements CustomPayload {
+        public static final Id<ReleaseCheckRequestPayload> ID = new Id<>(RELEASE_CHECK);
+        public static final PacketCodec<PacketByteBuf, ReleaseCheckRequestPayload> CODEC = RawBody.codec(ReleaseCheckRequestPayload::new, ReleaseCheckRequestPayload::body);
+        /** Wraps the bytes a send site wrote (copied). */
+        public static ReleaseCheckRequestPayload of(PacketByteBuf buf) { return new ReleaseCheckRequestPayload(RawBody.copy(buf)); }
+        /** A fresh reader over the body, for a receive site. */
+        public PacketByteBuf buf() { return RawBody.reader(body); }
+        @Override public Id<ReleaseCheckRequestPayload> getId() { return ID; }
+    }
+    /** C2S configuration RELEASE_CHECK (VersionGate.CONFIG_CHANNEL): release_check_v2 reply, body VersionGate.response() (varInt protocol,
+     *  string version (64), string build (64)). Raw so a malformed reply reaches VersionGate's refusal text, not a decoder error. */
+    public record ReleaseCheckReplyPayload(byte[] body) implements CustomPayload {
+        public static final Id<ReleaseCheckReplyPayload> ID = new Id<>(RELEASE_CHECK);
+        public static final PacketCodec<PacketByteBuf, ReleaseCheckReplyPayload> CODEC = RawBody.codec(ReleaseCheckReplyPayload::new, ReleaseCheckReplyPayload::body);
+        /** Wraps the bytes a send site wrote (copied). */
+        public static ReleaseCheckReplyPayload of(PacketByteBuf buf) { return new ReleaseCheckReplyPayload(RawBody.copy(buf)); }
+        /** A fresh reader over the body, for a receive site. */
+        public PacketByteBuf buf() { return RawBody.reader(body); }
+        @Override public Id<ReleaseCheckReplyPayload> getId() { return ID; }
     }
 }

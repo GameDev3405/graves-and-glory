@@ -260,7 +260,7 @@ public final class ChargeCamera {
         double back = LIFT / Math.tan(Math.toRadians(PITCH)), r = Math.toRadians(camYaw);
         var b = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
         b.writeDouble(cx + Math.sin(r) * back); b.writeDouble(baseY + LIFT); b.writeDouble(cz - Math.cos(r) * back);
-        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(GravesAndGlory.CAMERA, b);
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(gg.gravesandglory.net.Payloads.CameraPayload.of(b));
     }
 
     // ---- the camera (ChargeCameraMixin) ----
@@ -282,7 +282,7 @@ public final class ChargeCamera {
 
     static void renderWorld(WorldRenderContext context) {
         if (!held || context.consumers() == null) return;
-        float d = context.tickDelta();
+        float d = context.tickCounter().getTickDelta(true);
         double ox = MathHelper.lerp(d, prevCx, cx), oz = MathHelper.lerp(d, prevCz, cz);
         double len = Math.hypot(right, forward), a = Math.toRadians(arrow), fx = -Math.sin(a), fz = Math.cos(a);
         var cam = context.camera().getPos();
