@@ -16,7 +16,7 @@ IDS_PATH='dependencies/curseforge-ids.json'
 
 def split_rows(rows):
     """(listed, bundled): rows flagged curseforgeOverride have no resolvable CurseForge file ID and ship as overrides
-    (Excalibur, unmodified, by permission); every other row must be listed by ID."""
+    (a pack with no CurseForge listing, bundled unmodified); every other row must be listed by ID."""
     return [r for r in rows if not r.get('curseforgeOverride')],[r for r in rows if r.get('curseforgeOverride')]
 
 def check_bundled(rows,root):

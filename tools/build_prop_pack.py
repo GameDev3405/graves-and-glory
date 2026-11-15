@@ -13,7 +13,7 @@ Writes dist/props/gg-props-<sha8>.zip (byte-reproducible: sorted entries, fixed 
   pack.mcmeta                                        pack_format 15 (1.20.1)
 
 Exit 1: a bad def, or a model element outside -16..32 (named). Exit 2: a paper custom_model_data in 7310001..7319999 already used by the
-Excalibur pack or by one of the mod's own resource packs (src/main/resources/resourcepacks/*).
+optional third-party pack passed with --excalibur (none ships on 1.21.1) or by one of the mod's own resource packs (src/main/resources/resourcepacks/*).
 """
 import argparse
 import hashlib

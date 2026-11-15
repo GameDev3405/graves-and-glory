@@ -136,5 +136,20 @@ class Bake(unittest.TestCase):
         self.assertEqual(adopt.main(['bake', str(self.tmp / 'o.runs.gz'), '--base', str(self.tmp / 'other.runs.gz'), '--target', 'dev']), 2)
 
 
+class DataVersionCarried(unittest.TestCase):
+    def test_diff_carries_the_source_data_version(self):
+        w = base_world()
+        base = from_world(w, 'capture', {'map': 't', 'dataVersion': 3955}, box=((0, 60, 0), (3, 66, 3)))
+        w.set((1, 61, 1), Cell('minecraft:dirt'))
+        final = from_world(w, 'capture', {'map': 't', 'dataVersion': 3955}, box=((0, 60, 0), (3, 66, 3)))
+        self.assertEqual(diff(base, final).header['dataVersion'], 3955)
+
+    def test_writers_default_to_pre_port_3465(self):
+        c = capture(base_world())
+        self.assertEqual(c.header['dataVersion'], 3465)
+        self.assertEqual(diff(c, capture(base_world())).header['dataVersion'], 3465)
+        self.assertEqual(Runs.from_bytes(c.to_bytes()).header['dataVersion'], 3465)
+
+
 if __name__ == '__main__':
     unittest.main()

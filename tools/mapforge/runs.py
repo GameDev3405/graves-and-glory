@@ -237,6 +237,7 @@ def diff(base, final, header=None):
     if base.kind != 'capture' or final.kind != 'capture':
         raise RunsError('diff needs two captures')
     out = Runs('overlay', header)
+    out.header.setdefault('dataVersion', final.header.get('dataVersion', 3465))  # cells keep the version they were written in
     for key in sorted(final.columns):
         b = base.columns.get(key)
         if b is None:
@@ -290,6 +291,7 @@ def from_world(world, kind, header=None, box=None, top=None, keep=None):
     surface replaces whatever the live world holds there and keeps only what lies under it. keep(x, y, z) True
     leaves a cell out (protected cells keep the live world)."""
     out = Runs(kind, header)
+    out.header.setdefault('dataVersion', 3465)  # an offline world has no version of its own: pre-port data
     cols = {}
     for (x, y, z), cell in world.blocks.items():
         if box and not (box[0][0] <= x <= box[1][0] and box[0][1] <= y <= box[1][1] and box[0][2] <= z <= box[1][2]):

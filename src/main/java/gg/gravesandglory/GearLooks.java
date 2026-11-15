@@ -19,7 +19,7 @@ import net.minecraft.util.Identifier;
 /**
  * The stand-in vanilla items a worn gear piece shows as in battle until the art track (part f) gives each its own model: the family's item
  * (gearFamilies.item) for a weapon, the slot's row for armour. The stack carries the item's name in its rarity colour (gearRarities.border), the
- * piece uid as custom_data gg_uid, the unbreakable component (tooltip hidden) and a one-entry zero attribute_modifiers component (tooltip hidden; see NO_VANILLA_STATS), so the vanilla item adds no damage,
+ * piece uid as custom_data gg_uid, the unbreakable component (its tooltip line is shown, as on 1.20.1) and a one-entry zero attribute_modifiers component (tooltip hidden; see NO_VANILLA_STATS), so the vanilla item adds no damage,
  * speed or armour of its own: every number comes from GearCombat's modifiers. It also carries the item id (gg_item) and rarity number (gg_rarity, 1
  * Common to 5 Legendary), which CommanderGearFeature draws the piece's own model from; the custom_data component reaches every client already (equipment sync). No catalogue
  * data here; it all comes from the sheets.
