@@ -102,13 +102,12 @@ public final class NetExchangeChecks extends NetExchangeCounter implements Clien
                 CommandMode.ping(Spec.PINGS.length > 0 ? Spec.PINGS[0].id() : "attack", at.x, at.z);
                 BattleMapClient.sendPlan(0, 0, "", -1, at.x, at.z);
                 var eye = ChargeCamera.class.getDeclaredMethod("sendEye"); eye.setAccessible(true); eye.invoke(null);
-                CommandMode.issue("all", "attack", "", at, c.player.getYaw(), -1); // attack: the army moves to fight (combat traffic) and the server acknowledges (command_v1)
                 var v1 = PacketByteBufs.create(); // tactical_v1 in its 1.20.1 layout: group, action, formation, x, z, yaw, target
-                v1.writeString("all"); v1.writeString("attack"); v1.writeString(""); v1.writeDouble(at.x); v1.writeDouble(at.z); v1.writeFloat(c.player.getYaw()); v1.writeInt(-1);
+                v1.writeString("all"); v1.writeString("attack"); v1.writeString("block"); v1.writeDouble(at.x); v1.writeDouble(at.z); v1.writeFloat(c.player.getYaw()); v1.writeInt(-1);
                 if (ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL)) ClientPlayNetworking.send(Payloads.TacticalPayload.of(v1));
                 GravesAndGloryClient.send("barracks"); // order_v1 "barracks": the server answers with barracks_v1 (Battle.openBarracks)
                 Files.writeString(dir.resolve("cmd-probe.txt"), "follow\n");
-                log("sent profile, ping, plan, camera, tactical_v2, tactical_v1, barracks; asked the probe to follow the fighting");
+                log("sent profile, ping, plan, camera, tactical_v1, barracks; asked the probe to follow the fighting");
                 step = 3; waitFrom = clock;
             }
             case 3 -> { // combat traffic: up to four minutes, then the round ends either way
@@ -118,6 +117,9 @@ public final class NetExchangeChecks extends NetExchangeCounter implements Clien
                     for (var e : c.world.getEntities()) if (e instanceof net.minecraft.entity.LivingEntity l && !(e instanceof net.minecraft.entity.player.PlayerEntity) && l.isAlive() && c.player.squaredDistanceTo(e) < best) { best = c.player.squaredDistanceTo(e); near = l; }
                     if (near != null) { c.player.lookAt(net.minecraft.command.argument.EntityAnchorArgumentType.EntityAnchor.EYES, near.getEyePos()); c.interactionManager.attackEntity(c.player, near); c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND); }
                 }
+                // tactical_v2 attack once the 6 s intro and the command cooldown are over (OrderRules.playerOrder drops orders before introUntil and an unknown formation);
+                // the army moves to fight (combat traffic) and the server acknowledges it (command_v1). Repeated every 20 s until command_v1 arrives.
+                if (since % 400 == 0 && since > 0 && got("in", Payloads.CommandPayload.class) == 0) { CommandMode.issue("all", "attack", "block", c.player.getPos(), c.player.getYaw(), -1); log("sent tactical_v2 attack (block)"); }
                 if (since == 20 * 150 && got("in", Payloads.RisePayload.class) == 0) Files.writeString(dir.resolve("cmd-probe.txt"), "rise\n");
                 boolean all = COMBAT.stream().allMatch(t -> got("in", t) > 0);
                 if (!all && since < 20 * 240 && GravesAndGloryClient.battleActive()) { if (since % 400 == 0) log("waiting for combat payloads: missing " + COMBAT.stream().filter(t -> got("in", t) == 0).map(Class::getSimpleName).toList()); return; }
