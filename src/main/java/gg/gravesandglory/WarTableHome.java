@@ -159,7 +159,7 @@ final class WarTableHome {
     long nextTwitch() { return ticks + QUILL_MIN_TICKS + random.nextInt(QUILL_MAX_TICKS - QUILL_MIN_TICKS + 1); }
 
     /** The table's own clock: client ticks while open plus the partial tick. */
-    double clock() { return ticks + MinecraftClient.getInstance().getTickDelta(); }
+    double clock() { return ticks + MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(false); }
 
     /** The widget a name stands for (camp, recruit, banner, contracts, chapter, friends, invite, practice, skirmish, campaign,
      *  change, ride, last), or null. */
@@ -430,7 +430,7 @@ final class WarTableHome {
             } else {
                 var entry = c.getNetworkHandler() == null ? null : c.getNetworkHandler().getPlayerListEntry(m.name());
                 if (entry != null) {
-                    PlayerSkinDrawer.draw(g, entry.getSkinTexture(), x + 4, y + 4, 40);
+                    PlayerSkinDrawer.draw(g, entry.getSkinTextures().texture(), x + 4, y + 4, 40);
                     portraitsDrawn.add(new PortraitDraw(m.name(), x + 24, y + 44, 40, false));
                 }
             }

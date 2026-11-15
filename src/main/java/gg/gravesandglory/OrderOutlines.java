@@ -259,7 +259,7 @@ public final class OrderOutlines {
         }
         if (teamDrawn) ghostFrames++;
         for (var pulse : pulses) {
-            double age = (now - pulse.start()) + context.tickDelta();
+            double age = (now - pulse.start()) + context.tickCounter().getTickDelta(true);
             if (age < 0 || age > PULSE_TICKS) continue;
             double k = age / PULSE_TICKS, radius = PULSE_FROM + (PULSE_TO - PULSE_FROM) * k;
             float a = (float) (1 - k) * (pulse.own() ? 1f : GHOST_ALPHA);
@@ -297,7 +297,7 @@ public final class OrderOutlines {
         float nx = (float) (x1 - x0), ny = (float) (y1 - y0), nz = (float) (z1 - z0), len = (float) Math.sqrt(nx * nx + ny * ny + nz * nz);
         if (len < 1e-4f) return;
         nx /= len; ny /= len; nz /= len;
-        lines.vertex(entry.getPositionMatrix(), (float) x0, (float) y0, (float) z0).color(R, G, B, alpha).normal(entry.getNormalMatrix(), nx, ny, nz).next();
-        lines.vertex(entry.getPositionMatrix(), (float) x1, (float) y1, (float) z1).color(R, G, B, alpha).normal(entry.getNormalMatrix(), nx, ny, nz).next();
+        lines.vertex(entry.getPositionMatrix(), (float) x0, (float) y0, (float) z0).color(R, G, B, alpha).normal(entry, nx, ny, nz);
+        lines.vertex(entry.getPositionMatrix(), (float) x1, (float) y1, (float) z1).color(R, G, B, alpha).normal(entry, nx, ny, nz);
     }
 }

@@ -5,7 +5,7 @@ import gg.gravesandglory.MapBlockRules;
 import net.minecraft.entity.ai.pathing.AmphibiousPathNodeMaker;
 import net.minecraft.entity.ai.pathing.LandPathNodeMaker;
 import net.minecraft.entity.ai.pathing.PathNodeType;
-import net.minecraft.world.BlockView;
+import net.minecraft.entity.ai.pathing.PathContext;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(AmphibiousPathNodeMaker.class)
 abstract class TroopAmphibiousPathMixin extends LandPathNodeMaker {
     @Inject(method = "getDefaultNodeType", at = @At("RETURN"), cancellable = true)
-    void gravesandgloryTroopBlocks(BlockView world, int x, int y, int z, CallbackInfoReturnable<PathNodeType> cir) {
-        if (entity instanceof ArmyMob) cir.setReturnValue(MapBlockRules.troopNode(world, x, y, z, cir.getReturnValue()));
+    void gravesandgloryTroopBlocks(PathContext context, int x, int y, int z, CallbackInfoReturnable<PathNodeType> cir) {
+        if (entity instanceof ArmyMob) cir.setReturnValue(MapBlockRules.troopNode(context.getWorld(), x, y, z, cir.getReturnValue()));
     }
 }

@@ -85,7 +85,8 @@ class RecruitmentScreen extends ArmyScreen {
     @Override public void tick(){if(tab==1)page.tick();else{barracks.tick();update();}}
     @Override public boolean mouseClicked(double x,double y,int b){boolean r=super.mouseClicked(x/uiScale,y/uiScale,b);if(tab==0)setFocused(null);return r;}
     @Override public boolean mouseReleased(double x,double y,int b){return super.mouseReleased(x/uiScale,y/uiScale,b);}
-    @Override public boolean mouseScrolled(double x,double y,double amount){if(amount==0)return true;if(tab==1&&page.scroll(amount>0?-1:1))return true;if(tab==0&&barracks.scroll(amount>0?-1:1))return true;return super.mouseScrolled(x/uiScale,y/uiScale,amount);}
+    @Override public boolean mouseScrolled(double x,double y,double horizontal,double amount){ // 1.20.2+: two axes; 1.20.1 handed the vertical one
+        if(amount==0)return true;if(tab==1&&page.scroll(amount>0?-1:1))return true;if(tab==0&&barracks.scroll(amount>0?-1:1))return true;return super.mouseScrolled(x/uiScale,y/uiScale,horizontal,amount);}
     /** The Armoury key switches to the Armoury page (from the barracks) or closes the screen (from the Armoury); Page Up and Down scroll the Armoury's troop rows. */
     @Override public boolean keyPressed(int key,int scan,int mods){
         if(held.contains(key))return true;
@@ -101,6 +102,8 @@ class RecruitmentScreen extends ArmyScreen {
     }
     /** A held key's release lets its presses through again (see held). */
     @Override public boolean keyReleased(int key,int scan,int mods){if(held.remove(key))return true;return super.keyReleased(key,scan,mods);}
+    /** 1.21: Screen.render draws this (blur, dimming, the title panorama) before the widgets; 1.20.1 drew none here, and this screen draws its own. */
+    @Override public void renderBackground(DrawContext g,int mx,int my,float delta){}
     @Override public void render(DrawContext g,int mx,int my,float delta){
         if(tab==0)update();
         UiCanvas.begin(g);try{if(tab==1)page.render(g);else barracks.render(g);}finally{UiCanvas.end(g);}

@@ -90,7 +90,7 @@ public final class PlanMarkers {
         matrices.push();
         matrices.translate(x - cam.x, y - cam.y, z - cam.z);
         matrices.multiply(c.gameRenderer.getCamera().getRotation());
-        matrices.scale(-unit, -unit, unit); // as a name tag: x right and y down on screen, in flag pixels
+        matrices.scale(unit, -unit, -unit); // as a name tag: x right and y down on screen, in flag pixels (1.21's camera rotation is 1.20.1's turned half about y: this is 1.20.1's (-unit, -unit, unit) exactly)
         Matrix4f m = matrices.peek().getPositionMatrix();
         // the cloth's outer box (ink edge included), left of the pole or right of it
         int top = -POLE - CLOTH - 2, x0 = left ? -w - 2 : 1, x1 = left ? 0 : w + 3;
@@ -117,13 +117,13 @@ public final class PlanMarkers {
     /** A flat box from (x0, y0) to (x1, y1) at depth z (behind the text as z grows), both faces so the mirror of the billboard never culls it. */
     static void rect(VertexConsumer v, Matrix4f m, float x0, float y0, float x1, float y1, float z, int argb) {
         int a = argb >>> 24, r = argb >> 16 & 255, g = argb >> 8 & 255, b = argb & 255, light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
-        v.vertex(m, x0, y0, z).color(r, g, b, a).light(light).next();
-        v.vertex(m, x0, y1, z).color(r, g, b, a).light(light).next();
-        v.vertex(m, x1, y1, z).color(r, g, b, a).light(light).next();
-        v.vertex(m, x1, y0, z).color(r, g, b, a).light(light).next();
-        v.vertex(m, x1, y0, z).color(r, g, b, a).light(light).next();
-        v.vertex(m, x1, y1, z).color(r, g, b, a).light(light).next();
-        v.vertex(m, x0, y1, z).color(r, g, b, a).light(light).next();
-        v.vertex(m, x0, y0, z).color(r, g, b, a).light(light).next();
+        v.vertex(m, x0, y0, z).color(r, g, b, a).light(light);
+        v.vertex(m, x0, y1, z).color(r, g, b, a).light(light);
+        v.vertex(m, x1, y1, z).color(r, g, b, a).light(light);
+        v.vertex(m, x1, y0, z).color(r, g, b, a).light(light);
+        v.vertex(m, x1, y0, z).color(r, g, b, a).light(light);
+        v.vertex(m, x1, y1, z).color(r, g, b, a).light(light);
+        v.vertex(m, x0, y1, z).color(r, g, b, a).light(light);
+        v.vertex(m, x0, y0, z).color(r, g, b, a).light(light);
     }
 }

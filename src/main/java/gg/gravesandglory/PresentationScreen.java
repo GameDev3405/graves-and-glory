@@ -26,6 +26,8 @@ final class PresentationScreen extends GravesAndGloryClient.ArmyScreen {
     }
     @Override public boolean mouseClicked(double x,double y,int b){return super.mouseClicked(x/scale,y/scale,b);}
     @Override public boolean mouseReleased(double x,double y,int b){return super.mouseReleased(x/scale,y/scale,b);}
+    /** 1.21: Screen.render draws this (blur, dimming, the title panorama) before the widgets; 1.20.1 drew none here, and this screen draws its own. */
+    @Override public void renderBackground(DrawContext g,int mx,int my,float delta){}
     @Override public void render(DrawContext g,int mx,int my,float delta){
         g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);
         DarkUi.title(g,"THE LOOK OF WAR",30,25,DarkUi.GOLD);g.drawText(textRenderer,"VISUALS & SOUND / saved on your PC",30,46,DarkUi.MUTED,false);

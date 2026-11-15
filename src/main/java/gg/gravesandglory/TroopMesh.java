@@ -124,9 +124,16 @@ final class TroopMesh {
     float[] texels(int i){float[] out=new float[8];System.arraycopy(texel,8*i,out,0,8);return out;}
 
     /** Draws every quad into the consumer through the entry's matrices, as ModelPart.Cuboid does. */
-    void render(MatrixStack.Entry entry,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){render(entry,vc,light,overlay,r,g,b,a,dir.length);}
+    void render(MatrixStack.Entry entry,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){render(entry,vc,light,overlay,argb(r,g,b,a),dir.length);}
+    void render(MatrixStack.Entry entry,VertexConsumer vc,int light,int overlay,int color){render(entry,vc,light,overlay,color,dir.length);}
+    int render(MatrixStack.Entry entry,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a,int limit){return render(entry,vc,light,overlay,argb(r,g,b,a),limit);}
+    /**
+     * A float tint as one packed ARGB colour (1.21's vertex colour), each channel as 1.20.1's VertexConsumer.color(float...)
+     * made it ((int) (x * 255), its low byte), so the vertices carry the same bytes.
+     */
+    static int argb(float r,float g,float b,float a){return ((int)(a*255f)&255)<<24|((int)(r*255f)&255)<<16|((int)(g*255f)&255)<<8|((int)(b*255f)&255);}
     /** Draws the first limit quads (a weapon's two big faces come first). Returns how many it drew. */
-    int render(MatrixStack.Entry entry,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a,int limit){
+    int render(MatrixStack.Entry entry,VertexConsumer vc,int light,int overlay,int color,int limit){
         int n=Math.min(limit,dir.length);if(n<=0)return 0;
         Matrix4f matrix=entry.getPositionMatrix();Matrix3f normals=entry.getNormalMatrix();
         for(int i=0;i<n;i++){
@@ -134,7 +141,7 @@ final class TroopMesh {
             float nx=NORMAL.x,ny=NORMAL.y,nz=NORMAL.z;
             for(int k=0;k<4;k++){
                 int o=12*i+3*k;matrix.transformPosition(pos[o]/16f,pos[o+1]/16f,pos[o+2]/16f,POS);
-                vc.vertex(POS.x,POS.y,POS.z,r,g,b,a,uv[8*i+2*k],uv[8*i+2*k+1],overlay,light,nx,ny,nz);
+                vc.vertex(POS.x,POS.y,POS.z,color,uv[8*i+2*k],uv[8*i+2*k+1],overlay,light,nx,ny,nz);
             }
         }
         return n;

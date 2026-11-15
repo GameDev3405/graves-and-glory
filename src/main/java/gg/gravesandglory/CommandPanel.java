@@ -88,7 +88,7 @@ public final class CommandPanel {
 
     static {
         WorldRenderEvents.START.register(ctx -> {
-            view.set(ctx.matrixStack().peek().getPositionMatrix());
+            view.set(ctx.positionMatrix()); // 1.21: the camera's rotation (START has no matrix stack; the world pass's stack is an identity)
             proj.set(ctx.projectionMatrix());
             camPos = ctx.camera().getPos();
             haveCamera = true;

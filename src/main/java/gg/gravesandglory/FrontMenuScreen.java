@@ -52,6 +52,8 @@ public final class FrontMenuScreen extends Screen {
             button("Back",top+friendsBack(),false,()->client.setScreen(new FrontMenuScreen()));
         }else button("Back",height-40,false,()->client.setScreen(new FrontMenuScreen()));
     }
+    /** 1.21: Screen.render draws this (blur, dimming, the title panorama) before the widgets; 1.20.1 drew none here, and this screen draws its own. */
+    @Override public void renderBackground(DrawContext g,int mx,int my,float delta){}
     @Override public void render(DrawContext g,int mx,int my,float delta){
         // Cover-scale: fill the window, keep the aspect, crop the overflow equally on both sides.
         float cover=Math.max(width/1920f,height/1080f);

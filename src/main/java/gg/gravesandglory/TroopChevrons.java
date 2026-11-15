@@ -69,14 +69,14 @@ final class TroopChevrons {
         int c=colour(side);if(c<0)return;
         float red=(c>>16&255)/255f,green=(c>>8&255)/255f,blue=(c&255)/255f;
         m.push();double base=top(e,model)+LIFT;
-        m.translate(0,base,0);m.multiply(d.getRotation());float k=WIDTH/TEX_W*(float)Math.max(1,dist/GROW_FROM);m.scale(-k,-k,k); // as a name tag: facing the camera, x to its right, y down, one unit a texel
+        m.translate(0,base,0);m.multiply(d.getRotation());float k=WIDTH/TEX_W*(float)Math.max(1,dist/GROW_FROM);m.scale(k,-k,-k); // 1.21's camera rotation is 1.20.1's turned half about y, so this is 1.20.1's (-k,-k,k) exactly; as a name tag: facing the camera, x to its right, y down, one unit a texel
         Matrix4f mat=m.peek().getPositionMatrix();long f=System.nanoTime();VertexConsumer vc=v.getBuffer(RenderLayer.getText(TEXTURE));flushNanos+=System.nanoTime()-f;
         float x0=-TEX_W/2f,x1=TEX_W/2f;
         for(int i=0;i<n;i++){float y1=-i*STACK,y0=y1-TEX_H; // the first chevron's bottom edge on the lift point, the second STACK rows above it
-            vc.vertex(mat,x0,y0,0).color(red,green,blue,1f).texture(0,0).light(FULL_BRIGHT).next();
-            vc.vertex(mat,x0,y1,0).color(red,green,blue,1f).texture(0,1).light(FULL_BRIGHT).next();
-            vc.vertex(mat,x1,y1,0).color(red,green,blue,1f).texture(1,1).light(FULL_BRIGHT).next();
-            vc.vertex(mat,x1,y0,0).color(red,green,blue,1f).texture(1,0).light(FULL_BRIGHT).next();}
+            vc.vertex(mat,x0,y0,0).color(red,green,blue,1f).texture(0,0).light(FULL_BRIGHT);
+            vc.vertex(mat,x0,y1,0).color(red,green,blue,1f).texture(0,1).light(FULL_BRIGHT);
+            vc.vertex(mat,x1,y1,0).color(red,green,blue,1f).texture(1,1).light(FULL_BRIGHT);
+            vc.vertex(mat,x1,y0,0).color(red,green,blue,1f).texture(1,0).light(FULL_BRIGHT);}
         m.pop();
         Last last=DRAWN.get(e);if(last==null)DRAWN.put(e,last=new Last());
         last.chevrons=n;last.colour=c;last.distance=dist;last.base=base;last.time=e.getWorld()==null?0:e.getWorld().getTime();draws++;

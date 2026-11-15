@@ -79,7 +79,7 @@ final class RecruitPages {
     static final class CardAction extends ButtonWidget {
         final Action action;
         CardAction(int[] box,Action a,Consumer<String> send){super(box[0],box[1],box[2],box[3],Text.literal(a.label()),b->send.accept(a.command()),DEFAULT_NARRATION_SUPPLIER);action=a;active=a.active();setTooltip(Tooltip.of(Text.literal(a.tip())));}
-        @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+        @Override public void renderWidget(DrawContext g,int mx,int my,float delta){
             boolean focus=active&&(isHovered()||isFocused());int x=getX(),y=getY();
             g.getMatrices().push();g.getMatrices().translate(0,0,200);
             g.fill(x,y,x+width,y+height,!active?0xff20272b:focus?0xff39464b:0xff252f34);g.drawBorder(x,y,width,height,!active?DarkUi.DISABLED_EDGE:focus?DarkUi.GOLD:0xff455156);
@@ -94,7 +94,7 @@ final class RecruitPages {
     static final class CardHit extends ButtonWidget {
         final String troop;
         CardHit(String troop,String name,int x,int y,int w,int h,Consumer<String> open){super(x,y,w,h,Text.literal(name),b->open.accept(troop),DEFAULT_NARRATION_SUPPLIER);this.troop=troop;}
-        @Override public void renderButton(DrawContext g,int mx,int my,float delta){if(isHovered()||isFocused())g.drawBorder(getX(),getY(),width,height,DarkUi.GOLD);DarkUi.focus(g,this);}
+        @Override public void renderWidget(DrawContext g,int mx,int my,float delta){if(isHovered()||isFocused())g.drawBorder(getX(),getY(),width,height,DarkUi.GOLD);DarkUi.focus(g,this);}
     }
     /**
      * The recruit page's card widgets for a House: each card's action button first (so a click on it is the action's, not the
@@ -245,7 +245,7 @@ final class RecruitPages {
         final String house;final Supplier<String> chosen;
         HouseChip(String house,int x,int y,Supplier<String> chosen,Consumer<String> pick){super(x,y,CHIP,CHIP,Text.literal(RosterMath.houseName(house)),b->pick.accept(house),DEFAULT_NARRATION_SUPPLIER);this.house=house;this.chosen=chosen;setTooltip(Tooltip.of(Text.literal("Shards from claims go to the "+RosterMath.houseName(house))));}
         boolean selected(){return house.equals(chosen.get());}
-        @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+        @Override public void renderWidget(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY();boolean on=selected(),focus=isHovered()||isFocused();
             g.fill(x,y,x+width,y+height,on?0xff30474a:focus?0xff39464b:0xff252f34);g.drawBorder(x,y,width,height,on||focus?DarkUi.GOLD:0xff455156);
             DarkUi.focus(g,this);

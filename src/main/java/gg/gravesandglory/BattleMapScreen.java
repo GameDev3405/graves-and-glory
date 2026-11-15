@@ -151,7 +151,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         return super.keyPressed(key, scan, mods);
     }
 
-    @Override public boolean mouseScrolled(double mx, double my, double amount) {
+    @Override public boolean mouseScrolled(double mx, double my, double horizontal, double amount) { // 1.20.2+: the wheel's two axes; 1.20.1 handed the vertical one
         if (!inMap(mx, my)) return false;
         popup = null;
         view.zoomAt(mx, my, amount);
@@ -388,7 +388,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         else if (inMap(mx, my) && !inKey(mx, my) && pressButton < 0) tooltip(g, mx, my);
     }
 
-    @Override public void renderBackground(DrawContext g) {}
+    @Override public void renderBackground(DrawContext g, int mx, int my, float delta) {} // 1.21: Screen.render draws this (blur and dimming) under the widgets; this screen draws its own
 
     void drawField(DrawContext g) {
         int hx = Field.halfX(), hz = Field.halfZ();
@@ -921,7 +921,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     final class WoodButton extends ButtonWidget {
         final java.util.function.BooleanSupplier on;
         WoodButton(int x, int y, int w, int h, String label, java.util.function.BooleanSupplier on, PressAction action) { super(x, y, w, h, Text.literal(label), action, DEFAULT_NARRATION_SUPPLIER); this.on = on; }
-        @Override public void renderButton(DrawContext g, int mx, int my, float delta) {
+        @Override public void renderWidget(DrawContext g, int mx, int my, float delta) {
             boolean lit = on.getAsBoolean(), hover = isHovered() || isFocused();
             int x = getX(), y = getY();
             g.fill(x, y, x + width, y + height, lit ? 0xff4a3620 : hover ? 0xff3a2a1b : 0xff2f2116);

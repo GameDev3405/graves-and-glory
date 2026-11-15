@@ -1905,7 +1905,7 @@ final class WarTablePages {
 
     /** How far right of its place the track is drawn while it slides: PITCH as the slide begins, easing out to 0. */
     int slideOffset() {
-        double since = ticks + MinecraftClient.getInstance().getTickDelta() - slideAt;
+        double since = ticks + MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(false) - slideAt;
         if (since < 0 || since >= SLIDE_TICKS) return 0;
         return (int) Math.round(PITCH * Math.pow(1 - since / SLIDE_TICKS, 3));
     }
@@ -2353,7 +2353,7 @@ final class WarTablePages {
                 portraitsDrawn.add(new PortraitDraw("member-" + i, m.name(), Portrait.last()));
             } else {
                 var entry = c.getNetworkHandler() == null ? null : c.getNetworkHandler().getPlayerListEntry(m.name());
-                if (entry != null) PlayerSkinDrawer.draw(g, entry.getSkinTexture(), x + 4, y + 4, 40);
+                if (entry != null) PlayerSkinDrawer.draw(g, entry.getSkinTextures().texture(), x + 4, y + 4, 40);
             }
             UiTex.draw(g, "table/frame-rim-48", x, y);
             String name = UiMath.trim(m.name(), PARTY_NAME_W, s -> font.getWidth(DarkUi.body(s))); // the page's body face, as the war council's seats draw a name

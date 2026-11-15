@@ -357,28 +357,32 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
      * ModelPart.render walks them (each part's rotate; a part that is not visible takes its whole subtree with it; a part that is
      * hidden skips only its own mesh). Returns the quads drawn.
      */
-    int renderRelief(String key,MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
+    int renderRelief(String key,MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){return renderRelief(key,m,vc,light,overlay,TroopMesh.argb(r,g,b,a));}
+    /** As above, the tint one packed ARGB colour (1.21's vertex colour). */
+    int renderRelief(String key,MatrixStack m,VertexConsumer vc,int light,int overlay,int color){
         Map<String,TroopMesh> meshes=relief.get(key);Set<String> walk=reliefWalk.get(key);if(meshes==null||walk==null||!top.visible)return 0;
         m.push();top.rotate(m);int n=0;
-        for(String root:kids.getOrDefault("",List.of()))if(walk.contains(root))n+=walkRelief(root,meshes,walk,m,vc,light,overlay,r,g,b,a);
+        for(String root:kids.getOrDefault("",List.of()))if(walk.contains(root))n+=walkRelief(root,meshes,walk,m,vc,light,overlay,color);
         m.pop();return n;
     }
-    private int walkRelief(String name,Map<String,TroopMesh> meshes,Set<String> walk,MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
+    private int walkRelief(String name,Map<String,TroopMesh> meshes,Set<String> walk,MatrixStack m,VertexConsumer vc,int light,int overlay,int color){
         ModelPart p=parts.get(name);if(!p.visible)return 0;
         m.push();p.rotate(m);int n=0;TroopMesh mesh=meshes.get(name);
-        if(mesh!=null&&!p.hidden){mesh.render(m.peek(),vc,light,overlay,r,g,b,a);n+=mesh.quads();}
-        for(String child:kids.getOrDefault(name,List.of()))if(walk.contains(child))n+=walkRelief(child,meshes,walk,m,vc,light,overlay,r,g,b,a);
+        if(mesh!=null&&!p.hidden){mesh.render(m.peek(),vc,light,overlay,color);n+=mesh.quads();}
+        for(String child:kids.getOrDefault(name,List.of()))if(walk.contains(child))n+=walkRelief(child,meshes,walk,m,vc,light,overlay,color);
         m.pop();return n;
     }
     /** The skin pass, then the relief of the key the draw armed: the same consumer, light, overlay and tint, so the relief is one more layer of the skin. */
-    @Override public void render(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
-        if(BodyCache.parts!=BodyCache.ALL){masked(m,vc,light,overlay,r,g,b,a);return;}
-        skin(m,vc,light,overlay,r,g,b,a);
+    @Override public void render(MatrixStack m,VertexConsumer vc,int light,int overlay,int color){
+        if(BodyCache.parts!=BodyCache.ALL){masked(m,vc,light,overlay,color);return;}
+        skin(m,vc,light,overlay,color);
     }
-    private void skin(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
-        super.render(m,vc,light,overlay,r,g,b,a);
+    /** The 1.20.1 form (a float tint), packed as 1.20.1's vertex colour was: the feature layers' calls. */
+    public void render(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){render(m,vc,light,overlay,TroopMesh.argb(r,g,b,a));}
+    private void skin(MatrixStack m,VertexConsumer vc,int light,int overlay,int color){
+        super.render(m,vc,light,overlay,color);
         String key=armed;armed=null;
-        if(key!=null){reliefDrawn=renderRelief(key,m,vc,light,overlay,r,g,b,a);reliefSpent=true;}
+        if(key!=null){reliefDrawn=renderRelief(key,m,vc,light,overlay,color);reliefSpent=true;}
     }
     /** The part a whole-model pass draws (BodyCache.BODY for the skin; the Trim and Glow layers set BodyCache.ARMOUR for theirs): the harness's part switches read it. */
     int pass=BodyCache.BODY;
@@ -394,18 +398,18 @@ public final class TroopModel<T extends MobEntity> extends SinglePartEntityModel
      * the pass; the shield alone, every other part's own boxes are skipped (ModelPart.hidden; its children still walk), so the
      * shield draws where it hangs.
      */
-    private void masked(MatrixStack m,VertexConsumer vc,int light,int overlay,float r,float g,float b,float a){
+    private void masked(MatrixStack m,VertexConsumer vc,int light,int overlay,int color){
         Set<String> sh=shieldBones();boolean rest=BodyCache.drawn(pass),shield=!sh.isEmpty()&&BodyCache.drawn(BodyCache.SHIELD);
-        if(rest&&(shield||sh.isEmpty())){skin(m,vc,light,overlay,r,g,b,a);return;}
+        if(rest&&(shield||sh.isEmpty())){skin(m,vc,light,overlay,color);return;}
         if(!rest&&!shield){armed=null;return;}
         List<ModelPart> touched=new ArrayList<>();
         if(rest){
             for(String n:sh){ModelPart p=parts.get(n);if(p.visible){p.visible=false;touched.add(p);}}
-            try{skin(m,vc,light,overlay,r,g,b,a);}finally{for(ModelPart p:touched)p.visible=true;}
+            try{skin(m,vc,light,overlay,color);}finally{for(ModelPart p:touched)p.visible=true;}
         }else{
             if(!top.hidden){top.hidden=true;touched.add(top);}
             for(var en:parts.entrySet())if(!sh.contains(en.getKey())&&!en.getValue().hidden){en.getValue().hidden=true;touched.add(en.getValue());}
-            try{skin(m,vc,light,overlay,r,g,b,a);}finally{for(ModelPart p:touched)p.hidden=false;}
+            try{skin(m,vc,light,overlay,color);}finally{for(ModelPart p:touched)p.hidden=false;}
         }
     }
     /** Every bone's pose (pivot x, y and z, pitch, yaw and roll) in file order, 6 floats a bone; into reuse when it fits. */

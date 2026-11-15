@@ -63,7 +63,7 @@ final class ArmyCards {
             e.setCustomName(Text.literal(ArmyMobs.levelName(spec,1)));e.setCustomNameVisible(false);e.setPersistent();e.setSilent(true);
             RankSync.setLocal(e,new RankSync.Rank(1,weaponTier,armourTier));
             e.equipStack(EquipmentSlot.MAINHAND,new ItemStack(Registries.ITEM.get(Identifier.of(spec.weapon()))));e.equipStack(EquipmentSlot.HEAD,new ItemStack(Registries.ITEM.get(Identifier.of(spec.helmet()))));
-            var chest=new ItemStack(Registries.ITEM.get(Identifier.of(spec.chest())));if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,colour);e.equipStack(EquipmentSlot.CHEST,chest);
+            var chest=new ItemStack(Registries.ITEM.get(Identifier.of(spec.chest())));GravesAndGlory.Battle.dye(chest,colour);e.equipStack(EquipmentSlot.CHEST,chest);
             if(ArmyMobs.tags(spec).contains("shield"))e.equipStack(EquipmentSlot.OFFHAND,GravesAndGlory.Battle.shield(spec,GravesAndGlory.Battle.PORTRAIT_FIELD));
             TroopModels.dress(e,"company");MADE.put(e,new Object[]{spec,weaponTier,armourTier,colour,key});return e;
         }
@@ -105,7 +105,20 @@ final class ArmyCards {
 
     /** Draws a portrait mob as the cards do (InventoryScreen.drawEntity), telling TroopModels the scale first: a troop of density above 1 draws its one-texel-a-px twins on a card under 16 x density GUI px a block (the size as given, not times the GUI scale; see TroopModels.FAR_CARD_PER_DENSITY). */
     static void draw(DrawContext g,int x,int bottom,int size,float mouseX,float mouseY,MobEntity e){
-        TroopModels.sized(e,size);InventoryScreen.drawEntity(g,x,bottom,size,mouseX,mouseY,e);
+        TroopModels.sized(e,size);drawEntity(g,x,bottom,size,mouseX,mouseY,e);
+    }
+    /**
+     * 1.20.1's InventoryScreen.drawEntity(context, x, y, size, mouseX, mouseY, entity), which 1.20.2 replaced with a scissored box
+     * and other mouse maths: the feet at (x, y), mouseX and mouseY the cursor's offset from the point the mob looks from, the
+     * same turns, and 1.21's low-level draw with no offset (its own translate, scale and dispatcher turn for the 1.21 camera).
+     */
+    static void drawEntity(DrawContext g,int x,int y,int size,float mouseX,float mouseY,net.minecraft.entity.LivingEntity e){
+        float f=(float)Math.atan(mouseX/40f),h=(float)Math.atan(mouseY/40f);
+        org.joml.Quaternionf q=new org.joml.Quaternionf().rotateZ((float)Math.PI),pitch=new org.joml.Quaternionf().rotateX(h*20f*0.017453292f);q.mul(pitch);
+        float bodyYaw=e.bodyYaw,yaw=e.getYaw(),pitchWas=e.getPitch(),prevHead=e.prevHeadYaw,head=e.headYaw;
+        e.bodyYaw=180f+f*20f;e.setYaw(180f+f*40f);e.setPitch(-h*20f);e.headYaw=e.getYaw();e.prevHeadYaw=e.getYaw();
+        try{InventoryScreen.drawEntity(g,(float)x,(float)y,(float)size,new org.joml.Vector3f(),q,pitch,e);}
+        finally{e.bodyYaw=bodyYaw;e.setYaw(yaw);e.setPitch(pitchWas);e.prevHeadYaw=prevHead;e.headYaw=head;}
     }
     /** A portrait size that fits any model in the same frame: a husk at size, a wolf no larger than 1.25 times, a golem smaller. */
     static int size(MobEntity e,int size){return (int)Math.round(size*Math.min(1.25,1.95/Math.max(.6,Math.max(e.getHeight(),e.getWidth()))));}
