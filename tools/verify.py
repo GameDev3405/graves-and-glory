@@ -10,12 +10,12 @@ def require_game_evidence(path):
         raise RuntimeError('Game check evidence failed/incomplete: '+str(path))
 def java_home():
     candidates=[pathlib.Path(os.environ['JAVA_HOME'])] if os.environ.get('JAVA_HOME') else []
-    candidates+=list(pathlib.Path('C:/Program Files/Eclipse Adoptium').glob('jdk-17*'))
+    candidates+=list(pathlib.Path('C:/Program Files/Eclipse Adoptium').glob('jdk-21*'))
     if shutil.which('javac'): candidates.append(pathlib.Path(shutil.which('javac')).resolve().parent.parent)
     for p in candidates:
         java=p/'bin'/('java.exe' if os.name=='nt' else 'java')
-        if java.exists() and 'version "17.' in subprocess.run([str(java),'-version'],capture_output=True,text=True).stderr: return p
-    raise RuntimeError('Java 17 JDK required; set JAVA_HOME')
+        if java.exists() and 'version "21.' in subprocess.run([str(java),'-version'],capture_output=True,text=True).stderr: return p
+    raise RuntimeError('Java 21 JDK required (1.21.1 port); set JAVA_HOME')
 def client_in_checkout(cmd,root):
     root=str(root).replace(chr(92),'/').lower().rstrip('/')
     cmd=cmd.replace(chr(92),'/').lower(); i=cmd.find(root)
@@ -88,7 +88,7 @@ def run(args):
         game_guard()
         cpus=os.cpu_count() or 2
         def java_lane():
-            step('java-compile',[jdk/'bin/javac','--release','17','-cp',gson[0],'-d',classes,*sources,*checks])
+            step('java-compile',[jdk/'bin/javac','--release','21','-cp',gson[0],'-d',classes,*sources,*checks])
             run_check=lambda test: step(test.stem,[jdk/'bin/java','-cp',str(classes)+os.pathsep+str(gson[0]),'gg.gravesandglory.'+test.stem])
             with ThreadPoolExecutor(max(1,min(6,cpus//4))) as pool: futures=[pool.submit(run_check,t) for t in checks]
             errors=[f.exception() for f in futures if f.exception()]
