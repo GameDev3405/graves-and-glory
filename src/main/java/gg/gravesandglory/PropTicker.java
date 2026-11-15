@@ -54,7 +54,7 @@ public final class PropTicker {
                 Stats s=STATS.get(w);
                 String text=s==null?"No prop runs yet in "+w.getRegistryKey().getValue()
                     :String.format(java.util.Locale.ROOT,"Props in %s: live %d, gated %d, played %d, motion keyframes %d; mean %.2f us/run, max %.2f us over the last %d runs; server tick %.2f ms",
-                        w.getRegistryKey().getValue(),s.live,s.gated,s.played,s.keyframes,s.meanMicros(),s.maxMicros(),s.runs,w.getServer().getTickTime());
+                        w.getRegistryKey().getValue(),s.live,s.gated,s.played,s.keyframes,s.meanMicros(),s.maxMicros(),s.runs,w.getServer().getAverageTickTime());
                 c.getSource().sendFeedback(()->Text.literal(text),false);
                 return 1;
             }))));

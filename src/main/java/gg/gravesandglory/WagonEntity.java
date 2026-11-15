@@ -6,6 +6,9 @@ import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.data.DataTracker;
+import net.minecraft.server.network.EntityTrackerEntry;
+import net.minecraft.world.explosion.Explosion;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.listener.ClientPlayPacketListener;
@@ -52,16 +55,16 @@ public final class WagonEntity extends Entity {
 
     public WagonEntity(World world) {this(TYPE, world);}
 
-    @Override protected void initDataTracker() {}
+    @Override protected void initDataTracker(DataTracker.Builder builder) {}
     /** No fields of its own: the round's state lives on ConvoyMode, never in the wagon. */
     @Override protected void readCustomDataFromNbt(NbtCompound nbt) {}
     @Override protected void writeCustomDataToNbt(NbtCompound nbt) {}
     @Override public boolean shouldSave() {return false;}
-    @Override public Packet<ClientPlayPacketListener> createSpawnPacket() {return new EntitySpawnS2CPacket(this);}
+    @Override public Packet<ClientPlayPacketListener> createSpawnPacket(EntityTrackerEntry entry) {return new EntitySpawnS2CPacket(this, entry);}
 
     /** No health (spec 3.3): arrows, blows, bolts and blasts change nothing. */
     @Override public boolean damage(DamageSource source, float amount) {return false;}
-    @Override public boolean isImmuneToExplosion() {return true;}
+    @Override public boolean isImmuneToExplosion(Explosion explosion) {return true;}
     @Override public boolean canHit() {return false;}
     @Override public boolean isPushable() {return false;}
     @Override public void pushAwayFrom(Entity entity) {}
@@ -69,7 +72,7 @@ public final class WagonEntity extends Entity {
     /** The pole and tilt reach past the 2-block box; keep it drawn while any of it is on screen. */
     @Override public Box getVisibilityBoundingBox() {return getBoundingBox().expand(2.5, 1.0, 2.5);}
 
-    @Override public void updateTrackedPositionAndAngles(double x, double y, double z, float yaw, float pitch, int steps, boolean interpolate) {
+    @Override public void updateTrackedPositionAndAngles(double x, double y, double z, float yaw, float pitch, int steps) {
         lerpX = x; lerpY = y; lerpZ = z; lerpYaw = yaw;
         lerpSteps = Math.max(1, steps);
     }

@@ -1,5 +1,6 @@
 package gg.gravesandglory;
 
+import net.minecraft.util.Identifier;
 import net.minecraft.entity.*;
 import net.minecraft.entity.ai.pathing.PathNodeType;
 import net.minecraft.entity.mob.MobEntity;
@@ -126,7 +127,7 @@ final class Tactics {
         set(u,u.mob.isUsingItem()?"shield_move":"",0);
     }
     /** The crawl's movement-speed modifier (MULTIPLY_TOTAL, kept through Abilities.keepSpeed like the Howl's): it multiplies with the Howl, Muster and the order's moveMultiplier. */
-    static final UUID CRAWL_ID=UUID.fromString("9c3e7a51-4f2b-4d8e-b6a0-2e5d1c7f3a94");
+    static final Identifier CRAWL_ID=Identifier.of("gravesandglory","crawl_speed");
     static final Spec.CombatDisciplineRow C=Spec.COMBATDISCIPLINE[0];
     /** Archer fire (the rework's section 5): a bow, crossbow or thrower troop. A caster's spell or the Mortar's shell is no arrow to raise a shield against. */
     static boolean archer(GravesAndGlory.Unit u){var f=u.spec.family();return f.equals("bow")||f.equals("crossbow")||f.equals("thrower");}

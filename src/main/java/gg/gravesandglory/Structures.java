@@ -6,6 +6,7 @@ import net.minecraft.block.Block;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.structure.StructurePlacementData;
@@ -31,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.zip.CRC32;
 
-/** Authored pieces: vanilla structure files in the mod resources (data/gravesandglory/structures/GROUP/NAME.nbt), read here and never from the
+/** Authored pieces: vanilla structure files in the mod resources (data/gravesandglory/structure/GROUP/NAME.nbt), read here and never from the
  *  generated folder of a world, placed rotated about their centre block. Server side only: the pure functions are also called by the client. */
 public final class Structures {
     public static final String NS="gravesandglory";
@@ -55,13 +56,15 @@ public final class Structures {
     /** Forgets every template read so far; the next template() reads the file again. */
     public static void clearCache(){CACHE.clear();}
 
-    /** The structure file of a piece as NBT: data/gravesandglory/structures/ID.nbt through the resource manager of the server, which is the mod and
-     *  its packs. A world generated folder is never read. Empty when there is no such file or it cannot be read. */
+    /** The structure file of a piece as NBT: data/gravesandglory/structure/ID.nbt through the resource manager of the server, which is the mod and
+     *  its packs. A world generated folder is never read. Empty when there is no such file or it cannot be read. The NBT is the file as shipped (DataVersion
+ *  3465, 1.20.1): it is not upgraded here. load() hands it to StructureTemplateManager.createTemplate, which runs DataFixTypes.STRUCTURE.update from the
+ *  file's own DataVersion, so a template always holds 1.21.1 block states; a caller that reads "blocks" or "palette" from this NBT sees the 1.20.1 names. */
     public static Optional<NbtCompound> read(MinecraftServer server,String id){
         try{
-            var resource=server.getResourceManager().getResource(Identifier.of(NS,"structures/"+id+".nbt"));
+            var resource=server.getResourceManager().getResource(Identifier.of(NS,"structure/"+id+".nbt"));
             if(resource.isEmpty())return Optional.empty();
-            try(InputStream in=resource.get().getInputStream()){return Optional.of(NbtIo.readCompressed(in));}
+            try(InputStream in=resource.get().getInputStream()){return Optional.of(NbtIo.readCompressed(in,NbtSizeTracker.ofUnlimitedBytes()));}
         }catch(Exception e){System.err.println("[Graves and Glory] structure unreadable: "+id+": "+e);return Optional.empty();}
     }
 
@@ -184,9 +187,9 @@ public final class Structures {
         crc.update(salt.getBytes(StandardCharsets.UTF_8));
         return Long.toHexString(crc.getValue());
     }
-    /** The bytes of a piece's structure file as the mod ships it (data/gravesandglory/structures/ID.nbt on the class path); empty when there is none. */
+    /** The bytes of a piece's structure file as the mod ships it (data/gravesandglory/structure/ID.nbt on the class path); empty when there is none. */
     static byte[] fileBytes(String id){
-        try(InputStream in=Structures.class.getResourceAsStream("/data/"+NS+"/structures/"+id+".nbt")){return in==null?new byte[0]:in.readAllBytes();}
+        try(InputStream in=Structures.class.getResourceAsStream("/data/"+NS+"/structure/"+id+".nbt")){return in==null?new byte[0]:in.readAllBytes();}
         catch(Exception e){return new byte[0];}
     }
 
@@ -231,7 +234,7 @@ public final class Structures {
         Path file=savedDir(w).resolve(tag+".nbt");
         try{
             Files.createDirectories(file.getParent());
-            NbtIo.writeCompressed(snapshot.writeNbt(new NbtCompound()),file.toFile());
+            NbtIo.writeCompressed(snapshot.writeNbt(new NbtCompound()),file);
         }catch(Exception e){System.err.println("[Graves and Glory] structure could not be saved: "+tag+": "+e);return null;}
         return new Saved(tag,file,origin,span);
     }
@@ -239,7 +242,7 @@ public final class Structures {
     public static boolean restore(ServerWorld w,Saved saved){
         try{
             if(!Files.exists(saved.file()))return false;
-            NbtCompound nbt=NbtIo.readCompressed(saved.file().toFile());
+            NbtCompound nbt=NbtIo.readCompressed(saved.file(),NbtSizeTracker.ofUnlimitedBytes());
             StructureTemplate template=w.getStructureTemplateManager().createTemplate(nbt);
             StructurePlacementData data=new StructurePlacementData().setIgnoreEntities(true).setUpdateNeighbors(false).addProcessor(BlockIgnoreStructureProcessor.IGNORE_STRUCTURE_BLOCKS);
             template.place(w,saved.origin(),saved.origin(),data,w.getRandom(),Block.NOTIFY_LISTENERS);

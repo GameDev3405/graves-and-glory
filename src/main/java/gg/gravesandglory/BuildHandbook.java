@@ -5,8 +5,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtString;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.WrittenBookContentComponent;
+import net.minecraft.text.RawFilteredPair;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.MutableText;
@@ -22,13 +25,10 @@ final class BuildHandbook {
 
     static ItemStack book(){
         var stack=new ItemStack(Items.WRITTEN_BOOK);
-        var tag=stack.getOrCreateNbt();
-        tag.putString("title",HandbookText.TITLE);
-        tag.putString("author",HandbookText.AUTHOR);
-        var pages=new NbtList();
-        for(String p:HandbookText.pages(BuildMode.worlds()))pages.add(NbtString.of(Text.Serializer.toJson(page(p))));
-        tag.put("pages",pages);
-        tag.putBoolean("resolved",true);
+        List<RawFilteredPair<Text>> pages=new ArrayList<>();
+        for(String p:HandbookText.pages(BuildMode.worlds()))pages.add(RawFilteredPair.of((Text)page(p)));
+        // generation 0 (an original), resolved: the keybind components stay as they are and the reader's client shows his own binding
+        stack.set(DataComponentTypes.WRITTEN_BOOK_CONTENT,new WrittenBookContentComponent(RawFilteredPair.of(HandbookText.TITLE),HandbookText.AUTHOR,0,pages,true));
         return stack;
     }
 
@@ -50,7 +50,7 @@ final class BuildHandbook {
 
     /** First join only: a player already in the marker list gets nothing (a lost book comes back with /handbook). */
     static void giveOnce(MinecraftServer s,ServerPlayerEntity player){
-        Path file=s.getRunDirectory().toPath().resolve(GIVEN);String uuid=player.getUuidAsString();
+        Path file=s.getRunDirectory().resolve(GIVEN);String uuid=player.getUuidAsString();
         try{
             String seen=Files.exists(file)?Files.readString(file):"";
             if(seen.lines().anyMatch(uuid::equals))return;

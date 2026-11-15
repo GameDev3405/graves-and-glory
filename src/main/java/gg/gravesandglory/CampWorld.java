@@ -264,7 +264,7 @@ final class CampWorld {
     /** One text display with the label's dark panel and shadow: the billboard mode (center turns to the viewer, fixed stands at the yaw), the scale, the line width in pixels and the yaw. */
     static void display(ServerWorld w,Text text,double x,double y,double z,String extraTag,String billboard,float size,int lineWidth,float yaw){
         var label=EntityType.TEXT_DISPLAY.create(w);if(label==null)return;
-        var nbt=label.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putString("text",Text.Serializer.toJson(text));
+        var nbt=label.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putString("text",Text.Serialization.toJsonString(text,w.getRegistryManager()));
         nbt.putString("billboard",billboard);nbt.putInt("background",0xb0192227);nbt.putBoolean("shadow",true);nbt.putInt("line_width",lineWidth);nbt.putFloat("view_range",2f);
         var transform=new net.minecraft.nbt.NbtCompound();var scale=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++)scale.add(net.minecraft.nbt.NbtFloat.of(size));transform.put("scale",scale);var translation=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++)translation.add(net.minecraft.nbt.NbtFloat.of(0));transform.put("translation",translation);
         for(String key:new String[]{"left_rotation","right_rotation"}){var rotation=new net.minecraft.nbt.NbtList();for(int i=0;i<4;i++)rotation.add(net.minecraft.nbt.NbtFloat.of(i==3?1:0));transform.put(key,rotation);}nbt.put("transformation",transform);

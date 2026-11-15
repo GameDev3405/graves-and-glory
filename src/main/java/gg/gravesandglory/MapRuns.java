@@ -116,6 +116,7 @@ final class MapRuns {
     /** Writes the file (gzip, through a .part file) and returns its size in bytes. */
     long write(Path path)throws IOException{
         var md=sha();lines(l->md.update((l+"\n").getBytes(StandardCharsets.UTF_8)));
+        header.putIfAbsent("dataVersion",new JsonPrimitive(net.minecraft.SharedConstants.getGameVersion().getSaveVersion().getId())); // a file read from disk keeps its own version (its E strings stay as stored)
         header.put("cells",new JsonPrimitive(cells()));header.put("digest",new JsonPrimitive(digest()));header.put("body",new JsonPrimitive(hex(md.digest())));
         var json=new JsonObject();header.forEach(json::add);
         Files.createDirectories(path.toAbsolutePath().getParent());
@@ -194,8 +195,16 @@ final class MapRuns {
         try(var o=new DataOutputStream(b)){NbtIo.write(n,o);}catch(IOException e){throw new UncheckedIOException(e);}
         return Base64.getEncoder().encodeToString(b.toByteArray());
     }
+    /** The block-entity NBT brought up from this file's stored data version (files from before the port carry none: 1.20.1 = 3465). */
+    private NbtCompound upgraded(NbtCompound nbt){
+        var v=header.get("dataVersion");int from=v!=null&&v.isJsonPrimitive()?v.getAsInt():3465;
+        int now=net.minecraft.SharedConstants.getGameVersion().getSaveVersion().getId();
+        if(from>=now)return nbt;
+        var fixed=net.minecraft.datafixer.Schemas.getFixer().update(net.minecraft.datafixer.TypeReferences.BLOCK_ENTITY,new com.mojang.serialization.Dynamic<>(net.minecraft.nbt.NbtOps.INSTANCE,(net.minecraft.nbt.NbtElement)nbt),from,now);
+        return fixed.getValue() instanceof NbtCompound c?c:nbt;
+    }
     static NbtCompound decode(String s){
-        try(var i=new DataInputStream(new ByteArrayInputStream(Base64.getDecoder().decode(s)))){return NbtIo.read(i);}catch(IOException e){throw new UncheckedIOException(e);}
+        try(var i=new DataInputStream(new ByteArrayInputStream(Base64.getDecoder().decode(s)))){return NbtIo.readCompound(i);}catch(IOException e){throw new UncheckedIOException(e);}
     }
 
     // ---- walking the cells ----
@@ -250,7 +259,7 @@ final class MapRuns {
                 if(now==want&&!beOnly)continue;
                 if(undo!=null){
                     undo.add(cur.x,cur.z,cur.y,1,name(now));
-                    var old=w.getBlockEntity(pos);if(old!=null)undo.be.put(pos.toImmutable(),encode(old.createNbt()));
+                    var old=w.getBlockEntity(pos);if(old!=null)undo.be.put(pos.toImmutable(),encode(old.createNbt(w.getRegistryManager())));
                 }
                 if(!beOnly){w.setBlockState(pos,want,FLAGS);changed++;}
             }
@@ -259,7 +268,7 @@ final class MapRuns {
         private void blockEntities(ServerWorld w){
             for(var e:be.entrySet()){
                 var at=w.getBlockEntity(e.getKey());if(at==null)continue;
-                at.readNbt(decode(e.getValue()));at.markDirty();
+                at.read(upgraded(decode(e.getValue())),w.getRegistryManager());at.markDirty();
                 var st=w.getBlockState(e.getKey());w.updateListeners(e.getKey(),st,st,Block.NOTIFY_ALL);
             }
         }

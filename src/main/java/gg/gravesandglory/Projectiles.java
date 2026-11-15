@@ -248,7 +248,7 @@ public final class Projectiles {
         Entity visual=null;Vec3d step=null;
         if(arrow){
             // No-clip arrows never collide, so they carry no damage of their own: the queue applies it on landing.
-            PersistentProjectileEntity a=kind.equals("trident")?new TridentEntity(b.world,u.mob,new ItemStack(Items.TRIDENT)):new ArrowEntity(b.world,from.x,from.y,from.z);
+            PersistentProjectileEntity a=kind.equals("trident")?new TridentEntity(b.world,u.mob,new ItemStack(Items.TRIDENT)):new ArrowEntity(b.world,from.x,from.y,from.z,new ItemStack(Items.ARROW),null);
             a.setPosition(from);
             // Silent as well: with no-clip and no gravity, the mark of a battle shot on the client (isShot).
             a.setNoGravity(true);a.setNoClip(true);a.setSilent(true);a.pickupType=PersistentProjectileEntity.PickupPermission.DISALLOWED;a.addCommandTag(TAG);

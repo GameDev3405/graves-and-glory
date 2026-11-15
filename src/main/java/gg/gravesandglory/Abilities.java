@@ -16,6 +16,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.DyeColor;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.RotationPropertyHelper;
@@ -729,7 +730,7 @@ final class Abilities {
     static final int CLAY = 0xC8B48A;
 
     /** The fixed id of the Howl's speed modifier on a troop, so a new one always replaces the old. */
-    static final UUID HOWL = UUID.fromString("5b6f0c3e-2a7d-4c3b-9f1e-7d2a4b8c6e01");
+    static final Identifier HOWL = Identifier.of("gravesandglory", "howl_speed");
 
     /**
      * The Seer's Howl (the aura row on a timer): when its cooldown is up and the Seer is not stunned, every living troop of its own army within the row's radius
@@ -763,13 +764,13 @@ final class Abilities {
      * differs on land and in water), left alone where it stands at that value already, and only taken off for a value of 0. The Howl (hasten), Muster
      * (RelicEffects.Muster.hasten) and Riptide (Houses.swim) keep theirs through it; a mob without the attribute is left alone.
      */
-    static void keepSpeed(LivingEntity mob, UUID id, String name, double value) {
+    static void keepSpeed(LivingEntity mob, Identifier id, String name, double value) {
         var speed = mob.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
         if (speed == null) return;
         var have = speed.getModifier(id);
-        if (have != null && Math.abs(have.getValue() - value) < 1e-9) return;
+        if (have != null && Math.abs(have.value() - value) < 1e-9) return;
         if (have != null) speed.removeModifier(id);
-        if (value != 0) speed.addTemporaryModifier(new EntityAttributeModifier(id, name, value, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+        if (value != 0) speed.addTemporaryModifier(new EntityAttributeModifier(id, value, EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
     }
 
     /**
@@ -837,7 +838,8 @@ final class Abilities {
         DyeColor best = DyeColor.WHITE;
         double nearest = Double.MAX_VALUE;
         for (var d : DyeColor.values()) {
-            float[] c = d.getColorComponents();
+            int rgbOf = d.getEntityColor();
+            float[] c = {(rgbOf >> 16 & 255) / 255f, (rgbOf >> 8 & 255) / 255f, (rgbOf & 255) / 255f}; // the 1.20.1 getColorComponents
             double e = (c[0] - r) * (c[0] - r) + (c[1] - g) * (c[1] - g) + (c[2] - blue) * (c[2] - blue);
             if (e < nearest) { nearest = e; best = d; }
         }

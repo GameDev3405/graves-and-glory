@@ -1,5 +1,9 @@
 package gg.gravesandglory;
 
+import net.minecraft.item.Items;
+import net.minecraft.item.ItemStack;
+import net.minecraft.component.type.CustomModelDataComponent;
+import net.minecraft.component.DataComponentTypes;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -359,13 +363,17 @@ public final class Props {
         return null;
     }
 
+    /** The item of a part's item_display as entity NBT: paper with the custom_model_data component (1.20.1 wrote {id,Count,tag:{CustomModelData}}; 1.21 reads {id,count,components}). */
+    static NbtCompound partItem(ServerWorld w,int cmd){
+        ItemStack paper=new ItemStack(Items.PAPER);
+        paper.set(DataComponentTypes.CUSTOM_MODEL_DATA,new CustomModelDataComponent(cmd));
+        return (NbtCompound)paper.encode(w.getRegistryManager());
+    }
+
     static void spawnPart(ServerWorld w,BlockPos anchor,PropDef.Part p,double x,double y,double z,float yaw){
         NbtCompound n=new NbtCompound();
         n.putString("id","minecraft:item_display");
-        NbtCompound item=new NbtCompound();
-        item.putString("id","minecraft:paper");item.putByte("Count",(byte)1);
-        NbtCompound tag=new NbtCompound();tag.putInt("CustomModelData",p.cmd());item.put("tag",tag);
-        n.put("item",item);
+        n.put("item",partItem(w,p.cmd()));
         n.putString("item_display","fixed");
         n.putFloat("view_range",VIEW_RANGE);
         if(p.glow()){NbtCompound b=new NbtCompound();b.putInt("block",15);b.putInt("sky",15);n.put("brightness",b);}
