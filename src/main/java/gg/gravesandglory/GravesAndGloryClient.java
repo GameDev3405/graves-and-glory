@@ -16,6 +16,7 @@ import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.texture.*;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.network.PacketByteBuf;
+import gg.gravesandglory.net.Payloads;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.resource.DataConfiguration;
 import net.minecraft.text.Text;
@@ -58,6 +59,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static Identifier mapTexture;
     static boolean preparingMap;
     @Override public void onInitializeClient(){
+        GravesAndGlory.clientRegistries=()->{var w=MinecraftClient.getInstance().world;return w==null?null:w.getRegistryManager();}; // shields made on the client (portraits, the ending podium)
         ClientLoginNetworking.registerGlobalReceiver(VersionGate.CHANNEL,(client,handler,buffer,listeners)->CompletableFuture.completedFuture(VersionGate.response()));
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.registerBuiltinResourcePack(Identifier.of("gravesandglory","armory"),net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("gravesandglory").orElseThrow(),net.fabricmc.fabric.api.resource.ResourcePackActivationType.DEFAULT_ENABLED);
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.registerBuiltinResourcePack(Identifier.of("gravesandglory","weapons"),net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("gravesandglory").orElseThrow(),net.fabricmc.fabric.api.resource.ResourcePackActivationType.DEFAULT_ENABLED);
@@ -68,9 +70,9 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(UiTex.RELOADER); // the UI kit's atlas.json, read at every resource reload
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(BattleHud.RELOADER); // the battle HUD's lesson wrap and texture stop
         // Event feed lines from the server (FeedEvents); only a running round shows them.
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.FEED,(client,handler,buf,responder)->{String kind=buf.readString(16);int team=buf.readInt();String text=buf.readString(FeedEvents.MAX_TEXT);client.execute(()->{if(running)EventFeed.push(kind,team,text,net.minecraft.util.Util.getMeasuringTimeMs());});});
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.FeedPayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();String kind=buf.readString(16);int team=buf.readInt();String text=buf.readString(FeedEvents.MAX_TEXT);client.execute(()->{if(running)EventFeed.push(kind,team,text,net.minecraft.util.Util.getMeasuringTimeMs());});});
         BattleMapClient.register(); // battlemap_grid_v1 and battlemap_v1 (the battle map's field and live state)
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.IMPACT,(client,handler,buf,responder)->{float strength=buf.readFloat();client.execute(()->{Presentation.receivedImpacts++;Presentation.impact(strength);});});
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.ImpactPayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();float strength=buf.readFloat();client.execute(()->{Presentation.receivedImpacts++;Presentation.impact(strength);});});
         // The troops' own models (Phase 2 Task 5): one renderer per sheet entity type, the models reloaded with the resources.
         TroopRenderers.register();
         WagonRenderer.register(); // the Convoy supply wagon
@@ -99,7 +101,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // Optional launcher integration. Ordinary installs need no runtime directory.
         launcherContext=Files.isRegularFile(runtime.resolve("melty.properties"));
         if(launcherContext)try{Files.writeString(runtime.resolve("melty.log"),"");Properties props=new Properties();try(var in=Files.newInputStream(runtime.resolve("melty.properties"))){props.load(in);}join=props.getProperty("join","").trim();}catch(Exception e){System.err.println("[Graves and Glory] Optional launcher invitation could not be read: "+e.getMessage());}
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.RELICS,(client,handler,buf,responder)->{int n=Math.min(3,buf.readByte());String[] ids={"","",""};int[] ready={-1,-1,-1},run=new int[3];
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.RelicsPayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();int n=Math.min(3,buf.readByte());String[] ids={"","",""};int[] ready={-1,-1,-1},run=new int[3];
             for(int i=0;i<n;i++){ids[i]=buf.readString(64);ready[i]=buf.readInt();run[i]=buf.readInt();}
             client.execute(()->{relicIds=ids;relicReady=ready;relicFor=run;for(int i=1;i<3;i++){int[] s=relicShow(ids[i],ready[i],run[i]);relicShown[i]=s==null?"none":ids[i];relicLeft[i]=s==null?0:s[0];relicTotal[i]=s==null?0:s[1];}});});
         // Relics fire on hotbar keys 1 to 3 in battle (gear-combat Task 5): drained here before vanilla's input handling, so in battle they never
@@ -109,29 +111,29 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             if(CommandPanel.editing()){for(int i=0;i<4;i++)while(client.options.hotbarKeys[i].wasPressed()){}return;} // edit mode: the number keys neither pick nor fire relics
             if(CommandSelection.panelOpen()){boolean shift=CommandSelection.shiftHeld(client);for(int i=0;i<4;i++)while(client.options.hotbarKeys[i].wasPressed())CommandSelection.pick(i+1,shift,shift);return;}
             for(int i=0;i<3;i++)while(client.options.hotbarKeys[i].wasPressed())send("relic:"+i);});
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.GEAR,(client,handler,buf,responder)->{String text=buf.readString(GearWire.LIMIT);client.execute(()->CampaignClient.gear=GearWire.decode(text));});
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.CAMP,(client,handler,buf,responder)->{String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.OPEN_BARRACKS,(client,handler,buf,responder)->client.execute(()->client.setScreen(running?new BarracksScreen():new CampScreen("home"))));
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.ENDING_BEGIN,(client,handler,buf,responder)->{String outcome=buf.readString(16),line=buf.readString(512);client.execute(()->EndingClient.beginEnding(client,outcome,line));});
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.PARTY,(client,handler,buf,responder)->client.execute(()->client.setScreen(new CampScreen("home"))));
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.GearPayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();String text=buf.readString(GearWire.LIMIT);client.execute(()->CampaignClient.gear=GearWire.decode(text));});
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.CampPayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();String page=buf.readString(32);client.execute(()->CampScreen.open(page));});
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.OpenBarracksPayload.ID,(payload,context)->{MinecraftClient client=context.client();client.execute(()->client.setScreen(running?new BarracksScreen():new CampScreen("home")));});
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.EndingBeginPayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();String outcome=buf.readString(16),line=buf.readString(512);client.execute(()->EndingClient.beginEnding(client,outcome,line));});
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.PartyPayload.ID,(payload,context)->{MinecraftClient client=context.client();client.execute(()->client.setScreen(new CampScreen("home")));});
         // The motion events (Task 6): a troop's stance (stance_v2), its swings (attack_v1) and the blows on it (hit_v1), kept in MotionEvents.Client for the
         // motion engine. A stance a player gets on START_TRACKING comes before the entity's spawn packet (Fabric calls the event first), so a stance is
         // kept for an id the world does not have yet (the server sends the catch-up swing after the spawn); an unloaded entity's entries go. TroopMotion reads them each frame.
-        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.STANCE,(client,handler,buf,responder)->{int id=buf.readVarInt(),i=buf.readByte();float pitch=buf.readFloat();client.execute(()->MotionEvents.Client.stance(id,i,pitch));});
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.StancePayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();int id=buf.readVarInt(),i=buf.readByte();float pitch=buf.readFloat();client.execute(()->MotionEvents.Client.stance(id,i,pitch));});
         // A swing or a blow for an id this world does not have is dropped (no queue for an unloaded troop); a swing is checked against its family's rows.
-        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.ATTACK,(client,handler,buf,responder)->{int id=buf.readVarInt(),variant=buf.readVarInt();long start=buf.readVarLong();client.execute(()->{
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.AttackPayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();int id=buf.readVarInt(),variant=buf.readVarInt();long start=buf.readVarLong();client.execute(()->{
             net.minecraft.entity.Entity e=client.world==null?null:client.world.getEntityById(id);Spec.TroopsRow t=e==null?null:TroopModels.troopOf(e);
             if(variant==MotionInput.CANCEL){if(e!=null)MotionEvents.Client.cancel(id,start,client.world.getTime());return;} // a dropped shot (coordinator 2026-11-11): any troop's cancel is obeyed
             MotionEvents.Client.attack(id,variant,start,e==null?MotionEvents.Client.NO_ENTITY:t==null?MotionEvents.Client.UNKNOWN_TROOP:Tactics.variants(t.family()).size());});});
-        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.HIT,(client,handler,buf,responder)->{int id=buf.readVarInt(),kind=buf.readByte(),zone=buf.readByte();float bearing=buf.readFloat();int weight=buf.readByte(),flags=buf.readByte();long tick=buf.readVarLong();
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.HitPayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();int id=buf.readVarInt(),kind=buf.readByte(),zone=buf.readByte();float bearing=buf.readFloat();int weight=buf.readByte(),flags=buf.readByte();long tick=buf.readVarLong();
             client.execute(()->MotionEvents.Client.hit(client.world!=null&&client.world.getEntityById(id)!=null,id,kind,zone,bearing,weight,flags,tick));});
         // rise_v1: a troop rose instead of dying; kept, like a stance, for an id the world may not have yet (DeathController plays it).
-        ClientPlayNetworking.registerGlobalReceiver(MotionEvents.RISE,(client,handler,buf,responder)->{int id=buf.readVarInt();long tick=buf.readVarLong();int window=buf.readVarInt();client.execute(()->MotionEvents.Client.rise(id,tick,window));});
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.RisePayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();int id=buf.readVarInt();long tick=buf.readVarLong();int window=buf.readVarInt();client.execute(()->MotionEvents.Client.rise(id,tick,window));});
         ClientEntityEvents.ENTITY_UNLOAD.register((entity,world)->{TroopMotion.forget(entity.getId());MotionEvents.Client.forget(entity.getId());});
         // A soldier's rank (rank_v1): level, weapon tier and armour tier by entity id, for the troop renderer, the chevrons and the portraits (Task 9).
         RankSync.registerClient();
         CommandNet.registerClient(); // command_v1: the charge cooldown, teammates' outlines and order acknowledgements
-        ClientPlayNetworking.registerGlobalReceiver(GravesAndGlory.STATE,(client,handler,buf,responder)->{
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.StatePayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();
             modServer=true;
             boolean r=buf.readBoolean(),run=buf.readBoolean();int a=buf.readInt(),b=buf.readInt();String msg=buf.readString();int t=buf.readInt(),n=buf.readInt();String o=buf.readString(),f=buf.readString();int resp=buf.readInt();
             int points=buf.readInt();if(points<1||points>8)return;boolean[] contest=new boolean[points];int[] own=new int[points],pr=new int[points],ch=new int[points];for(int i=0;i<points;i++){buf.readString();own[i]=buf.readInt();pr[i]=buf.readInt();ch[i]=buf.readInt();contest[i]=buf.readBoolean();}
@@ -202,7 +204,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // Troop depth: the frame's cutoff from the game camera, once, before any pass draws (Iris's shadow pass among them).
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->TroopDepth.beginFrame(ctx.camera().getPos(),ctx.world().getEntities()));
         // Settled bodies (BodyCache): queue from the frame's start, drawn from their buffers after the entities.
-        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->BodyCache.begin(ctx.tickDelta()));
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->BodyCache.begin(ctx.tickCounter().getTickDelta(true)));
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(BodyCache::flush);
         // Bodies part way through their corpse fade (R42): translucent, once every entity layer of the frame is drawn.
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.BEFORE_DEBUG_RENDER.register(BodyCache::fadePass);
@@ -277,14 +279,14 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static void say(String line){try{Files.writeString(runtime.resolve("melty.log"),line+"\n",StandardOpenOption.CREATE,StandardOpenOption.APPEND);}catch(Exception ignored){}}
     /** The last action send passed on (the harness reads what a screen sent). */
     public static volatile String lastSent="";
-    static void send(String action){if(ClientPlayNetworking.canSend(GravesAndGlory.ORDER)){lastSent=action;PacketByteBuf b=PacketByteBufs.create();b.writeString(action);ClientPlayNetworking.send(GravesAndGlory.ORDER,b);}}
+    static void send(String action){if(ClientPlayNetworking.canSend(GravesAndGlory.ORDER)){lastSent=action;PacketByteBuf b=PacketByteBufs.create();b.writeString(action);ClientPlayNetworking.send(Payloads.OrderPayload.of(b));}}
     static void connectOrHost(MinecraftClient c){
-        if(!join.isEmpty()){connectingInvitation=true;ConnectScreen.connect(new FrontMenuScreen("friends"),c,ServerAddress.parse(join),new ServerInfo("Graves and Glory",join,false),false);return;}
+        if(!join.isEmpty()){connectingInvitation=true;net.minecraft.client.gui.screen.multiplayer.ConnectScreen.connect(new FrontMenuScreen("friends"),c,ServerAddress.parse(join),new ServerInfo("Graves and Glory",join,ServerInfo.ServerType.OTHER),false,null);return;}
         try { LegacyDataMigration.world(c.runDirectory.toPath().resolve("saves")); }
         catch (java.io.IOException migration) { c.setScreen(new FailureScreen("Could not upgrade the Bannerbound world. Originals were kept. "+migration.getMessage()));return; }
-        if(Files.exists(c.runDirectory.toPath().resolve("saves/Graves and Glory/level.dat"))){c.createIntegratedServerLoader().start(new TitleScreen(),"Graves and Glory");return;}
+        if(Files.exists(c.runDirectory.toPath().resolve("saves/Graves and Glory/level.dat"))){c.createIntegratedServerLoader().start("Graves and Glory",()->c.setScreen(new TitleScreen()));return;}
         var info=new LevelInfo("Graves and Glory",GameMode.ADVENTURE,false,Difficulty.NORMAL,true,new GameRules(),DataConfiguration.SAFE_MODE);
-        c.createIntegratedServerLoader().createAndStart("Graves and Glory",info,new GeneratorOptions(728619L,false,false),r->r.get(RegistryKeys.WORLD_PRESET).get(WorldPresets.FLAT).createDimensionsRegistryHolder());
+        c.createIntegratedServerLoader().createAndStart("Graves and Glory",info,new GeneratorOptions(728619L,false,false),r->r.get(RegistryKeys.WORLD_PRESET).get(WorldPresets.FLAT).createDimensionsRegistryHolder(),new TitleScreen());
     }
     static void startCamp(MinecraftClient c,boolean friends){
         // A saved launcher invitation never redirects an explicit local-play choice.
@@ -389,7 +391,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     }
     /** The HUD: the camp line in camp, the entrance letterbox during a battle's entrance, else the Iron Ledger (BattleHud), with the
      *  contact accent over it; the ebb screen cue under all of it. */
-    static void renderHud(DrawContext g,float delta){
+    static void renderHud(DrawContext g,net.minecraft.client.render.RenderTickCounter tick){float delta=tick.getTickDelta(false);
         var c=MinecraftClient.getInstance();if(c.player==null||c.currentScreen instanceof ArmyScreen||Diagnostics.active()&&Diagnostics.hideHud()){BattleHud.clear();return;}
         ebbScreen(g,c);
         boolean ledger=battleActive()&&!CampaignClient.cinematic();
@@ -405,7 +407,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     static final class FantasyButton extends ButtonWidget {
         boolean primary;
         FantasyButton(int x,int y,int w,int h,Text text,PressAction action){super(x,y,w,h,text,action,DEFAULT_NARRATION_SUPPLIER);}
-        @Override public void renderButton(DrawContext g,int mx,int my,float delta){
+        @Override public void renderWidget(DrawContext g,int mx,int my,float delta){
             boolean selected=getMessage().getString().startsWith("> "),focus=active&&(isHovered()||isFocused());int x=getX(),y=getY();
             int surface=!active?0xff20272b:primary?(focus?0xffdfbd77:0xffbb9858):focus?0xff39464b:selected?0xff30474a:0xff252f34;
             g.fill(x,y,x+width,y+height,surface);
@@ -431,7 +433,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         @Override protected void init(){button("Return to Minecraft",width/2-100,height/2+40,200,b->client.setScreen(new TitleScreen()));}
         // Seen once: leaving by button, Esc or any other screen change clears the startup error so the next title goes to the front menu.
         @Override public void removed(){error="";}
-        @Override public void render(DrawContext g,int x,int y,float d){renderBackground(g);g.drawCenteredTextWithShadow(textRenderer,why,width/2,height/2,DarkUi.ALARM_TEXT);super.render(g,x,y,d);}
+        @Override public void render(DrawContext g,int x,int y,float d){super.render(g,x,y,d);g.drawCenteredTextWithShadow(textRenderer,why,width/2,height/2,DarkUi.ALARM_TEXT);} // 1.21: super.render draws the background first (a second blur in a frame throws)
     }
 }
 

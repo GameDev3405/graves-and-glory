@@ -1,6 +1,6 @@
 package gg.gravesandglory;
 
-import com.eliotlash.mclib.math.IValue;
+import software.bernie.geckolib.loading.math.MathValue;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -281,9 +281,9 @@ final class AttackController extends AnimationController<GeoTroop> {
     }
 
     /** One channel's value at tick {@code t}: the clips are baked densely (build_anims.py), so linear between keys is exact enough. */
-    static float sample(List<Keyframe<IValue>> keys, double t) {
+    static float sample(List<Keyframe<MathValue>> keys, double t) {
         double at = 0;
-        for (Keyframe<IValue> k : keys) {
+        for (Keyframe<MathValue> k : keys) {
             if (t <= at + k.length()) {
                 double f = k.length() <= 0 ? 1 : (t - at) / k.length();
                 return (float) (k.startValue().get() + (k.endValue().get() - k.startValue().get()) * f);

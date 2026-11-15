@@ -84,7 +84,7 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
             Identifier t = r.trim;
             if (t == null) return;
             RenderLayer layer = RenderLayer.getEntityCutoutNoCull(t);
-            r.reRender(bakedModel, poseStack, bufferSource, animatable, layer, bufferSource.getBuffer(layer), partialTick, packedLight, packedOverlay, 1f, 1f, 1f, 1f);
+            r.reRender(bakedModel, poseStack, bufferSource, animatable, layer, bufferSource.getBuffer(layer), partialTick, packedLight, packedOverlay, 0xFFFFFFFF); // GeckoLib 4.9: one packed ARGB colour (white)
             r.trimDrawn = t;
         }
     }
@@ -119,8 +119,8 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
 
     @Override
     public void preRender(MatrixStack poseStack, GeoTroop animatable, BakedGeoModel model, VertexConsumerProvider bufferSource, VertexConsumer buffer,
-                          boolean isReRender, float partialTick, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
-        super.preRender(poseStack, animatable, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+                          boolean isReRender, float partialTick, int packedLight, int packedOverlay, int colour) {
+        super.preRender(poseStack, animatable, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, colour);
         // A re-render (the trim layer) draws the bones exactly as the main pass left them: setting the rules again would show a bow's
         // draw frames that setCustomAnimations hid after this pass's preRender.
         if (isReRender) return;
@@ -133,9 +133,10 @@ final class GeoTroopRenderer<E extends MobEntity> extends GeoReplacedEntityRende
         }
     }
 
-    /** Turns the troop by its body yaw only, as the old renderer did: no vanilla death tip (the death clips will lay it down). */
+    /** Turns the troop by its body yaw only, as the old renderer did: no vanilla death tip (the death clips will lay it down).
+     *  GeckoLib 4.9 calls only this 6-argument form (with nativeScale); the old 5-argument override would be skipped silently. */
     @Override
-    protected void applyRotations(GeoTroop animatable, MatrixStack poseStack, float ageInTicks, float rotationYaw, float partialTick) {
+    protected void applyRotations(GeoTroop animatable, MatrixStack poseStack, float ageInTicks, float rotationYaw, float partialTick, float nativeScale) {
         poseStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180f - rotationYaw));
     }
 

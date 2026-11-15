@@ -14,8 +14,6 @@ dependencies {
  modImplementation 'net.fabricmc.fabric-api:fabric-api:0.116.18+1.21.1'
  modImplementation 'software.bernie.geckolib:geckolib-fabric-1.21.1:4.9.3'
  include 'software.bernie.geckolib:geckolib-fabric-1.21.1:4.9.3'
- // GeckoLib's keyframe values are mclib IValues, shipped inside GeckoLib's jar; compile against them only.
- compileOnly 'com.eliotlash.mclib:mclib:20'
 }
 loom { runs { client { programArgs '--width', '1280', '--height', '720' } } }
 // Dedicated server test: its own run folder, so client logs and options stay untouched.
@@ -101,6 +99,8 @@ processResources {
  filesMatching('fabric.mod.json') { expand(version: modVersion) }
 }
 tasks.withType(JavaCompile).configureEach { options.release = 21; options.compilerArgs += ['-Xmaxerrs', '10000'] }
+// Port aid: -PallErrors makes javac go on through flow analysis, so errors hidden behind attribution errors show too.
+if (project.hasProperty('allErrors')) tasks.withType(JavaCompile).configureEach { options.compilerArgs += ['-XDshould-stop.ifError=FLOW'] }
 java { withSourcesJar() }
 tasks.named('sourcesJar') { dependsOn generateReleaseIdentity }
 tasks.named('jar') { from('LICENSE') }

@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.networking.v1.*;
+import gg.gravesandglory.net.Payloads;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.minecraft.entity.*;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -66,16 +67,19 @@ public final class GravesAndGlory implements ModInitializer {
     /** Server to client: the commander's relic slots (gear-combat Task 5), sent with each state and on a relic's start: a byte n, then per slot String relic id ("" empty), int ticks until ready (-1: empty or no behaviour), int ticks left running. */
     public static final Identifier RELICS = Identifier.of("gravesandglory", "relics_v1");
     public static Battle battle;
+    /** The client world's registries, when a client runs (set by GravesAndGloryClient); Battle.registries reads it. */
+    public static volatile java.util.function.Supplier<net.minecraft.registry.RegistryWrapper.WrapperLookup> clientRegistries;
     /** Sends a seated commander his relic slots (relics_v1); nothing to a bot, an unseated squad or a client without the channel. */
     static void sendRelics(Battle b,Squad s){
         if(s==null||s.bot)return;var p=b.server.getPlayerManager().getPlayer(s.owner);if(p==null||!ServerPlayNetworking.canSend(p,RELICS))return;
         PacketByteBuf out=PacketByteBufs.create();int n=s.relicState.size();out.writeByte(n);
         for(int i=0;i<n;i++){boolean on=s.seated;out.writeString(on?Commander.relicIn(s,i):"");out.writeInt(on?Commander.readyIn(b,s,i):-1);out.writeInt(on?Commander.activeFor(b,s,i):0);}
-        ServerPlayNetworking.send(p,RELICS,out);
+        ServerPlayNetworking.send(p,Payloads.RelicsPayload.of(out));
     }
     public static final Spec.RulesRow R = Spec.RULES[0];
     @Override public void onInitialize() {
         Diagnostics.start();
+        Payloads.register(); // the 24 play payload types (gg.gravesandglory.net), before any receiver
         VersionGate.registerServer();
         Audio.register(); // every sound event of the AudioCues table (plan 4F.4)
         // The commander actives, once. (The horn cues above are command feedback played in the world at the commander, so every player in range hears them; see BattleEffects.feedback.)
@@ -137,23 +141,23 @@ public final class GravesAndGlory implements ModInitializer {
         // A soldier's rank (rank_v1: level, weapon tier, armour tier) goes the same two ways as his stance: on START_TRACKING and on a late channel registration.
         RankSync.registerServer();
         CommandNet.registerServer(); // command_v1, server to client: charge cooldown, teammate outlines, order acknowledgements (command UI plan)
-        ServerPlayNetworking.registerGlobalReceiver(ORDER, (server, player, handler, buf, responder) -> {
+        ServerPlayNetworking.registerGlobalReceiver(Payloads.OrderPayload.ID, (payload, context) -> { MinecraftServer server=context.server(); ServerPlayerEntity player=context.player(); PacketByteBuf buf=payload.buf();
             String command=buf.readString(128);
             server.execute(() -> { if(battle!=null) battle.command(player,command); });
         });
-        ServerPlayNetworking.registerGlobalReceiver(PROFILE,(server,p,handler,buf,responder)->{String json=buf.readString(32000);server.execute(()->{if(battle!=null)battle.campaign.importProfile(p,json);});});
-        ServerPlayNetworking.registerGlobalReceiver(CAMERA,(server,p,handler,buf,responder)->{double x=buf.readDouble(),y=buf.readDouble(),z=buf.readDouble();server.execute(()->Tactics.camera(p,x,y,z,server.getTicks()));});
-        ServerPlayNetworking.registerGlobalReceiver(PING,(server,p,handler,buf,responder)->{String kind=buf.readString(16);double x=buf.readDouble(),z=buf.readDouble();server.execute(()->{if(battle!=null)battle.ping(p,kind,x,z);});});
-        ServerPlayNetworking.registerGlobalReceiver(PLAN,(server,p,handler,buf,responder)->{
+        ServerPlayNetworking.registerGlobalReceiver(Payloads.ProfilePayload.ID, (payload, context) -> { MinecraftServer server=context.server(); ServerPlayerEntity p=context.player(); PacketByteBuf buf=payload.buf();String json=buf.readString(32000);server.execute(()->{if(battle!=null)battle.campaign.importProfile(p,json);});});
+        ServerPlayNetworking.registerGlobalReceiver(Payloads.CameraPayload.ID, (payload, context) -> { MinecraftServer server=context.server(); ServerPlayerEntity p=context.player(); PacketByteBuf buf=payload.buf();double x=buf.readDouble(),y=buf.readDouble(),z=buf.readDouble();server.execute(()->Tactics.camera(p,x,y,z,server.getTicks()));});
+        ServerPlayNetworking.registerGlobalReceiver(Payloads.PingPayload.ID, (payload, context) -> { MinecraftServer server=context.server(); ServerPlayerEntity p=context.player(); PacketByteBuf buf=payload.buf();String kind=buf.readString(16);double x=buf.readDouble(),z=buf.readDouble();server.execute(()->{if(battle!=null)battle.ping(p,kind,x,z);});});
+        ServerPlayNetworking.registerGlobalReceiver(Payloads.PlanPayload.ID, (payload, context) -> { MinecraftServer server=context.server(); ServerPlayerEntity p=context.player(); PacketByteBuf buf=payload.buf();
             int kind=buf.readByte(),point=buf.readInt();String army=buf.readString(36);int job=buf.readByte();double x=buf.readDouble(),z=buf.readDouble();
             server.execute(()->{if(battle!=null)BattleMapNet.apply(battle,p,kind,point,army,job,x,z);});
         });
-        ServerPlayNetworking.registerGlobalReceiver(TACTICAL, (server, player, handler, buf, responder) -> {
+        ServerPlayNetworking.registerGlobalReceiver(Payloads.TacticalPayload.ID, (payload, context) -> { MinecraftServer server=context.server(); ServerPlayerEntity player=context.player(); PacketByteBuf buf=payload.buf();
             String group=buf.readString(16), action=buf.readString(16), formation=buf.readString(16);
             double x=buf.readDouble(),z=buf.readDouble();float yaw=buf.readFloat();int target=buf.readInt();
             server.execute(()->{if(battle!=null)battle.tactical(player,group,action,formation,x,z,yaw,target);}); // wire format unchanged; OrderRules reads the new meanings
         });
-        ServerPlayNetworking.registerGlobalReceiver(TACTICAL_V2, (server, player, handler, buf, responder) -> {
+        ServerPlayNetworking.registerGlobalReceiver(Payloads.TacticalV2Payload.ID, (payload, context) -> { MinecraftServer server=context.server(); ServerPlayerEntity player=context.player(); PacketByteBuf buf=payload.buf();
             String action=buf.readString(16), formation=buf.readString(16);float yaw=buf.readFloat();int target=buf.readInt();int n=buf.readInt();
             if(n<1||n>OrderRules.MAX_GROUPS)return;
             List<OrderRules.At> groups=new ArrayList<>(n);for(int i=0;i<n;i++)groups.add(new OrderRules.At(buf.readString(32),buf.readDouble(),buf.readDouble()));
@@ -212,7 +216,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(battle!=null&&player instanceof ServerPlayerEntity p&&world==battle.world){
                 if(!battle.running){
                     // Every lectern outside a running match opens the War Table (the client's OPEN_BARRACKS receiver); the old party lectern's PARTY packet id stays, and the client opens the War Table for it too.
-                    if(ServerPlayNetworking.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,OPEN_BARRACKS,PacketByteBufs.create());
+                    if(ServerPlayNetworking.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,new Payloads.OpenBarracksPayload(new byte[0]));
                 }else battle.openBarracks(p);
                 return ActionResult.SUCCESS;
             }
@@ -221,7 +225,7 @@ public final class GravesAndGlory implements ModInitializer {
     }
     static void openCamp(ServerPlayerEntity p,String station){
         if(battle==null)return;var s=battle.squads.get(p.getUuid());if(battle.running&&s!=null&&s.seated)return;
-        if(ServerPlayNetworking.canSend(p,CAMP)){var packet=PacketByteBufs.create();packet.writeString(station);ServerPlayNetworking.send(p,CAMP,packet);}
+        if(ServerPlayNetworking.canSend(p,CAMP)){var packet=PacketByteBufs.create();packet.writeString(station);ServerPlayNetworking.send(p,Payloads.CampPayload.of(packet));}
     }
     public static final class Squad {
         UUID owner;
@@ -692,17 +696,17 @@ public final class GravesAndGlory implements ModInitializer {
         public void joinSide(MobEntity mob,int team){
             var board=server.getScoreboard();String name=sideTeam(side(team));
             net.minecraft.scoreboard.Team t=board.getTeam(name);if(t==null)t=board.addTeam(name);
-            board.addPlayerToTeam(mob.getNameForScoreboard(),t);
+            board.addScoreHolderToTeam(mob.getNameForScoreboard(),t);
         }
         /** Takes an entity off its gg_ side team: a no-op for one that is on none. The ENTITY_UNLOAD hook calls it for every troop that leaves the world and is the backstop; AFTER_DEATH and the call sites that discard a troop call it too, harmlessly repeating it, so the membership is gone however a troop was removed. */
         public static void leaveSide(Entity e){
-            var board=e.getWorld().getScoreboard();var t=board.getPlayerTeam(e.getNameForScoreboard());
-            if(t!=null&&t.getName().startsWith("gg_"))board.removePlayerFromTeam(e.getNameForScoreboard(),t);
+            var board=e.getWorld().getScoreboard();var t=board.getScoreHolderTeam(e.getNameForScoreboard());
+            if(t!=null&&t.getName().startsWith("gg_"))board.removeScoreHolderFromTeam(e.getNameForScoreboard(),t);
         }
         /** Empties the four side teams (startRound, Campaign.returnLobby and switchMap). */
         public void clearSides(){
             var board=server.getScoreboard();
-            for(var f:Spec.FACTIONS){var t=board.getTeam(sideTeam(f));if(t!=null)for(String member:new ArrayList<>(t.getPlayerList()))board.removePlayerFromTeam(member,t);}
+            for(var f:Spec.FACTIONS){var t=board.getTeam(sideTeam(f));if(t!=null)for(String member:new ArrayList<>(t.getPlayerList()))board.removeScoreHolderFromTeam(member,t);}
         }
         /**
          * The field of a portrait's shield (ArmyCards.portrait): grey, a dye no side flies and no troops.shield layer uses
@@ -713,11 +717,36 @@ public final class GravesAndGlory implements ModInitializer {
          * The troop's painted shield (unit identity rule 7): unbreakable, its BlockEntityTag Base the given dye (the side's
          * factions.dye in battle, PORTRAIT_FIELD on portraits) and its Patterns the troops.shield layers, <dye>:<pattern> each.
          */
-        public static ItemStack shield(Spec.TroopsRow t,String dye){
-            ItemStack s=unbreakable(Items.SHIELD);NbtCompound tag=new NbtCompound();tag.putInt("Base",DyeColor.byName(dye,DyeColor.WHITE).getId());
-            net.minecraft.nbt.NbtList patterns=new net.minecraft.nbt.NbtList();
-            if(!t.shield().equals("none"))for(String layer:t.shield().split(",")){String[] p=layer.trim().split(":");NbtCompound one=new NbtCompound();one.putString("Pattern",p[1]);one.putInt("Color",DyeColor.byName(p[0],DyeColor.WHITE).getId());patterns.add(one);}
-            tag.put("Patterns",patterns);BlockItem.setBlockEntityNbt(s,net.minecraft.block.entity.BlockEntityType.BANNER,tag);return s;
+        public static ItemStack shield(Spec.TroopsRow t,String dye){return shield(t,dye,registries());}
+        /** The same shield with the banner pattern registry given (1.21: patterns are data-driven registry entries, so a stack needs the
+         *  registries of the side that holds it). With none (no world yet) the shield gets its field colour only. */
+        public static ItemStack shield(Spec.TroopsRow t,String dye,net.minecraft.registry.RegistryWrapper.WrapperLookup registries){
+            ItemStack s=unbreakable(Items.SHIELD);
+            s.set(net.minecraft.component.DataComponentTypes.BASE_COLOR,DyeColor.byName(dye,DyeColor.WHITE));
+            if(registries==null||t.shield().equals("none"))return s;
+            var lookup=registries.getWrapperOrThrow(net.minecraft.registry.RegistryKeys.BANNER_PATTERN);
+            var layers=new net.minecraft.component.type.BannerPatternsComponent.Builder();
+            for(String layer:t.shield().split(",")){String[] p=layer.trim().split(":");String id=LEGACY_PATTERNS.get(p[1]);if(id==null)continue;
+                var key=net.minecraft.registry.RegistryKey.of(net.minecraft.registry.RegistryKeys.BANNER_PATTERN,Identifier.ofVanilla(id));
+                lookup.getOptional(key).ifPresent(entry->layers.add(entry,DyeColor.byName(p[0],DyeColor.WHITE)));}
+            s.set(net.minecraft.component.DataComponentTypes.BANNER_PATTERNS,layers.build());return s;
+        }
+        /** troops.shield names layers by the 1.20.1 pattern codes (tools/preflight.py BANNER_PATTERNS); 1.21 names them by registry id. */
+        static final Map<String,String> LEGACY_PATTERNS=Map.ofEntries(
+            Map.entry("b","base"),Map.entry("bl","square_bottom_left"),Map.entry("br","square_bottom_right"),Map.entry("tl","square_top_left"),Map.entry("tr","square_top_right"),
+            Map.entry("bs","stripe_bottom"),Map.entry("ts","stripe_top"),Map.entry("ls","stripe_left"),Map.entry("rs","stripe_right"),Map.entry("cs","stripe_center"),Map.entry("ms","stripe_middle"),
+            Map.entry("drs","stripe_downright"),Map.entry("dls","stripe_downleft"),Map.entry("ss","small_stripes"),Map.entry("cr","cross"),Map.entry("sc","straight_cross"),
+            Map.entry("bt","triangle_bottom"),Map.entry("tt","triangle_top"),Map.entry("bts","triangles_bottom"),Map.entry("tts","triangles_top"),Map.entry("ld","diagonal_left"),
+            Map.entry("rd","diagonal_up_right"),Map.entry("lud","diagonal_up_left"),Map.entry("rud","diagonal_right"),Map.entry("mc","circle"),Map.entry("mr","rhombus"),
+            Map.entry("vh","half_vertical"),Map.entry("hh","half_horizontal"),Map.entry("vhr","half_vertical_right"),Map.entry("hhb","half_horizontal_bottom"),
+            Map.entry("bo","border"),Map.entry("cbo","curly_border"),Map.entry("gra","gradient"),Map.entry("gru","gradient_up"),Map.entry("bri","bricks"),Map.entry("glb","globe"),
+            Map.entry("cre","creeper"),Map.entry("sku","skull"),Map.entry("flo","flower"),Map.entry("moj","mojang"),Map.entry("pig","piglin"));
+        /** The registries for a stack made now: the server's on the server thread (its entries must be the ones it sends), else the
+         *  client world's (GravesAndGloryClient sets clientRegistries), else the server's; null before any world exists. */
+        static net.minecraft.registry.RegistryWrapper.WrapperLookup registries(){
+            if(battle!=null&&battle.server.isOnThread())return battle.server.getRegistryManager();
+            var client=clientRegistries==null?null:clientRegistries.get();if(client!=null)return client;
+            return battle!=null?battle.server.getRegistryManager():null;
         }
         /** Seconds each team held each point this round, [team][point]; startRound sizes it from points (five on Kingsfield). */
         int[][] pointSeconds=new int[2][0];
@@ -817,7 +846,7 @@ public final class GravesAndGlory implements ModInitializer {
                     mob.equipStack(EquipmentSlot.MAINHAND,unbreakable(Registries.ITEM.get(Identifier.of(spec.weapon()))));
                     mob.equipStack(EquipmentSlot.HEAD,unbreakable(Registries.ITEM.get(Identifier.of(spec.helmet()))));
                     ItemStack chest=unbreakable(Registries.ITEM.get(Identifier.of(spec.chest())));
-                    if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,side(0).color());
+                    dye(chest,side(0).color());
                     mob.equipStack(EquipmentSlot.CHEST,chest);
                     mob.discard();built++;
                 }catch(RuntimeException e){}
@@ -984,7 +1013,9 @@ public final class GravesAndGlory implements ModInitializer {
             if(s!=null&&s.seated&&!s.bot){GearCombat.seat(s,pr);GearCombat.apply(p,s.gear);}else GearCombat.clear(p);
             p.getHungerManager().setFoodLevel(20);
         }
-        static ItemStack unbreakable(Item item){if(item==Items.AIR)return ItemStack.EMPTY;ItemStack s=new ItemStack(item);s.getOrCreateNbt().putBoolean("Unbreakable",true);return s;}
+        static ItemStack unbreakable(Item item){if(item==Items.AIR)return ItemStack.EMPTY;ItemStack s=new ItemStack(item);s.set(net.minecraft.component.DataComponentTypes.UNBREAKABLE,new net.minecraft.component.type.UnbreakableComponent(true));return s;}
+        /** Dyes a dyeable stack (leather armour) as DyeableItem.setColor did (1.21: the dyed_color component; tooltip shown as before). */
+        static void dye(ItemStack stack,int color){if(stack.isIn(net.minecraft.registry.tag.ItemTags.DYEABLE))stack.set(net.minecraft.component.DataComponentTypes.DYED_COLOR,new net.minecraft.component.type.DyedColorComponent(color,true));}
         public void command(ServerPlayerEntity p,String cmd){
             if(cmd.startsWith("social:")){campaign.socialCommand(p,cmd);return;}
             if(cmd.startsWith("progress:")){campaign.progressCommand(p,cmd);return;}
@@ -1123,7 +1154,7 @@ public final class GravesAndGlory implements ModInitializer {
         public boolean atBarracks(ServerPlayerEntity p,Squad s){
             return horizontalDistance(p.getPos(),fieldBarracks(s.team))<=Spec.ECONOMY[0].accessRadius()*Spec.ECONOMY[0].accessRadius();
         }
-        void openBarracks(ServerPlayerEntity p){if(running)campaign.tutorialDid(p,3);if(ServerPlayNetworking.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,OPEN_BARRACKS,PacketByteBufs.create());}
+        void openBarracks(ServerPlayerEntity p){if(running)campaign.tutorialDid(p,3);if(ServerPlayNetworking.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,new Payloads.OpenBarracksPayload(new byte[0]));}
         /** Why a troop cannot join the squad's training queue now, or null when it can: a troop trains only while its living and queued units are below its count in the squad's banner, and all living and queued troops stay below rules.maxTroops. */
         String roomFor(Squad s,Spec.TroopsRow spec){
             int listed=Collections.frequency(s.banner,spec.id());
@@ -1294,7 +1325,7 @@ public final class GravesAndGlory implements ModInitializer {
             mob.equipStack(EquipmentSlot.MAINHAND,unbreakable(Registries.ITEM.get(Identifier.of(spec.weapon()))));
             mob.equipStack(EquipmentSlot.HEAD,unbreakable(Registries.ITEM.get(Identifier.of(spec.helmet()))));
             ItemStack chest=unbreakable(Registries.ITEM.get(Identifier.of(spec.chest())));
-            if(chest.getItem() instanceof DyeableItem dye)dye.setColor(chest,side(s.team).color());
+            dye(chest,side(s.team).color());
             mob.equipStack(EquipmentSlot.CHEST,chest);
             for(EquipmentSlot eq:EquipmentSlot.values())mob.setEquipmentDropChance(eq,0);
             mob.setCustomName(troopName(s,spec,1));
@@ -1483,7 +1514,7 @@ public final class GravesAndGlory implements ModInitializer {
                 boolean commanding=s!=null&&s.seated;b.writeString(commanding?Commander.relicIn(s,0):"");b.writeInt(commanding?Commander.readyIn(this,s):0);b.writeInt(commanding?Commander.activeFor(this,s):0);
                 // state_v9, after the commander ability: this army's Armoury (LevelMath.encodeArmoury sets the layout: boolean armouryHere, byte n, then per banner troop type String troop and the bytes weapon2, weapon3, armour2, armour3, each a LevelMath.Buy ordinal). armouryHere is whether this commander stands where he may buy (Veterans.buyHere).
                 LevelMath.encodeArmoury(s==null?LevelMath.Armoury.EMPTY:Veterans.armouryState(this,s,p),wire(b));
-                ServerPlayNetworking.send(p,STATE,b);
+                ServerPlayNetworking.send(p,Payloads.StatePayload.of(b));
                 if(s!=null)sendRelics(this,s);
             }
         }
@@ -1526,7 +1557,7 @@ public final class GravesAndGlory implements ModInitializer {
                 testStage=4;testAt=time;
             }else if(testStage==4&&time-testAt>100){
                 long living=units.stream().filter(u->u.mob.isAlive()).count();
-                double ms=server.getTickTime();
+                double ms=server.getAverageTickTime();
                 Diagnostics.report("army-capacity",living==80,"expected eighty living troops, got "+living);
                 System.out.println("[Graves and Glory test] Eighty-troop server average tick: "+ms+"ms; players="+server.getPlayerManager().getCurrentPlayerCount());
                 testBridgeIndex=0;prepareBridgeTest();testStage=5;testAt=time;
