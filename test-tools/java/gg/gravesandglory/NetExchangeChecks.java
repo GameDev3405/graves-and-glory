@@ -102,22 +102,34 @@ public final class NetExchangeChecks extends NetExchangeCounter implements Clien
                 CommandMode.ping(Spec.PINGS.length > 0 ? Spec.PINGS[0].id() : "attack", at.x, at.z);
                 BattleMapClient.sendPlan(0, 0, "", -1, at.x, at.z);
                 var eye = ChargeCamera.class.getDeclaredMethod("sendEye"); eye.setAccessible(true); eye.invoke(null);
-                CommandMode.issue("all", "hold", "", at, c.player.getYaw(), -1);
+                CommandMode.issue("all", "attack", "", at, c.player.getYaw(), -1); // attack: the army moves to fight (combat traffic) and the server acknowledges (command_v1)
                 var v1 = PacketByteBufs.create(); // tactical_v1 in its 1.20.1 layout: group, action, formation, x, z, yaw, target
-                v1.writeString("all"); v1.writeString("hold"); v1.writeString(""); v1.writeDouble(at.x); v1.writeDouble(at.z); v1.writeFloat(c.player.getYaw()); v1.writeInt(-1);
+                v1.writeString("all"); v1.writeString("attack"); v1.writeString(""); v1.writeDouble(at.x); v1.writeDouble(at.z); v1.writeFloat(c.player.getYaw()); v1.writeInt(-1);
                 if (ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL)) ClientPlayNetworking.send(Payloads.TacticalPayload.of(v1));
-                log("sent profile, ping, plan, camera, tactical_v2, tactical_v1");
+                GravesAndGloryClient.send("barracks"); // order_v1 "barracks": the server answers with barracks_v1 (Battle.openBarracks)
+                Files.writeString(dir.resolve("cmd-probe.txt"), "follow\n");
+                log("sent profile, ping, plan, camera, tactical_v2, tactical_v1, barracks; asked the probe to follow the fighting");
                 step = 3; waitFrom = clock;
             }
             case 3 -> { // combat traffic: up to four minutes, then the round ends either way
+                if (c.currentScreen != null && since % 20 == 0) c.setScreen(null); // the barracks screen
+                if (since % 20 == 10 && c.interactionManager != null) { // strike the nearest troop in reach (impact_v1 when it is an enemy)
+                    net.minecraft.entity.LivingEntity near = null; double best = 3.5 * 3.5;
+                    for (var e : c.world.getEntities()) if (e instanceof net.minecraft.entity.LivingEntity l && !(e instanceof net.minecraft.entity.player.PlayerEntity) && l.isAlive() && c.player.squaredDistanceTo(e) < best) { best = c.player.squaredDistanceTo(e); near = l; }
+                    if (near != null) { c.player.lookAt(net.minecraft.command.argument.EntityAnchorArgumentType.EntityAnchor.EYES, near.getEyePos()); c.interactionManager.attackEntity(c.player, near); c.player.swingHand(net.minecraft.util.Hand.MAIN_HAND); }
+                }
+                if (since == 20 * 150 && got("in", Payloads.RisePayload.class) == 0) Files.writeString(dir.resolve("cmd-probe.txt"), "rise\n");
                 boolean all = COMBAT.stream().allMatch(t -> got("in", t) > 0);
                 if (!all && since < 20 * 240 && GravesAndGloryClient.battleActive()) { if (since % 400 == 0) log("waiting for combat payloads: missing " + COMBAT.stream().filter(t -> got("in", t) == 0).map(Class::getSimpleName).toList()); return; }
                 log("combat wait over after " + since / 20 + " s (all=" + all + "); asking the server to finish the round");
                 Files.writeString(dir.resolve("cmd-server.txt"), "finish 0\n");
+                Files.writeString(dir.resolve("cmd-probe.txt"), "unfollow\n");
                 step = 4; waitFrom = clock;
             }
             case 4 -> { // the ending: wait for ending_begin and the camp's gear/relics updates, then a few seconds more
-                if (got("in", Payloads.EndingBeginPayload.class) > 0 && since > 20 * 30 || since > 20 * 120) { step = 5; waitFrom = clock; }
+                if (since == 20 * 40) Files.writeString(dir.resolve("cmd-probe.txt"), "camp\n"); // back in camp: a station's use (camp_station_v1)
+                if (c.currentScreen != null && since % 20 == 0 && since > 20 * 45) c.setScreen(null);
+                if (got("in", Payloads.EndingBeginPayload.class) > 0 && got("in", Payloads.CampPayload.class) > 0 && since > 20 * 50 || since > 20 * 150) { step = 5; waitFrom = clock; }
             }
             case 5 -> { // the server dumps its counts once a second
                 if (since < 60) return;
