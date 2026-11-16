@@ -48,6 +48,8 @@ public final class PlainProbe implements ModInitializer {
                     log("test blocks at " + at.north(2).toShortString() + " (troop_fence) and a 2x2 of still_water from " + at.toShortString());
                     for (var v : p.getServer().getPlayerManager().getPlayerList()) log("blocks for " + v.getName().getString() + ": " + (PlainLooks.realBlocks(v) ? "real" : "barrier"));
                     return 1; })))
+            .then(CommandManager.literal("mage").then(CommandManager.argument("player", EntityArgumentType.player())
+                .executes(c -> mage(EntityArgumentType.getPlayer(c, "player")))))
             .then(CommandManager.literal("recruit").then(CommandManager.argument("player", EntityArgumentType.player())
                 .executes(c -> { PlainRecruit.open(EntityArgumentType.getPlayer(c, "player"), null); return 1; })))
             .then(CommandManager.literal("keyorder").then(CommandManager.argument("player", EntityArgumentType.player()).then(CommandManager.argument("action", StringArgumentType.word())
@@ -104,6 +106,26 @@ public final class PlainProbe implements ModInitializer {
         face(p, x, y, z, m.add(0, 1.2, 0));
         log("view " + what + ": entity " + best.mob.getId() + " troop=" + best.spec.id() + " server=" + Registries.ENTITY_TYPE.getId(best.mob.getType()) + " (raw " + Registries.ENTITY_TYPE.getRawId(best.mob.getType()) + ", class " + best.mob.getClass().getSimpleName() + ") plain look=" + Registries.ENTITY_TYPE.getId(PlainLooks.byRole(best.spec, best.mob.getType()))
             + " (raw " + Registries.ENTITY_TYPE.getRawId(PlainLooks.byRole(best.spec, best.mob.getType())) + ") look(viewer)=" + Registries.ENTITY_TYPE.getId(PlainLooks.look(best.mob, p)) + " named=" + (best.mob.hasCustomName() ? ArmyMobs.named(best.mob.getCustomName().getString()) != null : false));
+        return 1;
+    }
+
+    /** A lone mage troop (ArmyHusk named as the mage row, AI off, so no combat, shield or spell) 3.5 blocks ahead, the player facing it. */
+    static int mage(ServerPlayerEntity p) {
+        Spec.TroopsRow row = null;
+        for (var t : Spec.TROOPS) if (t.id().equals("mage")) row = t;
+        if (row == null) { log("mage: no mage row"); return 0; }
+        var w = p.getServerWorld();
+        double r = Math.toRadians(p.getYaw()), x = p.getX() - Math.sin(r) * 3.5, z = p.getZ() + Math.cos(r) * 3.5;
+        var m = new GravesAndGlory.ArmyHusk(w);
+        m.refreshPositionAndAngles(x, p.getY(), z, p.getYaw() + 180, 0);
+        m.setHeadYaw(p.getYaw() + 180);
+        m.setCustomName(Text.literal(row.name()));
+        m.setAiDisabled(true);
+        m.setSilent(true);
+        w.spawnEntity(m);
+        face(p, p.getX(), p.getY(), p.getZ(), m.getPos().add(0, 1.2, 0));
+        for (var v : p.getServer().getPlayerManager().getPlayerList())
+            log("mage " + m.getId() + " named " + row.name() + " for " + v.getName().getString() + ": sent as " + Registries.ENTITY_TYPE.getId(PlainLooks.look(m, v)) + " (raw " + Registries.ENTITY_TYPE.getRawId(PlainLooks.look(m, v)) + ")");
         return 1;
     }
 

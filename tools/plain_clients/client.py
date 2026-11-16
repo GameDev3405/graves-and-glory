@@ -194,6 +194,9 @@ class Session:
         self.shot("after-chunk-resend-barrier-markers", 6)
         self.rc("item replace entity %s weapon.offhand with minecraft:air" % NAME)
         self.rc("gamemode survival " + NAME)
+        self.rc("execute as %s at @s run tp @s ~ ~ ~ 90 10" % NAME)  # face west, away from the wagon and blocks
+        self.rc("plainprobe mage " + NAME)  # a lone mage, AI off, out of any battle
+        self.shot("mage-as-witch-alone", 4)
         self.rc("plainprobe practice " + NAME)
         st = self.wait_state("running=true", 240)
         import re
