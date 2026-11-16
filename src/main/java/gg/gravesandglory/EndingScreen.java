@@ -67,7 +67,7 @@ final class EndingScreen extends Screen {
     /** Play again under the sheet's right edge, beside the hint: a dark plate with the brass rim, lit while the mouse is over it. */
     void againButton(DrawContext g, boolean hot) {
         var font = textRenderer;
-        Text label = DarkUi.body(AGAIN), key = DarkUi.small(againKey());
+        Text label = DarkUi.body(UiText.t("endingScreen.playAgain", "Play again")), key = DarkUi.small(againKey());
         int bw = font.getWidth(label) + (againKey().isEmpty() ? 0 : font.getWidth(key) + 4) + 12, bh = 14, bx = W - bw, by = H + FRAME + 3;
         g.fill(bx - 1, by - 1, bx + bw + 1, by + bh + 1, DarkUi.BRASS);
         g.fill(bx, by, bx + bw, by + bh, hot ? 0xff57432f : EndingPanels.CLAIM_FILL);
@@ -107,7 +107,7 @@ final class EndingScreen extends Screen {
             drawn = rewards ? "rewards" : "stats";
             if (EndingClient.playAgainShown()) againButton(g, overAgain(mouseX, mouseY)); else againDrawn = null; // pass 3
             m.pop();
-            String hint = HintText.expand("{key:menu} or Escape to skip", GravesAndGloryClient::hint);
+            String hint = HintText.expand(UiText.t("endingScreen.skipHint", "{key:menu} or Escape to skip"), GravesAndGloryClient::hint);
             var font = textRenderer;
             int hy = Math.min(ch - 9 * s - 2, oy + H * s + FRAME * s + 4);
             m.push(); m.translate(cw / 2f, hy, 0); m.scale(s, s, 1);
@@ -135,10 +135,10 @@ final class EndingScreen extends Screen {
 
     void statsSheet(DrawContext g, JsonObject r) {
         int x = PAD_X, w = W - PAD_X * 2;
-        if (!r.has("id")) { head(g, "Battle report", ""); g.drawText(textRenderer, DarkUi.body("No battle to report yet."), x, PAD_TOP + 26, DarkUi.SEPIA, false); return; }
+        if (!r.has("id")) { head(g, UiText.t("endingScreen.noBattleTitle", "Battle report"), ""); g.drawText(textRenderer, DarkUi.body(UiText.t("endingScreen.noBattle", "No battle to report yet.")), x, PAD_TOP + 26, DarkUi.SEPIA, false); return; }
         String mode = ReportSections.title(r), line = EndingPanels.str(r, "line");
         if (!map(r).isEmpty()) line = line.replace(" · " + map(r), ""); // the title names the map already ("score · map · length")
-        head(g, map(r).isEmpty() ? "Battle report" : "Battle of " + map(r), (mode + (line.isEmpty() ? "" : " · " + line)).toUpperCase(Locale.ROOT));
+        head(g, map(r).isEmpty() ? UiText.t("endingScreen.statsTitle", "Battle report") : UiText.t("endingScreen.statsTitleMap", "Battle of {map}", "map", map(r)), (mode + (line.isEmpty() ? "" : " · " + line)).toUpperCase(Locale.ROOT));
         int y = EndingPanels.scoreboard(g, r, x, PAD_TOP + 22, w);
         y = EndingPanels.groups(g, r, x, y + 8, w, H - PAD_BOTTOM - (y + 8));
         fill(g, r, x, y + 10, w, H - PAD_BOTTOM - (y + 10));
@@ -149,8 +149,8 @@ final class EndingScreen extends Screen {
         EndingPanels.reset("fillhead"); EndingPanels.reset("troops"); EndingPanels.reset("highlight"); EndingPanels.reset("graph"); EndingPanels.graphSamples = 0;
         if (h < 30 || EndingPanels.obj(r, "you") == null) return;
         int gap = 18, half = (w - gap) / 2, hx = x + half + gap;
-        EndingPanels.put(g, "fillhead-army", DarkUi.heading("Your army"), x, y, EndingPanels.BROWN);
-        EndingPanels.put(g, "fillhead-high", DarkUi.heading("Highlights"), hx, y, EndingPanels.BROWN);
+        EndingPanels.put(g, "fillhead-army", DarkUi.heading(UiText.t("endingScreen.yourArmy", "Your army")), x, y, EndingPanels.BROWN);
+        EndingPanels.put(g, "fillhead-high", DarkUi.heading(UiText.t("endingScreen.highlights", "Highlights")), hx, y, EndingPanels.BROWN);
         g.fill(x, y + 11, x + half, y + 12, EndingPanels.RULE); g.fill(hx, y + 11, hx + half, y + 12, EndingPanels.RULE);
         EndingPanels.areas.put("fillhead", new int[]{x, y, w, 12});
         EndingPanels.troops(g, r, x, y + 15, half, h - 15);
@@ -161,7 +161,7 @@ final class EndingScreen extends Screen {
     void rewardsSheet(DrawContext g, JsonObject r, float partial) {
         int x = PAD_X, w = W - PAD_X * 2;
         String outcome = EndingPanels.str(r, "outcome");
-        head(g, "Spoils of war", (outcome + (map(r).isEmpty() ? "" : " · " + map(r))).toUpperCase(Locale.ROOT));
+        head(g, UiText.t("endingScreen.rewardsTitle", "Spoils of war"), (outcome + (map(r).isEmpty() ? "" : " · " + map(r))).toUpperCase(Locale.ROOT));
         int top = PAD_TOP + 24;
         float p = progress(partial);
         EndingPanels.rewards(g, r, x, top, w, H - PAD_BOTTOM - top, p);

@@ -35,16 +35,19 @@ final class RecruitPages {
         // A tip says what the action does while it can be pressed and why it cannot while it cannot (the War Table writes it under the tag, the old troop page as a tooltip).
         switch(t.rarity()){
             case "common","rare"->{if(full)return null;int cost=Profile.CHOSEN_WRITS;boolean ok=p.troopWrits>=cost;
-                return new Action("Buy "+cost,"buy:"+t.id(),ok,!ok?"Need "+cost+" writs. You have "+p.troopWrits+".":o==null?"Joins your collection.":copyLine(o,t));}
+                return new Action(UiText.t("recruitPages.action.buy","Buy {cost}","cost",cost),"buy:"+t.id(),ok,!ok?UiText.t("recruitPages.action.buyNeed","Need {cost} writs. You have {have}.","cost",cost,"have",p.troopWrits):o==null?UiText.t("recruitPages.action.buyJoins","Joins your collection."):copyLine(o,t));}
             case "epic","legendary"->{
                 if(o!=null){if(full)return null;var r=RosterMath.rarityRow(t.rarity());int cost=r==null?0:o.stars<=1?r.shardStar2():r.shardStar3();boolean ok=shards>=cost;
-                    return new Action("Star "+(o.stars+1),"star:"+t.id(),ok,ok?"Star "+(o.stars+1)+" for "+cost+" "+house+" shards.":"Need "+cost+" "+house+" shards. You have "+shards+".");}
+                    return new Action(UiText.t("recruitPages.action.star","Star {star}","star",o.stars+1),"star:"+t.id(),ok,ok?UiText.t("recruitPages.action.starTip","Star {star} for {cost} {house} shards.","star",o.stars+1,"cost",cost,"house",house):UiText.t("recruitPages.action.starNeed","Need {cost} {house} shards. You have {have}.","cost",cost,"house",house,"have",shards));}
                 if(t.rarity().equals("epic"))return null;
-                if(p.pacts>0)return new Action("Pact","legendary:"+t.house()+":pact",true,"Spend your Pact: "+TroopKnowledge.name(t)+" joins your collection.");
+                if(p.pacts>0)return new Action(UiText.t("recruitPages.action.pact","Pact"),"legendary:"+t.house()+":pact",true,UiText.t("recruitPages.action.pactTip","Spend your Pact: {troop} joins your collection.","troop",TroopKnowledge.name(t)));
                 boolean ready=renown>=R.renownForLegendary()&&shards>=R.legendaryShards();
-                String tip=ready?TroopKnowledge.name(t)+" joins your collection for "+R.legendaryShards()+" "+house+" shards."
-                    :"Needs "+(renown<R.renownForLegendary()?R.renownForLegendary()+" "+house+" Renown (you have "+renown+")":"")+(renown<R.renownForLegendary()&&shards<R.legendaryShards()?" and ":"")+(shards<R.legendaryShards()?R.legendaryShards()+" shards (you have "+shards+")":"")+", or a Pact.";
-                return new Action(R.legendaryShards()+" shards","legendary:"+t.house()+":shards",ready,tip);
+                boolean needRenown=renown<R.renownForLegendary(),needShards=shards<R.legendaryShards();
+                String tip=ready?UiText.t("recruitPages.action.legendaryTip","{troop} joins your collection for {shards} {house} shards.","troop",TroopKnowledge.name(t),"shards",R.legendaryShards(),"house",house)
+                    :needRenown&&needShards?UiText.t("recruitPages.action.legendaryNeedBoth","Needs {renown} {house} Renown (you have {haveRenown}) and {shards} shards (you have {haveShards}), or a Pact.","renown",R.renownForLegendary(),"house",house,"haveRenown",renown,"shards",R.legendaryShards(),"haveShards",shards)
+                    :needRenown?UiText.t("recruitPages.action.legendaryNeedRenown","Needs {renown} {house} Renown (you have {have}), or a Pact.","renown",R.renownForLegendary(),"house",house,"have",renown)
+                    :UiText.t("recruitPages.action.legendaryNeedShards","Needs {shards} shards (you have {have}), or a Pact.","shards",R.legendaryShards(),"have",shards);
+                return new Action(UiText.t("recruitPages.action.legendaryShards","{shards} shards","shards",R.legendaryShards()),"legendary:"+t.house()+":shards",ready,tip);
             }
             default->{return null;}
         }
@@ -52,16 +55,16 @@ final class RecruitPages {
     /** What an owned Common's or Rare's next copy does: "Adds a copy (2 of 4 toward star 3)". */
     static String copyLine(Profile.Owned o,Spec.TroopsRow t){
         int need=nextStarCopies(o,RosterMath.rarityRow(t.rarity()));
-        return need>0?"Adds a copy ("+o.copies+" of "+need+" toward star "+(o.stars+1)+").":"Adds a copy.";
+        return need>0?UiText.t("recruitPages.copyLine.toward","Adds a copy ({copies} of {need} toward star {star}).","copies",o.copies,"need",need,"star",o.stars+1):UiText.t("recruitPages.copyLine.plain","Adds a copy.");
     }
     /** How a roll or a chosen buy came out, in one line: shards at full stars, a new troop, a star gained, or the copy counted toward the next star. The roll card and the War Table's letter both write it. */
     static String outcome(CampaignClient.LastRoll r,Profile p){
         var t=ArmyCards.spec(r.troop());if(t==null)return "";var o=p.owned.get(t.id());int from=r.starsBefore(),to=Math.max(from,r.starsAfter());
-        if(r.shards()>0)return "+"+r.shards()+" "+RosterMath.houseName(t.house())+" shards: already at full stars";
-        if(!r.duplicate())return "Joined your collection";
-        if(to>from)return "Star "+from+" to star "+to;
+        if(r.shards()>0)return UiText.t("recruitPages.outcome.fullStars","+{shards} {house} shards: already at full stars","shards",r.shards(),"house",RosterMath.houseName(t.house()));
+        if(!r.duplicate())return UiText.t("recruitPages.outcome.joined","Joined your collection");
+        if(to>from)return UiText.t("recruitPages.outcome.star","Star {from} to star {to}","from",from,"to",to);
         int need=nextStarCopies(o,RosterMath.rarityRow(t.rarity()));
-        return o==null?"Another copy":need>0?"Copy "+o.copies+" of "+need+" toward star "+(o.stars+1):"Another copy";
+        return o!=null&&need>0?UiText.t("recruitPages.outcome.copy","Copy {copies} of {need} toward star {star}","copies",o.copies,"need",need,"star",o.stars+1):UiText.t("recruitPages.outcome.anotherCopy","Another copy");
     }
     /** The stars of a roll card at elapsed ms of a fill that takes CampaignClient.ROLL_FILL_MS in all: the whole stars filled, the star growing (-1 none) and how far it has grown (0 to 1). */
     record Fill(int filled,int growing,float part){}
@@ -152,16 +155,16 @@ final class RecruitPages {
         DarkUi.model(g,t,px+pw/2,py+ph-10,40); // at z 350: over the card's face, under its words
         g.getMatrices().translate(0,0,100);
         int tx=px+pw+16,room=cx+cw-14-tx;
-        String label=r.duplicate()?"DUPLICATE":"NEW RECRUIT";DarkUi.title(g,label,tx,cy+18,DarkUi.GOLD);
+        String label=r.duplicate()?UiText.t("recruitPages.roll.duplicate","DUPLICATE"):UiText.t("recruitPages.roll.newRecruit","NEW RECRUIT");DarkUi.title(g,label,tx,cy+18,DarkUi.GOLD);
         g.drawText(f,f.trimToWidth(t.name(),room),tx,cy+42,DarkUi.PAPER,false);
-        g.drawText(f,f.trimToWidth(CampScreen.cap(t.rarity())+" / "+RosterMath.houseName(t.house()),room),tx,cy+54,CampScreen.rarityColour(t.rarity()),false);
+        g.drawText(f,f.trimToWidth(UiText.t("recruitPages.roll.rarityHouse","{rarity} / {house}","rarity",CampScreen.cap(t.rarity()),"house",RosterMath.houseName(t.house())),room),tx,cy+54,CampScreen.rarityColour(t.rarity()),false);
         long at=CampaignClient.rollElapsed();int from=r.starsBefore(),to=Math.max(from,r.starsAfter());
         var fill=fill(from,to,at);int filled=fill.filled(),growing=fill.growing();float part=fill.part();
         pips(g,tx,cy+72,16,6,filled,growing,part);
         String what=outcome(r,CampaignClient.profile);int colour=r.shards()==0&&r.duplicate()&&to<=from?DarkUi.PAPER:DarkUi.GOLD;
         g.drawText(f,f.trimToWidth(what,room),tx,cy+100,colour,false);seenRoll=new SeenRoll(t.id(),label,from,to,filled,growing,part,what);
-        g.drawText(f,f.trimToWidth(r.duplicate()?"Each star adds to its health and damage.":"Place it in your banner in the war council.",room),tx,cy+116,DarkUi.MUTED,false);
-        g.drawText(f,f.trimToWidth("Click anywhere to continue",room),tx,cy+ch-22,DarkUi.MUTED,false);
+        g.drawText(f,f.trimToWidth(r.duplicate()?UiText.t("recruitPages.roll.duplicateNote","Each star adds to its health and damage."):UiText.t("recruitPages.roll.newNote","Place it in your banner in the war council."),room),tx,cy+116,DarkUi.MUTED,false);
+        g.drawText(f,f.trimToWidth(UiText.t("recruitPages.roll.continue","Click anywhere to continue"),room),tx,cy+ch-22,DarkUi.MUTED,false);
         g.getMatrices().pop();
     }
 
@@ -182,9 +185,12 @@ final class RecruitPages {
     static String masteryReward(Spec.MasteryRow m){
         List<String> out=new ArrayList<>();
         for(String part:m.reward().split(";")){String[] kv=part.split(":",2);if(kv.length<2)continue;
-            out.add(switch(kv[0]){case "title"->kv[1]+" title";case "skin"->kv[1].equals("proven")?"Mastery trim":CampScreen.cap(kv[1])+" look";case "frame"->CampScreen.cap(kv[1])+" frame";default->CampScreen.cap(kv[1]);});}
+            out.add(switch(kv[0]){case "title"->UiText.t("recruitPages.mastery.title","{name} title","name",kv[1]);case "skin"->kv[1].equals("proven")?UiText.t("recruitPages.mastery.trim","Mastery trim"):UiText.t("recruitPages.mastery.look","{name} look","name",CampScreen.cap(kv[1]));case "frame"->UiText.t("recruitPages.mastery.frame","{name} frame","name",CampScreen.cap(kv[1]));default->CampScreen.cap(kv[1]);});}
         return String.join(", ",out);
     }
+    /** The Mastery row's kill and fight counts ("60/150 kills", "3/10 survived"); the page also measures them at their widest. */
+    static String killsText(int done,int want){return UiText.t("recruitPages.troop.masteryKills","{done}/{want} kills","done",done,"want",want);}
+    static String survivedText(int done,int want){return UiText.t("recruitPages.troop.masterySurvived","{done}/{want} survived","done",done,"want",want);}
     /** A thin progress bar: its track, its fill to have of want, brass when full. */
     static void bar(DrawContext g,int x,int y,int w,int have,int want){
         g.fill(x,y,x+w,y+4,0xff29383c);int fill=want<=0?w:(int)Math.min(w,(long)w*have/want);g.fill(x,y,x+fill,y+4,have>=want?DarkUi.GOLD:0xff8a9a9c);
@@ -207,32 +213,32 @@ final class RecruitPages {
         g.getMatrices().push();g.getMatrices().translate(0,0,150);
         if(o==null)g.fill(x+1,y+1,x+LEFT-1,y+127,0x88111119);
         var name=wrap(f,t.name(),LEFT,2);int ny=y+138;for(var l:name){g.drawText(f,l,x,ny,DarkUi.GOLD,false);ny+=10;}
-        g.drawText(f,f.trimToWidth(CampScreen.cap(t.rarity())+" / "+Morale.label(t.group()),LEFT),x,ny+2,CampScreen.rarityColour(t.rarity()),false);
+        g.drawText(f,f.trimToWidth(UiText.t("recruitPages.troop.rarityGroup","{rarity} / {group}","rarity",CampScreen.cap(t.rarity()),"group",Morale.label(t.group())),LEFT),x,ny+2,CampScreen.rarityColour(t.rarity()),false);
         int sy=ny+18;
         if(o!=null){pips(g,x,sy,10,4,o.stars,-1,0);
             var r=RosterMath.rarityRow(t.rarity());int need=nextStarCopies(o,r);boolean copies=t.rarity().equals("common")||t.rarity().equals("rare");
-            String next=o.stars>=RosterMath.maxStars()?"Full stars":copies?(need>0?o.copies+" of "+need+" copies to star "+(o.stars+1):o.copies+" copies"):"Star "+(o.stars+1)+": "+(r==null?0:o.stars<=1?r.shardStar2():r.shardStar3())+" shards";
+            String next=o.stars>=RosterMath.maxStars()?UiText.t("recruitPages.troop.fullStars","Full stars"):copies?(need>0?UiText.t("recruitPages.troop.copiesToStar","{copies} of {need} copies to star {star}","copies",o.copies,"need",need,"star",o.stars+1):UiText.t("recruitPages.troop.copies","{copies} copies","copies",o.copies)):UiText.t("recruitPages.troop.starShards","Star {star}: {shards} shards","star",o.stars+1,"shards",r==null?0:o.stars<=1?r.shardStar2():r.shardStar3());
             g.drawText(f,f.trimToWidth(next,LEFT),x,sy+16,DarkUi.MUTED,false);}
-        else g.drawText(f,f.trimToWidth("Not in your collection",LEFT),x,sy,DarkUi.MUTED,false);
+        else g.drawText(f,f.trimToWidth(UiText.t("recruitPages.troop.notOwned","Not in your collection"),LEFT),x,sy,DarkUi.MUTED,false);
         // the right column
         int rx=x+LEFT+16,rw=w-LEFT-16,ry=y;
-        head(g,f,"RANK",rx,ry,rw);ry+=13;var names=levelNames(t);boolean line=!names.get(0).equals(names.get(2));
+        head(g,f,UiText.t("recruitPages.troop.headRank","RANK"),rx,ry,rw);ry+=13;var names=levelNames(t);boolean line=!names.get(0).equals(names.get(2));
         if(line)for(int i=0;i<3;i++){int cx=rx+i*(rw/3);String n=MatchStats.roman(i+1);g.drawText(f,n,cx,ry,DarkUi.GOLD,false);g.drawText(f,f.trimToWidth(names.get(i),rw/3-f.getWidth(n)-10),cx+f.getWidth(n)+4,ry,DarkUi.PAPER,false);}
-        else{g.drawText(f,"I  II  III",rx,ry,DarkUi.GOLD,false);g.drawText(f,f.trimToWidth(names.get(0)+" at every level",rw-60),rx+f.getWidth("I  II  III")+6,ry,DarkUi.PAPER,false);}
-        ry+=18;head(g,f,"ABILITY",rx,ry,rw);ry+=13;var lines=abilityLines(t);
+        else{g.drawText(f,"I  II  III",rx,ry,DarkUi.GOLD,false);g.drawText(f,f.trimToWidth(UiText.t("recruitPages.troop.allLevels","{name} at every level","name",names.get(0)),rw-60),rx+f.getWidth("I  II  III")+6,ry,DarkUi.PAPER,false);}
+        ry+=18;head(g,f,UiText.t("recruitPages.troop.headAbility","ABILITY"),rx,ry,rw);ry+=13;var lines=abilityLines(t);
         for(int i=0;i<3;i++){String n=MatchStats.roman(i+1);g.drawText(f,n,rx,ry,DarkUi.GOLD,false);
-            var wrapped=wrap(f,lines.get(i).isEmpty()?"No change at this Rank":lines.get(i),rw-20,2);int ly=ry;for(var l:wrapped){g.drawText(f,l,rx+20,ly,i==0?DarkUi.PAPER:0xffd9d3c7,false);ly+=10;}ry=Math.max(ry+12,ly+2);}
-        ry+=4;head(g,f,"MASTERY",rx,ry,rw);ry+=13;int level=o==null?0:o.mastery,bars=0;
+            var wrapped=wrap(f,lines.get(i).isEmpty()?UiText.t("recruitPages.troop.noChange","No change at this Rank"):lines.get(i),rw-20,2);int ly=ry;for(var l:wrapped){g.drawText(f,l,rx+20,ly,i==0?DarkUi.PAPER:0xffd9d3c7,false);ly+=10;}ry=Math.max(ry+12,ly+2);}
+        ry+=4;head(g,f,UiText.t("recruitPages.troop.headMastery","MASTERY"),rx,ry,rw);ry+=13;int level=o==null?0:o.mastery,bars=0;
         int col=0;for(var m:Spec.MASTERY)col=Math.max(col,f.getWidth(masteryReward(m)));col+=12;
-        int kw=f.getWidth("400/400 kills"),bw=f.getWidth("60/60 survived"),room=Math.max(48,rw-20-col-kw-bw-6-6-10),killBar=room*56/96,fightBar=room-killBar;List<String> counts=new ArrayList<>();
+        int kw=f.getWidth(killsText(400,400)),bw=f.getWidth(survivedText(60,60)),room=Math.max(48,rw-20-col-kw-bw-6-6-10),killBar=room*56/96,fightBar=room-killBar;List<String> counts=new ArrayList<>();
         for(var m:Spec.MASTERY){boolean reached=level>=m.level();String n=MatchStats.roman(m.level());
             g.drawText(f,n,rx,ry,reached?DarkUi.GOLD:DarkUi.MUTED,false);g.drawText(f,masteryReward(m),rx+20,ry,reached?DarkUi.PAPER:DarkUi.MUTED,false);
             int kills=o==null?0:o.kills,fought=o==null?0:o.survived;int bx=rx+20+col;
-            bar(g,bx,ry+3,killBar,kills,m.kills());bars++;g.drawText(f,Math.min(kills,m.kills())+"/"+m.kills()+" kills",bx+killBar+6,ry,DarkUi.MUTED,false);
-            int bx2=bx+killBar+6+kw+10;bar(g,bx2,ry+3,fightBar,fought,m.matches());bars++;String count=Math.min(fought,m.matches())+"/"+m.matches()+" survived";g.drawText(f,count,bx2+fightBar+6,ry,DarkUi.MUTED,false);counts.add(count);
+            bar(g,bx,ry+3,killBar,kills,m.kills());bars++;g.drawText(f,killsText(Math.min(kills,m.kills()),m.kills()),bx+killBar+6,ry,DarkUi.MUTED,false);
+            int bx2=bx+killBar+6+kw+10;bar(g,bx2,ry+3,fightBar,fought,m.matches());bars++;String count=survivedText(Math.min(fought,m.matches()),m.matches());g.drawText(f,count,bx2+fightBar+6,ry,DarkUi.MUTED,false);counts.add(count);
             ry+=13;}
-        ry+=5;head(g,f,"MATCHUPS",rx,ry,rw);ry+=13;var notes=ArmyCards.notes(t);
-        if(notes!=null){for(String[] kv:new String[][]{{"Beats",notes.beats()},{"Beaten by",notes.beatenBy()}}){int lw=f.getWidth("Beaten by")+8;g.drawText(f,kv[0],rx,ry,DarkUi.GOLD,false);
+        ry+=5;head(g,f,UiText.t("recruitPages.troop.headMatchups","MATCHUPS"),rx,ry,rw);ry+=13;var notes=ArmyCards.notes(t);
+        if(notes!=null){String beatsWord=UiText.t("recruitPages.troop.beats","Beats"),beatenWord=UiText.t("recruitPages.troop.beatenBy","Beaten by");for(String[] kv:new String[][]{{beatsWord,notes.beats()},{beatenWord,notes.beatenBy()}}){int lw=f.getWidth(beatenWord)+8;g.drawText(f,kv[0],rx,ry,DarkUi.GOLD,false);
             var wrapped=wrap(f,kv[1],rw-lw,2);for(var l:wrapped){g.drawText(f,l,rx+lw,ry,DarkUi.PAPER,false);ry+=10;}ry+=2;}}
         ry+=3;var glyphs=ArmyCards.counterLines(g,f,t,rx,ry,rw);
         g.getMatrices().pop();
@@ -243,7 +249,7 @@ final class RecruitPages {
     /** A House chip: the House's glyph on a small tile, the chosen one edged and underlined in brass; the tooltip names the House. */
     static final class HouseChip extends ButtonWidget {
         final String house;final Supplier<String> chosen;
-        HouseChip(String house,int x,int y,Supplier<String> chosen,Consumer<String> pick){super(x,y,CHIP,CHIP,Text.literal(RosterMath.houseName(house)),b->pick.accept(house),DEFAULT_NARRATION_SUPPLIER);this.house=house;this.chosen=chosen;setTooltip(Tooltip.of(Text.literal("Shards from claims go to the "+RosterMath.houseName(house))));}
+        HouseChip(String house,int x,int y,Supplier<String> chosen,Consumer<String> pick){super(x,y,CHIP,CHIP,Text.literal(RosterMath.houseName(house)),b->pick.accept(house),DEFAULT_NARRATION_SUPPLIER);this.house=house;this.chosen=chosen;setTooltip(Tooltip.of(Text.literal(UiText.t("recruitPages.houseChip.tip","Shards from claims go to the {house}","house",RosterMath.houseName(house)))));}
         boolean selected(){return house.equals(chosen.get());}
         @Override public void renderWidget(DrawContext g,int mx,int my,float delta){
             int x=getX(),y=getY();boolean on=selected(),focus=isHovered()||isFocused();
@@ -260,16 +266,16 @@ final class RecruitPages {
         for(int i=0;i<n;i++)out.add(new HouseChip(Spec.HOUSES[i].id(),x+i*(CHIP+CHIP_GAP),y,chosen,pick));return out;
     }
     /** The picker's caption, drawn left of the chips: "Shards to <House>". Returns the text. */
-    static String chipCaption(String house){return "Shards to "+RosterMath.houseName(house);}
+    static String chipCaption(String house){return UiText.t("recruitPages.chipCaption","Shards to {house}","house",RosterMath.houseName(house));}
     /** Draws the caption right-aligned before the chips. */
     static void caption(DrawContext g,TextRenderer f,String house,int right,int y){
         int n=Spec.HOUSES.length,x=right-n*CHIP-(n-1)*CHIP_GAP-10;String s=chipCaption(house);g.drawText(f,s,x-f.getWidth(s),y+(CHIP-8)/2,DarkUi.PAPER,false);
     }
     /** The shards a contract line adds to its rewards: the daily that completes all three and the weekly pay shards to the chosen House ("" for the others). */
     static String contractShards(Progression.State s,int slot){
-        if(slot<0)return " + "+Progression.WEEKLY_SHARDS+" shards";
+        if(slot<0)return " "+UiText.t("recruitPages.contractShards.weekly","+ {shards} shards","shards",Progression.WEEKLY_SHARDS);
         boolean last=true;for(int i=0;i<3;i++)if(i!=slot&&!s.claims.contains("daily:"+i))last=false;
-        return last?" + "+Progression.DAILY_SHARDS+" shards":"";
+        return last?" "+UiText.t("recruitPages.contractShards.daily","+ {shards} shards","shards",Progression.DAILY_SHARDS):"";
     }
     /** A daily or weekly claim with the chosen House (Progression.claim reads it only where shards are paid). */
     static String contractClaim(String key,String house){return "progress:"+key+":"+house;}

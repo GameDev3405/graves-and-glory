@@ -30,7 +30,41 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     static final int NEUTRAL = 0xffe4e0d4, LABEL = 0xfff6f0e2, SELECTED = 0xfffff0aa, PLAIN = 0xff2a2620;
     /** Point disc radius (the ink rim is one more) and the half size of a troop icon (13 px square). */
     static final int DISC = 8, ICON = 6;
+    /** The plan jobs in the Job order (the count is the logic; the words are jobWord's, through the UI editor's gate). */
     static final String[] JOBS = {"Attack", "Defend", "Hold", "Follow"};
+    static String jobWord(int job) {
+        return switch (job) {
+            case 0 -> UiText.t("map.job.attack", "Attack");
+            case 1 -> UiText.t("map.job.defend", "Defend");
+            case 2 -> UiText.t("map.job.hold", "Hold");
+            default -> UiText.t("map.job.follow", "Follow");
+        };
+    }
+    /** The words of a popup row, by its row key (the key is what a click acts on; the words are what the row shows). */
+    static String rowText(String row) {
+        return switch (row) {
+            case "Attack" -> UiText.t("map.popup.attack", "Attack");
+            case "Defend" -> UiText.t("map.popup.defend", "Defend");
+            case "Hold" -> UiText.t("map.popup.hold", "Hold");
+            case "Clear" -> UiText.t("map.popup.clear", "Clear");
+            case "Ping here" -> UiText.t("map.popup.pingHere", "Ping here");
+            case "Defend here" -> UiText.t("map.popup.defendHere", "Defend here");
+            case "Hold here" -> UiText.t("map.popup.holdHere", "Hold here");
+            case "Follow me" -> UiText.t("map.popup.followMe", "Follow me");
+            default -> row;
+        };
+    }
+    /** The glyph key's word for row i (KEY_WORDS order). */
+    static String keyWord(int i) {
+        return switch (i) {
+            case 0 -> UiText.t("map.key.you", "You");
+            case 1 -> UiText.t("map.key.yours", "Yours");
+            case 2 -> UiText.t("map.key.ally", "Ally");
+            case 3 -> UiText.t("map.key.enemy", "Enemy");
+            case 4 -> UiText.t("map.key.fight", "Fight");
+            default -> UiText.t("map.key.plan", "Plan");
+        };
+    }
 
     /** The screen that opened the map; M returns there (the game when the map key opened it). */
     final Screen parent;
@@ -88,14 +122,14 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     // ---------------------------------------------------------------- layout
 
     /** The map's controls as key chips {key, word}, the keys named by the player's own bindings (a mouse button as LMB, RMB or MMB). */
-    public static String[][] chips() { return new String[][] {{GravesAndGloryClient.hint("hit"), "Select/plan"}, {GravesAndGloryClient.hint("use"), "Move"}, {"Wheel", "Zoom"}, {"Drag", "Pan"}}; }
+    public static String[][] chips() { return new String[][] {{GravesAndGloryClient.hint("hit"), UiText.t("map.chip.select", "Select/plan")}, {GravesAndGloryClient.hint("use"), UiText.t("map.chip.move", "Move")}, {UiText.t("map.chip.wheel", "Wheel"), UiText.t("map.chip.zoom", "Zoom")}, {UiText.t("map.chip.drag", "Drag"), UiText.t("map.chip.pan", "Pan")}}; }
     /** The controls row as text, as the bottom bar draws it: "[LMB] Select/plan  [RMB] Move  [Wheel] Zoom  [Drag] Pan". */
     public static String legend() {
         StringBuilder b = new StringBuilder();
         for (var c : chips()) b.append(b.length() == 0 ? "" : "  ").append('[').append(c[0]).append("] ").append(c[1]);
         return b.toString();
     }
-    /** The glyph key's rows, top to bottom, each beside the map's own icon at map size; and each row's height. */
+    /** The glyph key's rows, top to bottom, each beside the map's own icon at map size (the row count and the default words; the words drawn are keyWord's); and each row's height. */
     static final String[] KEY_WORDS = {"You", "Yours", "Ally", "Enemy", "Fight", "Plan"};
     static final int[] KEY_ROWS = {14, 16, 16, 11, 11, 18};
     static final int KEY_HEAD = 12, CHIP_H = 11, CHIP_PAD = 3, CHIP_GAP = 4, CHIP_SEP = 11, FIT_SEP = 11;
@@ -114,7 +148,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         // the bottom bar's buttons in one row: the pings, a brass rule, then Fit, centred
         List<String> labels = new ArrayList<>();
         for (var p : Spec.PINGS) labels.add(p.label());
-        labels.add("Fit");
+        labels.add(UiText.t("map.button.fit", "Fit"));
         int gap = 4, total = -gap + FIT_SEP - gap;
         for (String l : labels) total += textRenderer.getWidth(l) + 12 + gap;
         int x = Math.max(4, (width - total) / 2), y = height - bottom + 3;
@@ -259,7 +293,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     /** Sizes the popup to its words and sets it beside the anchor, inside the map area. */
     Popup place(Popup p) {
         int w = textRenderer.getWidth(p.title()) + 12;
-        for (String r : p.rows()) w = Math.max(w, textRenderer.getWidth(r) + 16);
+        for (String r : p.rows()) w = Math.max(w, textRenderer.getWidth(rowText(r)) + 16);
         int h = ROW + 3 + p.rows().size() * ROW + 2;
         // above-right, above-left, below-right, below-left of the anchor: the first spot that covers no label or icon drawn last frame
         int[][] spots = {{p.x() + 14, p.y() + 8 - h}, {p.x() - 14 - w, p.y() + 8 - h}, {p.x() + 14, p.y() - 8}, {p.x() - 14 - w, p.y() - 8}};
@@ -336,12 +370,12 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     /** The troop type's name as the groups table has it ("ranged" is Archers), else the id capitalised. */
     static String typeName(String id) { for (var r : Spec.GROUPS) if (r.id().equals(id)) return r.label(); return groupName(id); }
 
-    String pointName(int i) { return i >= 0 && i < Spec.POINTS.length ? Spec.POINTS[i].name() : "a point"; }
+    String pointName(int i) { return i >= 0 && i < Spec.POINTS.length ? Spec.POINTS[i].name() : UiText.t("map.job.aPoint", "a point"); }
 
     String jobText(int job, int point, boolean direct) {
-        if (job < 0 || job >= JOBS.length) return "Its own plan";
-        String what = JOBS[job] + (job == 3 ? "ing you" : point >= 0 ? " " + pointName(point) : " a place");
-        return what + (direct ? " (order)" : " (team plan)");
+        if (job < 0 || job >= JOBS.length) return UiText.t("map.job.ownPlan", "Its own plan");
+        String what = job == 3 ? UiText.t("map.job.followingYou", "Following you") : point >= 0 ? UiText.t("map.job.atPoint", "{job} {point}", "job", jobWord(job), "point", pointName(point)) : UiText.t("map.job.atPlace", "{job} a place", "job", jobWord(job));
+        return direct ? UiText.t("map.job.order", "{plan} (order)", "plan", what) : UiText.t("map.job.teamPlan", "{plan} (team plan)", "plan", what);
     }
 
     /** Where an ally group is heading: the plan's place, the one it follows where known, else the group's own goal; null when unknown. */
@@ -382,8 +416,8 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         drawTopBar(g);
         drawBottomBar(g);
         super.render(g, mx, my, delta); // the bar buttons
-        if (attackArmy != null) banner(g, "Click a point or a place for " + attackName + " to attack / Esc cancels");
-        else if (!pingMode.isEmpty()) banner(g, "Click the map to ping / Esc cancels");
+        if (attackArmy != null) banner(g, UiText.t("map.banner.attack", "Click a point or a place for {army} to attack / Esc cancels", "army", attackName));
+        else if (!pingMode.isEmpty()) banner(g, UiText.t("map.banner.ping", "Click the map to ping / Esc cancels"));
         if (popup != null) drawPopup(g, mx, my);
         else if (inMap(mx, my) && !inKey(mx, my) && pressButton < 0) tooltip(g, mx, my);
     }
@@ -496,11 +530,11 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             if (plan != null) pennant(g, x + DISC - 3, y - DISC + 3, plan.job(), ours());
             List<String> tip = new ArrayList<>();
             tip.add(p.name() + " (" + id + ")");
-            tip.add(owner < 0 ? "Neutral" : owner == mine ? "Held by your side" : "Held by the enemy");
-            if (contested) tip.add("Contested");
-            else if (progress > 0 && p.captureSeconds() > 0) tip.add((ch == mine ? "Your side is taking it: " : "The enemy is taking it: ") + Math.min(100, 100 * progress / p.captureSeconds()) + "%");
-            if (plan != null) tip.add("Plan: " + JOBS[Math.max(0, Math.min(3, plan.job()))] + ", set by " + plan.setter());
-            else if (CampaignClient.showsPoints()) tip.add("No plan: click to plan");
+            tip.add(owner < 0 ? UiText.t("map.point.neutral", "Neutral") : owner == mine ? UiText.t("map.point.heldYours", "Held by your side") : UiText.t("map.point.heldEnemy", "Held by the enemy"));
+            if (contested) tip.add(UiText.t("map.point.contested", "Contested"));
+            else if (progress > 0 && p.captureSeconds() > 0) { int pct = Math.min(100, 100 * progress / p.captureSeconds()); tip.add(ch == mine ? UiText.t("map.point.takingYours", "Your side is taking it: {percent}%", "percent", pct) : UiText.t("map.point.takingEnemy", "The enemy is taking it: {percent}%", "percent", pct)); }
+            if (plan != null) tip.add(UiText.t("map.point.plan", "Plan: {job}, set by {setter}", "job", jobWord(Math.max(0, Math.min(3, plan.job()))), "setter", plan.setter()));
+            else if (CampaignClient.showsPoints()) tip.add(UiText.t("map.point.noPlan", "No plan: click to plan"));
             hits.add(new Hit("point", x - DISC - 1, y - DISC - 1, x + DISC + 2, y + DISC + 2, i, null, null, tip));
         }
     }
@@ -512,7 +546,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             boolean fresh = s.age() < 20;
             int alpha = fresh ? 255 : Math.max(60, 220 - 160 * s.age() / memory);
             glyph(g, fresh ? TRI : TRI_OPEN, x - 3, y - 4, fresh ? DarkUi.MAP_ENEMY : (alpha << 24) | (DarkUi.MAP_ENEMY & 0xffffff), fresh ? INK : 0);
-            hits.add(new Hit("enemy", x - 4, y - 4, x + 5, y + 4, -1, null, null, List.of("Enemy", fresh ? "Seen now" : "Seen " + Math.max(1, s.age() / 20) + " s ago")));
+            hits.add(new Hit("enemy", x - 4, y - 4, x + 5, y + 4, -1, null, null, List.of(UiText.t("map.sighting.enemy", "Enemy"), fresh ? UiText.t("map.sighting.now", "Seen now") : UiText.t("map.sighting.ago", "Seen {seconds} s ago", "seconds", Math.max(1, s.age() / 20)))));
         }
     }
 
@@ -523,13 +557,13 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
                 int[] c = nudge(sx(m.x()), sy(m.z()), 0);
                 allyIcon(g, c[0], c[1], DOT, col);
                 if (m.fighting()) glyph(g, SWORDS, c[0] + ICON + 2, c[1] - ICON - 5, DarkUi.WARN, INK);
-                hits.add(new Hit("ally", c[0] - ICON, c[1] - ICON, c[0] + ICON + 1, c[1] + ICON + 1, -1, null, null, List.of("Allied troops")));
+                hits.add(new Hit("ally", c[0] - ICON, c[1] - ICON, c[0] + ICON + 1, c[1] + ICON + 1, -1, null, null, List.of(UiText.t("map.ally.troops", "Allied troops"))));
             }
             return;
         }
         for (var a : allies()) {
             boolean named = a.name().contains(" bot "); // "normal bot 2" says bot already (spec call 12)
-            String job = a.retreating() ? "Falling back" : a.aimed() ? "Follows the mode's own plan" : a.bot() ? jobText(a.job(), a.point(), a.direct()) : null;
+            String job = a.retreating() ? UiText.t("map.ally.fallingBack", "Falling back") : a.aimed() ? UiText.t("map.ally.modePlan", "Follows the mode's own plan") : a.bot() ? jobText(a.job(), a.point(), a.direct()) : null;
             for (var gr : a.groups()) {
                 if (gr.count() <= 0) continue;
                 int[] c = nudge(sx(gr.x()), sy(gr.z()), textRenderer.getWidth(String.valueOf(gr.count())));
@@ -538,12 +572,12 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
                 countLabel(g, x, y, gr.count());
                 if (gr.fighting()) glyph(g, SWORDS, x + ICON + 2, y - ICON - 5, DarkUi.WARN, INK);
                 List<String> tip = new ArrayList<>();
-                tip.add(a.name() + (a.bot() ? named ? "" : " (bot)" : " (player)"));
-                tip.add(typeName(gr.group()) + ": " + gr.count() + " troops (army " + count(a) + ")");
-                tip.add("Health " + Math.round(100 * Math.max(0, Math.min(1, gr.health()))) + "%");
+                tip.add(a.bot() ? named ? a.name() : UiText.t("map.ally.nameBot", "{name} (bot)", "name", a.name()) : UiText.t("map.ally.namePlayer", "{name} (player)", "name", a.name()));
+                tip.add(UiText.t("map.ally.troopCount", "{type}: {count} troops (army {army})", "type", typeName(gr.group()), "count", gr.count(), "army", count(a)));
+                tip.add(UiText.t("map.ally.health", "Health {percent}%", "percent", Math.round(100 * Math.max(0, Math.min(1, gr.health())))));
                 if (job != null) tip.add(job);
-                if (gr.fighting()) tip.add("In combat");
-                if (takesOrder(a)) tip.add("Click to give an order");
+                if (gr.fighting()) tip.add(UiText.t("map.ally.inCombat", "In combat"));
+                if (takesOrder(a)) tip.add(UiText.t("map.ally.clickOrder", "Click to give an order"));
                 hits.add(new Hit("ally", x - ICON, y - ICON, x + ICON + 1, y + ICON + 1, -1, a.id(), gr.group(), tip));
             }
         }
@@ -565,10 +599,10 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             }
             if (gr.fighting()) glyph(g, SWORDS, x + ICON + 2, y - ICON - 5, DarkUi.WARN, INK);
             List<String> tip = new ArrayList<>();
-            tip.add(typeName(gr.id()) + ": " + gr.count() + " troops");
-            tip.add("Health " + Math.round(100 * hp) + "%");
-            tip.add("Order: " + gr.order());
-            if (gr.fighting()) tip.add("In combat");
+            tip.add(UiText.t("map.own.troopCount", "{type}: {count} troops", "type", typeName(gr.id()), "count", gr.count()));
+            tip.add(UiText.t("map.own.health", "Health {percent}%", "percent", Math.round(100 * hp)));
+            tip.add(UiText.t("map.own.order", "Order: {order}", "order", gr.order()));
+            if (gr.fighting()) tip.add(UiText.t("map.own.inCombat", "In combat"));
             hits.add(new Hit("own", x - ICON, y - ICON, x + ICON + 1, y + ICON + 1, -1, null, gr.id(), tip));
         }
     }
@@ -638,7 +672,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             ring(g, x, y, 6, DarkUi.PING);
             ring(g, x, y, 5, INK);
             outlined(g, p.kind().toUpperCase(), x + 10, y - 3, DarkUi.PING);
-            hits.add(new Hit("ping", x - 6, y - 6, x + 7, y + 7, -1, null, null, List.of("Ping: " + p.kind())));
+            hits.add(new Hit("ping", x - 6, y - 6, x + 7, y + 7, -1, null, null, List.of(UiText.t("map.ping.tip", "Ping: {kind}", "kind", p.kind()))));
         }
     }
 
@@ -649,7 +683,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         int x = sx(p.getX()), y = sy(p.getZ());
         triangle(g, x, y, dx, dz, 7.5, 4.5, INK);
         triangle(g, x, y, dx, dz, 5.5, 3, DarkUi.MAP_YOU);
-        hits.add(new Hit("you", x - 4, y - 4, x + 5, y + 5, -1, null, null, List.of("You")));
+        hits.add(new Hit("you", x - 4, y - 4, x + 5, y + 5, -1, null, null, List.of(UiText.t("map.you.tip", "You"))));
     }
 
     void drawTopBar(DrawContext g) {
@@ -657,12 +691,13 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         g.fill(0, TOP - 2, width, TOP - 1, DarkUi.BRASS);
         g.fill(0, TOP - 1, width, TOP, BRASS_LO);
         String mode = CampaignClient.text(CampaignClient.battleMode, "name");
-        if (mode.isEmpty()) mode = "Battle";
+        if (mode.isEmpty()) mode = UiText.t("map.top.modeDefault", "Battle");
         g.drawText(textRenderer, mode, 6, 6, DarkUi.BRASS_HI, true);
         // the ledger about the clock: for each side a plain label (Your team / Enemy), its mark, score and held pips
         boolean pips = CampaignClient.showsPoints();
         int mine = GravesAndGloryClient.team;
-        String la = mine == 0 ? "Your team" : mine == 1 ? "Enemy" : "", lb = mine == 1 ? "Your team" : mine == 0 ? "Enemy" : "";
+        String yours = UiText.t("map.top.yourTeam", "Your team"), enemy = UiText.t("map.top.enemy", "Enemy");
+        String la = mine == 0 ? yours : mine == 1 ? enemy : "", lb = mine == 1 ? yours : mine == 0 ? enemy : "";
         drawnSides = la + "|" + lb;
         String a = ModeMath.ledgerText(CampaignClient.ledgerFormat(0), GravesAndGloryClient.dawn, CampaignClient.ledgerMax(0));
         String b = ModeMath.ledgerText(CampaignClient.ledgerFormat(1), GravesAndGloryClient.dusk, CampaignClient.ledgerMax(1));
@@ -714,17 +749,18 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     /** The glyph key: a wood panel with a brass edge in the map area's bottom-left corner, each row the map's own icon at map size and a
      *  word. Its header ("Key", with - or +) folds it away and back. */
     void drawKey(DrawContext g) {
+        String keyHead = UiText.t("map.key.title", "Key");
         int tw = 0;
-        for (int i = 0; i < KEY_WORDS.length; i++) tw = Math.max(tw, textRenderer.getWidth(KEY_WORDS[i]) + (i == 1 ? 10 : 0)); // 10: your mark after Yours
+        for (int i = 0; i < KEY_WORDS.length; i++) tw = Math.max(tw, textRenderer.getWidth(keyWord(i)) + (i == 1 ? 10 : 0)); // 10: your mark after Yours
         int rows = 0;
         for (int h : KEY_ROWS) rows += h;
-        int w = keyOpen ? 4 + 15 + 4 + tw + 5 : textRenderer.getWidth("Key") + 20, h = KEY_HEAD + (keyOpen ? rows + 3 : 0);
+        int w = keyOpen ? 4 + 15 + 4 + tw + 5 : textRenderer.getWidth(keyHead) + 20, h = KEY_HEAD + (keyOpen ? rows + 3 : 0);
         int x = ax + 4, y = ay + ah - 4 - h;
         keyBox = new int[] {x, y, w, h};
         g.fill(x + 2, y + 2, x + w + 2, y + h + 2, 0x66000000);
         wood(g, x, y, w, h);
         g.drawBorder(x, y, w, h, DarkUi.BRASS);
-        g.drawText(textRenderer, "Key", x + 5, y + 2, DarkUi.BRASS_HI, false);
+        g.drawText(textRenderer, keyHead, x + 5, y + 2, DarkUi.BRASS_HI, false);
         String fold = keyOpen ? "-" : "+";
         g.drawText(textRenderer, fold, x + w - 5 - textRenderer.getWidth(fold), y + 2, DarkUi.MUTED, false);
         taken.add(new int[] {x, y, w + 2, h + 2});
@@ -741,8 +777,9 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
                 case 4 -> glyph(g, SWORDS, cx - 3, my - 3, DarkUi.WARN, INK);
                 default -> pennant(g, cx - 8, my + 8, 0, col); // the cloth beside the word, the pole into the panel's foot
             }
-            g.drawText(textRenderer, KEY_WORDS[i], tx, my - 3, DarkUi.IVORY, false);
-            if (i == 1) oursMark(g, tx + textRenderer.getWidth(KEY_WORDS[i]) + 3, my - 3);
+            String word = keyWord(i);
+            g.drawText(textRenderer, word, tx, my - 3, DarkUi.IVORY, false);
+            if (i == 1) oursMark(g, tx + textRenderer.getWidth(word) + 3, my - 3);
             ry += rh;
         }
     }
@@ -767,7 +804,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
             boolean hover = mx >= p.x() && mx < p.x() + p.w() && my >= ry && my < ry + ROW;
             if (hover) g.fill(p.x() + 2, ry, p.x() + p.w() - 2, ry + ROW, 0x55dfbd77);
             if (i == p.active()) g.fill(p.x() + 3, ry + 2, p.x() + 5, ry + ROW - 2, DarkUi.GOLD);
-            g.drawText(textRenderer, p.rows().get(i), p.x() + 9, ry + 2, hover ? DarkUi.BRASS_HI : DarkUi.IVORY, false);
+            g.drawText(textRenderer, rowText(p.rows().get(i)), p.x() + 9, ry + 2, hover ? DarkUi.BRASS_HI : DarkUi.IVORY, false);
         }
     }
 

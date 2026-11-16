@@ -188,7 +188,7 @@ public final class BattleHud {
         var tiers=GravesAndGloryClient.houses;
         if(tiersSeen!=null)for(var h:Spec.HOUSES){
             int was=tiersSeen.getOrDefault(h.id(),0),is=tiers.getOrDefault(h.id(),0);
-            if(was!=is)EventFeed.push("notice",GravesAndGloryClient.team,is==0?RosterMath.houseName(h.id())+" trait lost":RosterMath.houseName(h.id())+" trait "+(is<was?"fell":"rose")+" to tier "+MatchStats.roman(is),now);
+            if(was!=is){String hn=RosterMath.houseName(h.id());EventFeed.push("notice",GravesAndGloryClient.team,is==0?UiText.t("hud.houses.traitLost","{house} trait lost","house",hn):is<was?UiText.t("hud.houses.traitFell","{house} trait fell to tier {tier}","house",hn,"tier",MatchStats.roman(is)):UiText.t("hud.houses.traitRose","{house} trait rose to tier {tier}","house",hn,"tier",MatchStats.roman(is)),now);}
         }
         if(tiersSeen!=null||!tiers.isEmpty())tiersSeen=new HashMap<>(tiers); // the baseline is the first tiers the battle shows, so those are not announced
         for(String id:houseIds()){
@@ -240,7 +240,8 @@ public final class BattleHud {
         if(c.has("stops"))for(var s:c.getAsJsonArray("stops")){int sx=x+(int)Math.round(w*s.getAsDouble());g.fill(sx-1,y-2,sx+1,y+h+2,DarkUi.VELLUM);}
         int mx=x+(int)Math.round(w*prog);int mark=state.equals(ModeMath.CONTESTED)?DarkUi.ALARM_TEXT:state.equals(ModeMath.ROLLBACK)?DarkUi.DUSK_TEXT:DarkUi.BRASS_HI;
         g.fill(mx-2,y-3,mx+3,y+h+3,DarkUi.OAK0);g.fill(mx-1,y-2,mx+2,y+h+2,mark);
-        String next=(c.has("next")?c.get("next").getAsString():"")+" - "+switch(state){case ModeMath.MOVING->"rolling";case ModeMath.CONTESTED->"stopped";case ModeMath.ROLLBACK->"rolling back";default->"waiting";};
+        String stop=c.has("next")?c.get("next").getAsString():"";
+        String next=switch(state){case ModeMath.MOVING->UiText.t("hud.road.rolling","{stop} - rolling","stop",stop);case ModeMath.CONTESTED->UiText.t("hud.road.stopped","{stop} - stopped","stop",stop);case ModeMath.ROLLBACK->UiText.t("hud.road.rollingBack","{stop} - rolling back","stop",stop);default->UiText.t("hud.road.waiting","{stop} - waiting","stop",stop);};
         g.drawText(font,next,centred(font,next,x+w/2),y+h+5,DarkUi.IVORY,true);
         r.put("road",new int[]{x,y,w,h});tx.put("road",next);
     }
@@ -312,9 +313,9 @@ public final class BattleHud {
     static void aimStrip(DrawContext g,TextRenderer font){
         if(!CommandSelection.aiming().equals("hold"))return;
         int w=UiCanvas.hudWidth();
-        String name=formationLabel(CommandMode.formation),wheel="Wheel",hit=GravesAndGloryClient.hint("hit");
+        String name=formationLabel(CommandMode.formation),wheel=UiText.t("hud.aim.wheel","Wheel"),hit=GravesAndGloryClient.hint("hit"),shape=UiText.t("hud.aim.shape","Shape"),confirm=UiText.t("hud.aim.confirm","Confirm");
         int ww=UiMath.chipWidth(font.getWidth(wheel)),hw=UiMath.chipWidth(font.getWidth(hit));
-        int words=Math.max(font.getWidth(DarkUi.heading(name)),ww+2+font.getWidth("Shape")+8+hw+2+font.getWidth("Confirm"));
+        int words=Math.max(font.getWidth(DarkUi.heading(name)),ww+2+font.getWidth(shape)+8+hw+2+font.getWidth(confirm));
         int pad=6,cell=STRIP_CELL,gap=2,cellsW=4*cell+3*gap,sw=pad+cellsW+8+words+pad,sh=pad*2+cell;
         int x=w/2-sw/2,y=STRIP_Y;
         g.fill(x+2,y+2,x+sw-2,y+sh-2,DarkUi.AIM_STRIP_FILL);
@@ -329,9 +330,9 @@ public final class BattleHud {
         g.drawText(font,DarkUi.heading(name),tx,y+pad+1,DarkUi.AIM_GOLD,true);
         int ky=y+pad+cell-12;
         UiTex.three(g,"hud/key-chip",tx,ky,ww);g.drawText(font,wheel,tx+2,ky+2,DarkUi.CHIP_TEXT,false);tx+=ww+2;
-        g.drawText(font,"Shape",tx,ky+2,DarkUi.AIM_CREAM,false);tx+=font.getWidth("Shape")+8;
+        g.drawText(font,shape,tx,ky+2,DarkUi.AIM_CREAM,false);tx+=font.getWidth(shape)+8;
         UiTex.three(g,"hud/key-chip",tx,ky,hw);g.drawText(font,hit,tx+2,ky+2,DarkUi.CHIP_TEXT,false);tx+=hw+2;
-        g.drawText(font,"Confirm",tx,ky+2,DarkUi.AIM_CREAM,false);
+        g.drawText(font,confirm,tx,ky+2,DarkUi.AIM_CREAM,false);
         aimStrip=new int[]{x,y,sw,sh};
     }
     /** The aim strip's top (under the aimed point's name at AIM_NAME_Y) and a shape cell's side, canvas px. */
@@ -376,16 +377,16 @@ public final class BattleHud {
         goldSeen=gold;incomeSeen=income;goldFrameMs=now;
         int x=box[0],y=box[1];boolean narrow=box[2]<UiMath.CARD_W; // the amount alone on a short row: the plate's two ends, no income
         if(narrow){int rest=box[2]+5-54;UiTex.part(g,"hud/chip-plain",x-1,y-1,0,0,54,24);UiTex.part(g,"hud/chip-plain",x+53,y-1,181-rest,0,rest,24);}else UiTex.draw(g,"hud/chip-plain",x,y);
-        int every=Spec.ECONOMY[0].incomeSeconds();String main=gold+" gold",sub="+"+income+" every "+every+" s";
+        int every=Spec.ECONOMY[0].incomeSeconds();String main=UiText.t("hud.gold.amount","{gold} gold","gold",gold),sub=UiText.t("hud.gold.income","+{income} every {every} s","income",income,"every",every);
         g.drawText(font,DarkUi.heading(main),x+10,y+4,DarkUi.INK_TEXT,false);
         // the income in the amount's own font and ink; the short form when the full one would crowd the amount and a payout's "+n" (readable at the small scales)
-        Text subT=DarkUi.heading(sub);if(!narrow&&font.getWidth(DarkUi.heading(main))+font.getWidth(subT)+60>box[2]){sub="+"+income+" / "+every+" s";subT=DarkUi.heading(sub);}
+        Text subT=DarkUi.heading(sub);if(!narrow&&font.getWidth(DarkUi.heading(main))+font.getWidth(subT)+60>box[2]){sub=UiText.t("hud.gold.incomeShort","+{income} / {every} s","income",income,"every",every);subT=DarkUi.heading(sub);}
         if(!narrow)g.drawText(font,subT,x+box[2]-10-font.getWidth(subT),y+4,DarkUi.INK_TEXT,false);
         r.put("gold",box);tx.put("gold",main);if(!narrow)tx.put("gold-income",sub);
         long age=now-gainMs;
         if(gainAmount>0&&age<GAIN_MS){
             int a=Math.round(255*(1-age/(float)GAIN_MS));
-            if(a>=8){String gain="+"+gainAmount;g.drawText(font,gain,x+10+font.getWidth(main)+8,y+5,(a<<24)|(DarkUi.BRASS_HI&0xffffff),true);tx.put("gold-gain",gain);}
+            if(a>=8){String gain=UiText.t("hud.gold.gain","+{amount}","amount",gainAmount);g.drawText(font,gain,x+10+font.getWidth(main)+8,y+5,(a<<24)|(DarkUi.BRASS_HI&0xffffff),true);tx.put("gold-gain",gain);}
         }
     }
 
@@ -404,12 +405,12 @@ public final class BattleHud {
         UiTex.draw(g,"hud/notice-slip",x,y);
         boolean keysOnly=PanelLayout.hidden; // a hidden panel (keyboard-only mode): R opens nothing, so the slip names the arrange key instead
         String[][] ids={aiming?new String[]{"confirm","cancel"}:new String[]{"map",keysOnly?"panel_edit":"menu"},{"rotate_left","rotate_right","hints"}};
-        String[][] words={aiming?new String[]{"Confirm","Cancel"}:new String[]{"Map",keysOnly?"Panel":"Commands"},{null,"Turn","Hints"}};
+        String[][] words={aiming?new String[]{UiText.t("hud.hints.confirm","Confirm"),UiText.t("hud.hints.cancel","Cancel")}:new String[]{UiText.t("hud.hints.map","Map"),keysOnly?UiText.t("hud.hints.panel","Panel"):UiText.t("hud.hints.commands","Commands")},{null,UiText.t("hud.hints.turn","Turn"),UiText.t("hud.hints.hints","Hints")}};
         for(int row=0;row<2;row++){
             List<String> keys=new ArrayList<>(),shorts=new ArrayList<>();for(String id:ids[row]){keys.add(GravesAndGloryClient.hint(id));shorts.add(GravesAndGloryClient.hintShort(id));}
             String[] rowWords=words[row];
             if(row==1&&ChargeCamera.active()){ // the overhead charge camera: the mouse turns the arrow, the facing keys do nothing
-                keys=new ArrayList<>(List.of("Mouse",keys.get(2)));shorts=new ArrayList<>(List.of("Mouse",shorts.get(2)));rowWords=new String[]{"Aim","Hints"};
+                String mouse=UiText.t("hud.hints.mouse","Mouse");keys=new ArrayList<>(List.of(mouse,keys.get(2)));shorts=new ArrayList<>(List.of(mouse,shorts.get(2)));rowWords=new String[]{UiText.t("hud.hints.aim","Aim"),rowWords[2]};
             }
             keys=UiMath.fitKeys(keys,shorts,Arrays.asList(rowWords),HINT_ROW_W,8,font::getWidth);
             List<String> drawn=new ArrayList<>();int kx=x+10,ky=y+(row==0?7:22),end=kx;
@@ -429,7 +430,7 @@ public final class BattleHud {
     /** The full hints layer's second slip, drawn only while the hints key is held and beside the default slip, so that stays as it was:
      *  the five order keys, each an ink chip naming the player's binding before its word, fitted to the paper as the default rows are. */
     static void orderKeysSlip(DrawContext g,TextRenderer font,int x,int y){
-        String[][] ids={{"attack","charge","follow"},{"retreat","formation"}},words={{"Attack","Charge","Follow"},{"Retreat","Formation"}};
+        String[][] ids={{"attack","charge","follow"},{"retreat","formation"}},words={{UiText.t("hud.orderKeys.attack","Attack"),UiText.t("hud.orderKeys.charge","Charge"),UiText.t("hud.orderKeys.follow","Follow")},{UiText.t("hud.orderKeys.retreat","Retreat"),UiText.t("hud.orderKeys.formation","Formation")}};
         UiTex.draw(g,"hud/notice-slip",x,y);
         for(int row=0;row<2;row++){
             List<String> keys=new ArrayList<>(),shorts=new ArrayList<>();for(String id:ids[row]){keys.add(GravesAndGloryClient.hint(id));shorts.add(GravesAndGloryClient.hintShort(id));}
@@ -468,11 +469,12 @@ public final class BattleHud {
         g.drawText(font,DarkUi.heading(groupLabel(id)),x+10,y+7,DarkUi.INK_TEXT,false);
         // The state, right-aligned to x 166: the LAST STAND stamp with its words, or a word (the fight glyph before Fighting).
         String word;
-        if(last){word="LAST STAND";UiTex.draw(g,"hud/stamp-last-card",x+100,y+4);g.drawText(font,word,centred(font,word,x+133),y+8,DarkUi.ROUT_TEXT,false);tx.put("stamp-"+id,"hud/stamp-last-card");}
+        if(last){word=UiText.t("hud.card.lastStand","LAST STAND");UiTex.draw(g,"hud/stamp-last-card",x+100,y+4);g.drawText(font,word,centred(font,word,x+133),y+8,DarkUi.ROUT_TEXT,false);tx.put("stamp-"+id,"hud/stamp-last-card");}
         else{
-            word=down?"Fallen":grp.fighting()?"Fighting":"Steady";Text t=DarkUi.body(word);int wx=x+166-font.getWidth(t);
-            g.drawText(font,t,wx,y+7,word.equals("Steady")?DarkUi.SEPIA:DarkUi.INK_TEXT,false); // Fallen in ink: sepia on the grey plate is 3.5:1
-            if(word.equals("Fighting"))UiTex.draw(g,"hud/g-fight",wx-3-9,y+9);
+            boolean fight=!down&&grp.fighting();
+            word=down?UiText.t("hud.card.fallen","Fallen"):fight?UiText.t("hud.card.fighting","Fighting"):UiText.t("hud.card.steady","Steady");Text t=DarkUi.body(word);int wx=x+166-font.getWidth(t);
+            g.drawText(font,t,wx,y+7,!down&&!fight?DarkUi.SEPIA:DarkUi.INK_TEXT,false); // Fallen in ink: sepia on the grey plate is 3.5:1
+            if(fight)UiTex.draw(g,"hud/g-fight",wx-3-9,y+9);
         }
         // Strength in its channel; during a flash the stretch just lost shows white, from the strength now to the strength before.
         if(down)UiTex.draw(g,"hud/hp-channel-grey",x+10,y+22);else UiTex.draw(g,"hud/hp-channel",x+10,y+22);
@@ -511,10 +513,10 @@ public final class BattleHud {
         String name=UiMath.trim(groupLabel(id),CHIP_NAME_W,v->font.getWidth(DarkUi.heading(v)));
         g.drawText(font,DarkUi.heading(name),x+10,y+4,DarkUi.INK_TEXT,false);
         String word;
-        if(last){word="LAST STAND";UiTex.draw(g,"hud/stamp-last-chip",sx,y+2);g.drawText(font,word,centred(font,word,sx+33),y+4,DarkUi.ROUT_TEXT,false);tx.put("stamp-"+id,"hud/stamp-last-chip");}
-        else if(down){word="Fallen";Text t=DarkUi.body(word);g.drawText(font,t,(int)Math.round(sx+33-font.getWidth(t)/2.0),y+4,DarkUi.INK_TEXT,false);} // ink: 6.4:1 on the grey plate, sepia 3.5:1
+        if(last){word=UiText.t("hud.chip.lastStand","LAST STAND");UiTex.draw(g,"hud/stamp-last-chip",sx,y+2);g.drawText(font,word,centred(font,word,sx+33),y+4,DarkUi.ROUT_TEXT,false);tx.put("stamp-"+id,"hud/stamp-last-chip");}
+        else if(down){word=UiText.t("hud.chip.fallen","Fallen");Text t=DarkUi.body(word);g.drawText(font,t,(int)Math.round(sx+33-font.getWidth(t)/2.0),y+4,DarkUi.INK_TEXT,false);} // ink: 6.4:1 on the grey plate, sepia 3.5:1
         else{
-            word=grp.fighting()?"Fighting":"Steady";int bar=UiMath.chipBar(grp.strength());
+            word=grp.fighting()?UiText.t("hud.chip.fighting","Fighting"):UiText.t("hud.chip.steady","Steady");int bar=UiMath.chipBar(grp.strength());
             UiTex.draw(g,"hud/chip-channel",sx,y+6);
             if(GravesAndGloryClient.team==1)UiTex.bar(g,"hud/hp-full-dusk",sx+1,y+7,bar,false);else UiTex.bar(g,"hud/hp-full-dawn",sx+1,y+7,bar,false);
             if(state.equals("FLASH"))UiTex.bar(g,"hud/hp-lost",sx+1+bar,y+7,UiMath.chipBar(CommandMode.lostFrom(id))-bar,false);
@@ -569,7 +571,7 @@ public final class BattleHud {
     static String formationLabel(String id){for(var row:Spec.FORMATIONS)if(row.id().equals(id))return row.label();return Morale.label(id);}
 
     /** The lesson note's tag, before the copy's first line: LESSON k/4. */
-    static String lessonTag(int step){return "LESSON "+(step+1)+"/4";}
+    static String lessonTag(int step){return UiText.t("hud.lesson.tag","LESSON {step}/4","step",step+1);}
 
     /** The Long March lesson as one short note at the top left (UI Task 8c): under the seals and off the centre band, in the box the
      *  layout gives it, the LESSON k/4 tag in KEY_INK and the copy after it in ink, both in 11 px Lato (the tag a step darker than
@@ -644,9 +646,9 @@ public final class BattleHud {
      *  higher where vanilla's crosshair (at the GUI Scale, above the HUD's scale) would come within 4 px of it (UiMath.respawnY). */
     static void respawn(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,Map<String,String> tx){
         int[] box=at.get("respawn");if(box==null)return;
-        int x=box[0],y=box[1],cx=x+box[2]/2;String line="Respawn in "+GravesAndGloryClient.respawn+" s";Text t=DarkUi.heading(line);
+        int x=box[0],y=box[1],cx=x+box[2]/2;String line=UiText.t("hud.respawn.line","Respawn in {seconds} s","seconds",GravesAndGloryClient.respawn);Text t=DarkUi.heading(line);
         UiTex.draw(g,"hud/respawn-card",x,y);
-        String keep=OrderReply.downCard(); // the block is said before the player tries (army control spec section 5): his troops keep their last orders
+        String keep=OrderReply.downCardLine(); // the block is said before the player tries (army control spec section 5): his troops keep their last orders
         g.drawText(font,t,(int)Math.round(cx-font.getWidth(t)/2.0),y+4,DarkUi.INK_TEXT,false);
         g.drawText(font,keep,(int)Math.round(cx-font.getWidth(keep)/2.0),y+14,DarkUi.SEPIA,false);
         r.put("respawn",box);tx.put("respawn",line);

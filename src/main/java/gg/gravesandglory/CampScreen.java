@@ -126,19 +126,19 @@ final class CampScreen extends ArmyScreen {
         if(page.equals("gear")){scale=1;key=state();if(arsenal==null)arsenal=new WarTableGear(this,gearTab);arsenal.init();return;}
         if(WarTablePages.NAMES.contains(page)){scale=1;key=state();if(pages==null||!pages.page.equals(page))pages=new WarTablePages(this,page);pages.init();return;}
         scale=Math.min(1,Math.min(client.getWindow().getScaledWidth()/760f,client.getWindow().getScaledHeight()/460f));width=(int)(client.getWindow().getScaledWidth()/scale);height=(int)(client.getWindow().getScaledHeight()/scale);key=state();
-        String[] names={"Camp guide","Recruitment","Friends","Contracts","Chapter rewards"};String[] ids={"home","recruit","friends","contracts","chapter"};
+        String[] names={UiText.t("camp.nav.guide","Camp guide"),UiText.t("camp.nav.recruitment","Recruitment"),UiText.t("camp.nav.friends","Friends"),UiText.t("camp.nav.contracts","Contracts"),UiText.t("camp.nav.chapter","Chapter rewards")};String[] ids={"home","recruit","friends","contracts","chapter"};
         for(int i=0;i<ids.length;i++){String id=ids[i];button(names[i],18,94+i*34,150,b->page(id));}
-        button("Army & equipment",18,310,150,b->page("banner"));button("Visuals & sound",18,340,150,b->client.setScreen(new PresentationScreen()));button("Return to camp",18,height-42,150,b->close());
+        button(UiText.t("camp.nav.army","Army & equipment"),18,310,150,b->page("banner"));button(UiText.t("camp.nav.visuals","Visuals & sound"),18,340,150,b->client.setScreen(new PresentationScreen()));button(UiText.t("camp.nav.returnToCamp","Return to camp"),18,height-42,150,b->close());
         int x=194,w=width-x-22;
-        if(CampaignClient.result.has("id"))button("Last battle",18,370,150,b->page("results"));
+        if(CampaignClient.result.has("id"))button(UiText.t("camp.nav.lastBattle","Last battle"),18,370,150,b->page("results"));
         if(page.equals("troop")){
             var t=ArmyCards.spec(troop);var a=t==null?null:RecruitPages.action(t,CampaignClient.profile);
             if(a!=null){var go=primary(a.label().toUpperCase(java.util.Locale.ROOT),x,height-114,RecruitPages.LEFT,b->action(a.command()));go.active=a.active()&&(!running||CampaignClient.waiting);go.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.literal(a.tip())));}
-            button("Back to recruitment",x,height-82,RecruitPages.LEFT,b->page("recruit"));
+            button(UiText.t("camp.troop.backToRecruitment","Back to recruitment"),x,height-82,RecruitPages.LEFT,b->page("recruit"));
         }else if(page.equals("train")){
             // The Drillmaster: battle 1 (the first Long March battle) and the practice skirmish.
-            var start=primary("START",x,200,w/2-7,b->action("campaign:"+Spec.CAMPAIGNBATTLES[0].id()));start.active=!running;
-            var practice=button("PRACTICE",x+w/2+7,203,w/2-7,b->action("camp:practice"));practice.active=!running; // a button is 20 high and a primary 26: 3 lower, so both labels sit on one line
+            var start=primary(UiText.t("camp.train.start","START"),x,200,w/2-7,b->action("campaign:"+Spec.CAMPAIGNBATTLES[0].id()));start.active=!running;
+            var practice=button(UiText.t("camp.train.practice","PRACTICE"),x+w/2+7,203,w/2-7,b->action("camp:practice"));practice.active=!running; // a button is 20 high and a primary 26: 3 lower, so both labels sit on one line
         }
     }
     @Override public void tick(){if(home!=null&&page.equals("home"))home.tick();if(recruit!=null&&page.equals("recruit"))recruit.tick();if(troopSheet!=null&&page.equals("troop"))troopSheet.tick();if(lobby!=null&&page.equals("lobby"))lobby.tick();if(report!=null&&page.equals("results"))report.tick();if(arsenal!=null&&page.equals("gear"))arsenal.tick();if(pages!=null&&pages.page.equals(page))pages.tick();if(!key.equals(state()))clearAndInit();flushPending();if(running&&!CampaignClient.waiting)close();}
@@ -150,11 +150,11 @@ final class CampScreen extends ArmyScreen {
     static String odds(List<Spec.TroopsRow> pool,String rarity,int total){int w=0;for(var t:pool)if(t.rarity().equals(rarity))w+=weight(t);return String.format(java.util.Locale.ROOT,"%.0f",100.0*w/Math.max(1,total))+"%";}
     static String cap(String s){return s.isEmpty()?s:Character.toUpperCase(s.charAt(0))+s.substring(1);}
     /** The camp's header line: the earned title and the gold in hand. */
-    String header(){return CampaignClient.profile.progression.title+"  /  "+CampaignClient.profile.troopWrits+" writs / "+CampaignClient.profile.gearShards+" shards";}
+    String header(){return UiText.t("camp.header.status","{title}  /  {writs} writs / {shards} shards","title",CampaignClient.profile.progression.title,"writs",CampaignClient.profile.troopWrits,"shards",CampaignClient.profile.gearShards);}
     /** The recruit page's roll button: ROLL <HOUSE> / <cost> GOLD for the chosen House. */
-    String rollLabel(){return "ROLL "+RosterMath.houseName(house).toUpperCase(java.util.Locale.ROOT)+" / "+Profile.ROLL_WRITS+" WRIT";}
+    String rollLabel(){return UiText.t("camp.recruit.rollButton","ROLL {house} / {cost} WRIT","house",RosterMath.houseName(house).toUpperCase(java.util.Locale.ROOT),"cost",Profile.ROLL_WRITS);}
     /** The pity line under the cards: rolls left until the chosen House's Epic is certain. */
-    String pityLine(){return "Epic guaranteed within "+(Spec.RECRUITMENT[0].epicPity()-CampaignClient.profile.pity.getOrDefault(house,0))+" rolls";}
+    String pityLine(){return UiText.t("camp.recruit.pity","Epic guaranteed within {rolls} rolls","rolls",Spec.RECRUITMENT[0].epicPity()-CampaignClient.profile.pity.getOrDefault(house,0));}
     /** The five House tabs of the recruit page, in House order (empty on other pages). */
     List<HouseTab> houseTabs(){return List.copyOf(tabs);}
     /** Shows another House's cards and rolls from its pool. */
@@ -199,10 +199,10 @@ final class CampScreen extends ArmyScreen {
         var rows=RecruitPages.cardRows(more>0);cardLine(g,cap(troop.rarity()),tx,y,rows.rarity(),rarityColour(troop.rarity()),room);
         if(card.owned()){
             for(int i=0;i<Spec.RECRUITMENT[0].maxStars();i++){int px=tx+i*11;g.drawBorder(px,y+rows.pips(),8,8,DarkUi.GOLD);if(i<card.stars())g.fill(px+1,y+rows.pips()+1,px+7,y+rows.pips()+7,DarkUi.GOLD);ink(y+rows.pips()-1);}
-            cardLine(g,card.copies()+(card.copies()==1?" copy":" copies"),tx,y,rows.copies(),DarkUi.MUTED,room);
+            cardLine(g,card.copies()==1?UiText.t("camp.card.copySingle","{copies} copy","copies",card.copies()):UiText.t("camp.card.copyPlural","{copies} copies","copies",card.copies()),tx,y,rows.copies(),DarkUi.MUTED,room);
         }else{
-            cardLine(g,"LOCKED",tx,y,rows.locked(),DarkUi.PAPER,room);
-            cardLine(g,troop.rarity().equals("legendary")||weight(troop)<=0?"Comes from a Pact":String.format(java.util.Locale.ROOT,"%.1f",100.0*weight(troop)/Math.max(1,poolTotal))+"% a roll",tx,y,rows.odds(),DarkUi.MUTED,room);
+            cardLine(g,UiText.t("camp.card.locked","LOCKED"),tx,y,rows.locked(),DarkUi.PAPER,room);
+            cardLine(g,troop.rarity().equals("legendary")||weight(troop)<=0?UiText.t("camp.card.pact","Comes from a Pact"):UiText.t("camp.card.odds","{odds}% a roll","odds",String.format(java.util.Locale.ROOT,"%.1f",100.0*weight(troop)/Math.max(1,poolTotal))),tx,y,rows.odds(),DarkUi.MUTED,room);
         }
         g.getMatrices().pop();inCard=false;
     }
@@ -250,17 +250,17 @@ final class CampScreen extends ArmyScreen {
         if(page.equals("results")&&report!=null){report.render(g);super.render(g,mx,my,delta);return;}
         if(page.equals("gear")&&arsenal!=null){arsenal.render(g);super.render(g,mx,my,delta);arsenal.overlay(g);return;} // the tooltip and confirm strip lie over the widgets
         if(pages!=null&&pages.page.equals(page)){pages.render(g);super.render(g,mx,my,delta);pages.overlay(g);return;}
-        g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,"BANNER CAMP",58,19,DarkUi.GOLD);
+        g.getMatrices().push();g.getMatrices().scale(scale,scale,1);DarkUi.background(g,width,height);DarkUi.crest(g,20,16,26,false);DarkUi.title(g,UiText.t("camp.title","BANNER CAMP"),58,19,DarkUi.GOLD);
         line(g,header(),width-280,24,DarkUi.PAPER,260);
-        int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);line(g,page.equals("troop")?"TROOP CARD":page.equals("train")?"TRAINING YARD":"A PLACE TO PREPARE",x,91,DarkUi.GOLD,w);
+        int x=194,w=width-x-22;DarkUi.frame(g,x-12,79,w+24,height-139);line(g,page.equals("troop")?UiText.t("camp.heading.troop","TROOP CARD"):page.equals("train")?UiText.t("camp.heading.train","TRAINING YARD"):UiText.t("camp.heading.other","A PLACE TO PREPARE"),x,91,DarkUi.GOLD,w);
         var progress=CampaignClient.profile.progression;
         if(page.equals("troop")){
             var t=ArmyCards.spec(troop);if(t!=null&&TroopKnowledge.owned(t.id()))RecruitPages.troopPage(g,textRenderer,t,CampaignClient.profile,x,108,w);else if(t!=null)g.drawText(textRenderer,TroopKnowledge.UNKNOWN+". "+TroopKnowledge.HIDDEN,x,108,DarkUi.MUTED,false); // nothing of a troop not yet recruited (TroopKnowledge)
         }else if(page.equals("train")){
             var march=Spec.CAMPAIGNBATTLES[0];
-            line(g,"Battle "+march.order()+" / "+march.name(),x,117,DarkUi.PAPER,w);
+            line(g,UiText.t("camp.train.battle","Battle {order} / {name}","order",march.order(),"name",march.name()),x,117,DarkUi.PAPER,w);
             g.drawTextWrapped(textRenderer,Text.literal(march.briefing()),x,138,w,DarkUi.MUTED);
-            line(g,"START begins the battle. PRACTICE is a skirmish against one AI commander.",x,239,DarkUi.MUTED,w);
+            line(g,UiText.t("camp.train.help","START begins the battle. PRACTICE is a skirmish against one AI commander."),x,239,DarkUi.MUTED,w);
         }
         boolean card=page.equals("troop")&&CampaignClient.rollShowing(); // the roll card covers the screen: nothing under it takes hover or shows a tooltip
         if(!card)line(g,HintText.expand(CampaignClient.shownNotice(),GravesAndGloryClient::hint),x,height-42,DarkUi.GOLD,w); // the card says what the notice would (review Q1)

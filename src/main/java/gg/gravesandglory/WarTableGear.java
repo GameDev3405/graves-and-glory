@@ -103,10 +103,11 @@ final class WarTableGear {
     // ---- widgets -------------------------------------------------------------------------------------------------------------
     void init() {
         buttons.clear();
-        add("back", WarTable.plaque(56, 120, "icon-table", TITLE, "Esc", 85, 0, b -> screen.close()).quiet());
+        add("back", WarTable.plaque(56, 120, "icon-table", UiText.t("gear.title", "Arsenal"), "Esc", 85, 0, b -> screen.close()).quiet());
         int[] l = left();
-        add("page-armoury", new UiButton(l[0], l[1] - 30, 88, 24, Text.literal("Arsenal"), b -> setTab("armoury"), (g, x, y, w, h, hot) -> pageTab(g, "page-armoury", "Arsenal", tab.equals("armoury"), x, y, w, h, hot)));
-        add("page-forge", new UiButton(l[0] + 94, l[1] - 30, 88, 24, Text.literal("Forge"), b -> setTab("forge"), (g, x, y, w, h, hot) -> pageTab(g, "page-forge", "Forge", tab.equals("forge"), x, y, w, h, hot)));
+        String arsenalTab = UiText.t("gear.tab.arsenal", "Arsenal"), forgeTab = UiText.t("gear.tab.forge", "Forge");
+        add("page-armoury", new UiButton(l[0], l[1] - 30, 88, 24, Text.literal(arsenalTab), b -> setTab("armoury"), (g, x, y, w, h, hot) -> pageTab(g, "page-armoury", arsenalTab, tab.equals("armoury"), x, y, w, h, hot)));
+        add("page-forge", new UiButton(l[0] + 94, l[1] - 30, 88, 24, Text.literal(forgeTab), b -> setTab("forge"), (g, x, y, w, h, hot) -> pageTab(g, "page-forge", forgeTab, tab.equals("forge"), x, y, w, h, hot)));
         int[] r = right();
         int x = r[0] + 16, y = r[1] + 36;
         for (String f : GearView.FILTERS) {
@@ -116,15 +117,16 @@ final class WarTableGear {
             x += w + 4;
         }
         int sw = 96;
-        add("sort", new UiButton(r[0] + r[2] - 16 - sw, y, sw, WarTablePages.CHIP_H, Text.literal("Sort"), b -> cycleSort(), (g, bx, by, bw, bh, hot) -> chip(g, "sort", "Sort: " + sortWord(sort), false, bx, by, bw, bh, hot)));
+        add("sort", new UiButton(r[0] + r[2] - 16 - sw, y, sw, WarTablePages.CHIP_H, Text.literal("Sort"), b -> cycleSort(), (g, bx, by, bw, bh, hot) -> chip(g, "sort", UiText.t("gear.sort.chip", "Sort: {sort}", "sort", sortWord(sort)), false, bx, by, bw, bh, hot)));
         int cy = gridY() + gridRows() * PITCH + 2;
-        add("confirm-yes", new UiButton(r[0] + r[2] - 16 - 172, cy, 88, 24, Text.literal("Break down"), b -> confirmYes(), (g, bx, by, bw, bh, hot) -> tag(g, "Break down", bx, by, bw, bh, hot)));
-        add("confirm-no", new UiButton(r[0] + r[2] - 16 - 80, cy, 80, 24, Text.literal("Keep"), b -> confirmUid = -1, (g, bx, by, bw, bh, hot) -> tag(g, "Keep", bx, by, bw, bh, hot)));
+        String yesLabel = UiText.t("gear.confirm.yes", "Break down"), noLabel = UiText.t("gear.confirm.no", "Keep");
+        add("confirm-yes", new UiButton(r[0] + r[2] - 16 - 172, cy, 88, 24, Text.literal(yesLabel), b -> confirmYes(), (g, bx, by, bw, bh, hot) -> tag(g, yesLabel, bx, by, bw, bh, hot)));
+        add("confirm-no", new UiButton(r[0] + r[2] - 16 - 80, cy, 80, 24, Text.literal(noLabel), b -> confirmUid = -1, (g, bx, by, bw, bh, hot) -> tag(g, noLabel, bx, by, bw, bh, hot)));
         forgeWidgets();
         sync();
     }
 
-    static String rollWord(String slot) { return slot.equals("weapon") ? "Weapon" : slot.equals("relic") ? "Relic" : filterWord(slot); }
+    static String rollWord(String slot) { return slot.equals("weapon") ? UiText.t("gear.roll.weapon", "Weapon") : slot.equals("relic") ? UiText.t("gear.roll.relic", "Relic") : filterWord(slot); }
 
     /** The Forge tab's widgets: six slot tags, Roll, and the blacksmith's three services with the duplicates' confirm. */
     void forgeWidgets() {
@@ -137,18 +139,19 @@ final class WarTableGear {
         add("roll", new UiButton(l[0] + (l[2] - 240) / 2, l[1] + 160, 240, 40, Text.literal("Roll"), b -> roll(), (g, x, y, bw, bh, hot) -> rollPlate(g, x, y, hot)));
         int bw = Math.min(320, r[2] - 32), bx = r[0] + 16;
         add("dupes", new UiButton(bx, r[1] + 104, bw, 24, Text.literal("Break down all duplicates"), b -> { dupesConfirm = true; UiSounds.deny(); }, (g, x, y, ww, hh, hot) -> service(g, "dupes", dupesLabel(), x, y, ww, hh, hot)));
-        add("dupes-yes", new UiButton(bx + 6, r[1] + 156, 88, 24, Text.literal("Break down"), b -> { dupesConfirm = false; if (screen.action("forge:breakdown-duplicates")) UiSounds.play(AudioCues.Cue.BREAK_DOWN); }, (g, x, y, ww, hh, hot) -> tag(g, "Break down", x, y, ww, hh, hot)));
-        add("dupes-no", new UiButton(bx + 100, r[1] + 156, 80, 24, Text.literal("Keep"), b -> dupesConfirm = false, (g, x, y, ww, hh, hot) -> tag(g, "Keep", x, y, ww, hh, hot)));
-        add("repair-all", new UiButton(bx, r[1] + 200, bw, 24, Text.literal("Repair all"), b -> { if (screen.action("forge:repair-all")) UiSounds.play(AudioCues.Cue.REPAIR_HAMMER); }, (g, x, y, ww, hh, hot) -> service(g, "repair-all", "Repair all (" + GearView.repairAllCost(view()) + " gear shards)", x, y, ww, hh, hot)));
+        String dupesYes = UiText.t("gear.dupes.yes", "Break down"), dupesNo = UiText.t("gear.dupes.no", "Keep");
+        add("dupes-yes", new UiButton(bx + 6, r[1] + 156, 88, 24, Text.literal(dupesYes), b -> { dupesConfirm = false; if (screen.action("forge:breakdown-duplicates")) UiSounds.play(AudioCues.Cue.BREAK_DOWN); }, (g, x, y, ww, hh, hot) -> tag(g, dupesYes, x, y, ww, hh, hot)));
+        add("dupes-no", new UiButton(bx + 100, r[1] + 156, 80, 24, Text.literal(dupesNo), b -> dupesConfirm = false, (g, x, y, ww, hh, hot) -> tag(g, dupesNo, x, y, ww, hh, hot)));
+        add("repair-all", new UiButton(bx, r[1] + 200, bw, 24, Text.literal("Repair all"), b -> { if (screen.action("forge:repair-all")) UiSounds.play(AudioCues.Cue.REPAIR_HAMMER); }, (g, x, y, ww, hh, hot) -> service(g, "repair-all", UiText.t("gear.repair.label", "Repair all ({cost} gear shards)", "cost", GearView.repairAllCost(view())), x, y, ww, hh, hot)));
         add("expand", new UiButton(bx, r[1] + 234, bw, 24, Text.literal("Add a row"), b -> screen.action("forge:expand"), (g, x, y, ww, hh, hot) -> service(g, "expand", expandLabel(), x, y, ww, hh, hot)));
     }
 
-    String dupesLabel() { return "Break down all duplicates (+" + GearView.duplicatesValue(view()) + " gear shards)"; }
+    String dupesLabel() { return UiText.t("gear.dupes.label", "Break down all duplicates (+{value} gear shards)", "value", GearView.duplicatesValue(view())); }
     String expandLabel() {
         GearWire.View v = view();
-        if (v == null) return "Add a row";
-        if (v.inventorySize() >= Gear.forge().maxSlots()) return "Inventory at its largest";
-        return "Add a row (" + Forge.expandCost(GearView.asProfile(v)) + " gear shards)";
+        if (v == null) return UiText.t("gear.expand.label", "Add a row");
+        if (v.inventorySize() >= Gear.forge().maxSlots()) return UiText.t("gear.expand.max", "Inventory at its largest");
+        return UiText.t("gear.expand.cost", "Add a row ({cost} gear shards)", "cost", Forge.expandCost(GearView.asProfile(v)));
     }
     /** When the Roll button last rolled: a second press inside ROLL_GAP_MS is the same press (a double click must not pay twice). */
     private long rolledAt; static final long ROLL_GAP_MS = 500;
@@ -189,8 +192,8 @@ final class WarTableGear {
         if (uid >= 0 && screen.action("forge:breakdown:" + uid)) UiSounds.play(AudioCues.Cue.BREAK_DOWN);
     }
 
-    static String filterWord(String f) { return switch (f) { case "all" -> "All"; case "weapon" -> "Weapons"; case "relic" -> "Relics"; default -> Character.toUpperCase(f.charAt(0)) + f.substring(1); }; }
-    static String sortWord(String s) { return Character.toUpperCase(s.charAt(0)) + s.substring(1); }
+    static String filterWord(String f) { return switch (f) { case "all" -> UiText.t("gear.filter.all", "All"); case "weapon" -> UiText.t("gear.filter.weapon", "Weapons"); case "relic" -> UiText.t("gear.filter.relic", "Relics"); default -> Character.toUpperCase(f.charAt(0)) + f.substring(1); }; }
+    static String sortWord(String s) { return switch (s) { case "rarity" -> UiText.t("gear.sort.rarity", "Rarity"); case "newest" -> UiText.t("gear.sort.newest", "Newest"); case "slot" -> UiText.t("gear.sort.slot", "Slot"); case "set" -> UiText.t("gear.sort.set", "Set"); default -> Character.toUpperCase(s.charAt(0)) + s.substring(1); }; }
 
     /** The reveal sting for a rarity; Legendary has no sting of its own and takes the Epic one. */
     static AudioCues.Cue rarityCue(String rarity) {
@@ -387,7 +390,7 @@ final class WarTableGear {
     }
 
     static void loading(DrawContext g, int[] card) {
-        var t = DarkUi.heading("Loading your gear…");
+        var t = DarkUi.heading(UiText.t("gear.loading", "Loading your gear…"));
         g.drawText(font(), t, card[0] + (card[2] - font().getWidth(t)) / 2, card[1] + card[3] / 2 - 6, DarkUi.SEPIA, false);
         rectsDrawn.put("loading", card);
     }
@@ -396,8 +399,8 @@ final class WarTableGear {
         int[] l = left();
         double mx = mouseCanvasX(), my = mouseCanvasY();
         var font = font();
-        g.drawText(font, DarkUi.heading("Commander"), l[0] + 16, l[1] + 14, DarkUi.INK_TEXT, false);
-        var power = DarkUi.body("Gear power " + v.power());
+        g.drawText(font, DarkUi.heading(UiText.t("gear.commander.heading", "Commander")), l[0] + 16, l[1] + 14, DarkUi.INK_TEXT, false);
+        var power = DarkUi.body(UiText.t("gear.commander.power", "Gear power {power}", "power", v.power()));
         g.drawText(font, power, l[0] + l[2] - 16 - font.getWidth(power), l[1] + 16, DarkUi.SEPIA, false);
         g.fill(l[0] + 16, l[1] + 28, l[0] + l[2] - 16, l[1] + 29, DarkUi.SEPIA_LINE);
 
@@ -418,7 +421,7 @@ final class WarTableGear {
         if (player != null) CommanderGearFeature.preview(v.equipped(), v.pieces(), () -> Portrait.draw(g, player, f[0] + 20, f[1] + 20, 120)); // in the gear he wears
         rectsDrawn.put("frame", f);
 
-        g.drawText(font, DarkUi.heading("Worn"), l[0] + 16, l[1] + 198, DarkUi.INK_TEXT, false);
+        g.drawText(font, DarkUi.heading(UiText.t("gear.commander.worn", "Worn")), l[0] + 16, l[1] + 198, DarkUi.INK_TEXT, false);
         hoverWorn = null;
         for (int i = 0; i < Gear.SLOTS.size(); i++) {
             String slot = Gear.SLOTS.get(i);
@@ -442,14 +445,14 @@ final class WarTableGear {
             rectsDrawn.put("starter-note", new int[]{l[0] + 16, l[1] + 264, Math.min(noteW, font.getWidth(DarkUi.body(note))), 12});
         } else if (!set.isEmpty()) g.drawText(font, DarkUi.body(set), l[0] + 16, l[1] + 264, DarkUi.SEPIA, false);
 
-        g.drawText(font, DarkUi.heading("Relics"), l[0] + 16, l[1] + 282, DarkUi.INK_TEXT, false);
+        g.drawText(font, DarkUi.heading(UiText.t("gear.commander.relics", "Relics")), l[0] + 16, l[1] + 282, DarkUi.INK_TEXT, false);
         hoverRelic = -1;
         for (int i = 0; i < 3; i++) {
             int[] b = relic(i);
             boolean hot = in(b, mx, my);
             String id = i < v.relicSlots().size() ? v.relicSlots().get(i) : "";
             if (!id.isEmpty() && Gear.relic(id) != null) relicIcon(g, id, b, hot, false);
-            else emptySlot(g, b, "relic", hot);
+            else emptySlot(g, b, UiText.t("gear.relic.empty", "relic"), hot);
             if (i == selectedRelic) outline(g, b[0] - 3, b[1] - 3, b[2] + 6, b[3] + 6, 1, DarkUi.IVORY);
             var k = DarkUi.small(String.valueOf(i + 1));
             g.drawText(font, k, b[0] + (b[2] - font.getWidth(k)) / 2, b[1] + b[3] + 4, DarkUi.SEPIA, false);
@@ -457,7 +460,7 @@ final class WarTableGear {
             rectsDrawn.put("relic-" + i, b);
         }
         int rx = relic(2)[0] + SLOT + 16, ry = relic(0)[1] + 6;
-        String hint = selectedRelic >= 0 ? "Slot " + (selectedRelic + 1) + " chosen: pick a relic" : "Relics fire on keys 1, 2 and 3";
+        String hint = selectedRelic >= 0 ? UiText.t("gear.relic.chosen", "Slot {slot} chosen: pick a relic", "slot", selectedRelic + 1) : UiText.t("gear.relic.keys", "Relics fire on keys 1, 2 and 3");
         WarTablePages.lines(g, hint, rx, ry, l[0] + l[2] - 16 - rx, 2, DarkUi.SEPIA);
     }
 
@@ -465,7 +468,7 @@ final class WarTableGear {
         int[] r = right();
         var font = font();
         double mx = mouseCanvasX(), my = mouseCanvasY();
-        var head = DarkUi.heading("Inventory");
+        var head = DarkUi.heading(UiText.t("gear.inventory.heading", "Inventory"));
         g.drawText(font, head, r[0] + 16, r[1] + 14, DarkUi.INK_TEXT, false);
         var counter = DarkUi.body(GearView.counter(v));
         int cx = r[0] + r[2] - 16 - font.getWidth(counter);
@@ -496,22 +499,22 @@ final class WarTableGear {
             rectsDrawn.put("cell-" + i, b);
         }
         if (n == 0) {
-            var t = DarkUi.body(relics ? "No relics yet. The Forge rolls them." : "Nothing here yet.");
+            var t = DarkUi.body(relics ? UiText.t("gear.inventory.noRelics", "No relics yet. The Forge rolls them.") : UiText.t("gear.inventory.empty", "Nothing here yet."));
             g.drawText(font, t, r[0] + (r[2] - font.getWidth(t)) / 2, gridY() + 18, DarkUi.SEPIA, false);
         }
         int total = GearView.rows(n);
         if (total > rows) {
-            var s = DarkUi.small("Rows " + (scroll + 1) + "-" + Math.min(total, scroll + rows) + " of " + total);
+            var s = DarkUi.small(UiText.t("gear.inventory.rows", "Rows {first}-{last} of {total}", "first", scroll + 1, "last", Math.min(total, scroll + rows), "total", total));
             g.drawText(font, s, r[0] + r[2] - 16 - font.getWidth(s), r[1] + 62, DarkUi.SEPIA, false);
         }
 
         int sy = gridY() + rows * PITCH + 2;
         if (confirmUid >= 0) {
             Gear.Piece p = GearView.piece(v, confirmUid);
-            String name = p == null || Gear.item(p.item) == null ? "this piece" : Gear.rarity(p.rarity).name() + " " + Gear.item(p.item).name();
+            String name = p == null || Gear.item(p.item) == null ? UiText.t("gear.confirm.thisPiece", "this piece") : Gear.rarity(p.rarity).name() + " " + Gear.item(p.item).name();
             int[] box = {r[0] + 16, sy - 2, r[2] - 32, 28};
             g.fill(box[0], box[1], box[0] + box[2], box[1] + box[3], fade(DarkUi.ALARM_TEXT, 0x30));
-            WarTablePages.lines(g, "Break down " + name + "? It cannot be undone.", box[0] + 6, sy + 6, box[2] - 190, 1, DarkUi.ROUT_TEXT);
+            WarTablePages.lines(g, UiText.t("gear.confirm.ask", "Break down {name}? It cannot be undone.", "name", name), box[0] + 6, sy + 6, box[2] - 190, 1, DarkUi.ROUT_TEXT);
             rectsDrawn.put("confirm", box);
         } else {
             String notice = notice();
@@ -548,7 +551,7 @@ final class WarTableGear {
         boolean live = b != null && b.active;
         if (live) UiTex.draw(g, "table/btn-brass-240x40", x, y);
         else UiTex.draw(g, "table/btn-dull-240x40", x, y);
-        var t = DarkUi.heading("Roll " + rollWord(forgeSlot).toLowerCase(Locale.ROOT));
+        var t = DarkUi.heading(UiText.t("gear.roll.plate", "Roll {slot}", "slot", rollWord(forgeSlot).toLowerCase(Locale.ROOT)));
         int tw = font().getWidth(t), lx = x + (240 - tw) / 2, ink = live ? DarkUi.PLATE_INK : DarkUi.MUTED;
         g.drawText(font(), t, lx, y + 14, ink, false);
         if (hot && live) g.fill(lx, y + 26, lx + tw, y + 27, DarkUi.PLATE_INK);
@@ -573,20 +576,20 @@ final class WarTableGear {
     void forge(DrawContext g, GearWire.View v) {
         var font = font();
         int[] l = left(), r = right();
-        g.drawText(font, DarkUi.heading("Forge"), l[0] + 16, l[1] + 14, DarkUi.INK_TEXT, false);
-        var marks = DarkUi.body("Gear shards " + v.gearShards());
+        g.drawText(font, DarkUi.heading(UiText.t("gear.forge.heading", "Forge")), l[0] + 16, l[1] + 14, DarkUi.INK_TEXT, false);
+        var marks = DarkUi.body(UiText.t("gear.forge.marks", "Gear shards {shards}", "shards", v.gearShards()));
         int mx = l[0] + l[2] - 16 - font.getWidth(marks);
         g.drawText(font, marks, mx, l[1] + 16, DarkUi.SEPIA, false);
         rectsDrawn.put("marks", new int[]{mx, l[1] + 16, font.getWidth(marks), 12});
         g.fill(l[0] + 16, l[1] + 28, l[0] + l[2] - 16, l[1] + 29, DarkUi.SEPIA_LINE);
         int cost = Forge.rollCost(forgeSlot);
-        g.drawText(font, DarkUi.heading("A roll costs " + cost + " gear shards"), l[0] + 16, l[1] + 112, DarkUi.INK_TEXT, false);
+        g.drawText(font, DarkUi.heading(UiText.t("gear.forge.cost", "A roll costs {cost} gear shards", "cost", cost)), l[0] + 16, l[1] + 112, DarkUi.INK_TEXT, false);
         if (!forgeSlot.equals("relic")) {
             int left = Math.max(0, Gear.forge().pity() - v.pity()) + 1; // the roll made at the threshold is the guaranteed one
-            var pity = DarkUi.body("Epic or better within " + left + (left == 1 ? " roll" : " rolls"));
+            var pity = DarkUi.body(left == 1 ? UiText.t("gear.forge.pityOne", "Epic or better within {left} roll", "left", left) : UiText.t("gear.forge.pityMany", "Epic or better within {left} rolls", "left", left));
             g.drawText(font, pity, l[0] + 16, l[1] + 132, DarkUi.SEPIA, false);
             rectsDrawn.put("pity", new int[]{l[0] + 16, l[1] + 132, font.getWidth(pity), 12});
-        } else WarTablePages.lines(g, "A relic you already own comes back as gear shards.", l[0] + 16, l[1] + 132, l[2] - 32, 1, DarkUi.SEPIA);
+        } else WarTablePages.lines(g, UiText.t("gear.forge.relicNote", "A relic you already own comes back as gear shards."), l[0] + 16, l[1] + 132, l[2] - 32, 1, DarkUi.SEPIA);
         String refusal = GearView.rollRefusal(v, forgeSlot);
         if (!refusal.isEmpty()) {
             WarTablePages.lines(g, refusal, l[0] + 16, l[1] + 208, l[2] - 32, 2, DarkUi.ROUT_TEXT);
@@ -596,18 +599,18 @@ final class WarTableGear {
             var odds = new StringBuilder();
             int total = 0;
             for (var row : Spec.GEARRARITIES) total += row.rollWeight();
-            for (var row : Spec.GEARRARITIES) odds.append(odds.length() == 0 ? "" : " · ").append(row.name()).append(' ').append(Math.round(100.0 * row.rollWeight() / Math.max(1, total))).append('%');
-            g.drawText(font, DarkUi.heading("Odds"), l[0] + 16, l[1] + 244, DarkUi.INK_TEXT, false);
+            for (var row : Spec.GEARRARITIES) odds.append(odds.length() == 0 ? "" : " · ").append(UiText.t("gear.forge.oddsRow", "{name} {percent}%", "name", row.name(), "percent", Math.round(100.0 * row.rollWeight() / Math.max(1, total))));
+            g.drawText(font, DarkUi.heading(UiText.t("gear.forge.odds", "Odds")), l[0] + 16, l[1] + 244, DarkUi.INK_TEXT, false);
             WarTablePages.lines(g, odds.toString(), l[0] + 16, l[1] + 260, l[2] - 32, 3, DarkUi.SEPIA);
             rectsDrawn.put("odds", new int[]{l[0] + 16, l[1] + 244, l[2] - 32, 52});
         }
 
-        g.drawText(font, DarkUi.heading("Blacksmith"), r[0] + 16, r[1] + 14, DarkUi.INK_TEXT, false);
-        var gold = DarkUi.body("Gear shards " + CampaignClient.profile.gearShards);
+        g.drawText(font, DarkUi.heading(UiText.t("gear.forge.blacksmith", "Blacksmith")), r[0] + 16, r[1] + 14, DarkUi.INK_TEXT, false);
+        var gold = DarkUi.body(UiText.t("gear.forge.blacksmithShards", "Gear shards {shards}", "shards", CampaignClient.profile.gearShards));
         g.drawText(font, gold, r[0] + r[2] - 16 - font.getWidth(gold), r[1] + 16, DarkUi.SEPIA, false);
         g.fill(r[0] + 16, r[1] + 28, r[0] + r[2] - 16, r[1] + 29, DarkUi.SEPIA_LINE);
         if (Spec.BLACKSMITHLINES.length > 0) {
-            String line = "\u201c" + Spec.BLACKSMITHLINES[Math.floorMod(opens, Spec.BLACKSMITHLINES.length)].text() + "\u201d";
+            String line = "\u201c" + UiText.locked("gear.forge.blacksmithLine", Spec.BLACKSMITHLINES[Math.floorMod(opens, Spec.BLACKSMITHLINES.length)].text(), "the design sheet") + "\u201d";
             WarTablePages.lines(g, line, r[0] + 16, r[1] + 42, r[2] - 32, 3, DarkUi.SEPIA);
             rectsDrawn.put("line", new int[]{r[0] + 16, r[1] + 42, r[2] - 32, 39});
         }
@@ -616,7 +619,7 @@ final class WarTableGear {
             g.fill(box[0], box[1], box[0] + box[2], box[1] + box[3], fade(DarkUi.ALARM_TEXT, 0x30));
             Profile copy = GearView.asProfile(v);
             int before = copy.gear.size(), got = Forge.breakdownDuplicates(copy), n = before - copy.gear.size();
-            WarTablePages.lines(g, "Break down " + n + (n == 1 ? " duplicate" : " duplicates") + " for " + got + " gear shards? Worn pieces and your best copy of each stay.", box[0] + 6, box[1] + 8, box[2] - 12, 3, DarkUi.ROUT_TEXT);
+            WarTablePages.lines(g, n == 1 ? UiText.t("gear.dupes.askOne", "Break down {count} duplicate for {got} gear shards? Worn pieces and your best copy of each stay.", "count", n, "got", got) : UiText.t("gear.dupes.askMany", "Break down {count} duplicates for {got} gear shards? Worn pieces and your best copy of each stay.", "count", n, "got", got), box[0] + 6, box[1] + 8, box[2] - 12, 3, DarkUi.ROUT_TEXT);
             rectsDrawn.put("dupes-confirm", box);
         }
         int sy = r[1] + r[3] - 40;
@@ -668,11 +671,11 @@ final class WarTableGear {
             if (font.getWidth(nt) > tw) nt = DarkUi.body(name);   // a long name steps down to the body face
             g.drawText(font, nt, tx, y + 40, ink, false);
             var r = Gear.rarity(f.rarity());
-            String kind = relic ? "Relic" : (r == null ? f.rarity() : r.name()) + (item == null ? "" : " " + GearView.SLOT_WORDS.getOrDefault(item.slot(), item.slot()));
+            String kind = relic ? UiText.t("gear.reveal.relic", "Relic") : (r == null ? f.rarity() : r.name()) + (item == null ? "" : " " + GearView.SLOT_WORDS.getOrDefault(item.slot(), item.slot()));
             g.drawText(font, DarkUi.body(kind), tx, y + 64, DarkUi.IVORY, false);
-            String tail = f.refund() > 0 ? "+" + f.refund() + " gear shards refunded" : f.duplicate() ? "Duplicate" : "New";
+            String tail = f.refund() > 0 ? UiText.t("gear.reveal.refund", "+{refund} gear shards refunded", "refund", f.refund()) : f.duplicate() ? UiText.t("gear.reveal.duplicate", "Duplicate") : UiText.t("gear.reveal.new", "New");
             g.drawText(font, DarkUi.body(tail), tx, y + 86, f.duplicate() || f.refund() > 0 ? DarkUi.BRASS : DarkUi.DAWN, false);
-            g.drawText(font, DarkUi.small("Click to skip"), tx, y + h - 24, DarkUi.MUTED, false);
+            g.drawText(font, DarkUi.small(UiText.t("gear.reveal.skip", "Click to skip")), tx, y + h - 24, DarkUi.MUTED, false);
         }
         g.getMatrices().pop();
         rectsDrawn.put("reveal", new int[]{x, y, w, h});
@@ -706,7 +709,7 @@ final class WarTableGear {
             Gear.Piece p = GearView.wornIn(v, hoverWorn);
             if (p != null) {
                 lines = new ArrayList<>(GearView.tooltip(v, p));
-                if (!lines.isEmpty()) lines.set(lines.size() - 1, "Click to take it off");
+                if (!lines.isEmpty()) lines.set(lines.size() - 1, UiText.t("gear.tip.takeOff", "Click to take it off"));
                 head = rarityInk(p.rarity);
             }
         } else if (hoverRelic >= 0) {
@@ -725,10 +728,10 @@ final class WarTableGear {
         List<String> out = new ArrayList<>();
         if (r == null) return out;
         out.add(r.name());
-        out.add("Relic · " + r.role() + " · " + (r.cooldownTicks() / 20) + " s cooldown");
+        out.add(UiText.t("gear.relicTip.info", "Relic · {role} · {seconds} s cooldown", "role", r.role(), "seconds", r.cooldownTicks() / 20));
         out.add(r.text());
         int at = v.relicSlots().indexOf(id);
-        out.add(slot >= 0 ? "Key " + (slot + 1) + " · Shift-click to clear" : at >= 0 ? "In slot " + (at + 1) : "Click to slot it");
+        out.add(slot >= 0 ? UiText.t("gear.relicTip.key", "Key {key} · Shift-click to clear", "key", slot + 1) : at >= 0 ? UiText.t("gear.relicTip.in", "In slot {slot}", "slot", at + 1) : UiText.t("gear.relicTip.click", "Click to slot it"));
         return out;
     }
 

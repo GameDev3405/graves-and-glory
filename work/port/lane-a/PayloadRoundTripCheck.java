@@ -14,9 +14,9 @@ import net.minecraft.network.packet.CustomPayload;
 
 /**
  * Port P1.3 codec check (lane A): every Graves and Glory payload type round-trips through its codec, byte for byte, without a game.
- * For each of the 27 types: an empty body and random bodies (1 byte to 64 KiB) encode then decode to an equal body (Arrays.equals:
+ * For each of the 29 types: an empty body and random bodies (1 byte to 64 KiB) encode then decode to an equal body (Arrays.equals:
  * a record of a byte[] compares by reference), the encoded bytes are the body itself (D5: the 1.20.1 wire layout), the codec reads
- * every byte, of() copies without moving the caller's reader index, and buf() gives a fresh reader each call. Also: the 27 ids
+ * every byte, of() copies without moving the caller's reader index, and buf() gives a fresh reader each call. Also: the 29 ids
  * are distinct per direction and phase, and every id is in the gravesandglory namespace. Never shipped; run with
  * work/port/lane-a/run_payload_check.py. Not a network test: the in-game dedicated-server exchange is a separate gate.
  */
@@ -53,6 +53,8 @@ public final class PayloadRoundTripCheck {
         new Type<>("plan", "playC2S", Payloads.PlanPayload.ID, Payloads.PlanPayload.CODEC, Payloads.PlanPayload::of, Payloads.PlanPayload::body, Payloads.PlanPayload::buf),
         new Type<>("tactical", "playC2S", Payloads.TacticalPayload.ID, Payloads.TacticalPayload.CODEC, Payloads.TacticalPayload::of, Payloads.TacticalPayload::body, Payloads.TacticalPayload::buf),
         new Type<>("tacticalV2", "playC2S", Payloads.TacticalV2Payload.ID, Payloads.TacticalV2Payload.CODEC, Payloads.TacticalV2Payload::of, Payloads.TacticalV2Payload::body, Payloads.TacticalV2Payload::buf),
+        new Type<>("uiSheet", "playS2C", Payloads.UiSheetPayload.ID, Payloads.UiSheetPayload.CODEC, Payloads.UiSheetPayload::of, Payloads.UiSheetPayload::body, Payloads.UiSheetPayload::buf),
+        new Type<>("uiEdit", "playC2S", Payloads.UiEditPayload.ID, Payloads.UiEditPayload.CODEC, Payloads.UiEditPayload::of, Payloads.UiEditPayload::body, Payloads.UiEditPayload::buf),
         new Type<>("releaseCheckRequest", "configS2C", Payloads.ReleaseCheckRequestPayload.ID, Payloads.ReleaseCheckRequestPayload.CODEC, Payloads.ReleaseCheckRequestPayload::of, Payloads.ReleaseCheckRequestPayload::body, Payloads.ReleaseCheckRequestPayload::buf),
         new Type<>("releaseCheckReply", "configC2S", Payloads.ReleaseCheckReplyPayload.ID, Payloads.ReleaseCheckReplyPayload.CODEC, Payloads.ReleaseCheckReplyPayload::of, Payloads.ReleaseCheckReplyPayload::body, Payloads.ReleaseCheckReplyPayload::buf));
 
@@ -81,7 +83,7 @@ public final class PayloadRoundTripCheck {
     }
 
     public static void main(String[] args) {
-        check(TYPES.size() == 27, "expected 27 payload types, found " + TYPES.size());
+        check(TYPES.size() == 29, "expected 29 payload types, found " + TYPES.size());
         Set<String> seen = new HashSet<>();
         for (var t : TYPES) {
             check(t.id().id().getNamespace().equals("gravesandglory"), t.name() + ": id outside the gravesandglory namespace");

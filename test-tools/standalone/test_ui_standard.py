@@ -10,7 +10,7 @@
 - the methods that write on the darker vellum plates (LO_PLATE_TEXT: the key strip, the lesson note) name only DarkUi inks that
   hold 4.5:1 on those plates' darkest vellum, #bda97c (UI Task 8c fix round 1: sepia gave 3.7:1 there);
 - the methods that draw player names (NAME_METHODS: the party's seats on home and Friends, the Invite tags) set only fixed words
-  in the heading face: every heading( there takes one string literal, so a name, and the measure that trims one, is in
+  in the heading face: every heading( there takes one string literal (or UiText.t of an id and a literal, no live values), so a name, and the measure that trims one, is in
   Minecraft's face, whose 1 is no I (UI Task 8b, the Task 7 review's out-of-scope 1);
 - what a method of the battle HUD must draw by name, and must never (MUST_DRAW, NEVER_DRAW; War Table port Tasks 6 and 7): a card and a
   chip at their last stand draw the stamp and its words LAST STAND, never a colour alone, and the ability slot never draws the title's
@@ -59,6 +59,7 @@ INK_TOKEN = re.compile(r'\bDarkUi\s*\.\s*([A-Z][A-Z0-9_]*)\b')
 INK_DECL = re.compile(r'\b([A-Z][A-Z0-9_]*)\s*=\s*0[xX]([0-9a-fA-F]{8})\b')
 NAME_METHODS = {'WarTablePages': ('party', 'paintInvite'), 'WarTableHome': ('party',)}
 HEADING_CALL = re.compile(r'\bheading\s*\(')
+FIXED_PIECE = re.compile(r'UiText\s*\.\s*t\s*\(\s*,\s*\)')  # UiText.t("id", "words") with its literals blanked
 RAIL_HOME = 'WarTableHome'
 RAIL_DECL = re.compile(r'\b(RAIL|RAIL_X|RAIL_LABELS|RAIL_W)\s*=(?!=)')
 RAIL_W_DECL = re.compile(r'\bRAIL_W\s*=\s*(\d+)\s*;')
@@ -261,7 +262,8 @@ def check_file(path):
                 found.append(f'{path.name}: no method {method}( to check the player names\' face in')
             for a, b in spans:
                 for m in HEADING_CALL.finditer(code, a, b):
-                    if call_argument(code, m.end() - 1).strip():  # a literal is blanked to spaces: anything left is not one
+                    arg = call_argument(code, m.end() - 1).strip()  # a literal is blanked to spaces: anything left is not one
+                    if arg and not FIXED_PIECE.fullmatch(arg):  # an editable piece with no live values is fixed words too (UI editor)
                         found.append(f'{path.name}:{line_of(text, m.start())}: heading( in {method}( takes more than fixed words; '
                                      'a player name goes in Minecraft\'s face, whose 1 is no I')
     if name != RAIL_HOME:

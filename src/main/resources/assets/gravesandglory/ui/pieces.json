@@ -1,0 +1,7095 @@
+{
+ "format": 1,
+ "pieces": [
+  {
+   "id": "armoury.arrow.earlier",
+   "default": "Earlier troops",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.arrow.later",
+   "default": "Later troops",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.away",
+   "default": "Buy at your barracks or a held point",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.cell.bought",
+   "default": "Bought",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.cell.buy",
+   "default": "Buy",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.cell.needsRank",
+   "default": "Needs Rank {tier}",
+   "slots": [
+    "tier"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.cell.noGold",
+   "default": "Not enough gold",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.cell.notHere",
+   "default": "Not here",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.cell.price",
+   "default": "{price} gold",
+   "slots": [
+    "price"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.delete.again",
+   "default": "Press Delete again to delete group {number}.",
+   "slots": [
+    "number"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.delete.confirm",
+   "default": "Press to delete",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.delete.label",
+   "default": "Delete",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.delete.tip",
+   "default": "Deletes group {number}. Press twice.",
+   "slots": [
+    "number"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.empty",
+   "default": "Your banner has no troop types to buy gear for.",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.groups.none",
+   "default": "No group {number}",
+   "slots": [
+    "number"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.head.armour",
+   "default": "Armour",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.head.weapons",
+   "default": "Weapons",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.key.opens",
+   "default": "{key} opens the Armoury anywhere in battle",
+   "slots": [
+    "key"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.key.unbound",
+   "default": "The Armoury key is not bound: set it in Controls",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.member.add",
+   "default": "Add",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.member.in",
+   "default": "In group",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.member.inTip",
+   "default": "{troop} is in group {number}. Press to take it out.",
+   "slots": [
+    "troop",
+    "number"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.member.outTip",
+   "default": "{troop} is not in group {number}. Press to add it.",
+   "slots": [
+    "troop",
+    "number"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.mode.toGear",
+   "default": "Back to gear",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.mode.toGearTip",
+   "default": "Show the gear buys again.",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.mode.toGroups",
+   "default": "Custom groups",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.mode.toGroupsTip",
+   "default": "Make numbered groups of troop types to order together.",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.name.tip",
+   "default": "Group {number}: press to rename, type, then Enter.",
+   "slots": [
+    "number"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.new.label",
+   "default": "New group",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.new.tip",
+   "default": "Makes group {number}. Then add troop types to it.",
+   "slots": [
+    "number"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.off",
+   "default": "Ranks are off",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.offWhy",
+   "default": "Troops earn no Rank and no Armoury gear is sold this match.",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.purse",
+   "default": "{gold} gold",
+   "slots": [
+    "gold"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.reason.bought",
+   "default": "{track} {tier} is bought for the {troop}.",
+   "slots": [
+    "track",
+    "tier",
+    "troop"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.sub.gear",
+   "default": "Gear for this round, per troop type",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.sub.groups",
+   "default": "Numbered groups for orders",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.sub.range",
+   "default": "Troops {first}-{last} of {total}",
+   "slots": [
+    "first",
+    "last",
+    "total"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.tip.bought",
+   "default": "bought. Every soldier of the type whose Rank allows it wears it.",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.tip.open",
+   "default": "{price} gold. Press to buy it for every {troop} this round.",
+   "slots": [
+    "price",
+    "troop"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.tip.openAway",
+   "default": "{price} gold. {away}.",
+   "slots": [
+    "price",
+    "away"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.tip.short",
+   "default": "{price} gold, and you have {gold}.",
+   "slots": [
+    "price",
+    "gold"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.tip.shortAway",
+   "default": "{price} gold, and you have {gold}. {away}.",
+   "slots": [
+    "price",
+    "gold",
+    "away"
+   ],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.title",
+   "default": "Armoury",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.track.armour",
+   "default": "Armour",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "armoury.track.weapon",
+   "default": "Weapon",
+   "slots": [],
+   "keys": false,
+   "file": "ArmouryTab.java"
+  },
+  {
+   "id": "barracks.ability.blight",
+   "default": "Blight: offensive magic",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.ability.melee",
+   "default": "Melee: frontline fighter",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.ability.mend",
+   "default": "Mend: restores allied health",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.ability.ranged",
+   "default": "Ranged: attacks from a distance",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.ability.shield",
+   "default": "Shield: frontline protection",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.army.plain",
+   "default": "Army {count} of {max} troops",
+   "slots": [
+    "count",
+    "max"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.army.queued",
+   "default": "Army {count} of {max} troops, {queued} queued",
+   "slots": [
+    "count",
+    "max",
+    "queued"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.cancel.label",
+   "default": "Cancel training",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.cancel.note",
+   "default": "Full refund",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.disband.label",
+   "default": "Disband one",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.disband.note",
+   "default": "No refund",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.letter.fielded",
+   "default": "{fielded} of {listed} fielded",
+   "slots": [
+    "fielded",
+    "listed"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.letter.fieldedTraining",
+   "default": "{fielded} of {listed} fielded, {pending} in training",
+   "slots": [
+    "fielded",
+    "listed",
+    "pending"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.letter.kind",
+   "default": "{group}, {house}",
+   "slots": [
+    "group",
+    "house"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.letter.stats",
+   "default": "Health {health}    Damage {damage}",
+   "slots": [
+    "health",
+    "damage"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.purse",
+   "default": "{gold} gold",
+   "slots": [
+    "gold"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.queue.heading",
+   "default": "Training",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.queue.nextMany",
+   "default": "Next joins in {seconds} seconds",
+   "slots": [
+    "seconds"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.queue.nextOne",
+   "default": "Next joins in {seconds} second",
+   "slots": [
+    "seconds"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.queue.none",
+   "default": "No one in training",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.queue.queued",
+   "default": "{count} queued",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.queue.replacements",
+   "default": "Replacements join their group.",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.recruit.key",
+   "default": "Enter",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.recruit.label",
+   "default": "Recruit",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.roll.empty",
+   "default": "Your banner has no troops.",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.roll.heading",
+   "default": "Troops",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.roll.hintChange",
+   "default": "change it in the war council.",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.roll.hintList",
+   "default": "Your banner sets this list:",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.roll.hintPick",
+   "default": "Pick a troop to train or disband.",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.roll.span",
+   "default": "Troops {first}-{last} of {total}",
+   "slots": [
+    "first",
+    "last",
+    "total"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.roll.typeMany",
+   "default": "{count} types in your banner",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.roll.typeOne",
+   "default": "{count} type in your banner",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.row.fielded",
+   "default": "{fielded} of {listed} fielded",
+   "slots": [
+    "fielded",
+    "listed"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.row.fieldedTraining",
+   "default": "{fielded} of {listed} fielded, {pending} training",
+   "slots": [
+    "fielded",
+    "listed",
+    "pending"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.short.allFielded",
+   "default": "All fielded",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.short.armyFull",
+   "default": "Army full",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.short.needGold",
+   "default": "Need {price}",
+   "slots": [
+    "price"
+   ],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.short.notHere",
+   "default": "Not here",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "barracks.short.notInBanner",
+   "default": "Not in banner",
+   "slots": [],
+   "keys": false,
+   "file": "BarracksPage.java"
+  },
+  {
+   "id": "camp.card.copyPlural",
+   "default": "{copies} copies",
+   "slots": [
+    "copies"
+   ],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.card.copySingle",
+   "default": "{copies} copy",
+   "slots": [
+    "copies"
+   ],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.card.locked",
+   "default": "LOCKED",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.card.odds",
+   "default": "{odds}% a roll",
+   "slots": [
+    "odds"
+   ],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.card.pact",
+   "default": "Comes from a Pact",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.header.status",
+   "default": "{title}  /  {writs} writs / {shards} shards",
+   "slots": [
+    "title",
+    "writs",
+    "shards"
+   ],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.heading.other",
+   "default": "A PLACE TO PREPARE",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.heading.train",
+   "default": "TRAINING YARD",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.heading.troop",
+   "default": "TROOP CARD",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.nav.army",
+   "default": "Army & equipment",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.nav.chapter",
+   "default": "Chapter rewards",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.nav.contracts",
+   "default": "Contracts",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.nav.friends",
+   "default": "Friends",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.nav.guide",
+   "default": "Camp guide",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.nav.lastBattle",
+   "default": "Last battle",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.nav.recruitment",
+   "default": "Recruitment",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.nav.returnToCamp",
+   "default": "Return to camp",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.nav.visuals",
+   "default": "Visuals & sound",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.recruit.pity",
+   "default": "Epic guaranteed within {rolls} rolls",
+   "slots": [
+    "rolls"
+   ],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.recruit.rollButton",
+   "default": "ROLL {house} / {cost} WRIT",
+   "slots": [
+    "house",
+    "cost"
+   ],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.title",
+   "default": "BANNER CAMP",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.train.battle",
+   "default": "Battle {order} / {name}",
+   "slots": [
+    "order",
+    "name"
+   ],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.train.help",
+   "default": "START begins the battle. PRACTICE is a skirmish against one AI commander.",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.train.practice",
+   "default": "PRACTICE",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.train.start",
+   "default": "START",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "camp.troop.backToRecruitment",
+   "default": "Back to recruitment",
+   "slots": [],
+   "keys": false,
+   "file": "CampScreen.java"
+  },
+  {
+   "id": "campaign.bonus",
+   "default": "Bonus: {text} {reward}",
+   "slots": [
+    "text",
+    "reward"
+   ],
+   "keys": false,
+   "file": "CampaignClient.java"
+  },
+  {
+   "id": "campaign.bonusClaimed",
+   "default": "Bonus claimed: {text}",
+   "slots": [
+    "text"
+   ],
+   "keys": false,
+   "file": "CampaignClient.java"
+  },
+  {
+   "id": "campaign.botsLabel",
+   "default": "Bots: {tier}",
+   "slots": [
+    "tier"
+   ],
+   "keys": false,
+   "file": "CampaignClient.java"
+  },
+  {
+   "id": "campaign.collectionTooLarge",
+   "default": "Your collection file is too large to sync with this world; it stays on disk unchanged.",
+   "slots": [],
+   "keys": false,
+   "file": "CampaignClient.java"
+  },
+  {
+   "id": "campaign.entrance.practice",
+   "default": "PRACTICE",
+   "slots": [],
+   "keys": false,
+   "file": "CampaignClient.java"
+  },
+  {
+   "id": "campaign.entrance.skipHint",
+   "default": "{key:menu} or Escape to skip entrance",
+   "slots": [],
+   "keys": true,
+   "file": "CampaignClient.java"
+  },
+  {
+   "id": "campaign.entrance.tagline",
+   "default": "YOUR BANNER. YOUR ARMY.",
+   "slots": [],
+   "keys": false,
+   "file": "CampaignClient.java"
+  },
+  {
+   "id": "campaign.entrance.versus",
+   "default": "{mode} v {mode}",
+   "slots": [
+    "mode"
+   ],
+   "keys": false,
+   "file": "CampaignClient.java"
+  },
+  {
+   "id": "cards.counterDeals",
+   "default": "Deals x{multiplier}",
+   "slots": [
+    "multiplier"
+   ],
+   "keys": false,
+   "file": "ArmyCards.java"
+  },
+  {
+   "id": "cards.counterTakes",
+   "default": "Takes x{multiplier}",
+   "slots": [
+    "multiplier"
+   ],
+   "keys": false,
+   "file": "ArmyCards.java"
+  },
+  {
+   "id": "charge.overheadOff",
+   "default": "Charge camera stays overhead: OFF",
+   "slots": [],
+   "keys": false,
+   "file": "ChargeCamera.java"
+  },
+  {
+   "id": "charge.overheadOn",
+   "default": "Charge camera stays overhead: ON",
+   "slots": [],
+   "keys": false,
+   "file": "ChargeCamera.java"
+  },
+  {
+   "id": "client.camp.battleUnderway",
+   "default": "A battle is underway / Your camp remains open",
+   "slots": [],
+   "keys": false,
+   "file": "GravesAndGloryClient.java"
+  },
+  {
+   "id": "client.camp.purse",
+   "default": "{writs} writs / {title}",
+   "slots": [
+    "writs",
+    "title"
+   ],
+   "keys": false,
+   "file": "GravesAndGloryClient.java"
+  },
+  {
+   "id": "client.camp.station",
+   "default": "on a station to interact",
+   "slots": [],
+   "keys": false,
+   "file": "GravesAndGloryClient.java"
+  },
+  {
+   "id": "client.camp.title",
+   "default": "Banner camp",
+   "slots": [],
+   "keys": false,
+   "file": "GravesAndGloryClient.java"
+  },
+  {
+   "id": "client.camp.warTable",
+   "default": "War table",
+   "slots": [],
+   "keys": false,
+   "file": "GravesAndGloryClient.java"
+  },
+  {
+   "id": "client.failure.return",
+   "default": "Return to Minecraft",
+   "slots": [],
+   "keys": false,
+   "file": "GravesAndGloryClient.java"
+  },
+  {
+   "id": "client.lesson.attack",
+   "default": "Press {key:attack} to send your army to attack at once. Or press {key:charge}, aim and press {key:confirm} to charge.",
+   "slots": [],
+   "keys": true,
+   "file": "GravesAndGloryClient.java"
+  },
+  {
+   "id": "client.lesson.follow",
+   "default": "Press {key:follow} to make your army follow you, or {key:retreat} to pull it back to you.",
+   "slots": [],
+   "keys": true,
+   "file": "GravesAndGloryClient.java"
+  },
+  {
+   "id": "client.lesson.formation",
+   "default": "Press {key:formation}, pick a shape, then press {key:confirm} on the ground to hold that point in it.",
+   "slots": [],
+   "keys": true,
+   "file": "GravesAndGloryClient.java"
+  },
+  {
+   "id": "client.lesson.recruit",
+   "default": "Press {key:use} at your barracks lectern to recruit. Trained troops march out from the held point nearest the fight.",
+   "slots": [],
+   "keys": true,
+   "file": "GravesAndGloryClient.java"
+  },
+  {
+   "id": "client.panelHidden",
+   "default": "Command panel hidden. Press {key:panel_edit} to arrange.",
+   "slots": [],
+   "keys": true,
+   "file": "GravesAndGloryClient.java"
+  },
+  {
+   "id": "command.edit.caption",
+   "default": "Drag a part, or its corner square to resize",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.edit.captionHidden",
+   "default": "Hidden - drag to move",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.edit.done",
+   "default": "Done",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.edit.hide",
+   "default": "Hide",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.edit.opacity",
+   "default": "Opacity",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.edit.opacityPercent",
+   "default": "{percent}%",
+   "slots": [
+    "percent"
+   ],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.edit.reset",
+   "default": "Reset",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.edit.show",
+   "default": "Show",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.pennant.attack",
+   "default": "Attack",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.pennant.charge",
+   "default": "Charge",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.pennant.chargeSeconds",
+   "default": "{seconds}s",
+   "slots": [
+    "seconds"
+   ],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.pennant.follow",
+   "default": "Follow me",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.pennant.formation",
+   "default": "Formation",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.pennant.retreat",
+   "default": "Retreat",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.pill.all",
+   "default": "All",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.pill.cavalry",
+   "default": "Ride",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.pill.infantry",
+   "default": "Inf",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.pill.ranged",
+   "default": "Arch",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.pill.siege",
+   "default": "Siege",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.pill.support",
+   "default": "Sup",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.tray.banner",
+   "default": "Banner",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.tray.loose",
+   "default": "Loose",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.tray.wall",
+   "default": "Wall",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "command.tray.wedge",
+   "default": "Wedge",
+   "slots": [],
+   "keys": false,
+   "file": "CommandPanel.java"
+  },
+  {
+   "id": "commandMode.houses.heading",
+   "default": "{side} / HOUSES",
+   "slots": [
+    "side"
+   ],
+   "keys": false,
+   "file": "CommandMode.java"
+  },
+  {
+   "id": "ending.bar.finalLevel",
+   "default": "{label}: Level {level}",
+   "slots": [
+    "label",
+    "level"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.bar.finalTier",
+   "default": "{label}: Tier {tier}",
+   "slots": [
+    "label",
+    "tier"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.bar.wordContract",
+   "default": "Contract done!",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.bar.wordLevel",
+   "default": "Level up!",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.bar.wordTier",
+   "default": "Tier {tier}!",
+   "slots": [
+    "tier"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.bar.wordTierNth",
+   "default": "Tier {tier}!",
+   "slots": [
+    "tier"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.claim.contractMany",
+   "default": "{count} contracts",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.claim.contractOne",
+   "default": "{count} contract",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.claim.ready",
+   "default": "Ready to claim: {list}",
+   "slots": [
+    "list"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.claim.tierMany",
+   "default": "{count} chapter tiers",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.claim.tierOne",
+   "default": "{count} chapter tier",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.graph.label",
+   "default": "Score",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.army",
+   "default": "Army",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.armyBestMany",
+   "default": "Best: {troop}, {kills} kills",
+   "slots": [
+    "troop",
+    "kills"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.armyBestOne",
+   "default": "Best: {troop}, {kills} kill",
+   "slots": [
+    "troop",
+    "kills"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.armyKept",
+   "default": "Kept alive",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.armyKills",
+   "default": "Kills",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.armyLosses",
+   "default": "Losses",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.captures",
+   "default": "Captures",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.commander",
+   "default": "Commander",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.commanderDamage",
+   "default": "Damage",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.commanderDeaths",
+   "default": "Deaths",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.commanderKd",
+   "default": "K/D",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.commanderKills",
+   "default": "Kills",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.economy",
+   "default": "Economy & orders",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.finalScore",
+   "default": "Final score",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.goldEarned",
+   "default": "Gold earned",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.goldSpent",
+   "default": "Gold spent",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.holdTime",
+   "default": "Hold time",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.length",
+   "default": "Length",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.none",
+   "default": "No stats for this battle.",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.objectives",
+   "default": "Objectives",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.orders",
+   "default": "Orders",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.trained",
+   "default": "Trained",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.group.upgrades",
+   "default": "Upgrades",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.highlights.none",
+   "default": "No awards this battle.",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.highlights.other",
+   "default": "{award}: {name}, {detail}",
+   "slots": [
+    "award",
+    "name",
+    "detail"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.highlights.otherBare",
+   "default": "{award}: {name}",
+   "slots": [
+    "award",
+    "name"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.highlights.you",
+   "default": "You: {award}, {detail}",
+   "slots": [
+    "award",
+    "detail"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.highlights.youBare",
+   "default": "You: {award}",
+   "slots": [
+    "award"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.rewards.claimGo",
+   "default": "Contracts on the War Table",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.rewards.ineligible",
+   "default": "No match rewards: play at least 3 minutes to qualify.",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.rewards.notSaved",
+   "default": "Rewards not saved. Progress unchanged.",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.rewards.nothing",
+   "default": "Nothing earned this battle.",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.rewards.total",
+   "default": "Total",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.score.headArmyKills",
+   "default": "Army kills",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.score.headCommander",
+   "default": "Commander",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.score.headKd",
+   "default": "K / D",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.score.headLost",
+   "default": "Lost",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.score.headObjective",
+   "default": "Objective",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.score.headPoints",
+   "default": "On points",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.score.headScore",
+   "default": "Score",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.score.mvp",
+   "default": "MVP",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.total.gearShards",
+   "default": "gear shards",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.total.newTitle",
+   "default": "new title",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.total.newTitles",
+   "default": "new titles",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.total.pact",
+   "default": "Pact",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.total.pacts",
+   "default": "Pacts",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.total.renown",
+   "default": "Renown",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.total.shards",
+   "default": "shards",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.total.writ",
+   "default": "writ",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.total.writs",
+   "default": "writs",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.total.xp",
+   "default": "XP",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.troops.headFielded",
+   "default": "Fielded",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.troops.headKills",
+   "default": "Kills",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.troops.headLost",
+   "default": "Lost",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.troops.headTroop",
+   "default": "Troop",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.troops.more",
+   "default": "and {count} more",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "ending.troops.none",
+   "default": "No troops fielded.",
+   "slots": [],
+   "keys": false,
+   "file": "EndingPanels.java"
+  },
+  {
+   "id": "endingClient.drawWord",
+   "default": "DRAW",
+   "slots": [],
+   "keys": false,
+   "file": "EndingClient.java"
+  },
+  {
+   "id": "endingClient.left",
+   "default": "Left the battle",
+   "slots": [],
+   "keys": false,
+   "file": "EndingClient.java"
+  },
+  {
+   "id": "endingClient.mvp",
+   "default": "MVP",
+   "slots": [],
+   "keys": false,
+   "file": "EndingClient.java"
+  },
+  {
+   "id": "endingClient.skipHint",
+   "default": "{key:menu} or Escape to skip",
+   "slots": [],
+   "keys": true,
+   "file": "EndingClient.java"
+  },
+  {
+   "id": "endingScreen.highlights",
+   "default": "Highlights",
+   "slots": [],
+   "keys": false,
+   "file": "EndingScreen.java"
+  },
+  {
+   "id": "endingScreen.noBattle",
+   "default": "No battle to report yet.",
+   "slots": [],
+   "keys": false,
+   "file": "EndingScreen.java"
+  },
+  {
+   "id": "endingScreen.noBattleTitle",
+   "default": "Battle report",
+   "slots": [],
+   "keys": false,
+   "file": "EndingScreen.java"
+  },
+  {
+   "id": "endingScreen.playAgain",
+   "default": "Play again",
+   "slots": [],
+   "keys": false,
+   "file": "EndingScreen.java"
+  },
+  {
+   "id": "endingScreen.rewardsTitle",
+   "default": "Spoils of war",
+   "slots": [],
+   "keys": false,
+   "file": "EndingScreen.java"
+  },
+  {
+   "id": "endingScreen.skipHint",
+   "default": "{key:menu} or Escape to skip",
+   "slots": [],
+   "keys": true,
+   "file": "EndingScreen.java"
+  },
+  {
+   "id": "endingScreen.statsTitle",
+   "default": "Battle report",
+   "slots": [],
+   "keys": false,
+   "file": "EndingScreen.java"
+  },
+  {
+   "id": "endingScreen.statsTitleMap",
+   "default": "Battle of {map}",
+   "slots": [
+    "map"
+   ],
+   "keys": false,
+   "file": "EndingScreen.java"
+  },
+  {
+   "id": "endingScreen.yourArmy",
+   "default": "Your army",
+   "slots": [],
+   "keys": false,
+   "file": "EndingScreen.java"
+  },
+  {
+   "id": "gear.commander.heading",
+   "default": "Commander",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.commander.power",
+   "default": "Gear power {power}",
+   "slots": [
+    "power"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.commander.relics",
+   "default": "Relics",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.commander.worn",
+   "default": "Worn",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.confirm.ask",
+   "default": "Break down {name}? It cannot be undone.",
+   "slots": [
+    "name"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.confirm.no",
+   "default": "Keep",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.confirm.thisPiece",
+   "default": "this piece",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.confirm.yes",
+   "default": "Break down",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.dupes.askMany",
+   "default": "Break down {count} duplicates for {got} gear shards? Worn pieces and your best copy of each stay.",
+   "slots": [
+    "count",
+    "got"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.dupes.askOne",
+   "default": "Break down {count} duplicate for {got} gear shards? Worn pieces and your best copy of each stay.",
+   "slots": [
+    "count",
+    "got"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.dupes.label",
+   "default": "Break down all duplicates (+{value} gear shards)",
+   "slots": [
+    "value"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.dupes.no",
+   "default": "Keep",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.dupes.yes",
+   "default": "Break down",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.expand.cost",
+   "default": "Add a row ({cost} gear shards)",
+   "slots": [
+    "cost"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.expand.label",
+   "default": "Add a row",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.expand.max",
+   "default": "Inventory at its largest",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.filter.all",
+   "default": "All",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.filter.relic",
+   "default": "Relics",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.filter.weapon",
+   "default": "Weapons",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.forge.blacksmith",
+   "default": "Blacksmith",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.forge.blacksmithLine",
+   "locked": true,
+   "source": "the design sheet",
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.forge.blacksmithShards",
+   "default": "Gear shards {shards}",
+   "slots": [
+    "shards"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.forge.cost",
+   "default": "A roll costs {cost} gear shards",
+   "slots": [
+    "cost"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.forge.heading",
+   "default": "Forge",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.forge.marks",
+   "default": "Gear shards {shards}",
+   "slots": [
+    "shards"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.forge.odds",
+   "default": "Odds",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.forge.oddsRow",
+   "default": "{name} {percent}%",
+   "slots": [
+    "name",
+    "percent"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.forge.pityMany",
+   "default": "Epic or better within {left} rolls",
+   "slots": [
+    "left"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.forge.pityOne",
+   "default": "Epic or better within {left} roll",
+   "slots": [
+    "left"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.forge.relicNote",
+   "default": "A relic you already own comes back as gear shards.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.inventory.empty",
+   "default": "Nothing here yet.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.inventory.heading",
+   "default": "Inventory",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.inventory.noRelics",
+   "default": "No relics yet. The Forge rolls them.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.inventory.rows",
+   "default": "Rows {first}-{last} of {total}",
+   "slots": [
+    "first",
+    "last",
+    "total"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.loading",
+   "default": "Loading your gear…",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.relic.chosen",
+   "default": "Slot {slot} chosen: pick a relic",
+   "slots": [
+    "slot"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.relic.empty",
+   "default": "relic",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.relic.keys",
+   "default": "Relics fire on keys 1, 2 and 3",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.relicTip.click",
+   "default": "Click to slot it",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.relicTip.in",
+   "default": "In slot {slot}",
+   "slots": [
+    "slot"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.relicTip.info",
+   "default": "Relic · {role} · {seconds} s cooldown",
+   "slots": [
+    "role",
+    "seconds"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.relicTip.key",
+   "default": "Key {key} · Shift-click to clear",
+   "slots": [
+    "key"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.repair.label",
+   "default": "Repair all ({cost} gear shards)",
+   "slots": [
+    "cost"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.reveal.duplicate",
+   "default": "Duplicate",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.reveal.new",
+   "default": "New",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.reveal.refund",
+   "default": "+{refund} gear shards refunded",
+   "slots": [
+    "refund"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.reveal.relic",
+   "default": "Relic",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.reveal.skip",
+   "default": "Click to skip",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.roll.plate",
+   "default": "Roll {slot}",
+   "slots": [
+    "slot"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.roll.relic",
+   "default": "Relic",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.roll.weapon",
+   "default": "Weapon",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.sort.chip",
+   "default": "Sort: {sort}",
+   "slots": [
+    "sort"
+   ],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.sort.newest",
+   "default": "Newest",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.sort.rarity",
+   "default": "Rarity",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.sort.set",
+   "default": "Set",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.sort.slot",
+   "default": "Slot",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.tab.arsenal",
+   "default": "Arsenal",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.tab.forge",
+   "default": "Forge",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.tip.takeOff",
+   "default": "Click to take it off",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "gear.title",
+   "default": "Arsenal",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableGear.java"
+  },
+  {
+   "id": "home.field.bonus",
+   "default": "Bonus",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.field.bonusClaimed",
+   "default": "Claimed",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.field.change",
+   "default": "Change",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.field.lastBattle",
+   "default": "Last battle",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.field.teamsBots",
+   "default": "{count} v {count}, {tier} bots",
+   "slots": [
+    "count",
+    "tier"
+   ],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.field.teamsOneBot",
+   "default": "{count} v {count}, {tier} bot",
+   "slots": [
+    "count",
+    "tier"
+   ],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.party.heading",
+   "default": "Party",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.party.invite",
+   "default": "Invite",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.rail.arsenal",
+   "default": "Arsenal",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.rail.banner",
+   "default": "Banner",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.rail.camp",
+   "default": "Camp",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.rail.campKey",
+   "default": "Esc",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.rail.contracts",
+   "default": "Contracts",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.rail.friends",
+   "default": "Friends",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.rail.recruit",
+   "default": "Recruit",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.rail.seasonPass",
+   "default": "Season pass",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.ride.campaign",
+   "default": "Ride to {name}",
+   "slots": [
+    "name"
+   ],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.ride.enterKey",
+   "default": "Enter",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.ride.practice",
+   "default": "Begin practice",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.ride.running",
+   "default": "Battle under way",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.ride.seasonLocked",
+   "default": "Opens with season {season}",
+   "slots": [
+    "season"
+   ],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.ride.skirmish",
+   "default": "Open the war council",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.sheet.campaignName",
+   "default": "Campaign",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.sheet.campaignSubtitle",
+   "default": "story, battle by battle",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.sheet.practiceName",
+   "default": "Practice",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.sheet.practiceSubtitle",
+   "default": "train against bots",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.sheet.skirmishName",
+   "default": "Skirmish",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "home.sheet.skirmishSubtitle",
+   "default": "one battle, your rules",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableHome.java"
+  },
+  {
+   "id": "hud.aim.confirm",
+   "default": "Confirm",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.aim.shape",
+   "default": "Shape",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.aim.wheel",
+   "default": "Wheel",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.card.fallen",
+   "default": "Fallen",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.card.fighting",
+   "default": "Fighting",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.card.lastStand",
+   "default": "LAST STAND",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.card.steady",
+   "default": "Steady",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.chip.fallen",
+   "default": "Fallen",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.chip.fighting",
+   "default": "Fighting",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.chip.lastStand",
+   "default": "LAST STAND",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.chip.steady",
+   "default": "Steady",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.gold.amount",
+   "default": "{gold} gold",
+   "slots": [
+    "gold"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.gold.gain",
+   "default": "+{amount}",
+   "slots": [
+    "amount"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.gold.income",
+   "default": "+{income} every {every} s",
+   "slots": [
+    "income",
+    "every"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.gold.incomeShort",
+   "default": "+{income} / {every} s",
+   "slots": [
+    "income",
+    "every"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.hints.aim",
+   "default": "Aim",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.hints.cancel",
+   "default": "Cancel",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.hints.commands",
+   "default": "Commands",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.hints.confirm",
+   "default": "Confirm",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.hints.hints",
+   "default": "Hints",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.hints.map",
+   "default": "Map",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.hints.mouse",
+   "default": "Mouse",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.hints.panel",
+   "default": "Panel",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.hints.turn",
+   "default": "Turn",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.houses.traitFell",
+   "default": "{house} trait fell to tier {tier}",
+   "slots": [
+    "house",
+    "tier"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.houses.traitLost",
+   "default": "{house} trait lost",
+   "slots": [
+    "house"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.houses.traitRose",
+   "default": "{house} trait rose to tier {tier}",
+   "slots": [
+    "house",
+    "tier"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.lesson.tag",
+   "default": "LESSON {step}/4",
+   "slots": [
+    "step"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.orderKeys.attack",
+   "default": "Attack",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.orderKeys.charge",
+   "default": "Charge",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.orderKeys.follow",
+   "default": "Follow",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.orderKeys.formation",
+   "default": "Formation",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.orderKeys.retreat",
+   "default": "Retreat",
+   "slots": [],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.respawn.line",
+   "default": "Respawn in {seconds} s",
+   "slots": [
+    "seconds"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.road.rolling",
+   "default": "{stop} - rolling",
+   "slots": [
+    "stop"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.road.rollingBack",
+   "default": "{stop} - rolling back",
+   "slots": [
+    "stop"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.road.stopped",
+   "default": "{stop} - stopped",
+   "slots": [
+    "stop"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hud.road.waiting",
+   "default": "{stop} - waiting",
+   "slots": [
+    "stop"
+   ],
+   "keys": false,
+   "file": "BattleHud.java"
+  },
+  {
+   "id": "hudLayout.part.column",
+   "default": "Army column",
+   "slots": [],
+   "keys": false,
+   "file": "HudLayout.java"
+  },
+  {
+   "id": "hudLayout.part.feed",
+   "default": "Battle feed",
+   "slots": [],
+   "keys": false,
+   "file": "HudLayout.java"
+  },
+  {
+   "id": "hudLayout.part.gold",
+   "default": "Gold",
+   "slots": [],
+   "keys": false,
+   "file": "HudLayout.java"
+  },
+  {
+   "id": "hudLayout.part.houses",
+   "default": "House traits",
+   "slots": [],
+   "keys": false,
+   "file": "HudLayout.java"
+  },
+  {
+   "id": "hudLayout.part.lesson",
+   "default": "Lesson",
+   "slots": [],
+   "keys": false,
+   "file": "HudLayout.java"
+  },
+  {
+   "id": "hudLayout.part.objectives",
+   "default": "Objectives",
+   "slots": [],
+   "keys": false,
+   "file": "HudLayout.java"
+  },
+  {
+   "id": "hudLayout.part.relics",
+   "default": "Relics",
+   "slots": [],
+   "keys": false,
+   "file": "HudLayout.java"
+  },
+  {
+   "id": "hudLayout.part.respawn",
+   "default": "Respawn",
+   "slots": [],
+   "keys": false,
+   "file": "HudLayout.java"
+  },
+  {
+   "id": "hudLayout.part.score",
+   "default": "Score",
+   "slots": [],
+   "keys": false,
+   "file": "HudLayout.java"
+  },
+  {
+   "id": "hudLayout.sizeLabel",
+   "default": "{percent}%",
+   "slots": [
+    "percent"
+   ],
+   "keys": false,
+   "file": "HudLayout.java"
+  },
+  {
+   "id": "hudSize.saveFailed",
+   "default": "Your HUD size could not be saved.",
+   "slots": [],
+   "keys": false,
+   "file": "HudSize.java"
+  },
+  {
+   "id": "lobby.banner.lineMany",
+   "default": "{name} · {troops} troops · {gold} gold",
+   "slots": [
+    "name",
+    "troops",
+    "gold"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.banner.lineOne",
+   "default": "{name} · {troops} troop · {gold} gold",
+   "slots": [
+    "name",
+    "troops",
+    "gold"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.change.tag",
+   "default": "Change",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.change.tooltip",
+   "default": "Open the Banner page",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.code.count",
+   "default": "{written} of {total}",
+   "slots": [
+    "written",
+    "total"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.code.hint",
+   "default": "Click to write the code",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.copy.done",
+   "default": "Room code copied.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.copy.tag",
+   "default": "Copy",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.fill.off",
+   "default": "Seats stay empty",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.fill.on",
+   "default": "Bots fill seats",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.invite.close",
+   "default": "Close",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.invite.empty",
+   "default": "No one else is in camp yet. Friends can use this code on their war council page:",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.invite.inRoom",
+   "default": "in a room",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.invite.more",
+   "default": "More",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.invite.rowTag",
+   "default": "Invite",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.invite.tag",
+   "default": "Invite",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.invite.title",
+   "default": "Invite a commander",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.join.tag",
+   "default": "Join",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.leave.tag",
+   "default": "Leave room",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.note.bots",
+   "default": "Bots",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.note.fitMap",
+   "default": "set to fit {mode}",
+   "slots": [
+    "mode"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.note.fitMode",
+   "default": "set to fit the map",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.note.heading",
+   "default": "Orders",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.note.hostSet",
+   "default": "You set these",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.note.map",
+   "default": "Map",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.note.mode",
+   "default": "Mode",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.note.seats",
+   "default": "Seats",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.note.setBy",
+   "default": "Set by {host}",
+   "slots": [
+    "host"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.note.size",
+   "default": "{ours} v {theirs}",
+   "slots": [
+    "ours",
+    "theirs"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.notice.readyUp",
+   "default": "Ready up when you are set.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.open.plate",
+   "default": "Open the council",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.passHost.tag",
+   "default": "Pass host",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.ready.inBattle",
+   "default": "In battle",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.ready.ready",
+   "default": "Ready",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.ready.standDown",
+   "default": "Stand down",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.refusal.noTroops",
+   "default": "Your banner has no {house} troops.",
+   "slots": [
+    "house"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.seat.away",
+   "default": "Away",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.seat.bot",
+   "default": "BOT",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.seat.closed",
+   "default": "Closed",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.seat.filled",
+   "default": "Filled at the start",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.seat.host",
+   "default": "Host",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.seat.makeHost",
+   "default": "Make host",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.seat.open",
+   "default": "Open seat",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.seat.takeBot",
+   "default": "Take this seat",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.seat.takeOpen",
+   "default": "Take this seat",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.sheet.failed",
+   "default": "Room did not open. Try again.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.sheet.heading",
+   "default": "War council",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.sheet.houseHead",
+   "default": "Your House",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.sheet.houseNoTroops",
+   "default": "{house}, no troops",
+   "slots": [
+    "house"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.sheet.houseTroopMany",
+   "default": "{house}, {troops} troops",
+   "slots": [
+    "house",
+    "troops"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.sheet.houseTroopOne",
+   "default": "{house}, {troops} troop",
+   "slots": [
+    "house",
+    "troops"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.sheet.joinHead",
+   "default": "Join by code",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.sheet.joinHint",
+   "default": "A friend's code opens their council.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.sheet.opening",
+   "default": "Opening a room...",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.sheet.roleHead",
+   "default": "Your role",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.sheet.roomLabel",
+   "default": "Room",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.start.tag",
+   "default": "Start now",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.status.allReady",
+   "default": "Everyone is ready.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.status.countdown",
+   "default": "Battle begins in {seconds}",
+   "slots": [
+    "seconds"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.status.inBattle",
+   "default": "Your room is in battle.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.status.pickHost",
+   "default": "Pick a commander's seat to pass host.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.status.readyCount",
+   "default": "{ready} of {total} ready. Starts 10 s after everyone is ready.",
+   "slots": [
+    "ready",
+    "total"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.team.count",
+   "default": "{humans} of {size}",
+   "slots": [
+    "humans",
+    "size"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.team.dawn",
+   "default": "Dawn",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.team.dusk",
+   "default": "Dusk",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.wait.bot",
+   "default": "Bot",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.wait.dawn",
+   "default": "Dawn",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.wait.dusk",
+   "default": "Dusk",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.wait.mapHead",
+   "default": "Map",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.wait.preparing",
+   "default": "Preparing {map}",
+   "slots": [
+    "map"
+   ],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "lobby.wait.tipHead",
+   "default": "Tip",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableLobby.java"
+  },
+  {
+   "id": "map.ally.clickOrder",
+   "default": "Click to give an order",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.ally.fallingBack",
+   "default": "Falling back",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.ally.health",
+   "default": "Health {percent}%",
+   "slots": [
+    "percent"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.ally.inCombat",
+   "default": "In combat",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.ally.modePlan",
+   "default": "Follows the mode's own plan",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.ally.nameBot",
+   "default": "{name} (bot)",
+   "slots": [
+    "name"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.ally.namePlayer",
+   "default": "{name} (player)",
+   "slots": [
+    "name"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.ally.troopCount",
+   "default": "{type}: {count} troops (army {army})",
+   "slots": [
+    "type",
+    "count",
+    "army"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.ally.troops",
+   "default": "Allied troops",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.banner.attack",
+   "default": "Click a point or a place for {army} to attack / Esc cancels",
+   "slots": [
+    "army"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.banner.ping",
+   "default": "Click the map to ping / Esc cancels",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.button.fit",
+   "default": "Fit",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.chip.drag",
+   "default": "Drag",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.chip.move",
+   "default": "Move",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.chip.pan",
+   "default": "Pan",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.chip.select",
+   "default": "Select/plan",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.chip.wheel",
+   "default": "Wheel",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.chip.zoom",
+   "default": "Zoom",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.job.aPoint",
+   "default": "a point",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.job.atPlace",
+   "default": "{job} a place",
+   "slots": [
+    "job"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.job.atPoint",
+   "default": "{job} {point}",
+   "slots": [
+    "job",
+    "point"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.job.attack",
+   "default": "Attack",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.job.defend",
+   "default": "Defend",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.job.follow",
+   "default": "Follow",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.job.followingYou",
+   "default": "Following you",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.job.hold",
+   "default": "Hold",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.job.order",
+   "default": "{plan} (order)",
+   "slots": [
+    "plan"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.job.ownPlan",
+   "default": "Its own plan",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.job.teamPlan",
+   "default": "{plan} (team plan)",
+   "slots": [
+    "plan"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.key.ally",
+   "default": "Ally",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.key.enemy",
+   "default": "Enemy",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.key.fight",
+   "default": "Fight",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.key.plan",
+   "default": "Plan",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.key.title",
+   "default": "Key",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.key.you",
+   "default": "You",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.key.yours",
+   "default": "Yours",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.own.health",
+   "default": "Health {percent}%",
+   "slots": [
+    "percent"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.own.inCombat",
+   "default": "In combat",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.own.order",
+   "default": "Order: {order}",
+   "slots": [
+    "order"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.own.troopCount",
+   "default": "{type}: {count} troops",
+   "slots": [
+    "type",
+    "count"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.ping.tip",
+   "default": "Ping: {kind}",
+   "slots": [
+    "kind"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.point.contested",
+   "default": "Contested",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.point.heldEnemy",
+   "default": "Held by the enemy",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.point.heldYours",
+   "default": "Held by your side",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.point.neutral",
+   "default": "Neutral",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.point.noPlan",
+   "default": "No plan: click to plan",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.point.plan",
+   "default": "Plan: {job}, set by {setter}",
+   "slots": [
+    "job",
+    "setter"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.point.takingEnemy",
+   "default": "The enemy is taking it: {percent}%",
+   "slots": [
+    "percent"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.point.takingYours",
+   "default": "Your side is taking it: {percent}%",
+   "slots": [
+    "percent"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.popup.attack",
+   "default": "Attack",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.popup.clear",
+   "default": "Clear",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.popup.defend",
+   "default": "Defend",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.popup.defendHere",
+   "default": "Defend here",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.popup.followMe",
+   "default": "Follow me",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.popup.hold",
+   "default": "Hold",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.popup.holdHere",
+   "default": "Hold here",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.popup.pingHere",
+   "default": "Ping here",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.sighting.ago",
+   "default": "Seen {seconds} s ago",
+   "slots": [
+    "seconds"
+   ],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.sighting.enemy",
+   "default": "Enemy",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.sighting.now",
+   "default": "Seen now",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.top.enemy",
+   "default": "Enemy",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.top.modeDefault",
+   "default": "Battle",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.top.yourTeam",
+   "default": "Your team",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "map.you.tip",
+   "default": "You",
+   "slots": [],
+   "keys": false,
+   "file": "BattleMapScreen.java"
+  },
+  {
+   "id": "menu.credits.back",
+   "default": "Back",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.credits.line1",
+   "default": "An original Minecraft army battle game",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.credits.line2",
+   "default": "Built for Fabric / Minecraft Java Edition",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.credits.line3",
+   "default": "Original code, UI, faction artwork and audio: Graves and Glory",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.credits.line4",
+   "default": "Community mods, textures and shaders by their credited authors",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.credits.line5",
+   "default": "Full credits, licenses and permissions are included in the pack's docs folder.",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.friends.back",
+   "default": "Back",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.friends.heading",
+   "default": "PLAY WITH FRIENDS",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.friends.hintLan",
+   "default": "Hosting shares this camp on your local network.",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.friends.hintRemote",
+   "default": "Remote friends need a reachable server or launcher relay.",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.friends.host",
+   "default": "Host a camp on this network",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.friends.hostMelty",
+   "default": "Host through Melty",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.friends.invitation",
+   "default": "Use launcher invitation",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.friends.join",
+   "default": "Join a server",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.home.credits",
+   "default": "Credits",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.home.enterCamp",
+   "default": "Enter camp / Practice",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.home.friends",
+   "default": "Play with friends",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.home.quit",
+   "default": "Quit game",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.home.settings",
+   "default": "Settings",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.tagline",
+   "default": "Collect an army. Command the battlefield.",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.title",
+   "default": "GRAVES AND GLORY",
+   "slots": [],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "menu.version",
+   "default": "v{version} / {build}",
+   "slots": [
+    "version",
+    "build"
+   ],
+   "keys": false,
+   "file": "FrontMenuScreen.java"
+  },
+  {
+   "id": "order.downCard",
+   "default": "Your troops keep their last orders",
+   "slots": [],
+   "keys": false,
+   "file": "OrderReply.java"
+  },
+  {
+   "id": "order.refusal.chargeCooldown",
+   "default": "Charge ready in {n} s.",
+   "slots": [
+    "n"
+   ],
+   "keys": false,
+   "file": "OrderReply.java"
+  },
+  {
+   "id": "order.refusal.down",
+   "default": "You are down. Orders wait until you return ({n} s).",
+   "slots": [
+    "n"
+   ],
+   "keys": false,
+   "file": "OrderReply.java"
+  },
+  {
+   "id": "order.refusal.intro",
+   "default": "Wait for the horn.",
+   "slots": [],
+   "keys": false,
+   "file": "OrderReply.java"
+  },
+  {
+   "id": "order.refusal.lostSight",
+   "default": "Lost sight of them.",
+   "slots": [],
+   "keys": false,
+   "file": "OrderReply.java"
+  },
+  {
+   "id": "order.refusal.noTroops",
+   "default": "No {groups} left.",
+   "slots": [
+    "groups"
+   ],
+   "keys": false,
+   "file": "OrderReply.java"
+  },
+  {
+   "id": "order.refusal.outOfRange",
+   "default": "Too far to order.",
+   "slots": [],
+   "keys": false,
+   "file": "OrderReply.java"
+  },
+  {
+   "id": "order.refusal.targetGone",
+   "default": "That enemy is gone.",
+   "slots": [],
+   "keys": false,
+   "file": "OrderReply.java"
+  },
+  {
+   "id": "pages.banner.armyGold",
+   "default": "Gold left",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.armyHead",
+   "default": "Your army",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.armyTroops",
+   "default": "Troops",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.arrange",
+   "default": "Auto-arrange",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.arrangeTip",
+   "default": "Set the troops out: shields in front, then melee, then ranged and casters behind",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.cellLabel",
+   "default": "{rowName}, column {column}",
+   "slots": [
+    "rowName",
+    "column"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.clear",
+   "default": "Clear",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.clearTip",
+   "default": "Take every troop off this banner (press twice)",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.colourLabel",
+   "default": "Team colour",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.colourTip",
+   "default": "Team colour. First team to pick it keeps it.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.copiesBadge",
+   "default": "×{count}",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.copyButton",
+   "default": "Copy",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.copyTip",
+   "default": "Copy this banner into a new one",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.deleteButton",
+   "default": "Delete",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.deleteTip",
+   "default": "Delete this banner (press twice)",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.front",
+   "default": "Front",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.frontRow",
+   "default": "Front row",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.going",
+   "default": "Going to battle",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.goldLabel",
+   "default": "Army gold",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.goldLeft",
+   "default": "{gold} gold left",
+   "slots": [
+    "gold"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.goldOver",
+   "default": "{gold} gold over",
+   "slots": [
+    "gold"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.goldSpent",
+   "default": "{spent} of {allow}",
+   "slots": [
+    "spent",
+    "allow"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.goldTip",
+   "default": "Army gold. Every commander gets the same {gold}.",
+   "slots": [
+    "gold"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.houseTip",
+   "default": "Troops of {house}",
+   "slots": [
+    "house"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.kindCaster",
+   "default": "Caster",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.kindMelee",
+   "default": "Melee",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.kindRanged",
+   "default": "Ranged",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.kindShield",
+   "default": "Shield",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.moveHere",
+   "default": "Move here",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.newButton",
+   "default": "New",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.newTip",
+   "default": "Start a new empty banner",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.placeHint",
+   "default": "Click or drag to place · Other button to remove",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.placeWord",
+   "default": "Place {troop}, {cost} gold",
+   "slots": [
+    "troop",
+    "cost"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.placedWord",
+   "default": "{troop} · {kind} · {cost} gold",
+   "slots": [
+    "troop",
+    "kind",
+    "cost"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.price",
+   "default": "{cost} gold · {kind}",
+   "slots": [
+    "cost",
+    "kind"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.rear",
+   "default": "Rear",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.recruit",
+   "default": "Recruit",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.recruitTip",
+   "default": "Open the Recruit page",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.renameButton",
+   "default": "Rename",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.renameHelp",
+   "default": "Enter to save · Esc to cancel",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.renameLabel",
+   "default": "Name: {name}",
+   "slots": [
+    "name"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.renameTip",
+   "default": "Give this banner a new name",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.rollEmpty",
+   "default": "No {house} troops yet.",
+   "slots": [
+    "house"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.rollHint",
+   "default": "Get more troops at Recruit.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.rollLocked",
+   "default": "Locked during battle.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.rowNumber",
+   "default": "Row {row}",
+   "slots": [
+    "row"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.rowTip",
+   "default": "{rarity}, {cost} gold",
+   "slots": [
+    "rarity",
+    "cost"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.slowDown",
+   "default": "Slow down a moment.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.subLine",
+   "default": "Your troops stand in battle the way you place them here.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.sure",
+   "default": "Sure?",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.swapWith",
+   "default": "Swap with {troop}",
+   "slots": [
+    "troop"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.tabGoing",
+   "default": "{name} (goes into battle)",
+   "slots": [
+    "name"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.tabLabel",
+   "default": "Banner {number}",
+   "slots": [
+    "number"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.takeToBattle",
+   "default": "Take to battle",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.title",
+   "default": "Your Banner",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.traitNone",
+   "default": "No trait yet.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.traitProgress",
+   "default": "{slots} of {needed} troops for tier {tier}",
+   "slots": [
+    "slots",
+    "needed",
+    "tier"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.traitTop",
+   "default": "{slots} troops, top tier",
+   "slots": [
+    "slots"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.traitsHead",
+   "default": "House traits",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.understood",
+   "default": "Understood",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.useTip",
+   "default": "Take this banner into battle",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.banner.useTipGoing",
+   "default": "This banner goes into battle",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.allReached",
+   "default": "Every tier reached",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.claim",
+   "default": "Claim",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.claimed",
+   "default": "Claimed",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.copyBanneret",
+   "default": "Men march under your colours.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.copyBannerlord",
+   "default": "The banner answers to you.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.copyCaptain",
+   "default": "They hold because you hold.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.copyPathfinder",
+   "default": "You find the road the others lost.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.copyScout",
+   "default": "First out, first to see the field.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.copyVanguard",
+   "default": "First into the line, last out of it.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.earlier",
+   "default": "Earlier tiers",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.enterKey",
+   "default": "Enter",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.forAll",
+   "default": "for all",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.founders",
+   "default": "The Founders",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.givesHead",
+   "default": "Tier {tier} gives",
+   "slots": [
+    "tier"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.heroClaimable",
+   "default": "Yours to claim",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.heroClaimed",
+   "default": "Claimed",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.heroKind",
+   "default": "Title, worn in camp",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.heroLocked",
+   "default": "Unlocks at {xp} XP",
+   "slots": [
+    "xp"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.heroTier",
+   "default": "Tier {tier}",
+   "slots": [
+    "tier"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.heroWorn",
+   "default": "Worn in camp",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.later",
+   "default": "Later tiers",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.locked",
+   "default": "Locked",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.notSworn",
+   "default": "not sworn",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.oathLabel",
+   "default": "The Oath",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.passLabel",
+   "default": "Season pass",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.rareLabel",
+   "default": "Rare troop",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.rareNote",
+   "default": "Rare of {house}, {index} of {count}",
+   "slots": [
+    "house",
+    "index",
+    "count"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.rareTip",
+   "default": "Next Rare troop of {house}",
+   "slots": [
+    "house"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.rollLabel",
+   "default": "The Roll",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.tierLabel",
+   "default": "Tier",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.titleKind",
+   "default": "title",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.toNext",
+   "default": "{xp} XP to tier {tier}",
+   "slots": [
+    "xp",
+    "tier"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.unsworn",
+   "default": "The Oath: coming with House oaths.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.worn",
+   "default": "worn",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.chapter.xp",
+   "default": "{xp} / {total} XP",
+   "slots": [
+    "xp",
+    "total"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.chipsCaption",
+   "default": "House shards go to",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.claimButton",
+   "default": "Claim",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.claimed",
+   "default": "Claimed",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.dailyShards",
+   "default": "+ {shards} {house} shards",
+   "slots": [
+    "shards",
+    "house"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.houseTip",
+   "default": "Shards from claims go to {house}",
+   "slots": [
+    "house"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.reroll",
+   "default": "Reroll",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.rerollHint",
+   "default": "Swap the third contract, once a day",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.rerolledToday",
+   "default": "Rerolled today",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.reset",
+   "default": "Daily contracts reset at 00:00 UTC, the weekly on Monday",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.thirdClaimed",
+   "default": "The third contract is already claimed",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.title",
+   "default": "Contracts",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.weeklyExtra",
+   "default": "+ {writs}",
+   "slots": [
+    "writs"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.contracts.weeklyName",
+   "default": "Complete {battles} battles this week",
+   "slots": [
+    "battles"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.field.botsHead",
+   "default": "Bots",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.field.statusIdle",
+   "default": "The war council host picks the map",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.field.statusRunning",
+   "default": "A battle is on: maps wait until it ends",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.field.statusesHead",
+   "default": "Statuses",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.field.title",
+   "default": "The Field",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.accept",
+   "default": "Accept invitation",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.backToCouncil",
+   "default": "Back to the war council",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.campEmpty",
+   "default": "Commanders who join this server appear here.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.campHead",
+   "default": "In this camp",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.campHow",
+   "default": "Host a camp on this network from Play with friends on the title screen; friends pick Join a server.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.campOpen",
+   "default": "Open on your network: friends pick Play with friends, then Join a server on the title screen.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.claimLead",
+   "default": "Claim offline lead",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.councilHead",
+   "default": "War council",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.createParty",
+   "default": "Create party",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.createToInvite",
+   "default": "Create a party to invite them.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.decline",
+   "default": "Decline",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.disbandParty",
+   "default": "Disband party",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.inRoom",
+   "default": "You are in room",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.invitation",
+   "default": "Invitation from {name} ({seconds} s)",
+   "slots": [
+    "name",
+    "seconds"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.inviteTag",
+   "default": "Invite",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.join",
+   "default": "Join",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.leaveParty",
+   "default": "Leave party",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.makeLeader",
+   "default": "Make leader",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.more",
+   "default": "More",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.onlyLeader",
+   "default": "Only the party leader invites.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.openCouncil",
+   "default": "Open the war council",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.openSeat",
+   "default": "Open seat",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.partyLasts",
+   "default": "The party lasts through matches and restarts.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.partyRule",
+   "default": "A party of up to four fights as one team.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.remove",
+   "default": "Remove",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.statusLeaderOffline",
+   "default": "Leader, offline",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.statusLeaderOnline",
+   "default": "Leader, online",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.statusNoParty",
+   "default": "No party yet",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.statusOffline",
+   "default": "Offline",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.statusOnline",
+   "default": "Online",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.statusYou",
+   "default": "You",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.statusYouLead",
+   "default": "You lead the party",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.friends.title",
+   "default": "Friends",
+   "slots": [],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.rewards.gear",
+   "default": "{gold} gear shards",
+   "slots": [
+    "gold"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.rewards.houseShards",
+   "default": "{shards} {house} shards",
+   "slots": [
+    "shards",
+    "house"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.rewards.many",
+   "default": "{list} and {last}",
+   "slots": [
+    "list",
+    "last"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.rewards.shards",
+   "default": "{shards} shards",
+   "slots": [
+    "shards"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.rewards.two",
+   "default": "{first} and {second}",
+   "slots": [
+    "first",
+    "second"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "pages.rewards.xp",
+   "default": "{xp} XP",
+   "slots": [
+    "xp"
+   ],
+   "keys": false,
+   "file": "WarTablePages.java"
+  },
+  {
+   "id": "presentation.accentsHint",
+   "default": "Accents confirm your hits. They never pause the battle.",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.back",
+   "default": "Back",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.backWarTable",
+   "default": "Back to the war table",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.depthButton",
+   "default": "Troop depth: {state}",
+   "slots": [
+    "state"
+   ],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.depthHint",
+   "default": "Troop depth raises the armour detail of troops near you.",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.descMakeUp",
+   "default": "Lighter cinematic lighting",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.descOff",
+   "default": "Highest battle performance",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.descReimagined",
+   "default": "Soft light / Minecraft character",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.descUnbound",
+   "default": "Dramatic skies / reflections",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.impactButton",
+   "default": "Impact accents: {level}",
+   "slots": [
+    "level"
+   ],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.oneShader",
+   "default": "One shader at a time.",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.shaderHeading",
+   "default": "SHADER",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.soundButton",
+   "default": "Minecraft sound levels",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.subtitle",
+   "default": "VISUALS & SOUND / saved on your PC",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.switchLobby",
+   "default": "Switch in the lobby.",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentation.title",
+   "default": "THE LOOK OF WAR",
+   "slots": [],
+   "keys": false,
+   "file": "PresentationScreen.java"
+  },
+  {
+   "id": "presentationSettings.impactOff",
+   "default": "OFF",
+   "slots": [],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "presentationSettings.impactStrong",
+   "default": "STRONG",
+   "slots": [],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "presentationSettings.impactSubtle",
+   "default": "SUBTLE",
+   "slots": [],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "presentationSettings.noticeIntro",
+   "default": "Choose a look. Your choice affects only your screen.",
+   "slots": [],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "presentationSettings.noticeSaveFailed",
+   "default": "Your visual preference could not be saved.",
+   "slots": [],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "presentationSettings.noticeShaderFailed",
+   "default": "That shader could not run here. Restored shaders off.",
+   "slots": [],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "presentationSettings.noticeShaderMissing",
+   "default": "This shader is missing from this installation.",
+   "slots": [],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "presentationSettings.noticeShaderOn",
+   "default": "{shader} enabled. Your choice is saved.",
+   "slots": [
+    "shader"
+   ],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "presentationSettings.noticeShadersOff",
+   "default": "Shaders off. Your choice is saved.",
+   "slots": [],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "presentationSettings.noticeSwitchFailed",
+   "default": "Shaders could not be changed. Your game is still running.",
+   "slots": [],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "presentationSettings.off",
+   "default": "OFF",
+   "slots": [],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "presentationSettings.on",
+   "default": "ON",
+   "slots": [],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "presentationSettings.shaderOff",
+   "default": "Off / fastest",
+   "slots": [],
+   "keys": false,
+   "file": "Presentation.java"
+  },
+  {
+   "id": "recruit.enlist.key",
+   "default": "Enter",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableRecruit.java"
+  },
+  {
+   "id": "recruit.enlist.label",
+   "default": "Enlist",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableRecruit.java"
+  },
+  {
+   "id": "recruit.enlist.need",
+   "default": "Need {cost}",
+   "slots": [
+    "cost"
+   ],
+   "keys": false,
+   "file": "WarTableRecruit.java"
+  },
+  {
+   "id": "recruit.letter.deploy",
+   "default": "Deploys in battle for {cost} gold",
+   "slots": [
+    "cost"
+   ],
+   "keys": false,
+   "file": "WarTableRecruit.java"
+  },
+  {
+   "id": "recruit.letter.kind",
+   "default": "{rarity} {group}",
+   "slots": [
+    "rarity",
+    "group"
+   ],
+   "keys": false,
+   "file": "WarTableRecruit.java"
+  },
+  {
+   "id": "recruit.letter.kindRecruited",
+   "default": "{group}, recruited",
+   "slots": [
+    "group"
+   ],
+   "keys": false,
+   "file": "WarTableRecruit.java"
+  },
+  {
+   "id": "recruit.note.heading",
+   "default": "Odds",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableRecruit.java"
+  },
+  {
+   "id": "recruit.odds.label",
+   "default": "Odds",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableRecruit.java"
+  },
+  {
+   "id": "recruit.rail.banner",
+   "default": "Banner",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableRecruit.java"
+  },
+  {
+   "id": "recruit.reason.battle",
+   "default": "A battle is under way.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableRecruit.java"
+  },
+  {
+   "id": "recruit.reason.sent",
+   "default": "Sent. Waiting for the camp.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableRecruit.java"
+  },
+  {
+   "id": "recruitPages.action.buy",
+   "default": "Buy {cost}",
+   "slots": [
+    "cost"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.action.buyJoins",
+   "default": "Joins your collection.",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.action.buyNeed",
+   "default": "Need {cost} writs. You have {have}.",
+   "slots": [
+    "cost",
+    "have"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.action.legendaryNeedBoth",
+   "default": "Needs {renown} {house} Renown (you have {haveRenown}) and {shards} shards (you have {haveShards}), or a Pact.",
+   "slots": [
+    "renown",
+    "house",
+    "haveRenown",
+    "shards",
+    "haveShards"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.action.legendaryNeedRenown",
+   "default": "Needs {renown} {house} Renown (you have {have}), or a Pact.",
+   "slots": [
+    "renown",
+    "house",
+    "have"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.action.legendaryNeedShards",
+   "default": "Needs {shards} shards (you have {have}), or a Pact.",
+   "slots": [
+    "shards",
+    "have"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.action.legendaryShards",
+   "default": "{shards} shards",
+   "slots": [
+    "shards"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.action.legendaryTip",
+   "default": "{troop} joins your collection for {shards} {house} shards.",
+   "slots": [
+    "troop",
+    "shards",
+    "house"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.action.pact",
+   "default": "Pact",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.action.pactTip",
+   "default": "Spend your Pact: {troop} joins your collection.",
+   "slots": [
+    "troop"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.action.star",
+   "default": "Star {star}",
+   "slots": [
+    "star"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.action.starNeed",
+   "default": "Need {cost} {house} shards. You have {have}.",
+   "slots": [
+    "cost",
+    "house",
+    "have"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.action.starTip",
+   "default": "Star {star} for {cost} {house} shards.",
+   "slots": [
+    "star",
+    "cost",
+    "house"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.chipCaption",
+   "default": "Shards to {house}",
+   "slots": [
+    "house"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.contractShards.daily",
+   "default": "+ {shards} shards",
+   "slots": [
+    "shards"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.contractShards.weekly",
+   "default": "+ {shards} shards",
+   "slots": [
+    "shards"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.copyLine.plain",
+   "default": "Adds a copy.",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.copyLine.toward",
+   "default": "Adds a copy ({copies} of {need} toward star {star}).",
+   "slots": [
+    "copies",
+    "need",
+    "star"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.houseChip.tip",
+   "default": "Shards from claims go to the {house}",
+   "slots": [
+    "house"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.mastery.frame",
+   "default": "{name} frame",
+   "slots": [
+    "name"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.mastery.look",
+   "default": "{name} look",
+   "slots": [
+    "name"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.mastery.title",
+   "default": "{name} title",
+   "slots": [
+    "name"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.mastery.trim",
+   "default": "Mastery trim",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.outcome.anotherCopy",
+   "default": "Another copy",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.outcome.copy",
+   "default": "Copy {copies} of {need} toward star {star}",
+   "slots": [
+    "copies",
+    "need",
+    "star"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.outcome.fullStars",
+   "default": "+{shards} {house} shards: already at full stars",
+   "slots": [
+    "shards",
+    "house"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.outcome.joined",
+   "default": "Joined your collection",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.outcome.star",
+   "default": "Star {from} to star {to}",
+   "slots": [
+    "from",
+    "to"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.roll.continue",
+   "default": "Click anywhere to continue",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.roll.duplicate",
+   "default": "DUPLICATE",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.roll.duplicateNote",
+   "default": "Each star adds to its health and damage.",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.roll.newNote",
+   "default": "Place it in your banner in the war council.",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.roll.newRecruit",
+   "default": "NEW RECRUIT",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.roll.rarityHouse",
+   "default": "{rarity} / {house}",
+   "slots": [
+    "rarity",
+    "house"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.allLevels",
+   "default": "{name} at every level",
+   "slots": [
+    "name"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.beatenBy",
+   "default": "Beaten by",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.beats",
+   "default": "Beats",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.copies",
+   "default": "{copies} copies",
+   "slots": [
+    "copies"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.copiesToStar",
+   "default": "{copies} of {need} copies to star {star}",
+   "slots": [
+    "copies",
+    "need",
+    "star"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.fullStars",
+   "default": "Full stars",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.headAbility",
+   "default": "ABILITY",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.headMastery",
+   "default": "MASTERY",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.headMatchups",
+   "default": "MATCHUPS",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.headRank",
+   "default": "RANK",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.masteryKills",
+   "default": "{done}/{want} kills",
+   "slots": [
+    "done",
+    "want"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.masterySurvived",
+   "default": "{done}/{want} survived",
+   "slots": [
+    "done",
+    "want"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.noChange",
+   "default": "No change at this Rank",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.notOwned",
+   "default": "Not in your collection",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.rarityGroup",
+   "default": "{rarity} / {group}",
+   "slots": [
+    "rarity",
+    "group"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitPages.troop.starShards",
+   "default": "Star {star}: {shards} shards",
+   "slots": [
+    "star",
+    "shards"
+   ],
+   "keys": false,
+   "file": "RecruitPages.java"
+  },
+  {
+   "id": "recruitView.noAction.fullStars",
+   "default": "Full stars",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitView.java"
+  },
+  {
+   "id": "recruitView.noAction.lettersOnly",
+   "default": "From letters only",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitView.java"
+  },
+  {
+   "id": "recruitView.note.copyRule",
+   "default": "A troop you own gives a copy toward its next star.",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitView.java"
+  },
+  {
+   "id": "recruitView.note.legendaryRule",
+   "default": "A Legendary comes from a Pact, or {shards} shards and {renown} Renown, not a letter.",
+   "slots": [
+    "shards",
+    "renown"
+   ],
+   "keys": false,
+   "file": "RecruitView.java"
+  },
+  {
+   "id": "recruitView.odds.part",
+   "default": "{rarity} {percent}%",
+   "slots": [
+    "rarity",
+    "percent"
+   ],
+   "keys": false,
+   "file": "RecruitView.java"
+  },
+  {
+   "id": "recruitment.rail.armoury",
+   "default": "Armoury",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitmentScreen.java"
+  },
+  {
+   "id": "recruitment.rail.back",
+   "default": "Back",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitmentScreen.java"
+  },
+  {
+   "id": "recruitment.rail.backKey",
+   "default": "Esc",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitmentScreen.java"
+  },
+  {
+   "id": "recruitment.rail.barracks",
+   "default": "Barracks",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitmentScreen.java"
+  },
+  {
+   "id": "recruitment.trainingTime.many",
+   "default": "Training time: {time} seconds",
+   "slots": [
+    "time"
+   ],
+   "keys": false,
+   "file": "RecruitmentScreen.java"
+  },
+  {
+   "id": "recruitment.trainingTime.one",
+   "default": "Training time: {time} second",
+   "slots": [
+    "time"
+   ],
+   "keys": false,
+   "file": "RecruitmentScreen.java"
+  },
+  {
+   "id": "recruitment.unavailable.allFielded",
+   "default": "All {listed} of your banner are fielded or in training.",
+   "slots": [
+    "listed"
+   ],
+   "keys": false,
+   "file": "RecruitmentScreen.java"
+  },
+  {
+   "id": "recruitment.unavailable.away",
+   "default": "Return to your barracks to recruit.",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitmentScreen.java"
+  },
+  {
+   "id": "recruitment.unavailable.full",
+   "default": "Army and training queue are full.",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitmentScreen.java"
+  },
+  {
+   "id": "recruitment.unavailable.needGold",
+   "default": "You need {more} more gold.",
+   "slots": [
+    "more"
+   ],
+   "keys": false,
+   "file": "RecruitmentScreen.java"
+  },
+  {
+   "id": "recruitment.unavailable.notInBanner",
+   "default": "Not in your banner. Change your banner in the war council.",
+   "slots": [],
+   "keys": false,
+   "file": "RecruitmentScreen.java"
+  },
+  {
+   "id": "report.battle.armyMany",
+   "default": "{count} armies",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.battle.armyOne",
+   "default": "{count} army",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.battle.commanders",
+   "default": "Commanders",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.battle.houses",
+   "default": "Houses",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.battle.story",
+   "default": "After the battle",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.chapter.complete",
+   "default": "Chapter complete. Troops and titles stay yours.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.chapter.contracts",
+   "default": "Contracts",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.chapter.founders",
+   "default": "Founders",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.chapter.next",
+   "default": "Next, tier {tier}: {reward}. {xpLeft} XP to go.",
+   "slots": [
+    "tier",
+    "reward",
+    "xpLeft"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.chapter.tierLine",
+   "default": "Tier {tier} of 30, {xp} XP",
+   "slots": [
+    "tier",
+    "xp"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.chapter.weekly",
+   "default": "Weekly battles",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.contract.claimed",
+   "default": "Claimed",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.contract.ready",
+   "default": "Ready to claim",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.house.noTrait",
+   "default": "No trait tier",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.house.paid",
+   "default": "+{shards} shards  +{renown} Renown",
+   "slots": [
+    "shards",
+    "renown"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.house.trait",
+   "default": "Trait {tier} held {seconds}s",
+   "slots": [
+    "tier",
+    "seconds"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.allWon",
+   "default": "Every battle of {chapter} is won.",
+   "slots": [
+    "chapter"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.bonusClaimed",
+   "default": "Bonus claimed before",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.bonusKept",
+   "default": "Bonus kept",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.bonusMissed",
+   "default": "Bonus missed",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.bonusPaid",
+   "default": "+{shards} shards, +{gearShards} gear shards",
+   "slots": [
+    "shards",
+    "gearShards"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.bonuses",
+   "default": "Bonuses claimed: {claimed} of {total}.",
+   "slots": [
+    "claimed",
+    "total"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.held",
+   "default": "held {held}",
+   "slots": [
+    "held"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.nextBattle",
+   "default": "Next, battle {number}: {battle}.",
+   "slots": [
+    "number",
+    "battle"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.noPact",
+   "default": "You hold no Pact. Clear every battle of a campaign chapter to earn one.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.pactEarned",
+   "default": "A Pact earned",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.pactsEarned",
+   "default": "{pacts} Pacts earned",
+   "slots": [
+    "pacts"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.pactsHeld",
+   "default": "Pacts held: {pacts}.",
+   "slots": [
+    "pacts"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.pactsHeldRow",
+   "default": "Pacts held",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.underFloor",
+   "default": "No rewards: under 3 minutes.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.march.won",
+   "default": "{won} of {total} won",
+   "slots": [
+    "won",
+    "total"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.note.backToCamp",
+   "default": "Back to camp",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.note.chapter",
+   "default": "Chapter",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.note.contracts",
+   "default": "Contracts",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.note.ineligibleNote",
+   "default": "No match rewards: play at least 3 minutes to qualify.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.note.none",
+   "default": "No battle to report yet.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.note.notSaved",
+   "default": "Rewards not saved",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.note.notSavedNote",
+   "default": "Progress unchanged. Check disk space before playing again.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.note.returnToRoom",
+   "default": "Return to room",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.note.rewards",
+   "default": "Rewards",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.note.rewardsLine",
+   "default": "+{writs} writs   +{gearShards} gear shards   +{xp} chapter XP",
+   "slots": [
+    "writs",
+    "gearShards",
+    "xp"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.note.savedNote",
+   "default": "Rewards saved. Contract and tier rewards are claimed separately.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.paging.next",
+   "default": "Next",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.paging.previous",
+   "default": "Previous",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.tab.battle",
+   "default": "Battle",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.tab.chapter",
+   "default": "Chapter",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.tab.troops",
+   "default": "Troops",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.tab.you",
+   "default": "You",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.troops.head",
+   "default": "Troops in battle",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.troops.none",
+   "default": "No troop Ranks this battle.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.troops.page",
+   "default": "Page {page} of {pages}",
+   "slots": [
+    "page",
+    "pages"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.you.army",
+   "default": "Your army",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.you.head",
+   "default": "Your battle",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.you.score",
+   "default": "Score {score}",
+   "slots": [
+    "score"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "report.you.scoreRank",
+   "default": "Score {score}, rank {rank} of {total}",
+   "slots": [
+    "score",
+    "rank",
+    "total"
+   ],
+   "keys": false,
+   "file": "WarTableReport.java"
+  },
+  {
+   "id": "troop.bar.count",
+   "default": "{have} of {want}",
+   "slots": [
+    "have",
+    "want"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.cost.copies",
+   "default": "{count} copies",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.cost.copy",
+   "default": "{count} copy",
+   "slots": [
+    "count"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.cost.shards",
+   "default": "{count} {house} shards",
+   "slots": [
+    "count",
+    "house"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.armoury",
+   "default": "Gold buys weapon and armour upgrades for this troop type: tier II +{pct2}% for {price2}, tier III +{pct3}% for {price3}.",
+   "slots": [
+    "pct2",
+    "price2",
+    "pct3",
+    "price3"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.armouryLasts",
+   "default": "Lasts the match",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.armouryName",
+   "default": "Armoury",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.armouryPlain",
+   "default": "Gold buys weapon and armour upgrades for this troop type.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.masteryIntro",
+   "default": "The account's record with this troop type earns titles:",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.masteryItem",
+   "default": "{kills} kills and {fights} fights",
+   "slots": [
+    "kills",
+    "fights"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.masteryLasts",
+   "default": "Lasts forever",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.masteryName",
+   "default": "Mastery",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.rank",
+   "default": "Kills in a match raise it: Rank 2 at {kills2} kills (+{pct2}%), Rank 3 at {kills3} (+{pct3}%).",
+   "slots": [
+    "kills2",
+    "pct2",
+    "kills3",
+    "pct3"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.rankLasts",
+   "default": "Lasts the match",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.rankName",
+   "default": "Rank",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.rankPlain",
+   "default": "Kills in a match raise it.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.stars",
+   "default": "Duplicates raise it to star 2 (+{pct2}% health and damage) and star 3 (+{pct3}%).",
+   "slots": [
+    "pct2",
+    "pct3"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.starsLasts",
+   "default": "Lasts forever",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.growth.starsName",
+   "default": "Stars",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.letter.deploy",
+   "default": "Deploys in battle for {cost} gold",
+   "slots": [
+    "cost"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.letter.kind",
+   "default": "{house}, {rarity} {group}",
+   "slots": [
+    "house",
+    "rarity",
+    "group"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.barFights",
+   "default": "Fights survived",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.barKills",
+   "default": "Kills",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.copiesHeld",
+   "default": "Copies held {copies}",
+   "slots": [
+    "copies"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.headMastery",
+   "default": "Mastery",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.headRank",
+   "default": "Rank in battle",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.headStars",
+   "default": "Stars",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.masteryComplete",
+   "default": "Mastery complete",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.masteryNext",
+   "default": "Next, Mastery {level}: {reward}",
+   "slots": [
+    "level",
+    "reward"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.masteryReached",
+   "default": "{level} of {total} reached",
+   "slots": [
+    "level",
+    "total"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.next",
+   "default": "Next: {cost}",
+   "slots": [
+    "cost"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.nextCopies",
+   "default": "Next: {cost}, {copies} held",
+   "slots": [
+    "cost",
+    "copies"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.nextJoins",
+   "default": "Next: joins your collection",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.noChange",
+   "default": "No change at this Rank.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.noTitle",
+   "default": "No title yet",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.reached",
+   "default": "Reached",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.shardsHeld",
+   "default": "{house} shards held {shards}",
+   "slots": [
+    "house",
+    "shards"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.starRung",
+   "default": "Star {star}",
+   "slots": [
+    "star"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.levels.title",
+   "default": "Title: {title}",
+   "slots": [
+    "title"
+   ],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.matchups.beatenBy",
+   "default": "Beaten by",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.matchups.beats",
+   "default": "Beats",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.matchups.head",
+   "default": "Matchups",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.matchups.headDamage",
+   "default": "Damage rules",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.matchups.noRules",
+   "default": "No damage rules apply.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.matchups.nothing",
+   "default": "Nothing in particular.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.rail.recruits",
+   "default": "Recruits",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.rail.recruitsKey",
+   "default": "Esc",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.reason.battle",
+   "default": "A battle is under way.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.reason.sent",
+   "default": "Sent. Waiting for the camp.",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.stats.head",
+   "default": "Stats",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.tab.growth",
+   "default": "Growth",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.tab.matchups",
+   "default": "Matchups",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.tab.stats",
+   "default": "Stats",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "troop.tab.troop",
+   "default": "Troop",
+   "slots": [],
+   "keys": false,
+   "file": "WarTableTroop.java"
+  },
+  {
+   "id": "ui.mapForest",
+   "default": "Forest / old causeways",
+   "slots": [],
+   "keys": false,
+   "file": "DarkUi.java"
+  },
+  {
+   "id": "ui.mapFortress",
+   "default": "Fortress / supply roads",
+   "slots": [],
+   "keys": false,
+   "file": "DarkUi.java"
+  },
+  {
+   "id": "ui.mapPlains",
+   "default": "Plains / five points, two flanks",
+   "slots": [],
+   "keys": false,
+   "file": "DarkUi.java"
+  },
+  {
+   "id": "ui.mapRiver",
+   "default": "River town / three crossings",
+   "slots": [],
+   "keys": false,
+   "file": "DarkUi.java"
+  },
+  {
+   "id": "ui.mapSnow",
+   "default": "Snow / sheltered passes",
+   "slots": [],
+   "keys": false,
+   "file": "DarkUi.java"
+  },
+  {
+   "id": "ui.teamNeutral",
+   "default": "Neutral",
+   "slots": [],
+   "keys": false,
+   "file": "DarkUi.java"
+  },
+  {
+   "id": "warTable.backKey",
+   "default": "Esc",
+   "slots": [],
+   "keys": false,
+   "file": "WarTable.java"
+  },
+  {
+   "id": "warTable.backLabel",
+   "default": "War table",
+   "slots": [],
+   "keys": false,
+   "file": "WarTable.java"
+  }
+ ]
+}

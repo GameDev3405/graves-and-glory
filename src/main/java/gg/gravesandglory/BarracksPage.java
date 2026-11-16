@@ -107,24 +107,24 @@ final class BarracksPage {
         var font = font();
         UiTex.draw(g, "recruit/muster-roll", x, y);
         // the roll's head on the table above it, as the ladder's lines sit on the wood: what the roll is and how many types it lists
-        g.drawText(font, heading("Troops"), x + 8, y - 18, DarkUi.IVORY, true);
-        String types = listed.size() + (listed.size() == 1 ? " type in your banner" : " types in your banner");
+        g.drawText(font, heading(UiText.t("barracks.roll.heading", "Troops")), x + 8, y - 18, DarkUi.IVORY, true);
+        String types = listed.size() == 1 ? UiText.t("barracks.roll.typeOne", "{count} type in your banner", "count", listed.size()) : UiText.t("barracks.roll.typeMany", "{count} types in your banner", "count", listed.size());
         g.drawText(font, body(types), x + WarTableRecruit.ROLL_W - 8 - bodyW(types), y - 17, DarkUi.IVORY, true);
         int sel = listed.indexOf(screen.selected) - first;
         if (sel >= 0 && sel < shown) UiTex.draw(g, "recruit/row-mark", x, top + ROW_H * sel);
         for (int i = 1; i < shown + (scrolling ? 1 : 0); i++) if (i != sel) UiTex.draw(g, "recruit/rule-208", x + 16, top + ROW_H * i);
         for (int i = 0; i < shown; i++) row(g, listed.get(first + i), x, top + ROW_H * i, i != sel && WarTableRecruit.hot(rows.get(i)));
         if (listed.isEmpty()) {
-            WarTableHome.centred(g, body("Your banner has no troops."), x + WarTableRecruit.ROLL_W / 2, top + 20, DarkUi.SEPIA);
+            WarTableHome.centred(g, body(UiText.t("barracks.roll.empty", "Your banner has no troops.")), x + WarTableRecruit.ROLL_W / 2, top + 20, DarkUi.SEPIA);
         } else if (!scrolling) { // the roll's spare room says where the list comes from and what a pick does
             int fy = top + ROW_H * shown + 14, cx = x + WarTableRecruit.ROLL_W / 2;
             g.fill(x + 40, fy - 6, x + WarTableRecruit.ROLL_W - 40, fy - 5, DarkUi.SEPIA_LINE);
-            WarTableHome.centred(g, body("Pick a troop to train or disband."), cx, fy + 2, DarkUi.SEPIA);
-            WarTableHome.centred(g, body("Your banner sets this list:"), cx, fy + 2 + LINE + 4, DarkUi.SEPIA);
-            WarTableHome.centred(g, body("change it in the war council."), cx, fy + 2 + 2 * LINE + 4, DarkUi.SEPIA);
+            WarTableHome.centred(g, body(UiText.t("barracks.roll.hintPick", "Pick a troop to train or disband.")), cx, fy + 2, DarkUi.SEPIA);
+            WarTableHome.centred(g, body(UiText.t("barracks.roll.hintList", "Your banner sets this list:")), cx, fy + 2 + LINE + 4, DarkUi.SEPIA);
+            WarTableHome.centred(g, body(UiText.t("barracks.roll.hintChange", "change it in the war council.")), cx, fy + 2 + 2 * LINE + 4, DarkUi.SEPIA);
         }
         if (scrolling) {
-            String span = "Troops " + (first + 1) + "-" + (first + shown) + " of " + listed.size();
+            String span = UiText.t("barracks.roll.span", "Troops {first}-{last} of {total}", "first", first + 1, "last", first + shown, "total", listed.size());
             g.drawText(font, body(span), x + 16, top + ROW_H * shown + (ROW_H - 8) / 2, DarkUi.SEPIA, false);
         }
     }
@@ -143,7 +143,7 @@ final class BarracksPage {
         if (hot) g.fill(x + 60, y + 24, x + 60 + font.getWidth(heading(name)), y + 25, DarkUi.INK_TEXT);
         g.drawText(font, body(price), px, y + 13, DarkUi.INK_TEXT, false);
         UiTex.draw(g, "recruit/coin-m", px - 10, y + 13);
-        String count = roster[index] + " of " + RecruitmentScreen.listed(t) + " fielded" + (pending[index] > 0 ? ", " + pending[index] + " training" : "");
+        String count = pending[index] > 0 ? UiText.t("barracks.row.fieldedTraining", "{fielded} of {listed} fielded, {pending} training", "fielded", roster[index], "listed", RecruitmentScreen.listed(t), "pending", pending[index]) : UiText.t("barracks.row.fielded", "{fielded} of {listed} fielded", "fielded", roster[index], "listed", RecruitmentScreen.listed(t));
         g.drawText(font, body(UiMath.trim(count, WarTableRecruit.ROLL_W - 76, BarracksPage::bodyW)), x + 60, y + 30, DarkUi.SEPIA, false);
     }
 
@@ -168,16 +168,16 @@ final class BarracksPage {
         UiTex.draw(g, "table/frame-ornate-184", x + 60, y + 28);
         String name = UiMath.trim(t.name(), lw, s -> font.getWidth(DarkUi.focal(s)));
         WarTableHome.centred(g, DarkUi.focal(name), cx, y + NAME_Y, DarkUi.INK_TEXT); drawn.add(name);
-        String kind = Morale.label(t.group()) + ", " + RosterMath.houseName(t.house());
+        String kind = UiText.t("barracks.letter.kind", "{group}, {house}", "group", Morale.label(t.group()), "house", RosterMath.houseName(t.house()));
         WarTableHome.centred(g, body(kind), cx, y + KIND_Y, DarkUi.SEPIA); drawn.add(kind);
-        String stats = "Health " + t.health() + "    Damage " + t.damage();
+        String stats = UiText.t("barracks.letter.stats", "Health {health}    Damage {damage}", "health", t.health(), "damage", t.damage());
         WarTableHome.centred(g, body(stats), cx, y + STATS_Y, DarkUi.INK_TEXT); drawn.add(stats);
         for (int i = 0; i < Math.min(2, UiMath.lines(ability(t), lw, 2, BarracksPage::bodyW).size()); i++) {
             String line = UiMath.lines(ability(t), lw, 2, BarracksPage::bodyW).get(i);
             WarTableHome.centred(g, body(line), cx, y + ABILITY_Y + LINE * i, DarkUi.SEPIA); drawn.add(line);
         }
         int i = screen.selected;
-        String fielded = roster[i] + " of " + RecruitmentScreen.listed(t) + " fielded" + (pending[i] > 0 ? ", " + pending[i] + " in training" : "");
+        String fielded = pending[i] > 0 ? UiText.t("barracks.letter.fieldedTraining", "{fielded} of {listed} fielded, {pending} in training", "fielded", roster[i], "listed", RecruitmentScreen.listed(t), "pending", pending[i]) : UiText.t("barracks.letter.fielded", "{fielded} of {listed} fielded", "fielded", roster[i], "listed", RecruitmentScreen.listed(t));
         WarTableHome.centred(g, body(fielded), cx, y + FIELDED_Y, DarkUi.INK_TEXT); drawn.add(fielded);
         String reason = screen.unavailable(t); boolean can = RecruitmentScreen.trainable(t);
         var lines = UiMath.lines(reason, lw, 2, BarracksPage::bodyW);
@@ -190,10 +190,10 @@ final class BarracksPage {
         String own = RecruitPages.abilityLines(t).get(0);
         if (!own.isEmpty()) return own;
         return switch (Abilities.row(t).mechanic()) {
-            case "shield" -> "Shield: frontline protection";
-            case "mend" -> "Mend: restores allied health";
-            case "blight" -> "Blight: offensive magic";
-            default -> t.group().equals("ranged") ? "Ranged: attacks from a distance" : "Melee: frontline fighter";
+            case "shield" -> UiText.t("barracks.ability.shield", "Shield: frontline protection");
+            case "mend" -> UiText.t("barracks.ability.mend", "Mend: restores allied health");
+            case "blight" -> UiText.t("barracks.ability.blight", "Blight: offensive magic");
+            default -> t.group().equals("ranged") ? UiText.t("barracks.ability.ranged", "Ranged: attacks from a distance") : UiText.t("barracks.ability.melee", "Melee: frontline fighter");
         };
     }
 
@@ -205,30 +205,30 @@ final class BarracksPage {
         UiTex.draw(g, "table/note-contract", nx, ny);
         queueBox = new int[]{nx, ny, note.w(), note.h()};
         List<String> q = new ArrayList<>();
-        g.drawText(font, heading("Training"), tx, ny + 12, DarkUi.INK_TEXT, false); q.add("Training");
-        String count = queued > 0 ? String.valueOf(queued) : "";
-        if (!count.isEmpty()) g.drawText(font, body(count + " queued"), tx + tw - bodyW(count + " queued"), ny + 13, DarkUi.INK_TEXT, false);
+        String training = UiText.t("barracks.queue.heading", "Training");
+        g.drawText(font, heading(training), tx, ny + 12, DarkUi.INK_TEXT, false); q.add(training);
+        if (queued > 0) { String queuedText = UiText.t("barracks.queue.queued", "{count} queued", "count", queued); g.drawText(font, body(queuedText), tx + tw - bodyW(queuedText), ny + 13, DarkUi.INK_TEXT, false); }
         g.fill(tx, ny + 25, tx + tw, ny + 26, DarkUi.SEPIA_LINE);
         List<String> lines = new ArrayList<>();
         if (queued > 0) {
-            lines.add("Next joins in " + trainingSeconds + (trainingSeconds == 1 ? " second" : " seconds"));
+            lines.add(trainingSeconds == 1 ? UiText.t("barracks.queue.nextOne", "Next joins in {seconds} second", "seconds", trainingSeconds) : UiText.t("barracks.queue.nextMany", "Next joins in {seconds} seconds", "seconds", trainingSeconds));
             List<String> who = new ArrayList<>();
             for (int i = 0; i < pending.length && i < Spec.TROOPS.length; i++) if (pending[i] > 0) who.add(Spec.TROOPS[i].name() + " x" + pending[i]);
             lines.addAll(UiMath.lines(String.join(", ", who), tw, 2, BarracksPage::bodyW));
-        } else lines.add("No one in training");
-        lines.add("Replacements join their group.");
+        } else lines.add(UiText.t("barracks.queue.none", "No one in training"));
+        lines.add(UiText.t("barracks.queue.replacements", "Replacements join their group."));
         int ly = ny + 32;
         for (int k = 0; k < lines.size() && ly + 9 <= ny + note.h() - 8; k++, ly += LINE) {
             String s = UiMath.trim(lines.get(k), tw, BarracksPage::bodyW);
             g.drawText(font, body(s), tx, ly, k == lines.size() - 1 ? DarkUi.SEPIA : DarkUi.INK_TEXT, false); q.add(s);
         }
         queueDrawn = q;
-        String purse = gold + " gold"; // as the Armoury writes it
+        String purse = UiText.t("barracks.purse", "{gold} gold", "gold", gold); // as the Armoury writes it
         int pw = 10 + font.getWidth(heading(purse)), px = axis - (pw + 1) / 2, py = oy + PURSE_Y + 8;
         UiTex.draw(g, "recruit/coin-m", px, py + 2);
         g.drawText(font, heading(purse), px + 10, py, DarkUi.IVORY, true);
         purseBox = new int[]{px, py, pw, 12};
-        String army = "Army " + RecruitmentScreen.count(false) + " of " + RosterMath.maxTroops() + " troops" + (queued > 0 ? ", " + (RecruitmentScreen.count(true) - RecruitmentScreen.count(false)) + " queued" : "");
+        String army = queued > 0 ? UiText.t("barracks.army.queued", "Army {count} of {max} troops, {queued} queued", "count", RecruitmentScreen.count(false), "max", RosterMath.maxTroops(), "queued", RecruitmentScreen.count(true) - RecruitmentScreen.count(false)) : UiText.t("barracks.army.plain", "Army {count} of {max} troops", "count", RecruitmentScreen.count(false), "max", RosterMath.maxTroops());
         int aw = bodyW(army);
         g.drawText(font, body(army), axis - aw / 2, oy + ARMY_Y, DarkUi.IVORY, true);
     }
@@ -256,11 +256,11 @@ final class BarracksPage {
     /** Why Recruit is shut, in the plate's few words (the letter gives the whole reason). */
     String shortReason(Spec.TroopsRow t) {
         int i = screen.selected, listed = RecruitmentScreen.listed(t);
-        if (!nearBarracks) return "Not here";
-        if (listed == 0) return "Not in banner";
-        if (roster[i] + pending[i] >= listed) return "All fielded";
-        if (RecruitmentScreen.count(true) >= RosterMath.maxTroops()) return "Army full";
-        if (gold < RecruitmentScreen.price(t)) return "Need " + RecruitmentScreen.price(t);
+        if (!nearBarracks) return UiText.t("barracks.short.notHere", "Not here");
+        if (listed == 0) return UiText.t("barracks.short.notInBanner", "Not in banner");
+        if (roster[i] + pending[i] >= listed) return UiText.t("barracks.short.allFielded", "All fielded");
+        if (RecruitmentScreen.count(true) >= RosterMath.maxTroops()) return UiText.t("barracks.short.armyFull", "Army full");
+        if (gold < RecruitmentScreen.price(t)) return UiText.t("barracks.short.needGold", "Need {price}", "price", RecruitmentScreen.price(t));
         return null;
     }
 
@@ -269,18 +269,18 @@ final class BarracksPage {
         String price = t == null ? "" : String.valueOf(RecruitmentScreen.price(t));
         boolean live = screen.recruit.active;
         String why = t == null || live ? null : shortReason(t);
-        plate(g, screen.recruit, "table/btn-brass-240x40", "Recruit", "Enter", live ? price : why, live ? DarkUi.PLATE_INK : DarkUi.ALARM_TEXT, x, y);
+        plate(g, screen.recruit, "table/btn-brass-240x40", UiText.t("barracks.recruit.label", "Recruit"), UiText.t("barracks.recruit.key", "Enter"), live ? price : why, live ? DarkUi.PLATE_INK : DarkUi.ALARM_TEXT, x, y);
         if (live) UiTex.draw(g, "recruit/coin-m", x + 224 - font().getWidth(price) - 10, y + 16); // 3 px before the price, as Enlist has it
     }
 
     void paintDisband(DrawContext g, int x, int y, int w, int h, boolean hotIgnored) {
         boolean live = screen.disband.active;
         // the destructive plate: its word in red and the broken seal at its left, so it never reads as Cancel training below it
-        plate(g, screen.disband, "table/btn-iron-240x40", "Disband one", null, live ? "No refund" : null, DarkUi.MUTED, x, y, DarkUi.ALARM_TEXT, live ? 40 : 16);
+        plate(g, screen.disband, "table/btn-iron-240x40", UiText.t("barracks.disband.label", "Disband one"), null, live ? UiText.t("barracks.disband.note", "No refund") : null, DarkUi.MUTED, x, y, DarkUi.ALARM_TEXT, live ? 40 : 16);
         if (live) { var c = g.getMatrices(); c.push(); c.translate(x + 12, y + 7, 0); c.scale(0.75f, 0.75f, 1); UiTex.draw(g, "recruit/wax-broken", 0, 0); c.pop(); }
     }
 
     void paintCancel(DrawContext g, int x, int y, int w, int h, boolean hotIgnored) {
-        plate(g, screen.cancel, "table/btn-iron-240x40", "Cancel training", null, screen.cancel.active ? "Full refund" : null, DarkUi.MUTED, x, y);
+        plate(g, screen.cancel, "table/btn-iron-240x40", UiText.t("barracks.cancel.label", "Cancel training"), null, screen.cancel.active ? UiText.t("barracks.cancel.note", "Full refund") : null, DarkUi.MUTED, x, y);
     }
 }

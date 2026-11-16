@@ -69,8 +69,24 @@ final class WarTableHome {
     static final int RAIL_W = 112;
 
     static final String[] MODES = {"practice", "skirmish", "campaign"};
-    static final String[] NAMES = {"Practice", "Skirmish", "Campaign"};
-    static final String[] SUBTITLES = {"train against bots", "one battle, your rules", "story, battle by battle"};
+    /** The order sheets' words, as pieces: each sheet's name and its subtitle. */
+    static String modeName(int i) { return switch (i) { case 0 -> UiText.t("home.sheet.practiceName", "Practice"); case 1 -> UiText.t("home.sheet.skirmishName", "Skirmish"); default -> UiText.t("home.sheet.campaignName", "Campaign"); }; }
+    static String modeSubtitle(int i) { return switch (i) { case 0 -> UiText.t("home.sheet.practiceSubtitle", "train against bots"); case 1 -> UiText.t("home.sheet.skirmishSubtitle", "one battle, your rules"); default -> UiText.t("home.sheet.campaignSubtitle", "story, battle by battle"); }; }
+    /** The rail plaques' words, as pieces (RAIL_LABELS stays the default list for a page that has not moved to this). */
+    static String railLabel(int i) {
+        return switch (i) {
+            case 0 -> UiText.t("home.rail.recruit", "Recruit");
+            case 1 -> UiText.t("home.rail.banner", "Banner");
+            case 2 -> UiText.t("home.rail.arsenal", "Arsenal");
+            case 3 -> UiText.t("home.rail.contracts", "Contracts");
+            case 4 -> UiText.t("home.rail.seasonPass", "Season pass");
+            default -> UiText.t("home.rail.friends", "Friends");
+        };
+    }
+    /** Words drawn at more than one place, one piece each. */
+    static String inviteWord() { return UiText.t("home.party.invite", "Invite"); }
+    static String changeWord() { return UiText.t("home.field.change", "Change"); }
+    static String lastBattleWord() { return UiText.t("home.field.lastBattle", "Last battle"); }
     /** The order sheets' centres on the page. */
     static final int[] CENTRES = {304, 480, 656};
     /** The field card's corner on the page: 8 px right of the Campaign sheet when it is raised (176 wide about 656, so its edge is
@@ -173,21 +189,21 @@ final class WarTableHome {
         int[] o = block();
         int ox = o[0], oy = o[1];
         builtFriends = friendsBadge();
-        add("camp", WarTable.plaque(56, 96, "icon-camp", "Camp", "Esc", 61, 0, b -> screen.close()));
+        add("camp", WarTable.plaque(56, 96, "icon-camp", UiText.t("home.rail.camp", "Camp"), UiText.t("home.rail.campKey", "Esc"), 61, 0, b -> screen.close()));
         for (int i = 0; i < RAIL.length; i++) {
             final String target = RAIL[i];
             int badge = target.equals("contracts") ? contractsBadge() : target.equals("friends") ? builtFriends : 0;
-            add(target, WarTable.plaque(RAIL_X[i], RAIL_W, RAIL_ICONS[i], RAIL_LABELS[i], null, 0, badge, b -> screen.page(target)));
+            add(target, WarTable.plaque(RAIL_X[i], RAIL_W, RAIL_ICONS[i], railLabel(i), null, 0, badge, b -> screen.page(target)));
         }
         int seated = members().size();
         int[] open = seat(seated);
-        if (seated < 4) add("invite", new UiButton(open[0], open[1], 104, 48, Text.literal("Invite"), b -> screen.page("friends"), this::paintInvite));
+        if (seated < 4) add("invite", new UiButton(open[0], open[1], 104, 48, Text.literal(inviteWord()), b -> screen.page("friends"), this::paintInvite));
         for (int i = 0; i < 3; i++) {
             final int index = i;
-            sheets[i] = add(MODES[i], new UiButton(0, 0, 1, 1, Text.literal(NAMES[i]), b -> focus(index), (g, x, y, w, h, hot) -> {}));
+            sheets[i] = add(MODES[i], new UiButton(0, 0, 1, 1, Text.literal(modeName(i)), b -> focus(index), (g, x, y, w, h, hot) -> {}));
         }
         placeSheets();
-        change = add("change", new UiButton(ox + FIELD_X + 44, oy + FIELD_Y + 152, 80, 24, Text.literal("Change"), b -> screen.page("field"), this::paintChange));
+        change = add("change", new UiButton(ox + FIELD_X + 44, oy + FIELD_Y + 152, 80, 24, Text.literal(changeWord()), b -> screen.page("field"), this::paintChange));
         for (int i = 0; i < tiers.length && i < Spec.BOTCOMMAND.length; i++) {
             String id = Spec.BOTCOMMAND[i].id();
             tiers[i] = add("tier-" + id, new UiButton(ox + FIELD_X + 9 + (TIER_W + TIER_GAP) * i, oy + FIELD_Y + TIER_ROW_Y, TIER_W, TIER_H, Text.literal(CampaignClient.tierName(id)), b -> screen.action("difficulty:" + id), (g, x, y, w, h, hot) -> paintTier(g, id, x, y, w, h, hot)));
@@ -197,7 +213,7 @@ final class WarTableHome {
         ride = add("ride", new UiButton(ox + rideX(), oy + 388, 240, 40, Text.literal(rideLabel()), b -> ride(), this::paintRide));
         ride.active = !GravesAndGloryClient.running;
         change.active = focused != 2; // the Long March fixes its map: the campaign card has no Change
-        if (CampaignClient.result.has("id")) add("last", new UiButton(ox + FIELD_X + 40, oy + 392, 88, 24, Text.literal("Last battle"), b -> screen.page("results"), this::paintLast));
+        if (CampaignClient.result.has("id")) add("last", new UiButton(ox + FIELD_X + 40, oy + 392, 88, 24, Text.literal(lastBattleWord()), b -> screen.page("results"), this::paintLast));
     }
 
     /** The page's centre in block coordinates: 480 on the 960 page; the compact block is shifted so its sheets centre, so the page's centre (427) is 141 further along. */
@@ -306,9 +322,9 @@ final class WarTableHome {
     }
 
     String rideLabel() {
-        if (GravesAndGloryClient.running) return "Battle under way";
-        if (focused == 2 && !CampaignClient.seasonLock(next()).isEmpty()) return "Opens with season " + MarchMath.chapter(next().chapter(), Spec.CAMPAIGNCHAPTERS).season();
-        return switch (focused) { case 0 -> "Begin practice"; case 2 -> "Ride to " + next().name(); default -> "Open the war council"; };
+        if (GravesAndGloryClient.running) return UiText.t("home.ride.running", "Battle under way");
+        if (focused == 2 && !CampaignClient.seasonLock(next()).isEmpty()) return UiText.t("home.ride.seasonLocked", "Opens with season {season}", "season", MarchMath.chapter(next().chapter(), Spec.CAMPAIGNCHAPTERS).season());
+        return switch (focused) { case 0 -> UiText.t("home.ride.practice", "Begin practice"); case 2 -> UiText.t("home.ride.campaign", "Ride to {name}", "name", next().name()); default -> UiText.t("home.ride.skirmish", "Open the war council"); };
     }
 
     /** The Ride plate: practice starts at once, a skirmish opens the War Table lobby, and the
@@ -413,8 +429,9 @@ final class WarTableHome {
         var c = MinecraftClient.getInstance();
         var font = c.textRenderer;
         int[] first = seat(0);
-        g.drawText(font, DarkUi.heading("Party"), first[0], first[1] - 20 + (WarTable.compact() ? 6 : 0), DarkUi.BRASS, false);
-        rectsDrawn.put("party-heading", new int[]{first[0], first[1] - 20 + (WarTable.compact() ? 6 : 0), font.getWidth(DarkUi.heading("Party")), 11});
+        Text party = DarkUi.heading(UiText.t("home.party.heading", "Party"));
+        g.drawText(font, party, first[0], first[1] - 20 + (WarTable.compact() ? 6 : 0), DarkUi.BRASS, false);
+        rectsDrawn.put("party-heading", new int[]{first[0], first[1] - 20 + (WarTable.compact() ? 6 : 0), font.getWidth(party), 11});
         var seated = members();
         for (int i = 0; i < seated.size(); i++) {
             var m = seated.get(i);
@@ -449,7 +466,7 @@ final class WarTableHome {
         UiTex.draw(g, "table/frame-back-empty-48", x + 4, y + 4);
         UiTex.draw(g, "table/frame-rim-48", x, y);
         UiTex.draw(g, "table/invite-plus", x + 20, y + 20);
-        g.drawText(font, DarkUi.heading("Invite"), x + 60, y + 18, hot ? DarkUi.IVORY : DarkUi.MUTED, false);
+        g.drawText(font, DarkUi.heading(inviteWord()), x + 60, y + 18, hot ? DarkUi.IVORY : DarkUi.MUTED, false);
         rectsDrawn.put("invite", new int[]{x, y, w, h});
     }
 
@@ -476,7 +493,7 @@ final class WarTableHome {
         int n = switch (focused) { case 0 -> 1; case 2 -> row.size(); default -> SocialHub.LOBBY_SIZE; };
         String tier = CampaignClient.tierName(march ? row.difficulty() : CampaignClient.difficulty);
         String rule = Modes.ruleLine(march ? row.mode() : Modes.DOMINATION);
-        String teams = march ? MarchMath.battleLine(row, Spec.CAMPAIGNBATTLES, Spec.CAMPAIGNCHAPTERS, tier) : n + " v " + n + ", " + tier + (n == 1 ? " bot" : " bots");
+        String teams = march ? MarchMath.battleLine(row, Spec.CAMPAIGNBATTLES, Spec.CAMPAIGNCHAPTERS, tier) : n == 1 ? UiText.t("home.field.teamsOneBot", "{count} v {count}, {tier} bot", "count", n, "tier", tier) : UiText.t("home.field.teamsBots", "{count} v {count}, {tier} bots", "count", n, "tier", tier);
         var font = MinecraftClient.getInstance().textRenderer;
         var teamLines = font.wrapLines(DarkUi.body(teams), 150); // the chapter-aware line (brief G3) takes two lines when it outgrows the card
         int top = teamLines.size() > 1 ? 116 : 120, step = teamLines.size() > 1 ? 10 : 12;
@@ -503,8 +520,8 @@ final class WarTableHome {
         var b = MarchMath.bonus(row, Spec.BONUSOBJECTIVES);
         if (b == null) { textsDrawn.put("field-bonus", ""); return; }
         boolean claimed = CampaignClient.profile.bonusClaimed.contains(b.id());
-        String right = claimed ? "Claimed" : MarchText.rewardShort(b);
-        g.drawText(font, DarkUi.heading("Bonus"), x, y, DarkUi.INK_TEXT, false);
+        String right = claimed ? UiText.t("home.field.bonusClaimed", "Claimed") : MarchText.rewardShort(b);
+        g.drawText(font, DarkUi.heading(UiText.t("home.field.bonus", "Bonus")), x, y, DarkUi.INK_TEXT, false);
         int rw = font.getWidth(DarkUi.body(right));
         g.drawText(font, DarkUi.body(right), x + w - rw, y + 1, DarkUi.SEPIA, false);
         g.fill(x, y + 13, x + w, y + 14, DarkUi.SEPIA_LINE);
@@ -553,9 +570,10 @@ final class WarTableHome {
         var art = UiTex.entry(ink);
         int mid = bx + bw / 2;
         UiTex.draw(g, ink, mid - art.w() / 2, by + Math.round(lerp(88, 112, r)) - art.h());
-        centred(g, r < 0.5f ? DarkUi.heading(NAMES[i]) : DarkUi.focal(NAMES[i]), mid, by + Math.round(lerp(94, 116, r)), DarkUi.INK_TEXT);
-        int sw = font.getWidth(SUBTITLES[i]);
-        g.drawText(font, SUBTITLES[i], mid - sw / 2, by + Math.round(lerp(112, 138, r)), DarkUi.SEPIA, false);
+        String name = modeName(i), subtitle = modeSubtitle(i);
+        centred(g, r < 0.5f ? DarkUi.heading(name) : DarkUi.focal(name), mid, by + Math.round(lerp(94, 116, r)), DarkUi.INK_TEXT);
+        int sw = font.getWidth(subtitle);
+        g.drawText(font, subtitle, mid - sw / 2, by + Math.round(lerp(112, 138, r)), DarkUi.SEPIA, false);
         rectsDrawn.put(MODES[i], new int[]{bx, by, bw, bh});
         if (i != focused) return;
         double since = now - focusStart;
@@ -599,7 +617,7 @@ final class WarTableHome {
         var font = MinecraftClient.getInstance().textRenderer;
         UiTex.draw(g, "table/btn-vellum-80x24", x, y);
         UiTex.draw(g, "table/quill", x + 8, y + 6);
-        var label = DarkUi.heading("Change");
+        var label = DarkUi.heading(changeWord());
         g.drawText(font, label, x + 24, y + 6, DarkUi.INK_TEXT, false);
         if (hot) g.fill(x + 24, y + 18, x + 24 + font.getWidth(label), y + 19, DarkUi.INK_TEXT);
     }
@@ -607,11 +625,11 @@ final class WarTableHome {
     void paintLast(DrawContext g, int x, int y, int w, int h, boolean hot) {
         var font = MinecraftClient.getInstance().textRenderer;
         UiTex.draw(g, "table/btn-vellum-88x24", x, y);
-        var label = DarkUi.heading("Last battle");
+        var label = DarkUi.heading(lastBattleWord());
         int lx = centred(g, label, x + 44, y + 6, DarkUi.INK_TEXT);
         if (hot) g.fill(lx, y + 18, lx + font.getWidth(label), y + 19, DarkUi.INK_TEXT);
         rectsDrawn.put("last", new int[]{x, y, w, h});
-        textsDrawn.put("last", "Last battle");
+        textsDrawn.put("last", lastBattleWord());
     }
 
     /** The one primary action: brass with the Enter key and the label, or iron and idle while a battle runs. */
@@ -619,7 +637,7 @@ final class WarTableHome {
         var font = MinecraftClient.getInstance().textRenderer;
         if (GravesAndGloryClient.running) {
             UiTex.draw(g, "table/btn-iron-240x40", x, y);
-            String idle = "Battle under way";
+            String idle = rideLabel(); // running: "Battle under way"
             int lx = centred(g, DarkUi.heading(idle), x + 120, y + 14, DarkUi.IVORY);
             textsDrawn.put("ride", idle);
             rectsDrawn.put("ride-label", new int[]{lx, y + 14, font.getWidth(DarkUi.heading(idle)), 11});
@@ -627,7 +645,7 @@ final class WarTableHome {
         }
         UiTex.draw(g, "table/btn-brass-240x40", x, y);
         UiTex.draw(g, "table/key-brass-37", x + 14, y + 13);
-        g.drawText(font, "Enter", x + 18, y + 16, DarkUi.KEY_INK, false);
+        g.drawText(font, UiText.t("home.ride.enterKey", "Enter"), x + 18, y + 16, DarkUi.KEY_INK, false);
         String label = UiMath.trim(rideLabel(), RIDE_LABEL_W, s -> font.getWidth(DarkUi.heading(s)));
         int tw = font.getWidth(DarkUi.heading(label)), lx = x + UiMath.plateLabelX(tw);
         g.drawText(font, DarkUi.heading(label), lx, y + 14, DarkUi.PLATE_INK, false);

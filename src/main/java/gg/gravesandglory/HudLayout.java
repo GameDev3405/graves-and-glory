@@ -9,7 +9,6 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.resource.language.I18n;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -253,8 +252,18 @@ public final class HudLayout {
     }
 
     static String label(String part) {
-        String key = "gui.gravesandglory.hud_edit." + part;
-        return I18n.hasTranslation(key) ? I18n.translate(key) : part;
+        return switch (part) {
+            case "score" -> UiText.t("hudLayout.part.score", "Score");
+            case "objectives" -> UiText.t("hudLayout.part.objectives", "Objectives");
+            case "gold" -> UiText.t("hudLayout.part.gold", "Gold");
+            case "houses" -> UiText.t("hudLayout.part.houses", "House traits");
+            case "column" -> UiText.t("hudLayout.part.column", "Army column");
+            case "feed" -> UiText.t("hudLayout.part.feed", "Battle feed");
+            case "lesson" -> UiText.t("hudLayout.part.lesson", "Lesson");
+            case "respawn" -> UiText.t("hudLayout.part.respawn", "Respawn");
+            case "relics" -> UiText.t("hudLayout.part.relics", "Relics");
+            default -> part;
+        };
     }
 
     /** Edit mode, after the HUD is drawn: each part's dashed outline and its name (dim for a part not on screen now), the one under the cursor or dragged lit. */
@@ -359,7 +368,7 @@ public final class HudLayout {
 
     /** The size while a handle is dragged ("120%"), on a dark chip beside the handle, kept on screen. */
     public static void sizeLabel(DrawContext g, TextRenderer font, int[] h, double scale, int sw, int sh) {
-        String t = Math.round(scale * 100) + "%";
+        String t = UiText.t("hudLayout.sizeLabel", "{percent}%", "percent", Math.round(scale * 100));
         int w = font.getWidth(t) + 4, x = Math.max(0, Math.min(sw - w, h[0] + h[2] + 2)), y = Math.max(0, Math.min(sh - 10, h[1] + h[3] + 2));
         if (x < h[0] + h[2] && y < h[1] + h[3]) y = Math.max(0, h[1] - 12);
         g.fill(x, y, x + w, y + 10, 0xe0000000);

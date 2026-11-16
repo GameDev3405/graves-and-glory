@@ -99,15 +99,17 @@ final class EndingPanels {
         reset("score"); scoreRows.clear();
         var font = font();
         JsonArray squads = arr(r, "squads");
-        String[] heads = {"Score", "K / D", "Army kills", "Lost", ReportSections.points(r) ? "On points" : "Objective"};
+        String[] heads = {UiText.t("ending.score.headScore", "Score"), UiText.t("ending.score.headKd", "K / D"), UiText.t("ending.score.headArmyKills", "Army kills"), UiText.t("ending.score.headLost", "Lost"),
+            ReportSections.points(r) ? UiText.t("ending.score.headPoints", "On points") : UiText.t("ending.score.headObjective", "Objective")};
         int gap = 10, edge = x + w;
         int[] right = new int[heads.length];
         for (int c = heads.length - 1; c >= 0; c--) { right[c] = edge; edge -= Math.max(width(small(heads[c])), c == 1 ? width(body("00 / 00")) : width(body("0,000"))) + gap; }
         int nameX = x + 22, nameRight = edge + gap - 6;
-        put(g, "score-head", small("Commander"), nameX, y + 1, SEPIA);
+        put(g, "score-head", small(UiText.t("ending.score.headCommander", "Commander")), nameX, y + 1, SEPIA);
         for (int c = 0; c < heads.length; c++) right(g, "score-head-" + c, small(heads[c]), right[c], y + 1, SEPIA);
         g.fill(x, y + 11, x + w, y + 12, DarkUi.SEPIA_LINE);
         int ry = y + 16;
+        String mvpWord = UiText.t("ending.score.mvp", "MVP");
         // the MVP: the report's mark, or (a report from before the ending) MatchStats' pick
         int mvp = -1;
         boolean marked = false;
@@ -127,16 +129,16 @@ final class EndingPanels {
             DarkUi.teamMark(g, team, x + 8, ry + 1);
             int nx = nameX;
             if (i == mvp) {
-                int cw = width(small("MVP")) + 4;
+                int cw = width(small(mvpWord)) + 4;
                 g.fill(nx, ry, nx + cw, ry + 9, MVP_FILL);
-                g.drawText(font, small("MVP"), nx + 2, ry + 1, INK, false);
+                g.drawText(font, small(mvpWord), nx + 2, ry + 1, INK, false);
                 rects.put("score-mvp", new int[]{nx, ry, cw, 9});
                 nx += cw + 4;
             }
             String name = EndingClient.display(str(row, "name"));
             // the award chip, or "Left the battle", after the name (ending polish): it gives way to the name when the room is short
             boolean gone = row.has("left") && row.get("left").getAsBoolean();
-            String tag = gone ? EndingClient.LEFT : str(row, "award");
+            String tag = gone ? EndingClient.left() : str(row, "award");
             int room = nameRight - nx, nameW = Math.min(font.getWidth(name), Math.max(30, room / 2));
             if (!tag.isEmpty()) tag = UiMath.trim(tag, room - nameW - 10, s -> width(small(s)));
             if (tag.equals("...")) tag = "";
@@ -170,29 +172,29 @@ final class EndingPanels {
         var cmd = obj(you, "commander"); var army = obj(you, "army"); var objv = obj(you, "objectives"); var eco = obj(you, "economy");
         int ck = num(cmd, "kills"), deaths = num(cmd, "deaths");
         List<Group> out = new ArrayList<>();
-        out.add(new Group("Commander", List.of(new Kv("Kills", String.valueOf(ck)), new Kv("Deaths", String.valueOf(deaths)),
-            new Kv("K/D", MatchEnding.ratio(ck, deaths)), new Kv("Damage", UiMath.thousands(num(cmd, "damage")))), ""));
+        out.add(new Group(UiText.t("ending.group.commander", "Commander"), List.of(new Kv(UiText.t("ending.group.commanderKills", "Kills"), String.valueOf(ck)), new Kv(UiText.t("ending.group.commanderDeaths", "Deaths"), String.valueOf(deaths)),
+            new Kv(UiText.t("ending.group.commanderKd", "K/D"), MatchEnding.ratio(ck, deaths)), new Kv(UiText.t("ending.group.commanderDamage", "Damage"), UiMath.thousands(num(cmd, "damage")))), ""));
         int kept = num(army, "kept"), lost = num(army, "lost");
         String best = str(army, "best"), foot = "";
         if (!best.isEmpty()) {
             int kills = 0;
             for (var t : arr(army, "troops")) if (str(t.getAsJsonObject(), "id").equals(best)) kills = num(t.getAsJsonObject(), "kills");
-            foot = "Best: " + troopName(best) + ", " + kills + (kills == 1 ? " kill" : " kills");
+            foot = kills == 1 ? UiText.t("ending.group.armyBestOne", "Best: {troop}, {kills} kill", "troop", troopName(best), "kills", kills) : UiText.t("ending.group.armyBestMany", "Best: {troop}, {kills} kills", "troop", troopName(best), "kills", kills);
         }
-        out.add(new Group("Army", List.of(new Kv("Kills", String.valueOf(Math.max(0, num(army, "kills") - ck))), new Kv("Losses", String.valueOf(lost)),
-            new Kv("Kept alive", kept + " / " + (kept + lost))), foot));
+        out.add(new Group(UiText.t("ending.group.army", "Army"), List.of(new Kv(UiText.t("ending.group.armyKills", "Kills"), String.valueOf(Math.max(0, num(army, "kills") - ck))), new Kv(UiText.t("ending.group.armyLosses", "Losses"), String.valueOf(lost)),
+            new Kv(UiText.t("ending.group.armyKept", "Kept alive"), kept + " / " + (kept + lost))), foot));
         List<Kv> o = new ArrayList<>();
-        o.add(new Kv("Captures", String.valueOf(num(objv, "captures"))));
-        o.add(new Kv("Hold time", clock(num(objv, "holdSeconds"))));
+        o.add(new Kv(UiText.t("ending.group.captures", "Captures"), String.valueOf(num(objv, "captures"))));
+        o.add(new Kv(UiText.t("ending.group.holdTime", "Hold time"), clock(num(objv, "holdSeconds"))));
         String mode = ReportSections.id(r);
         if (mode.isEmpty() || mode.equals(Modes.DOMINATION)) {
             var m = ReportSections.mode(r);
-            o.add(new Kv("Final score", ReportSections.number(m, "ledger", 0, 0) + " / " + ReportSections.number(m, "ledger", 1, 0)));
+            o.add(new Kv(UiText.t("ending.group.finalScore", "Final score"), ReportSections.number(m, "ledger", 0, 0) + " / " + ReportSections.number(m, "ledger", 1, 0)));
         } else for (var row : ReportSections.rows(r)) { if (o.size() >= 4) break; o.add(new Kv(row.label(), row.value())); }
-        o.add(new Kv("Length", clock((int) Math.round(r.has("seconds") ? r.get("seconds").getAsDouble() : 0))));
-        out.add(new Group("Objectives", o, ""));
-        out.add(new Group("Economy & orders", List.of(new Kv("Gold earned", UiMath.thousands(num(eco, "earned"))), new Kv("Gold spent", UiMath.thousands(num(eco, "spent"))),
-            new Kv("Trained", String.valueOf(num(eco, "trained"))), new Kv("Upgrades", String.valueOf(num(eco, "upgrades"))), new Kv("Orders", String.valueOf(num(eco, "orders")))), ""));
+        o.add(new Kv(UiText.t("ending.group.length", "Length"), clock((int) Math.round(r.has("seconds") ? r.get("seconds").getAsDouble() : 0))));
+        out.add(new Group(UiText.t("ending.group.objectives", "Objectives"), o, ""));
+        out.add(new Group(UiText.t("ending.group.economy", "Economy & orders"), List.of(new Kv(UiText.t("ending.group.goldEarned", "Gold earned"), UiMath.thousands(num(eco, "earned"))), new Kv(UiText.t("ending.group.goldSpent", "Gold spent"), UiMath.thousands(num(eco, "spent"))),
+            new Kv(UiText.t("ending.group.trained", "Trained"), String.valueOf(num(eco, "trained"))), new Kv(UiText.t("ending.group.upgrades", "Upgrades"), String.valueOf(num(eco, "upgrades"))), new Kv(UiText.t("ending.group.orders", "Orders"), String.valueOf(num(eco, "orders")))), ""));
         return out;
     }
 
@@ -206,7 +208,7 @@ final class EndingPanels {
      *  A report without "you" (from before the ending) says so. Returns the y under the boxes. */
     static int groups(DrawContext g, JsonObject r, int x, int y, int w, int h) {
         reset("group"); groups.clear();
-        if (obj(r, "you") == null) { put(g, "group-none", body("No stats for this battle."), x, y, SEPIA); areas.put("group", new int[]{x, y, w, 12}); return y + 13; }
+        if (obj(r, "you") == null) { put(g, "group-none", body(UiText.t("ending.group.none", "No stats for this battle.")), x, y, SEPIA); areas.put("group", new int[]{x, y, w, 12}); return y + 13; }
         var list = groupsOf(r);
         int cols = w >= 440 ? 4 : 2, lines = (list.size() + cols - 1) / cols, gap = 8;
         int gw = (w - (cols - 1) * gap) / cols, need = 0;
@@ -255,10 +257,10 @@ final class EndingPanels {
         for (var e : arr(army, "troops")) rows.add(e.getAsJsonObject());
         rows.sort((a, b) -> num(b, "kills") != num(a, "kills") ? num(b, "kills") - num(a, "kills") : num(a, "lost") - num(b, "lost"));
         areas.put("troops", new int[]{x, y, w, h});
-        if (rows.isEmpty()) { put(g, "troops-none", body("No troops fielded."), x, y, SEPIA); return y + 13; }
-        String[] heads = {"Fielded", "Kills", "Lost"};
+        if (rows.isEmpty()) { put(g, "troops-none", body(UiText.t("ending.troops.none", "No troops fielded.")), x, y, SEPIA); return y + 13; }
+        String[] heads = {UiText.t("ending.troops.headFielded", "Fielded"), UiText.t("ending.troops.headKills", "Kills"), UiText.t("ending.troops.headLost", "Lost")};
         int[] right = {x + w - 96, x + w - 48, x + w};
-        put(g, "troops-head", small("Troop"), x, y + 1, SEPIA);
+        put(g, "troops-head", small(UiText.t("ending.troops.headTroop", "Troop")), x, y + 1, SEPIA);
         for (int c = 0; c < heads.length; c++) right(g, "troops-head-" + c, small(heads[c]), right[c], y + 1, SEPIA);
         g.fill(x, y + 11, x + w, y + 12, DarkUi.SEPIA_LINE);
         int ry = y + 15, room = (y + h - ry) / KV;
@@ -271,7 +273,7 @@ final class EndingPanels {
             for (int c = 0; c < v.length; c++) right(g, "troops-" + i + "-" + c, body(String.valueOf(v[c])), right[c], ry, SEPIA);
             ry += KV;
         }
-        if (shownRows < rows.size() && ry + 10 <= y + h) { put(g, "troops-more", body("and " + (rows.size() - shownRows) + " more"), x, ry, SEPIA); ry += KV; }
+        if (shownRows < rows.size() && ry + 10 <= y + h) { put(g, "troops-more", body(UiText.t("ending.troops.more", "and {count} more", "count", rows.size() - shownRows)), x, ry, SEPIA); ry += KV; }
         return ry;
     }
 
@@ -280,27 +282,31 @@ final class EndingPanels {
     static int highlights(DrawContext g, JsonObject r, int x, int y, int w, int h) {
         reset("highlight");
         areas.put("highlight", new int[]{x, y, w, h});
-        List<String> lines = highlightLines(r);
-        if (lines.isEmpty()) { put(g, "highlight-none", body("No awards this battle."), x, y, SEPIA); return y + 13; }
+        int[] mineCount = new int[1];
+        List<String> lines = highlightLines(r, mineCount);
+        if (lines.isEmpty()) { put(g, "highlight-none", body(UiText.t("ending.highlights.none", "No awards this battle.")), x, y, SEPIA); return y + 13; }
         int ry = y;
         for (int i = 0; i < lines.size() && i < 3 && ry + 10 <= y + h; i++) {
             Text t = fit(lines.get(i), w);
-            put(g, "highlight-" + i, t, x, ry, i == 0 && lines.get(i).startsWith("You") ? INK : SEPIA);
+            put(g, "highlight-" + i, t, x, ry, i == 0 && mineCount[0] > 0 ? INK : SEPIA);
             ry += KV;
         }
         return ry;
     }
     /** The highlight lines in order: the viewer's award first ("You: Kingslayer, 2 commanders downed"), then the others' in award order. */
-    static List<String> highlightLines(JsonObject r) {
+    static List<String> highlightLines(JsonObject r) { return highlightLines(r, new int[1]); }
+    /** highlightLines, with mineCount[0] set to how many of the lines (counted before the cut to three) are the viewer's own, which come first. */
+    static List<String> highlightLines(JsonObject r, int[] mineCount) {
         List<String> mine = new ArrayList<>(), others = new ArrayList<>();
         for (var a : EndingAwards.Award.values())
             for (var e : arr(r, "squads")) {
                 var o = e.getAsJsonObject();
                 if (!a.title.equals(str(o, "award"))) continue;
                 String detail = str(o, "awardText");
-                if (o.has("you") && o.get("you").getAsBoolean()) mine.add("You: " + a.title + (detail.isEmpty() ? "" : ", " + detail));
-                else others.add(a.title + ": " + EndingClient.display(str(o, "name")) + (detail.isEmpty() ? "" : ", " + detail));
+                if (o.has("you") && o.get("you").getAsBoolean()) mine.add(detail.isEmpty() ? UiText.t("ending.highlights.youBare", "You: {award}", "award", a.title) : UiText.t("ending.highlights.you", "You: {award}, {detail}", "award", a.title, "detail", detail));
+                else others.add(detail.isEmpty() ? UiText.t("ending.highlights.otherBare", "{award}: {name}", "award", a.title, "name", EndingClient.display(str(o, "name"))) : UiText.t("ending.highlights.other", "{award}: {name}, {detail}", "award", a.title, "name", EndingClient.display(str(o, "name")), "detail", detail));
             }
+        mineCount[0] = mine.size();
         mine.addAll(others);
         return mine.size() > 3 ? new ArrayList<>(mine.subList(0, 3)) : mine;
     }
@@ -348,7 +354,7 @@ final class EndingPanels {
             finals[t] = UiMath.thousands(rows[t][n - 1]) + (pct ? "%" : "");
         }
         areas.put("graph", new int[]{x, y, w, 13 + plotH + 1});
-        put(g, "graph-label", fit(str(tl, "label").isEmpty() ? "Score" : str(tl, "label"), w), x, y, SEPIA);
+        put(g, "graph-label", fit(str(tl, "label").isEmpty() ? UiText.t("ending.graph.label", "Score") : str(tl, "label"), w), x, y, SEPIA);
         int gutter = Math.max(width(small(finals[0])), width(small(finals[1]))) + 6;
         int px0 = x + 1, px1 = x + w - gutter, py0 = y + 13, py1 = py0 + plotH - 1;
         g.fill(x, py0, x + 1, py1 + 1, RULE); g.fill(x, py1, px1, py1 + 1, RULE); // the axes
@@ -421,7 +427,17 @@ final class EndingPanels {
         List<String> parts = new ArrayList<>();
         for (var e : sum.entrySet()) {
             String k = e.getKey(); int n = e.getValue();
-            parts.add(UiMath.thousands(n) + " " + (n != 1 && (k.equals("Pact") || k.equals("new title")) ? k + "s" : n == 1 && k.equals("writs") ? "writ" : k));
+            String word = switch (k) {
+                case "writs" -> n == 1 ? UiText.t("ending.total.writ", "writ") : UiText.t("ending.total.writs", "writs");
+                case "XP" -> UiText.t("ending.total.xp", "XP");
+                case "gear shards" -> UiText.t("ending.total.gearShards", "gear shards");
+                case "shards" -> UiText.t("ending.total.shards", "shards");
+                case "Renown" -> UiText.t("ending.total.renown", "Renown");
+                case "Pact" -> n != 1 ? UiText.t("ending.total.pacts", "Pacts") : UiText.t("ending.total.pact", "Pact");
+                case "new title" -> n != 1 ? UiText.t("ending.total.newTitles", "new titles") : UiText.t("ending.total.newTitle", "new title");
+                default -> k;
+            };
+            parts.add(UiMath.thousands(n) + " " + word);
         }
         return String.join(" · ", parts);
     }
@@ -432,9 +448,9 @@ final class EndingPanels {
         int contracts = num(c, "contracts"), tiers = num(c, "tiers");
         if (contracts == 0 && tiers == 0) return "";
         List<String> parts = new ArrayList<>();
-        if (contracts > 0) parts.add(contracts + (contracts == 1 ? " contract" : " contracts"));
-        if (tiers > 0) parts.add(tiers + (tiers == 1 ? " chapter tier" : " chapter tiers"));
-        return "Ready to claim: " + String.join(" · ", parts);
+        if (contracts > 0) parts.add(contracts == 1 ? UiText.t("ending.claim.contractOne", "{count} contract", "count", contracts) : UiText.t("ending.claim.contractMany", "{count} contracts", "count", contracts));
+        if (tiers > 0) parts.add(tiers == 1 ? UiText.t("ending.claim.tierOne", "{count} chapter tier", "count", tiers) : UiText.t("ending.claim.tierMany", "{count} chapter tiers", "count", tiers));
+        return UiText.t("ending.claim.ready", "Ready to claim: {list}", "list", String.join(" · ", parts));
     }
 
     /** A line fitted to w: the body font, else the small one, else trimmed in the small one. */
@@ -462,7 +478,7 @@ final class EndingPanels {
         var font = font();
         if (rows.isEmpty()) {
             boolean saved = !r.has("saved") || r.get("saved").getAsBoolean(), eligible = !r.has("eligible") || r.get("eligible").getAsBoolean();
-            String why = !saved ? "Rewards not saved. Progress unchanged." : !eligible ? "No match rewards: play at least 3 minutes to qualify." : "Nothing earned this battle.";
+            String why = !saved ? UiText.t("ending.rewards.notSaved", "Rewards not saved. Progress unchanged.") : !eligible ? UiText.t("ending.rewards.ineligible", "No match rewards: play at least 3 minutes to qualify.") : UiText.t("ending.rewards.nothing", "Nothing earned this battle.");
             int yy = y;
             for (String l : UiMath.lines(why, w, Math.max(1, h / 12), s -> width(body(s)))) { put(g, "reward-none-" + (yy - y), body(l), x, yy, saved ? SEPIA : DarkUi.ROUT_TEXT); yy += 12; }
             return yy;
@@ -531,7 +547,7 @@ final class EndingPanels {
         // the total, under a double rule
         int ty = barTop + barsH;
         g.fill(x, ty, x + w, ty + 1, RULE); g.fill(x, ty + 2, x + w, ty + 3, RULE);
-        int tw = put(g, "reward-total-label", heading("Total"), x, ty + 6, BROWN);
+        int tw = put(g, "reward-total-label", heading(UiText.t("ending.rewards.total", "Total")), x, ty + 6, BROWN);
         String sum = totalText(rows);
         Text st = fit(sum, w - tw - 12);
         right(g, "reward-total", st, x + w, ty + 7, BROWN);
@@ -540,7 +556,7 @@ final class EndingPanels {
         if (!claimLine.isEmpty()) {
             int cy = by + 6;
             g.fill(x, cy, x + w, cy + CLAIM_H, CLAIM_FILL);
-            String go = "Contracts on the War Table";
+            String go = UiText.t("ending.rewards.claimGo", "Contracts on the War Table");
             int gw = width(small(go)), inner = w - 12;
             boolean both = width(body(claimLine)) + gw + 16 <= inner;
             Text ct = fit(claimLine, both ? inner - gw - 16 : inner);
@@ -558,14 +574,16 @@ final class EndingPanels {
         /** Two or more thresholds in one match: the bar climbs, flashes, empties and climbs again, ending on the last climb. */
         boolean multi() { return crossings >= 2; }
         /** What a crossing reads: Level up! for XP, Tier N! for Renown, Contract done! for a contract. */
-        String word() { return kind.equals("xp") ? "Level up!" : kind.equals("renown") ? "Tier " + tier + "!" : "Contract done!"; }
+        String word() { return kind.equals("xp") ? UiText.t("ending.bar.wordLevel", "Level up!") : kind.equals("renown") ? UiText.t("ending.bar.wordTier", "Tier {tier}!", "tier", tier) : contractDone(); }
         /** What crossing number m (1-based) reads: Renown names each tier reached in turn. */
-        String word(int m) { return kind.equals("renown") ? "Tier " + (tier + m - 1) + "!" : word(); }
+        String word(int m) { return kind.equals("renown") ? UiText.t("ending.bar.wordTierNth", "Tier {tier}!", "tier", tier + m - 1) : word(); }
         /** The level or tier a multi-crossing bar ends on. */
         int reached() { return finalNext > finalBase ? finalTier - 1 : finalTier; }
         /** The label once every crossing is made: it names the final level or tier ("XP: Level 3", "Ironclad Renown: Tier 2"). */
-        String finalLabel() { return label + (kind.equals("xp") ? ": Level " : ": Tier ") + reached(); }
+        String finalLabel() { return kind.equals("xp") ? UiText.t("ending.bar.finalLevel", "{label}: Level {level}", "label", label, "level", reached()) : UiText.t("ending.bar.finalTier", "{label}: Tier {tier}", "label", label, "tier", reached()); }
     }
+    /** The crossing word of a contract bar, also the widest word the value column is sized for. */
+    static String contractDone() { return UiText.t("ending.bar.wordContract", "Contract done!"); }
     static List<Bar> barsOf(JsonObject r) {
         List<Bar> out = new ArrayList<>();
         for (JsonElement e : arr(r, "progress")) {
@@ -591,7 +609,7 @@ final class EndingPanels {
      * (Level up!, Tier N!, Contract done!). Words are recorded under reward-bar- so the rewards' layout check covers them.
      */
     static void bars(DrawContext g, List<Bar> bars, List<Reward> rows, int x, int y, int w, float progress, float slot) {
-        int labelW = Math.min(150, w * 3 / 10), valueW = Math.max(width(heading("Contract done!")), width(body("00,000 / 00,000"))) + 4;
+        int labelW = Math.min(150, w * 3 / 10), valueW = Math.max(width(heading(contractDone())), width(body("00,000 / 00,000"))) + 4;
         int tx0 = x + labelW + 8, tx1 = x + w - valueW - 8;
         g.fill(x, y - 5, x + w, y - 4, RULE);
         for (int i = 0; i < bars.size(); i++) {

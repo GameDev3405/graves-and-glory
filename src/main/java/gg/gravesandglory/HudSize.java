@@ -54,7 +54,7 @@ public final class HudSize {
             Files.createDirectories(file().getParent());
             SafeFiles.write(file(), "{\"size\":\"" + NAMES[size] + "\"}");
             Presentation.notice = UiMath.hudSizeNotice(size, shownAs());
-        } catch (Exception e) { Presentation.notice = "Your HUD size could not be saved."; }
+        } catch (Exception e) { Presentation.notice = UiText.t("hudSize.saveFailed", "Your HUD size could not be saved."); }
     }
 
     /** The next size, Compact after Large: what the Battle HUD button does. */

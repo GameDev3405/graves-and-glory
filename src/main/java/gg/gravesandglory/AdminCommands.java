@@ -1,5 +1,6 @@
 package gg.gravesandglory;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -68,7 +69,15 @@ public final class AdminCommands {
                 .then(CommandManager.literal("add").then(CommandManager.argument("player", StringArgumentType.word()).executes(c -> edit(c, true))))
                 .then(CommandManager.literal("remove").then(CommandManager.argument("player", StringArgumentType.word()).executes(c -> edit(c, false))))
                 .then(CommandManager.literal("list").executes(c -> list(c.getSource())))
-                .then(CommandManager.literal("check").then(CommandManager.argument("player", StringArgumentType.word()).executes(c -> check(c)))))));
+                .then(CommandManager.literal("check").then(CommandManager.argument("player", StringArgumentType.word()).executes(c -> check(c)))))
+            // the UI editor (UI editor design 5.6, 5.7; phase 1: words). The command name is open question 1 for Kort.
+            .then(CommandManager.literal("ui")
+                .then(CommandManager.literal("edit").executes(c -> uiEdit(c.getSource())))
+                .then(CommandManager.literal("publish").executes(c -> uiPlayer(c.getSource(), "publish")))
+                .then(CommandManager.literal("discard").executes(c -> uiPlayer(c.getSource(), "discard")))
+                .then(CommandManager.literal("history").executes(c -> uiHistory(c.getSource())))
+                .then(CommandManager.literal("rollback").then(CommandManager.argument("version", IntegerArgumentType.integer(0)).executes(c -> say(c.getSource(), UiEdits.rollback(c.getSource().getServer(), IntegerArgumentType.getInteger(c, "version"), who(c.getSource()))))))
+                .then(CommandManager.literal("reset").executes(c -> say(c.getSource(), UiEdits.reset(c.getSource().getServer(), who(c.getSource()))))))));
     }
 
     /** The gate (AdminOg.allowed): the console is a source with no entity whose output is the server itself; anyone else must be an owner in admin.json. */
@@ -76,6 +85,31 @@ public final class AdminCommands {
         boolean outputIsServer = ((gg.gravesandglory.mixin.ServerCommandSourceAccessor) s).gravesandgloryOutput() instanceof net.minecraft.server.MinecraftServer;
         ServerPlayerEntity p = s.getPlayer();
         return AdminOg.allowed(admin().get(), outputIsServer, s.getEntity() != null, p == null ? null : p.getUuid());
+    }
+
+    static String who(ServerCommandSource s) { return s.getPlayer() == null ? "console" : s.getPlayer().getName().getString(); }
+
+    /** /gg ui edit: an owner's client opens the editor (the gate above already let only an owner or the console in). */
+    static int uiEdit(ServerCommandSource s) {
+        ServerPlayerEntity p = s.getPlayer();
+        if (p == null) return fail(s, "The UI editor opens in a player's game: run /gg ui edit as an owner in game.");
+        if (!UiEdits.owner(p)) return fail(s, "Only an owner listed in admin.json may edit the UI.");
+        if (!net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(p, gg.gravesandglory.net.Payloads.UiSheetPayload.ID)) return fail(s, "Your game does not have the UI editor (update the mod).");
+        UiEdits.sendState(p, true, "Editor open. Click a line to retype it.");
+        return 1;
+    }
+
+    static int uiPlayer(ServerCommandSource s, String op) {
+        ServerPlayerEntity p = s.getPlayer();
+        if (p == null || !UiEdits.owner(p)) return fail(s, "Publish and Discard act on an owner's own draft: run them in game as an owner.");
+        String msg = op.equals("publish") ? UiEdits.publish(s.getServer(), p.getUuid(), who(s)) : UiEdits.discard(p.getUuid());
+        UiEdits.sendState(p, false, msg);
+        return say(s, msg);
+    }
+
+    static int uiHistory(ServerCommandSource s) {
+        for (String line : UiEdits.history()) say(s, line);
+        return 1;
     }
 
     static int fail(ServerCommandSource s, String text) { s.sendError(Text.literal(text)); return 0; }

@@ -37,20 +37,20 @@ public final class FrontMenuScreen extends Screen {
         int top=maxTop();
         if(page.equals("home")){
             int p=homePitch();
-            button("Enter camp / Practice",top,true,()->GravesAndGloryClient.startCamp(client,false));
-            button("Play with friends",top+p,false,()->client.setScreen(new FrontMenuScreen("friends")));
-            button("Settings",top+2*p,false,()->client.setScreen(new OptionsScreen(this,client.options)));
-            button("Credits",top+3*p,false,()->client.setScreen(new FrontMenuScreen("credits")));
-            button("Quit game",top+4*p,false,client::scheduleStop);
+            button(UiText.t("menu.home.enterCamp","Enter camp / Practice"),top,true,()->GravesAndGloryClient.startCamp(client,false));
+            button(UiText.t("menu.home.friends","Play with friends"),top+p,false,()->client.setScreen(new FrontMenuScreen("friends")));
+            button(UiText.t("menu.home.settings","Settings"),top+2*p,false,()->client.setScreen(new OptionsScreen(this,client.options)));
+            button(UiText.t("menu.home.credits","Credits"),top+3*p,false,()->client.setScreen(new FrontMenuScreen("credits")));
+            button(UiText.t("menu.home.quit","Quit game"),top+4*p,false,client::scheduleStop);
         }else if(page.equals("friends")){
-            button("Host a camp on this network",top,true,()->GravesAndGloryClient.startCamp(client,true));
-            button("Join a server",top+22,false,()->client.setScreen(new MultiplayerScreen(this)));
-            if(GravesAndGloryClient.launcherContext)button(GravesAndGloryClient.join.isEmpty()?"Host through Melty":"Use launcher invitation",top+44,false,()->{
+            button(UiText.t("menu.friends.host","Host a camp on this network"),top,true,()->GravesAndGloryClient.startCamp(client,true));
+            button(UiText.t("menu.friends.join","Join a server"),top+22,false,()->client.setScreen(new MultiplayerScreen(this)));
+            if(GravesAndGloryClient.launcherContext)button(GravesAndGloryClient.join.isEmpty()?UiText.t("menu.friends.hostMelty","Host through Melty"):UiText.t("menu.friends.invitation","Use launcher invitation"),top+44,false,()->{
                 if(GravesAndGloryClient.join.isEmpty())GravesAndGloryClient.startCamp(client,true);
                 else GravesAndGloryClient.connectOrHost(client);
             });
-            button("Back",top+friendsBack(),false,()->client.setScreen(new FrontMenuScreen()));
-        }else button("Back",height-40,false,()->client.setScreen(new FrontMenuScreen()));
+            button(UiText.t("menu.friends.back","Back"),top+friendsBack(),false,()->client.setScreen(new FrontMenuScreen()));
+        }else button(UiText.t("menu.credits.back","Back"),height-40,false,()->client.setScreen(new FrontMenuScreen()));
     }
     /** 1.21: Screen.render draws this (blur, dimming, the title panorama) before the widgets; 1.20.1 drew none here, and this screen draws its own. */
     @Override public void renderBackground(DrawContext g,int mx,int my,float delta){}
@@ -64,24 +64,24 @@ public final class FrontMenuScreen extends Screen {
         else{g.fillGradient(0,0,width,72,0x99000000,0x00000000);g.fillGradient(0,height-150,columnX()+columnWidth()+24,height,0x00000000,0x88000000);}
         DarkUi.crest(g,width/2-153,27,28,false);DarkUi.crest(g,width/2+125,27,28,true);
         g.getMatrices().push();g.getMatrices().translate(width/2f,29,0);g.getMatrices().scale(1.5f,1.5f,1);
-        g.drawCenteredTextWithShadow(textRenderer,Text.literal("GRAVES AND GLORY").setStyle(net.minecraft.text.Style.EMPTY.withFont(DarkUi.TITLE)),0,0,DarkUi.GOLD);g.getMatrices().pop();
-        g.drawCenteredTextWithShadow(textRenderer,"Collect an army. Command the battlefield.",width/2,54,DarkUi.PAPER);
+        g.drawCenteredTextWithShadow(textRenderer,Text.literal(UiText.t("menu.title","GRAVES AND GLORY")).setStyle(net.minecraft.text.Style.EMPTY.withFont(DarkUi.TITLE)),0,0,DarkUi.GOLD);g.getMatrices().pop();
+        g.drawCenteredTextWithShadow(textRenderer,UiText.t("menu.tagline","Collect an army. Command the battlefield."),width/2,54,DarkUi.PAPER);
         if(page.equals("friends")){
-            g.drawCenteredTextWithShadow(textRenderer,"PLAY WITH FRIENDS",width/2,maxTop()-17,DarkUi.GOLD);
+            g.drawCenteredTextWithShadow(textRenderer,UiText.t("menu.friends.heading","PLAY WITH FRIENDS"),width/2,maxTop()-17,DarkUi.GOLD);
             {
                 // the two hint lines sit between the last action button and Back, 26 px for both
                 int hy=maxTop()+22*(GravesAndGloryClient.launcherContext?3:2)+2;
-                g.drawCenteredTextWithShadow(textRenderer,"Hosting shares this camp on your local network.",width/2,hy,DarkUi.MUTED);
-                g.drawCenteredTextWithShadow(textRenderer,"Remote friends need a reachable server or launcher relay.",width/2,hy+13,DarkUi.MUTED);
+                g.drawCenteredTextWithShadow(textRenderer,UiText.t("menu.friends.hintLan","Hosting shares this camp on your local network."),width/2,hy,DarkUi.MUTED);
+                g.drawCenteredTextWithShadow(textRenderer,UiText.t("menu.friends.hintRemote","Remote friends need a reachable server or launcher relay."),width/2,hy+13,DarkUi.MUTED);
             }
         }
         if(page.equals("credits")){
             int y=height/2-30;
-            for(String line:new String[]{"An original Minecraft army battle game","Built for Fabric / Minecraft Java Edition","Original code, UI, faction artwork and audio: Graves and Glory","Community mods, textures and shaders by their credited authors","Full credits, licenses and permissions are included in the pack's docs folder."}){
+            for(String line:new String[]{UiText.t("menu.credits.line1","An original Minecraft army battle game"),UiText.t("menu.credits.line2","Built for Fabric / Minecraft Java Edition"),UiText.t("menu.credits.line3","Original code, UI, faction artwork and audio: Graves and Glory"),UiText.t("menu.credits.line4","Community mods, textures and shaders by their credited authors"),UiText.t("menu.credits.line5","Full credits, licenses and permissions are included in the pack's docs folder.")}){
                 g.drawCenteredTextWithShadow(textRenderer,textRenderer.trimToWidth(line,width-24),width/2,y,DarkUi.PAPER);y+=18;
             }
         }
-        g.drawText(textRenderer,"v"+VersionGate.VERSION+" / "+VersionGate.BUILD.substring(0,8),8,height-13,DarkUi.MUTED,false);
+        g.drawText(textRenderer,UiText.t("menu.version","v{version} / {build}","version",VersionGate.VERSION,"build",VersionGate.BUILD.substring(0,8)),8,height-13,DarkUi.MUTED,false);
         super.render(g,mx,my,delta);
     }
     @Override public boolean shouldCloseOnEsc(){return !page.equals("home");}

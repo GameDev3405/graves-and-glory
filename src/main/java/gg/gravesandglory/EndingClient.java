@@ -75,9 +75,11 @@ public final class EndingClient {
     record Plate(int slot, String name, String stats, String origin, boolean mvp, String award, boolean left) {
         Plate(int slot, String name, String stats, String origin, boolean mvp) { this(slot, name, stats, origin, mvp, "", false); }
         /** The plate's lines under the name: the stats, the award (if any), then where he is from or that he left the battle. */
-        List<String> lines() { List<String> l = new ArrayList<>(); l.add(stats); if (!award.isEmpty()) l.add(award); l.add(left ? LEFT : origin); return l; }
+        List<String> lines() { List<String> l = new ArrayList<>(); l.add(stats); if (!award.isEmpty()) l.add(award); l.add(left ? leftLine() : origin); return l; }
     }
+    /** The plate line of a player who left the battle: LEFT for the checks that compare against it, leftLine() what is drawn. */
     static final String LEFT = "Left the battle";
+    static String leftLine() { return UiText.t("endingClient.left", "Left the battle"); }
     static final List<Plate> plates = new ArrayList<>();
     /** Harness only: the plate rectangles last drawn (x0, y0, x1, y1), the banner word last drawn and the frames that drew it. */
     static final List<int[]> plateRects = new ArrayList<>();
@@ -421,7 +423,7 @@ public final class EndingClient {
         var c = MinecraftClient.getInstance(); var font = c.textRenderer;
         MatchEnding.Step s = step(); if (s == null || c.currentScreen instanceof EndingScreen) return; // the screen draws its own hint
         float partial = c.getRenderTickCounter().getTickDelta(false); // HUD time (D11)
-        String hint = HintText.expand("{key:menu} or Escape to skip", GravesAndGloryClient::hint);
+        String hint = HintText.expand(UiText.t("endingClient.skipHint", "{key:menu} or Escape to skip"), GravesAndGloryClient::hint);
         if (s == MatchEnding.Step.PODIUM) {
             int bar = Math.max(18, h / 10);
             g.fill(0, 0, w, bar, DarkUi.LETTERBOX); g.fill(0, h - bar, w, h, DarkUi.LETTERBOX);
@@ -438,7 +440,7 @@ public final class EndingClient {
     /** The word (title font, about 11% of the screen's width tall) landing with a 6-tick scale-in, a brass rule under it, then the score line. */
     static void banner(DrawContext g, int w, int h, float partial) {
         var font = MinecraftClient.getInstance().textRenderer;
-        String word = outcome.isEmpty() ? "DRAW" : outcome;
+        String word = outcome.isEmpty() ? UiText.t("endingClient.drawWord", "DRAW") : outcome;
         Text t = Text.literal(word).setStyle(Style.EMPTY.withFont(DarkUi.TITLE));
         int tw = Math.max(1, font.getWidth(t));
         float scale = Math.min(w * .11f / 10f, w * .86f / tw);
@@ -487,6 +489,7 @@ public final class EndingClient {
     static void plates(DrawContext g, int w, int h, int bar, float partial) {
         var font = MinecraftClient.getInstance().textRenderer;
         plateRects.clear();
+        String mvpWord = UiText.t("endingClient.mvp", "MVP");
         double[][] pl = PodiumLayout.plinths();
         int n = plates.size(); if (n == 0) return;
         double[] cx = new double[n];
@@ -497,7 +500,7 @@ public final class EndingClient {
             var p = plates.get(i);
             if (!shownSlot(p.slot())) continue; // not revealed yet (ending polish pass 2)
             Text name = Text.literal(p.name()).setStyle(Style.EMPTY.withFont(DarkUi.TITLE));
-            int chip = p.mvp() ? font.getWidth("MVP") + 6 : 0;
+            int chip = p.mvp() ? font.getWidth(mvpWord) + 6 : 0;
             int want = font.getWidth(name) + chip; for (String l : p.lines()) want = Math.max(want, font.getWidth(l)); want += pad * 2 + 4;
             // the room to the nearest neighbour's centre, split evenly, less a gap
             double room = w - 8;
@@ -512,12 +515,12 @@ public final class EndingClient {
             int nw = font.getWidth(name) + chip; float s1 = Math.min(1f, inner / (float) Math.max(1, nw));
             var mx = g.getMatrices();
             mx.push(); mx.translate((float) cx[i] - nw * s1 / 2f, y, 0); mx.scale(s1, s1, 1);
-            if (p.mvp()) { g.fill(0, -1, chip - 2, 9, VICTORY_INK); g.drawText(font, "MVP", 2, 0, DarkUi.INK_TEXT, false); }
+            if (p.mvp()) { g.fill(0, -1, chip - 2, 9, VICTORY_INK); g.drawText(font, mvpWord, 2, 0, DarkUi.INK_TEXT, false); }
             g.drawText(font, name, chip, 0, DarkUi.PAPER, false);
             mx.pop(); y += lineH;
             fitted(g, p.stats(), cx[i], y, inner, VICTORY_INK); y += lineH;
             if (!p.award().isEmpty()) { fitted(g, p.award(), cx[i], y, inner, LINE_INK); y += lineH; }
-            fitted(g, p.left() ? LEFT : p.origin(), cx[i], y, inner, p.left() ? DarkUi.ALARM_TEXT : 0xffcdbf9f);
+            fitted(g, p.left() ? leftLine() : p.origin(), cx[i], y, inner, p.left() ? DarkUi.ALARM_TEXT : 0xffcdbf9f);
             plateRects.add(new int[]{x0, top, x1, bottom});
         }
     }

@@ -70,7 +70,7 @@ public final class CommandMode {
      *  server's accepted line takes. The server's refusals (command_v1 REFUSE) and the client's own (no ground under the aim, the Charge not
      *  ready) both come here, so a refusal reads the same whichever side caught it. */
     static void answer(String code,int n,String subject){
-        UiSounds.deny();lastAnswer=OrderReply.refusal(code,n,subject);
+        UiSounds.deny();lastAnswer=OrderReply.refusalLine(code,n,subject);
         var c=MinecraftClient.getInstance();if(c.inGameHud!=null)c.inGameHud.setOverlayMessage(net.minecraft.text.Text.literal(lastAnswer),false);
     }
     /** The last refusal line shown (for the harness). */
@@ -188,7 +188,7 @@ public final class CommandMode {
         if(tiers.isEmpty())return;
         int team=GravesAndGloryClient.team;var side=DarkUi.side(team); // DarkUi.side reads the live battle state, like every other team mark
         GravesAndGloryClient.panel(g,8,y,210,38);
-        if(side!=null){DarkUi.teamMark(g,team,16,y+4);g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(side.name().toUpperCase(java.util.Locale.ROOT)+" / HOUSES",190),28,y+4,DarkUi.MUTED);}
+        if(side!=null){DarkUi.teamMark(g,team,16,y+4);g.drawTextWithShadow(c.textRenderer,c.textRenderer.trimToWidth(UiText.t("commandMode.houses.heading","{side} / HOUSES","side",side.name().toUpperCase(java.util.Locale.ROOT)),190),28,y+4,DarkUi.MUTED);}
         int x=16;for(var house:Spec.HOUSES){int tier=tiers.getOrDefault(house.id(),0);if(tier<=0)continue;DarkUi.houseMark(g,house.id(),tier,x,y+17);x+=DarkUi.houseMarkWidth(tier)+12;}
     }
     /** Where vanilla draws the hearts and the armour row (GUI x width / 2 - 91), in the HUD frame of width w (the GUI scaled by min(1, width / 640)). */

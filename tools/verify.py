@@ -78,7 +78,7 @@ def run(args):
         gson=list((pathlib.Path.home()/'.gradle/caches/modules-2/files-2.1/com.google.code.gson/gson/2.10.1').glob('*/*.jar'))
         if not gson: raise RuntimeError('Gson 2.10.1 missing; run documented online setup once')
         classes=out/'classes'; classes.mkdir()
-        names='Spec DropMath DropSim DropFlow AdminOg JoinLedger Gear GearStats GearEffects RelicSlots Forge GearWire GearCommands GearView BattleMath ModeMath ConvoyRoad MatchStats Progression Profile ProfileMigration MarchMath RosterMath  WarGrid CounterMath LevelMath CreditLog AdmissionPolicy SocialHub CampTerrain CompatibilityPolicy HouseRoute StepHop Wedge Stall FileThrough LayoutMarker LegacyDataMigration TroopFaces UiMath HintText FeedLines ModeLines BannerDrop  BannerCommands AudioCues SafeFiles MatchRules ArenaAutosave NavField EngineMap MovementGuard MotionMath Clip MotionInput Pose MotionBody MotionFeet MotionStack MotionEngine MatchEnding EndingAwards PodiumLayout PropDef TabPaging PropGeometry PropEffects PropMotion PropPackFile HandbookText BattlePlan MapView BattleMapGrid MapKinds BattleMapPaint GeoTroops CampNpcs OrderReply'.split()
+        names='Spec DropMath DropSim DropFlow AdminOg JoinLedger Gear GearStats GearEffects RelicSlots Forge GearWire GearCommands GearView BattleMath ModeMath ConvoyRoad MatchStats Progression Profile ProfileMigration MarchMath RosterMath  WarGrid CounterMath LevelMath CreditLog AdmissionPolicy SocialHub CampTerrain CompatibilityPolicy HouseRoute StepHop Wedge Stall FileThrough LayoutMarker LegacyDataMigration TroopFaces UiMath HintText FeedLines ModeLines BannerDrop  BannerCommands AudioCues SafeFiles MatchRules ArenaAutosave NavField EngineMap MovementGuard MotionMath Clip MotionInput Pose MotionBody MotionFeet MotionStack MotionEngine MatchEnding EndingAwards PodiumLayout PropDef TabPaging PropGeometry PropEffects PropMotion PropPackFile HandbookText BattlePlan MapView BattleMapGrid MapKinds BattleMapPaint GeoTroops CampNpcs OrderReply UiTemplate UiSheet UiText'.split()
         checks=sorted((ROOT/'test-tools/standalone').glob('*Check.java'))
         sources=[ROOT/'src/main/java/gg/gravesandglory'/(n+'.java') for n in names]
         sources+=[ROOT/'test-tools/java/gg/gravesandglory/SoleSlide.java']  # pure geometry the motion grade shares with SoleSlideCheck
@@ -93,11 +93,13 @@ def run(args):
             with ThreadPoolExecutor(max(1,min(6,cpus//4))) as pool: futures=[pool.submit(run_check,t) for t in checks]
             errors=[f.exception() for f in futures if f.exception()]
             if errors: raise errors[0]
-        canon=['preflight','python-tests','ui-standard','ui-assets','skin-assets','zfight','clips','java-compile',*(t.stem for t in checks),'build','payload-roundtrip']
+        canon=['preflight','python-tests','ui-standard','ui-pieces','ui-assets','skin-assets','zfight','clips','java-compile',*(t.stem for t in checks),'build','payload-roundtrip']
         together(canon,
             # One process per test module (slow modules split by recorded times); the same discovery, every id accounted for.
             lambda: step('python-tests',[sys.executable,'tools/parallel_tests.py','test-tools/standalone','--pattern','test_*.py','--times',ROOT/'work/verify/python-test-times.json']),
             lambda: step('ui-standard',[sys.executable,'test-tools/standalone/test_ui_standard.py']),
+            # the UI editor's piece list: literal ids, no duplicates, every default slot supplied, built-in edits valid, pieces.json current
+            lambda: step('ui-pieces',[sys.executable,'tools/ui_pieces.py','--verify']),
             # test_build_skins is already included in unittest discovery; do not run it twice.
             lambda: step('ui-assets',[sys.executable,'tools/build_ui_art.py','--verify']),
             lambda: step('skin-assets',[sys.executable,'tools/build_skins.py','--verify']),

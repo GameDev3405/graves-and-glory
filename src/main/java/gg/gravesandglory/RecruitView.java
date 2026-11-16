@@ -66,7 +66,7 @@ final class RecruitView {
     static String noAction(String troopId) {
         var t = ArmyCards.spec(troopId);
         if (t == null || action(troopId) != null) return "";
-        return CampaignClient.profile.owned.containsKey(troopId) ? "Full stars" : "From letters only";
+        return CampaignClient.profile.owned.containsKey(troopId) ? UiText.t("recruitView.noAction.fullStars", "Full stars") : UiText.t("recruitView.noAction.lettersOnly", "From letters only");
     }
 
     /** One rarity's chance of a letter: the rarity's id and its share of a roll in the House, in percent of 100. */
@@ -91,21 +91,21 @@ final class RecruitView {
     /** "Common 86%, Rare 12%, Epic 2%": the chance of each rarity as the Odds note writes it. */
     static String oddsLine(String houseId) {
         List<String> parts = new ArrayList<>();
-        for (var o : odds(houseId)) parts.add(Character.toUpperCase(o.rarity().charAt(0)) + o.rarity().substring(1) + " " + String.format(Locale.ROOT, "%.0f%%", o.percent()));
+        for (var o : odds(houseId)) parts.add(UiText.t("recruitView.odds.part", "{rarity} {percent}%", "rarity", Character.toUpperCase(o.rarity().charAt(0)) + o.rarity().substring(1), "percent", String.format(Locale.ROOT, "%.0f", o.percent())));
         return String.join(", ", parts);
     }
 
     /** The Odds note's rule for a troop already owned (a letter that brings it counts a copy toward its next star), and for a Legendary. */
-    static final String COPY_RULE = "A troop you own gives a copy toward its next star.";
+    static String copyRule() { return UiText.t("recruitView.note.copyRule", "A troop you own gives a copy toward its next star."); }
     /** Where a Legendary comes from, the numbers read from the recruitment sheet (RecruitPages.action's rule). */
     static String legendaryRule() {
         var r = Spec.RECRUITMENT[0];
-        return "A Legendary comes from a Pact, or " + r.legendaryShards() + " shards and " + r.renownForLegendary() + " Renown, not a letter.";
+        return UiText.t("recruitView.note.legendaryRule", "A Legendary comes from a Pact, or {shards} shards and {renown} Renown, not a letter.", "shards", r.legendaryShards(), "renown", r.renownForLegendary());
     }
 
     /** The Odds note's lines under its heading, before they are wrapped to the note's width: the chance of each rarity, the letters
      *  left until the House's Epic is sure, the copy rule and the Legendary's rule. */
     static List<String> note(String houseId) {
-        return List.of(oddsLine(houseId), UiMath.pityLine(pityLeft(houseId)), COPY_RULE, legendaryRule());
+        return List.of(oddsLine(houseId), UiMath.pityLine(pityLeft(houseId)), copyRule(), legendaryRule());
     }
 }

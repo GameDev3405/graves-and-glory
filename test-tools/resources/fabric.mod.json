@@ -29,6 +29,8 @@
       "gg.gravesandglory.PerfIntegrated",
       "gg.gravesandglory.SliceClient",
       "gg.gravesandglory.FrontMenuChecks",
+      "gg.gravesandglory.UiScreenShots",
+      "gg.gravesandglory.UiEditorChecks",
       "gg.gravesandglory.CampaignChecks",
       "gg.gravesandglory.MapTour",
       "gg.gravesandglory.MapWalk",

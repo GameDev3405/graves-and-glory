@@ -37,7 +37,7 @@ public final class CampaignClient {
     static int noticeSerial;
     /** The server-wide bot difficulty (a Spec.BOTCOMMAND id), as last sent in the snapshot. */
     static String difficulty="normal";
-    static String botsLabel(){return "Bots: "+tierName(difficulty);}
+    static String botsLabel(){return UiText.t("campaign.botsLabel","Bots: {tier}","tier",tierName(difficulty));}
     /** A bot tier's display name: its Spec.BOTCOMMAND id with a capital ("normal" reads "Normal"). */
     static String tierName(String id){return id.isEmpty()?id:id.substring(0,1).toUpperCase(java.util.Locale.ROOT)+id.substring(1);}
     /** The order sheet the War Table home raises, "practice", "skirmish" or "campaign"; kept for the session (UI plan Task 5). */
@@ -102,7 +102,7 @@ public final class CampaignClient {
     static void sendProfile(MinecraftClient c){
         try{Path path=collection(c);String json=compactProfile(Files.exists(path)?Files.readString(path):Campaign.JSON.toJson(new Profile()));
             if(json.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>PROFILE_MAX_BYTES){
-                if(!profileTooLarge){profileTooLarge=true;if(c.player!=null)c.player.sendMessage(Text.literal("Your collection file is too large to sync with this world; it stays on disk unchanged."),true);System.err.println("[Graves and Glory] Collection is too large for one packet; not sent.");}
+                if(!profileTooLarge){profileTooLarge=true;if(c.player!=null)c.player.sendMessage(Text.literal(UiText.t("campaign.collectionTooLarge","Your collection file is too large to sync with this world; it stays on disk unchanged.")),true);System.err.println("[Graves and Glory] Collection is too large for one packet; not sent.");}
                 return;}
             if(ClientPlayNetworking.canSend(GravesAndGlory.PROFILE)){var packet=PacketByteBufs.create();packet.writeString(json,PROFILE_MAX_BYTES);ClientPlayNetworking.send(gg.gravesandglory.net.Payloads.ProfilePayload.of(packet));}
         }catch(Exception ignored){}
@@ -176,7 +176,7 @@ public final class CampaignClient {
     public static void hud(DrawContext g,int w,int h){
         if(camera==null)return;var c=MinecraftClient.getInstance();int bar=Math.max(18,h/10);g.fill(0,0,w,bar,DarkUi.LETTERBOX);g.fill(0,h-bar,w,h,DarkUi.LETTERBOX);
         boolean march=battle.has("name");
-        g.drawCenteredTextWithShadow(c.textRenderer,Spec.MAPS[map].name().toUpperCase()+"  /  "+(march?MarchMath.chapterName(marchRow(),Spec.CAMPAIGNCHAPTERS).toUpperCase():mode.equals("ai")?"PRACTICE":mode+" v "+mode),w/2,bar+12,DarkUi.GOLD);
+        g.drawCenteredTextWithShadow(c.textRenderer,Spec.MAPS[map].name().toUpperCase()+"  /  "+(march?MarchMath.chapterName(marchRow(),Spec.CAMPAIGNCHAPTERS).toUpperCase():mode.equals("ai")?UiText.t("campaign.entrance.practice","PRACTICE"):UiText.t("campaign.entrance.versus","{mode} v {mode}","mode",mode)),w/2,bar+12,DarkUi.GOLD);
         if(modeId().equals(Modes.SIEGE)){ // who attacks and who defends, and the viewer's own part, under the map line (every Siege map has its attackers: ModeMath.siegeAttackers)
             int att=ModeMath.siegeAttackers(map);
             String[] sides=ModeMath.siegeIntro(map,GravesAndGloryClient.team,FeedLines.teamShort(DarkUi.side(att).name()),FeedLines.teamShort(DarkUi.side(1-att).name())); // the banner colours, as the feed lines name them
@@ -184,8 +184,8 @@ public final class CampaignClient {
             if(!sides[1].isEmpty())g.drawCenteredTextWithShadow(c.textRenderer,sides[1],w/2,bar+36,DarkUi.GOLD);
         }
         if(march)briefing(g,c.textRenderer,w,h-bar-34);
-        g.drawCenteredTextWithShadow(c.textRenderer,"YOUR BANNER. YOUR ARMY.",w/2,h-bar-24,DarkUi.IVORY);
-        g.drawCenteredTextWithShadow(c.textRenderer,HintText.expand("{key:menu} or Escape to skip entrance",GravesAndGloryClient::hint),w/2,h-bar+6,DarkUi.MUTED);
+        g.drawCenteredTextWithShadow(c.textRenderer,UiText.t("campaign.entrance.tagline","YOUR BANNER. YOUR ARMY."),w/2,h-bar-24,DarkUi.IVORY);
+        g.drawCenteredTextWithShadow(c.textRenderer,HintText.expand(UiText.t("campaign.entrance.skipHint","{key:menu} or Escape to skip entrance"),GravesAndGloryClient::hint),w/2,h-bar+6,DarkUi.MUTED);
     }
     /** The briefing card of a campaign battle during its entrance: the battle name, the order of the day and why it matters, ending at y=bottom. */
     static void briefing(DrawContext g,net.minecraft.client.font.TextRenderer font,int w,int bottom){
@@ -212,6 +212,6 @@ public final class CampaignClient {
     /** The briefing's bonus line (plan 2C.5): the objective and what it pays, or that it was claimed; empty for a battle with no bonus. */
     static String bonusLine(){
         var row=marchRow();var b=MarchMath.bonus(row,Spec.BONUSOBJECTIVES);if(b==null)return "";
-        return bonusClaimed()?"Bonus claimed: "+b.text():"Bonus: "+b.text()+" "+MarchText.reward(b,row);
+        return bonusClaimed()?UiText.t("campaign.bonusClaimed","Bonus claimed: {text}","text",b.text()):UiText.t("campaign.bonus","Bonus: {text} {reward}","text",b.text(),"reward",MarchText.reward(b,row));
     }
 }

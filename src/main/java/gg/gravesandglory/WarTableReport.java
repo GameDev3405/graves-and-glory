@@ -100,7 +100,17 @@ final class WarTableReport {
     /** Where the primary tag goes: the private room's page while a room is open, the War Table otherwise. */
     String leaveTarget() { return screen.value("room").isEmpty() ? "home" : "friends"; }
 
-    String leaveLabel() { return screen.value("room").isEmpty() ? "Back to camp" : "Return to room"; }
+    String leaveLabel() { return screen.value("room").isEmpty() ? UiText.t("report.note.backToCamp", "Back to camp") : UiText.t("report.note.returnToRoom", "Return to room"); }
+
+    /** A face tag's word. */
+    static String faceLabel(String which) {
+        return switch (which) {
+            case "you" -> UiText.t("report.tab.you", "You");
+            case "troops" -> UiText.t("report.tab.troops", "Troops");
+            case "chapter" -> UiText.t("report.tab.chapter", "Chapter");
+            default -> UiText.t("report.tab.battle", "Battle");
+        };
+    }
 
     /** Builds the widgets (CampScreen.init on page results): again whenever the camp state or a rail badge changes. */
     void init() {
@@ -117,14 +127,14 @@ final class WarTableReport {
         int sx = o[0] + SHEET_X, sy = o[1] + TOP, nx = o[0] + NOTE_X, ny = o[1] + TOP;
         for (int i = 0; i < FACES.length; i++) {
             final String which = FACES[i], label = FACE_LABELS[i];
-            add("tab-" + which, new UiButton(sx + PAD + i * (TAB_W + TAB_GAP), sy + TAB_Y, TAB_W, TAB_H, Text.literal(label), b -> face = which, (g, x, y, w, h, hot) -> paintTab(g, which, label, x, y, w, h)));
+            add("tab-" + which, new UiButton(sx + PAD + i * (TAB_W + TAB_GAP), sy + TAB_Y, TAB_W, TAB_H, Text.literal(label), b -> face = which, (g, x, y, w, h, hot) -> paintTab(g, which, faceLabel(which), x, y, w, h)));
         }
-        add("note-contracts", new UiButton(nx + NPAD, ny + TAGS_Y, TAG_W, TAB_H, Text.literal("Contracts"), b -> screen.page("contracts"), (g, x, y, w, h, hot) -> paintTag(g, "note-contracts", "Contracts", x, y, w, h, DarkUi.INK_TEXT)));
-        add("note-chapter", new UiButton(nx + NPAD + TAG_W + TAG_GAP, ny + TAGS_Y, TAG_W, TAB_H, Text.literal("Chapter"), b -> screen.page("chapter"), (g, x, y, w, h, hot) -> paintTag(g, "note-chapter", "Chapter", x, y, w, h, DarkUi.INK_TEXT)));
+        add("note-contracts", new UiButton(nx + NPAD, ny + TAGS_Y, TAG_W, TAB_H, Text.literal("Contracts"), b -> screen.page("contracts"), (g, x, y, w, h, hot) -> paintTag(g, "note-contracts", UiText.t("report.note.contracts", "Contracts"), x, y, w, h, DarkUi.INK_TEXT)));
+        add("note-chapter", new UiButton(nx + NPAD + TAG_W + TAG_GAP, ny + TAGS_Y, TAG_W, TAB_H, Text.literal("Chapter"), b -> screen.page("chapter"), (g, x, y, w, h, hot) -> paintTag(g, "note-chapter", UiText.t("report.note.chapter", "Chapter"), x, y, w, h, DarkUi.INK_TEXT)));
         add("go", new UiButton(nx + NPAD, ny + GO_Y, NOTE_TEXT_W, GO_H, Text.literal(leaveLabel()), b -> go(), (g, x, y, w, h, hot) -> paintTag(g, "go", leaveLabel(), x, y, w, h, DarkUi.INK_TEXT)));
         // the Troops face's paging, shown only when the list is longer than a page (sheet)
-        add("page-prev", new UiButton(sx + PAD, sy + CONTENT_END - TAB_H, TAG_W, TAB_H, Text.literal("Previous"), b -> turnPage(-1), (g, x, y, w, h, hot) -> paintTag(g, "page-prev", "Previous", x, y, w, h, DarkUi.INK_TEXT)));
-        add("page-next", new UiButton(sx + PAD + TEXT_W - TAG_W, sy + CONTENT_END - TAB_H, TAG_W, TAB_H, Text.literal("Next"), b -> turnPage(1), (g, x, y, w, h, hot) -> paintTag(g, "page-next", "Next", x, y, w, h, DarkUi.INK_TEXT)));
+        add("page-prev", new UiButton(sx + PAD, sy + CONTENT_END - TAB_H, TAG_W, TAB_H, Text.literal("Previous"), b -> turnPage(-1), (g, x, y, w, h, hot) -> paintTag(g, "page-prev", UiText.t("report.paging.previous", "Previous"), x, y, w, h, DarkUi.INK_TEXT)));
+        add("page-next", new UiButton(sx + PAD + TEXT_W - TAG_W, sy + CONTENT_END - TAB_H, TAG_W, TAB_H, Text.literal("Next"), b -> turnPage(1), (g, x, y, w, h, hot) -> paintTag(g, "page-next", UiText.t("report.paging.next", "Next"), x, y, w, h, DarkUi.INK_TEXT)));
         showPaging(false);
     }
 
@@ -286,8 +296,9 @@ final class WarTableReport {
         texturesDrawn.put("note", "table/note-room");
         int lx = x + NPAD, cx = x + NOTE_W / 2;
         if (!has()) {
-            WarTableHome.centred(g, DarkUi.body(NONE), cx, y + OUTCOME_Y, DarkUi.SEPIA);
-            textsDrawn.put("outcome", NONE);
+            String none = UiText.t("report.note.none", "No battle to report yet.");
+            WarTableHome.centred(g, DarkUi.body(none), cx, y + OUTCOME_Y, DarkUi.SEPIA);
+            textsDrawn.put("outcome", none);
             return;
         }
         var r = report();
@@ -318,18 +329,18 @@ final class WarTableReport {
         }
         // what the battle paid
         boolean saved = r.get("saved").getAsBoolean();
-        head(g, "rewards", "Rewards", null, lx, y + REWARDS_Y, NOTE_TEXT_W);
+        head(g, "rewards", UiText.t("report.note.rewards", "Rewards"), null, lx, y + REWARDS_Y, NOTE_TEXT_W);
         int wy = y + REWARDS_Y + 18;
         if (saved && EndingPanels.hasRewards(r)) { // the ending's rows (EndingPanels), in their static form
             EndingPanels.rewards(g, r, lx, wy, NOTE_TEXT_W, TAGS_Y - REWARDS_Y - 18);
             textsDrawn.put("rewards", EndingPanels.total);
         } else if (saved) {
-            line(g, "rewards", "+" + count(r, "writs") + " writs   +" + count(r, "gearShards") + " gear shards   +" + r.get("xp").getAsInt() + " chapter XP", lx, wy, DarkUi.INK_TEXT);
+            line(g, "rewards", UiText.t("report.note.rewardsLine", "+{writs} writs   +{gearShards} gear shards   +{xp} chapter XP", "writs", count(r, "writs"), "gearShards", count(r, "gearShards"), "xp", r.get("xp").getAsInt()), lx, wy, DarkUi.INK_TEXT);
             if (r.has("march")) march(g, r, lx, wy + STEP + 2, r.get("eligible").getAsBoolean());
-            else block(g, "rewards-note", r.get("eligible").getAsBoolean() ? "Rewards saved. Contract and tier rewards are claimed separately." : "No match rewards: play at least 3 minutes to qualify.", lx, wy + STEP + 2, NOTE_TEXT_W, 3, DarkUi.SEPIA);
+            else block(g, "rewards-note", r.get("eligible").getAsBoolean() ? UiText.t("report.note.savedNote", "Rewards saved. Contract and tier rewards are claimed separately.") : UiText.t("report.note.ineligibleNote", "No match rewards: play at least 3 minutes to qualify."), lx, wy + STEP + 2, NOTE_TEXT_W, 3, DarkUi.SEPIA);
         } else {
-            line(g, "rewards", "Rewards not saved", lx, wy, DarkUi.ROUT_TEXT);
-            block(g, "rewards-note", "Progress unchanged. Check disk space before playing again.", lx, wy + STEP + 2, NOTE_TEXT_W, 3, DarkUi.ROUT_TEXT);
+            line(g, "rewards", UiText.t("report.note.notSaved", "Rewards not saved"), lx, wy, DarkUi.ROUT_TEXT);
+            block(g, "rewards-note", UiText.t("report.note.notSavedNote", "Progress unchanged. Check disk space before playing again."), lx, wy + STEP + 2, NOTE_TEXT_W, 3, DarkUi.ROUT_TEXT);
         }
     }
 
@@ -341,13 +352,13 @@ final class WarTableReport {
         String state = m.get("bonusState").getAsString();
         int pacts = m.get("pacts").getAsInt(), held = m.get("pactsHeld").getAsInt();
         if (!state.equals("none") && !state.equals("lost")) {
-            String label = switch (state) { case "paid" -> "Bonus kept"; case "claimed" -> "Bonus claimed before"; default -> "Bonus missed"; };
-            String value = state.equals("paid") ? "+" + m.get("bonusShards").getAsInt() + " shards, +" + m.get("bonusGold").getAsInt() + " gear shards" : "";
+            String label = switch (state) { case "paid" -> UiText.t("report.march.bonusKept", "Bonus kept"); case "claimed" -> UiText.t("report.march.bonusClaimed", "Bonus claimed before"); default -> UiText.t("report.march.bonusMissed", "Bonus missed"); };
+            String value = state.equals("paid") ? UiText.t("report.march.bonusPaid", "+{shards} shards, +{gearShards} gear shards", "shards", m.get("bonusShards").getAsInt(), "gearShards", m.get("bonusGold").getAsInt()) : "";
             y = row(g, "march-bonus", label, value, x, y, state.equals("paid") ? DarkUi.INK_TEXT : DarkUi.SEPIA);
         }
-        if (pacts > 0) y = row(g, "march-pact", pacts == 1 ? "A Pact earned" : pacts + " Pacts earned", "held " + held, x, y, DarkUi.INK_TEXT);
-        else if (held > 0) y = row(g, "march-pact", "Pacts held", String.valueOf(held), x, y, DarkUi.SEPIA);
-        if (!eligible) line(g, "rewards-note", "No rewards: under 3 minutes.", x, y + 1, DarkUi.SEPIA);
+        if (pacts > 0) y = row(g, "march-pact", pacts == 1 ? UiText.t("report.march.pactEarned", "A Pact earned") : UiText.t("report.march.pactsEarned", "{pacts} Pacts earned", "pacts", pacts), UiText.t("report.march.held", "held {held}", "held", held), x, y, DarkUi.INK_TEXT);
+        else if (held > 0) y = row(g, "march-pact", UiText.t("report.march.pactsHeldRow", "Pacts held"), String.valueOf(held), x, y, DarkUi.SEPIA);
+        if (!eligible) line(g, "rewards-note", UiText.t("report.march.underFloor", "No rewards: under 3 minutes."), x, y + 1, DarkUi.SEPIA);
     }
 
     /** One label and value row of the note (the label trimmed to leave the value its room); returns the y under it. */
@@ -380,7 +391,7 @@ final class WarTableReport {
         var r = report();
         JsonArray squads = r.has("squads") ? r.getAsJsonArray("squads") : new JsonArray();
         int ry = y + HEAD_Y;
-        head(g, "commanders", "Commanders", squads.size() + (squads.size() == 1 ? " army" : " armies"), x, ry, TEXT_W);
+        head(g, "commanders", UiText.t("report.battle.commanders", "Commanders"), squads.size() == 1 ? UiText.t("report.battle.armyOne", "{count} army", "count", squads.size()) : UiText.t("report.battle.armyMany", "{count} armies", "count", squads.size()), x, ry, TEXT_W);
         ry += 18;
         ry = EndingPanels.scoreboard(g, r, x, ry, TEXT_W) + 2; // the ending's commanders table (EndingPanels), shared with its stats screen
         for (var e : EndingPanels.texts.entrySet()) if (e.getKey().startsWith("score-")) { textsDrawn.put("commander-" + e.getKey(), e.getValue()); rectsDrawn.put("commander-" + e.getKey(), EndingPanels.rects.get(e.getKey())); }
@@ -389,7 +400,7 @@ final class WarTableReport {
         JsonArray houses = r.has("houses") ? r.getAsJsonArray("houses") : new JsonArray();
         if (houses.isEmpty()) return;
         ry += 10;
-        head(g, "houses", "Houses", null, x, ry, TEXT_W);
+        head(g, "houses", UiText.t("report.battle.houses", "Houses"), null, x, ry, TEXT_W);
         ry += 18;
         for (int i = 0; i < houses.size(); i++) {
             if (ry + 16 > y + CONTENT_END) break; // a campaign story above can leave room for fewer House rows; never draw past the sheet
@@ -405,7 +416,7 @@ final class WarTableReport {
         String end = m != null && m.has("chapterEnd") ? HintText.expand(m.get("chapterEnd").getAsString(), GravesAndGloryClient::hint) : "";
         if (after.isEmpty() && end.isEmpty()) return y;
         y += 10;
-        head(g, "story", "After the battle", null, x, y, TEXT_W);
+        head(g, "story", UiText.t("report.battle.story", "After the battle"), null, x, y, TEXT_W);
         y += 18;
         if (!after.isEmpty()) y = block(g, "story-after", after, x, y, TEXT_W, 3, DarkUi.INK_TEXT) + 4;
         if (!end.isEmpty()) y = block(g, "story-end", end, x, y, TEXT_W, 3, DarkUi.SEPIA) + 4;
@@ -420,8 +431,8 @@ final class WarTableReport {
         g.drawTexture(net.minecraft.util.Identifier.of(row.glyph()), x, y - 2, 0f, 0f, 16, 16, 16, 16);
         g.drawText(font, heading(row.name()), x + 22, y + 2, DarkUi.INK_TEXT, false);
         int tier = h.get("tier").getAsInt();
-        String trait = tier > 0 ? "Trait " + MatchStats.roman(tier) + " held " + h.get("traitSeconds").getAsInt() + "s" : "No trait tier";
-        String paid = "+" + h.get("shards").getAsInt() + " shards  +" + h.get("renown").getAsInt() + " Renown";
+        String trait = tier > 0 ? UiText.t("report.house.trait", "Trait {tier} held {seconds}s", "tier", MatchStats.roman(tier), "seconds", h.get("traitSeconds").getAsInt()) : UiText.t("report.house.noTrait", "No trait tier");
+        String paid = UiText.t("report.house.paid", "+{shards} shards  +{renown} Renown", "shards", h.get("shards").getAsInt(), "renown", h.get("renown").getAsInt());
         int nameEnd = x + 22 + font.getWidth(heading(row.name())) + 10;
         int pw = font.getWidth(DarkUi.body(paid));
         String traitShown = UiMath.trim(trait, x + TEXT_W - pw - 10 - nameEnd, s -> font.getWidth(DarkUi.body(s)));
@@ -439,11 +450,11 @@ final class WarTableReport {
         int ry = y + HEAD_Y;
         var rows = r.has("squads") ? r.getAsJsonArray("squads") : new JsonArray();
         String right = null;
-        for (var e : rows) { var o = e.getAsJsonObject(); if (o.has("you") && o.get("you").getAsBoolean() && o.has("score")) right = "Score " + o.get("score").getAsInt() + (o.has("rank") && o.get("rank").getAsInt() > 0 ? ", rank " + o.get("rank").getAsInt() + " of " + rows.size() : ""); }
-        head(g, "you", "Your battle", right, x, ry, TEXT_W);
+        for (var e : rows) { var o = e.getAsJsonObject(); if (o.has("you") && o.get("you").getAsBoolean() && o.has("score")) right = o.has("rank") && o.get("rank").getAsInt() > 0 ? UiText.t("report.you.scoreRank", "Score {score}, rank {rank} of {total}", "score", o.get("score").getAsInt(), "rank", o.get("rank").getAsInt(), "total", rows.size()) : UiText.t("report.you.score", "Score {score}", "score", o.get("score").getAsInt()); }
+        head(g, "you", UiText.t("report.you.head", "Your battle"), right, x, ry, TEXT_W);
         ry = EndingPanels.groups(g, r, x, ry + 18, TEXT_W, 172) + 12;
         if (!r.has("you") || ry + 30 > y + CONTENT_END) return;
-        head(g, "your-troops", "Your army", null, x, ry, TEXT_W);
+        head(g, "your-troops", UiText.t("report.you.army", "Your army"), null, x, ry, TEXT_W);
         EndingPanels.troops(g, r, x, ry + 18, TEXT_W, y + CONTENT_END - ry - 18);
     }
 
@@ -453,9 +464,9 @@ final class WarTableReport {
         var r = report();
         JsonArray levels = r.has("levels") ? r.getAsJsonArray("levels") : new JsonArray();
         int ry = y + HEAD_Y;
-        head(g, "troops", "Troops in battle", null, x, ry, TEXT_W);
+        head(g, "troops", UiText.t("report.troops.head", "Troops in battle"), null, x, ry, TEXT_W);
         ry += 18;
-        if (levels.isEmpty()) { line(g, "levels-none", "No troop Ranks this battle.", x, ry, DarkUi.SEPIA); return; }
+        if (levels.isEmpty()) { line(g, "levels-none", UiText.t("report.troops.none", "No troop Ranks this battle."), x, ry, DarkUi.SEPIA); return; }
         // every row in the long form, whole: a long list pages rather than trimming a name
         var rows = new ArrayList<String[]>();
         for (int i = 0; i < levels.size(); i++) { var words = CampScreen.levelWords(levels.get(i).getAsJsonObject(), false); if (words != null) rows.add(words); }
@@ -469,7 +480,7 @@ final class WarTableReport {
             line(g, "level-" + i, words[1], x + nw + 8, cy, DarkUi.SEPIA);
         }
         if (pages > 1) {
-            String label = "Page " + (troopPage + 1) + " of " + pages;
+            String label = UiText.t("report.troops.page", "Page {page} of {pages}", "page", troopPage + 1, "pages", pages);
             int lw = font.getWidth(DarkUi.body(label));
             line(g, "page", label, x + (TEXT_W - lw) / 2, y + CONTENT_END - TAB_H + 7, DarkUi.SEPIA);
         }
@@ -480,7 +491,7 @@ final class WarTableReport {
         var p = CampaignClient.profile.progression;
         int tier = Progression.tier(p), xp = Math.min(p.xp, 7500);
         int ry = y + HEAD_Y;
-        head(g, "founders", "Founders", "Tier " + tier + " of 30, " + xp + " XP", x, ry, TEXT_W);
+        head(g, "founders", UiText.t("report.chapter.founders", "Founders"), UiText.t("report.chapter.tierLine", "Tier {tier} of 30, {xp} XP", "tier", tier, "xp", xp), x, ry, TEXT_W);
         ry += 20;
         int fill = tier == 30 ? TEXT_W : (int) (TEXT_W * ((xp % 250) / 250f));
         g.fill(x, ry, x + TEXT_W, ry + 6, DarkUi.SEPIA_LINE);
@@ -489,16 +500,16 @@ final class WarTableReport {
         rectsDrawn.put("tier-bar", new int[]{x, ry, TEXT_W, 6});
         textsDrawn.put("tier-fill", String.valueOf(fill));
         ry += 14;
-        String next = tier == 30 ? "Chapter complete. Troops and titles stay yours." : "Next, tier " + (tier + 1) + ": " + Progression.reward(tier + 1) + ". " + (250 - xp % 250) + " XP to go.";
+        String next = tier == 30 ? UiText.t("report.chapter.complete", "Chapter complete. Troops and titles stay yours.") : UiText.t("report.chapter.next", "Next, tier {tier}: {reward}. {xpLeft} XP to go.", "tier", tier + 1, "reward", Progression.reward(tier + 1), "xpLeft", 250 - xp % 250);
         ry = block(g, "next", next, x, ry, TEXT_W, 2, DarkUi.INK_TEXT) + 14;
-        head(g, "contracts-list", "Contracts", null, x, ry, TEXT_W);
+        head(g, "contracts-list", UiText.t("report.chapter.contracts", "Contracts"), null, x, ry, TEXT_W);
         ry += 18;
         for (int i = 0; i < 3; i++) {
             int have = Math.min(Progression.progress(p, i), Progression.target(p, i)), want = Progression.target(p, i);
-            ry = contract(g, "contract-" + i, Progression.contract(p, i), have + "/" + want, p.claims.contains("daily:" + i) ? "Claimed" : have >= want ? "Ready to claim" : "", x, ry);
+            ry = contract(g, "contract-" + i, Progression.contract(p, i), have + "/" + want, p.claims.contains("daily:" + i) ? 1 : have >= want ? 2 : 0, x, ry);
         }
         int weekly = Math.min(p.weeklyBattles, Progression.WEEKLY_BATTLES);
-        ry = contract(g, "weekly", "Weekly battles", weekly + "/" + Progression.WEEKLY_BATTLES, p.claims.contains("weekly") ? "Claimed" : Progression.claimable(p, "weekly") ? "Ready to claim" : "", x, ry);
+        ry = contract(g, "weekly", UiText.t("report.chapter.weekly", "Weekly battles"), weekly + "/" + Progression.WEEKLY_BATTLES, p.claims.contains("weekly") ? 1 : Progression.claimable(p, "weekly") ? 2 : 0, x, ry);
         longMarch(g, x, ry + 8);
     }
 
@@ -511,22 +522,24 @@ final class WarTableReport {
         String name = MarchMath.chapterName(next != null ? next : rows.isEmpty() ? null : rows.get(rows.size() - 1), Spec.CAMPAIGNCHAPTERS);
         var chapterRows = MarchMath.inChapter(next != null ? next.chapter() : rows.isEmpty() ? 1 : rows.get(rows.size() - 1).chapter(), Spec.CAMPAIGNBATTLES);
         int total = chapterRows.size(), won = (int) chapterRows.stream().filter(r -> prof.battlesWon.contains(r.id())).count(); // brief G3: counted within the chapter
-        head(g, "march", name, won + " of " + total + " won", x, y, TEXT_W);
+        head(g, "march", name, UiText.t("report.march.won", "{won} of {total} won", "won", won, "total", total), x, y, TEXT_W);
         y += 18;
-        y = block(g, "march-next", next == null ? "Every battle of " + name + " is won." : "Next, battle " + MarchMath.number(next, Spec.CAMPAIGNBATTLES) + ": " + next.name() + ".", x, y, TEXT_W, 2, DarkUi.INK_TEXT);
-        y = block(g, "march-bonuses", "Bonuses claimed: " + prof.bonusClaimed.size() + " of " + Spec.BONUSOBJECTIVES.length + ".", x, y, TEXT_W, 1, DarkUi.SEPIA);
-        String pact = prof.pacts > 0 ? "Pacts held: " + prof.pacts + "." : "You hold no Pact. Clear every battle of a campaign chapter to earn one.";
+        y = block(g, "march-next", next == null ? UiText.t("report.march.allWon", "Every battle of {chapter} is won.", "chapter", name) : UiText.t("report.march.nextBattle", "Next, battle {number}: {battle}.", "number", MarchMath.number(next, Spec.CAMPAIGNBATTLES), "battle", next.name()), x, y, TEXT_W, 2, DarkUi.INK_TEXT);
+        y = block(g, "march-bonuses", UiText.t("report.march.bonuses", "Bonuses claimed: {claimed} of {total}.", "claimed", prof.bonusClaimed.size(), "total", Spec.BONUSOBJECTIVES.length), x, y, TEXT_W, 1, DarkUi.SEPIA);
+        String pact = prof.pacts > 0 ? UiText.t("report.march.pactsHeld", "Pacts held: {pacts}.", "pacts", prof.pacts) : UiText.t("report.march.noPact", "You hold no Pact. Clear every battle of a campaign chapter to earn one.");
         block(g, "march-pacts", pact, x, y, TEXT_W, 2, prof.pacts > 0 ? DarkUi.INK_TEXT : DarkUi.SEPIA);
     }
 
     /** One contract: its name on the left, its count and (when it has one) its state on the right; a claimed one in sepia, a ready one in the ink. */
-    int contract(DrawContext g, String key, String name, String count, String state, int x, int y) {
+    /** status: 0 none, 1 claimed, 2 ready to claim. */
+    int contract(DrawContext g, String key, String name, String count, int status, int x, int y) {
         var font = font();
+        String state = status == 1 ? UiText.t("report.contract.claimed", "Claimed") : status == 2 ? UiText.t("report.contract.ready", "Ready to claim") : "";
         String right = state.isEmpty() ? count : count + "  " + state;
         int rw = font.getWidth(DarkUi.body(right));
         String label = UiMath.trim(name, TEXT_W - rw - 12, s -> font.getWidth(DarkUi.body(s)));
-        boolean ready = state.equals("Ready to claim");
-        line(g, key, label, x, y, state.equals("Claimed") ? DarkUi.SEPIA : DarkUi.INK_TEXT);
+        boolean ready = status == 2;
+        line(g, key, label, x, y, status == 1 ? DarkUi.SEPIA : DarkUi.INK_TEXT);
         lineRight(g, key + "-state", right, x + TEXT_W, y, ready ? DarkUi.INK_TEXT : DarkUi.SEPIA);
         if (ready) g.fill(x + TEXT_W - rw, y + 10, x + TEXT_W, y + 11, DarkUi.INK_TEXT); // a line under the claim that is waiting: a shape as well as an ink
         return y + STEP + 2;

@@ -88,7 +88,7 @@ final class ArmyCards {
     /** One counter line as the card words it: "Takes x0.35 / Raised shields stop most arrows." or "Deals x1.60 / ...". */
     static String counterText(CounterMath.CardRow r){
         String m=String.format(Locale.ROOT,r.multiplier()==Math.rint(r.multiplier()*10)/10?"%.1f":"%.2f",r.multiplier());
-        return (r.incoming()?"Takes x":"Deals x")+m+"  "+r.text();
+        return (r.incoming()?UiText.t("cards.counterTakes","Takes x{multiplier}","multiplier",m):UiText.t("cards.counterDeals","Deals x{multiplier}","multiplier",m))+"  "+r.text();
     }
     /**
      * Draws a troop's counter lines from y, one a line: the crossed swords (brass and whole for a line in its favour; ember and

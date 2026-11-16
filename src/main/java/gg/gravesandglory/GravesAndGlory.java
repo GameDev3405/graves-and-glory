@@ -57,6 +57,9 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Identifier OPEN_BARRACKS = Identifier.of("gravesandglory", "barracks_v1");
     public static final Identifier PARTY = Identifier.of("gravesandglory", "party_v1");
     /** Server to client when the match ending begins (Campaign.beginEnding): the outcome word and the score line, so the client freezes and shows the banner on that tick. */
+    /** The UI editor (UiEdits): the published UI sheet to every player and the editor's state to an owner (S2C), and an owner's editor request (C2S). */
+    public static final Identifier UI_SHEET = Identifier.of("gravesandglory", "ui_sheet_v1");
+    public static final Identifier UI_EDIT = Identifier.of("gravesandglory", "ui_edit_v1");
     public static final Identifier ENDING_BEGIN = Identifier.of("gravesandglory", "ending_begin_v1");
     /** A troop's stance, server to client: stance_v2 (MotionEvents.STANCE), which retired stance_v1. */
     public static final Identifier STANCE = MotionEvents.STANCE;
@@ -81,7 +84,7 @@ public final class GravesAndGlory implements ModInitializer {
     public static final Spec.RulesRow R = Spec.RULES[0];
     @Override public void onInitialize() {
         Diagnostics.start();
-        Payloads.register(); // the 24 play payload types (gg.gravesandglory.net), before any receiver
+        Payloads.register(); // the 26 play payload types (gg.gravesandglory.net), before any receiver
         VersionGate.registerServer();
         Audio.register(); // every sound event of the AudioCues table (plan 4F.4)
         // The commander actives, once. (The horn cues above are command feedback played in the world at the commander, so every player in range hears them; see BattleEffects.feedback.)
@@ -93,6 +96,7 @@ public final class GravesAndGlory implements ModInitializer {
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {if(battle!=null){battle.campaign.voidMatch(MatchRules.Ending.STOPPED);Abilities.serverStopping(battle);battle.clearCorpses();}});
         if (BuildMode.active()) BuildMode.init();
         AdminCommands.register(); // /gg og (admin tools phase A); the join ledger is server side only
+        UiEdits.register(); // the UI editor's published sheet, drafts and requests (/gg ui is in AdminCommands)
         Props.init(); // prop kit: defs, /prop, anchor scanner (no registry entries)
         PropTicker.init(); // prop kit: proximity-gated alive effects, /prop stats
         PropMenu.init(); // prop kit: /prop menu, ghost placement, hit-to-remove

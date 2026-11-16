@@ -88,7 +88,13 @@ final class ArmouryTab {
     // ---- the words (one place for the copy; the checks derive their expectations from LevelMath and the sheet, never from these strings) ----
 
     /** The wire track as a word: Weapon or Armour. */
-    static String trackWord(String track) { return LevelMath.ARMOUR.equals(track) ? "Armour" : "Weapon"; }
+    static String trackWord(String track) { return LevelMath.ARMOUR.equals(track) ? UiText.t("armoury.track.armour", "Armour") : UiText.t("armoury.track.weapon", "Weapon"); }
+
+    /** The fixed words several lines share, each one piece. */
+    static String awayText() { return UiText.t("armoury.away", "Buy at your barracks or a held point"); }
+    static String notHereText() { return UiText.t("armoury.cell.notHere", "Not here"); }
+    static String noGoldText() { return UiText.t("armoury.cell.noGold", "Not enough gold"); }
+    static String priceText(int price) { return UiText.t("armoury.cell.price", "{price} gold", "price", price); }
 
     /** The row's buy state for one of its four buttons. */
     static LevelMath.Buy stateOf(LevelMath.ArmouryRow row, String track, int tier) {
@@ -115,17 +121,17 @@ final class ArmouryTab {
      *  cell again); the other reasons are short already. Display only: the state and what the server refuses are unchanged. */
     static String lockedShort(Spec.TroopsRow t, String track, int tier, LevelMath.ArmouryRow row) {
         String full = lockedText(t, track, tier, row);
-        return full.startsWith("Needs a Rank " + tier) ? "Needs Rank " + tier : full;
+        return full.startsWith("Needs a Rank " + tier) ? UiText.t("armoury.cell.needsRank", "Needs Rank {tier}", "tier", tier) : full;
     }
 
     static List<String> words(Spec.TroopsRow t, String track, int tier, LevelMath.ArmouryRow row, LevelMath.Buy state, boolean here, int w, int cap, int form, ToIntFunction<String> width) {
         int price = LevelMath.price(t.rarity(), tier);
         List<String> out = new ArrayList<>(List.of(UpgradeStats.cell(t, track, tier, form))); // what the tier gives, first line on every cell (Kort 2026-11-12)
         out.addAll(switch (state) {
-            case BOUGHT -> List.of(BOUGHT);
+            case BOUGHT -> List.of(UiText.t("armoury.cell.bought", "Bought"));
             case LOCKED -> UiMath.lines(lockedShort(t, track, tier, row), w, Math.max(1, cap - 1), width);
-            case OPEN -> here ? List.of("Buy", price + " gold") : List.of(price + " gold", NOT_HERE);
-            case UNAFFORDABLE -> List.of(price + " gold", here ? NO_GOLD : NOT_HERE);
+            case OPEN -> here ? List.of(UiText.t("armoury.cell.buy", "Buy"), priceText(price)) : List.of(priceText(price), notHereText());
+            case UNAFFORDABLE -> List.of(priceText(price), here ? noGoldText() : notHereText());
         });
         return out;
     }
@@ -135,10 +141,10 @@ final class ArmouryTab {
         String what = t.name() + ", " + trackWord(track) + " " + MatchStats.roman(tier) + ": ";
         int price = LevelMath.price(t.rarity(), tier);
         return what + switch (state) {
-            case BOUGHT -> "bought. Every soldier of the type whose Rank allows it wears it.";
+            case BOUGHT -> UiText.t("armoury.tip.bought", "bought. Every soldier of the type whose Rank allows it wears it.");
             case LOCKED -> lockedText(t, track, tier, row) + ".";
-            case OPEN -> here ? price + " gold. Press to buy it for every " + t.name() + " this round." : price + " gold. " + AWAY + ".";
-            case UNAFFORDABLE -> price + " gold, and you have " + gold + "." + (here ? "" : " " + AWAY + ".");
+            case OPEN -> here ? UiText.t("armoury.tip.open", "{price} gold. Press to buy it for every {troop} this round.", "price", price, "troop", t.name()) : UiText.t("armoury.tip.openAway", "{price} gold. {away}.", "price", price, "away", awayText());
+            case UNAFFORDABLE -> here ? UiText.t("armoury.tip.short", "{price} gold, and you have {gold}.", "price", price, "gold", gold) : UiText.t("armoury.tip.shortAway", "{price} gold, and you have {gold}. {away}.", "price", price, "gold", gold, "away", awayText());
         } + " " + UpgradeStats.tip(t, track, tier);
     }
 
@@ -152,8 +158,8 @@ final class ArmouryTab {
     /** The footer's key line: the player's own key for the Armoury, or how to bind one. */
     static String keyLine() {
         var k = binding("key.gravesandglory.armoury");
-        if (k == null || k.isUnbound()) return "The Armoury key is not bound: set it in Controls";
-        return hint("armoury") + " opens the Armoury anywhere in battle";
+        if (k == null || k.isUnbound()) return UiText.t("armoury.key.unbound", "The Armoury key is not bound: set it in Controls");
+        return UiText.t("armoury.key.opens", "{key} opens the Armoury anywhere in battle", "key", hint("armoury"));
     }
 
     /** The rarity and group under a one-line name: "Common infantry". */
@@ -287,28 +293,31 @@ final class ArmouryTab {
         List<String> head = new ArrayList<>();
         // the note's head: the title and a rule, the purse at the right, the subtitle (or which rows show) under it
         int tx = nx + NOTE_PAD, tw = NOTE_W - 2 * NOTE_PAD;
-        g.drawText(font, DarkUi.heading(TITLE), tx, ny + 16, DarkUi.INK_TEXT, false); head.add(TITLE);
+        String title = UiText.t("armoury.title", "Armoury");
+        g.drawText(font, DarkUi.heading(title), tx, ny + 16, DarkUi.INK_TEXT, false); head.add(title);
         g.fill(tx, ny + 28, tx + tw, ny + 29, DarkUi.SEPIA_LINE);
-        String gold = GravesAndGloryClient.gold + " gold"; int gw = w.applyAsInt(gold);
+        String gold = UiText.t("armoury.purse", "{gold} gold", "gold", GravesAndGloryClient.gold); int gw = w.applyAsInt(gold);
         text(g, gold, tx + tw - gw, ny + 17, DarkUi.INK_TEXT); UiTex.draw(g, "recruit/coin-m", tx + tw - gw - 10, ny + 19); head.add(gold);
         var rows = CampaignClient.armoury.rows();
-        String sub = scrolling ? "Troops " + (first + 1) + "-" + (first + shown) + " of " + total : groupsMode ? GROUPS_SUB : SUBTITLE;
+        String sub = scrolling ? UiText.t("armoury.sub.range", "Troops {first}-{last} of {total}", "first", first + 1, "last", first + shown, "total", total) : groupsMode ? UiText.t("armoury.sub.groups", "Numbered groups for orders") : UiText.t("armoury.sub.gear", "Gear for this round, per troop type");
         text(g, sub, tx, ny + 34, DarkUi.SEPIA); head.add(sub);
         // the sheet's heads: the two tracks over their columns, each with its rule, the tiers under them
         if (groupsMode) {
-            for (int col = 0; col < 4; col++) if (group(col + 1) == null && col + 1 != freeNumber()) { centre(g, "No group " + (col + 1), columnX(col) + bw / 2, sy + 22, DarkUi.SEPIA); head.add("No group " + (col + 1)); }
+            for (int col = 0; col < 4; col++) if (group(col + 1) == null && col + 1 != freeNumber()) { String none = UiText.t("armoury.groups.none", "No group {number}", "number", col + 1); centre(g, none, columnX(col) + bw / 2, sy + 22, DarkUi.SEPIA); head.add(none); }
         } else for (int t = 0; t < 2; t++) {
             int x0 = columnX(2 * t), x1 = columnX(2 * t + 1) + bw;
-            headCentre(g, GROUPS[t], (x0 + x1) / 2, sy + 16, DarkUi.INK_TEXT); head.add(GROUPS[t]);
+            String trackHead = t == 0 ? UiText.t("armoury.head.weapons", "Weapons") : UiText.t("armoury.head.armour", "Armour");
+            headCentre(g, trackHead, (x0 + x1) / 2, sy + 16, DarkUi.INK_TEXT); head.add(trackHead);
             g.fill(x0, sy + 28, x1, sy + 29, DarkUi.SEPIA_LINE);
         }
         if (!groupsMode) for (int col = 0; col < 4; col++) { headCentre(g, COLUMNS[col], columnX(col) + bw / 2, sy + 35, DarkUi.SEPIA); head.add(COLUMNS[col]); }
         List<String> names = new ArrayList<>();
         message = "";
         if (!builtOn && !groupsMode) {
-            headCentre(g, OFF, sx + PAD + TEXT_W / 2, sy + 110, DarkUi.INK_TEXT); centre(g, OFF_WHY, sx + PAD + TEXT_W / 2, sy + 128, DarkUi.SEPIA); message = OFF; head.add(OFF); head.add(OFF_WHY);
+            String off = UiText.t("armoury.off", "Ranks are off"), offWhy = UiText.t("armoury.offWhy", "Troops earn no Rank and no Armoury gear is sold this match.");
+            headCentre(g, off, sx + PAD + TEXT_W / 2, sy + 110, DarkUi.INK_TEXT); centre(g, offWhy, sx + PAD + TEXT_W / 2, sy + 128, DarkUi.SEPIA); message = off; head.add(off); head.add(offWhy);
         } else if (rows.isEmpty()) {
-            message = EMPTY; centre(g, message, sx + PAD + TEXT_W / 2, sy + 110, DarkUi.INK_TEXT); head.add(message);
+            message = UiText.t("armoury.empty", "Your banner has no troop types to buy gear for."); centre(g, message, sx + PAD + TEXT_W / 2, sy + 110, DarkUi.INK_TEXT); head.add(message);
         } else {
             for (int r = 0; r < rowBoxes.size() && first + r < rows.size(); r++) {
                 var card = rowBoxes.get(r); var t = ArmyCards.spec(rows.get(first + r).troop()); var house = ArmyCards.house(t);
@@ -348,7 +357,7 @@ final class ArmouryTab {
         String line; int colour;
         if (!note.isEmpty() && System.currentTimeMillis() < noteUntil && CampaignClient.noticeSerial == noteSerial) { line = note; colour = DarkUi.INK_TEXT; }
         else if (CampaignClient.noticeSerial > serialAtOpen && !CampaignClient.shownNotice().isEmpty()) { line = CampaignClient.shownNotice(); colour = DarkUi.INK_TEXT; }
-        else if (!groupsMode && builtOn && !CampaignClient.armoury.rows().isEmpty() && !CampaignClient.armoury.here()) { line = AWAY; colour = DarkUi.SEPIA; }
+        else if (!groupsMode && builtOn && !CampaignClient.armoury.rows().isEmpty() && !CampaignClient.armoury.here()) { line = awayText(); colour = DarkUi.SEPIA; }
         else { line = ""; colour = DarkUi.SEPIA; }
         int x = sx + PAD, room = TEXT_W - (scrolling ? 2 * ARROW + GAP + 8 : 0);
         var lines = line.isEmpty() ? List.<String>of() : UiMath.lines(line, room, 2, w);
@@ -390,8 +399,8 @@ final class ArmouryTab {
             var row = row(); if (row == null) return "";
             return switch (state) {
                 case LOCKED -> lockedText(troop, track, tier, row);
-                case BOUGHT -> trackWord(track) + " " + MatchStats.roman(tier) + " is bought for the " + troop.name() + ".";
-                default -> !here ? AWAY : state == LevelMath.Buy.UNAFFORDABLE ? NO_GOLD : "";
+                case BOUGHT -> UiText.t("armoury.reason.bought", "{track} {tier} is bought for the {troop}.", "track", trackWord(track), "tier", MatchStats.roman(tier), "troop", troop.name());
+                default -> !here ? awayText() : state == LevelMath.Buy.UNAFFORDABLE ? noGoldText() : "";
             };
         }
         @Override public void onPress() {
@@ -438,7 +447,7 @@ final class ArmouryTab {
     static final class Arrow extends UiButton {
         final ArmouryTab tab; final boolean up; final Rect box;
         Arrow(ArmouryTab tab, boolean up, Rect box) {
-            super(box.x(), box.y(), box.w(), box.h(), Text.literal(up ? "Earlier troops" : "Later troops"), b -> {}, null);
+            super(box.x(), box.y(), box.w(), box.h(), Text.literal(up ? UiText.t("armoury.arrow.earlier", "Earlier troops") : UiText.t("armoury.arrow.later", "Later troops")), b -> {}, null);
             this.tab = tab; this.up = up; this.box = box; setTooltip(Tooltip.of(getMessage()));
         }
         boolean live() { return up ? tab.first > 0 : tab.first < tab.total - tab.shown; }
@@ -473,11 +482,11 @@ final class ArmouryTab {
         void refresh() {
             var g = group(); String label, next;
             switch (kind) {
-                case MODE -> { label = tab.groupsMode ? TO_GEAR : TO_GROUPS; next = tab.groupsMode ? "Show the gear buys again." : "Make numbered groups of troop types to order together."; }
-                case NEW -> { label = "New group"; next = "Makes group " + number + ". Then add troop types to it."; }
-                case NAME -> { String name = typing() ? tab.draft + "_" : g == null ? "" : g.name(); label = number + " " + name; next = "Group " + number + ": press to rename, type, then Enter."; }
-                case DELETE -> { label = armed() ? "Press to delete" : "Delete"; next = "Deletes group " + number + ". Press twice."; }
-                default -> { boolean in = member(); label = in ? "In group" : "Add"; next = troop.name() + (in ? " is in group " + number + ". Press to take it out." : " is not in group " + number + ". Press to add it."); }
+                case MODE -> { label = tab.groupsMode ? UiText.t("armoury.mode.toGear", "Back to gear") : UiText.t("armoury.mode.toGroups", "Custom groups"); next = tab.groupsMode ? UiText.t("armoury.mode.toGearTip", "Show the gear buys again.") : UiText.t("armoury.mode.toGroupsTip", "Make numbered groups of troop types to order together."); }
+                case NEW -> { label = UiText.t("armoury.new.label", "New group"); next = UiText.t("armoury.new.tip", "Makes group {number}. Then add troop types to it.", "number", number); }
+                case NAME -> { String name = typing() ? tab.draft + "_" : g == null ? "" : g.name(); label = number + " " + name; next = UiText.t("armoury.name.tip", "Group {number}: press to rename, type, then Enter.", "number", number); }
+                case DELETE -> { label = armed() ? UiText.t("armoury.delete.confirm", "Press to delete") : UiText.t("armoury.delete.label", "Delete"); next = UiText.t("armoury.delete.tip", "Deletes group {number}. Press twice.", "number", number); }
+                default -> { boolean in = member(); label = in ? UiText.t("armoury.member.in", "In group") : UiText.t("armoury.member.add", "Add"); next = in ? UiText.t("armoury.member.inTip", "{troop} is in group {number}. Press to take it out.", "troop", troop.name(), "number", number) : UiText.t("armoury.member.outTip", "{troop} is not in group {number}. Press to add it.", "troop", troop.name(), "number", number); }
             }
             lines = UiMath.lines(label, box.w() - 8 - (hasGlyph() ? 14 : 0), 1, width());
             if (!next.equals(tip)) { tip = next; setTooltip(Tooltip.of(Text.literal(next))); setMessage(Text.literal(next)); }
@@ -490,7 +499,7 @@ final class ArmouryTab {
                 case NAME -> { if (typing()) commit(); else if (g != null) { tab.editing = number; tab.draft = g.name(); } }
                 case DELETE -> {
                     if (armed()) { tab.deleteArmed = 0; send("group:delete:" + number); }
-                    else { tab.deleteArmed = number; tab.deleteUntil = System.currentTimeMillis() + 3000; tab.say("Press Delete again to delete group " + number + "."); }
+                    else { tab.deleteArmed = number; tab.deleteUntil = System.currentTimeMillis() + 3000; tab.say(UiText.t("armoury.delete.again", "Press Delete again to delete group {number}.", "number", number)); }
                 }
                 default -> { if (g != null && troop != null) send("group:" + (member() ? "remove:" : "add:") + number + ":" + troop.id()); }
             }

@@ -161,7 +161,7 @@ final class WarTableRecruit {
         bannerKey = UiMath.trimKey(bannerKey, 17, s -> MinecraftClient.getInstance().textRenderer.getWidth(s));
         boolean capped = !bannerKey.isEmpty() && !HintText.UNBOUND_SHORT.equals(bannerKey);
         int bannerCap = capped ? UiMath.brassKeyWidth(MinecraftClient.getInstance().textRenderer.getWidth(bannerKey), bannerKey.length()) : 0;
-        add("banner", WarTable.plaqueAt(bannerX, 104, "icon-banner", "Banner", capped ? bannerKey : null, 92 - bannerCap, 0, b -> screen.page("banner")));
+        add("banner", WarTable.plaqueAt(bannerX, 104, "icon-banner", UiText.t("recruit.rail.banner", "Banner"), capped ? bannerKey : null, 92 - bannerCap, 0, b -> screen.page("banner")));
         for (var h : RecruitView.houses())
             add("house-" + h.id(), new UiButton(0, BANNER_Y, BANNER_W, BANNER_H, Text.literal(h.name()), b -> chooseHouse(h.id()), (g, x, y, w, bh, hot) -> paintBanner(g, h, x, y, w, bh)));
         for (int i = 0; i < ROWS; i++) {
@@ -170,8 +170,8 @@ final class WarTableRecruit {
         }
         choose = add("choose", new UiButton(lo[0] + LETTER_X + CHOOSE_X, lo[1] + LETTER_Y + CHOOSE_Y, CHOOSE_W, CHOOSE_H, Text.literal("Buy"), b -> chooseTroop(), this::paintChoose));
         add("sheet", new UiButton(lo[0] + LETTER_X + 152 - LINE_W / 2, lo[1] + LETTER_Y + WarTableTroop.NAME_Y, LINE_W, WarTableTroop.NAME_H, Text.literal("Troop sheet"), b -> openSheet(), this::paintSheet));
-        enlist = add("enlist", new UiButton(la[0] + ENLIST_X, la[1] + ENLIST_Y, 240, 40, Text.literal("Enlist"), b -> enlist(), this::paintEnlist));
-        add("odds", new UiButton(compact ? la[0] + AXIS + 4 : la[0] + ODDS_X, la[1] + (compact ? COMPACT_ODDS_Y : ODDS_Y), 64, 24, Text.literal("Odds"), b -> odds = !odds, this::paintOdds));
+        enlist = add("enlist", new UiButton(la[0] + ENLIST_X, la[1] + ENLIST_Y, 240, 40, Text.literal(enlistLabel()), b -> enlist(), this::paintEnlist));
+        add("odds", new UiButton(compact ? la[0] + AXIS + 4 : la[0] + ODDS_X, la[1] + (compact ? COMPACT_ODDS_Y : ODDS_Y), 64, 24, Text.literal(oddsLabel()), b -> odds = !odds, this::paintOdds));
         refresh();
     }
 
@@ -217,6 +217,10 @@ final class WarTableRecruit {
         if (enlist != null) enlist.active = canEnlist();
     }
 
+    /** The Enlist and Odds plates' words (also their narration labels). */
+    static String enlistLabel() { return UiText.t("recruit.enlist.label", "Enlist"); }
+    static String oddsLabel() { return UiText.t("recruit.odds.label", "Odds"); }
+
     static int index(List<RecruitView.Row> roll, String troop) {
         for (int i = 0; i < roll.size(); i++) if (roll.get(i).troopId().equals(troop)) return i;
         return -1;
@@ -236,8 +240,8 @@ final class WarTableRecruit {
 
     /** The words under the tag: what its action does, or why it cannot be pressed (RecruitPages.Action.tip), or, while a battle is on or a press is on its way, that. */
     String reason(RecruitPages.Action a) {
-        if (!battleFree()) return "A battle is under way.";
-        if (pending()) return "Sent. Waiting for the camp.";
+        if (!battleFree()) return UiText.t("recruit.reason.battle", "A battle is under way.");
+        if (pending()) return UiText.t("recruit.reason.sent", "Sent. Waiting for the camp.");
         return a.tip();
     }
 
@@ -518,8 +522,7 @@ final class WarTableRecruit {
         int nameInk = DarkUi.INK_TEXT;
         int nameX = WarTableHome.centred(g, DarkUi.focal(name), x + 152, y + 224, nameInk);
         rectsDrawn.put("name", new int[]{nameX, y + 224, font.getWidth(DarkUi.focal(name)), 11}); // the words the sheet widget covers
-        String kind = r.rarity().isEmpty() ? r.group() + (r.owned() ? ", recruited" : ", not yet recruited") : r.rarity() + " " + r.group().toLowerCase(Locale.ROOT);
-        if (!r.owned()) kind = TroopKnowledge.NOT_RECRUITED;
+        String kind = !r.owned() ? TroopKnowledge.NOT_RECRUITED : r.rarity().isEmpty() ? UiText.t("recruit.letter.kindRecruited", "{group}, recruited", "group", r.group()) : UiText.t("recruit.letter.kind", "{rarity} {group}", "rarity", r.rarity(), "group", r.group().toLowerCase(Locale.ROOT));
         kind = UiMath.trim(kind, LINE_W, s -> font.getWidth(DarkUi.body(s)));
         int kindInk = DarkUi.SEPIA;
         WarTableHome.centred(g, DarkUi.body(kind), x + 152, y + 246, kindInk);
@@ -543,7 +546,7 @@ final class WarTableRecruit {
             if (fill.growing() >= 0) textsDrawn.put("letter-fill", String.valueOf(Math.round(fill.part() * 100))); // how far the growing star has filled, in percent
         }
         var spec = ArmyCards.spec(r.troopId());
-        String deploy = spec == null || !r.owned() ? "" : "Deploys in battle for " + spec.cost() + " gold"; // Phase 2: the star bonus
+        String deploy = spec == null || !r.owned() ? "" : UiText.t("recruit.letter.deploy", "Deploys in battle for {cost} gold", "cost", spec.cost()); // Phase 2: the star bonus
         String outcome = lighting ? RecruitPages.outcome(lit, CampaignClient.profile) : "";
         int deployInk = DarkUi.INK_TEXT;
         if (outcome.isEmpty()) WarTableHome.centred(g, DarkUi.body(deploy), x + 152, y + 292, deployInk);
@@ -679,17 +682,17 @@ final class WarTableRecruit {
         int cost = RecruitView.cost();
         boolean short_ = CampaignClient.profile.troopWrits < cost;
         String plate = short_ ? "table/btn-iron-240x40" : "table/btn-brass-240x40";
-        String label = "Enlist", price = null;
+        String label = enlistLabel(), price = null;
         int ink = short_ ? DarkUi.IVORY : DarkUi.PLATE_INK, priceInk = 0;
         UiTex.draw(g, plate, x, y);
         if (!short_) {
             UiTex.draw(g, "table/key-brass-37", x + 14, y + 13);
-            g.drawText(font, "Enter", x + 18, y + 16, DarkUi.KEY_INK, false);
+            g.drawText(font, UiText.t("recruit.enlist.key", "Enter"), x + 18, y + 16, DarkUi.KEY_INK, false);
         }
         int lx = WarTableHome.centred(g, heading(label), x + 120, y + 14, ink);
         if (hot(enlist)) underline(g, "enlist", lx, y + 26, font.getWidth(heading(label)), ink);
         if (short_) {
-            price = "Need " + cost; priceInk = DarkUi.ALARM_TEXT;
+            price = UiText.t("recruit.enlist.need", "Need {cost}", "cost", cost); priceInk = DarkUi.ALARM_TEXT;
             g.drawText(font, price, x + 224 - font.getWidth(price), y + 16, priceInk, false);
         } else {
             price = String.valueOf(cost); priceInk = DarkUi.PLATE_INK;
@@ -710,7 +713,7 @@ final class WarTableRecruit {
     /** Odds: a vellum tag with the die and the word; it opens and closes the note. */
     void paintOdds(DrawContext g, int x, int y, int w, int h, boolean hotIgnored) {
         var font = MinecraftClient.getInstance().textRenderer;
-        var label = heading("Odds");
+        var label = heading(oddsLabel());
         int ink = DarkUi.INK_TEXT;
         UiTex.draw(g, "table/btn-vellum-64x24", x, y);
         UiTex.draw(g, "recruit/die", x + 12, y + 7);
@@ -725,7 +728,7 @@ final class WarTableRecruit {
     void note(DrawContext g, int x, int y) {
         var font = MinecraftClient.getInstance().textRenderer;
         rectsDrawn.put("note", UiTex.draw(g, "recruit/odds-note", x, y));
-        g.drawText(font, heading("Odds"), x + 16, y + 12, DarkUi.INK_TEXT, false);
+        g.drawText(font, heading(UiText.t("recruit.note.heading", "Odds")), x + 16, y + 12, DarkUi.INK_TEXT, false);
         List<String> lines = new ArrayList<>();
         for (String rule : RecruitView.note(house)) lines.addAll(UiMath.lines(rule, NOTE_W, 2, s -> font.getWidth(DarkUi.body(s))));
         for (int i = 0; i < lines.size() && i < NOTE_LINES; i++) {

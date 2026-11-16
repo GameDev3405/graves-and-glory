@@ -26,7 +26,8 @@
     "EndingWorldMixin",
     "EndingTimeMixin",
     "EndingViewMixin",
-    "EndingKeyMixin"
+    "EndingKeyMixin",
+    "UiTextLocateMixin"
   ],
   "injectors": {
     "defaultRequire": 1

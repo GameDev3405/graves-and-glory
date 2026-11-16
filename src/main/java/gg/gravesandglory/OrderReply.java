@@ -41,6 +41,26 @@ public final class OrderReply {
         return text(code).replace("{n}", String.valueOf(Math.max(0, n))).replace("{groups}", subject == null || subject.isEmpty() ? "troops" : subject);
     }
 
+    /** The refusal's line as this client draws it: through the UI editor's gate, so an owner can retype it. Each default is the sheet's
+     *  orderLines text for the code (UiEditorCheck pins them equal, so with no edit it reads exactly as refusal()); an unknown code reads as
+     *  refusal() does. */
+    public static String refusalLine(String code, int n, String subject) {
+        String num = String.valueOf(Math.max(0, n)), groups = subject == null || subject.isEmpty() ? "troops" : subject;
+        return switch (code) {
+            case DOWN -> UiText.t("order.refusal.down", "You are down. Orders wait until you return ({n} s).", "n", num);
+            case INTRO -> UiText.t("order.refusal.intro", "Wait for the horn.");
+            case NO_TROOPS -> UiText.t("order.refusal.noTroops", "No {groups} left.", "groups", groups);
+            case CHARGE_COOLDOWN -> UiText.t("order.refusal.chargeCooldown", "Charge ready in {n} s.", "n", num);
+            case TARGET_GONE -> UiText.t("order.refusal.targetGone", "That enemy is gone.");
+            case LOST_SIGHT -> UiText.t("order.refusal.lostSight", "Lost sight of them.");
+            case OUT_OF_RANGE -> UiText.t("order.refusal.outOfRange", "Too far to order.");
+            default -> refusal(code, n, subject);
+        };
+    }
+
+    /** The respawn card's second line as this client draws it, through the UI editor's gate (default: the sheet's downCard text). */
+    public static String downCardLine() { return UiText.t("order.downCard", "Your troops keep their last orders"); }
+
     /** The accepted order's line: the groups by name ("Infantry and Riders", "All"), then the order in words; shape is a Formation's label. */
     public static String accepted(String order, List<String> names, String shape) {
         return text(order).replace("{groups}", join(names)).replace("{shape}", shape == null ? "" : shape);

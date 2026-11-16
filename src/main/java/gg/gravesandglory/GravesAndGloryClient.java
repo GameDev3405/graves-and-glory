@@ -68,6 +68,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         try { LegacyDataMigration.instance(net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir(), Diagnostics.active()); }
         catch (java.io.IOException migration) { error="Could not migrate old collection/settings. Your originals are unchanged. Check storage and permissions."; }
         Presentation.load();
+        UiEditorClient.register(); // the UI editor: the server's published UI sheet, and the editor for owners (/gg ui edit)
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(UiTex.RELOADER); // the UI kit's atlas.json, read at every resource reload
         net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.resource.ResourceType.CLIENT_RESOURCES).registerReloadListener(BattleHud.RELOADER); // the battle HUD's lesson wrap and texture stop
         // Event feed lines from the server (FeedEvents); only a running round shows them.
@@ -178,7 +179,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
                 CommandPanel.editTick(client);
                 if(CommandPanel.editing()){for(KeyBinding k:new KeyBinding[]{menu,attack,charge,followMe,retreat,formation,confirmOrder,cancelOrder})while(k.wasPressed()){}} // no orders while the panel is being arranged
                 while(menu.wasPressed()){if(EndingClient.step()!=null){EndingClient.skip(client);continue;} // the match ending: the menu key skips this player's step
-                    CampaignClient.end(client);if(battleActive()&&PanelLayout.hidden){client.player.sendMessage(Text.literal("Command panel hidden. Press "+hint("panel_edit")+" to arrange."),true);continue;} // keyboard-only mode: R opens nothing
+                    CampaignClient.end(client);if(battleActive()&&PanelLayout.hidden){client.player.sendMessage(Text.literal(HintText.expand(UiText.t("client.panelHidden","Command panel hidden. Press {key:panel_edit} to arrange."),GravesAndGloryClient::hint)),true);continue;} // keyboard-only mode: R opens nothing
                     CommandMode.cancel();if(battleActive())CommandSelection.setPanelOpen(!CommandSelection.panelOpen());else client.setScreen(new CampScreen("home"));}
                 while(armoury.wasPressed())if(battleActive())client.setScreen(new RecruitmentScreen(1));
                 while(gearKey.wasPressed())if(!battleActive())client.setScreen(new CampScreen("gear"));
@@ -318,10 +319,10 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     /** The copy of lesson step (0 to 3), naming the player's own key binding. */
     static String lessonText(int step){
         return switch(step){
-            case 0->"Press "+hint("follow")+" to make your army follow you, or "+hint("retreat")+" to pull it back to you.";
-            case 1->"Press "+hint("formation")+", pick a shape, then press "+hint("confirm")+" on the ground to hold that point in it.";
-            case 2->"Press "+hint("attack")+" to send your army to attack at once. Or press "+hint("charge")+", aim and press "+hint("confirm")+" to charge.";
-            default->"Press "+hint("use")+" at your barracks lectern to recruit. Trained troops march out from the held point nearest the fight.";
+            case 0->HintText.expand(UiText.t("client.lesson.follow","Press {key:follow} to make your army follow you, or {key:retreat} to pull it back to you."),GravesAndGloryClient::hint);
+            case 1->HintText.expand(UiText.t("client.lesson.formation","Press {key:formation}, pick a shape, then press {key:confirm} on the ground to hold that point in it."),GravesAndGloryClient::hint);
+            case 2->HintText.expand(UiText.t("client.lesson.attack","Press {key:attack} to send your army to attack at once. Or press {key:charge}, aim and press {key:confirm} to charge."),GravesAndGloryClient::hint);
+            default->HintText.expand(UiText.t("client.lesson.recruit","Press {key:use} at your barracks lectern to recruit. Trained troops march out from the held point nearest the fight."),GravesAndGloryClient::hint);
         };
     }
     public static boolean inCamp(){return ready&&!battleActive();}
@@ -341,12 +342,13 @@ public final class GravesAndGloryClient implements ClientModInitializer {
             var at=UiMath.campHud(win.getFramebufferWidth(),win.getFramebufferHeight(),(int)win.getScaleFactor(),UiCanvas.hudK());
             int[] head=at.get("camp-head"),hint=at.get("camp-hint");
             UiTex.draw(g,"hud/notice-slip",head[0],head[1]);
-            g.drawText(font,DarkUi.heading("Banner camp"),head[0]+10,head[1]+7,DarkUi.INK_TEXT,false);
-            String purse=UiMath.trim(CampaignClient.profile.troopWrits+" writs / "+CampaignClient.profile.progression.title,BattleHud.HINT_ROW_W,font::getWidth);
+            String campName=UiText.t("client.camp.title","Banner camp");
+            g.drawText(font,DarkUi.heading(campName),head[0]+10,head[1]+7,DarkUi.INK_TEXT,false);
+            String purse=UiMath.trim(UiText.t("client.camp.purse","{writs} writs / {title}","writs",CampaignClient.profile.troopWrits,"title",CampaignClient.profile.progression.title),BattleHud.HINT_ROW_W,font::getWidth);
             g.drawText(font,purse,head[0]+10,head[1]+24,DarkUi.SEPIA,false);
-            campRowsDrawn.add(List.of("Banner camp"));campRowsDrawn.add(List.of(purse));
+            campRowsDrawn.add(List.of(campName));campRowsDrawn.add(List.of(purse));
             UiTex.draw(g,"hud/notice-slip",hint[0],hint[1]);
-            String[] ids={"menu","use"},words={"War table","on a station to interact"};
+            String[] ids={"menu","use"},words={UiText.t("client.camp.warTable","War table"),UiText.t("client.camp.station","on a station to interact")};
             for(int row=0;row<2;row++){
                 var keys=UiMath.fitKeys(List.of(hint(ids[row])),List.of(hintShort(ids[row])),Arrays.asList(words[row]),BattleHud.HINT_ROW_W,8,font::getWidth);
                 String key=keys.get(0);int kx=hint[0]+10,ky=hint[1]+(row==0?7:22),kw=UiMath.chipWidth(font.getWidth(key));
@@ -358,7 +360,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     }
     static void campHud(DrawContext g,int w,int h){
         var c=MinecraftClient.getInstance();if(c.currentScreen!=null)return;
-        else if(CampaignClient.waiting)g.drawCenteredTextWithShadow(c.textRenderer,"A battle is underway / Your camp remains open",w/2,24,DarkUi.MUTED);
+        else if(CampaignClient.waiting)g.drawCenteredTextWithShadow(c.textRenderer,UiText.t("client.camp.battleUnderway","A battle is underway / Your camp remains open"),w/2,24,DarkUi.MUTED);
     }
     /** Relic slot 0 in the HUD's ability slot (BattleHud.ability). The slot reads the state packet's test-ability triple, which is "none" in play, so the relic the packet
      *  names (commanderActive, slot 0's relic id) fills it: the ticks it still runs (commanderFor, against its duration) while it runs, then its cooldown (commanderReady, against
@@ -436,7 +438,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     public static final class BarracksScreen extends RecruitmentScreen { BarracksScreen(){super();} }
     static final class FailureScreen extends ArmyScreen {
         final String why;FailureScreen(String why){super("Graves and Glory");this.why=why;}
-        @Override protected void init(){button("Return to Minecraft",width/2-100,height/2+40,200,b->client.setScreen(new TitleScreen()));}
+        @Override protected void init(){button(UiText.t("client.failure.return","Return to Minecraft"),width/2-100,height/2+40,200,b->client.setScreen(new TitleScreen()));}
         // Seen once: leaving by button, Esc or any other screen change clears the startup error so the next title goes to the front menu.
         @Override public void removed(){error="";}
         @Override public void renderBackground(DrawContext g,int mx,int my,float delta){} // 1.21: no blur or dimming (port lane B rule for every screen)

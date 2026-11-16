@@ -78,7 +78,7 @@ final class DarkUi {
     static int opaque(int rgb){return 0xff000000|rgb;}
     static int teamColor(int team){var f=side(team);return f==null?MUTED:0xff000000|f.color();}
     /** A team's side in one word, the first of its name (Gold, Violet, Crimson, Teal); Neutral for no team. */
-    static String teamText(int team){var f=side(team);if(f==null)return "Neutral";int space=f.name().indexOf(' ');return space<0?f.name():f.name().substring(0,space);}
+    static String teamText(int team){var f=side(team);if(f==null)return UiText.t("ui.teamNeutral","Neutral");int space=f.name().indexOf(' ');return space<0?f.name():f.name().substring(0,space);}
     private static final String[] SUN={"...x...",".x...x.","..xxx..","x.xxx.x","..xxx..",".x...x.","...x..."};
     private static final String[] MOON={"..xxxx.",".xxx...","xxx....","xxx....","xxx....",".xxx...","..xxxx."};
     private static final String[] STAR={"...x...","...x...","xxxxxxx",".xxxxx.","..xxx..",".xx.xx.","xx...xx"};
@@ -166,7 +166,7 @@ final class DarkUi {
             focus(g,this);
             mapSeal(g,x+6,y+5,index);var font=MinecraftClient.getInstance().textRenderer;
             g.drawTextWithShadow(font,font.trimToWidth(getMessage().getString(),width-44),x+36,y+9,active?PAPER:MUTED);
-            String[] labels={"River town / three crossings","Fortress / supply roads","Snow / sheltered passes","Forest / old causeways","Plains / five points, two flanks"};g.drawText(font,font.trimToWidth(labels[index],width-12),x+6,y+28,MUTED,false);
+            String[] labels={UiText.t("ui.mapRiver","River town / three crossings"),UiText.t("ui.mapFortress","Fortress / supply roads"),UiText.t("ui.mapSnow","Snow / sheltered passes"),UiText.t("ui.mapForest","Forest / old causeways"),UiText.t("ui.mapPlains","Plains / five points, two flanks")};g.drawText(font,font.trimToWidth(labels[index],width-12),x+6,y+28,MUTED,false);
         }
     }
 }

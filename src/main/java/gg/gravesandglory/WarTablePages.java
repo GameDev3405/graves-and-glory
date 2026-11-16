@@ -101,10 +101,6 @@ final class WarTablePages {
     static final int HERO_X = 56, HERO_Y = 72, CLAIM_X = 664, CLAIM_Y = 232;
     /** After a claim the track slides one plaque left over this many ticks, easing out. */
     static final int SLIDE_TICKS = 6;
-    /** One line of copy for each title on the hero letter. */
-    static final Map<String, String> TITLE_COPY = Map.of("Scout", "First out, first to see the field.", "Pathfinder", "You find the road the others lost.",
-        "Captain", "They hold because you hold.", "Vanguard", "First into the line, last out of it.", "Banneret", "Men march under your colours.",
-        "Bannerlord", "The banner answers to you.");
     /** The Oath's reward on each odd tier (NOTES.md, "The Oath row"): the icon's stem, the name and the second line. The even tiers
      *  carry shards, but the portrait frame at 10, the cloak at 20 and the Oathsworn title at 30 (oath). */
     static final Map<Integer, String[]> OATH_ODD = Map.ofEntries(
@@ -312,7 +308,7 @@ final class WarTablePages {
             if (WarTableHome.RAIL[i].equals(page)) continue; // the open page's plaque is drawn lit (here), not a widget
             final String target = WarTableHome.RAIL[i];
             int badge = target.equals("contracts") ? builtContracts : target.equals("friends") ? builtFriends : 0;
-            add(target, WarTable.plaque(WarTableHome.RAIL_X[i], WarTableHome.RAIL_W, WarTableHome.RAIL_ICONS[i], WarTableHome.RAIL_LABELS[i], null, 0, badge, b -> screen.page(target)));
+            add(target, WarTable.plaque(WarTableHome.RAIL_X[i], WarTableHome.RAIL_W, WarTableHome.RAIL_ICONS[i], WarTableHome.railLabel(i), null, 0, badge, b -> screen.page(target)));
         }
         switch (page) {
             case "banner" -> initBanner();
@@ -466,7 +462,7 @@ final class WarTablePages {
         var font = font();
         var b = buttons.get("use");
         boolean going = shownBanner() == CampaignClient.profile.activeBanner;
-        String label = going ? "Going to battle" : "Take to battle";
+        String label = useWord(going);
         boolean live = b != null && b.active;
         g.fill(x, y, x + w, y + h, DarkUi.OAK0);
         g.fill(x + 1, y + 1, x + w - 1, y + h - 1, hot && live ? DarkUi.BRASS_HI : DarkUi.BRASS);
@@ -526,7 +522,7 @@ final class WarTablePages {
         rectsDrawn.put("here", new int[]{x, 12, WarTableHome.RAIL_W, 28}); // the plaque's box, as the rail's widgets have theirs (the PNG adds a shadow)
         String icon = "table/" + WarTableHome.RAIL_ICONS[i]; // built, as WarTable.plaque builds it
         UiTex.draw(g, icon, x + 8, 19);
-        String label = WarTableHome.RAIL_LABELS[i];
+        String label = WarTableHome.railLabel(i);
         text(g, "here", DarkUi.heading(label), label, x + 28, 20, DarkUi.RAIL_KEY);
         texturesDrawn.put("here", "table/plaque-112-here");
     }
@@ -537,7 +533,13 @@ final class WarTablePages {
     void title(DrawContext g, int ox, int oy) {
         if (page.equals("chapter")) return;
         var font = font();
-        String words = TITLES.get(page);
+        String words = switch (page) {
+            case "banner" -> UiText.t("pages.banner.title", "Your Banner");
+            case "contracts" -> UiText.t("pages.contracts.title", "Contracts");
+            case "friends" -> UiText.t("pages.friends.title", "Friends");
+            case "field" -> UiText.t("pages.field.title", "The Field");
+            default -> TITLES.get(page);
+        };
         var t = DarkUi.focal(words);
         int w = font.getWidth(t), x = ox + TITLE_X - w / 2, y = Math.max(oy + TITLE_Y, UiTex.entry("table/rail").h());
         g.drawText(font, t, x, y, DarkUi.IVORY, true);
@@ -688,6 +690,16 @@ final class WarTablePages {
         return r == null || r.isEmpty() ? "" : Character.toUpperCase(r.charAt(0)) + r.substring(1);
     }
 
+    /** Banner words drawn or set at more than one place, one piece each. */
+    static String slowDown() { return UiText.t("pages.banner.slowDown", "Slow down a moment."); }
+    static String sureWord() { return UiText.t("pages.banner.sure", "Sure?"); }
+    static String arrangeWord() { return UiText.t("pages.banner.arrange", "Auto-arrange"); }
+    static String clearWord() { return UiText.t("pages.banner.clear", "Clear"); }
+    static String understoodWord() { return UiText.t("pages.banner.understood", "Understood"); }
+    static String recruitWord() { return UiText.t("pages.banner.recruit", "Recruit"); }
+    static String useWord(boolean going) { return going ? UiText.t("pages.banner.going", "Going to battle") : UiText.t("pages.banner.takeToBattle", "Take to battle"); }
+    static String useTip(boolean going) { return going ? UiText.t("pages.banner.useTipGoing", "This banner goes into battle") : UiText.t("pages.banner.useTip", "Take this banner into battle"); }
+
     /** The Roman numeral of n (1 to 10), for a new banner's name. */
     static String roman(int n) { return new String[]{"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"}[Math.max(0, Math.min(9, n - 1))]; }
 
@@ -702,13 +714,13 @@ final class WarTablePages {
         for (var h : RecruitView.houses()) { // the House row first, so Tab meets it first; layoutBannerChips puts the chips in their places
             final String id = h.id(), name = h.name();
             var chip = add("house-" + id, new UiButton(sh[0] + SHEET_X, sh[1] + SHEET_Y, 26, CHIP_H, Text.literal(name), bb -> { bannerPick = id; refresh(); }, (g, bx, by, bw, bh, hot) -> paintBannerChip(g, id, name, bx, by, bw, bh)));
-            chip.setTooltip(Tooltip.of(Text.literal("Troops of " + name)));
+            chip.setTooltip(Tooltip.of(Text.literal(UiText.t("pages.banner.houseTip", "Troops of {house}", "house", name))));
         }
         for (int i = 0; i < Spec.FACTIONS.length; i++) { // the team colour: after the House row, before the palette; layoutColour puts the swatches in the right column's foot
             final var side = Spec.FACTIONS[i];
             var chip = add("colour-" + side.id(), new UiButton(sh[0] + SHEET_X, sh[1] + SHEET_Y, COLOUR_W, COLOUR_H,
                 Text.literal(side.name()), bb -> send("colour:" + side.id()), (g, bx, by, bw, bh, hot) -> paintColour(g, side, bx, by, bw, bh)));
-            chip.setTooltip(Tooltip.of(Text.literal(side.name() + "\n" + COLOUR_TIP)));
+            chip.setTooltip(Tooltip.of(Text.literal(side.name() + "\n" + UiText.t("pages.banner.colourTip", "Team colour. First team to pick it keeps it."))));
         }
         for (int i = 0; i < ROWS; i++) {
             final int index = i;
@@ -717,43 +729,43 @@ final class WarTablePages {
         for (int i = 0; i < WarGrid.cells(); i++) {
             final int cell = i;
             int[] box = cellBox(i);
-            String where = (WarGrid.row(i) == 0 ? "Front row" : "Row " + (WarGrid.row(i) + 1)) + ", column " + (WarGrid.col(i) + 1);
+            String where = UiText.t("pages.banner.cellLabel", "{rowName}, column {column}", "rowName", WarGrid.row(i) == 0 ? UiText.t("pages.banner.frontRow", "Front row") : UiText.t("pages.banner.rowNumber", "Row {row}", "row", WarGrid.row(i) + 1), "column", WarGrid.col(i) + 1);
             add("cell-" + i, new UiButton(box[0], box[1], CELL, CELL, Text.literal(where), b -> paint(cell, armed), (g, x, y, w, h, hot) -> cell(g, cell, x, y, hot)));
         }
         for (int i = 0; i < RosterMath.maxBanners(); i++) {
             final int b = i;
-            add("tab-" + i, new UiButton(sh[0] + SHEET_X + TABS_X + i * (TAB_W + TAB_GAP), sh[1] + SHEET_Y + TABS_Y, TAB_W, TAB_H, Text.literal("Banner " + (i + 1)),
+            add("tab-" + i, new UiButton(sh[0] + SHEET_X + TABS_X + i * (TAB_W + TAB_GAP), sh[1] + SHEET_Y + TABS_Y, TAB_W, TAB_H, Text.literal(UiText.t("pages.banner.tabLabel", "Banner {number}", "number", i + 1)),
                 bb -> { shownBanner = b; planned = null; deleteArmed = 0; deleteArmedBanner = -1; clearArmed = 0; clearArmedBanner = -1; cancelDrag(); refresh(); }, (g, x, y, w, h, hot) -> tab(g, b, x, y, w, h)));
         }
-        String[][] acts = {{"new", "New", "Start a new empty banner"}, {"rename", "Rename", "Give this banner a new name"}, {"copy", "Copy", "Copy this banner into a new one"},
-            {"delete", "Delete", "Delete this banner (press twice)"}};
+        String[][] acts = {{"new", UiText.t("pages.banner.newButton", "New"), UiText.t("pages.banner.newTip", "Start a new empty banner")}, {"rename", UiText.t("pages.banner.renameButton", "Rename"), UiText.t("pages.banner.renameTip", "Give this banner a new name")},
+            {"copy", UiText.t("pages.banner.copyButton", "Copy"), UiText.t("pages.banner.copyTip", "Copy this banner into a new one")}, {"delete", UiText.t("pages.banner.deleteButton", "Delete"), UiText.t("pages.banner.deleteTip", "Delete this banner (press twice)")}};
         for (int i = 0; i < acts.length; i++) { // the small group on the left: Delete is the last of it, a gap away from the main button
             final String name = acts[i][0], label = acts[i][1];
             var b = add(name, new UiButton(sh[0] + SHEET_X + TABS_X + i * (GROUP_W + GROUP_GAP), sh[1] + SHEET_Y + ACTS_Y + (MAIN_H - TAB_H) / 2, GROUP_W, TAB_H, Text.literal(label), bb -> act(name),
-                (g, x, y, w, h, hot) -> vellum(g, name, x, y, w, h, name.equals("delete") && deleteArmed > ticks && deleteArmedBanner == shownBanner() ? "Sure?" : label, false)));
+                (g, x, y, w, h, hot) -> vellum(g, name, x, y, w, h, name.equals("delete") && deleteArmed > ticks && deleteArmedBanner == shownBanner() ? sureWord() : label, false)));
             b.setTooltip(Tooltip.of(Text.literal(acts[i][2])));
         }
         // The fast tools, right-aligned in the sheet's header row: Auto-arrange and Clear (two presses, like Delete).
         int toolsRight = sh[0] + SHEET_X + TABS_X + BANNER_PAPER_W, toolsY = sh[1] + SHEET_Y + TOOL_Y;
-        var arrange = add("arrange", new UiButton(toolsRight - CLEAR_W - TOOL_GAP - ARRANGE_W, toolsY, ARRANGE_W, TOOL_H, Text.literal("Auto-arrange"), bb -> act("arrange"),
-            (g, x, y, w, h, hot) -> vellum(g, "arrange", x, y, w, h, "Auto-arrange", false, true)));
-        arrange.setTooltip(Tooltip.of(Text.literal("Set the troops out: shields in front, then melee, then ranged and casters behind")));
-        var clear = add("clear", new UiButton(toolsRight - CLEAR_W, toolsY, CLEAR_W, TOOL_H, Text.literal("Clear"), bb -> act("clear"),
-            (g, x, y, w, h, hot) -> vellum(g, "clear", x, y, w, h, clearArmed > ticks && clearArmedBanner == shownBanner() ? "Sure?" : "Clear", false, true)));
-        clear.setTooltip(Tooltip.of(Text.literal("Take every troop off this banner (press twice)")));
+        var arrange = add("arrange", new UiButton(toolsRight - CLEAR_W - TOOL_GAP - ARRANGE_W, toolsY, ARRANGE_W, TOOL_H, Text.literal(arrangeWord()), bb -> act("arrange"),
+            (g, x, y, w, h, hot) -> vellum(g, "arrange", x, y, w, h, arrangeWord(), false, true)));
+        arrange.setTooltip(Tooltip.of(Text.literal(UiText.t("pages.banner.arrangeTip", "Set the troops out: shields in front, then melee, then ranged and casters behind"))));
+        var clear = add("clear", new UiButton(toolsRight - CLEAR_W, toolsY, CLEAR_W, TOOL_H, Text.literal(clearWord()), bb -> act("clear"),
+            (g, x, y, w, h, hot) -> vellum(g, "clear", x, y, w, h, clearArmed > ticks && clearArmedBanner == shownBanner() ? sureWord() : clearWord(), false, true)));
+        clear.setTooltip(Tooltip.of(Text.literal(UiText.t("pages.banner.clearTip", "Take every troop off this banner (press twice)"))));
         // The pinned note's button (placed and shown by bannerTick while the profile holds an unread notice).
-        var understood = add("understood", new UiButton(0, 0, PIN_BTN_W, PIN_BTN_H, Text.literal("Understood"), bb -> act("understood"),
-            (g, x, y, w, h, hot) -> vellum(g, "understood", x, y, w, h, "Understood", false)));
+        var understood = add("understood", new UiButton(0, 0, PIN_BTN_W, PIN_BTN_H, Text.literal(understoodWord()), bb -> act("understood"),
+            (g, x, y, w, h, hot) -> vellum(g, "understood", x, y, w, h, understoodWord(), false)));
         understood.visible = false;
         // The main button, set apart on the right: Take to battle. The banner already going to battle reads "Going to battle" with the tick and takes no press.
-        var use = add("use", new UiButton(sh[0] + SHEET_X + TABS_X + BANNER_PAPER_W - MAIN_W, sh[1] + SHEET_Y + ACTS_Y, MAIN_W, MAIN_H, Text.literal("Take to battle"), bb -> act("use"),
+        var use = add("use", new UiButton(sh[0] + SHEET_X + TABS_X + BANNER_PAPER_W - MAIN_W, sh[1] + SHEET_Y + ACTS_Y, MAIN_W, MAIN_H, Text.literal(useWord(false)), bb -> act("use"),
             (g, x, y, w, h, hot) -> mainButton(g, x, y, w, h, hot)));
-        use.setTooltip(Tooltip.of(Text.literal("Take this banner into battle")));
-        var rec = add("roll-recruit", new UiButton(r[0] + ROLL_X, r[1] + ROW_TOP, 80, 24, Text.literal("Recruit"), bb -> screen.page("recruit"),
-            (g, x, y, w, h, hot) -> vellum(g, "roll-recruit", x, y, w, h, "Recruit", false)));
-        rec.setTooltip(Tooltip.of(Text.literal("Open the Recruit page")));
-        var tip = add("gold-tip", new UiButton(sh[0] + SHEET_X, sh[1] + SHEET_Y, 40, 12, Text.literal("Army gold"), bb -> {}, (g, x, y, w, h, hot) -> {}).quiet());
-        tip.setTooltip(Tooltip.of(Text.literal("Army gold. Every commander gets the same " + RosterMath.allowance() + ".")));
+        use.setTooltip(Tooltip.of(Text.literal(useTip(false))));
+        var rec = add("roll-recruit", new UiButton(r[0] + ROLL_X, r[1] + ROW_TOP, 80, 24, Text.literal(recruitWord()), bb -> screen.page("recruit"),
+            (g, x, y, w, h, hot) -> vellum(g, "roll-recruit", x, y, w, h, recruitWord(), false)));
+        rec.setTooltip(Tooltip.of(Text.literal(UiText.t("pages.banner.recruitTip", "Open the Recruit page"))));
+        var tip = add("gold-tip", new UiButton(sh[0] + SHEET_X, sh[1] + SHEET_Y, 40, 12, Text.literal(UiText.t("pages.banner.goldLabel", "Army gold")), bb -> {}, (g, x, y, w, h, hot) -> {}).quiet());
+        tip.setTooltip(Tooltip.of(Text.literal(UiText.t("pages.banner.goldTip", "Army gold. Every commander gets the same {gold}.", "gold", RosterMath.allowance()))));
     }
 
     /** The palette follows the House's roll and arms its first troop when the armed one leaves it; cells, tabs and actions take a press only
@@ -773,7 +785,7 @@ final class WarTablePages {
             if (row == null) continue;
             row.visible = shown;
             row.setMessage(Text.literal(shown ? roll.get(i).name() : ""));
-            String tip = !shown ? "" : rarityWord(roll.get(i).troopId()) + ", " + cost(roll.get(i).troopId()) + " gold" + (blockedWhy(roll.get(i).troopId()).isEmpty() ? "" : "\n" + blockedWhy(roll.get(i).troopId()));
+            String tip = !shown ? "" : UiText.t("pages.banner.rowTip", "{rarity}, {cost} gold", "rarity", rarityWord(roll.get(i).troopId()), "cost", cost(roll.get(i).troopId())) + (blockedWhy(roll.get(i).troopId()).isEmpty() ? "" : "\n" + blockedWhy(roll.get(i).troopId()));
             if (!tip.equals(rowTips[i])) { rowTips[i] = tip; row.setTooltip(tip.isEmpty() ? null : Tooltip.of(Text.literal(tip))); }
         }
         for (int i = 0; i < WarGrid.cells(); i++) { var c = buttons.get("cell-" + i); if (c != null) { c.active = free; c.visible = true; } }
@@ -783,7 +795,7 @@ final class WarTablePages {
             if (t == null) continue;
             t.visible = i < n && renaming == null;
             t.active = free;
-            String tip = i < n ? CampaignClient.profile.banners.get(i).name + (i == CampaignClient.profile.activeBanner ? " (goes into battle)" : "") : "";
+            String tip = i < n ? (i == CampaignClient.profile.activeBanner ? UiText.t("pages.banner.tabGoing", "{name} (goes into battle)", "name", CampaignClient.profile.banners.get(i).name) : CampaignClient.profile.banners.get(i).name) : "";
             if (!tip.equals(tabTips[i])) { tabTips[i] = tip; t.setTooltip(tip.isEmpty() ? null : Tooltip.of(Text.literal(tip))); }
         }
         setActive("new", free && n < RosterMath.maxBanners());
@@ -792,7 +804,7 @@ final class WarTablePages {
         setActive("delete", free && n > 1);
         setActive("use", free && shown != CampaignClient.profile.activeBanner);
         var use = buttons.get("use");
-        String useWords = shown == CampaignClient.profile.activeBanner ? "This banner goes into battle" : "Take this banner into battle";
+        String useWords = useTip(shown == CampaignClient.profile.activeBanner);
         if (use != null && !useWords.equals(useTip)) { useTip = useWords; use.setTooltip(Tooltip.of(Text.literal(useWords))); }
         for (var side : Spec.FACTIONS) { var chip = buttons.get("colour-" + side.id()); if (chip != null) chip.active = free; } // the server holds colour: too while a battle is on
     }
@@ -826,11 +838,15 @@ final class WarTablePages {
         }
     }
 
+    /** The gold group's two words: what is left (or over) and what is spent of the allowance. */
+    static String goldBig(int left) { return left >= 0 ? UiText.t("pages.banner.goldLeft", "{gold} gold left", "gold", left) : UiText.t("pages.banner.goldOver", "{gold} gold over", "gold", -left); }
+    static String goldSmall(int spent, int allow) { return UiText.t("pages.banner.goldSpent", "{spent} of {allow}", "spent", spent, "allow", allow); }
+
     /** The gold group on the sheet's Front line, right-aligned to the grid: {left, top, width, big-text width, small-text x, bar x, right} in canvas px for a sheet at (x, y). */
     int[] goldGroup(int x, int y) {
         var font = font();
         int allow = RosterMath.allowance(), left = allow - spent();
-        String big = left >= 0 ? left + " gold left" : -left + " gold over", small = spent() + " of " + allow;
+        String big = goldBig(left), small = goldSmall(spent(), allow);
         int right = x + GRID_X - SHEET_X + CELL_PITCH * WarGrid.cols() - 2, bx = right - BAR_W;
         int sw = font.getWidth(DarkUi.small(small)), sx = bx - 6 - sw, bw = font.getWidth(DarkUi.heading(big)), gx = sx - 6 - bw;
         return new int[]{gx, y + FRONT_DY, right - gx, bw, sx, bx, right};
@@ -869,7 +885,7 @@ final class WarTablePages {
         var plan = BannerDrop.paint(table(), cell, brush, rules());
         if (!plan.ok()) { refuse(cell, plan.why()); return plan; }
         if (send(plan.withBanner(shownBanner()).command())) { planned = plan.result(); plannedBanner = shownBanner(); plannedAt = System.currentTimeMillis(); plannedScreen = screen; plannedCell = cell; }
-        else refuse(cell, "Slow down a moment."); // the queue is full: the stroke was not sent and the cell stays as it is
+        else refuse(cell, slowDown()); // the queue is full: the stroke was not sent and the cell stays as it is
         return plan;
     }
 
@@ -877,7 +893,7 @@ final class WarTablePages {
     boolean submit(BannerDrop.Plan plan, int cell) {
         if (!plan.ok()) { refuse(cell, plan.why()); return false; }
         if (send(plan.withBanner(shownBanner()).command())) { planned = plan.result(); plannedBanner = shownBanner(); plannedAt = System.currentTimeMillis(); plannedScreen = screen; plannedCell = cell; return true; }
-        refuse(cell, "Slow down a moment.");
+        refuse(cell, slowDown());
         return false;
     }
 
@@ -1064,7 +1080,7 @@ final class WarTablePages {
         if (here != null) return placedWord(here); // a placed troop is named whatever the brush, so the strip says what is there
         if (armed == null) return "";
         var plan = BannerDrop.paint(t, i, armed, rules());
-        return !plan.ok() ? plan.why() : "Place " + troopName(armed) + ", " + cost(armed) + " gold";
+        return !plan.ok() ? plan.why() : UiText.t("pages.banner.placeWord", "Place {troop}, {cost} gold", "troop", troopName(armed), "cost", cost(armed));
     }
 
     /** What the strip says of the cell a lifted troop is over: "Move here", "Swap with (troop)", or why it cannot go. */
@@ -1072,11 +1088,21 @@ final class WarTablePages {
         var plan = BannerDrop.move(table(), lift, to, rules());
         if (!plan.ok()) return to == lift ? "" : plan.why();
         String there = table().get(to);
-        return there == null ? "Move here" : "Swap with " + troopName(there);
+        return there == null ? UiText.t("pages.banner.moveHere", "Move here") : UiText.t("pages.banner.swapWith", "Swap with {troop}", "troop", troopName(there));
     }
 
     /** "Templar \u00b7 Shield \u00b7 40 gold". */
-    static String placedWord(String id) { return troopName(id) + " \u00b7 " + kindOf(id) + " \u00b7 " + cost(id) + " gold"; }
+    static String placedWord(String id) { return UiText.t("pages.banner.placedWord", "{troop} \u00b7 {kind} \u00b7 {cost} gold", "troop", troopName(id), "kind", kindWord(kindOf(id)), "cost", cost(id)); }
+
+    /** A troop kind (kindOf's word, kept for logic) as the words a player reads. */
+    static String kindWord(String kind) {
+        return switch (kind) {
+            case "Shield" -> UiText.t("pages.banner.kindShield", "Shield");
+            case "Caster" -> UiText.t("pages.banner.kindCaster", "Caster");
+            case "Ranged" -> UiText.t("pages.banner.kindRanged", "Ranged");
+            default -> UiText.t("pages.banner.kindMelee", "Melee");
+        };
+    }
 
     /** A troop's kind for the palette and the army summary, from its sheet tags: Shield, Caster, Ranged, else Melee. */
     static String kindOf(String id) {
@@ -1132,14 +1158,14 @@ final class WarTablePages {
         for (int i = roll.isEmpty() ? 2 : 1; i < places; i++) if (i != sel) UiTex.draw(g, "recruit/rule-208", x + 16, oy + ROW_TOP + ROW_H * i);
         for (int i = 0; i < roll.size(); i++) paletteRow(g, roll.get(i), i, x, oy + ROW_TOP + ROW_H * i);
         if (more && roll.size() < ROWS) { // where the rest of the House's troops come from: in the roll's last place, at its foot
-            var hint = UiMath.lines(GravesAndGloryClient.running ? ROLL_LOCKED : ROLL_HINT, ROLL_HINT_W, 2, s -> font().getWidth(DarkUi.body(s)));
+            var hint = UiMath.lines(GravesAndGloryClient.running ? UiText.t("pages.banner.rollLocked", "Locked during battle.") : UiText.t("pages.banner.rollHint", "Get more troops at Recruit."), ROLL_HINT_W, 2, s -> font().getWidth(DarkUi.body(s)));
             int top = oy + ROW_TOP + ROW_H * (ROWS - 1) + (ROW_H + 4 - 13 * hint.size()) / 2;
             for (int i = 0; i < hint.size(); i++) WarTableHome.centred(g, DarkUi.body(hint.get(i)), x + ROLL_HINT_CX, top + 13 * i, DarkUi.SEPIA);
             textsDrawn.put("roll-hint", String.join(" ", hint));
             rectsDrawn.put("roll-hint", new int[]{x + ROLL_HINT_CX - ROLL_HINT_W / 2, top, ROLL_HINT_W, 13 * hint.size() - 4});
         }
         if (roll.isEmpty()) { // a House none of whose troops is recruited yet: the first place says so
-            var say = UiMath.lines("No " + RosterMath.houseName(shownHouse()) + " troops yet.", ROLL_HINT_W, 2, s -> font().getWidth(DarkUi.body(s)));
+            var say = UiMath.lines(UiText.t("pages.banner.rollEmpty", "No {house} troops yet.", "house", RosterMath.houseName(shownHouse())), ROLL_HINT_W, 2, s -> font().getWidth(DarkUi.body(s)));
             int top = oy + ROW_TOP + ROW_H + 16 - 13 * say.size() / 2;
             for (var row : Spec.HOUSES) if (row.id().equals(shownHouse()))
                 g.drawTexture(Identifier.of(row.glyph()), x + ROLL_HINT_CX - 8, top - 26, 0f, 0f, 16, 16, 16, 16);
@@ -1150,9 +1176,10 @@ final class WarTablePages {
         sheet(g, sh[0] + SHEET_X, sh[1] + SHEET_Y);
         army(g, cl[0] + CLASS_X, cl[1]);
         int cy = colourTop();
-        g.drawText(font(), DarkUi.body("Team colour"), cl[0] + CLASS_X, cy, DarkUi.MUTED, false);
-        textsDrawn.put("colour-label", "Team colour");
-        rectsDrawn.put("colour-label", new int[]{cl[0] + CLASS_X, cy, font().getWidth(DarkUi.body("Team colour")), 9});
+        String colourLabel = UiText.t("pages.banner.colourLabel", "Team colour");
+        g.drawText(font(), DarkUi.body(colourLabel), cl[0] + CLASS_X, cy, DarkUi.MUTED, false);
+        textsDrawn.put("colour-label", colourLabel);
+        rectsDrawn.put("colour-label", new int[]{cl[0] + CLASS_X, cy, font().getWidth(DarkUi.body(colourLabel)), 9});
     }
 
     /** Palette row i: the troop's live model in a frame ringed in its rarity's colour, its name, "22 gold \u00b7 Shield" under it, and a "\u00d74" badge
@@ -1175,14 +1202,14 @@ final class WarTablePages {
         String name = UiMath.trim(r.name(), NAME_W, s -> font.getWidth(DarkUi.heading(s)));
         g.drawText(font, DarkUi.heading(name), x + 60, y + 8, blocked ? DarkUi.SEPIA : DarkUi.INK_TEXT, false);
         int n = placed(id);
-        String price = cost(id) + " gold \u00b7 " + kindOf(id);
+        String price = UiText.t("pages.banner.price", "{cost} gold \u00b7 {kind}", "cost", cost(id), "kind", kindWord(kindOf(id)));
         int pink = blocked ? DarkUi.ROUT_TEXT : DarkUi.SEPIA;
         g.drawText(font, DarkUi.body(price), x + 60, y + 24, pink, false);
         textsDrawn.put("price-" + i, price);
         colorsDrawn.put("price-" + i, pink);
         rectsDrawn.put("price-" + i, new int[]{x + 60, y + 24, font.getWidth(DarkUi.body(price)), 9});
         if (n > 0) {
-            String badge = "\u00d7" + n;
+            String badge = UiText.t("pages.banner.copiesBadge", "\u00d7{count}", "count", n);
             int bw = font.getWidth(DarkUi.small(badge)) + 6, bx = x + 48 - bw, by = y + 38;
             g.fill(bx, by, bx + bw, by + 11, DarkUi.PREVIEW_BAND);
             g.drawBorder(bx, by, bw, 11, DarkUi.BRASS);
@@ -1219,14 +1246,16 @@ final class WarTablePages {
         text(g, "banner-name", DarkUi.heading(name), saved, x + BANNER_PAPER_X + 14, hy, DarkUi.INK_TEXT);
         rectsDrawn.put("banner-name", new int[]{x + BANNER_PAPER_X + 14, hy, font.getWidth(DarkUi.heading(name)), 9});
         int gx0 = x + GRID_X - SHEET_X;
-        text(g, "sub-line", DarkUi.small(SUB_LINE), SUB_LINE, gx0, y + SUB_DY, DarkUi.SEPIA);
-        rectsDrawn.put("sub-line", new int[]{gx0, y + SUB_DY, font.getWidth(DarkUi.small(SUB_LINE)), 8});
+        String subLine = UiText.t("pages.banner.subLine", "Your troops stand in battle the way you place them here.");
+        text(g, "sub-line", DarkUi.small(subLine), subLine, gx0, y + SUB_DY, DarkUi.SEPIA);
+        rectsDrawn.put("sub-line", new int[]{gx0, y + SUB_DY, font.getWidth(DarkUi.small(subLine)), 8});
         int fy = y + FRONT_DY;
-        text(g, "front", DarkUi.body("Front"), "Front", gx0, fy, DarkUi.SEPIA);
-        rectsDrawn.put("front", new int[]{gx0, fy, font.getWidth(DarkUi.body("Front")), 9});
+        String frontWord = UiText.t("pages.banner.front", "Front");
+        text(g, "front", DarkUi.body(frontWord), frontWord, gx0, fy, DarkUi.SEPIA);
+        rectsDrawn.put("front", new int[]{gx0, fy, font.getWidth(DarkUi.body(frontWord)), 9});
         int spent = spent(), allow = RosterMath.allowance(), left = allow - spent;
         var gb = goldGroup(x, y);
-        String big = left >= 0 ? left + " gold left" : -left + " gold over", small = spent + " of " + allow;
+        String big = goldBig(left), small = goldSmall(spent, allow);
         text(g, "gold", DarkUi.heading(big), big, gb[0], fy, left < 0 ? DarkUi.ROUT_TEXT : DarkUi.INK_TEXT);
         rectsDrawn.put("gold", new int[]{gb[0], fy, gb[3], 9});
         text(g, "gold-of", DarkUi.small(small), small, gb[4], fy + 1, DarkUi.SEPIA);
@@ -1238,21 +1267,23 @@ final class WarTablePages {
         if (filled > 0) g.fill(bx + 1, fy + 2, bx + 1 + filled, fy + BAR_H, left <= 0 ? DarkUi.ROUT_TEXT : DarkUi.BRASS);
         rectsDrawn.put("gold-bar", new int[]{bx, fy + 1, BAR_W, BAR_H});
         int ry = y + REAR_DY;
-        text(g, "rear", DarkUi.body("Rear"), "Rear", gx0, ry, DarkUi.SEPIA);
-        rectsDrawn.put("rear", new int[]{gx0, ry, font.getWidth(DarkUi.body("Rear")), 9});
-        int hw = font.getWidth(DarkUi.small(PLACE_HINT));
-        text(g, "place-hint", DarkUi.small(PLACE_HINT), PLACE_HINT, right - hw, ry + 1, DarkUi.SEPIA);
+        String rearWord = UiText.t("pages.banner.rear", "Rear"), placeHint = UiText.t("pages.banner.placeHint", "Click or drag to place \u00b7 Other button to remove");
+        text(g, "rear", DarkUi.body(rearWord), rearWord, gx0, ry, DarkUi.SEPIA);
+        rectsDrawn.put("rear", new int[]{gx0, ry, font.getWidth(DarkUi.body(rearWord)), 9});
+        int hw = font.getWidth(DarkUi.small(placeHint));
+        text(g, "place-hint", DarkUi.small(placeHint), placeHint, right - hw, ry + 1, DarkUi.SEPIA);
         rectsDrawn.put("place-hint", new int[]{right - hw, ry + 1, hw, 8});
         if (renaming != null) { // the new name being written, over the tabs' row
             int rx = x + TABS_X, rY = y + TABS_Y, rw = 5 * TAB_W + 4 * TAB_GAP;
             g.fill(rx, rY, rx + rw, rY + TAB_H, DarkUi.RENAME_STRIP);
             g.drawBorder(rx, rY, rw, TAB_H, DarkUi.SEPIA);
             String shown = renaming + ((ticks / 10) % 2 == 0 ? "_" : "");
-            g.drawText(font, DarkUi.body("Name: " + shown), rx + 6, rY + 6, DarkUi.INK_TEXT, false);
+            g.drawText(font, DarkUi.body(UiText.t("pages.banner.renameLabel", "Name: {name}", "name", shown)), rx + 6, rY + 6, DarkUi.INK_TEXT, false);
             textsDrawn.put("rename", renaming);
             rectsDrawn.put("rename", new int[]{rx, rY, rw, TAB_H});
-            g.drawText(font, DarkUi.small(RENAME_HELP), rx + rw - font.getWidth(DarkUi.small(RENAME_HELP)) - 6, rY + 7, DarkUi.SEPIA, false);
-            textsDrawn.put("rename-help", RENAME_HELP);
+            String renameHelp = UiText.t("pages.banner.renameHelp", "Enter to save \u00b7 Esc to cancel");
+            g.drawText(font, DarkUi.small(renameHelp), rx + rw - font.getWidth(DarkUi.small(renameHelp)) - 6, rY + 7, DarkUi.SEPIA, false);
+            textsDrawn.put("rename-help", renameHelp);
         }
     }
 
@@ -1335,16 +1366,17 @@ final class WarTablePages {
     void army(DrawContext g, int x, int oy) {
         var font = font();
         int top = oy + SHEET_Y;
-        text(g, "army-head", DarkUi.heading("Your army"), "Your army", x, top, DarkUi.BRASS);
+        String armyHead = UiText.t("pages.banner.armyHead", "Your army");
+        text(g, "army-head", DarkUi.heading(armyHead), armyHead, x, top, DarkUi.BRASS);
         int allow = RosterMath.allowance(), left = allow - spent(), n = troops(), max = RosterMath.maxTroops();
         int y = top + 16;
-        stat(g, "army-gold", "Gold left", Integer.toString(left), x, y, BONUS_W - 4, left < 0 ? DarkUi.ROUT_TEXT : DarkUi.IVORY);
-        stat(g, "army-troops", "Troops", n + " / " + max, x, y + 12, BONUS_W - 4, n >= max ? DarkUi.ROUT_TEXT : DarkUi.IVORY);
+        stat(g, "army-gold", UiText.t("pages.banner.armyGold", "Gold left"), Integer.toString(left), x, y, BONUS_W - 4, left < 0 ? DarkUi.ROUT_TEXT : DarkUi.IVORY);
+        stat(g, "army-troops", UiText.t("pages.banner.armyTroops", "Troops"), n + " / " + max, x, y + 12, BONUS_W - 4, n >= max ? DarkUi.ROUT_TEXT : DarkUi.IVORY);
         int[] by = new int[4];
         String[] kinds = {"Shield", "Melee", "Ranged", "Caster"};
         for (var id : table().values()) for (int k = 0; k < kinds.length; k++) if (kinds[k].equals(kindOf(id))) by[k]++;
         for (int k = 0; k < kinds.length; k++)
-            stat(g, "army-" + kinds[k].toLowerCase(), kinds[k], Integer.toString(by[k]), x + (k % 2) * (BONUS_W / 2 + 4), y + 28 + 12 * (k / 2), BONUS_W / 2 - 10, DarkUi.IVORY);
+            stat(g, "army-" + kinds[k].toLowerCase(), kindWord(kinds[k]), Integer.toString(by[k]), x + (k % 2) * (BONUS_W / 2 + 4), y + 28 + 12 * (k / 2), BONUS_W / 2 - 10, DarkUi.IVORY);
         var note = noteBox();
         int limit = colourTop() - 6 - (note == null ? 0 : note[3] + 6); // the pinned note takes the foot of the column from the traits
         traits(g, x, top + ARMY_H, limit);
@@ -1392,12 +1424,12 @@ final class WarTablePages {
 
     /** "9 of 10 troops for tier II": the troops the House has on the banner against the next threshold; "12 troops, top tier" at the last. */
     static String traitLabel(TraitRow r) {
-        return r.tier() >= r.thresholds().length ? r.slots() + " troops, top tier" : r.slots() + " of " + r.thresholds()[r.tier()] + " troops for tier " + MatchStats.roman(r.tier() + 1);
+        return r.tier() >= r.thresholds().length ? UiText.t("pages.banner.traitTop", "{slots} troops, top tier", "slots", r.slots()) : UiText.t("pages.banner.traitProgress", "{slots} of {needed} troops for tier {tier}", "slots", r.slots(), "needed", r.thresholds()[r.tier()], "tier", MatchStats.roman(r.tier() + 1));
     }
 
     /** What a row's detail says at a level: 2 the tier reached and the next tier greyed, 1 the tier reached only, 0 nothing. */
     private List<String> traitCurrent(TraitRow r, int w) {
-        return traitLines(r.tier() > 0 ? traitText(r.house().id(), r.tier()) : "No trait yet.", w);
+        return traitLines(r.tier() > 0 ? traitText(r.house().id(), r.tier()) : UiText.t("pages.banner.traitNone", "No trait yet."), w);
     }
 
     private int traitHeight(TraitRow r, int level, int w) {
@@ -1425,7 +1457,7 @@ final class WarTablePages {
             for (var r : rows) { sum += traitHeight(r, 0, w) + TRAIT_GAP; if (y0 + sum - TRAIT_GAP > bottom) break; count++; }
             if (count == 0) return;
         }
-        g.drawText(font, DarkUi.heading("House traits"), x, top, DarkUi.BRASS, false);
+        g.drawText(font, DarkUi.heading(UiText.t("pages.banner.traitsHead", "House traits")), x, top, DarkUi.BRASS, false);
         int y = y0;
         for (int i = 0; i < count; i++) {
             var r = rows.get(i);
@@ -1544,14 +1576,14 @@ final class WarTablePages {
     /** A grant as words: "30 gear shards and 75 XP", "150 gear shards, 300 XP and 10 Ironclad shards" (the whole writs of 100 or more are their own line on the note and in the claim notice) (shards only when asked for; houseName null leaves the House out). */
     static String words(Progression.Grant g, boolean shards, String houseName) {
         List<String> parts = new ArrayList<>();
-        if (g.gold() > 0) parts.add(g.gold() + " gear shards");
-        if (g.xp() > 0) parts.add(g.xp() + " XP");
-        if (shards && g.shards() > 0) parts.add(g.shards() + " " + (houseName == null ? "" : houseName + " ") + "shards");
+        if (g.gold() > 0) parts.add(UiText.t("pages.rewards.gear", "{gold} gear shards", "gold", g.gold()));
+        if (g.xp() > 0) parts.add(UiText.t("pages.rewards.xp", "{xp} XP", "xp", g.xp()));
+        if (shards && g.shards() > 0) parts.add(houseName == null ? UiText.t("pages.rewards.shards", "{shards} shards", "shards", g.shards()) : UiText.t("pages.rewards.houseShards", "{shards} {house} shards", "shards", g.shards(), "house", houseName));
         return switch (parts.size()) {
             case 0 -> "";
             case 1 -> parts.get(0);
-            case 2 -> parts.get(0) + " and " + parts.get(1);
-            default -> String.join(", ", parts.subList(0, parts.size() - 1)) + " and " + parts.get(parts.size() - 1);
+            case 2 -> UiText.t("pages.rewards.two", "{first} and {second}", "first", parts.get(0), "second", parts.get(1));
+            default -> UiText.t("pages.rewards.many", "{list} and {last}", "list", String.join(", ", parts.subList(0, parts.size() - 1)), "last", parts.get(parts.size() - 1));
         };
     }
 
@@ -1569,7 +1601,9 @@ final class WarTablePages {
         return Progression.refusal(progression(), Progression.SEASON + ":" + Math.min(lowestUnclaimed(), TIERS));
     }
 
-    static String claimWord() { return claimable() > 0 ? "Claim" : lowestUnclaimed() > TIERS ? "Claimed" : "Locked"; }
+    static String claimLabel() { return UiText.t("pages.chapter.claim", "Claim"); }
+
+    static String claimWord() { return claimable() > 0 ? claimLabel() : lowestUnclaimed() > TIERS ? UiText.t("pages.chapter.claimed", "Claimed") : UiText.t("pages.chapter.locked", "Locked"); }
 
     /** What a tier gives, in the reward's own words (Progression.reward), a shard tier naming the House the shards go to. */
     static String rewardOf(int t, String houseName) {
@@ -1605,7 +1639,7 @@ final class WarTablePages {
             final String id = h.id(), name = h.name();
             int w = chipWidth(name);
             var b = add("house-" + id, new UiButton(x, y, w, CHIP_H, Text.literal(name), bb -> pickHouse(id), (g, bx, by, bw, bh, hot) -> paintChip(g, id, name, bx, by, bw, bh)));
-            b.setTooltip(Tooltip.of(Text.literal("Shards from claims go to " + name)));
+            b.setTooltip(Tooltip.of(Text.literal(UiText.t("pages.contracts.houseTip", "Shards from claims go to {house}", "house", name))));
             x += w + CHIP_GAP;
         }
     }
@@ -1680,7 +1714,7 @@ final class WarTablePages {
     /** The weekly note's "+ 1 troop writ" line: shown while the weekly is unclaimed and pays at least 100 gold (one writ). */
     static String weeklyExtra(Progression.State p, String house) {
         var pay = payOf("weekly", house);
-        return p.claims.contains("weekly") || pay.gold() < 100 ? "" : "+ " + Progression.writs(pay.gold() / 100);
+        return p.claims.contains("weekly") || pay.gold() < 100 ? "" : UiText.t("pages.contracts.weeklyExtra", "+ {writs}", "writs", Progression.writs(pay.gold() / 100));
     }
 
     /** How far the weekly bar and count drop to clear the writ line: one line while it shows, else none. */
@@ -1692,12 +1726,15 @@ final class WarTablePages {
         houseChips(ox + 480 - chipRowWidth() / 2, oy + CHIPS_Y); // before the Claims: the House is picked first, so Tab meets it first
         for (int i = 0; i < 3; i++) {
             final int slot = i;
-            tag("claim-" + i, ox + NOTE_X + NOTE_STEP * i + 124, oy + NOTE_Y + DAILY_CLAIM_DY, 64, "Claim", () -> claimDaily(slot));
+            tag("claim-" + i, ox + NOTE_X + NOTE_STEP * i + 124, oy + NOTE_Y + DAILY_CLAIM_DY, 64, claimButton(), () -> claimDaily(slot));
         }
         weeklyClaimX = ox + WEEKLY_X;
-        add("reroll", new UiButton(ox + REROLL_X, oy + REROLL_Y, 88, 24, Text.literal("Reroll"), b -> send("progress:reroll"), this::paintReroll));
-        tag("claim-weekly", ox + WEEKLY_X + (weeklyDrop() == 0 ? WEEKLY_CLAIM_DX : WEEKLY_CLAIM_DX_LOW), oy + WEEKLY_Y + WEEKLY_CLAIM_DY, 64, "Claim", () -> send(RecruitPages.contractClaim("weekly", claimHouse())));
+        add("reroll", new UiButton(ox + REROLL_X, oy + REROLL_Y, 88, 24, Text.literal(rerollWord()), b -> send("progress:reroll"), this::paintReroll));
+        tag("claim-weekly", ox + WEEKLY_X + (weeklyDrop() == 0 ? WEEKLY_CLAIM_DX : WEEKLY_CLAIM_DX_LOW), oy + WEEKLY_Y + WEEKLY_CLAIM_DY, 64, claimButton(), () -> send(RecruitPages.contractClaim("weekly", claimHouse())));
     }
+
+    static String claimButton() { return UiText.t("pages.contracts.claimButton", "Claim"); }
+    static String rerollWord() { return UiText.t("pages.contracts.reroll", "Reroll"); }
 
     /** A daily's Claim: the daily that completes all three names the House its shards go to (Progression.claim's rule, as RecruitPages.contractShards
      *  reads it); the other two carry none. */
@@ -1735,22 +1772,22 @@ final class WarTablePages {
             int target = Progression.target(p, i);
             boolean done = p.claims.contains("daily:" + i);
             var pay = payOf("daily:" + i, house);
-            String extra = !done && pay.shards() > 0 ? "+ " + pay.shards() + " " + houseName + " shards" : "";
+            String extra = !done && pay.shards() > 0 ? UiText.t("pages.contracts.dailyShards", "+ {shards} {house} shards", "shards", pay.shards(), "house", houseName) : "";
             note(g, "note-" + i, notes[i], ox + NOTE_X + NOTE_STEP * i, oy + NOTE_Y, 188, Progression.contract(p, i), words(pay, false, null), extra, true,
                 Math.min(Progression.progress(p, i), target), target, done, "contract-" + i, "progress-" + i, i == 1 ? "table/stamp-hollow-b" : "table/stamp-hollow", "stamp-" + i);
         }
-        String hint = p.rerolled ? "Rerolled today" : p.claims.contains("daily:2") ? "The third contract is already claimed" : "Swap the third contract, once a day";
+        String hint = p.rerolled ? UiText.t("pages.contracts.rerolledToday", "Rerolled today") : p.claims.contains("daily:2") ? UiText.t("pages.contracts.thirdClaimed", "The third contract is already claimed") : UiText.t("pages.contracts.rerollHint", "Swap the third contract, once a day");
         text(g, "reroll-hint", DarkUi.body(hint), hint, ox + REROLL_X + 96, oy + REROLL_Y + 6, DarkUi.MUTED);
         int weekly = Progression.WEEKLY_BATTLES;
         boolean weeklyDone = p.claims.contains("weekly");
-        note(g, "weekly", "table/note-weekly", ox + WEEKLY_X, oy + WEEKLY_Y, 292, "Complete " + weekly + " battles this week", words(payOf("weekly", house), true, weeklyDone ? null : houseName),
+        note(g, "weekly", "table/note-weekly", ox + WEEKLY_X, oy + WEEKLY_Y, 292, UiText.t("pages.contracts.weeklyName", "Complete {battles} battles this week", "battles", weekly), words(payOf("weekly", house), true, weeklyDone ? null : houseName),
             weeklyExtra(p, house), false,
             Math.min(p.weeklyBattles, weekly), weekly, weeklyDone, "weekly", "progress-weekly", "table/stamp-hollow", "stamp-weekly");
-        String reset = "Daily contracts reset at 00:00 UTC, the weekly on Monday";
+        String reset = UiText.t("pages.contracts.reset", "Daily contracts reset at 00:00 UTC, the weekly on Monday");
         WarTableHome.centred(g, DarkUi.body(reset), ox + 480, oy + RESET_Y, DarkUi.MUTED);
         textsDrawn.put("reset", reset);
         if (shardsPending(p)) { // what the House row is for, left of it
-            String cap = "House shards go to";
+            String cap = UiText.t("pages.contracts.chipsCaption", "House shards go to");
             int cw = font().getWidth(DarkUi.body(cap)), cx = ox + 480 - chipRowWidth() / 2 - CAPTION_GAP - cw;
             text(g, "chips-caption", DarkUi.body(cap), cap, cx, oy + CHIPS_Y + 6, DarkUi.MUTED);
             rectsDrawn.put("chips-caption", new int[]{cx, oy + CHIPS_Y + 6, cw, 11});
@@ -1778,7 +1815,7 @@ final class WarTablePages {
         UiTex.draw(g, "hud/hp-channel", x + 12, bar);
         rectsDrawn.put("bar-" + id, new int[]{x + 12, bar, 104, 5});
         UiTex.bar(g, "hud/hp-full-dawn", x + 13, bar + 1, UiMath.barWidth(target <= 0 ? 0 : done / (float) target), false);
-        String count = claimed ? "Claimed" : done + " / " + target;
+        String count = claimed ? UiText.t("pages.contracts.claimed", "Claimed") : done + " / " + target;
         int countW = font.getWidth(count);
         text(g, countKey, Text.literal(count), count, x + right - countW, bar - 1, DarkUi.INK_TEXT);
         rectsDrawn.put(countKey, new int[]{x + right - countW, bar - 1, countW, 8});
@@ -1793,14 +1830,14 @@ final class WarTablePages {
         var font = font();
         var b = buttons.get("reroll");
         int ink = b != null && b.active ? DarkUi.INK_TEXT : DarkUi.SEPIA;
-        var label = DarkUi.heading("Reroll");
+        var label = DarkUi.heading(rerollWord());
         UiTex.draw(g, "table/btn-vellum-88x24", x, y);
         UiTex.draw(g, "recruit/die", x + 12, y + 7);
         if (b != null && !b.active) DarkUi.disabledVeil(g, x + 1, y + 1, w - 1, h); // spent, like every other tag that cannot be pressed (4F.5)
         g.drawText(font, label, x + 26, y + 6, ink, false);
         if (hot(b)) underline(g, "reroll", x + 26, y + 18, font.getWidth(label), ink);
         rectsDrawn.put("reroll", new int[]{x, y, w, h});
-        textsDrawn.put("reroll", "Reroll");
+        textsDrawn.put("reroll", rerollWord());
         colorsDrawn.put("reroll", ink);
     }
 
@@ -1832,10 +1869,10 @@ final class WarTablePages {
         var tr = track();
         int n = tr.shown();
         houseChips(col(C_BLOCK_HEAD)[0] + 480, b0[1] + CHAPTER_CHIPS_Y); // the House and the Rare are picked before the Claim: Tab meets them first
-        add("rare", new UiButton(b0[0] + CLAIM_X - GIVES_GAP - RARE_W, b0[1] + CLAIM_Y, RARE_W, CHIP_H, Text.literal("Rare troop"), b -> cycleRare(), this::paintRare));
-        add("claim", new UiButton(b0[0] + CLAIM_X, b0[1] + CLAIM_Y, 240, 40, Text.literal("Claim"), b -> claim(), this::paintClaim));
-        add("earlier", new UiButton(tr.x0() - 20, tr.rodY() - 3, 15, 15, Text.literal("Earlier tiers"), b -> turn(-1), (g, x, y, w, h, hot) -> paintArrow(g, "earlier", "chapter/arrow-left", "chapter/arrow-left-dim", x, y)));
-        add("later", new UiButton(tr.x0() + PITCH * n - 7, tr.rodY() - 3, 15, 15, Text.literal("Later tiers"), b -> turn(1), (g, x, y, w, h, hot) -> paintArrow(g, "later", "chapter/arrow-right", "chapter/arrow-right-dim", x, y)));
+        add("rare", new UiButton(b0[0] + CLAIM_X - GIVES_GAP - RARE_W, b0[1] + CLAIM_Y, RARE_W, CHIP_H, Text.literal(UiText.t("pages.chapter.rareLabel", "Rare troop")), b -> cycleRare(), this::paintRare));
+        add("claim", new UiButton(b0[0] + CLAIM_X, b0[1] + CLAIM_Y, 240, 40, Text.literal(claimLabel()), b -> claim(), this::paintClaim));
+        add("earlier", new UiButton(tr.x0() - 20, tr.rodY() - 3, 15, 15, Text.literal(UiText.t("pages.chapter.earlier", "Earlier tiers")), b -> turn(-1), (g, x, y, w, h, hot) -> paintArrow(g, "earlier", "chapter/arrow-left", "chapter/arrow-left-dim", x, y)));
+        add("later", new UiButton(tr.x0() + PITCH * n - 7, tr.rodY() - 3, 15, 15, Text.literal(UiText.t("pages.chapter.later", "Later tiers")), b -> turn(1), (g, x, y, w, h, hot) -> paintArrow(g, "later", "chapter/arrow-right", "chapter/arrow-right-dim", x, y)));
         int first = first(), tier = tier();
         for (int k = 0; k < n; k++) { // a claimed title on the track is worn (or taken off) from its Roll plaque
             int t = first + k;
@@ -1862,7 +1899,7 @@ final class WarTablePages {
         var rare = buttons.get("rare");
         if (rare != null) {
             rare.visible = rare.active = rareWanted && !rarePick().isEmpty();
-            String tip = "Next Rare troop of " + RosterMath.houseName(claimHouse());
+            String tip = UiText.t("pages.chapter.rareTip", "Next Rare troop of {house}", "house", RosterMath.houseName(claimHouse()));
             if (!tip.equals(rareTip)) { rareTip = tip; rare.setTooltip(Tooltip.of(Text.literal(tip))); }
         }
         int first = first();
@@ -1919,12 +1956,12 @@ final class WarTablePages {
         block(g, col(C_BLOCK_HEAD)[0], b0[0], b0[1], tier, progression());
         gives(g, b0[0], b0[1]);
         int lx = tr.labelX();
-        g.drawText(font, DarkUi.heading("Tier"), lx, tr.rodY() + 2, DarkUi.BRASS, false);
-        g.drawText(font, DarkUi.heading("The Roll"), lx, tr.rollTop() + 28, DarkUi.BRASS, false);
-        g.drawText(font, "for all", lx, tr.rollTop() + 44, DarkUi.MUTED, false);
+        g.drawText(font, DarkUi.heading(UiText.t("pages.chapter.tierLabel", "Tier")), lx, tr.rodY() + 2, DarkUi.BRASS, false);
+        g.drawText(font, DarkUi.heading(UiText.t("pages.chapter.rollLabel", "The Roll")), lx, tr.rollTop() + 28, DarkUi.BRASS, false);
+        g.drawText(font, UiText.t("pages.chapter.forAll", "for all"), lx, tr.rollTop() + 44, DarkUi.MUTED, false);
         if (OATHS_OPEN) {
-            g.drawText(font, DarkUi.heading("The Oath"), lx, tr.oathTop() + 28, DarkUi.SEPIA_L, false);
-            if (!WarTable.compact()) g.drawText(font, "not sworn", lx, tr.oathTop() + 44, DarkUi.MUTED, false);
+            g.drawText(font, DarkUi.heading(UiText.t("pages.chapter.oathLabel", "The Oath")), lx, tr.oathTop() + 28, DarkUi.SEPIA_L, false);
+            if (!WarTable.compact()) g.drawText(font, UiText.t("pages.chapter.notSworn", "not sworn"), lx, tr.oathTop() + 44, DarkUi.MUTED, false);
         }
         var rodTex = UiTex.entry("chapter/track-rod");
         int rod = PITCH * tr.shown(), rodW = rodTex.w();
@@ -1936,8 +1973,9 @@ final class WarTablePages {
         rectsDrawn.put("rod", new int[]{tr.x0() - 6, tr.rodY(), Math.min(rod, rodW), rodTex.h()});
         track(g, tr, first, tier);
         if (!OATHS_OPEN) { // the Oath row is hidden: one line where its heading stood, at the labels' edge (the same on both page sizes)
-            text(g, "unsworn", DarkUi.body(UNSWORN), UNSWORN, lx, tr.oathTop() + 4, DarkUi.MUTED);
-            rectsDrawn.put("unsworn", new int[]{lx, tr.oathTop() + 4, font.getWidth(DarkUi.body(UNSWORN)), 9});
+            String unsworn = UiText.t("pages.chapter.unsworn", "The Oath: coming with House oaths.");
+            text(g, "unsworn", DarkUi.body(unsworn), unsworn, lx, tr.oathTop() + 4, DarkUi.MUTED);
+            rectsDrawn.put("unsworn", new int[]{lx, tr.oathTop() + 4, font.getWidth(DarkUi.body(unsworn)), 9});
         }
         textsDrawn.put("tier", String.valueOf(tier));
         textsDrawn.put("first", String.valueOf(first));
@@ -1989,7 +2027,7 @@ final class WarTablePages {
         String[] reward = title ? null : rewardPlaque(t);
         icon(g, title ? "chapter/ic-title" : reward[0], x, y, ly);
         if (locked) UiTex.draw(g, "chapter/hasp", x - 1, y + ly - 12);
-        String l1 = title ? Progression.TITLES[titleAt(t)] : reward[1], l2 = title ? (done && l1.equals(progression().title) ? "worn" : "title") : reward[2];
+        String l1 = title ? Progression.TITLES[titleAt(t)] : reward[1], l2 = title ? (done && l1.equals(progression().title) ? UiText.t("pages.chapter.worn", "worn") : UiText.t("pages.chapter.titleKind", "title")) : reward[2];
         WarTableHome.centred(g, DarkUi.heading(l1), x + PW / 2, y + ly, DarkUi.IVORY);
         g.drawText(font, l2, x + PW / 2 - font.getWidth(l2) / 2, y + ly + 15, DarkUi.MUTED, false);
         if (done) {
@@ -2027,6 +2065,19 @@ final class WarTablePages {
         return OATH_ODD.get(t);
     }
 
+    /** The one line of copy on the hero letter for a title ("" for a title with none). */
+    static String titleCopy(String title) {
+        return switch (title) {
+            case "Scout" -> UiText.t("pages.chapter.copyScout", "First out, first to see the field.");
+            case "Pathfinder" -> UiText.t("pages.chapter.copyPathfinder", "You find the road the others lost.");
+            case "Captain" -> UiText.t("pages.chapter.copyCaptain", "They hold because you hold.");
+            case "Vanguard" -> UiText.t("pages.chapter.copyVanguard", "First into the line, last out of it.");
+            case "Banneret" -> UiText.t("pages.chapter.copyBanneret", "Men march under your colours.");
+            case "Bannerlord" -> UiText.t("pages.chapter.copyBannerlord", "The banner answers to you.");
+            default -> "";
+        };
+    }
+
     /** An icon centred on a plaque in the space above its label line ly (pages.py rounds half to even, as Math.rint does). */
     static void icon(DrawContext g, String icon, int x, int y, int ly) {
         var e = UiTex.entry(icon);
@@ -2062,13 +2113,13 @@ final class WarTablePages {
             portraitsDrawn.add(new PortraitDraw("hero", c.player.getGameProfile().getName(), Portrait.last()));
         }
         UiTex.draw(g, "table/frame-ornate-184", x + 8, y + 8);
-        String name = Progression.TITLES[titleAt(t)], kicker = "Tier " + t, kind = "Title, worn in camp";
+        String name = Progression.TITLES[titleAt(t)], kicker = UiText.t("pages.chapter.heroTier", "Tier {tier}", "tier", t), kind = UiText.t("pages.chapter.heroKind", "Title, worn in camp");
         boolean got = claimed(t), worn = got && name.equals(progression().title);
-        String state = worn ? "Worn in camp" : got ? "Claimed" : t <= tier ? "Yours to claim" : "Unlocks at " + UiMath.thousands(t * Progression.XP_PER_TIER) + " XP";
+        String state = worn ? UiText.t("pages.chapter.heroWorn", "Worn in camp") : got ? UiText.t("pages.chapter.heroClaimed", "Claimed") : t <= tier ? UiText.t("pages.chapter.heroClaimable", "Yours to claim") : UiText.t("pages.chapter.heroLocked", "Unlocks at {xp} XP", "xp", UiMath.thousands(t * Progression.XP_PER_TIER));
         g.drawText(font, kicker, cx - font.getWidth(kicker) / 2, y + 34, DarkUi.SEPIA, false);
         WarTableHome.centred(g, DarkUi.focal(name), cx, y + 48, DarkUi.INK_TEXT);
         WarTableHome.centred(g, DarkUi.body(kind), cx, y + 70, DarkUi.SEPIA);
-        var copy = UiMath.lines(TITLE_COPY.getOrDefault(name, ""), 160, 3, s -> font.getWidth(DarkUi.body(s)));
+        var copy = UiMath.lines(titleCopy(name), 160, 3, s -> font.getWidth(DarkUi.body(s)));
         for (int i = 0; i < copy.size(); i++) WarTableHome.centred(g, DarkUi.body(copy.get(i)), cx, y + 92 + 13 * i, DarkUi.INK_TEXT);
         WarTableHome.centred(g, DarkUi.body(state), cx, y + 166, DarkUi.SEPIA);
         if (WarTable.compact()) UiTex.draw(g, "chapter/seal-title", x + C_SEAL_DX, y + C_SEAL_DY); // on the letter: above it is the rail
@@ -2083,9 +2134,10 @@ final class WarTablePages {
      *  is a widget, paintClaim). */
     void block(DrawContext g, int hx, int ox, int oy, int tier, Progression.State p) {
         var font = font();
-        g.drawText(font, "Season pass", hx + 480, oy + 80, DarkUi.MUTED, false);
-        g.drawText(font, DarkUi.heading("The Founders"), hx + 480, oy + 92, DarkUi.BRASS, false);
-        textsDrawn.put("chapter", "Season pass / The Founders");
+        String passWord = UiText.t("pages.chapter.passLabel", "Season pass"), founders = UiText.t("pages.chapter.founders", "The Founders");
+        g.drawText(font, passWord, hx + 480, oy + 80, DarkUi.MUTED, false);
+        g.drawText(font, DarkUi.heading(founders), hx + 480, oy + 92, DarkUi.BRASS, false);
+        textsDrawn.put("chapter", passWord + " / " + founders);
         rectsDrawn.put("seal", UiTex.draw(g, "chapter/seal-tier-big", hx + 480, oy + 144));
         String n = String.valueOf(tier);
         g.drawText(font, n, hx + 502 - font.getWidth(n) / 2, oy + 162, DarkUi.CHIP_TEXT, false);
@@ -2098,8 +2150,8 @@ final class WarTablePages {
             UiTex.part(g, "chapter/xp-fill", px + poured - 1, py, 360, 0, 1, 6);
             UiTex.part(g, "chapter/xp-fill", px + poured, py, 361, 0, 1, 6);
         }
-        String xp = UiMath.thousands(Math.min(p.xp, full)) + " / " + UiMath.thousands(full) + " XP";
-        String next = tier >= TIERS ? "Every tier reached" : UiMath.thousands((tier + 1) * Progression.XP_PER_TIER - p.xp) + " XP to tier " + (tier + 1);
+        String xp = UiText.t("pages.chapter.xp", "{xp} / {total} XP", "xp", UiMath.thousands(Math.min(p.xp, full)), "total", UiMath.thousands(full));
+        String next = tier >= TIERS ? UiText.t("pages.chapter.allReached", "Every tier reached") : UiText.t("pages.chapter.toNext", "{xp} XP to tier {tier}", "xp", UiMath.thousands((tier + 1) * Progression.XP_PER_TIER - p.xp), "tier", tier + 1);
         text(g, "xp", Text.literal(xp), xp, ox + 536, oy + 184, DarkUi.IVORY);
         text(g, "to-next", Text.literal(next), next, ox + 904 - font.getWidth(next), oy + 184, DarkUi.MUTED);
     }
@@ -2113,7 +2165,7 @@ final class WarTablePages {
         UiTex.draw(g, plate, x, y);
         if (bright) UiTex.draw(g, "table/key-brass-37", x + 14, y + 13);
         else UiTex.draw(g, "table/key-dull-37", x + 14, y + 13);
-        g.drawText(font, "Enter", x + 18, y + 16, bright ? DarkUi.KEY_INK : DarkUi.DULL_KEY, false);
+        g.drawText(font, UiText.t("pages.chapter.enterKey", "Enter"), x + 18, y + 16, bright ? DarkUi.KEY_INK : DarkUi.DULL_KEY, false);
         int ink = bright ? DarkUi.PLATE_INK : DarkUi.MUTED;
         String word = claimWord();
         var label = DarkUi.heading(word);
@@ -2154,13 +2206,13 @@ final class WarTablePages {
         if (t == Progression.RARE_TIER) {
             var rares = RecruitPages.rares(claimHouse());
             if (rares.isEmpty()) return;
-            String note = "Rare of " + houseName + ", " + (rares.indexOf(rarePick()) + 1) + " of " + rares.size();
+            String note = UiText.t("pages.chapter.rareNote", "Rare of {house}, {index} of {count}", "house", houseName, "index", rares.indexOf(rarePick()) + 1, "count", rares.size());
             int nw = font.getWidth(DarkUi.body(note));
             text(g, "rare-note", DarkUi.body(note), note, right - nw, top + 28, DarkUi.IVORY);
             rectsDrawn.put("rare-note", new int[]{right - nw, top + 28, nw, 11});
             return;
         }
-        String head = "Tier " + t + " gives";
+        String head = UiText.t("pages.chapter.givesHead", "Tier {tier} gives", "tier", t);
         text(g, "gives-head", DarkUi.body(head), head, right - font.getWidth(DarkUi.body(head)), top + 2, DarkUi.MUTED);
         var lines = UiMath.lines(rewardOf(t, houseName), GIVES_W, 2, s -> font.getWidth(DarkUi.body(s)));
         int left = right, low = top + 15;
@@ -2235,12 +2287,12 @@ final class WarTablePages {
             String name = row.get("name").getAsString(), key = "invite-" + k, theirs = row.has("room") ? row.get("room").getAsString() : "";
             int width = theirs.isEmpty() ? campW() : campW() - JOIN_W - 4;
             add(key, new UiButton(ox + CAMP_X, oy + INVITE_Y + INVITE_STEP * k, width, 24, Text.literal("Invite " + name), b -> send("social:invite:" + name), (g, x, y, w, h, hot) -> paintInvite(g, key, name, x, y, w, h)));
-            if (!theirs.isEmpty()) tag("join-" + k, ox + CAMP_X + campW() - JOIN_W, oy + INVITE_Y + INVITE_STEP * k, JOIN_W, "Join", () -> joinFriend(theirs));
+            if (!theirs.isEmpty()) tag("join-" + k, ox + CAMP_X + campW() - JOIN_W, oy + INVITE_Y + INVITE_STEP * k, JOIN_W, UiText.t("pages.friends.join", "Join"), () -> joinFriend(theirs));
         }
-        if (camp.size() > INVITES) tag("more", ox + CAMP_X, oy + INVITE_Y + INVITE_STEP * INVITES, 88, "More", () -> { offset = offset + INVITES < camp.size() ? offset + INVITES : 0; screen.rebuild(); });
+        if (camp.size() > INVITES) tag("more", ox + CAMP_X, oy + INVITE_Y + INVITE_STEP * INVITES, 88, UiText.t("pages.friends.more", "More"), () -> { offset = offset + INVITES < camp.size() ? offset + INVITES : 0; screen.rebuild(); });
         if (!value("inviter").isEmpty()) {
-            tag("accept", ox + CAMP_X, oy + 344, 112, "Accept invitation", () -> send("social:accept"));
-            tag("decline", ox + CAMP_X + 120, oy + 344, 72, "Decline", () -> send("social:decline"));
+            tag("accept", ox + CAMP_X, oy + 344, 112, UiText.t("pages.friends.accept", "Accept invitation"), () -> send("social:accept"));
+            tag("decline", ox + CAMP_X + 120, oy + 344, 72, UiText.t("pages.friends.decline", "Decline"), () -> send("social:decline"));
         }
         int[] po = col(C_PARTY);
         ox = po[0]; oy = po[1];
@@ -2249,18 +2301,18 @@ final class WarTablePages {
             var m = seats.get(i);
             if (!lead || m.me()) continue;
             int y = oy + PARTY_Y + 32 + 56 * i;
-            tag("lead-" + i, ox + 488, y, 88, "Make leader", () -> send("social:transfer:" + m.name()));
-            tag("kick-" + i, ox + 584, y, 64, "Remove", () -> send("social:kick:" + m.name()));
+            tag("lead-" + i, ox + 488, y, 88, UiText.t("pages.friends.makeLeader", "Make leader"), () -> send("social:transfer:" + m.name()));
+            tag("kick-" + i, ox + 584, y, 64, UiText.t("pages.friends.remove", "Remove"), () -> send("social:kick:" + m.name()));
         }
         int px = ox + PARTY_X + 16, py = oy + PARTY_Y + 264;
-        if (!party) tag("create", px, py, 112, "Create party", () -> send("social:create"));
+        if (!party) tag("create", px, py, 112, UiText.t("pages.friends.createParty", "Create party"), () -> send("social:create"));
         else {
-            tag("leave", px, py, 104, "Leave party", () -> send("social:leave"));
-            if (lead) tag("disband", px + 112, py, 112, "Disband party", () -> send("social:disband"));
-            else tag("claim-lead", px + 112, py, 136, "Claim offline lead", () -> send("social:claim"));
+            tag("leave", px, py, 104, UiText.t("pages.friends.leaveParty", "Leave party"), () -> send("social:leave"));
+            if (lead) tag("disband", px + 112, py, 112, UiText.t("pages.friends.disbandParty", "Disband party"), () -> send("social:disband"));
+            else tag("claim-lead", px + 112, py, 136, UiText.t("pages.friends.claimLead", "Claim offline lead"), () -> send("social:claim"));
         }
         int[] ro = col(C_ROOM);
-        tag("council", ro[0] + ROOM_X + 16, ro[1] + ROOM_Y + (value("room").isEmpty() ? ROOM_TAG_DY : CREATE_DY), ROOM_W, value("room").isEmpty() ? "Open the war council" : "Back to the war council", () -> screen.page("lobby"));
+        tag("council", ro[0] + ROOM_X + 16, ro[1] + ROOM_Y + (value("room").isEmpty() ? ROOM_TAG_DY : CREATE_DY), ROOM_W, value("room").isEmpty() ? UiText.t("pages.friends.openCouncil", "Open the war council") : UiText.t("pages.friends.backToCouncil", "Back to the war council"), () -> screen.page("lobby"));
     }
 
     /** What the party allows now, as the server rules it: invitations from the party's leader to a commander in no party, a room joined by a party's leader (or a commander alone) who is in none. */
@@ -2294,19 +2346,19 @@ final class WarTablePages {
     void camp(DrawContext g, int ox, int oy) {
         var font = font();
         int x = ox + CAMP_X;
-        g.drawText(font, DarkUi.heading("In this camp"), x, oy + 124, DarkUi.BRASS, false);
+        g.drawText(font, DarkUi.heading(UiText.t("pages.friends.campHead", "In this camp")), x, oy + 124, DarkUi.BRASS, false);
         if (rows("camp").isEmpty()) {
             var server = MinecraftClient.getInstance().getServer();
             if (server != null) { // this machine runs the camp: how friends reach it (isRemote: open on the network)
-                var how = lines(g, server.isRemote() ? CAMP_OPEN : CAMP_HOW, x, oy + INVITE_Y, campW(), 4, DarkUi.MUTED);
+                var how = lines(g, server.isRemote() ? UiText.t("pages.friends.campOpen", "Open on your network: friends pick Play with friends, then Join a server on the title screen.") : UiText.t("pages.friends.campHow", "Host a camp on this network from Play with friends on the title screen; friends pick Join a server."), x, oy + INVITE_Y, campW(), 4, DarkUi.MUTED);
                 textsDrawn.put("camp-how", String.join(" ", how));
-            } else lines(g, "Commanders who join this server appear here.", x, oy + INVITE_Y, campW(), 2, DarkUi.MUTED); // no how-to to carry it
+            } else lines(g, UiText.t("pages.friends.campEmpty", "Commanders who join this server appear here."), x, oy + INVITE_Y, campW(), 2, DarkUi.MUTED); // no how-to to carry it
         } else if (!flag("partyLead")) {
-            String hint = flag("party") ? "Only the party leader invites." : "Create a party to invite them.";
+            String hint = flag("party") ? UiText.t("pages.friends.onlyLeader", "Only the party leader invites.") : UiText.t("pages.friends.createToInvite", "Create a party to invite them.");
             text(g, "invite-hint", DarkUi.body(hint), hint, x, oy + 304, DarkUi.MUTED);
         }
         if (!value("inviter").isEmpty()) {
-            String line = UiMath.trim("Invitation from " + value("inviter") + " (" + number("inviteSeconds", 0) + " s)", campW(), s -> font.getWidth(DarkUi.body(s)));
+            String line = UiMath.trim(UiText.t("pages.friends.invitation", "Invitation from {name} ({seconds} s)", "name", value("inviter"), "seconds", number("inviteSeconds", 0)), campW(), s -> font.getWidth(DarkUi.body(s)));
             text(g, "invitation", DarkUi.body(line), line, x, oy + 324, DarkUi.IVORY);
         }
     }
@@ -2321,14 +2373,14 @@ final class WarTablePages {
         int ink = b != null && b.active ? DarkUi.INK_TEXT : DarkUi.SEPIA;
         UiTex.nine(g, "table/btn-vellum-64x24", x, y, w + 1, h + 2);
         UiTex.draw(g, "table/invite-plus", x + 8, y + 8);
-        var verb = DarkUi.heading("Invite");
+        var verb = DarkUi.heading(UiText.t("pages.friends.inviteTag", "Invite"));
         int nx = x + 22 + font.getWidth(verb) + 4;
         String shown = UiMath.trim(name, x + w - 8 - nx, s -> font.getWidth(s));
         g.drawText(font, verb, x + 22, y + 6, ink, false);
         g.drawText(font, shown, nx, y + 8, ink, false);
         if (hot(b)) underline(g, key, x + 22, y + 18, nx + font.getWidth(shown) - (x + 22), ink);
         rectsDrawn.put(key, new int[]{x, y, w, h});
-        textsDrawn.put(key, "Invite " + shown);
+        textsDrawn.put(key, verb.getString() + " " + shown);
         colorsDrawn.put(key, ink);
     }
 
@@ -2361,27 +2413,28 @@ final class WarTablePages {
             text(g, "status-" + i, DarkUi.body(status(m)), status(m), x + 56, y + 28, DarkUi.SEPIA);
             rectsDrawn.put("member-" + i, new int[]{x, y, SEAT, SEAT});
         }
+        Text openSeat = DarkUi.heading(UiText.t("pages.friends.openSeat", "Open seat"));
         for (int i = seats.size(); i < PARTY_SEATS; i++) { // the places still open, as the Banner draws an empty seat
             int x = nx + 16, y = ny + 16 + 56 * i;
             UiTex.draw(g, "table/frame-back-empty-48", x + 4, y + 4);
             UiTex.draw(g, "table/frame-rim-48", x, y);
-            text(g, "open-" + i, DarkUi.heading("Open seat"), "Open seat", x + 56, y + 18, DarkUi.SEPIA);
+            text(g, "open-" + i, openSeat, openSeat.getString(), x + 56, y + 18, DarkUi.SEPIA);
             rectsDrawn.put("open-" + i, new int[]{x, y, SEAT, SEAT});
         }
-        var rule = lines(g, PARTY_RULE, nx + RULE_X, ny + 28, RULE_W, 4, DarkUi.SEPIA); // four at most: clear of row 1's tags at 88
+        var rule = lines(g, UiText.t("pages.friends.partyRule", "A party of up to four fights as one team."), nx + RULE_X, ny + 28, RULE_W, 4, DarkUi.SEPIA); // four at most: clear of row 1's tags at 88
         textsDrawn.put("party-rule", String.join(" ", rule));
         rectsDrawn.put("party-rule", new int[]{nx + RULE_X, ny + 28, RULE_W, 13 * rule.size() - 4});
         if (!flag("party")) return;
         // who leads is said once, on the leader's seat ("You lead the party", or "Leader, online"): the seats hold every member
         // (a party has at most PARTY_SEATS), so this line does not name the leader again (UI Task 8b)
-        String line = UiMath.trimWords(PARTY_LASTS, 328, s -> font.getWidth(DarkUi.body(s)));
+        String line = UiMath.trimWords(UiText.t("pages.friends.partyLasts", "The party lasts through matches and restarts."), 328, s -> font.getWidth(DarkUi.body(s)));
         text(g, "party-line", DarkUi.body(line), line, nx + 16, ny + 240, DarkUi.SEPIA);
     }
 
     static String status(Seat m) {
-        if (m.me()) return !flag("party") ? "No party yet" : m.leader() ? "You lead the party" : "You";
-        String on = m.online() ? "online" : "offline";
-        return m.leader() ? "Leader, " + on : m.online() ? "Online" : "Offline";
+        if (m.me()) return !flag("party") ? UiText.t("pages.friends.statusNoParty", "No party yet") : m.leader() ? UiText.t("pages.friends.statusYouLead", "You lead the party") : UiText.t("pages.friends.statusYou", "You");
+        if (m.leader()) return m.online() ? UiText.t("pages.friends.statusLeaderOnline", "Leader, online") : UiText.t("pages.friends.statusLeaderOffline", "Leader, offline");
+        return m.online() ? UiText.t("pages.friends.statusOnline", "Online") : UiText.t("pages.friends.statusOffline", "Offline");
     }
 
     /** The war council's note: the room is run from the war council page (its code, teams, bots and start), so this note says so and carries the one tag that opens it (a widget). */
@@ -2391,12 +2444,13 @@ final class WarTablePages {
         String room = value("room");
         rectsDrawn.put("room", UiTex.draw(g, "table/note-room-short", x, y));
         texturesDrawn.put("room", "table/note-room-short");
-        g.drawText(font, DarkUi.heading("War council"), lx, y + 12, DarkUi.INK_TEXT, false);
+        g.drawText(font, DarkUi.heading(UiText.t("pages.friends.councilHead", "War council")), lx, y + 12, DarkUi.INK_TEXT, false);
         if (!room.isEmpty()) {
-            var lead = DarkUi.body("You are in room");
+            String inRoom = UiText.t("pages.friends.inRoom", "You are in room");
+            var lead = DarkUi.body(inRoom);
             g.drawText(font, lead, lx, y + 30, DarkUi.SEPIA, false);
             drawCode(g, font, room, lx + font.getWidth(lead) + 5, y + 30, DarkUi.SEPIA);
-            textsDrawn.put("room-line", "You are in room " + room + ".");
+            textsDrawn.put("room-line", inRoom + " " + room + ".");
         }
     }
 
@@ -2468,10 +2522,10 @@ final class WarTablePages {
         textsDrawn.put("card-name", map.name());
         var desc = UiMath.lines(map.description(), CARD_TEXT_W, 3, s -> font.getWidth(DarkUi.body(s)));
         for (int i = 0; i < desc.size(); i++) WarTableHome.centred(g, DarkUi.body(desc.get(i)), ox + CARD_CX, oy + CARD_Y + 110 + 13 * i, DarkUi.SEPIA);
-        String status = GravesAndGloryClient.running ? "A battle is on: maps wait until it ends" : "The war council host picks the map";
+        String status = GravesAndGloryClient.running ? UiText.t("pages.field.statusRunning", "A battle is on: maps wait until it ends") : UiText.t("pages.field.statusIdle", "The war council host picks the map");
         text(g, "status", DarkUi.body(status), status, ox + MAP_X, oy + STATUS_Y, DarkUi.INK_TEXT);
         rectsDrawn.put("status", new int[]{ox + MAP_X, oy + STATUS_Y, font.getWidth(DarkUi.body(status)), 11});
-        WarTableHome.centred(g, DarkUi.heading("Bots"), ox + CARD_CX, oy + BOTS_HEAD_Y, DarkUi.INK_TEXT);
+        WarTableHome.centred(g, DarkUi.heading(UiText.t("pages.field.botsHead", "Bots")), ox + CARD_CX, oy + BOTS_HEAD_Y, DarkUi.INK_TEXT);
         textsDrawn.put("bots-current", CampaignClient.tierName(CampaignClient.difficulty));
         statuses(g, ox, oy);
     }
@@ -2484,9 +2538,10 @@ final class WarTablePages {
         UiTex.draw(g, "table/tack", x + 6, y + 4);
         UiTex.draw(g, "table/tack", x + GLOSS_W - 12, y + 4);
         rectsDrawn.put("statuses", new int[]{x, y, GLOSS_W, GLOSS_H});
-        g.drawText(font, DarkUi.heading("Statuses"), x + 10, y + 10, DarkUi.INK_TEXT, false);
+        String statusesHead = UiText.t("pages.field.statusesHead", "Statuses");
+        g.drawText(font, DarkUi.heading(statusesHead), x + 10, y + 10, DarkUi.INK_TEXT, false);
         g.fill(x + 10, y + 24, x + GLOSS_W - 10, y + 25, DarkUi.SEPIA_LINE);
-        textsDrawn.put("statuses-head", "Statuses");
+        textsDrawn.put("statuses-head", statusesHead);
         int prevLines = 1, ry = y + GLOSS_ROW_Y - GLOSS_STEP; // each row starts below the last row's measured text and a clear gap, so a long line never meets the next name
         for (var e : Statuses.Glossary.entries()) {
             var lines = glossLines(e.line(), v -> font.getWidth(DarkUi.body(v)));

@@ -11,7 +11,7 @@ import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
 
 /**
- * Every Graves and Glory play channel as a 1.21.1 CustomPayload (24: 17 server to client, 7 client to server). Channel ids are
+ * Every Graves and Glory play channel as a 1.21.1 CustomPayload (26: 18 server to client, 8 client to server). Channel ids are
  * unchanged and stay defined where 1.20.1 defined them (GravesAndGlory, CommandNet, MotionEvents, RankSync). Each body is the
  * channel's 1.20.1 byte layout (RawBody), so the send and receive sites keep their PacketByteBuf code:
  * <pre>
@@ -25,7 +25,7 @@ import net.minecraft.util.Identifier;
 public final class Payloads {
     private Payloads() {}
 
-    /** Registers all 27 types (25 play, 2 configuration), once, from the common initializer (GravesAndGlory.onInitialize): both sides need them. */
+    /** Registers all 29 types (27 play, 2 configuration), once, from the common initializer (GravesAndGlory.onInitialize): both sides need them. */
     public static void register() {
         PayloadTypeRegistry.playS2C().register(CampPayload.ID, CampPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(CommandPayload.ID, CommandPayload.CODEC);
@@ -52,6 +52,8 @@ public final class Payloads {
         PayloadTypeRegistry.playC2S().register(PlanPayload.ID, PlanPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(TacticalPayload.ID, TacticalPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(TacticalV2Payload.ID, TacticalV2Payload.CODEC);
+        PayloadTypeRegistry.playS2C().register(UiSheetPayload.ID, UiSheetPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(UiEditPayload.ID, UiEditPayload.CODEC);
         PayloadTypeRegistry.configurationS2C().register(ReleaseCheckRequestPayload.ID, ReleaseCheckRequestPayload.CODEC);
         PayloadTypeRegistry.configurationC2S().register(ReleaseCheckReplyPayload.ID, ReleaseCheckReplyPayload.CODEC);
     }
@@ -310,6 +312,26 @@ public final class Payloads {
         /** A fresh reader over the body, for a receive site. */
         public PacketByteBuf buf() { return RawBody.reader(body); }
         @Override public Id<TacticalV2Payload> getId() { return ID; }
+    }
+    /** S2C GravesAndGlory.UI_SHEET: ui_sheet_v1 (UiEdits: a kind byte, then UTF-8 JSON as a byte array). */
+    public record UiSheetPayload(byte[] body) implements CustomPayload {
+        public static final Id<UiSheetPayload> ID = new Id<>(GravesAndGlory.UI_SHEET);
+        public static final PacketCodec<PacketByteBuf, UiSheetPayload> CODEC = RawBody.codec(UiSheetPayload::new, UiSheetPayload::body);
+        /** Wraps the bytes a send site wrote (copied). */
+        public static UiSheetPayload of(PacketByteBuf buf) { return new UiSheetPayload(RawBody.copy(buf)); }
+        /** A fresh reader over the body, for a receive site. */
+        public PacketByteBuf buf() { return RawBody.reader(body); }
+        @Override public Id<UiSheetPayload> getId() { return ID; }
+    }
+    /** C2S GravesAndGlory.UI_EDIT: ui_edit_v1 (UiEdits: the body is the request's UTF-8 JSON). */
+    public record UiEditPayload(byte[] body) implements CustomPayload {
+        public static final Id<UiEditPayload> ID = new Id<>(GravesAndGlory.UI_EDIT);
+        public static final PacketCodec<PacketByteBuf, UiEditPayload> CODEC = RawBody.codec(UiEditPayload::new, UiEditPayload::body);
+        /** Wraps the bytes a send site wrote (copied). */
+        public static UiEditPayload of(PacketByteBuf buf) { return new UiEditPayload(RawBody.copy(buf)); }
+        /** A fresh reader over the body, for a receive site. */
+        public PacketByteBuf buf() { return RawBody.reader(body); }
+        @Override public Id<UiEditPayload> getId() { return ID; }
     }
 
     // Configuration phase (VersionGate, port P1.3). Same id both ways; the registries are per direction.

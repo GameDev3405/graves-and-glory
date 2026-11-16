@@ -12,14 +12,33 @@ public final class Presentation {
     static int impact=1;
     /** Troop depth: the raised relief of near troops (TroopDepth). Off draws every troop flat; weapons keep their sprite meshes. Saved with the other presentation preferences. */
     static volatile boolean troopDepth=true;
-    static String notice="Choose a look. Your choice affects only your screen.";
+    /** The line under the screen: set by setNotice (its wording is read through the gate each time it is drawn) or, from HudSize, as plain text. */
+    static String notice=null,noticeKey="intro",noticeArg="",noticeShown=null;
     static boolean loaded,changing;
     static long hitAt,lastHit;static float hitStrength;static int receivedImpacts;
     static final String[] SHADERS={"Off / fastest","Reimagined","Unbound","MakeUp Ultra Fast"};
     static final String[] FILES={"","ComplementaryReimagined_r5.5.1.zip","ComplementaryUnbound_r5.5.1.zip","MakeUp-UltraFast-9.5g.zip"};
+    static void setNotice(String key,String arg){noticeKey=key;noticeArg=arg;notice=noticeShown=resolveNotice();}
+    /** What the screen draws under its buttons: the keyed notice through the gate, or a notice another class set directly. */
+    static String noticeText(){if(notice==null||notice==noticeShown)return noticeShown=notice=resolveNotice();return notice;}
+    private static String resolveNotice(){
+        switch(noticeKey){
+            case "saveFailed":return UiText.t("presentationSettings.noticeSaveFailed","Your visual preference could not be saved.");
+            case "shaderMissing":return UiText.t("presentationSettings.noticeShaderMissing","This shader is missing from this installation.");
+            case "shaderFailed":return UiText.t("presentationSettings.noticeShaderFailed","That shader could not run here. Restored shaders off.");
+            case "shadersOff":return UiText.t("presentationSettings.noticeShadersOff","Shaders off. Your choice is saved.");
+            case "shaderOn":return UiText.t("presentationSettings.noticeShaderOn","{shader} enabled. Your choice is saved.","shader",noticeArg);
+            case "switchFailed":return UiText.t("presentationSettings.noticeSwitchFailed","Shaders could not be changed. Your game is still running.");
+            default:return UiText.t("presentationSettings.noticeIntro","Choose a look. Your choice affects only your screen.");
+        }
+    }
+    /** Option labels for the screen's buttons, through the gate. */
+    static String shaderLabel(int i){return i==0?UiText.t("presentationSettings.shaderOff","Off / fastest"):SHADERS[i];}
+    static String impactLabel(int i){return i==0?UiText.t("presentationSettings.impactOff","OFF"):i==1?UiText.t("presentationSettings.impactSubtle","SUBTLE"):UiText.t("presentationSettings.impactStrong","STRONG");}
+    static String onOff(boolean on){return on?UiText.t("presentationSettings.on","ON"):UiText.t("presentationSettings.off","OFF");}
     static Path file(){return MinecraftClient.getInstance().runDirectory.toPath().resolve("gravesandglory/presentation.json");}
     static void load(){if(loaded)return;loaded=true;try{var j=JsonParser.parseString(Files.readString(file())).getAsJsonObject();impact=Math.max(0,Math.min(2,j.get("impact").getAsInt()));troopDepth=!j.has("troopDepth")||j.get("troopDepth").getAsBoolean();}catch(Exception ignored){}}
-    static void save(){try{Files.createDirectories(file().getParent());SafeFiles.write(file(),"{\"impact\":"+impact+",\"troopDepth\":"+troopDepth+"}");}catch(Exception e){notice="Your visual preference could not be saved.";}}
+    static void save(){try{Files.createDirectories(file().getParent());SafeFiles.write(file(),"{\"impact\":"+impact+",\"troopDepth\":"+troopDepth+"}");}catch(Exception e){setNotice("saveFailed","");}}
     static int shader(){
         try{Class<?> iris=Class.forName("net.irisshaders.iris.Iris");Object config=iris.getMethod("getIrisConfig").invoke(null);if(!(Boolean)config.getClass().getMethod("areShadersEnabled").invoke(config))return 0;
             Object name=config.getClass().getMethod("getShaderPackName").invoke(config);String s=((java.util.Optional<?>)name).map(Object::toString).orElse("");for(int i=1;i<FILES.length;i++)if(FILES[i].equals(s))return i;
@@ -28,13 +47,13 @@ public final class Presentation {
     static void selectShader(int index){
         if(index<0||index>=FILES.length||changing)return;changing=true;
         try{
-            var c=MinecraftClient.getInstance();if(index>0&&!Files.isRegularFile(c.runDirectory.toPath().resolve("shaderpacks").resolve(FILES[index]))){notice="This shader is missing from this installation.";return;}
+            var c=MinecraftClient.getInstance();if(index>0&&!Files.isRegularFile(c.runDirectory.toPath().resolve("shaderpacks").resolve(FILES[index]))){setNotice("shaderMissing","");return;}
             Class<?> iris=Class.forName("net.irisshaders.iris.Iris");Object config=iris.getMethod("getIrisConfig").invoke(null);Class<?> type=config.getClass();
             type.getMethod("setShadersEnabled",boolean.class).invoke(config,index>0);if(index>0)type.getMethod("setShaderPackName",String.class).invoke(config,FILES[index]);type.getMethod("save").invoke(config);iris.getMethod("reload").invoke(null);
             var error=(java.util.Optional<?>)iris.getMethod("getStoredError").invoke(null);
-            if(index>0&&(error.isPresent()||(Boolean)iris.getMethod("isFallback").invoke(null))){type.getMethod("setShadersEnabled",boolean.class).invoke(config,false);type.getMethod("save").invoke(config);iris.getMethod("reload").invoke(null);notice="That shader could not run here. Restored shaders off.";}
-            else notice=index==0?"Shaders off. Your choice is saved.":SHADERS[index]+" enabled. Your choice is saved.";
-        }catch(Exception e){notice="Shaders could not be changed. Your game is still running.";System.err.println("[Graves and Glory] Shader switch failed: "+e.getClass().getSimpleName());}finally{changing=false;}
+            if(index>0&&(error.isPresent()||(Boolean)iris.getMethod("isFallback").invoke(null))){type.getMethod("setShadersEnabled",boolean.class).invoke(config,false);type.getMethod("save").invoke(config);iris.getMethod("reload").invoke(null);setNotice("shaderFailed","");}
+            else if(index==0)setNotice("shadersOff","");else setNotice("shaderOn",SHADERS[index]);
+        }catch(Exception e){setNotice("switchFailed","");System.err.println("[Graves and Glory] Shader switch failed: "+e.getClass().getSimpleName());}finally{changing=false;}
     }
     static void impact(float strength){load();long now=System.nanoTime();if(impact==0||CampaignClient.cinematic()||now-lastHit<250_000_000L)return;lastHit=hitAt=now;hitStrength=Math.max(0,Math.min(1,strength));}
     public static float kick(){if(impact==0||CampaignClient.cinematic())return 0;double t=(System.nanoTime()-hitAt)/130_000_000.0;return t<0||t>1?0:(float)(Math.sin(t*Math.PI)*(1-t)*hitStrength*(impact==2?1.1:.35));}

@@ -27,9 +27,10 @@ class RecruitmentScreen extends ArmyScreen {
     void show(int next){if(tab!=next){tab=next;clearAndInit();}}
     /** The rail, as every War Table page has it: Back (Esc) to the battle, then the two pages' plaques, the one shown lit as the page you are on ("> Barracks", "> Armoury"). */
     void railTabs(){
-        add(WarTable.plaque(56,96,"icon-camp","Back","Esc",61,0,b->close()));
-        barracksTab=add(tab==0?here(184,"Barracks","icon-recruit"):WarTable.plaque(184,112,"icon-recruit","Barracks",null,0,0,b->show(0)));
-        armouryTab=add(tab==1?here(304,"Armoury","icon-banner"):WarTable.plaque(304,112,"icon-banner","Armoury",null,0,0,b->show(1)));
+        String barracksLabel=UiText.t("recruitment.rail.barracks","Barracks"),armouryLabel=UiText.t("recruitment.rail.armoury","Armoury");
+        add(WarTable.plaque(56,96,"icon-camp",UiText.t("recruitment.rail.back","Back"),UiText.t("recruitment.rail.backKey","Esc"),61,0,b->close()));
+        barracksTab=add(tab==0?here(184,barracksLabel,"icon-recruit"):WarTable.plaque(184,112,"icon-recruit",barracksLabel,null,0,0,b->show(0)));
+        armouryTab=add(tab==1?here(304,armouryLabel,"icon-banner"):WarTable.plaque(304,112,"icon-banner",armouryLabel,null,0,0,b->show(1)));
     }
     private UiButton here(int x,String label,String icon){
         String mark="table/"+icon;
@@ -66,16 +67,16 @@ class RecruitmentScreen extends ArmyScreen {
     static int price(Spec.TroopsRow t){return t.cost();}
     static boolean trainable(Spec.TroopsRow t){int i=index(t);return nearBarracks&&gold>=price(t)&&roster[i]+pending[i]<listed(t)&&count(true)<RosterMath.maxTroops();}
     String unavailable(Spec.TroopsRow t){
-        if(!nearBarracks)return "Return to your barracks to recruit.";
+        if(!nearBarracks)return UiText.t("recruitment.unavailable.away","Return to your barracks to recruit.");
         int i=index(t),listed=listed(t);
-        if(listed==0)return "Not in your banner. Change your banner in the war council.";
-        if(roster[i]+pending[i]>=listed)return "All "+listed+" of your banner are fielded or in training.";
-        if(count(true)>=RosterMath.maxTroops())return "Army and training queue are full.";
-        if(gold<price(t))return "You need "+(price(t)-gold)+" more gold.";
+        if(listed==0)return UiText.t("recruitment.unavailable.notInBanner","Not in your banner. Change your banner in the war council.");
+        if(roster[i]+pending[i]>=listed)return UiText.t("recruitment.unavailable.allFielded","All {listed} of your banner are fielded or in training.","listed",listed);
+        if(count(true)>=RosterMath.maxTroops())return UiText.t("recruitment.unavailable.full","Army and training queue are full.");
+        if(gold<price(t))return UiText.t("recruitment.unavailable.needGold","You need {more} more gold.","more",price(t)-gold);
         return trainingTime(t);
     }
     /** The training time line: whole seconds without a decimal (4 seconds), others with theirs (3.5 seconds). */
-    static String trainingTime(Spec.TroopsRow t){double s=Commander.trainingTicks(t)/20.0;String n=s==Math.rint(s)?Long.toString(Math.round(s)):Double.toString(s);return "Training time: "+n+(n.equals("1")?" second":" seconds");}
+    static String trainingTime(Spec.TroopsRow t){double s=Commander.trainingTicks(t)/20.0;String n=s==Math.rint(s)?Long.toString(Math.round(s)):Double.toString(s);return n.equals("1")?UiText.t("recruitment.trainingTime.one","Training time: {time} second","time",n):UiText.t("recruitment.trainingTime.many","Training time: {time} seconds","time",n);}
     void update(){
         for(var c:controls){var t=Spec.TROOPS[c.index];c.train.active=trainable(t);c.disband.active=nearBarracks&&roster[c.index]>0;}
         var c=chosen();if(c!=null){recruit.active=c.train.active;disband.active=c.disband.active;recruit.setMessage(Text.literal("RECRUIT / "+price(Spec.TROOPS[selected])+" GOLD"));}

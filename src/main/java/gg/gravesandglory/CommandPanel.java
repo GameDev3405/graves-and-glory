@@ -7,7 +7,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.resource.language.I18n;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.Util;
 import net.minecraft.util.math.Vec3d;
@@ -34,8 +33,25 @@ public final class CommandPanel {
     public static final int EDGE = 600, CAPTION = 601, TOOLBAR = 602, SLIDER = 603, HIDE = 604, RESET = 605, DONE = 606;
     /** The orders in pennant order, with their names. */
     public static final String[] ORDERS = {"attack", "charge", "follow", "retreat", "formation"};
-    static final String[] NAMES = {"Attack", "Charge", "Follow me", "Retreat", "Formation"};
-    static final String[] SHAPE_NAMES = {"Wall", "Banner", "Wedge", "Loose"};
+    /** The pennant's word for order i (ORDERS order), through the UI editor's gate. */
+    static String orderName(int i) {
+        return switch (i) {
+            case 0 -> UiText.t("command.pennant.attack", "Attack");
+            case 1 -> UiText.t("command.pennant.charge", "Charge");
+            case 2 -> UiText.t("command.pennant.follow", "Follow me");
+            case 3 -> UiText.t("command.pennant.retreat", "Retreat");
+            default -> UiText.t("command.pennant.formation", "Formation");
+        };
+    }
+    /** The tray cell's word for shape j (SHAPE_ICONS order). */
+    static String shapeName(int j) {
+        return switch (j) {
+            case 0 -> UiText.t("command.tray.wall", "Wall");
+            case 1 -> UiText.t("command.tray.banner", "Banner");
+            case 2 -> UiText.t("command.tray.wedge", "Wedge");
+            default -> UiText.t("command.tray.loose", "Loose");
+        };
+    }
     static final String[] ICONS = {"command/icon_attack", "command/icon_charge", "command/icon_follow", "command/icon_retreat", "command/icon_formation"};
     static final String[] SHAPE_ICONS = {"command/shape_block", "command/shape_line", "command/shape_wedge", "command/shape_loose"};
     static final int CREAM = 0xfff6dc, GOLD = 0xffd27a, TRIM = 0xe6c46a, DARK = 0x1b1a1f;
@@ -247,7 +263,7 @@ public final class CommandPanel {
         int poleX = 2, flagX = 7;
         // pennant width: the mockup's 150 of 960, or as long as its words need
         int words = 0;
-        for (int i = 0; i < ORDERS.length; i++) words = Math.max(words, font.getWidth(NAMES[i]) + KEY_GAP + keySlot(font, i));
+        for (int i = 0; i < ORDERS.length; i++) words = Math.max(words, font.getWidth(orderName(i)) + KEY_GAP + keySlot(font, i));
         int W = Math.max(64, Math.max((int) Math.round(sw * 150 / 960.0), NAME_X + words + KEY_PAD));
         int ext = sw >= 600 ? (int) Math.round(W * 0.19) : Math.max(4, (int) Math.round(W * 0.08));
         W = Math.min(W, limit - flagX - ext);
@@ -417,13 +433,13 @@ public final class CommandPanel {
             g.fill(bandL, yy + 7, bandL + 1, yy + 17, band); g.fill(bandR - 1, yy + 7, bandR, yy + 17, band);
             // cream ink with the vanilla shadow reads on any House cloth (the gilded one included); gold stays on the active trim only
             int words = ta(cooling ? 0xd9000000 | CREAM : 0xff000000 | CREAM);
-            g.drawText(font, NAMES[i], x + NAME_X, yy + 8, words, true);
+            g.drawText(font, orderName(i), x + NAME_X, yy + 8, words, true);
             if (!cooling) {
                 String kk = key(ORDERS[i]);
                 g.drawText(font, kk, keyRight - font.getWidth(kk), yy + 8, ta(hov ? 0xff000000 | GOLD : 0xe6000000 | CREAM), true);
             } else {
                 // the seconds left take the key's place (the key does nothing while Charge cools), inside the body like the key
-                String secs = (chargeLeft + 19) / 20 + "s";
+                String secs = UiText.t("command.pennant.chargeSeconds", "{seconds}s", "seconds", (chargeLeft + 19) / 20);
                 int secsX = keyRight - font.getWidth(secs);
                 g.drawText(font, secs, secsX, yy + 8, ta(0xffffffff), true);
                 record(SWEEP, x + 1, yy, Math.max(24, secsX + font.getWidth(secs) - x - 1), 24);
@@ -486,7 +502,7 @@ public final class CommandPanel {
                 // the key number in its own row at the top-left, the shape below it, the name at the foot: nothing overlaps
                 UiTex.draw(g, SHAPE_ICONS[j], cx + (cw - 24) / 2, cy + 9);
                 RenderSystem.setShaderColor(1, 1, 1, 1);
-                String name = SHAPE_NAMES[j];
+                String name = shapeName(j);
                 int ink = 0xff000000 | (picked ? GOLD : CREAM);
                 g.drawText(font, name, cx + (cw - font.getWidth(name) + 1) / 2, cy + CELL_H - 9, ink, true);
                 g.drawText(font, String.valueOf(j + 1), cx + 2, cy + 1, 0x80000000 | (picked ? GOLD : CREAM), false); // the key number dim: the cell is clicked, the number a shortcut
@@ -611,7 +627,7 @@ public final class CommandPanel {
         HudLayout.drawHandle(g, handle, onHandle);
         if (resizing) HudLayout.sizeLabel(g, font, handle, ps, sw, sh);
 
-        String cap = I18n.translate(PanelLayout.hidden ? "gui.gravesandglory.panel_edit.caption_hidden" : "gui.gravesandglory.panel_edit.caption");
+        String cap = PanelLayout.hidden ? UiText.t("command.edit.captionHidden", "Hidden - drag to move") : UiText.t("command.edit.caption", "Drag a part, or its corner square to resize");
         // wider than the panel: two lines, split at the space nearest the middle
         List<String> capLines = new ArrayList<>(List.of(cap));
         if (font.getWidth(cap) + 8 > Math.max(b[2], 140) && cap.indexOf(' ') > 0) {
@@ -621,11 +637,12 @@ public final class CommandPanel {
         }
         int capW = 0; for (String l : capLines) capW = Math.max(capW, font.getWidth(l) + 8);
         int capH = 2 + 10 * capLines.size();
-        String opl = I18n.translate("gui.gravesandglory.panel_edit.opacity"), pct = Math.round(PanelLayout.opacity * 100) + "%";
-        String hideL = I18n.translate(PanelLayout.hidden ? "gui.gravesandglory.panel_edit.show" : "gui.gravesandglory.panel_edit.hide");
-        String resetL = I18n.translate("gui.gravesandglory.panel_edit.reset"), doneL = I18n.translate("gui.gravesandglory.panel_edit.done");
-        int track = sw < 600 ? 44 : 64, pctW = font.getWidth("100%"), pad = 5, gap = 4, bh = 14, th = bh + pad * 2;
-        int hideW = Math.max(font.getWidth(I18n.translate("gui.gravesandglory.panel_edit.hide")), font.getWidth(I18n.translate("gui.gravesandglory.panel_edit.show"))) + 10;
+        String opl = UiText.t("command.edit.opacity", "Opacity"), pct = percentText(Math.round(PanelLayout.opacity * 100));
+        String hideWord = UiText.t("command.edit.hide", "Hide"), showWord = UiText.t("command.edit.show", "Show");
+        String hideL = PanelLayout.hidden ? showWord : hideWord;
+        String resetL = UiText.t("command.edit.reset", "Reset"), doneL = UiText.t("command.edit.done", "Done");
+        int track = sw < 600 ? 44 : 64, pctW = font.getWidth(percentText(100)), pad = 5, gap = 4, bh = 14, th = bh + pad * 2;
+        int hideW = Math.max(font.getWidth(hideWord), font.getWidth(showWord)) + 10;
         int resetW = font.getWidth(resetL) + 10, doneW = font.getWidth(doneL) + 10;
         int tw = pad + font.getWidth(opl) + gap + 3 + track + 3 + gap + pctW + gap * 2 + hideW + gap + resetW + gap + doneW + pad;
 
@@ -703,6 +720,9 @@ public final class CommandPanel {
         button(g, font, DONE, doneL, x, cy, doneW, bh, mouse);
     }
 
+    /** The opacity readout in edit mode (and, at 100, the widest it gets, which sizes its room). */
+    private static String percentText(long percent) { return UiText.t("command.edit.opacityPercent", "{percent}%", "percent", percent); }
+
     private static boolean meets(int x, int y, int w, int h, int[] r) { return x < r[0] + r[2] && r[0] < x + w && y < r[1] + r[3] && r[1] < y + h; }
 
     /** A dark-wood button with a brass edge (lighter under the cursor); returns its right edge. */
@@ -741,7 +761,15 @@ public final class CommandPanel {
     }
 
     static String shortName(String id) {
-        return switch (id) { case "infantry" -> "Inf"; case "ranged" -> "Arch"; case "cavalry" -> "Ride"; case "all" -> "All"; case "support" -> "Sup"; case "siege" -> "Siege"; default -> id; };
+        return switch (id) {
+            case "infantry" -> UiText.t("command.pill.infantry", "Inf");
+            case "ranged" -> UiText.t("command.pill.ranged", "Arch");
+            case "cavalry" -> UiText.t("command.pill.cavalry", "Ride");
+            case "all" -> UiText.t("command.pill.all", "All");
+            case "support" -> UiText.t("command.pill.support", "Sup");
+            case "siege" -> UiText.t("command.pill.siege", "Siege");
+            default -> id;
+        };
     }
 
     /**

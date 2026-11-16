@@ -122,7 +122,7 @@ public final class ChargeCamera {
     static void tick(MinecraftClient c, KeyBinding chargeKey) {
         while (toggleKey != null && toggleKey.wasPressed()) {
             setOverheadAlways(!overheadAlways, true);
-            if (c.player != null) c.player.sendMessage(Text.literal("Charge camera stays overhead: " + (overheadAlways ? "ON" : "OFF")), true);
+            if (c.player != null) c.player.sendMessage(Text.literal(overheadAlways ? UiText.t("charge.overheadOn", "Charge camera stays overhead: ON") : UiText.t("charge.overheadOff", "Charge camera stays overhead: OFF")), true);
         }
         var p = c.player;
         if (p == null || c.world == null || !GravesAndGloryClient.battleActive() || p.isDead() || p.isSpectator()) { reset(); return; }
