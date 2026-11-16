@@ -1,6 +1,5 @@
 package gg.gravesandglory;
 
-import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import net.fabricmc.api.ClientModInitializer;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -10,14 +9,11 @@ import net.minecraft.block.enums.DoubleBlockHalf;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.option.Perspective;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.registry.tag.BlockTags;
-import net.minecraft.resource.ResourceType;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Hand;
@@ -153,17 +149,13 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
         try{
             var entry=c.getNetworkHandler()==null?null:c.getNetworkHandler().getPlayerListEntry(c.player.getUuid());
             if(entry==null)return false;
-            if(steveTexture==null){
-                var stream=c.getDefaultResourcePack().open(ResourceType.CLIENT_RESOURCES,new Identifier("minecraft","textures/entity/player/wide/steve.png"));
-                if(stream==null)return false;
-                try(var in=stream.get()){var id=new Identifier("gravesandglory_test","film/steve");c.getTextureManager().registerTexture(id,new NativeImageBackedTexture(NativeImage.read(in)));steveTexture=id;}
-            }
-            entry.getSkinTexture();
-            var textures=PlayerListEntry.class.getDeclaredField("textures");textures.setAccessible(true);
-            @SuppressWarnings("unchecked") var map=(Map<MinecraftProfileTexture.Type,Identifier>)textures.get(entry);
-            map.put(MinecraftProfileTexture.Type.SKIN,steveTexture);
-            var model=PlayerListEntry.class.getDeclaredField("model");model.setAccessible(true);model.set(entry,"default");
-            return steveTexture.equals(c.player.getSkinTexture())&&"default".equals(c.player.getModel());
+            // 1.21.1: a PlayerListEntry holds a Supplier<SkinTextures>; swap it for the vanilla classic (wide) Steve.
+            if(steveTexture==null)steveTexture=Identifier.ofVanilla("textures/entity/player/wide/steve.png");
+            var steve=new net.minecraft.client.util.SkinTextures(steveTexture,null,null,null,net.minecraft.client.util.SkinTextures.Model.WIDE,false);
+            var textures=PlayerListEntry.class.getDeclaredField("texturesSupplier");textures.setAccessible(true);
+            textures.set(entry,(java.util.function.Supplier<net.minecraft.client.util.SkinTextures>)()->steve);
+            var now=c.player.getSkinTextures();
+            return steveTexture.equals(now.texture())&&now.model()==net.minecraft.client.util.SkinTextures.Model.WIDE;
         }catch(Exception e){System.out.println("[film] classic Steve failed: "+e);return false;}
     }
 
@@ -487,7 +479,7 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
             if(onPath.contains(e.getKey())||d<.45||Math.abs(x-lx)+Math.abs(z-lz)<=1)continue;
             var pos=new BlockPos(x,top+1,z);if(!w.getBlockState(pos.down()).isOf(Blocks.GRASS_BLOCK))continue;
             int k=hash(x,z,7);
-            if(k<16)set(pos,Blocks.GRASS.getDefaultState(),b);
+            if(k<16)set(pos,Blocks.SHORT_GRASS.getDefaultState(),b);
             else if(k<19)set(pos,Blocks.FERN.getDefaultState(),b);
             else if(k<21){set(pos,Blocks.TALL_GRASS.getDefaultState().with(TallPlantBlock.HALF,DoubleBlockHalf.LOWER),b);set(pos.up(),Blocks.TALL_GRASS.getDefaultState().with(TallPlantBlock.HALF,DoubleBlockHalf.UPPER),b);}
             else if(k==21)set(pos,Blocks.POPPY.getDefaultState(),b);
