@@ -393,7 +393,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
     /** The HUD: the camp line in camp, the entrance letterbox during a battle's entrance, else the Iron Ledger (BattleHud), with the
      *  contact accent over it; the ebb screen cue under all of it. */
     static void renderHud(DrawContext g,net.minecraft.client.render.RenderTickCounter tick){float delta=tick.getTickDelta(false);
-        var c=MinecraftClient.getInstance();if(c.player==null||c.currentScreen instanceof ArmyScreen||Diagnostics.active()&&Diagnostics.hideHud()){BattleHud.clear();return;}
+        var c=MinecraftClient.getInstance();if(c.player==null||c.currentScreen instanceof ArmyScreen||Diagnostics.active()&&Diagnostics.hideHud()||c.options.hudHidden&&c.currentScreen==null){BattleHud.clear();return;} // 1.21.1 fires HudRenderCallback with F1 (hudHidden) on; 1.20.1 did not draw the mod HUD then
         ebbScreen(g,c);
         boolean ledger=battleActive()&&!CampaignClient.cinematic();
         if(ledger)BattleHud.render(g,delta);else BattleHud.clear();
