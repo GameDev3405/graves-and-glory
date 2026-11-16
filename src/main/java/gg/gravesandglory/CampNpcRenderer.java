@@ -57,7 +57,7 @@ public final class CampNpcRenderer extends VillagerEntityRenderer {
         Spec.CampNpcsRow l = look(e);
         if (l == null) return super.shouldRender(e, frustum, x, y, z);
         if (!e.shouldRender(x, y, z)) return false;
-        double grow = Math.max(1, l.scale());
+        double grow = Math.max(1, l.scale()) + 0.25;
         return e.ignoreCameraFrustum || frustum.isVisible(e.getBoundingBox().expand(grow, grow, grow));
     }
 

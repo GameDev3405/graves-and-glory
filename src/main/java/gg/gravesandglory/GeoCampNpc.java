@@ -22,7 +22,7 @@ final class GeoCampNpc implements GeoReplacedEntity {
     private static final RawAnimation IDLE = RawAnimation.begin().thenLoop(IDLE_CLIP);
     private static final RawAnimation INTERACT = RawAnimation.begin().thenPlay(INTERACT_CLIP).thenLoop(IDLE_CLIP);
     /** Blend between clips, ticks. */
-    static final int BLEND = 3;
+    static final int BLEND = 7;
 
     /** The campNpcs row this rig draws. */
     final Spec.CampNpcsRow look;
