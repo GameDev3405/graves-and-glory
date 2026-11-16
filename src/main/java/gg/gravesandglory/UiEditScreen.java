@@ -11,7 +11,7 @@ import java.util.Set;
 /**
  * The UI editor's typing box for one line (UI editor design 5.3 and 5.6, phase 1: words). Shows the piece's id, where its wording
  * comes from, its default, and the live values it offers as {slots}; the field holds the template, checked as it is typed with the
- * same rules the server applies (UiSheet.problem). Save sends it to the owner's draft; Default clears the draft's edit. A locked piece
+ * same rules the server applies (UiSheet.problem). Save sends it to the owner's draft; Default puts back the code default (over a built-in edit too). A locked piece
  * (a design-sheet name, server text) only says where it comes from. The editor's own controls are not editable pieces.
  */
 public final class UiEditScreen extends Screen {
@@ -43,7 +43,7 @@ public final class UiEditScreen extends Screen {
         addDrawableChild(field);
         setInitialFocus(field);
         save = addDrawableChild(ButtonWidget.builder(Text.literal("Save to draft"), b -> save()).dimensions(x, y + 60, 110, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Default"), b -> { UiEditorClient.set(piece.id, null, true); close(); }).dimensions(x + 116, y + 60, 80, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Default"), b -> { UiEditorClient.set(piece.id, piece.def, true); close(); }).dimensions(x + 116, y + 60, 80, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Cancel"), b -> close()).dimensions(x + 202, y + 60, 80, 20).build());
         check();
     }
@@ -58,7 +58,7 @@ public final class UiEditScreen extends Screen {
         if (problem() != null) return;
         String text = field.getText();
         String before = UiText.draft().get(piece.id);
-        if (!text.equals(before == null ? piece.def : before)) UiEditorClient.set(piece.id, text, true);
+        if (!text.equals(before == null ? UiText.builtin().getOrDefault(piece.id, piece.def) : before)) UiEditorClient.set(piece.id, text, true);
         close();
     }
 

@@ -41,7 +41,7 @@ public final class UiEdits {
     /** Largest editor request accepted, in bytes. */
     public static final int REQUEST_CAP = 16 * 1024;
     /** Largest sheet or editor state sent, in bytes. */
-    public static final int SEND_CAP = 1 << 20;
+    public static final int SEND_CAP = 900 * 1024; // under the 1 MiB custom payload limit, with room for the frame
 
     static Path dir() { return AdminCommands.dir(); }
     static Path sheetFile() { return dir().resolve("ui-edits.json"); }
@@ -51,7 +51,9 @@ public final class UiEdits {
     private static Map<String, String> renames;
     private static UiSheet sheet;
     private static String problem;
-    private static final Map<UUID, Map<String, String>> DRAFTS = new HashMap<>();
+    /** An owner's own draft: the published version it was started from, and its edits. Only kept once he changed something. */
+    static final class Draft { int base; final TreeMap<String, String> edits; Draft(int base, Map<String, String> edits) { this.base = base; this.edits = new TreeMap<>(edits); } }
+    private static final Map<UUID, Draft> DRAFTS = new HashMap<>();
 
     // ---- resources ----
 
@@ -112,25 +114,33 @@ public final class UiEdits {
 
     static void saveSheet() throws IOException { SafeFiles.write(sheetFile(), sheet.toJson(true)); }
 
-    /** An owner's draft: his saved one, else a copy of the published edits. */
-    static synchronized Map<String, String> draft(UUID owner) {
-        Map<String, String> d = DRAFTS.get(owner);
+    /** An owner's saved draft (from memory or his draft file), or null when he has none. */
+    static synchronized Draft own(UUID owner) {
+        Draft d = DRAFTS.get(owner);
         if (d != null) return d;
-        d = new TreeMap<>(sheet().edits);
         Path f = draftFile(owner);
         try {
-            if (Files.isRegularFile(f)) d = new TreeMap<>(UiSheet.renamed(UiSheet.parse(Files.readString(f)).edits, renames()));
+            if (Files.isRegularFile(f)) {
+                UiSheet saved = UiSheet.parse(Files.readString(f));
+                d = new Draft(saved.version, UiSheet.renamed(saved.edits, renames()));
+                DRAFTS.put(owner, d);
+            }
         } catch (IOException | RuntimeException bad) {
             AdminOg.keepBad(f);
             SafeFiles.warn.accept("UI draft " + f.getFileName() + " could not be read (" + bad.getMessage() + "); the draft starts again from the published sheet.");
         }
-        DRAFTS.put(owner, d);
         return d;
     }
 
-    static void saveDraft(UUID owner, Map<String, String> d) throws IOException {
+    /** An owner's draft edits: his saved draft, else the published edits as they are now. */
+    static synchronized Map<String, String> draft(UUID owner) {
+        Draft d = own(owner);
+        return d != null ? d.edits : new TreeMap<>(sheet().edits);
+    }
+
+    static void saveDraft(UUID owner, Draft d) throws IOException {
         UiSheet s = new UiSheet();
-        s.version = sheet().version; s.edits = new TreeMap<>(d);
+        s.version = d.base; s.edits = new TreeMap<>(d.edits); // the version is the published one the draft was started from
         SafeFiles.write(draftFile(owner), s.toJson(false));
     }
 
@@ -217,21 +227,28 @@ public final class UiEdits {
     static synchronized String set(UUID owner, String id, String text) {
         UiSheet.Piece piece = pieces().get(id);
         if (piece == null) return "No piece " + id + " in this build.";
-        Map<String, String> d = draft(owner);
         if (text != null) {
             String why = UiSheet.problem(piece, text);
             if (why != null) return "Not saved: " + why + ".";
-            if (text.equals(piece.def())) d.remove(id); else d.put(id, text);
-        } else d.remove(id);
-        try { saveDraft(owner, d); } catch (IOException e) { return "Draft kept in memory only; the file could not be written: " + e.getMessage(); }
+        }
+        Draft own = own(owner);
+        if (own == null) { own = new Draft(sheet().version, sheet().edits); DRAFTS.put(owner, own); }
+        Map<String, String> d = own.edits;
+        // the code default needs no edit, unless a built-in edit would otherwise show instead of it
+        if (text == null || text.equals(piece.def()) && !builtin().containsKey(id)) d.remove(id); else d.put(id, text);
+        try { saveDraft(owner, own); } catch (IOException e) { return "Draft kept in memory only; the file could not be written: " + e.getMessage(); }
         Set<String> dropped = text == null ? Set.of() : UiTemplate.dropped(piece.def(), text);
         return dropped.isEmpty() ? "Draft saved." : "Draft saved. No longer shown: " + UiTemplate.braced(dropped) + ".";
     }
 
     static synchronized String publish(MinecraftServer server, UUID owner, String who) {
         if (problem != null) return "Not published: ui-edits.json is damaged (" + problem + "). /gg ui reset starts a fresh sheet; the damaged one is kept as ui-edits.json.bad.";
-        Map<String, String> d = draft(owner);
         UiSheet s = sheet();
+        Draft own = own(owner);
+        if (own != null && own.base != s.version)
+            return "Not published: your draft was started from version " + own.base + ", and version " + s.version + " has been published since"
+                + (s.who.isEmpty() ? "" : " (by " + s.who + ")") + ". Discard your draft to start again from version " + s.version + ", then retype your lines.";
+        Map<String, String> d = own != null ? own.edits : s.edits;
         UiSheet before = s.copy();
         String sum;
         try { sum = s.publish(d, pieces(), who, Instant.now()); }

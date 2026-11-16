@@ -230,6 +230,8 @@ public final class UiSheet {
             String p = problem(pieces.get(e.getKey()), e.getValue());
             if (p != null) throw new IllegalArgumentException(e.getKey() + ": " + p);
         }
+        // nothing changed: no new version, so none is pushed out of the history
+        if (draft.equals(edits)) throw new IllegalArgumentException("nothing to publish: the draft is the same as version " + version);
         return advance(draft, who, now, null);
     }
 

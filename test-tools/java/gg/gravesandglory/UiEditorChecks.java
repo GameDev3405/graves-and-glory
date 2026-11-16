@@ -41,6 +41,10 @@ public final class UiEditorChecks implements ClientModInitializer {
                 if (t == 140) {
                     shot(c, "overlay");
                     report("lines-located", !UiEditorClient.LAST.isEmpty(), UiEditorClient.LAST.size() + " boxes");
+                    // the War Table home's cards and Change, on parchment and vellum (Kort, 2026-11-16): each located for a click
+                    for (String want : new String[] {"home.sheet.practiceName", "home.sheet.practiceSubtitle", "home.sheet.skirmishName", "home.sheet.campaignSubtitle", "home.field.change"})
+                        report("located-" + want, UiEditorClient.LAST.stream().anyMatch(b -> b.id().equals(want)), String.valueOf(UiText.seen(want) == null ? "unseen" : UiText.seen(want).shown));
+                    report("strip-clear-of-tab-bar", UiEditorClient.barTop(c.currentScreen) >= c.currentScreen.height / 2, "strip top " + UiEditorClient.barTop(c.currentScreen) + " of " + c.currentScreen.height);
                     // the first located editable line on the page
                     for (var b : UiEditorClient.LAST) { var s = UiText.seen(b.id()); if (s != null && !s.locked && s.slots.isEmpty()) { id = b.id(); before = s.shown; break; } }
                     report("editable-line-found", id != null, String.valueOf(id));
@@ -73,14 +77,24 @@ public final class UiEditorChecks implements ClientModInitializer {
                 if (t == 350 && id != null) {
                     report("non-owner-request-ignored", !"SHOULD NOT SAVE".equals(UiText.draft().get(id)) && EDIT.equals(UiText.server().get(id)), String.valueOf(UiText.draft().get(id)));
                     owners(c, true);
+                    UiEditorClient.set(id, "STALE DRAFT", false); // a draft started from the published version, which the reset then replaces
                     c.player.networkHandler.sendChatCommand("gg ui reset");
                 }
                 if (t == 390 && id != null) {
                     report("reset-to-built-in", UiText.server().isEmpty() && UiText.t(id, before).equals(before), UiText.t(id, before));
                     shot(c, "reset");
                     report("history-kept", Files.readString(FabricLoader.getInstance().getConfigDir().resolve("gravesandglory/ui-edits.json")).contains("EDITED IN GAME"), "ui-edits.json");
+                    UiEditorClient.op("publish");
                 }
-                if (t == 400) { Files.deleteIfExists(admin()); c.setScreen(null); c.scheduleStop(); }
+                if (t == 420 && id != null) {
+                    report("stale-draft-refused", UiEditorClient.message.startsWith("Not published: your draft was started from version") && UiText.server().isEmpty(), UiEditorClient.message);
+                    UiEditorClient.op("discard");
+                }
+                if (t == 440 && id != null) {
+                    UiEditorClient.op("publish");
+                }
+                if (t == 460 && id != null) report("no-change-publish-refused", UiEditorClient.message.startsWith("Not published: nothing to publish"), UiEditorClient.message);
+                if (t == 470) { Files.deleteIfExists(admin()); c.setScreen(null); c.scheduleStop(); }
             } catch (Exception e) { report("suite", false, e.toString()); e.printStackTrace(); c.scheduleStop(); }
         });
     }

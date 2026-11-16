@@ -93,6 +93,8 @@ public final class UiEditorCheck {
         check(s.history.get(0).time.equals(t0.toString()), "a history entry keeps its own publish time");
         check(throwsOn(() -> s.publish(Map.of("hud.wave", "{nope}"), pieces, "Kort", t0)), "publish validates again");
         check(s.version == 2, "a refused publish changes nothing");
+        int histBefore = s.history.size();
+        check(throwsOn(() -> s.publish(new HashMap<>(s.edits), pieces, "Kort", t0)) && s.version == 2 && s.history.size() == histBefore, "a publish that changes nothing is refused and adds no version");
         Map<String, String> withOrphan = new HashMap<>(s.edits); withOrphan.put("gone.piece", "old");
         s.publish(withOrphan, pieces, "Kort", t0.plusSeconds(120));
         check(s.edits.containsKey("gone.piece") && UiSheet.orphans(s.edits, pieces).equals(List.of("gone.piece")), "an orphan is kept and listed");

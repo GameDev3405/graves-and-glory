@@ -9,6 +9,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.resource.language.I18n;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -262,7 +263,7 @@ public final class HudLayout {
             case "lesson" -> UiText.t("hudLayout.part.lesson", "Lesson");
             case "respawn" -> UiText.t("hudLayout.part.respawn", "Respawn");
             case "relics" -> UiText.t("hudLayout.part.relics", "Relics");
-            default -> part;
+            default -> { String key = "gui.gravesandglory.hud_edit." + part; yield I18n.hasTranslation(key) ? I18n.translate(key) : part; } // a part this build has no piece for: its language key, as before
         };
     }
 

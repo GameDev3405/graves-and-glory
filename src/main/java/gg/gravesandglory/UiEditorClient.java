@@ -54,10 +54,15 @@ public final class UiEditorClient {
     public static void register() {
         UiText.setBuiltin(UiEdits.builtin());
         ClientPlayNetworking.registerGlobalReceiver(Payloads.UiSheetPayload.ID, (payload, context) -> {
-            PacketByteBuf buf = payload.buf();
-            byte kind = buf.readByte();
-            String json = new String(buf.readByteArray(UiEdits.SEND_CAP), StandardCharsets.UTF_8);
-            context.client().execute(() -> receive(context.client(), kind, json));
+            try {
+                PacketByteBuf buf = payload.buf();
+                byte kind = buf.readByte();
+                String json = new String(buf.readByteArray(UiEdits.SEND_CAP), StandardCharsets.UTF_8);
+                context.client().execute(() -> receive(context.client(), kind, json));
+            } catch (RuntimeException bad) {
+                // a malformed or oversized body from the server: ignored, the wording stays as it was
+                SafeFiles.warn.accept("UI editor message from the server could not be read (" + bad.getMessage() + "); ignored.");
+            }
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(UiEditorClient::leave));
         ScreenEvents.AFTER_INIT.register((client, screen, w, h) -> {
@@ -174,28 +179,37 @@ public final class UiEditorClient {
         Box hover = hit(mx, my);
         for (Box b : LAST) {
             boolean edited = UiText.draft().containsKey(b.id());
-            int c = hover != null && hover.id().equals(b.id()) ? 0xffffd75a : edited ? 0xc06fd16f : 0x80e8d8a8;
+            int c = hover != null && hover.id().equals(b.id()) ? 0xffffd75a : edited ? 0xc06fd16f : 0xd0e8d8a8;
             outline(g, b, c);
         }
-        int w = s.width;
-        g.fill(0, 0, w, BAR_H, 0xe0201810);
+        int w = s.width, top = barTop(s);
+        g.fill(0, top, w, top + BAR_H, 0xe0201810);
         int x = 4;
-        g.drawText(tr, "UI EDITOR", x, 3, 0xffffd75a, false);
+        g.drawText(tr, "UI EDITOR", x, top + 3, 0xffffd75a, false);
         x += tr.getWidth("UI EDITOR") + 10;
         for (String label : BAR) {
             int bw = tr.getWidth(label) + 8;
-            boolean over = my >= 0 && my < BAR_H && mx >= x && mx < x + bw;
-            g.fill(x, 1, x + bw, BAR_H - 1, over ? 0xff6b5530 : 0xff3a2e1c);
-            g.drawText(tr, label, x + 4, 3, 0xffe8d8a8, false);
+            boolean over = my >= top && my < top + BAR_H && mx >= x && mx < x + bw;
+            g.fill(x, top + 1, x + bw, top + BAR_H - 1, over ? 0xff6b5530 : 0xff3a2e1c);
+            g.drawText(tr, label, x + 4, top + 3, 0xffe8d8a8, false);
             x += bw + 4;
         }
         String tip = hover != null ? hover.id() + "  (" + UiText.source(hover.id()) + ")" : message;
-        if (tip != null && !tip.isEmpty()) g.drawText(tr, tr.trimToWidth(tip, Math.max(0, w - x - 8)), x + 6, 3, 0xffb8c8a0, false);
+        if (tip != null && !tip.isEmpty()) g.drawText(tr, tr.trimToWidth(tip, Math.max(0, w - x - 8)), x + 6, top + 3, 0xffb8c8a0, false);
         g.getMatrices().pop();
     }
 
+    /** The strip sits on the screen's bottom edge: the War Table's tab bar and page titles are on the top one. */
+    static int barTop(Screen s) { return s.height - BAR_H; }
+
+    /** A dark ring round a light one, so the box shows on dark wood and on light parchment or vellum alike. */
     static void outline(DrawContext g, Box b, int c) {
         int x0 = (int) Math.floor(b.x0()) - 1, y0 = (int) Math.floor(b.y0()) - 1, x1 = (int) Math.ceil(b.x1()) + 1, y1 = (int) Math.ceil(b.y1()) + 1;
+        ring(g, x0 - 1, y0 - 1, x1 + 1, y1 + 1, 0xc0201810);
+        ring(g, x0, y0, x1, y1, c);
+    }
+
+    static void ring(DrawContext g, int x0, int y0, int x1, int y1, int c) {
         g.fill(x0, y0, x1, y0 + 1, c); g.fill(x0, y1 - 1, x1, y1, c); g.fill(x0, y0, x0 + 1, y1, c); g.fill(x1 - 1, y0, x1, y1, c);
     }
 
@@ -209,7 +223,7 @@ public final class UiEditorClient {
     /** A click while the editor is on: the strip's buttons, or a line. Always swallowed (returns false). */
     static boolean click(Screen s, double mx, double my, int button) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (my < BAR_H) {
+        if (my >= barTop(s)) {
             var tr = client.textRenderer;
             int x = 4 + tr.getWidth("UI EDITOR") + 10;
             for (String label : BAR) {
