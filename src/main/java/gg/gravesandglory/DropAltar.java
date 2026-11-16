@@ -33,7 +33,7 @@ import java.util.List;
 final class DropAltar {
     private DropAltar() {}
     record Part(Identifier model, boolean glow, double x, double y, double z) {}
-    static final Identifier COIN = new Identifier("gravesandglory", "dropboard/drop_coin");
+    static final Identifier COIN = Identifier.of("gravesandglory", "dropboard/drop_coin");
     /** How far off (blocks) the altar is still drawn. */
     static final double RANGE = 160;
     private static List<Part> parts;
@@ -45,7 +45,7 @@ final class DropAltar {
         ModelLoadingPlugin.register(ctx -> {
             ctx.addModels(COIN);
             // the altar's regions: 4 across, 5 up, plain (0-19) and glowing (20-39); the ones with no art are simply missing
-            for (int n = 0; n < 40; n++) if (DropAltar.class.getResource("/assets/gravesandglory/models/dropboard/drop_altar_" + n + ".json") != null) ctx.addModels(new Identifier("gravesandglory", "dropboard/drop_altar_" + n));
+            for (int n = 0; n < 40; n++) if (DropAltar.class.getResource("/assets/gravesandglory/models/dropboard/drop_altar_" + n + ".json") != null) ctx.addModels(Identifier.of("gravesandglory", "dropboard/drop_altar_" + n));
         });
     }
 
@@ -56,7 +56,7 @@ final class DropAltar {
             JsonObject o = JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
             for (var e : o.getAsJsonArray("parts")) {
                 var p = e.getAsJsonObject(); var off = p.getAsJsonArray("offset");
-                list.add(new Part(new Identifier("gravesandglory", "dropboard/" + p.get("model").getAsString()), p.get("glow").getAsBoolean(), off.get(0).getAsDouble() / 16, off.get(1).getAsDouble() / 16, off.get(2).getAsDouble() / 16));
+                list.add(new Part(Identifier.of("gravesandglory", "dropboard/" + p.get("model").getAsString()), p.get("glow").getAsBoolean(), off.get(0).getAsDouble() / 16, off.get(1).getAsDouble() / 16, off.get(2).getAsDouble() / 16));
             }
         } catch (Exception e) { System.out.println("[Graves and Glory] drop board: the altar's parts could not be read: " + e); }
         return parts = list;

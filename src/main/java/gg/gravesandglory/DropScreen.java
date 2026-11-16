@@ -17,7 +17,7 @@ final class DropScreen extends Screen {
     @Override public void removed() { if (client != null) GLFW.glfwSetInputMode(client.getWindow().getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL); }
     @Override public boolean shouldPause() { return false; }
     @Override public boolean shouldCloseOnEsc() { return false; }
-    @Override public void renderBackground(DrawContext g) {}
+    @Override public void renderBackground(DrawContext g, int mx, int my, float delta) {} // 1.21: Screen.render draws this under the widgets
 
     @Override public void render(DrawContext g, int mouseX, int mouseY, float delta) { DropRender.screen(g, width, height); }
 

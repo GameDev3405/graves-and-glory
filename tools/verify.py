@@ -106,7 +106,7 @@ def run(args):
             lambda: step('clips',[sys.executable,'tools/clips.py','--verify']),
             java_lane,
             lambda: (game_guard(),step('build',[*gradle,'build','compileLocalTestTools','-x','test'],1200)))  # the guard again right before Gradle, as before
-        # 1.21.1 port: every CustomPayload codec round-trips the channel's 1.20.1 body (26 types, no game). After the build, so it checks
+        # 1.21.1 port: every CustomPayload codec round-trips the channel's 1.20.1 body (27 types, no game). After the build, so it checks
         # the real compiled classes (full mode); it needs the build's Loom cache (mapped jar, remapped Fabric networking) and fails without it.
         step('payload-roundtrip',[sys.executable,'work/port/lane-a/run_payload_check.py'])
         if args.tier=='release':

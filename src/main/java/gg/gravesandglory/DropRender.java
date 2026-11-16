@@ -12,7 +12,6 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.item.DyeableItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.particle.DustParticleEffect;
@@ -105,10 +104,10 @@ final class DropRender {
                 MobEntity m = ArmyMobs.portrait(spec.entity(), c.world);
                 m.setCustomNameVisible(false); m.setSilent(true);
                 RankSync.setLocal(m, new RankSync.Rank(1, 1, 1));
-                m.equipStack(EquipmentSlot.MAINHAND, new ItemStack(Registries.ITEM.get(new Identifier(spec.weapon()))));
-                m.equipStack(EquipmentSlot.HEAD, new ItemStack(Registries.ITEM.get(new Identifier(spec.helmet()))));
-                var chest = new ItemStack(Registries.ITEM.get(new Identifier(spec.chest())));
-                if (chest.getItem() instanceof DyeableItem dye) dye.setColor(chest, 0xb0a080);
+                m.equipStack(EquipmentSlot.MAINHAND, new ItemStack(Registries.ITEM.get(Identifier.of(spec.weapon()))));
+                m.equipStack(EquipmentSlot.HEAD, new ItemStack(Registries.ITEM.get(Identifier.of(spec.helmet()))));
+                var chest = new ItemStack(Registries.ITEM.get(Identifier.of(spec.chest())));
+                if (chest.isIn(net.minecraft.registry.tag.ItemTags.DYEABLE)) chest.set(net.minecraft.component.DataComponentTypes.DYED_COLOR, new net.minecraft.component.type.DyedColorComponent(0xb0a080, true));
                 m.equipStack(EquipmentSlot.CHEST, chest);
                 if (ArmyMobs.tags(spec).contains("shield")) m.equipStack(EquipmentSlot.OFFHAND, GravesAndGlory.Battle.shield(spec, GravesAndGlory.Battle.PORTRAIT_FIELD));
                 TroopModels.dress(m, "linen");
@@ -236,7 +235,7 @@ final class DropRender {
                 m.push();
                 m.translate(at[0], at[1], at[2]);
                 m.multiply(ctx.camera().getRotation());
-                m.scale(-0.03f, -0.03f, 0.03f);
+                m.scale(0.03f, -0.03f, -0.03f); // 1.21: the camera rotation carries a 180 degree yaw (lane B billboard rule)
                 var font = c.textRenderer;
                 font.draw(Text.literal(v.name), -font.getWidth(v.name) / 2f, 0, 0xffeee9df, false, m.peek().getPositionMatrix(), consumers, net.minecraft.client.font.TextRenderer.TextLayerType.NORMAL, 0x60000000, LightmapTextureManager.MAX_LIGHT_COORDINATE);
                 m.pop();
@@ -296,8 +295,8 @@ final class DropRender {
         double[] a = DropLayout.world(bx - half, bottom, forward), b = DropLayout.world(bx + half, bottom, forward), d = DropLayout.world(bx + half, top, forward), e = DropLayout.world(bx - half, top, forward);
         double[][] quad = {a, b, d, e};
         float[] alphas = {alpha, alpha, 0, 0};
-        for (int i = 0; i < 4; i++) vc.vertex(mat, (float) quad[i][0], (float) quad[i][1], (float) quad[i][2]).color(c[0], c[1], c[2], alphas[i]).next();
-        for (int i = 3; i >= 0; i--) vc.vertex(mat, (float) quad[i][0], (float) quad[i][1], (float) quad[i][2]).color(c[0], c[1], c[2], alphas[i]).next();
+        for (int i = 0; i < 4; i++) vc.vertex(mat, (float) quad[i][0], (float) quad[i][1], (float) quad[i][2]).color(c[0], c[1], c[2], alphas[i]);
+        for (int i = 3; i >= 0; i--) vc.vertex(mat, (float) quad[i][0], (float) quad[i][1], (float) quad[i][2]).color(c[0], c[1], c[2], alphas[i]);
     }
 
     private static void place(LivingEntity e, double x, double y, double z, float yaw) {

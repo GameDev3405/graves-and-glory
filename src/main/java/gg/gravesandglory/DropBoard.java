@@ -135,7 +135,7 @@ final class DropBoard {
             boolean his = p.getUuid().equals(d.who);
             if (his ? !roller : p.getWorld() != c.b.world || !DropLayout.watches(p.getX(), p.getZ())) continue;
             if (!ServerPlayNetworking.canSend(p, GravesAndGlory.DROP)) continue;
-            ServerPlayNetworking.send(p, GravesAndGlory.DROP, new net.minecraft.network.PacketByteBuf(buf.copy()));
+            ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.DropPayload.of(buf));
         }
         buf.release();
     }

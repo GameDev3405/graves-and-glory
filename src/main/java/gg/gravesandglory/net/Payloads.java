@@ -25,7 +25,7 @@ import net.minecraft.util.Identifier;
 public final class Payloads {
     private Payloads() {}
 
-    /** Registers all 26 types (24 play, 2 configuration), once, from the common initializer (GravesAndGlory.onInitialize): both sides need them. */
+    /** Registers all 27 types (25 play, 2 configuration), once, from the common initializer (GravesAndGlory.onInitialize): both sides need them. */
     public static void register() {
         PayloadTypeRegistry.playS2C().register(CampPayload.ID, CampPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(CommandPayload.ID, CommandPayload.CODEC);
@@ -38,6 +38,7 @@ public final class Payloads {
         PayloadTypeRegistry.playS2C().register(EndingBeginPayload.ID, EndingBeginPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(FeedPayload.ID, FeedPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(GearPayload.ID, GearPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(DropPayload.ID, DropPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(RelicsPayload.ID, RelicsPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(AttackPayload.ID, AttackPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(HitPayload.ID, HitPayload.CODEC);
@@ -166,6 +167,16 @@ public final class Payloads {
         /** A fresh reader over the body, for a receive site. */
         public PacketByteBuf buf() { return RawBody.reader(body); }
         @Override public Id<GearPayload> getId() { return ID; }
+    }
+    /** S2C GravesAndGlory.DROP: drop_v1 (DropBoard: a byte kind, a varInt drop id, then the kind's fields). */
+    public record DropPayload(byte[] body) implements CustomPayload {
+        public static final Id<DropPayload> ID = new Id<>(GravesAndGlory.DROP);
+        public static final PacketCodec<PacketByteBuf, DropPayload> CODEC = RawBody.codec(DropPayload::new, DropPayload::body);
+        /** Wraps the bytes a send site wrote (copied). */
+        public static DropPayload of(PacketByteBuf buf) { return new DropPayload(RawBody.copy(buf)); }
+        /** A fresh reader over the body, for a receive site. */
+        public PacketByteBuf buf() { return RawBody.reader(body); }
+        @Override public Id<DropPayload> getId() { return ID; }
     }
     /** S2C GravesAndGlory.RELICS: relics_v1. */
     public record RelicsPayload(byte[] body) implements CustomPayload {

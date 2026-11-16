@@ -14,9 +14,9 @@ import net.minecraft.network.packet.CustomPayload;
 
 /**
  * Port P1.3 codec check (lane A): every Graves and Glory payload type round-trips through its codec, byte for byte, without a game.
- * For each of the 26 types: an empty body and random bodies (1 byte to 64 KiB) encode then decode to an equal body (Arrays.equals:
+ * For each of the 27 types: an empty body and random bodies (1 byte to 64 KiB) encode then decode to an equal body (Arrays.equals:
  * a record of a byte[] compares by reference), the encoded bytes are the body itself (D5: the 1.20.1 wire layout), the codec reads
- * every byte, of() copies without moving the caller's reader index, and buf() gives a fresh reader each call. Also: the 26 ids
+ * every byte, of() copies without moving the caller's reader index, and buf() gives a fresh reader each call. Also: the 27 ids
  * are distinct per direction and phase, and every id is in the gravesandglory namespace. Never shipped; run with
  * work/port/lane-a/run_payload_check.py. Not a network test: the in-game dedicated-server exchange is a separate gate.
  */
@@ -39,6 +39,7 @@ public final class PayloadRoundTripCheck {
         new Type<>("endingBegin", "playS2C", Payloads.EndingBeginPayload.ID, Payloads.EndingBeginPayload.CODEC, Payloads.EndingBeginPayload::of, Payloads.EndingBeginPayload::body, Payloads.EndingBeginPayload::buf),
         new Type<>("feed", "playS2C", Payloads.FeedPayload.ID, Payloads.FeedPayload.CODEC, Payloads.FeedPayload::of, Payloads.FeedPayload::body, Payloads.FeedPayload::buf),
         new Type<>("gear", "playS2C", Payloads.GearPayload.ID, Payloads.GearPayload.CODEC, Payloads.GearPayload::of, Payloads.GearPayload::body, Payloads.GearPayload::buf),
+        new Type<>("drop", "playS2C", Payloads.DropPayload.ID, Payloads.DropPayload.CODEC, Payloads.DropPayload::of, Payloads.DropPayload::body, Payloads.DropPayload::buf),
         new Type<>("relics", "playS2C", Payloads.RelicsPayload.ID, Payloads.RelicsPayload.CODEC, Payloads.RelicsPayload::of, Payloads.RelicsPayload::body, Payloads.RelicsPayload::buf),
         new Type<>("attack", "playS2C", Payloads.AttackPayload.ID, Payloads.AttackPayload.CODEC, Payloads.AttackPayload::of, Payloads.AttackPayload::body, Payloads.AttackPayload::buf),
         new Type<>("hit", "playS2C", Payloads.HitPayload.ID, Payloads.HitPayload.CODEC, Payloads.HitPayload::of, Payloads.HitPayload::body, Payloads.HitPayload::buf),
@@ -80,7 +81,7 @@ public final class PayloadRoundTripCheck {
     }
 
     public static void main(String[] args) {
-        check(TYPES.size() == 26, "expected 26 payload types, found " + TYPES.size());
+        check(TYPES.size() == 27, "expected 27 payload types, found " + TYPES.size());
         Set<String> seen = new HashSet<>();
         for (var t : TYPES) {
             check(t.id().id().getNamespace().equals("gravesandglory"), t.name() + ": id outside the gravesandglory namespace");
