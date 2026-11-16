@@ -58,6 +58,7 @@ public final class PlainClients {
         if (!ON) return;
         PlainLooks.init();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            if (PolymerSupport.LOADED) PolymerBridge.warm(PlainLooks.sentTypes());
             Path zip = Path.of("plain-pack.zip").toAbsolutePath();
             boolean ok = PolymerBridge.buildPack(zip);
             long size = -1;
@@ -119,7 +120,7 @@ public final class PlainClients {
         }
     }
 
-    static String kindOf(ItemStack st) {
+    public static String kindOf(ItemStack st) {
         var data = st.get(DataComponentTypes.CUSTOM_DATA);
         if (data == null) return null;
         var nbt = data.copyNbt();
@@ -148,7 +149,7 @@ public final class PlainClients {
     }
 
     /** Keeps the plain items in their hotbar slots (the locked hotbar). */
-    static void hotbar(ServerPlayerEntity p) {
+    public static void hotbar(ServerPlayerEntity p) {
         var inv = p.getInventory();
         for (var e : HOTBAR.entrySet()) if (!e.getValue().equals(kindOf(inv.getStack(e.getKey())))) inv.setStack(e.getKey(), item(e.getValue()));
     }

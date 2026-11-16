@@ -16,7 +16,7 @@ M2 = os.path.expanduser("~/.gradle/caches/modules-2/files-2.1")
 NAME = "PlainPlayer"
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 WM_KEYDOWN, WM_KEYUP = 0x0100, 0x0101
-KEYS = {"F2": (0x71, 0x3C), "ESC": (0x1B, 0x01), "1": (0x31, 0x02), "2": (0x32, 0x03), "3": (0x33, 0x04), "4": (0x34, 0x05), "5": (0x35, 0x06), "6": (0x36, 0x07), "F1": (0x70, 0x3B)}
+KEYS = {"F2": (0x71, 0x3C), "ESC": (0x1B, 0x01), "1": (0x31, 0x02), "2": (0x32, 0x03), "3": (0x33, 0x04), "4": (0x34, 0x05), "5": (0x35, 0x06), "6": (0x36, 0x07), "F1": (0x70, 0x3B), "8": (0x38, 0x09), "Q": (0x51, 0x10)}
 
 
 def classpath():
@@ -194,6 +194,14 @@ class Session:
         self.shot("after-chunk-resend-barrier-markers", 6)
         self.rc("item replace entity %s weapon.offhand with minecraft:air" % NAME)
         self.rc("gamemode survival " + NAME)
+        q = "execute at %s if entity @e[type=minecraft:item,distance=..8]" % NAME
+        before = "passed" in self.rc(q)
+        press(self.hwnd, "8")  # the Recruit book
+        time.sleep(0.5)
+        press(self.hwnd, "Q")  # drop it: the server keeps it (PlainDropMixin)
+        time.sleep(1.5)
+        after = "passed" in self.rc(q)
+        print("  drop check: %s" % ("LEAK (an item entity appeared)" if after and not before else "ok (no item dropped)" if not after else "unknown (items already near)"), flush=True)
         self.rc("execute as %s at @s run tp @s ~ ~ ~ 90 10" % NAME)  # face west, away from the wagon and blocks
         self.rc("plainprobe mage " + NAME)  # a lone mage, AI off, out of any battle
         self.shot("mage-as-witch-alone", 4)

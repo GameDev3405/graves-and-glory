@@ -36,6 +36,15 @@ public final class PolymerBridge {
         PolymerResourcePackUtils.RESOURCE_PACK_CREATION_EVENT.register(builder -> PlainPack.addFiles(builder::addData));
     }
 
+    /** Fills Polymer's per-type template-entity and tracked-data caches (plain HashMaps) on the server thread, so packet writing
+     *  on netty threads only ever reads them. */
+    public static void warm(java.util.Collection<net.minecraft.entity.EntityType<?>> types) {
+        for (var t : types) {
+            eu.pb4.polymer.common.impl.entity.InternalEntityHelpers.getEntity(t);
+            eu.pb4.polymer.common.impl.entity.InternalEntityHelpers.getExampleTrackedDataOfEntityType(t);
+        }
+    }
+
     /** An order's hotbar icon (paper with the order's model), or null before init. */
     public static ItemStack icon(String order) {
         var m = ICONS.get(order);

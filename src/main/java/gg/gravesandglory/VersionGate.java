@@ -131,10 +131,11 @@ public final class VersionGate {
     }
 
     /** The configuration task: sends the empty request and only then accepts a reply from this player; the receiver completes it. */
-    record CheckTask(UUID player) implements ServerPlayerConfigurationTask {
+    record CheckTask(UUID player, ServerConfigurationNetworkHandler handler) implements ServerPlayerConfigurationTask {
         static final Key KEY = new Key(CONFIG_CHANNEL.toString());
         @Override public void sendPacket(Consumer<Packet<?>> sender) {
             PENDING.add(player);
+            WAITING.put(player, new Waiting(handler, KEY, System.currentTimeMillis())); // the grace starts when the request is sent
             sender.accept(ServerConfigurationNetworking.createS2CPacket(new Payloads.ReleaseCheckRequestPayload(new byte[0])));
         }
         @Override public Key getKey() { return KEY; }
@@ -160,9 +161,9 @@ public final class VersionGate {
     private static void registerConfiguration() {
         ServerConfigurationConnectionEvents.CONFIGURE.register((handler, server) -> {
             UUID id = handler.getDebugProfile().getId();
+            forget(id); // nothing left over from an earlier connection of this UUID
             if (ServerConfigurationNetworking.canSend(handler, Payloads.ReleaseCheckRequestPayload.ID)) {
-                handler.addTask(new CheckTask(id));
-                WAITING.put(id, new Waiting(handler, CheckTask.KEY, System.currentTimeMillis()));
+                handler.addTask(new CheckTask(id, handler));
                 if (ServerConfigurationNetworking.canSend(handler, Payloads.ClientHelloRequestPayload.ID)) handler.addTask(new HelloTask(id, handler));
                 return;
             }

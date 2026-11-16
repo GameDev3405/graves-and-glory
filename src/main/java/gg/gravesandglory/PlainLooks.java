@@ -23,6 +23,9 @@ public final class PlainLooks {
     /** The troop row of each tracked army mob by entity id: filled on the server thread when a player starts tracking it (read when
      *  Polymer writes the spawn packet), dropped when the entity unloads. */
     static final Map<Integer, Spec.TroopsRow> TROOPS = new ConcurrentHashMap<>();
+    /** The plain look of each entity id, decided once on the first plain query and dropped on unload: a later TROOPS entry or
+     *  name change can never flip a tracked mob's type mid-life, which a vanilla client would not survive. */
+    static final Map<Integer, EntityType<?>> PLAIN = new ConcurrentHashMap<>();
 
     static void init() {
         EntityTrackingEvents.START_TRACKING.register((entity, player) -> {
@@ -31,16 +34,30 @@ public final class PlainLooks {
             if (b.spawning != null && b.spawning.mob == entity) { TROOPS.put(entity.getId(), b.spawning.spec); return; }
             for (var u : b.units) if (u.mob == entity) { TROOPS.put(entity.getId(), u.spec); return; }
         });
-        ServerEntityEvents.ENTITY_UNLOAD.register((entity, world) -> TROOPS.remove(entity.getId()));
+        ServerEntityEvents.ENTITY_UNLOAD.register((entity, world) -> { TROOPS.remove(entity.getId()); PLAIN.remove(entity.getId()); });
     }
 
     /** A troop's type as this viewer sees it. */
     public static EntityType<?> look(Entity e, ServerPlayerEntity viewer) {
         EntityType<?> real = e.getType();
         if (viewer == null || !VersionGate.plain(viewer)) return real;
-        Spec.TroopsRow t = TROOPS.get(e.getId());
-        if (t == null && e.hasCustomName()) t = ArmyMobs.named(e.getCustomName().getString());
-        return t == null ? real : byRole(t, real);
+        return PLAIN.computeIfAbsent(e.getId(), id -> {
+            Spec.TroopsRow t = TROOPS.get(id);
+            if (t == null && e.hasCustomName()) t = ArmyMobs.named(e.getCustomName().getString());
+            return t == null ? real : byRole(t, real);
+        });
+    }
+
+    /** Every type a troop, the wagon or a stand-in can be sent as (for warming Polymer's per-type caches at start). */
+    public static java.util.Set<EntityType<?>> sentTypes() {
+        java.util.Set<EntityType<?>> s = new java.util.LinkedHashSet<>(java.util.List.of(EntityType.SKELETON, EntityType.WITCH, EntityType.PILLAGER,
+            EntityType.VINDICATOR, EntityType.CHEST_MINECART, EntityType.HUSK, WagonEntity.TYPE));
+        for (var t : Spec.TROOPS) {
+            var real = net.minecraft.registry.Registries.ENTITY_TYPE.get(net.minecraft.util.Identifier.of("minecraft", t.entity()));
+            s.add(real);
+            s.add(byRole(t, real));
+        }
+        return s;
     }
 
     /** The plain look of a troop row (pure: the role table). */
