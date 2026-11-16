@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -86,6 +87,9 @@ public final class Props {
     private static final Map<World,Map<BlockPos,Integer>> DEPTHS=new HashMap<>();
     private static final Map<World,Map<Long,Integer>> PENDING_CHUNKS=new HashMap<>();
     private static final Map<World,List<Entity>> PENDING_ENTITIES=new HashMap<>();
+    /** Anchors with a missing part that ensureParts could not check yet (its chunk's entities not read or not tracked); tick retries them every {@link #RETRY_TICKS}. */
+    private static final Map<World,Set<BlockPos>> DEFERRED=new HashMap<>();
+    static final int RETRY_TICKS=20;
 
     public static void init(){
         ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(new SimpleSynchronousResourceReloadListener(){
@@ -98,7 +102,7 @@ public final class Props {
             if(e instanceof DisplayEntity.ItemDisplayEntity&&e.getCommandTags().contains(TAG))PENDING_ENTITIES.computeIfAbsent(w,k->new ArrayList<>()).add(e);
         });
         ServerTickEvents.END_WORLD_TICK.register(Props::tick);
-        ServerWorldEvents.UNLOAD.register((server,w)->{LIVE.remove(w);DEPTHS.remove(w);PENDING_CHUNKS.remove(w);PENDING_ENTITIES.remove(w);});
+        ServerWorldEvents.UNLOAD.register((server,w)->{LIVE.remove(w);DEPTHS.remove(w);PENDING_CHUNKS.remove(w);PENDING_ENTITIES.remove(w);DEFERRED.remove(w);});
         CommandRegistrationCallback.EVENT.register((d,access,env)->d.register(CommandManager.literal("prop").requires(s->s.hasPermissionLevel(2))
             .then(CommandManager.literal("place").then(CommandManager.argument("id",StringArgumentType.word()).suggests((c,b)->CommandSource.suggestMatching(DEFS.keySet(),b))
                 .then(CommandManager.argument("pos",BlockPosArgumentType.blockPos()).then(CommandManager.argument("facing",IntegerArgumentType.integer(0,270)).executes(c->{
@@ -345,10 +349,24 @@ public final class Props {
             boolean placed=t!=null&&Math.abs(MathHelper.wrapDegrees(e.getYaw()-(float)t[3]))<1&&e.squaredDistanceTo(anchor.getX()+t[0],anchor.getY()+t[1],anchor.getZ()+t[2])<1e-4;
             if(cmd<0||t==null||!placed||!have.add(cmd))e.discard();
         }
+        boolean deferred=false;
         for(PropDef.Part p:d.parts())if(!have.contains(p.cmd())){
-            double[] t=want.get(p.cmd());spawnPart(w,anchor,p,anchor.getX()+t[0],anchor.getY()+t[1],anchor.getZ()+t[2],(float)t[3]);
+            double[] t=want.get(p.cmd());double x=anchor.getX()+t[0],z=anchor.getZ()+t[2];
+            if(!partsVisible(w,x,z)){deferred=true;continue;} // a copy may stand there unseen: spawning now is how the duplicates piled up
+            spawnPart(w,anchor,p,x,anchor.getY()+t[1],z,(float)t[3]);
         }
+        if(deferred)DEFERRED.computeIfAbsent(w,k->new LinkedHashSet<>()).add(anchor.toImmutable());
+        else{Set<BlockPos> s=DEFERRED.get(w);if(s!=null)s.remove(anchor);}
         LIVE.computeIfAbsent(w,k->new LinkedHashMap<>()).put(anchor.toImmutable(),new Live(anchor.toImmutable(),d,facing));
+    }
+
+    /** Whether ensureParts can see the parts standing at column (x, z): the chunk is at a full level (its entity sections are tracked, and
+     *  getEntitiesByType only walks tracked sections) and its entities have been read from disk. A part spawned where either is false was
+     *  invisible to the next check, which spawned it again: on the 1.21.1 port's Kinetic soak (2026-11-16) a base tent reached 7,756 copies
+     *  of each part in one Siege round and the server's heap after GC climbed to 1.4 to 3.2 GB. */
+    static boolean partsVisible(ServerWorld w,double x,double z){
+        int cx=MathHelper.floor(x)>>4,cz=MathHelper.floor(z)>>4;
+        return w.getChunkManager().isChunkLoaded(cx,cz)&&w.isChunkLoaded(ChunkPos.toLong(cx,cz));
     }
 
     static int partCmd(Entity e){
@@ -446,6 +464,12 @@ public final class Props {
     static void tick(ServerWorld w){
         List<Entity> ents=PENDING_ENTITIES.remove(w);
         if(ents!=null)for(Entity e:ents)if(!e.isRemoved()&&e.getWorld()==w)checkPart(w,e);
+        Set<BlockPos> deferred=DEFERRED.get(w);
+        if(deferred!=null&&!deferred.isEmpty()&&w.getTime()%RETRY_TICKS==0)for(BlockPos anchor:new ArrayList<>(deferred)){
+            if(!loaded(w,anchor))continue; // read only a loaded anchor; it leaves the set with its chunk (chunkUnloaded), since a chunk can drop below full and come back without a new CHUNK_LOAD
+            Live l=readAnchor(w,anchor);
+            if(l==null)deferred.remove(anchor);else ensureParts(w,l.anchor(),l.def(),l.facing());
+        }
         Map<Long,Integer> chunks=PENDING_CHUNKS.get(w);
         if(chunks==null||chunks.isEmpty())return;
         // a scan below can load a neighbouring chunk, whose CHUNK_LOAD callback puts it into this same map: walk a snapshot (1.21's chunk loads are what exposed it); a chunk added meanwhile is looked at next tick
@@ -470,6 +494,8 @@ public final class Props {
         if(m!=null){ChunkPos cp=chunk.getPos();m.keySet().removeIf(a->(a.getX()>>4)==cp.x&&(a.getZ()>>4)==cp.z);}
         Map<BlockPos,Integer> dm=DEPTHS.get(w);
         if(dm!=null){ChunkPos cp=chunk.getPos();dm.keySet().removeIf(a->(a.getX()>>4)==cp.x&&(a.getZ()>>4)==cp.z);}
+        Set<BlockPos> df=DEFERRED.get(w);
+        if(df!=null){ChunkPos cp=chunk.getPos();df.removeIf(a->(a.getX()>>4)==cp.x&&(a.getZ()>>4)==cp.z);}
         PropTicker.forgetChunk(w,chunk.getPos());
     }
 
