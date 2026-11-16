@@ -303,9 +303,19 @@ public final class Arena {
         int[] c=dryNear(w,ix,iz,homeX,Y);
         return c==null?new Vec3d(x,ground(ix,iz)+1,z):new Vec3d(c[0]+.5,ground(c[0],c[1])+1,c[1]+.5);
     }
+    /** Where an order's point in water really goes (army control spec section 5: a point in water is not refused): the point itself when it is
+     *  not deep water; else on an engine map the nearest open dry column (dryNear, toward the commander's side), elsewhere 12 blocks off the
+     *  river on the point's side, as the old order path did. Null when no dry column is near. The server's order (OrderRules) and the
+     *  client's aim preview (CommandMode.tick) both ask this, so the ring stands where the troops will. w: the world's blocks (null: not tested). */
+    public static double[] orderGround(net.minecraft.world.BlockView w,double x,double z,double towardX){
+        int ix=(int)Math.floor(x),iz=(int)Math.floor(z);
+        if(!deep(ix,iz))return new double[]{x,z};
+        if(EngineMaps.current()!=null){int[] c=dryNear(w,ix,iz,towardX,Integer.MAX_VALUE);return c==null?null:new double[]{c[0]+.5,c[1]+.5};}
+        double rx=riverX(z);return new double[]{rx+(x>rx?12:-12),z};
+    }
     /** The nearest column to (x, z) within 16 that is not deep water, whose ground is at most maxGround, with two free cells above it (w null: not tested);
      *  of equally near ones, the one nearest towardX. Null when there is none. */
-    public static int[] dryNear(ServerWorld w,int x,int z,double towardX,int maxGround){
+    public static int[] dryNear(net.minecraft.world.BlockView w,int x,int z,double towardX,int maxGround){
         var pos=new BlockPos.Mutable();int[] best=null;double bestD=Double.MAX_VALUE,bestT=Double.MAX_VALUE;
         for(int dx=-16;dx<=16;dx++)for(int dz=-16;dz<=16;dz++){
             int d=dx*dx+dz*dz;if(d>256||d>bestD)continue;int cx=x+dx,cz=z+dz;double t=Math.abs(cx+.5-towardX);

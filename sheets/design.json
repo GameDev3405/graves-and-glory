@@ -14283,5 +14283,59 @@
       "facing": "west",
       "pegRows": 8
     }
+  ],
+  "orderLines": [
+    {
+      "id": "down",
+      "text": "You are down. Orders wait until you return ({n} s)."
+    },
+    {
+      "id": "downCard",
+      "text": "Your troops keep their last orders"
+    },
+    {
+      "id": "intro",
+      "text": "Wait for the horn."
+    },
+    {
+      "id": "no_troops",
+      "text": "No {groups} left."
+    },
+    {
+      "id": "charge_cooldown",
+      "text": "Charge ready in {n} s."
+    },
+    {
+      "id": "target_gone",
+      "text": "That enemy is gone."
+    },
+    {
+      "id": "out_of_range",
+      "text": "Too far to order."
+    },
+    {
+      "id": "attack",
+      "text": "{groups}: attack"
+    },
+    {
+      "id": "hold",
+      "text": "{groups}: hold that ground"
+    },
+    {
+      "id": "charge",
+      "text": "{groups}: charge"
+    },
+    {
+      "id": "follow",
+      "text": "{groups}: follow me"
+    },
+    {
+      "id": "retreat",
+      "text": "{groups}: fall back to me"
+    },
+    {
+      "id": "formation",
+      "text": "{groups}: form {shape}"
+    }
   ]
 }

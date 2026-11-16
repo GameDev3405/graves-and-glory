@@ -109,7 +109,7 @@ public final class CommandSelection {
                 afterOrder(keepOpen);
             }
             case "charge" -> {
-                if (CommandNet.Client.chargeTicksLeft() > 0) { CommandMode.cancel(); CommandMode.refuse("Charge is not ready yet"); return; } // no seconds: they would freeze in the feed while the Charge pennant counts down
+                if (CommandNet.Client.chargeTicksLeft() > 0) { CommandMode.cancel(); CommandMode.answer(OrderReply.CHARGE_COOLDOWN, (CommandNet.Client.chargeTicksLeft() + 19) / 20, ""); return; } // the line the server would send
                 trayOpen = false;
                 CommandMode.begin("charge");
                 aimKeepOpen = keepOpen;
@@ -173,7 +173,7 @@ public final class CommandSelection {
         List<CommandMode.Aim> groups = new ArrayList<>();
         if (selected.contains("all")) groups.add(new CommandMode.Aim("all", at));
         else for (String id : selected) groups.add(new CommandMode.Aim(id, action.equals("charge") ? groupCentre(id, at) : at));
-        CommandMode.issue(groups, action, formation, yaw, target);
+        CommandMode.issueOrHold(groups, action, formation, yaw, target); // a press inside the command cooldown is held, not lost
     }
 
     /** One group's living centre from the last state packet, or the fallback when the group has no living members there. */

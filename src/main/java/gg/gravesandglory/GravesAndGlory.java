@@ -1045,7 +1045,7 @@ public final class GravesAndGlory implements ModInitializer {
             for(var order:Spec.ORDERS)if(cmd.equals(order.id())){
                 String id=OrderRules.loadOrder(order.id()); // an old move is the Formation order, hold
                 if(id.equals("charge")&&!OrderRules.useCharge(this,s)){ // the per-commander Charge cooldown holds on this path too (final review I1): refused before anything changes, and it does not use up the command cooldown
-                    s.lastOrder=prevOrder;int left=(int)(s.chargeReadyAt-time);CommandNet.cooldown(p,left);p.sendMessage(Text.literal("Charge ready in "+(left+19)/20+"s"),true);return;
+                    s.lastOrder=prevOrder;int left=(int)(s.chargeReadyAt-time);CommandNet.cooldown(p,left);CommandNet.refuse(p,OrderReply.CHARGE_COOLDOWN,(left+19)/20,"");return;
                 }
                 if(id.equals("charge"))CommandNet.cooldown(p,Spec.COMBATDISCIPLINE[0].chargeCooldownTicks());
                 boolean charging=id.equals("charge")&&startsCharge(s,"all");

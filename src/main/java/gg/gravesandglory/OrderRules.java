@@ -30,8 +30,10 @@ import java.util.Set;
  *   <li>formation: a shape change only, as before.</li>
  * </ul>
  * A custom:&lt;n&gt; id (Task 12) names the commander's custom group n of his own troop types (CustomGroups), stored per troop type; unknown ids,
- * and custom ids his profile lacks, are skipped; "all" in the list stands for the whole army alone. A group whose own point fails
- * (outside the arena, no dry end) is left out and the rest still move; when none is left the order is refused. After a stored order the issuer
+ * and custom ids his profile lacks, are skipped; "all" in the list stands for the whole army alone. A point in water goes to the nearest
+ * dry ground (Arena.orderGround); a group whose own point fails (outside the arena, no dry ground near) is left out and the rest still move;
+ * when none is left the order is refused (out_of_range). Every order gets one answer (OrderReply): a refusal code on command_v1, or one
+ * action bar line in words; only the command cooldown is silent. After a stored order the issuer
  * and his teammates get one ACK, and for hold and charge his teammates one OUTLINE per distinct destination (CommandNet). Bots and SiegeMode call
  * Battle.issue directly and never pass here; they share the commander's Charge cooldown through chargeReady and markChargeUsed (or useCharge).
  */
@@ -57,18 +59,28 @@ final class OrderRules {
     /** One order to every group in the list (tactical_v2): see the class comment. */
     static void playerOrder(GravesAndGlory.Battle b, ServerPlayerEntity p, List<At> groups, String action, String formation, float yaw, int enemyId) {
         var s = b.squads.get(p.getUuid());
-        if (s == null || !b.ready || !b.running || !s.seated || b.time < b.campaign.introUntil || b.campaign.ending() || b.respawns.containsKey(s.owner) || b.time - s.lastOrder < R.commandCooldownTicks()) return;
+        // Silent: no battle to order in, or inside the command cooldown (the client holds a press that lands there, CommandMode.issue).
+        if (s == null || !b.ready || !b.running || !s.seated || b.campaign.ending()) return;
+        Long downUntil = b.respawns.get(s.owner);
+        boolean intro = b.time < b.campaign.introUntil;
+        if (downUntil != null || intro) { // every order gets one answer (army control spec section 5): down or the round intro is said, not swallowed
+            CommandNet.refuse(p, downUntil != null ? OrderReply.DOWN : OrderReply.INTRO, downUntil == null ? 0 : (int) ((downUntil - b.time + 19) / 20), "");
+            return;
+        }
+        if (b.time - s.lastOrder < R.commandCooldownTicks()) return;
         if (groups == null || action == null) return;
         formation = formationId(formation);
         if (formation == null) return;
         List<At> named = known(b, s, groups);
         if (named.isEmpty()) return;
         List<String> ids = named.stream().map(At::group).toList();
+        List<String> names = names(b, s, ids);
         Vec3d at = centre(b, s, ids, p.getPos());
         if (action.equals("formation")) {
             for (var g : Spec.GROUPS) if (!g.id().equals("all") && covers(ids, g.id())) { var a = s.assignments.computeIfAbsent(g.id(), k -> new GravesAndGlory.Assignment(s.order, s.formation, s.target, s.yaw)); a.formation = formation; }
             for (String id : ids) for (var u : CustomGroups.number(id) > 0 ? CustomGroups.resolve(b, s, id) : List.<GravesAndGlory.Unit>of()) if (CustomGroups.ordered(u)) b.assignment(u).formation = formation; // a custom group under its own order changes shape
             s.lastOrder = b.time; b.campaign.tutorialDid(p, 1); BattleEffects.feedback(b, p, "hold"); // a formation change shouts like a Hold (main's audio round 2)
+            p.sendMessage(Text.literal(OrderReply.accepted("formation", names, formationLabel(formation))), true);
             CommandNet.ack(b, s, "formation", unitIds(b, s, ids), at.x, at.z);
             return;
         }
@@ -76,11 +88,12 @@ final class OrderRules {
         String order = loadOrder(action);
         if (!order.equals("attack") && !order.equals("charge")) enemyId = -1;
         Entity enemy = enemyId >= 0 ? b.world.getEntityById(enemyId) : null;
-        if (enemyId >= 0 && (enemy == null || !enemy.isAlive() || b.teamOf(enemy) < 0 || b.teamOf(enemy) == s.team || !MapBlockRules.canSee(p, enemy))) { p.sendMessage(Text.literal("Target lost. Aim again or issue an attack-move."), true); return; }
-        if (order.equals("charge") && !chargeReady(b, s)) {
+        boolean targetGone = enemyId >= 0 && (enemy == null || !enemy.isAlive() || b.teamOf(enemy) < 0 || b.teamOf(enemy) == s.team || !MapBlockRules.canSee(p, enemy));
+        String refused = OrderReply.gate(false, false, targetGone, order, unitIds(b, s, ids).length, chargeReady(b, s)); // an empty group's Charge is no_troops, so it never starts the cooldown
+        if (refused != null) {
             int left = (int) (s.chargeReadyAt - b.time);
-            CommandNet.cooldown(p, left);
-            p.sendMessage(Text.literal("Charge ready in " + (left + 19) / 20 + "s"), true);
+            if (refused.equals(OrderReply.CHARGE_COOLDOWN)) CommandNet.cooldown(p, left);
+            CommandNet.refuse(p, refused, refused.equals(OrderReply.CHARGE_COOLDOWN) ? (left + 19) / 20 : 0, OrderReply.subject(names));
             return;
         }
 
@@ -88,7 +101,6 @@ final class OrderRules {
         double r = Math.toRadians(yaw), dx = Math.sin(-r), dz = Math.cos(r);
         Vec3d chargeDir = order.equals("charge") ? new Vec3d(dx, 0, dz).normalize() : null;
         Map<String, Vec3d> dests = new LinkedHashMap<>();
-        boolean wetRefusal = false;
         for (At g : named) {
             Vec3d dest = null;
             switch (order) {
@@ -97,21 +109,18 @@ final class OrderRules {
                 case "charge" -> {
                     Vec3d start = CustomGroups.number(g.group()) > 0 ? centre(b, s, List.of(g.group()), new Vec3d(g.x(), 0, g.z())) : new Vec3d(g.x(), 0, g.z()); // a custom group's start is its troops' centre: the client has no per-type centre
                     if (!GravesAndGlory.Battle.inArena(start.x, start.z)) break;
-                    for (int d = Spec.COMBATDISCIPLINE[0].chargeRunBlocks(); d >= 0 && dest == null; d--) {
+                    int run = Spec.COMBATDISCIPLINE[0].chargeRunBlocks();
+                    for (int d = run; d >= 0 && dest == null; d--) {
                         double ex = start.x + dx * d, ez = start.z + dz * d;
                         if (GravesAndGlory.Battle.inArena(ex, ez) && !GravesAndGlory.Battle.wet(ex, ez)) dest = GravesAndGlory.Battle.groundAt(ex, ez, p.getX(), p.getZ());
                     }
-                    if (dest == null) wetRefusal = true;
+                    if (dest == null) dest = dryPoint(b, p, start.x + dx * run, start.z + dz * run); // a run all in water ends on the nearest dry ground to its end
                 }
-                default -> { // hold: the Formation order's anchor
-                    if (!GravesAndGlory.Battle.inArena(g.x(), g.z())) break;
-                    if (GravesAndGlory.Battle.wet(g.x(), g.z())) { wetRefusal = true; break; }
-                    dest = GravesAndGlory.Battle.groundAt(g.x(), g.z(), p.getX(), p.getZ());
-                }
+                default -> dest = dryPoint(b, p, g.x(), g.z()); // hold: the Formation order's anchor; a point in water goes to the nearest dry ground (spec section 5)
             }
             if (dest != null) dests.put(g.group(), dest);
         }
-        if (dests.isEmpty()) { if (wetRefusal) p.sendMessage(Text.literal("Choose dry ground or a crossing."), true); return; }
+        if (dests.isEmpty()) { CommandNet.refuse(p, OrderReply.OUT_OF_RANGE, 0, ""); return; } // every group's point outside the arena (or water with no dry ground near)
 
         // One order: one stamp, every group issued in this tick, one charge cooldown, one feedback, one ACK.
         s.lastOrder = b.time;
@@ -144,7 +153,7 @@ final class OrderRules {
         // cues, Hold's shout (an old move arrives as hold), every other order the chime (to his connection only, a UI cue).
         if (order.equals("retreat") || order.equals("charge")) BattleEffects.feedback(b, p, order); else if (order.equals("hold")) BattleEffects.feedback(b, p, "hold"); else p.playSoundToPlayer(SoundEvents.BLOCK_NOTE_BLOCK_CHIME.value(), SoundCategory.PLAYERS, .6f, 1.1f);
         Vec3d mid = mean(dests.values());
-        p.sendMessage(Text.literal(String.join("+", moved) + " / " + order + " / " + (int) mid.x + ", " + (int) mid.z), true);
+        p.sendMessage(Text.literal(OrderReply.accepted(order, names(b, s, moved), "")), true); // one line in words, "Archers: attack" (spec section 5)
 
         CommandNet.ack(b, s, order, unitIds(b, s, moved), mid.x, mid.z);
         if (order.equals("hold") || order.equals("charge")) {
@@ -153,6 +162,31 @@ final class OrderRules {
             for (var e : dests.entrySet()) byDest.computeIfAbsent(e.getValue(), k -> new ArrayList<>()).add(e.getKey());
             for (var e : byDest.entrySet()) CommandNet.outline(b, s, formation, e.getKey().x, e.getKey().z, yaw, members(b, s, e.getValue()));
         }
+    }
+
+    /** Where an order's point (x, z) really goes: outside the arena nowhere (null); in water the nearest dry ground (Arena.orderGround, which
+     *  the client's preview asks too), null when none is near; else the point. On the ground the troops stand on (Battle.groundAt). */
+    static Vec3d dryPoint(GravesAndGlory.Battle b, ServerPlayerEntity p, double x, double z) {
+        if (!GravesAndGlory.Battle.inArena(x, z)) return null;
+        double[] dry = Arena.orderGround(b.world, x, z, p.getX());
+        if (dry == null || !GravesAndGlory.Battle.inArena(dry[0], dry[1])) return null;
+        return GravesAndGlory.Battle.groundAt(dry[0], dry[1], p.getX(), p.getZ());
+    }
+
+    /** The named groups by the names a line uses: All, the sheet's labels, a custom group's own name. */
+    static List<String> names(GravesAndGlory.Battle b, GravesAndGlory.Squad s, List<String> ids) {
+        List<String> out = new ArrayList<>();
+        for (String id : ids) {
+            var custom = CustomGroups.number(id) > 0 ? CustomGroups.group(b, s, id) : null;
+            out.add(custom != null && custom.name() != null && !custom.name().isBlank() ? custom.name() : OrderReply.name(id));
+        }
+        return out;
+    }
+
+    /** A formation id's label in the sheet (Shield wall, Wedge), else the id. */
+    static String formationLabel(String id) {
+        for (var f : Spec.FORMATIONS) if (f.id().equals(id)) return f.label();
+        return id;
     }
 
     /** The list's known groups in order, each once: "all" alone if it is named; unknown ids, custom:n the commander has no group n for, and nulls are skipped. */

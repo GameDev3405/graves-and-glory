@@ -640,13 +640,15 @@ public final class BattleHud {
         }
     }
 
-    /** While the commander is down: the card counting the seconds in the box the layout gives it, 40 px above the canvas's middle, or
+    /** While the commander is down: the card counting the seconds, over the line that his troops keep their last orders, in the box the layout gives it, 40 px above the canvas's middle, or
      *  higher where vanilla's crosshair (at the GUI Scale, above the HUD's scale) would come within 4 px of it (UiMath.respawnY). */
     static void respawn(DrawContext g,TextRenderer font,Map<String,int[]> at,Map<String,int[]> r,Map<String,String> tx){
         int[] box=at.get("respawn");if(box==null)return;
         int x=box[0],y=box[1],cx=x+box[2]/2;String line="Respawn in "+GravesAndGloryClient.respawn+" s";Text t=DarkUi.heading(line);
         UiTex.draw(g,"hud/respawn-card",x,y);
-        g.drawText(font,t,(int)Math.round(cx-font.getWidth(t)/2.0),y+8,DarkUi.INK_TEXT,false);
+        String keep=OrderReply.downCard(); // the block is said before the player tries (army control spec section 5): his troops keep their last orders
+        g.drawText(font,t,(int)Math.round(cx-font.getWidth(t)/2.0),y+5,DarkUi.INK_TEXT,false);
+        g.drawText(font,keep,(int)Math.round(cx-font.getWidth(keep)/2.0),y+16,DarkUi.SEPIA,false);
         r.put("respawn",box);tx.put("respawn",line);
     }
 

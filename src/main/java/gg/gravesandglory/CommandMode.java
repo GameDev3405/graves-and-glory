@@ -54,24 +54,27 @@ public final class CommandMode {
      *  with nothing (noteGroups would flash a card for the old battle's losses). The rest of the command state starts as a new
      *  client's: the map's pings, the clock, the whole army selected (a group the next world lacks would leave no card selected),
      *  the default formation and the facing taken from the player again. */
-    static void reset(){cancel();preview.clear();enemy=-1;groups=java.util.List.of();flashUntil.clear();flashFrom.clear();pings=java.util.List.of();seconds=600;selected="all";formation="block";facing=0;facingSet=false;}
+    static void reset(){cancel();held=null;sentAt=Long.MIN_VALUE/2;lastAnswer="";preview.clear();enemy=-1;groups=java.util.List.of();flashUntil.clear();flashFrom.clear();pings=java.util.List.of();seconds=600;selected="all";formation="block";facing=0;facingSet=false;}
     /** Sends the aimed order to the selected groups: a Charge from the selection's centre along the look yaw (the server clamps the run), anything else at the aimed point. */
     public static boolean confirm(){
         if(!active())return false;
         String order=pending;boolean charge=order.equals("charge");
-        if(!charge&&destination==null){refuse("Aim at reachable terrain");return true;}
+        if(!charge&&destination==null){answer(OrderReply.OUT_OF_RANGE,0,"");return true;}
         pending="";
         if(charge)CommandSelection.issueSelected(order,formation,CommandSelection.selectedCentre(),facing,-1);
         else CommandSelection.issueSelected(order,formation,destination,facing,enemy);
         CommandSelection.afterOrder(CommandSelection.keepOpenOnConfirm());
         return true;
     }
-    /** A refused confirmation as a feed notice; clicking again while the same notice still shows adds no second line. */
-    static void refuse(String why){
-        UiSounds.deny();
-        long now=net.minecraft.util.Util.getMeasuringTimeMs();var lines=EventFeed.lines(now);
-        if(lines.isEmpty()||!lines.get(lines.size()-1).text().equals(why))EventFeed.push("notice",GravesAndGloryClient.team,why,now);
+    /** A refused order's one answer (army control spec section 5): the deny sound and the code's line on the action bar, the same place the
+     *  server's accepted line takes. The server's refusals (command_v1 REFUSE) and the client's own (no ground under the aim, the Charge not
+     *  ready) both come here, so a refusal reads the same whichever side caught it. */
+    static void answer(String code,int n,String subject){
+        UiSounds.deny();lastAnswer=OrderReply.refusal(code,n,subject);
+        var c=MinecraftClient.getInstance();if(c.inGameHud!=null)c.inGameHud.setOverlayMessage(net.minecraft.text.Text.literal(lastAnswer),false);
     }
+    /** The last refusal line shown (for the harness). */
+    static String lastAnswer="";
     static void ping(String kind,double x,double z){if(ClientPlayNetworking.canSend(GravesAndGlory.PING)){var b=PacketByteBufs.create();b.writeString(kind);b.writeDouble(x);b.writeDouble(z);ClientPlayNetworking.send(gg.gravesandglory.net.Payloads.PingPayload.of(b));}}
     /** Order packets this client has sent (for the harness: a multi-group order must be one packet). */
     static int ordersSent;
@@ -79,9 +82,22 @@ public final class CommandMode {
     static void issue(String group,String action,String form,Vec3d dest,float yaw,int target){issue(java.util.List.of(new Aim(group,dest)),action,form,yaw,target);}
     /** One group of an order and its own point (a Charge's start, a Formation's anchor). */
     record Aim(String group,Vec3d at){}
+    /** Client ticks counted by tick(), the tick the last order went out, and an order held because it came inside the command cooldown. */
+    static long ticks,sentAt=Long.MIN_VALUE/2;static Runnable held;
+    /** Orders held back by the cooldown and sent when it ended (for the harness). */
+    static int heldSent;
+    /** A key's or the panel's order (CommandSelection.issueSelected): given within the server's commandCooldownTicks (plus one tick for the
+     *  network's jitter) of the last order sent, it is held and sent when that ends, so a quick second press is never lost to the silent
+     *  cooldown (spec section 5); a later press replaces a held one. */
+    static void issueOrHold(java.util.List<Aim> groups,String action,String form,float yaw,int target){
+        if(groups.isEmpty()||!GravesAndGloryClient.battleActive())return;
+        if(ticks-sentAt<=Spec.RULES[0].commandCooldownTicks()){var copy=java.util.List.copyOf(groups);held=()->{heldSent++;issue(copy,action,form,yaw,target);};return;}
+        issue(groups,action,form,yaw,target);
+    }
     /** One order to every listed group as ONE tactical_v2 packet (the server applies it as one order: one cooldown, one Charge). */
     static void issue(java.util.List<Aim> groups,String action,String form,float yaw,int target){
         if(groups.isEmpty()||!GravesAndGloryClient.battleActive()||!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL_V2))return;
+        sentAt=ticks;held=null;
         var b=PacketByteBufs.create();b.writeString(action);b.writeString(form);b.writeFloat(yaw);b.writeInt(target);
         b.writeInt(groups.size());for(var g:groups){b.writeString(g.group());b.writeDouble(g.at().x);b.writeDouble(g.at().z);}
         ClientPlayNetworking.send(gg.gravesandglory.net.Payloads.TacticalV2Payload.of(b));ordersSent++;
@@ -123,7 +139,8 @@ public final class CommandMode {
         return BattleMath.bannerPlaces(cells,count);
     }
     static void tick(MinecraftClient c){
-        preview.clear();if(!GravesAndGloryClient.battleActive()){cancel();return;}if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;
+        ticks++;if(held!=null&&ticks-sentAt>Spec.RULES[0].commandCooldownTicks()){var send=held;held=null;send.run();}
+        preview.clear();if(!GravesAndGloryClient.battleActive()){cancel();held=null;return;}if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;
         if(!facingSet)facing=c.player.getYaw();
         var hit=c.player.raycast(Spec.COMMANDINTERFACE[0].targetRange(),1,false);destination=hit.getType()==HitResult.Type.MISS?null:hit.getPos();enemy=-1;
         // Entity targeting is an aim cone, not an omniscient enemy lookup.
@@ -135,6 +152,9 @@ public final class CommandMode {
             if(foe&&along>0&&along<best&&v.subtract(look.multiply(along)).length()<1.3){best=along;enemy=e.getId();destination=e.getPos();}
         }
         if(destination==null||Math.abs(destination.x)>Field.halfX()-10||Math.abs(destination.z)>Field.halfZ()-10){destination=null;return;}
+        if(enemy<0){double[] dry=Arena.orderGround(c.world,destination.x,destination.z,c.player.getX()); // water: the ring stands on the dry ground the server will send the troops to (OrderRules.dryPoint)
+            if(dry==null||Math.abs(dry[0])>Field.halfX()-10||Math.abs(dry[1])>Field.halfZ()-10){destination=null;return;}
+            if(dry[0]!=destination.x||dry[1]!=destination.z)destination=new Vec3d(dry[0],destination.y,dry[1]);}
         var f=java.util.Arrays.stream(Spec.FORMATIONS).filter(v->v.id().equals(formation)).findFirst().orElse(Spec.FORMATIONS[0]);
         var dust=new DustParticleEffect(new Vector3f(.95f,.82f,.44f),1.15f);
         for(Group group:groups)if(CommandSelection.isSelected(group.id())){ // the full selection, as issueSelected sends it (C04-F2)

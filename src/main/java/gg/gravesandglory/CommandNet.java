@@ -22,13 +22,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *       among his team's squads in Battle.squads order, stable through a round, so a client can tell two teammates' outlines apart.</li>
  *   <li>2 ACK: String order, int n then n x int unitEntityIds (the troops that raise their weapons), double x, z (the pulse centre); to the
  *       issuer and his teammates.</li>
+ *   <li>3 REFUSE: String code (OrderReply.CODES), int n (seconds, for down and charge_cooldown), String subject (no_troops' group word); to
+ *       the commander whose order was refused. The client owns the words (OrderReply.refusal) and plays the deny sound.</li>
  * </ul>
  * The server owns every value: OrderRules.playerOrder calls these after it stores an order. Only data travels here; sounds are Task 9's.
  */
 public final class CommandNet {
     private CommandNet() {}
     public static final Identifier COMMAND = Identifier.of("gravesandglory", "command_v1");
-    public static final int COOLDOWN = 0, OUTLINE = 1, ACK = 2;
+    public static final int COOLDOWN = 0, OUTLINE = 1, ACK = 2, REFUSE = 3;
     /**
      * For the harness: per recipient owner and kind (COOLDOWN, OUTLINE, ACK), how many command_v1 records the server addressed to him, counted
      * before the online and channel checks, so a synthetic owner with no connection (Battle.testOwners) counts as a recipient too.
@@ -46,6 +48,16 @@ public final class CommandNet {
         if (p == null) return;
         tally(p.getUuid(), COOLDOWN);
         PacketByteBuf b = PacketByteBufs.create(); b.writeByte(COOLDOWN); b.writeInt(Math.max(0, ticks));
+        send(p, b);
+    }
+
+    /** An order's refusal, to its commander: the code, with the seconds of down and charge_cooldown and no_troops' group word. A client
+     *  without the channel (no mod) gets the same line from the server as an action bar message instead, so every order still gets its answer. */
+    static void refuse(ServerPlayerEntity p, String code, int seconds, String subject) {
+        if (p == null || code == null) return;
+        tally(p.getUuid(), REFUSE);
+        if (!ServerPlayNetworking.canSend(p, COMMAND)) { p.sendMessage(net.minecraft.text.Text.literal(OrderReply.refusal(code, seconds, subject)), true); return; }
+        PacketByteBuf b = PacketByteBufs.create(); b.writeByte(REFUSE); b.writeString(code); b.writeInt(Math.max(0, seconds)); b.writeString(subject == null ? "" : subject);
         send(p, b);
     }
 
@@ -88,7 +100,7 @@ public final class CommandNet {
         return -1;
     }
 
-    static void tally(UUID to, int kind) { sent.computeIfAbsent(to, k -> new int[3])[kind]++; }
+    static void tally(UUID to, int kind) { sent.computeIfAbsent(to, k -> new int[4])[kind]++; }
     /** How many records of kind the server addressed to this owner since the tally was last cleared. */
     public static int sentTo(UUID to, int kind) { var n = sent.get(to); return n == null ? 0 : n[kind]; }
 
@@ -106,6 +118,9 @@ public final class CommandNet {
         public static volatile long chargeStampMs;
         public static final List<Outline> outlines = new CopyOnWriteArrayList<>();
         public static final List<Ack> acks = new CopyOnWriteArrayList<>();
+        /** Refusals heard since the world loaded, and the last one's code (for the harness). */
+        public static volatile int refusals;
+        public static volatile String lastRefusal = "";
         static boolean registered;
 
         /** Ticks until Charge is ready now: chargeReadyIn counted down by the time since it arrived. */
@@ -114,7 +129,7 @@ public final class CommandNet {
             return (int) Math.max(0, chargeReadyIn - gone);
         }
         /** A disconnect: nothing of the last server's orders stays (Task 4 calls it from GravesAndGloryClient.resetHud). */
-        public static void reset() { chargeReadyIn = 0; chargeStampMs = 0; outlines.clear(); acks.clear(); }
+        public static void reset() { chargeReadyIn = 0; chargeStampMs = 0; outlines.clear(); acks.clear(); refusals = 0; lastRefusal = ""; }
 
         static synchronized void register() {
             if (registered) return;
@@ -142,6 +157,9 @@ public final class CommandNet {
                     double x = buf.readDouble(), z = buf.readDouble();
                     var ack = new Ack(order, units, x, z, now);
                     client.execute(() -> { acks.add(ack); while (acks.size() > 32) acks.remove(0); });
+                } else if (kind == REFUSE) {
+                    String code = buf.readString(); int n = buf.readInt(); String subject = buf.readString();
+                    client.execute(() -> { refusals++; lastRefusal = code; CommandMode.answer(code, n, subject); });
                 }
             });
         }
