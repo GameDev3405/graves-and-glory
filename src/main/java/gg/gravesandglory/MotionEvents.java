@@ -75,7 +75,7 @@ public final class MotionEvents {
     static int sendAttack(GravesAndGlory.Unit u, int variantIndex, long startTick, Collection<ServerPlayerEntity> players) {
         int sent = 0;
         for (ServerPlayerEntity p : players) {
-            if (!ServerPlayNetworking.canSend(p, ATTACK)) continue;
+            if (!VersionGate.canSend(p, ATTACK)) continue;
             PacketByteBuf buf = PacketByteBufs.create(); buf.writeVarInt(u.mob.getId()); buf.writeVarInt(variantIndex); buf.writeVarLong(startTick);
             ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.AttackPayload.of(buf)); sent++;
         }
@@ -97,7 +97,7 @@ public final class MotionEvents {
         if (z < 0) z = 1;
         long tick = victim.getWorld().getTime();
         for (ServerPlayerEntity p : players) {
-            if (!ServerPlayNetworking.canSend(p, HIT)) continue;
+            if (!VersionGate.canSend(p, HIT)) continue;
             PacketByteBuf buf = PacketByteBufs.create(); buf.writeVarInt(victim.getId()); buf.writeByte(k); buf.writeByte(z); buf.writeFloat(bearing);
             buf.writeByte(Math.max(0, Math.min(2, weight))); buf.writeByte((blocked ? 1 : 0) | (lethal ? 2 : 0) | (knockback ? 4 : 0) | (pulled ? 8 : 0)); buf.writeVarLong(tick);
             ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.HitPayload.of(buf)); sent++;
@@ -109,7 +109,7 @@ public final class MotionEvents {
     static int sendRise(GravesAndGlory.Unit u, Collection<ServerPlayerEntity> players) {
         int sent = 0;
         for (ServerPlayerEntity p : players) {
-            if (!ServerPlayNetworking.canSend(p, RISE)) continue;
+            if (!VersionGate.canSend(p, RISE)) continue;
             PacketByteBuf buf = PacketByteBufs.create(); buf.writeVarInt(u.mob.getId()); buf.writeVarLong(u.riseTick); buf.writeVarInt(u.riseWindow);
             ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.RisePayload.of(buf)); sent++;
         }
@@ -126,7 +126,7 @@ public final class MotionEvents {
     static int sendStance(GravesAndGlory.Unit u, String stance, float aimPitch, Collection<ServerPlayerEntity> players) {
         int index = Math.max(0, STANCES.indexOf(stance)), sent = 0;
         for (ServerPlayerEntity p : players) {
-            if (!ServerPlayNetworking.canSend(p, STANCE)) continue;
+            if (!VersionGate.canSend(p, STANCE)) continue;
             PacketByteBuf buf = PacketByteBufs.create(); buf.writeVarInt(u.mob.getId()); buf.writeByte(index); buf.writeFloat(aimPitch);
             ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.StancePayload.of(buf)); sent++;
         }

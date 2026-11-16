@@ -104,7 +104,7 @@ public final class CommandNet {
     /** How many records of kind the server addressed to this owner since the tally was last cleared. */
     public static int sentTo(UUID to, int kind) { var n = sent.get(to); return n == null ? 0 : n[kind]; }
 
-    static void send(ServerPlayerEntity p, PacketByteBuf b) { if (ServerPlayNetworking.canSend(p, COMMAND)) ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.CommandPayload.of(b)); }
+    static void send(ServerPlayerEntity p, PacketByteBuf b) { if (VersionGate.canSend(p, COMMAND)) ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.CommandPayload.of(b)); }
 
     /** What the client last heard on command_v1. Task 4 registers it; the panel (Task 7) and outlines and feedback (Task 9) read it. */
     public static final class Client {

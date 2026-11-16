@@ -76,7 +76,7 @@ public final class GravesAndGlory implements ModInitializer {
     public static volatile java.util.function.Supplier<net.minecraft.registry.RegistryWrapper.WrapperLookup> clientRegistries;
     /** Sends a seated commander his relic slots (relics_v1); nothing to a bot, an unseated squad or a client without the channel. */
     static void sendRelics(Battle b,Squad s){
-        if(s==null||s.bot)return;var p=b.server.getPlayerManager().getPlayer(s.owner);if(p==null||!ServerPlayNetworking.canSend(p,RELICS))return;
+        if(s==null||s.bot)return;var p=b.server.getPlayerManager().getPlayer(s.owner);if(p==null||!VersionGate.canSend(p,RELICS))return;
         PacketByteBuf out=PacketByteBufs.create();int n=s.relicState.size();out.writeByte(n);
         for(int i=0;i<n;i++){boolean on=s.seated;out.writeString(on?Commander.relicIn(s,i):"");out.writeInt(on?Commander.readyIn(b,s,i):-1);out.writeInt(on?Commander.activeFor(b,s,i):0);}
         ServerPlayNetworking.send(p,Payloads.RelicsPayload.of(out));
@@ -102,6 +102,7 @@ public final class GravesAndGlory implements ModInitializer {
         PropMenu.init(); // prop kit: /prop menu, ghost placement, hit-to-remove
         PropGameplay.init(); // gameplay props: destructible, cover, Siege /barricade
         MapBlocks.init(); // section F map blocks: troop_fence and still_water (docs/props/MAP-BLOCKS.md)
+        PlainClients.init(); // plain clients (port plan P3): Polymer's server-only marks before the registries freeze; the plain front end only with -Dgravesandglory.plainClients
         PropPack.init(); // prop kit: server resource pack delivery, /prop pack reload (only with -Dgg.propPack.file)
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             // Only the dedicated Graves and Glory save belongs to this mod.
@@ -220,9 +221,10 @@ public final class GravesAndGlory implements ModInitializer {
             if(!world.getBlockState(hit.getBlockPos()).isOf(net.minecraft.block.Blocks.LECTERN))return ActionResult.PASS;
             if(world.isClient)return ActionResult.SUCCESS;
             if(battle!=null&&player instanceof ServerPlayerEntity p&&world==battle.world){
-                if(!battle.running){
+                if(!battle.running&&VersionGate.plain(p))PlainClients.station(p,"army"); // a plain client has no War Table: the lectern opens the Recruit chest menu (P3)
+                else if(!battle.running){
                     // Every lectern outside a running match opens the War Table (the client's OPEN_BARRACKS receiver); the old party lectern's PARTY packet id stays, and the client opens the War Table for it too.
-                    if(ServerPlayNetworking.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,new Payloads.OpenBarracksPayload(new byte[0]));
+                    if(VersionGate.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,new Payloads.OpenBarracksPayload(new byte[0]));
                 }else battle.openBarracks(p);
                 return ActionResult.SUCCESS;
             }
@@ -231,7 +233,8 @@ public final class GravesAndGlory implements ModInitializer {
     }
     static void openCamp(ServerPlayerEntity p,String station){
         if(battle==null)return;var s=battle.squads.get(p.getUuid());if(battle.running&&s!=null&&s.seated)return;
-        if(ServerPlayNetworking.canSend(p,CAMP)){var packet=PacketByteBufs.create();packet.writeString(station);ServerPlayNetworking.send(p,Payloads.CampPayload.of(packet));}
+        if(VersionGate.plain(p)){PlainClients.station(p,station);return;} // plain clients (P3): no camp screen; Recruit, practice, or a line naming the modpack
+        if(VersionGate.canSend(p,CAMP)){var packet=PacketByteBufs.create();packet.writeString(station);ServerPlayNetworking.send(p,Payloads.CampPayload.of(packet));}
     }
     public static final class Squad {
         UUID owner;
@@ -1163,7 +1166,7 @@ public final class GravesAndGlory implements ModInitializer {
         public boolean atBarracks(ServerPlayerEntity p,Squad s){
             return horizontalDistance(p.getPos(),fieldBarracks(s.team))<=Spec.ECONOMY[0].accessRadius()*Spec.ECONOMY[0].accessRadius();
         }
-        void openBarracks(ServerPlayerEntity p){if(running)campaign.tutorialDid(p,3);if(ServerPlayNetworking.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,new Payloads.OpenBarracksPayload(new byte[0]));}
+        void openBarracks(ServerPlayerEntity p){if(running)campaign.tutorialDid(p,3);if(VersionGate.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,new Payloads.OpenBarracksPayload(new byte[0]));}
         /** Why a troop cannot join the squad's training queue now, or null when it can: a troop trains only while its living and queued units are below its count in the squad's banner, and all living and queued troops stay below rules.maxTroops. */
         String roomFor(Squad s,Spec.TroopsRow spec){
             int listed=Collections.frequency(s.banner,spec.id());
@@ -1480,7 +1483,7 @@ public final class GravesAndGlory implements ModInitializer {
         static final List<String> STATE_GROUPS=List.of("infantry","ranged","cavalry","support","siege");
         void sendState(){
             updateSight();
-            for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList())if(ServerPlayNetworking.canSend(p,STATE)){
+            for(ServerPlayerEntity p:server.getPlayerManager().getPlayerList())if(VersionGate.canSend(p,STATE)){
                 Squad s=squads.get(p.getUuid());PacketByteBuf b=PacketByteBufs.create();
                 int[] ledger=mode.ledger(this);b.writeBoolean(ready);b.writeBoolean(running);b.writeInt(ledger[0]);b.writeInt(ledger[1]);
                 b.writeString(message);b.writeInt(s==null?-1:s.team);

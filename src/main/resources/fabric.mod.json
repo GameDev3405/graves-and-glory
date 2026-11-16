@@ -22,6 +22,7 @@
   },
   "license": "MIT",
   "mixins": [
-    "gravesandglory.mixins.json"
+    "gravesandglory.mixins.json",
+    "gravesandglory.polymer.mixins.json"
   ]
 }

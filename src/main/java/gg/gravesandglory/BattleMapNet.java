@@ -46,7 +46,7 @@ final class BattleMapNet {
 
     /** Sends the grid to one player unless he already holds this key this session. */
     static void sendGrid(GravesAndGlory.Battle b, ServerPlayerEntity p) {
-        if (b.mapGrid == null || !ServerPlayNetworking.canSend(p, GravesAndGlory.MAP_GRID)) return;
+        if (b.mapGrid == null || !VersionGate.canSend(p, GravesAndGlory.MAP_GRID)) return;
         if (b.mapGridKey.equals(b.mapGridSent.get(p.getUuid()))) return;
         if (b.mapGridBytes == null) b.mapGridBytes = b.mapGrid.encode();
         if (b.mapGridBytes.length > MAX_GRID_BYTES) { LOG.warn("battle map grid is {} bytes, over the packet limit; not sent", b.mapGridBytes.length); return; }
@@ -200,7 +200,7 @@ final class BattleMapNet {
         List<ServerPlayerEntity> to = new ArrayList<>();
         for (var p : b.server.getPlayerManager().getPlayerList()) {
             var s = b.squads.get(p.getUuid());
-            if (s != null && s.seated && ServerPlayNetworking.canSend(p, GravesAndGlory.MAP_STATE)) to.add(p);
+            if (s != null && s.seated && VersionGate.canSend(p, GravesAndGlory.MAP_STATE)) to.add(p);
         }
         if (to.isEmpty()) return;
         var armies = armies(b);

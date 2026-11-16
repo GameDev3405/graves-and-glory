@@ -73,7 +73,7 @@ public final class BattleEffects {
         var b=GravesAndGlory.battle;if(b==null||!b.running||player.getWorld()!=b.world)return;
         var own=b.squads.get(player.getUuid());if(own==null)return;
         for(var unit:b.units)if(unit.mob==victim&&unit.squad.team!=own.team){
-            if(net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player,GravesAndGlory.IMPACT)){
+            if(VersionGate.canSend(player,GravesAndGlory.IMPACT)){
                 var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeFloat(Math.min(1,amount/8f));net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,gg.gravesandglory.net.Payloads.ImpactPayload.of(packet));
             }break;
         }

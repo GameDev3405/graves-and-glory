@@ -67,7 +67,7 @@ public final class RankSync {
         Rank r = of(u);
         int sent = 0;
         for (ServerPlayerEntity p : players) {
-            if (!ServerPlayNetworking.canSend(p, CHANNEL)) continue;
+            if (!VersionGate.canSend(p, CHANNEL)) continue;
             ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.RankPayload.of(packet(u.mob.getId(), r)));
             sent++;
         }
@@ -93,7 +93,7 @@ public final class RankSync {
         if (b == null || !out) return;
         out = false;
         for (ServerPlayerEntity p : b.server.getPlayerManager().getPlayerList()) {
-            if (!ServerPlayNetworking.canSend(p, CHANNEL)) continue;
+            if (!VersionGate.canSend(p, CHANNEL)) continue;
             ServerPlayNetworking.send(p, gg.gravesandglory.net.Payloads.RankPayload.of(packet(CLEAR, new Rank(0, 0, 0))));
             clearSends++;
         }

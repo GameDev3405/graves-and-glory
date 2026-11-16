@@ -16,6 +16,10 @@ import net.fabricmc.fabric.api.networking.v1.ServerConfigurationNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.server.network.ServerConfigurationNetworkHandler;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.network.packet.Packet;
@@ -31,7 +35,14 @@ import net.minecraft.util.Identifier;
  * answered by a C2S reply whose body is {@link #response()} (varInt protocol, string version (64), string build (64)), the same
  * bytes the 1.20.1 login answer carried. The server checks it with {@link CompatibilityPolicy#failure} and either disconnects with
  * the refusal text or completes the task. A client without the channel is recorded as {@link Kind#PLAIN}; while a battle exists it
- * is refused with {@link CompatibilityPolicy#required} (the 1.20.1 outcome). P3 turns that branch into "admit as plain".
+ * is refused with {@link CompatibilityPolicy#required} (the 1.20.1 outcome), unless the server admits plain clients
+ * ({@link PlainClients#ON}: Polymer loaded and -Dgravesandglory.plainClients=true), when it joins as plain.
+ *
+ * <p>Plain clients (port plan P3.1): the flag is final before play starts, because Polymer picks each viewer's entity types and
+ * blocks when it writes the packets. A client that registered release_check_v2 must answer within {@link #GRACE_MS}, or it is
+ * refused. A modpack client that also registered client_hello_v1 gets a second task: its reply carries its raw ids of the
+ * server-only entries ({@link RegistryFingerprint}); a mismatch or a missing reply within the grace leaves it on the plain
+ * stand-ins for the wagon and the map blocks ({@link #rawIds}).
  *
  * <p>Fallback (kept until the dedicated-server test passes): the 1.20.1 login query on {@link #CHANNEL} (release_check_v1). It is
  * still registered and refuses the same clients; start the server with {@code -Dgravesandglory.loginGate=false} to switch it off
@@ -54,9 +65,37 @@ public final class VersionGate {
     private static final Map<UUID, Result> RESULTS = new ConcurrentHashMap<>();
     /** Connections with a check sent and no reply handled yet; a reply from anyone else is ignored. */
     private static final Set<UUID> PENDING = ConcurrentHashMap.newKeySet();
+    /** Connections with a hello sent and no reply handled yet. */
+    private static final Set<UUID> HELLO_PENDING = ConcurrentHashMap.newKeySet();
+    /** Modpack connections whose raw ids of the server-only entries equal the server's (client_hello_v1). */
+    private static final Set<UUID> RAW_IDS = ConcurrentHashMap.newKeySet();
+    /** A configuring connection's open task (check or hello) and when its request went out, for the grace. */
+    private record Waiting(ServerConfigurationNetworkHandler handler, ServerPlayerConfigurationTask.Key task, long since) {}
+    private static final Map<UUID, Waiting> WAITING = new ConcurrentHashMap<>();
+    /** How long a client that registered a channel has to answer its request. */
+    public static final long GRACE_MS = 5000;
+    /** Optional: where to get the modpack, added to every refusal (-Dgravesandglory.modpackUrl). */
+    static final String MODPACK_URL = System.getProperty("gravesandglory.modpackUrl", "").trim();
 
     /** The configuration check's result for a connected (or configuring) player, empty if none ran. For the P3.1 plain flag. */
     public static Optional<Result> result(UUID player) { return Optional.ofNullable(RESULTS.get(player)); }
+
+    /** The per-player flag: true for a client without the modpack (no release_check_v2 channel). Every connection passes the
+     *  configuration check before play, so a player with no result (a player object with no real connection) counts as modded. */
+    public static boolean plain(ServerPlayerEntity p) {
+        if (p == null) return false;
+        var r = RESULTS.get(p.getUuid());
+        return r != null && r.kind() == Kind.PLAIN;
+    }
+    public static boolean modded(ServerPlayerEntity p) { return p != null && !plain(p); }
+    /** Whether this player may be sent the real wagon and map blocks: a modpack client whose raw ids match the server's. */
+    public static boolean rawIds(ServerPlayerEntity p) { return modded(p) && RAW_IDS.contains(p.getUuid()); }
+    /** The guard for every custom payload send (P3.3): never to a plain client, and only on a channel the client registered. */
+    public static boolean canSend(ServerPlayerEntity p, Identifier channel) { return modded(p) && ServerPlayNetworking.canSend(p, channel); }
+    public static boolean canSend(ServerPlayerEntity p, net.minecraft.network.packet.CustomPayload.Id<?> id) { return modded(p) && ServerPlayNetworking.canSend(p, id); }
+
+    /** A refusal's text with the modpack link, when the server names one. */
+    public static String refusal(String text) { return MODPACK_URL.isEmpty() ? text : text + " Download: " + MODPACK_URL; }
 
     private static String readBuild() {
         try (var stream = VersionGate.class.getResourceAsStream("/gravesandglory-build.json")) {
@@ -101,6 +140,17 @@ public final class VersionGate {
         @Override public Key getKey() { return KEY; }
     }
 
+    /** The hello task (P3.1): an empty client_hello_v1 request; the reply (RegistryFingerprint) completes it. */
+    record HelloTask(UUID player, ServerConfigurationNetworkHandler handler) implements ServerPlayerConfigurationTask {
+        static final Key KEY = new Key(Payloads.CLIENT_HELLO.toString());
+        @Override public void sendPacket(Consumer<Packet<?>> sender) {
+            HELLO_PENDING.add(player);
+            WAITING.put(player, new Waiting(handler, KEY, System.currentTimeMillis()));
+            sender.accept(ServerConfigurationNetworking.createS2CPacket(new Payloads.ClientHelloRequestPayload(new byte[0])));
+        }
+        @Override public Key getKey() { return KEY; }
+    }
+
     public static void registerServer() {
         registerConfiguration();
         if (!"false".equals(System.getProperty("gravesandglory.loginGate"))) registerLogin();
@@ -112,13 +162,49 @@ public final class VersionGate {
             UUID id = handler.getDebugProfile().getId();
             if (ServerConfigurationNetworking.canSend(handler, Payloads.ReleaseCheckRequestPayload.ID)) {
                 handler.addTask(new CheckTask(id));
+                WAITING.put(id, new Waiting(handler, CheckTask.KEY, System.currentTimeMillis()));
+                if (ServerConfigurationNetworking.canSend(handler, Payloads.ClientHelloRequestPayload.ID)) handler.addTask(new HelloTask(id, handler));
                 return;
             }
             RESULTS.put(id, new Result(Kind.PLAIN, "", ""));
-            if (GravesAndGlory.battle != null) {
+            if (GravesAndGlory.battle != null && !PlainClients.ON) {
                 RESULTS.put(id, new Result(Kind.REFUSED, "", ""));
                 System.out.println("[Graves and Glory] Refused a client without the mod during configuration");
-                handler.disconnect(Text.literal(CompatibilityPolicy.required(VERSION, BUILD)));
+                handler.disconnect(Text.literal(refusal(CompatibilityPolicy.required(VERSION, BUILD))));
+            } else if (PlainClients.ON) System.out.println("[Graves and Glory] " + handler.getDebugProfile().getName() + " joins without the modpack (plain)");
+        });
+        ServerConfigurationNetworking.registerGlobalReceiver(Payloads.ClientHelloReplyPayload.ID, (payload, context) -> {
+            var handler = context.networkHandler();
+            UUID id = handler.getDebugProfile().getId();
+            if (!HELLO_PENDING.remove(id)) return;
+            var ids = RegistryFingerprint.read(payload.buf());
+            context.server().execute(() -> {
+                boolean match = RegistryFingerprint.matches(ids);
+                if (match) RAW_IDS.add(id); else RAW_IDS.remove(id);
+                System.out.println("[Graves and Glory] " + handler.getDebugProfile().getName() + " joins with the modpack; raw ids of the server-only entries "
+                    + (match ? "match" : "differ (shown the stand-ins): client " + ids + ", server " + RegistryFingerprint.local()));
+                WAITING.remove(id);
+                handler.completeTask(HelloTask.KEY);
+            });
+        });
+        // The grace: a client that registered a channel and leaves its request unanswered is refused (check) or left on the stand-ins (hello).
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            if (WAITING.isEmpty()) return;
+            long now = System.currentTimeMillis();
+            for (var e : WAITING.entrySet()) {
+                var w = e.getValue();
+                if (now - w.since() < GRACE_MS) continue;
+                UUID id = e.getKey();
+                WAITING.remove(id);
+                if (w.task() == CheckTask.KEY && PENDING.remove(id)) {
+                    RESULTS.put(id, new Result(Kind.REFUSED, "", ""));
+                    System.out.println("[Graves and Glory] Refused a client that did not answer the modpack check within " + GRACE_MS + " ms");
+                    w.handler().disconnect(Text.literal(refusal("Your client did not answer the modpack check. " + CompatibilityPolicy.required(VERSION, BUILD))));
+                } else if (w.task() == HelloTask.KEY && HELLO_PENDING.remove(id)) {
+                    RAW_IDS.remove(id);
+                    System.out.println("[Graves and Glory] No client_hello_v1 reply within " + GRACE_MS + " ms; the client is shown the stand-ins");
+                    w.handler().completeTask(HelloTask.KEY);
+                }
             }
         });
         ServerConfigurationNetworking.registerGlobalReceiver(Payloads.ReleaseCheckReplyPayload.ID, (payload, context) -> {
@@ -132,9 +218,11 @@ public final class VersionGate {
             RESULTS.put(id, new Result(refuse ? Kind.REFUSED : Kind.MODDED, reported[0], reported[1]));
             context.server().execute(() -> {
                 if (refuse) {
+                    WAITING.remove(id);
                     System.out.println("[Graves and Glory] Refused incompatible client during configuration");
-                    handler.disconnect(Text.literal(failure));
+                    handler.disconnect(Text.literal(refusal(failure)));
                 } else {
+                    WAITING.remove(id); // the hello task, when the client registered it, starts next with its own timer
                     if (failure.isEmpty()) Diagnostics.report("client-compatibility", true, "Matching release accepted before world admission");
                     handler.completeTask(CheckTask.KEY);
                 }
@@ -144,7 +232,7 @@ public final class VersionGate {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> forget(handler.player.getUuid()));
     }
 
-    private static void forget(UUID id) { RESULTS.remove(id); PENDING.remove(id); }
+    private static void forget(UUID id) { RESULTS.remove(id); PENDING.remove(id); HELLO_PENDING.remove(id); RAW_IDS.remove(id); WAITING.remove(id); }
 
     /** The 1.20.1 login query, unchanged on the wire; kept as a fallback until the configuration gate is proven in game. */
     private static void registerLogin() {
@@ -152,11 +240,13 @@ public final class VersionGate {
             if (GravesAndGlory.battle != null) sender.sendPacket(CHANNEL, PacketByteBufs.empty());
         });
         ServerLoginNetworking.registerGlobalReceiver(CHANNEL, (server, handler, understood, buffer, sync, sender) -> {
-            final String reason = understood ? check(buffer, new String[2]) : CompatibilityPolicy.required(VERSION, BUILD);
+            // With plain clients admitted, a client that does not understand the query is a vanilla client: it passes here and is
+            // flagged plain in configuration. A modpack client still answers, and a wrong answer is still refused.
+            final String reason = understood ? check(buffer, new String[2]) : PlainClients.ON ? "" : CompatibilityPolicy.required(VERSION, BUILD);
             sync.waitFor(server.submit(() -> {
                 if (!reason.isEmpty()) {
                     System.out.println("[Graves and Glory] Refused incompatible client during login");
-                    handler.disconnect(Text.literal(reason));
+                    handler.disconnect(Text.literal(refusal(reason)));
                 } else Diagnostics.report("client-compatibility", true, "Matching release accepted before world admission");
             }));
         });

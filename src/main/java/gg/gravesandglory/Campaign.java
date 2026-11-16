@@ -65,7 +65,7 @@ public final class Campaign {
     /** The last gear_v1 string each player was sent, so the packet goes out only when it changes. */
     final Map<UUID,String> gearSent=new HashMap<>();
     void syncGear(ServerPlayerEntity p){
-        if(!net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(p,GravesAndGlory.GEAR))return;
+        if(!VersionGate.canSend(p,GravesAndGlory.GEAR))return;
         String text=GearWire.encode(profile(p.getUuid()));
         if(text.equals(gearSent.get(p.getUuid())))return;
         var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeString(text,GearWire.LIMIT);
@@ -172,7 +172,7 @@ public final class Campaign {
     void notice(UUID id,String text){post(id,text,b.time);}
     /** A line that tells the player's state (the welcome, the match reward): shown like a notice, but kept until the next notice replaces it. */
     void standing(UUID id,String text){post(id,text,STANDING);}
-    private void post(UUID id,String text,long at){notices.put(id,text);noticeAt.put(id,at);noticeSerials.merge(id,1,Integer::sum);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(keyText(text),true);}
+    private void post(UUID id,String text,long at){notices.put(id,text);noticeAt.put(id,at);noticeSerials.merge(id,1,Integer::sum);var p=b.server.getPlayerManager().getPlayer(id);if(p!=null)p.sendMessage(PlainText.of(text,p),true);} // per viewer (P3.4): a plain client gets plain words, never a binding id
     /** A {key:(id)} template as chat text: each text as it is, each id as Text.keybind of its binding (HintText.bindingKey), so
      *  every client shows its own key, or its "Not bound", named as its feed names it (KeybindTextMixin: a mouse button as LMB,
      *  RMB or MMB). */
@@ -714,7 +714,7 @@ public final class Campaign {
     void sendBegin(int winner){
         for(UUID id:participants){var p=b.server.getPlayerManager().getPlayer(id);if(p==null)continue;
             var sq=b.squads.get(id);if(sq==null||!sq.seated)sq=absentSeat.get(id);int team=sq==null?-1:sq.team;
-            if(!net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(p,GravesAndGlory.ENDING_BEGIN))continue;
+            if(!VersionGate.canSend(p,GravesAndGlory.ENDING_BEGIN))continue;
             var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();packet.writeString(winner<0?"DRAW":team==winner?"VICTORY":"DEFEAT",16);packet.writeString(endingLine,512);
             net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(p,gg.gravesandglory.net.Payloads.EndingBeginPayload.of(packet));}
         beginSentNanos=System.nanoTime();

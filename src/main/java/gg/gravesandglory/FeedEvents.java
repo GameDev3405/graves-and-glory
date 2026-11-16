@@ -107,7 +107,7 @@ public final class FeedEvents {
     }
 
     static void send(ServerPlayerEntity p, String kind, int team, String text) {
-        if (!ServerPlayNetworking.canSend(p, GravesAndGlory.FEED)) return;
+        if (!VersionGate.canSend(p, GravesAndGlory.FEED)) return;
         var buf = PacketByteBufs.create();
         buf.writeString(kind);
         buf.writeInt(team);

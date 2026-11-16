@@ -62,8 +62,14 @@ public final class MapBlocks {
 
     public static final Block TROOP_FENCE = Registry.register(Registries.BLOCK, Identifier.of(MOD, "troop_fence"), new Fence(settings()));
     public static final Block STILL_WATER = Registry.register(Registries.BLOCK, Identifier.of(MOD, "still_water"), new StillWater(settings()));
-    public static final Item TROOP_FENCE_ITEM = Registry.register(Registries.ITEM, Identifier.of(MOD, "troop_fence"), new BlockItem(TROOP_FENCE, new Item.Settings()));
-    public static final Item STILL_WATER_ITEM = Registry.register(Registries.ITEM, Identifier.of(MOD, "still_water"), new BlockItem(STILL_WATER, new Item.Settings()));
+    public static final Item TROOP_FENCE_ITEM = Registry.register(Registries.ITEM, Identifier.of(MOD, "troop_fence"), new MapBlockItem(TROOP_FENCE, new Item.Settings()));
+    public static final Item STILL_WATER_ITEM = Registry.register(Registries.ITEM, Identifier.of(MOD, "still_water"), new MapBlockItem(STILL_WATER, new Item.Settings()));
+
+    /** The builders' item of a map block. Its own class only so that, with Polymer loaded, MapBlockItemPolymerMixin can give it a
+     *  vanilla stand-in (a barrier); without Polymer it is a plain BlockItem. */
+    static final class MapBlockItem extends BlockItem {
+        MapBlockItem(Block block, Settings settings) {super(block, settings);}
+    }
 
     /** What the still-water rule remembers of one living entity: where it last stood on anything else (and in which world), when it may next search for a bank, and how it was put back. */
     static final class Last {

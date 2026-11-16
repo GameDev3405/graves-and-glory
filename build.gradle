@@ -6,6 +6,8 @@ repositories {
  mavenCentral()
  // GeckoLib (approved by Kort for the unit animation rebuild).
  maven { url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' }
+ // Polymer (plain clients, port plan P3; Kort approved Polymer 0.9.19+1.21.1 for the plain-client work): its official Maven, nothing else from it.
+ maven { url = 'https://maven.nucleoid.xyz/'; content { includeGroup 'eu.pb4'; includeGroup 'xyz.nucleoid' } }
 }
 dependencies {
  minecraft 'com.mojang:minecraft:1.21.1'
@@ -14,6 +16,15 @@ dependencies {
  modImplementation 'net.fabricmc.fabric-api:fabric-api:0.116.18+1.21.1'
  modImplementation 'software.bernie.geckolib:geckolib-fabric-1.21.1:4.9.3'
  include 'software.bernie.geckolib:geckolib-fabric-1.21.1:4.9.3'
+ // Plain clients (port plan P3): Polymer is a server-only, optional runtime dependency. Compile against it, never include it: a modpack
+ // client runs without it (gravesandglory.polymer.mixins.json applies only when polymer-core is loaded, and PolymerBridge loads only then).
+ modCompileOnly('eu.pb4:polymer-core:0.9.19+1.21.1') { exclude group: 'net.fabricmc.fabric-api' }
+ modCompileOnly('eu.pb4:polymer-resource-pack:0.9.19+1.21.1') { exclude group: 'net.fabricmc.fabric-api' }
+ // -PplainClients puts Polymer on this Gradle run's classpath (use it for runServer only; a dev client without it is the release modpack).
+ if (project.hasProperty('plainClients')) {
+  modLocalRuntime('eu.pb4:polymer-core:0.9.19+1.21.1') { exclude group: 'net.fabricmc.fabric-api' }
+  modLocalRuntime('eu.pb4:polymer-resource-pack:0.9.19+1.21.1') { exclude group: 'net.fabricmc.fabric-api' }
+ }
 }
 loom { runs { client { programArgs '--width', '1280', '--height', '720' } } }
 // Dedicated server test: its own run folder, so client logs and options stay untouched.
@@ -163,4 +174,22 @@ if (project.hasProperty('engineMap')) {
   loom.runs.getByName(r).vmArg "-Dgravesandglory.engineMap=${file(project.property('engineMap')).absolutePath}"
   if (project.hasProperty('engineMapSlot')) loom.runs.getByName(r).vmArg "-Dgravesandglory.engineMapSlot=${project.property('engineMapSlot')}"
  }
+}
+
+// Plain clients (port plan P3): -PplainClients runs the dedicated server with Polymer and admits clients without the modpack
+// (-Dgravesandglory.plainClients=true; off by default, so a modpack-only server refuses them as before). The Polymer-built pack
+// (plain-pack.zip in the server root) is served by PropPack's HTTP server and is required. -PplainProbe adds the unshipped test commands.
+if (project.hasProperty('plainClients')) {
+ loom.runs.server.vmArg '-Dgravesandglory.plainClients=true'
+ loom.runs.server.vmArg '-Dgg.propPack.file=plain-pack.zip'
+ loom.runs.server.vmArg "-Dgg.propPack.port=${project.findProperty('plainPackPort') ?: '25692'}"
+ loom.runs.server.vmArg '-Dgg.propPack.required=true'
+ loom.runs.server.vmArg '-Dgg.propPack.plainOnly=true'
+}
+if (project.hasProperty('plainProbe')) {
+ loom.runs.server.vmArg '-Dgravesandglory.localIntegration=true'
+ loom.runs.server.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
+ loom.runs.server.vmArg '-Dgravesandglory.localChecks=local-checks.txt'
+ loom.runs.server.vmArg '-Dgravesandglory.plainProbe=true'
+ tasks.named('runServer') { dependsOn localTestToolsJar }
 }

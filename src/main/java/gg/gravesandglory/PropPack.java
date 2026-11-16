@@ -32,7 +32,9 @@ import java.nio.file.Path;
 public final class PropPack {
     private PropPack(){}
 
-    static final String FILE="gg.propPack.file",URL="gg.propPack.url",PORT="gg.propPack.port",REQUIRED="gg.propPack.required",PACKWIZ="gg.packwiz.dir";
+    static final String FILE="gg.propPack.file",URL="gg.propPack.url",PORT="gg.propPack.port",REQUIRED="gg.propPack.required",PACKWIZ="gg.packwiz.dir",PLAIN_ONLY="gg.propPack.plainOnly";
+    /** gg.propPack.plainOnly=true: the pack goes to plain (vanilla) clients only (port plan P3: the plain pack, whose language file names the mod's keybinds in plain words, must not reach a modpack client). */
+    static boolean plainOnly(){return Boolean.getBoolean(PLAIN_ONLY);}
     static final String PROMPT="Graves and Glory props";
     /** One fixed pack id, so a re-sent (reloaded) pack replaces the one a client already holds instead of stacking beside it (1.20.3+ keys packs by id). */
     static final UUID PACK_ID=UUID.nameUUIDFromBytes("gravesandglory:props".getBytes(StandardCharsets.UTF_8));
@@ -99,6 +101,7 @@ public final class PropPack {
     static boolean send(ServerPlayerEntity player){
         var p=pack;String url=url();
         if(p==null||url==null)return false;
+        if(plainOnly()&&!VersionGate.plain(player))return false;
         player.networkHandler.sendPacket(new ResourcePackSendS2CPacket(PACK_ID,url,p.sha1(),required(),Optional.of(Text.literal(PROMPT))));
         return true;
     }

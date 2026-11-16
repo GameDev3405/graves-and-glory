@@ -56,6 +56,8 @@ public final class Payloads {
         PayloadTypeRegistry.playC2S().register(UiEditPayload.ID, UiEditPayload.CODEC);
         PayloadTypeRegistry.configurationS2C().register(ReleaseCheckRequestPayload.ID, ReleaseCheckRequestPayload.CODEC);
         PayloadTypeRegistry.configurationC2S().register(ReleaseCheckReplyPayload.ID, ReleaseCheckReplyPayload.CODEC);
+        PayloadTypeRegistry.configurationS2C().register(ClientHelloRequestPayload.ID, ClientHelloRequestPayload.CODEC);
+        PayloadTypeRegistry.configurationC2S().register(ClientHelloReplyPayload.ID, ClientHelloReplyPayload.CODEC);
     }
 
     // Server to client.
@@ -359,5 +361,25 @@ public final class Payloads {
         /** A fresh reader over the body, for a receive site. */
         public PacketByteBuf buf() { return RawBody.reader(body); }
         @Override public Id<ReleaseCheckReplyPayload> getId() { return ID; }
+    }
+
+    /** client_hello_v1 (plain clients, port plan P3.1): the modpack client's hello in configuration, after release_check_v2. */
+    public static final Identifier CLIENT_HELLO = Identifier.of("gravesandglory", "client_hello_v1");
+
+    /** S2C configuration CLIENT_HELLO: the hello request, empty body. */
+    public record ClientHelloRequestPayload(byte[] body) implements CustomPayload {
+        public static final Id<ClientHelloRequestPayload> ID = new Id<>(CLIENT_HELLO);
+        public static final PacketCodec<PacketByteBuf, ClientHelloRequestPayload> CODEC = RawBody.codec(ClientHelloRequestPayload::new, ClientHelloRequestPayload::body);
+        public PacketByteBuf buf() { return RawBody.reader(body); }
+        @Override public Id<ClientHelloRequestPayload> getId() { return ID; }
+    }
+    /** C2S configuration CLIENT_HELLO: the client's raw ids of the entries a Polymer server keeps out of Fabric's registry sync
+     *  (RegistryFingerprint: varInt n, then n times string key (128), varInt raw id). Raw, so a malformed body only fails the match. */
+    public record ClientHelloReplyPayload(byte[] body) implements CustomPayload {
+        public static final Id<ClientHelloReplyPayload> ID = new Id<>(CLIENT_HELLO);
+        public static final PacketCodec<PacketByteBuf, ClientHelloReplyPayload> CODEC = RawBody.codec(ClientHelloReplyPayload::new, ClientHelloReplyPayload::body);
+        public static ClientHelloReplyPayload of(PacketByteBuf buf) { return new ClientHelloReplyPayload(RawBody.copy(buf)); }
+        public PacketByteBuf buf() { return RawBody.reader(body); }
+        @Override public Id<ClientHelloReplyPayload> getId() { return ID; }
     }
 }

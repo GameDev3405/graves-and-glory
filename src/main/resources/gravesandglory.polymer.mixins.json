@@ -1,0 +1,8 @@
+{
+  "required": true,
+  "package": "gg.gravesandglory.polymer.mixin",
+  "plugin": "gg.gravesandglory.polymer.PolymerMixins",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [],
+  "injectors": { "defaultRequire": 1 }
+}

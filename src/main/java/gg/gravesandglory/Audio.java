@@ -24,7 +24,7 @@ public final class Audio {
     public static void register() {
         for (String path : AudioCues.ids()) {
             var id = Identifier.of("gravesandglory", path);
-            Registry.register(Registries.SOUND_EVENT, id, SoundEvent.of(id));
+            Registry.register(Registries.SOUND_EVENT, id, PolymerSupport.LOADED ? gg.gravesandglory.polymer.PolymerBridge.sound(id) : SoundEvent.of(id)); // with Polymer (plain clients, P3) the sounds stay out of the registry sync, sent by id
         }
     }
 

@@ -16,7 +16,8 @@
       "gg.gravesandglory.SliceProbe",
       "gg.gravesandglory.RewardDriver",
       "gg.gravesandglory.NetExchangeProbe",
-      "gg.gravesandglory.AiPurposeOverlay"
+      "gg.gravesandglory.AiPurposeOverlay",
+      "gg.gravesandglory.PlainProbe"
     ],
     "client": [
       "gg.gravesandglory.testing.LocalVisualInspection",
