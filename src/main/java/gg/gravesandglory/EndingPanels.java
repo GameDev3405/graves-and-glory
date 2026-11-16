@@ -138,7 +138,7 @@ final class EndingPanels {
             String name = EndingClient.display(str(row, "name"));
             // the award chip, or "Left the battle", after the name (ending polish): it gives way to the name when the room is short
             boolean gone = row.has("left") && row.get("left").getAsBoolean();
-            String tag = gone ? EndingClient.left() : str(row, "award");
+            String tag = gone ? EndingClient.leftLine() : str(row, "award");
             int room = nameRight - nx, nameW = Math.min(font.getWidth(name), Math.max(30, room / 2));
             if (!tag.isEmpty()) tag = UiMath.trim(tag, room - nameW - 10, s -> width(small(s)));
             if (tag.equals("...")) tag = "";
