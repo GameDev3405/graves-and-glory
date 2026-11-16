@@ -1,12 +1,12 @@
 name = "Graves and Glory Builder"
 author = "Graves and Glory"
-version = "0.5.1-ca592354-20261116"
+version = "0.5.1-485a1cca-20261116"
 pack-format = "packwiz:1.1.0"
 
 [index]
 file = "index.toml"
 hash-format = "sha256"
-hash = "21e9cb2a553333e73e67b0ceeb96603e461bdc8ca6c697040de116044a957e18"
+hash = "820a61f4ab65016a05a149fc007632c6ce632dc3cb97d8344380381cbb1c5fe1"
 
 [versions]
 fabric = "0.19.5"

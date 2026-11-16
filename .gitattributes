@@ -15,3 +15,4 @@ gradlew text eol=lf
 # Preserve the exact bytes identified by the historical provenance manifest.
 docs/archive/local-decisions/** -text whitespace=cr-at-eol
 tools/mapengine/web/vendor/*.js -text
+*.toml text eol=lf

@@ -721,5 +721,34 @@
     ],
     "modrinthPublished": "2026-09-24",
     "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)"
+  },
+  {
+    "slug": "excalibur",
+    "projectId": "hJAzl1Bs",
+    "versionId": "ZRWxgeyn",
+    "version": "1.21.1",
+    "fileName": "Excalibur_V1.21.1.zip",
+    "fileSize": 18103896,
+    "hashes": {
+      "sha512": "858c0367346ec6d58e34ecd2f3b69b73e779d655a49ca12bcdd0113106bf4516f378013bab74331ad1f02ba0b0c2c465374802210ebb3f1f6d26b1cc8936a591",
+      "sha1": "32e930dd065d2278587c1cc810ca6eaba5afd125"
+    },
+    "sha256": "421d9937efacb5fd9e11b84b0be1d495e97c06579b6339d7168127b85684a67a",
+    "downloads": [
+      "https://cdn.modrinth.com/data/hJAzl1Bs/versions/ZRWxgeyn/Excalibur_V1.21.1.zip"
+    ],
+    "kind": "resourcepack",
+    "env": {
+      "client": "required",
+      "server": "unsupported"
+    },
+    "license": {
+      "id": "CC-BY-NC-ND-3.0",
+      "name": "Creative Commons Attribution-NonCommercial-NoDerivs 3.0 Unported",
+      "url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+    },
+    "projectUrl": "https://modrinth.com/resourcepack/excal",
+    "curseforgeOverride": true,
+    "redistributionReview": "Maffhew permission 2026-10-28 and Kort re-confirmation 2026-11-16 for 1.21.1; unmodified; paid features not covered. CC BY-NC-ND 3.0. Builder pack only (not in the player manifest)."
   }
 ]

@@ -37,7 +37,7 @@ metafile = true
 
 [[files]]
 file = "mods/graves-and-glory-0.5.1.jar"
-hash = "ca5923548aae53411524a1d7a634eeb2c36b906e737a1e856b396028fd14f43d"
+hash = "485a1cca7135570d8f2aabe112d2bd3635683e625e79f89e260f01fdefffc4a4"
 
 [[files]]
 file = "mods/immediatelyfast.pw.toml"
@@ -87,6 +87,11 @@ metafile = true
 [[files]]
 file = "mods/xaeros-world-map.pw.toml"
 hash = "5fa0452c4138bb65a921af211854e368ed5d4bad275e4ac75ab9490b026c06df"
+metafile = true
+
+[[files]]
+file = "resourcepacks/excalibur.pw.toml"
+hash = "3641e7dd7cea463ac4b282fcc1acd7b02d5e9ccbadae66288ac3cff8edd11cfb"
 metafile = true
 
 [[files]]
