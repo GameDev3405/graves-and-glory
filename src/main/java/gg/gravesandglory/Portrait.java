@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.blaze3d.systems.RenderSystem;
 import gg.gravesandglory.mixin.LivingEntityRendererAccessor;
+import gg.gravesandglory.mixin.MatrixEntryAccessor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.DiffuseLighting;
@@ -15,6 +16,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.util.Identifier;
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -69,7 +71,7 @@ final class Portrait {
         "tc_brute", new float[]{1.2f, -6f, 0f});
     /** The most a low model (a hound) grows on the roll card over a biped's size. */
     static final float CARD_GROW = 1.25f;
-    /** The portrait's two lights (the entity shader's Light0 and Light1, GUI space: -y up; +z toward the viewer on 1.21, where MatrixStack.multiplyPositionMatrix also turns the normal matrix, so the -z scale of the entity transform flips the normals and the vanilla GUI lights moved to +z; 1.20.1 had -z toward the viewer). The key is the
+    /** The portrait's two lights (the entity shader's Light0 and Light1, GUI space: -y up; +z toward the viewer on 1.21, where the -z scale of the entity transform flips the normals (normals1201 keeps that flip) and the vanilla GUI lights moved to +z; 1.20.1 had -z toward the viewer). The key is the
      *  inventory's own, from above and in front; the fill comes from the camera, slightly high, in place of the inventory's second
      *  light from straight above, so the faces turned to the viewer read at full strength and dark troops stand off the dark frame
      *  back (the audit, 2026-11-11). Portrait draws only: the world's and the inventory's lights are put back after each. */
@@ -167,7 +169,9 @@ final class Portrait {
         MatrixStack m = g.getMatrices();
         m.push();
         m.translate(x, y, 50.0);
+        Matrix3f page = new Matrix3f(m.peek().getNormalMatrix());
         m.multiplyPositionMatrix(new Matrix4f().scaling(size, size, -size));
+        normals1201(m.peek(), page);
         m.multiply(body);
         RenderSystem.setShaderLights(KEY, FILL);
         EntityRenderDispatcher d = MinecraftClient.getInstance().getEntityRenderDispatcher();
@@ -181,6 +185,22 @@ final class Portrait {
             m.pop();
             DiffuseLighting.enableGuiDepthLighting();
         }
+    }
+
+    /**
+     * Puts back the normal matrix 1.20.1 drew a portrait with, z flipped for the +z lights (KEY, FILL). On 1.21
+     * MatrixStack.multiplyPositionMatrix sets the normal matrix to the inverse transpose of the whole position matrix
+     * (Entry.computeNormal), about 1/size long. A vanilla model renormalises each normal (Entry.transformNormal), but GeckoLib's
+     * GeoRenderer.renderCube uses them as given: its normals came out near zero and only the ambient light was left, so every
+     * GeckoLib troop drew dark. 1.20.1 left the normal matrix alone there; the page's own (UiCanvas's scale(s, s, 1)) was scaled to
+     * determinant 1 by 1.20.1's MatrixStack.scale and is not on 1.21, so it is scaled here, and no normal is renormalised, as on 1.20.1.
+     */
+    private static void normals1201(MatrixStack.Entry entry, Matrix3f page) {
+        float det = Math.abs(page.determinant());
+        Matrix3f n = entry.getNormalMatrix().set(page);
+        if (det > 1e-12f) n.scale((float) Math.cbrt(1.0 / det));
+        n.scale(1f, 1f, -1f);
+        ((MatrixEntryAccessor) (Object) entry).gravesandglory$setCanSkipNormalization(true);
     }
 
     /** The fit of e's head in a window `window` canvas px square (Fit's offsets are from the window's top-left). */
