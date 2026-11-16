@@ -425,6 +425,8 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
 
     int lastShot;
     boolean reported;
+    /** March stall guard: the client skipped server ticks in mk 10-29 (behind, how many), the march is run again (again), at most 2 times (retries). */
+    boolean behind, again; int behindTicks, retries;
     final List<double[]> samples = new ArrayList<>();
     final Set<String> wrongClip = new LinkedHashSet<>();
     volatile UUID player;
@@ -507,7 +509,9 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
     }
 
     /** Passes when every knight's mean client speed is within 10% of the true speed and its clip was right in every sample. */
-    void readBack(String name, double v) {
+    void readBack(String name, double v) { readBack(name, v, 0); }
+    /** As readBack(name, v); skipped (more than 0) notes the server ticks the client fell behind in the last try, after its retries. */
+    void readBack(String name, double v, int skipped) {
         StringBuilder seen = new StringBuilder();
         boolean ok = !samples.isEmpty() && wrongClip.isEmpty();
         for (int j = 0; j < knights.size(); j++) {
@@ -522,7 +526,7 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
             seen.append(String.format(" %.3f[%.3f-%.3f]", med, lo, hi));
         }
         Phase1Checks.report("p1-geo-" + TROOP + "-march-" + name, ok, "true " + v + ", " + samples.size() + " samples, client median[min-max]:" + seen
-            + (wrongClip.isEmpty() ? "" : ", wrong clip " + wrongClip));
+            + (wrongClip.isEmpty() ? "" : ", wrong clip " + wrongClip) + (skipped > 0 ? ", client fell " + skipped + " server ticks behind in mk 10-29 after 2 retries" : ""));
     }
 
     /**
@@ -901,20 +905,28 @@ final class GeoKnightChecks implements Phase1Checks.Suite {
                 String name = GAITS[g] + "-" + MARCH_VIEWS[vw];
                 if (k == 1) {
                     double v = SPEEDS[g], dx = DIRS[vw][0], dz = DIRS[vw][1];
-                    lastShot = -1; reported = false; samples.clear(); wrongClip.clear();
+                    lastShot = -1; reported = false; samples.clear(); wrongClip.clear(); behind = false; again = false; behindTicks = 0;
                     Phase1Checks.server(c, b -> run = new March(this, b, name, v, dx, dz, vw == 0));
                 }
                 if (k == 3) { c.setScreen(null); c.options.hudHidden = true; }
                 March m = run;
                 if (k > 400) { Phase1Checks.report("p1-geo-" + TROOP + "-march-" + name, false, "march never ran"); run = null; next(tick, 9); return; }
                 if (m == null || !m.name.equals(name) || m.k == lastShot) return;
-                int mk = lastShot = m.k;
+                int prev = lastShot, mk = lastShot = m.k;
+                // The client fell behind the server (a frame over 50 ms; 1.21.1 port E3 review): the server ticks it skipped reach it as bunched position
+                // packets, so the client's per-tick step is uneven and a gap over 4 ticks restarts Gait's averages. Such a march measures the
+                // client's frame pacing, not the stride clock: it is run again (up to 2 times) instead of judged.
+                if (prev >= 0 && mk - prev > 1 && mk >= 10 && mk < 30) { behind = true; behindTicks += mk - prev - 1; }
                 if (mk >= 12 && mk < 28) Phase1Checks.shot(c, "geo-" + TROOP + "-" + name + "-near-" + String.format("%02d", mk));
                 if (mk >= 32 && mk < 40) Phase1Checks.shot(c, "geo-" + TROOP + "-" + name + "-far-" + String.format("%02d", mk));
                 // The run is chosen on the 4-tick speed trend, so sample from mk 22: the trend is past WALK_TO_RUN by then on every knight.
                 if (mk >= 22 && mk < 30) sample(c, MODES[g], mk);
-                if (mk >= 30 && !reported) { reported = true; readBack(name, SPEEDS[g]); }
-                if (mk >= 44) { run = null; if (++i < GAITS.length * MARCH_VIEWS.length) next(tick, 4); else { i = 0; next(tick, 5); } }
+                if (mk >= 30 && !reported) {
+                    reported = true; again = behind && retries < 2;
+                    if (again) { retries++; System.out.println("[p1] march " + name + ": the client fell " + behindTicks + " server ticks behind in mk 10-29; marching again (" + retries + " of 2)"); }
+                    else { readBack(name, SPEEDS[g], behind ? behindTicks : 0); retries = 0; }
+                }
+                if (mk >= 44) { run = null; if (again) next(tick, 4); else if (++i < GAITS.length * MARCH_VIEWS.length) next(tick, 4); else { i = 0; next(tick, 5); } }
             }
             case 5 -> {
                 // Standing duel, one view at a time: every tick of each of the three swings, frame by frame (far: every other tick).
