@@ -88,8 +88,9 @@ final class OrderRules {
         String order = loadOrder(action);
         if (!order.equals("attack") && !order.equals("charge")) enemyId = -1;
         Entity enemy = enemyId >= 0 ? b.world.getEntityById(enemyId) : null;
-        boolean targetGone = enemyId >= 0 && (enemy == null || !enemy.isAlive() || b.teamOf(enemy) < 0 || b.teamOf(enemy) == s.team || !MapBlockRules.canSee(p, enemy));
-        String refused = OrderReply.gate(false, false, targetGone, order, unitIds(b, s, ids).length, chargeReady(b, s)); // an empty group's Charge is no_troops, so it never starts the cooldown
+        boolean targetGone = enemyId >= 0 && (enemy == null || !enemy.isAlive() || b.teamOf(enemy) < 0 || b.teamOf(enemy) == s.team);
+        boolean targetUnseen = enemyId >= 0 && !targetGone && !MapBlockRules.canSee(p, enemy); // alive, but out of the commander's sight
+        String refused = OrderReply.gate(false, false, targetGone, targetUnseen, order, unitIds(b, s, ids).length, chargeReady(b, s)); // an empty group's Charge is no_troops, so it never starts the cooldown
         if (refused != null) {
             int left = (int) (s.chargeReadyAt - b.time);
             if (refused.equals(OrderReply.CHARGE_COOLDOWN)) CommandNet.cooldown(p, left);

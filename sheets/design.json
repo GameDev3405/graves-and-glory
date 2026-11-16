@@ -14310,6 +14310,10 @@
       "text": "That enemy is gone."
     },
     {
+      "id": "lost_sight",
+      "text": "Lost sight of them."
+    },
+    {
       "id": "out_of_range",
       "text": "Too far to order."
     },

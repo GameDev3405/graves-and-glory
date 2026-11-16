@@ -23,7 +23,7 @@ import java.util.UUID;
 /**
  * Army control polish, slice 1 (spec 2026-11-10 section 5, "every order gets exactly one answer"), on a new engine map (GRAVES_REPLY_MAP, default 6,
  * Rivergate EY, which has a river): the accepted line in words, a key press inside the command cooldown held and sent, the refusal codes down,
- * intro, no_troops (an empty Charge that starts no cooldown), out_of_range and target_gone as the client's lines, the respawn card's second line,
+ * intro, no_troops (an empty Charge that starts no cooldown), out_of_range, target_gone and lost_sight as the client's lines, the respawn card's second line,
  * and an order into deep water moved to the dry ground the aim preview shows. Screenshots go to work/cmdui-shots. Never included in releases.
  */
 public final class ReplySuite implements CommandUiChecks.Suite {
@@ -36,6 +36,7 @@ public final class ReplySuite implements CommandUiChecks.Suite {
     String empty;
     long readyBefore;
     int[] water;
+    int unseen;
     double[] clientDry;
     Vec3d rawHit;
     final List<String> shots = new ArrayList<>();
@@ -87,7 +88,8 @@ public final class ReplySuite implements CommandUiChecks.Suite {
             case 7 -> { if (tick == at + 1) { clear(c); CommandUiChecks.server(c, x -> ReplyProbe.order(x, id, "all", "hold", 9999, 9999, -1)); }
                         if (tick == at + 8) refusal("cu-reply-out-of-range", "out_of_range", "Too far to order.");
                         if (tick == at + 9) { clear(c); CommandUiChecks.server(c, x -> ReplyProbe.order(x, id, "all", "attack", 0, 0, 1 << 30)); }
-                        if (tick == at + 16) { refusal("cu-reply-target-gone", "target_gone", "That enemy is gone."); next(tick); } }
+                        if (tick == at + 16) { refusal("cu-reply-target-gone", "target_gone", "That enemy is gone."); clear(c); unseen = -2; CommandUiChecks.server(c, x -> { unseen = ReplyProbe.unseenEnemy(x, id); if (unseen >= 0) ReplyProbe.order(x, id, "all", "attack", 0, 0, unseen); }); }
+                        if (tick == at + 24) { if (unseen < 0) CommandUiChecks.report("cu-reply-lost-sight", false, "no living enemy out of sight (" + unseen + ")"); else refusal("cu-reply-lost-sight", "lost_sight", "Lost sight of them."); next(tick); } }
             // G: deep water: the server moves the point to dry ground, the same cell the client's preview uses
             case 8 -> { if (tick == at + 1) { clear(c); water = null; CommandUiChecks.server(c, x -> water = ReplyProbe.deepNear(x, c.player.getX(), c.player.getZ())); }
                         if (tick == at + 4) { if (water == null) { CommandUiChecks.report("cu-reply-water", false, "no deep water in the arena of map " + map); next(tick); return; }
@@ -99,7 +101,8 @@ public final class ReplySuite implements CommandUiChecks.Suite {
                             next(tick); } }
             // H: the aim preview over water stands on the snapped ground
             case 9 -> { if (tick == at + 1) { clear(c); CommandUiChecks.server(c, x -> ReplyProbe.stand(x, id, clientDry[0], clientDry[1])); }
-                        if (tick == at + 20) { Vec3d eye = c.player.getEyePos(), to = new Vec3d(water[0] + .5, ReplyProbe.groundY(water[0], water[1]) + .2, water[1] + .5).subtract(eye);
+                        if (tick == at + 20) { int[] aim = ReplyProbe.deepBeyond(c.player.getX(), c.player.getZ(), water[0], water[1]); // well out in the river, so the ray clears the bank under the commander's feet
+                            Vec3d eye = c.player.getEyePos(), to = new Vec3d(aim[0] + .5, c.world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING, aim[0], aim[1]) - .5, aim[1] + .5).subtract(eye);
                             float yaw = (float) (Math.toDegrees(Math.atan2(to.z, to.x)) - 90), pitch = (float) -Math.toDegrees(Math.atan2(to.y, Math.sqrt(to.x * to.x + to.z * to.z)));
                             c.player.setYaw(yaw); c.player.setPitch(pitch); c.player.prevYaw = yaw; c.player.prevPitch = pitch; c.player.setHeadYaw(yaw); c.player.prevHeadYaw = yaw;
                             CommandSelection.select("all", false); CommandSelection.order("hold", false); }
@@ -107,7 +110,7 @@ public final class ReplySuite implements CommandUiChecks.Suite {
                         if (tick == at + 27) { Vec3d d = ReplyProbe.aimed(); boolean rawDeep = rawHit != null && ReplyProbe.deep(rawHit.x, rawHit.z);
                             double[] want = rawHit == null ? null : ReplyProbe.clientGround(c.world, rawHit.x, rawHit.z, c.player.getX());
                             boolean ok = rawDeep && d != null && !ReplyProbe.deep(d.x, d.z) && want != null && Math.abs(d.x - want[0]) < .01 && Math.abs(d.z - want[1]) < .01;
-                            CommandUiChecks.report("cu-reply-water-aim", ok, "raw aim " + (rawHit == null ? "-" : String.format("%.1f,%.1f", rawHit.x, rawHit.z)) + " deep " + rawDeep + ", preview anchor " + (d == null ? "-" : String.format("%.2f,%.2f", d.x, d.z)) + " deep " + (d != null && ReplyProbe.deep(d.x, d.z)));
+                            CommandUiChecks.report("cu-reply-water-aim", ok, "from " + String.format("%.1f,%.1f", c.player.getX(), c.player.getZ()) + " raw aim " + (rawHit == null ? "-" : String.format("%.1f,%.1f", rawHit.x, rawHit.z)) + " deep " + rawDeep + ", preview anchor " + (d == null ? "-" : String.format("%.2f,%.2f", d.x, d.z)) + " deep " + (d != null && ReplyProbe.deep(d.x, d.z)));
                             gg.gravesandglory.CommandSelection.reset(); next(tick); } }
             default -> CommandUiChecks.finish(c);
         }

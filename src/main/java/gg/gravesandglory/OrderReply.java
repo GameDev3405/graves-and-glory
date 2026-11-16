@@ -14,21 +14,23 @@ import java.util.List;
 public final class OrderReply {
     private OrderReply() {}
     public static final String DOWN = "down", INTRO = "intro", NO_TROOPS = "no_troops", CHARGE_COOLDOWN = "charge_cooldown",
-            TARGET_GONE = "target_gone", OUT_OF_RANGE = "out_of_range";
+            TARGET_GONE = "target_gone", LOST_SIGHT = "lost_sight", OUT_OF_RANGE = "out_of_range";
     /** The codes the server may send, in the order the gate tests them (OUT_OF_RANGE comes last, once every group's point is known). */
-    public static final List<String> CODES = List.of(DOWN, INTRO, TARGET_GONE, NO_TROOPS, CHARGE_COOLDOWN, OUT_OF_RANGE);
+    public static final List<String> CODES = List.of(DOWN, INTRO, TARGET_GONE, LOST_SIGHT, NO_TROOPS, CHARGE_COOLDOWN, OUT_OF_RANGE);
 
     /**
      * The refusal for an order that has passed the silent gates (a battle running, the commander seated, not inside the command cooldown),
      * before any point is worked out; null when nothing refuses it yet. down: the commander is respawning; intro: the round intro is
-     * playing; targetGone: an aimed enemy that is dead, unseen or not an enemy; living: the named groups' living troops; charge and
+     * playing; targetGone: an aimed enemy that is dead, missing or not an enemy; targetUnseen: an aimed enemy alive but out of the
+     * commander's sight (Kort, 2026-11-16: "Lost sight of them", apart from a dead one); living: the named groups' living troops; charge and
      * chargeReady: a Charge, and whether the commander's Charge is off cooldown. A shape-only order (formation) skips the troop count:
      * it moves nobody. An empty Charge is refused as no_troops before the cooldown is read, so it never starts the cooldown.
      */
-    public static String gate(boolean down, boolean intro, boolean targetGone, String order, int living, boolean chargeReady) {
+    public static String gate(boolean down, boolean intro, boolean targetGone, boolean targetUnseen, String order, int living, boolean chargeReady) {
         if (down) return DOWN;
         if (intro) return INTRO;
         if (targetGone) return TARGET_GONE;
+        if (targetUnseen) return LOST_SIGHT;
         if (!"formation".equals(order) && living <= 0) return NO_TROOPS;
         if ("charge".equals(order) && !chargeReady) return CHARGE_COOLDOWN;
         return null;

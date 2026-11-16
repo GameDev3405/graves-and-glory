@@ -55,6 +55,20 @@ public final class ReplyProbe {
     /** The client's own answer to a point in water (the same helper the server asks), from the client's world. */
     public static double[] clientGround(net.minecraft.world.BlockView w, double x, double z, double towardX) { return Arena.orderGround(w, x, z, towardX); }
 
+    /** An enemy troop that is alive but out of the owner's sight (MapBlockRules.canSee), as its entity id; -1 when every one is seen. */
+    public static int unseenEnemy(GravesAndGlory.Battle b, UUID owner) {
+        var p = b.server.getPlayerManager().getPlayer(owner); int team = b.squads.get(owner).team;
+        for (var e : b.world.iterateEntities()) { int t = b.teamOf(e); if (e != p && e.isAlive() && t >= 0 && t != team && !MapBlockRules.canSee(p, e)) return e.getId(); }
+        return -1;
+    }
+    /** The deep (5 x 5) cell farthest from (fromX, fromZ) along the line through (x, z), up to 10 blocks on: an aim that clears the bank. */
+    public static int[] deepBeyond(double fromX, double fromZ, int x, int z) {
+        double dx = x + .5 - fromX, dz = z + .5 - fromZ, l = Math.sqrt(dx * dx + dz * dz); if (l < 1e-6) return new int[]{x, z};
+        int[] best = new int[]{x, z};
+        for (int k = 1; k <= 10; k++) { int cx = (int) Math.floor(x + .5 + dx / l * k), cz = (int) Math.floor(z + .5 + dz / l * k);
+            if (!GravesAndGlory.Battle.inArena(cx, cz)) break; if (wide(cx, cz)) best = new int[]{cx, cz}; }
+        return best;
+    }
     /** Puts the owner on the ground at (x, z) (Battle.groundAt). */
     public static void stand(GravesAndGlory.Battle b, UUID owner, double x, double z) {
         var p = b.server.getPlayerManager().getPlayer(owner); var g = GravesAndGlory.Battle.groundAt(x, z, x, z);

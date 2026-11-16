@@ -135,10 +135,11 @@ Refused: the deny sound and one line. The server sends a refusal code on `comman
 | `no_troops` | selected groups have no living troops | "No riders left." |
 | `charge_cooldown` | charge not ready | "Charge ready in N s." (exists) |
 | `target_gone` | focused group already dead | "That enemy is gone." |
+| `lost_sight` | aimed enemy alive but out of the commander's sight (Kort, 2026-11-16) | "Lost sight of them." |
 | `out_of_range` | point beyond order range or outside the arena | "Too far to order." |
 | `too_few` | split of a group under four | "Too few to split." |
 
-A point in water is not refused. The approved unit-AI spec (2026-10-18, section 4) moves it to the nearest open cell, and this spec follows that: the "Choose dry ground or a crossing" refusal in `OrderRules.java:113` goes, and the preview ring snaps to the cell the order will really use. `down` never applies to a bot.
+A point in water is not refused. The approved unit-AI spec (2026-10-18, section 4) moves it to the nearest open cell, and this spec follows that: the "Choose dry ground or a crossing" refusal in `OrderRules.java:113` goes, and the preview ring snaps to the cell the order will really use. A Charge whose whole run is over water stops at the nearest dry ground to the run's end (Kort, 2026-11-16). The arena edge is the only order-range limit: no distance-from-commander gate (Kort, 2026-11-16). `down` never applies to a bot.
 
 The 4-tick cooldown between orders stays silent: it is shorter than a key press and a message would be noise. The client holds a key release that lands inside it and sends it when the cooldown ends, so no press is lost.
 
