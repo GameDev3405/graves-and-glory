@@ -79,6 +79,13 @@ public final class Phase2Checks implements ClientModInitializer {
         if(out.size()>20)return WarGrid.dense(WarGrid.place(out,id->0));
         return Campaign.table(out);
     }
+    /** An old 20-entry banner as ProfileMigration moves it onto the war table: WarGrid.fromLine, entry i at cell (2 + i % 5, i / 5), the old 5 by 4 block
+     *  (empty entries skipped). banner(spec) no longer gives this since Campaign.table places by role (5cef0769); the migration checks compare against this. */
+    static List<String> migrated(String spec){
+        List<String> out=new ArrayList<>();
+        for(String part:spec.split(",")){String[] p=part.trim().split("[*]");int n=p.length>1?Integer.parseInt(p[1].trim()):1;for(int i=0;i<n;i++)out.add(p[0].trim());}
+        return WarGrid.dense(WarGrid.fromLine(out,RosterMath.Catalog.fromSpec(),t->true).table());
+    }
     /** The gold a schema 6 profile held, as the migration split it: troop writs of 100 and the rest as gear shards (nothing else has paid into either yet). */
     static int migGold(Profile pr){return pr.troopWrits*100+pr.gearShards;}
     static int savedGold(com.google.gson.JsonObject j){return j.get("troopWrits").getAsInt()*100+j.get("gearShards").getAsInt();}
@@ -6302,7 +6309,7 @@ public final class Phase2Checks implements ClientModInitializer {
             if(!Collections.disjoint(pr.owned.keySet(),Set.of("mage","hexer","oracle","wraith")))bad.append("mage, hexer, oracle or wraith owned; ");
             if(migGold(pr)!=w.gold())bad.append("gold (troop writs x 100 + gear shards) ").append(migGold(pr)).append(" (want ").append(w.gold()).append("); ");
             if(!pr.commander.equals(w.commander()))bad.append("class ").append(pr.commander).append(" (want ").append(w.commander()).append("); ");
-            if(!pr.line().equals(banner(w.banner())))bad.append("banner ").append(String.join(",",pr.line())).append(" (want ").append(w.banner()).append("); ");
+            if(!pr.line().equals(migrated(w.banner())))bad.append("banner ").append(String.join(",",pr.line())).append(" (want ").append(w.banner()).append("); ");
             if(pr.matches!=w.matches()||pr.wins!=w.wins()||pr.campaignCleared!=w.cleared()||pr.tutorialDone!=w.tutorial())bad.append("matches/wins/cleared/tutorial ").append(pr.matches).append("/").append(pr.wins).append("/").append(pr.campaignCleared).append("/").append(pr.tutorialDone).append("; ");
             if(pr.schema!=Profile.SCHEMA)bad.append("schema ").append(pr.schema).append("; ");
             for(var h:Spec.HOUSES)if(pr.shards.getOrDefault(h.id(),-1)!=0||pr.renown.getOrDefault(h.id(),-1)!=0||pr.pity.getOrDefault(h.id(),-1)!=0)bad.append("shards, renown or pity of ").append(h.id()).append(" not 0; ");
@@ -6386,7 +6393,7 @@ public final class Phase2Checks implements ClientModInitializer {
             var got=camp.profile(player);Set<String> owned=new HashSet<>(COMMONS);owned.add("sentinel");
             if(!got.owned.keySet().equals(owned))bad.append("owned ").append(new TreeSet<>(got.owned.keySet())).append(" (want the 10 Commons and sentinel); ");
             if(migGold(got)!=900+3*REFUND)bad.append("gold (troop writs x 100 + gear shards) ").append(migGold(got)).append(" (want ").append(900+3*REFUND).append(": 900 + mage, hexer and oracle refunded); ");
-            if(!got.commander.equals("warden")||!got.line().equals(banner("knight*12,archer*6,sentinel*2"))||got.schema!=Profile.SCHEMA||got.matches!=12||got.wins!=7||got.campaignCleared!=0||!got.tutorialDone||got.progression.xp!=777)bad.append("class/banner/schema/matches/wins/cleared/tutorial/xp: ").append(got.commander).append(" ").append(String.join(",",got.line())).append(" ").append(got.schema).append(" ").append(got.matches).append(" ").append(got.wins).append(" ").append(got.campaignCleared).append("; ");
+            if(!got.commander.equals("warden")||!got.line().equals(migrated("knight*12,archer*6,sentinel*2"))||got.schema!=Profile.SCHEMA||got.matches!=12||got.wins!=7||got.campaignCleared!=0||!got.tutorialDone||got.progression.xp!=777)bad.append("class/banner/schema/matches/wins/cleared/tutorial/xp: ").append(got.commander).append(" ").append(String.join(",",got.line())).append(" ").append(got.schema).append(" ").append(got.matches).append(" ").append(got.wins).append(" ").append(got.campaignCleared).append("; ");
             boolean saved=Files.exists(file)&&Files.readString(file).contains("\"schema\": "+Profile.SCHEMA)&&savedGold(JsonParser.parseString(Files.readString(file)).getAsJsonObject())==900+3*REFUND;
             if(!saved)bad.append("the import was not saved as a current-schema file; ");
             if(camp.importAllowed.contains(player)||!camp.collectionsReady.contains(player))bad.append("the permission was not used up or the collection is not ready; ");
