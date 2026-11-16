@@ -146,11 +146,11 @@ def idle_keys():
     H += [(105, H_REST, "io"), (131, H_REST, "io"), (140, H_READY, "io")]                # the hammer stands on the anvil while he wipes
     # His arms are short: the back of the graft's glove reaches the brow because the head dips to meet it. The elbow stays
     # out to his left and the tongs hang down and forward, so neither covers his face.
-    wipe = lambda x, y, z, **k: tool((x, y, z), (0.50, -0.60, -0.62), up=(0.71, -0.24, 0.67), frame="head", world_aim=True, aim=0.2, **k)
+    wipe = lambda x, y, z, **k: tool((x, y, z), (0.74, -0.52, -0.42), up=(0.47, -0.05, 0.88), frame="head", world_aim=True, aim=0.2, **k)
     T = [(0, T_GRIP, "io"), (102, T_GRIP, "io"), (105, T_LIFT, "io"),      # the tongs come up off the billet first
-         (113, wipe(7.0, 31.6, -9.0, fk=True, guess=WIPE_ARM), "io"),    # the arm swings up: the glove comes to the sweat rag,
-         (119, wipe(4.0, 31.9, -9.0), "io"),             # drags across it, above his eyes,
-         (125, wipe(6.6, 31.6, -9.0), "io"),             # and back
+         (113, wipe(8.2, 31.4, -9.0, fk=True, guess=WIPE_ARM), "io"),    # the arm swings up: the glove comes to the sweat rag,
+         (119, wipe(2.2, 32.6, -9.0), "io"),             # drags across it, above his eyes,
+         (125, wipe(7.6, 31.4, -9.0), "io"),             # and back
          (133, dict(T_LIFT, fk=True, guess=105), "io"), (137, T_GRIP, "io"), (140, T_GRIP, "io")]
     return B, H, T
 
@@ -171,7 +171,7 @@ def interact_keys():
     swing = tool((-14.0, 20.5, -7.0), (0.10, 0.80, -0.59), frame="torso")                           # the way up and down, wide of his head
     H = [(0, H_READY, "io"), (3, tool((-11.2, 15.2, -6.6), (0.50, 0.10, -0.86)), "io"), (7, swing, "io"),
          (11, shoulder, "io"), (46, shoulder, "io"), (52, swing, "io"), (60, H_READY, "io")]
-    plant = tool((10.2, ANVIL_TOP + 2.4, -14.2), (0.62, 0.66, -0.42), up=(0.1, 0.8, 0.6))           # the fist on the anvil's horn, tongs resting out to his left
+    plant = tool((10.2, ANVIL_TOP + 2.4, -14.2), (0.68, -0.73, 0.0), up=(0.73, 0.68, 0.0))           # the fist on the anvil's horn, the tongs hanging from it
     T = [(0, T_GRIP, "io"), (4, T_GRIP, "io"), (7, T_LIFT, "io"), (18, dict(plant, fk=True), "io"), (45, plant, "io"),
          (55, dict(T_LIFT, fk=True, guess=7), "io"), (58, T_GRIP, "io"), (60, T_GRIP, "io")]
     return B, H, T
