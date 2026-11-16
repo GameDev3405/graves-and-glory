@@ -77,7 +77,7 @@ public final class OrderOutlines {
         if (registered) return;
         registered = true;
         WorldRenderEvents.AFTER_ENTITIES.register(OrderOutlines::renderWorld);
-        ClientTickEvents.END_CLIENT_TICK.register(c -> { tick(c); OrderFeedback.tick(c); });
+        ClientTickEvents.END_CLIENT_TICK.register(c -> { tick(c); OrderFeedback.tick(c); CommandMode.flushHeld(); });
     }
 
     /** Own slots lit now. */

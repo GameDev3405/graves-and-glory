@@ -58,6 +58,14 @@ public final class ReplyProbe {
         var p = b.server.getPlayerManager().getPlayer(owner); var g = GravesAndGlory.Battle.groundAt(x, z, x, z);
         p.requestTeleport(g.x, g.y + .1, g.z);
     }
+    /** The action bar text the HUD shows now ("" none). */
+    public static String overlayText() {
+        try { var f = net.minecraft.client.gui.hud.InGameHud.class.getDeclaredField(net.fabricmc.loader.api.FabricLoader.getInstance().getMappingResolver().mapFieldName("named", "net.minecraft.client.gui.hud.InGameHud", "overlayMessage", "Lnet/minecraft/text/Text;"));
+            f.setAccessible(true); var t = (net.minecraft.text.Text) f.get(net.minecraft.client.MinecraftClient.getInstance().inGameHud); return t == null ? "" : t.getString(); }
+        catch (Exception e) { return "unreadable: " + e; }
+    }
+    public static void clearAnswer() { CommandMode.lastAnswer = ""; }
+    public static int groundY(int x, int z) { return Arena.footing(x, z); }
     public static int respawnSeconds() { return GravesAndGloryClient.respawn; }
     public static int heldSent() { return CommandMode.heldSent; }
     public static String lastAnswer() { return CommandMode.lastAnswer; }

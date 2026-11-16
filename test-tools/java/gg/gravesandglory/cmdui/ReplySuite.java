@@ -81,7 +81,7 @@ public final class ReplySuite implements CommandUiChecks.Suite {
                         if (tick == at + 4) { if (empty == null) { CommandUiChecks.report("cu-reply-no-troops", false, "no empty group to order"); next(tick); return; } CommandSelection.select(empty, false); CommandSelection.order("charge", false); }
                         if (tick == at + 6) ReplyProbe.confirm();
                         if (tick == at + 14) { long ready = ReplyProbe.chargeReadyAt(b, id); refusal("cu-reply-no-troops", "no_troops", null);
-                            CommandUiChecks.report("cu-reply-empty-charge-no-cooldown", ready == readyBefore && ready <= ReplyProbe.time(b) && CommandNet.Client.chargeTicksLeft() == 0, "group " + empty + ": chargeReadyAt " + readyBefore + " -> " + ready + " at " + ReplyProbe.time(b) + ", client ticks left " + CommandNet.Client.chargeTicksLeft() + ", line '" + overlay + "'");
+                            CommandUiChecks.report("cu-reply-empty-charge-no-cooldown", ready == readyBefore && ready <= ReplyProbe.time(b) && CommandNet.Client.chargeTicksLeft() == 0, "group " + empty + ": chargeReadyAt " + readyBefore + " -> " + ready + " at " + ReplyProbe.time(b) + ", client ticks left " + CommandNet.Client.chargeTicksLeft() + ", line '" + ReplyProbe.lastAnswer() + "'");
                             CommandSelection.select("all", false); next(tick); } }
             // F: out_of_range and target_gone from the server
             case 7 -> { if (tick == at + 1) { clear(c); CommandUiChecks.server(c, x -> ReplyProbe.order(x, id, "all", "hold", 9999, 9999, -1)); }
@@ -99,14 +99,14 @@ public final class ReplySuite implements CommandUiChecks.Suite {
                             next(tick); } }
             // H: the aim preview over water stands on the snapped ground
             case 9 -> { if (tick == at + 1) { clear(c); CommandUiChecks.server(c, x -> ReplyProbe.stand(x, id, clientDry[0], clientDry[1])); }
-                        if (tick == at + 20) { Vec3d eye = c.player.getEyePos(), to = new Vec3d(water[0] + .5, eye.y - 4, water[1] + .5).subtract(eye);
+                        if (tick == at + 20) { Vec3d eye = c.player.getEyePos(), to = new Vec3d(water[0] + .5, ReplyProbe.groundY(water[0], water[1]) + .2, water[1] + .5).subtract(eye);
                             float yaw = (float) (Math.toDegrees(Math.atan2(to.z, to.x)) - 90), pitch = (float) -Math.toDegrees(Math.atan2(to.y, Math.sqrt(to.x * to.x + to.z * to.z)));
                             c.player.setYaw(yaw); c.player.setPitch(pitch); c.player.prevYaw = yaw; c.player.prevPitch = pitch; c.player.setHeadYaw(yaw); c.player.prevHeadYaw = yaw;
                             CommandSelection.select("all", false); CommandSelection.order("hold", false); }
                         if (tick == at + 26) { var hit = c.player.raycast(gg.gravesandglory.Spec.COMMANDINTERFACE[0].targetRange(), 1, false); rawHit = hit.getType() == HitResult.Type.MISS ? null : hit.getPos(); shot(c, "reply-water-aim.png"); }
                         if (tick == at + 27) { Vec3d d = ReplyProbe.aimed(); boolean rawDeep = rawHit != null && ReplyProbe.deep(rawHit.x, rawHit.z);
                             double[] want = rawHit == null ? null : ReplyProbe.clientGround(c.world, rawHit.x, rawHit.z, c.player.getX());
-                            boolean ok = d != null && !ReplyProbe.deep(d.x, d.z) && want != null && Math.abs(d.x - want[0]) < .01 && Math.abs(d.z - want[1]) < .01;
+                            boolean ok = rawDeep && d != null && !ReplyProbe.deep(d.x, d.z) && want != null && Math.abs(d.x - want[0]) < .01 && Math.abs(d.z - want[1]) < .01;
                             CommandUiChecks.report("cu-reply-water-aim", ok, "raw aim " + (rawHit == null ? "-" : String.format("%.1f,%.1f", rawHit.x, rawHit.z)) + " deep " + rawDeep + ", preview anchor " + (d == null ? "-" : String.format("%.2f,%.2f", d.x, d.z)) + " deep " + (d != null && ReplyProbe.deep(d.x, d.z)));
                             gg.gravesandglory.CommandSelection.reset(); next(tick); } }
             default -> CommandUiChecks.finish(c);
@@ -114,12 +114,13 @@ public final class ReplySuite implements CommandUiChecks.Suite {
     }
 
     void next(int tick) { stage++; at = tick; }
-    void clear(MinecraftClient c) { overlay = ""; refusalsBefore = CommandNet.Client.refusals; CommandUiChecks.server(c, x -> ReplyProbe.clearCooldown(x, id)); }
+    void clear(MinecraftClient c) { overlay = ""; ReplyProbe.clearAnswer(); refusalsBefore = CommandNet.Client.refusals; CommandUiChecks.server(c, x -> ReplyProbe.clearCooldown(x, id)); }
     String orderOf(GravesAndGlory.Battle b) { for (String g : new String[]{"infantry", "ranged", "cavalry", "support", "siege"}) { String o = ReplyProbe.orderOf(b, id, g); if (o != null) return o; } return null; }
     void refusal(String check, String code, String line) {
-        boolean ok = CommandNet.Client.refusals == refusalsBefore + 1 && code.equals(CommandNet.Client.lastRefusal) && overlay.equals(ReplyProbe.lastAnswer())
-            && (line == null ? !overlay.isEmpty() && !overlay.contains("{") : overlay.equals(line));
-        CommandUiChecks.report(check, ok, "refusals " + (CommandNet.Client.refusals - refusalsBefore) + ", code " + CommandNet.Client.lastRefusal + ", action bar '" + overlay + "'");
+        String shown = ReplyProbe.lastAnswer(), bar = ReplyProbe.overlayText(); // the client writes a refusal itself (CommandMode.answer), so no message event carries it: read the HUD's own action bar
+        boolean ok = CommandNet.Client.refusals == refusalsBefore + 1 && code.equals(CommandNet.Client.lastRefusal) && shown.equals(bar)
+            && (line == null ? !shown.isEmpty() && !shown.contains("{") : shown.equals(line));
+        CommandUiChecks.report(check, ok, "refusals " + (CommandNet.Client.refusals - refusalsBefore) + ", code " + CommandNet.Client.lastRefusal + ", line '" + shown + "', action bar '" + bar + "'");
     }
     void fail(MinecraftClient c, String check, String why) { CommandUiChecks.report(check, false, why); stage = 99; }
     static String box(int[] r) { return r == null ? "-" : r[0] + "," + r[1] + " " + r[2] + "x" + r[3]; }

@@ -72,7 +72,7 @@ final class OrderRules {
         formation = formationId(formation);
         if (formation == null) return;
         List<At> named = known(b, s, groups);
-        if (named.isEmpty()) return;
+        if (named.isEmpty()) { CommandNet.refuse(p, OrderReply.NO_TROOPS, 0, ""); return; } // only unknown ids, a custom group since deleted: nobody to order
         List<String> ids = named.stream().map(At::group).toList();
         List<String> names = names(b, s, ids);
         Vec3d at = centre(b, s, ids, p.getPos());

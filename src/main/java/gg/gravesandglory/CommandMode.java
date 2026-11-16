@@ -54,7 +54,7 @@ public final class CommandMode {
      *  with nothing (noteGroups would flash a card for the old battle's losses). The rest of the command state starts as a new
      *  client's: the map's pings, the clock, the whole army selected (a group the next world lacks would leave no card selected),
      *  the default formation and the facing taken from the player again. */
-    static void reset(){cancel();held=null;sentAt=Long.MIN_VALUE/2;lastAnswer="";preview.clear();enemy=-1;groups=java.util.List.of();flashUntil.clear();flashFrom.clear();pings=java.util.List.of();seconds=600;selected="all";formation="block";facing=0;facingSet=false;}
+    static void reset(){cancel();held=null;sentAtMs=Long.MIN_VALUE/2;lastAnswer="";preview.clear();enemy=-1;groups=java.util.List.of();flashUntil.clear();flashFrom.clear();pings=java.util.List.of();seconds=600;selected="all";formation="block";facing=0;facingSet=false;}
     /** Sends the aimed order to the selected groups: a Charge from the selection's centre along the look yaw (the server clamps the run), anything else at the aimed point. */
     public static boolean confirm(){
         if(!active())return false;
@@ -82,22 +82,24 @@ public final class CommandMode {
     static void issue(String group,String action,String form,Vec3d dest,float yaw,int target){issue(java.util.List.of(new Aim(group,dest)),action,form,yaw,target);}
     /** One group of an order and its own point (a Charge's start, a Formation's anchor). */
     record Aim(String group,Vec3d at){}
-    /** Client ticks counted by tick(), the tick the last order went out, and an order held because it came inside the command cooldown. */
-    static long ticks,sentAt=Long.MIN_VALUE/2;static Runnable held;
+    /** When the last order went out (measuring ms; a clock that runs with the panel or the map open, which pause tick()), and an order held because it came inside the command cooldown. */
+    static long sentAtMs=Long.MIN_VALUE/2;static Runnable held;
+    /** How long after an order the next is held: the server's commandCooldownTicks plus two ticks for the network's jitter. */
+    static long holdMs(){return (Spec.RULES[0].commandCooldownTicks()+2)*50L;}
     /** Orders held back by the cooldown and sent when it ended (for the harness). */
     static int heldSent;
     /** A key's or the panel's order (CommandSelection.issueSelected): given within the server's commandCooldownTicks (plus one tick for the
-     *  network's jitter) of the last order sent, it is held and sent when that ends, so a quick second press is never lost to the silent
+     *  network's jitter, holdMs) of the last order sent, it is held and sent when that ends, so a quick second press is never lost to the silent
      *  cooldown (spec section 5); a later press replaces a held one. */
     static void issueOrHold(java.util.List<Aim> groups,String action,String form,float yaw,int target){
         if(groups.isEmpty()||!GravesAndGloryClient.battleActive())return;
-        if(ticks-sentAt<=Spec.RULES[0].commandCooldownTicks()){var copy=java.util.List.copyOf(groups);held=()->{heldSent++;issue(copy,action,form,yaw,target);};return;}
+        if(net.minecraft.util.Util.getMeasuringTimeMs()-sentAtMs<holdMs()){var copy=java.util.List.copyOf(groups);held=()->{heldSent++;issue(copy,action,form,yaw,target);};return;}
         issue(groups,action,form,yaw,target);
     }
     /** One order to every listed group as ONE tactical_v2 packet (the server applies it as one order: one cooldown, one Charge). */
     static void issue(java.util.List<Aim> groups,String action,String form,float yaw,int target){
         if(groups.isEmpty()||!GravesAndGloryClient.battleActive()||!ClientPlayNetworking.canSend(GravesAndGlory.TACTICAL_V2))return;
-        sentAt=ticks;held=null;
+        sentAtMs=net.minecraft.util.Util.getMeasuringTimeMs();held=null;
         var b=PacketByteBufs.create();b.writeString(action);b.writeString(form);b.writeFloat(yaw);b.writeInt(target);
         b.writeInt(groups.size());for(var g:groups){b.writeString(g.group());b.writeDouble(g.at().x);b.writeDouble(g.at().z);}
         ClientPlayNetworking.send(gg.gravesandglory.net.Payloads.TacticalV2Payload.of(b));ordersSent++;
@@ -138,8 +140,13 @@ public final class CommandMode {
         if(profile!=null){var line=profile.line();for(int i=0;i<line.size()&&cells.size()<count;i++){Integer left=need.get(line.get(i));if(left!=null&&left>0){need.put(line.get(i),left-1);cells.add(i);}}}
         return BattleMath.bannerPlaces(cells,count);
     }
+    /** Every client tick, whatever is open (OrderOutlines' END_CLIENT_TICK): a held order goes out once holdMs has passed; out of battle it is dropped. */
+    static void flushHeld(){
+        if(held==null)return;
+        if(!GravesAndGloryClient.battleActive()){held=null;return;}
+        if(net.minecraft.util.Util.getMeasuringTimeMs()-sentAtMs>=holdMs()){var send=held;held=null;send.run();}
+    }
     static void tick(MinecraftClient c){
-        ticks++;if(held!=null&&ticks-sentAt>Spec.RULES[0].commandCooldownTicks()){var send=held;held=null;send.run();}
         preview.clear();if(!GravesAndGloryClient.battleActive()){cancel();held=null;return;}if(!active()||c.player==null||c.world==null||c.currentScreen!=null)return;
         if(!facingSet)facing=c.player.getYaw();
         var hit=c.player.raycast(Spec.COMMANDINTERFACE[0].targetRange(),1,false);destination=hit.getType()==HitResult.Type.MISS?null:hit.getPos();enemy=-1;

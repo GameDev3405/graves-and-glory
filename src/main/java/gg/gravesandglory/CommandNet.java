@@ -32,7 +32,7 @@ public final class CommandNet {
     public static final Identifier COMMAND = Identifier.of("gravesandglory", "command_v1");
     public static final int COOLDOWN = 0, OUTLINE = 1, ACK = 2, REFUSE = 3;
     /**
-     * For the harness: per recipient owner and kind (COOLDOWN, OUTLINE, ACK), how many command_v1 records the server addressed to him, counted
+     * For the harness: per recipient owner and kind (COOLDOWN, OUTLINE, ACK, REFUSE), how many command_v1 records the server addressed to him, counted
      * before the online and channel checks, so a synthetic owner with no connection (Battle.testOwners) counts as a recipient too.
      */
     public static final Map<UUID, int[]> sent = new ConcurrentHashMap<>();
