@@ -448,14 +448,16 @@ public final class Props {
         if(ents!=null)for(Entity e:ents)if(!e.isRemoved()&&e.getWorld()==w)checkPart(w,e);
         Map<Long,Integer> chunks=PENDING_CHUNKS.get(w);
         if(chunks==null||chunks.isEmpty())return;
-        for(Iterator<Map.Entry<Long,Integer>> it=chunks.entrySet().iterator();it.hasNext();){
-            Map.Entry<Long,Integer> c=it.next();
-            long key=c.getKey();
+        // a scan below can load a neighbouring chunk, whose CHUNK_LOAD callback puts it into this same map: walk a snapshot (1.21's chunk loads are what exposed it); a chunk added meanwhile is looked at next tick
+        for(Long key0:new ArrayList<>(chunks.keySet())){
+            Integer waited=chunks.get(key0);
+            if(waited==null)continue; // dropped meanwhile (chunkUnloaded)
+            long key=key0;
             if(!w.isChunkLoaded(key)){ // entities not loaded yet
-                if(c.getValue()>=CHUNK_WAIT)it.remove();else c.setValue(c.getValue()+1);
+                if(waited>=CHUNK_WAIT)chunks.remove(key0);else chunks.put(key0,waited+1);
                 continue;
             }
-            it.remove();
+            chunks.remove(key0);
             ChunkPos cp=new ChunkPos(key);
             if(w.getChunkManager().getWorldChunk(cp.x,cp.z)==null)continue;
             scanBox(w,new BlockBox(cp.getStartX(),w.getBottomY(),cp.getStartZ(),cp.getEndX(),w.getTopY()-1,cp.getEndZ()));
