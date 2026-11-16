@@ -47,6 +47,9 @@ public final class Phase1Checks implements ClientModInitializer {
     static{SUITES.put("combat",Combat::new);SUITES.put("ui-lobby",LobbyChecks::new);SUITES.put("ui-bannerfield",BannerFieldChecks::new);SUITES.put("banner-cells",BannerCellChecks::new);SUITES.put("morale",MoraleChecks::new);SUITES.put("reinforce",ReinforceChecks::new);SUITES.put("bots",Bots::new);SUITES.put("tutorial",TutorialChecks::new);SUITES.put("report",ReportChecks::new);SUITES.put("ui-art",UiArtChecks::new);SUITES.put("ui-hud",UiHudChecks::new);SUITES.put("ui-feed",UiFeedChecks::new);SUITES.put("ui-home",UiHomeChecks::new);SUITES.put("ui-recruit",UiRecruitChecks::new);SUITES.put("ui-troop-know",TroopKnowledgeChecks::new);SUITES.put("ui-pages",UiPagesChecks::new);SUITES.put("ui-icons",UiIconsChecks::new);SUITES.put("ui-leave",UiLeaveChecks::new);SUITES.put("ui-report",UiReportChecks::new);SUITES.put("gear",GearChecks::new);SUITES.put("gear-combat",GearCombatChecks::new);SUITES.put("ui-gear",GearScreenChecks::new);SUITES.put("gear-art",GearArtChecks::new);SUITES.put("house-art",HouseArtChecks::new);SUITES.put("weapon-look",WeaponLookChecks::new);SUITES.put("geo-knight",GeoKnightChecks::new);SUITES.put("stalker-reel",StalkerReelChecks::new);SUITES.put("knight-overhead-reel",KnightOverheadReelChecks::new);SUITES.put("geo-perf",GeoPerfChecks::new);SUITES.put("prop-look",PropLookChecks::new);SUITES.put("prop-gameplay",PropGameplayChecks::new);SUITES.put("map-blocks",MapBlocksChecks::new);SUITES.put("map-blocks-troops",MapBlocksTroopChecks::new);SUITES.put("old-gaps",OldModelGaps::new); SUITES.put("save-open",SaveOpenChecks::new);}
     static final ArrayDeque<String> queue=new ArrayDeque<>();
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
+    /** Test-only quit hook (shutdown livelock check, 951d1264): GRAVES_QUIT_AFTER_JOIN=N stops the client N client ticks after the player has joined the camp world, ready or not, through the same scheduleStop the suites use. Unset or negative: off. */
+    static final int QUIT_AFTER_JOIN=parseQuit(System.getenv("GRAVES_QUIT_AFTER_JOIN"));static int joinTicks;static boolean quitDone;
+    static int parseQuit(String s){try{return s==null||s.isBlank()?-1:Integer.parseInt(s.trim());}catch(NumberFormatException e){return -1;}}
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
 
     /** One evidence line (pass/fail id) plus a "[p1] id=result why" log line. */
@@ -104,6 +107,10 @@ public final class Phase1Checks implements ClientModInitializer {
             if(c.currentScreen instanceof net.minecraft.client.gui.screen.GameMenuScreen&&!c.isWindowFocused()){c.setScreen(null);System.out.println("[p1] closed a pause menu left open in the unfocused window, during "+currentName);}
             if(c.getOverlay()!=null)return;
             if(!started){if(c.currentScreen instanceof FrontMenuScreen&&++front==40){started=true;GravesAndGloryClient.startCamp(c,false);}return;}
+            if(QUIT_AFTER_JOIN>=0&&!quitDone&&c.player!=null&&c.getServer()!=null&&++joinTicks>QUIT_AFTER_JOIN){
+                quitDone=true;System.out.println("[p1] quit-join: scheduleStop "+(joinTicks-1)+" client ticks after the player joined, ready="+GravesAndGloryClient.ready+" screen="+(c.currentScreen==null?"none":c.currentScreen.getClass().getSimpleName()));
+                c.scheduleStop();return;}
+            if(quitDone)return;
             if(current instanceof HudWatch w)try{w.clientTick(c);}catch(Exception e){report("p1-"+currentName+"-exception",false,e.toString());e.printStackTrace();}
             if(c.player==null||c.getServer()==null||!GravesAndGloryClient.ready)return;
             listenSounds(c);
