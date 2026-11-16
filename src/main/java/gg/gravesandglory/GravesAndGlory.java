@@ -571,8 +571,6 @@ public final class GravesAndGlory implements ModInitializer {
         @Override public boolean shouldSave(){return false;}
         @Override protected void initGoals() {goalSelector.add(0,new SwimGoal(this));}
         @Override public void tickMovement(){super.tickMovement();if(isSitting())setSitting(false);if(isInSittingPose())setInSittingPose(false);}
-        /** Vanilla's wolf takes (amount + 1) / 2 of a blow whose attacker is neither a player nor an arrow; a troop's blow goes in as 2a - 1, so the half is a again. */
-        @Override public boolean damage(DamageSource source,float amount){Entity e=source.getAttacker();return super.damage(source,e!=null&&!(e instanceof PlayerEntity)&&!(e instanceof PersistentProjectileEntity)?amount*2-1:amount);}
         /** No taming, no seat on a click, no bone taken: a troop is not a pet. */
         @Override public ActionResult interactMob(PlayerEntity player,Hand hand){return ActionResult.PASS;}
         @Override public void setAngerTime(int ticks){super.setAngerTime(0);}
@@ -807,6 +805,11 @@ public final class GravesAndGlory implements ModInitializer {
             world.getGameRules().get(GameRules.DO_VINES_SPREAD).set(false,server); // the camp's stonework holds 53 vines; a random tick would grow them into the cells the pieces leave void
             world.getGameRules().get(GameRules.KEEP_INVENTORY).set(true,server);
             world.getGameRules().get(GameRules.ANNOUNCE_ADVANCEMENTS).set(false,server); // vanilla advancement lines do not belong in battle chat
+            // 1.20.1 kept the spawn chunks loaded with a fixed START ticket of 11 (the 23 x 23 chunks round (-108, 0), which hold map 0's field from
+            // its Dawn base to past the river). 1.20.5+ reads the radius from this rule (+1) and defaults it to 2, which leaves the field's middle
+            // unloaded: heightmap reads there return the world bottom (a supply banner finds no spot, a camera placed by getTopY falls under the
+            // field). 10 restores the 1.20.1 ticket; set before setSpawnPos below, which places it.
+            world.getGameRules().get(GameRules.SPAWN_CHUNK_RADIUS).set(10,server);
             world.setTimeOfDay(3000);
             world.setWeather(0,0,false,false);
             world.setSpawnPos(new BlockPos(-108,66,0),-90);

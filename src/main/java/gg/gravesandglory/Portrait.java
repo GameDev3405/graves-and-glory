@@ -69,11 +69,11 @@ final class Portrait {
         "tc_brute", new float[]{1.2f, -6f, 0f});
     /** The most a low model (a hound) grows on the roll card over a biped's size. */
     static final float CARD_GROW = 1.25f;
-    /** The portrait's two lights (the entity shader's Light0 and Light1, GUI space: -y up, -z toward the viewer). The key is the
+    /** The portrait's two lights (the entity shader's Light0 and Light1, GUI space: -y up; +z toward the viewer on 1.21, where MatrixStack.multiplyPositionMatrix also turns the normal matrix, so the -z scale of the entity transform flips the normals and the vanilla GUI lights moved to +z; 1.20.1 had -z toward the viewer). The key is the
      *  inventory's own, from above and in front; the fill comes from the camera, slightly high, in place of the inventory's second
      *  light from straight above, so the faces turned to the viewer read at full strength and dark troops stand off the dark frame
      *  back (the audit, 2026-11-11). Portrait draws only: the world's and the inventory's lights are put back after each. */
-    static final Vector3f KEY = new Vector3f(0.2f, -1f, -1f).normalize(), FILL = new Vector3f(0f, -0.25f, -1f).normalize();
+    static final Vector3f KEY = new Vector3f(0.2f, -1f, 1f).normalize(), FILL = new Vector3f(0f, -0.25f, 1f).normalize();
     /** The most model px a window spans for a head whose gear stands tall over its face (see fit). */
     static final float HEAD_SPAN = 30f;
 
