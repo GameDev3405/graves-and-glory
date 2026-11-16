@@ -1,6 +1,6 @@
 # Goblin loot dealer: design (draft, SPEC ONLY)
 
-Date: 2026-11-16. Status: DRAFT. Kort answered the first questions of the grill on 2026-11-16 (relayed by the coordinator). Those answers are marked **(Kort)**. The other decisions are still open.
+Date: 2026-11-16. Status: DRAFT. Kort answered most of the grill on 2026-11-16 (relayed by the coordinator). His answers are marked **(Kort)**. Only numbers, the lore placement and the money guardrails stay open.
 
 > **SPEC ONLY. Do not build.** The army economy is on hold until Kort reworks its spec (`status/DECISIONS-2026-11-15-port.md`). This feature is part of that rework.
 
@@ -25,7 +25,14 @@ Kort's idea (2026-11-15): a goblin NPC in the lobby takes gold for random chests
 - Kort's rule (2026-11-12): "writs are for the troops, gear shards are for weapons and armors, gold is for in matches and banner in lobby."
 - A match pays the old-gold equivalent of about 80 to 120 (`matchGold` 80, `winGold` 40). Through `Profile.payGold` that comes to about 1 writ plus 80 to 120 shards. A gear roll costs 75 shards and a troop roll 1 writ.
 
-**Conflict 1, the currency (OPEN Q1).** "Gold buys a chest" has no lobby gold to spend today. Kort's answers keep saying "gold" (the stake, and duplicate refunds of "partial gold"), so the spec's working assumption is a persistent goblin gold earned at match end. That still needs his confirmation, and it is a save schema change.
+**Conflict 1, the currency: decided (Q1, Kort).** "Gold buys a chest" had no lobby gold to spend. Kort's answer:
+- **Silver** becomes the in-match currency. It is simple, and it is thrown away after each match. Silver is today's `Squad.gold` purse, renamed.
+- **Gold** is what the player carries back to the lobby and spends at the goblin ("goblins love gold"). It is a new persistent profile field, earned at match end.
+- **Flagged for the economy rework:**
+  - the rename touches every place that shows or names battle gold (HUD, Armoury, barracks, sheet keys, bots);
+  - the persistent gold is a save schema change;
+  - how much gold a match pays, against writs and shards, is part of the rework;
+  - **(call)** the lobby muster allowance, also called gold today, needs a name that does not clash with the new gold.
 
 **The drop board** (`port1211/drop-board` 74fc4399, approved 2026-11-14, not merged).
 - On a War Table or Forge roll, the server draws a slot from table A: x10 1%, x5 4%, x3 10%, x2 20%, x1 30%, mirrored. The mean is 2.30.
@@ -33,13 +40,14 @@ Kort's idea (2026-11-15): a goblin NPC in the lobby takes gold for random chests
 - The result is banked at pay time, then the coin's path is replayed.
 - The design rule: "the board changes what a roll feels like, not what a hundred rolls give". An x1 is a 0.43x roll.
 
-**Conflict 2, the boost (OPEN Q2).** Kort's answers (stake buys "better or more multiplier pegs") assume that staking really improves the odds. Under the board's approved rule it does not on average. The goblin needs its own multiplier rule.
+**Conflict 2, the boost: decided (Q2, Kort).** Under the board's approved rule, staking would not improve the odds on average. Kort: the board gives a real boost only on goblin runs, and an x1 is the same as no stake. War Table and Forge rolls keep the approved board.
 
 ## 3. Design
 
 ### 3.1 Where and how a buy goes
 1. **(Kort)** The goblin's shop and setup sit right next to the multiplier board, so the two stay close. **(call)** That is spot A, east of the hearth court. His cart and chests stand at the foot of the altar court.
 2. Clicking him opens his shop:
+   - **(Kort, Q5)** a category: armour, weapons or units. Each chest rolls from that category's pool only;
    - **(Kort)** a chest tier: small, medium or large;
    - **(Kort)** a count: 1, 3 or 5 chests;
    - **(Kort)** an optional board stake, where the player chooses how much gold to add (section 3.4).
@@ -65,7 +73,7 @@ Kort's idea (2026-11-15): a goblin NPC in the lobby takes gold for random chests
 - **(Kort)** There are three tiers: small, medium and large. Bigger tiers have a better rarity floor and better odds.
 - **(Kort)** Buying in bulk is discounted. 3 chests cost about 2.8 x one chest, and 5 chests about 4.5 x one chest.
 
-The single-chest prices and each tier's band odds (the table in 3.3) are **OPEN Q9**. They are given in match payouts (one match pays about 80 to 120 old-gold equivalent), so they survive whichever currency Q1 picks.
+The single-chest prices and each tier's band odds (the table in 3.3) are **OPEN Q9**. They are given in match payouts (one match pays about 80 to 120 old-gold equivalent today), because the gold a match pays is set by the economy rework.
 
 | Tier | 1 chest (proposed) | 3 chests (x2.8) | 5 chests (x4.5) | Floor (the worst roll) | Base rare or better |
 |---|---|---|---|---|---|
@@ -73,22 +81,34 @@ The single-chest prices and each tier's band odds (the table in 3.3) are **OPEN 
 | Medium | about 2.5 matches (250) | 700 | 1,125 | a common unit or basic gear, less often | 7% |
 | Large | about 6 matches (600) | 1,680 | 2,700 | uncommon | 9% |
 
-### 3.3 Loot table sketch
-- **(Kort)** Bad loot is always usable, just weak: the worst roll is a common unit or basic gear. There is no junk.
-- The contents of each band are **OPEN Q5**.
+### 3.3 Loot pools
+**(Kort)**
+- Bad loot is always usable, just weak: the worst roll is a common unit or basic gear. There is no junk.
+- **(Q5)** The goblin sells armour, weapons and units. The player picks the category, and each chest rolls from that pool.
+- No writs and no relics are in his chests (no strong reason to add them: writs would undercut writ rolls, and relics have no rarity to boost).
+- Cosmetics are sold by a separate cosmetics NPC (lobby NPC spec, OPEN Q17), not the goblin.
 
-| Band | Small | Medium | Large | What it holds (sketch) |
-|---|---|---|---|---|
-| Common | 70 | 45 | 0 | A common unit (one copy of an owned or new common troop of the player's Houses), or a common gear piece |
-| Uncommon | 25 | 48 | 91 | An uncommon gear piece or 1 troop writ |
-| Rare | 3.8 | 5.2 | 6.6 | A rare unit, a rare gear piece, 3 troop writs, or a random relic |
-| Epic | 1.0 | 1.5 | 2.0 | An epic gear piece, an epic unit, or a chest-only cosmetic (epic) |
-| Legendary | 0.2 | 0.3 | 0.4 | A legendary gear piece, or a chest-only cosmetic (legendary) |
+**Band odds per tier** (OPEN Q9; the same bands for every category):
+
+| Band | Small | Medium | Large |
+|---|---|---|---|
+| Common | 70 | 45 | 0 |
+| Uncommon | 25 | 48 | 91 |
+| Rare | 3.8 | 5.2 | 6.6 |
+| Epic | 1.0 | 1.5 | 2.0 |
+| Legendary | 0.2 | 0.3 | 0.4 |
+
+**What each pool gives:**
+- **Armour:** a helm, chest, legs or boots piece of the band's gear rarity, slot drawn evenly, with the Forge's quality roll (0 to 100). **(call)** Large-chest pieces roll quality 50 to 100.
+- **Weapons:** a main or off-hand piece of the band's rarity, same rules.
+- **Units:** a troop of the player's Houses at the band's rarity.
+  - Troops have no uncommon rarity. **(call)** The uncommon band gives a common troop that arrives with one extra copy (a star step), so the Large floor is still better than the Small floor.
+  - **(call)** The legendary band gives an epic troop with one extra copy. No Legendary troop and no Pact comes from a chest, because Legendaries come only from Pacts today.
 
 **Notes:**
-- **Units from chests are a new progression source.** Troops come only from writ rolls today. Epic units in particular are hard to get: rolls give 2% epics, and an epic cannot be chosen. So units in a chest need the progression gate (section 4).
-- **(call)** No Legendary troop and no Pact comes from a chest, because Legendaries come only from Pacts today.
-- **Guardrail (checked by an odds tool like `tools/dropboard_odds.py`):** the expected value of a batch, counted in its own currency, stays at or under 60% of what the batch cost. It is checked for every tier, every count and every stake, so no batch can be farmed for profit. The value counts writ and shard payouts and the breakdown value of gear.
+- **Units from chests are a new progression source.** Troops come only from writ rolls today, and epic units are hard to get (rolls give 2% epics, and an epic cannot be chosen). This needs the progression gate (section 4).
+- **Gear from chests competes with the Forge.** The Forge sells the same pools for shards; the goblin sells them for gold, with tiers and the board. The rework sets the relative value.
+- **Guardrail (checked by an odds tool like `tools/dropboard_odds.py`):** the gold returned by a batch through duplicate refunds stays at or under 60% of what the batch cost. It is checked for every tier, count and stake, so no batch can be farmed for gold.
 
 ### 3.4 The stake and the multiplier
 **(Kort)**
@@ -97,7 +117,7 @@ The single-chest prices and each tier's band odds (the table in 3.3) are **OPEN 
 - One board drop boosts every chest in a 3- or 5-chest batch.
 - The stake is paid per batch.
 
-**The multiplier rule (OPEN Q2). Recommended: a raw multiplier for the goblin only.**
+**The multiplier rule (Kort, Q2): a raw multiplier for goblin runs only.**
 - On slot m, each boosted band (rare, epic, legendary) has its chance multiplied by **m** (not m / mean), and the lower bands share the rest.
 - So an x1 equals an unstaked chest, and a stake is never worse than no stake.
 - Code: `DropMath.boostRaw` beside `boost`, using the same integer method.
@@ -169,11 +189,10 @@ The rate is **OPEN Q13**. Proposed: a share of the single-chest price of the tie
 | Epic | 60% |
 | Legendary | 100% |
 
-- **(call)** Gear duplicates pay upgrade shards. Unit, relic and cosmetic duplicates pay gold.
+- **(call)** Gear duplicates pay upgrade shards. Unit duplicates pay gold.
 - **(call)** What counts as a duplicate:
   - **Gear:** the same item at the same rarity is already owned (the Forge's rule).
   - **Units:** a unit copy still stars its troop while it can, as recruitment does. Only a copy past max stars counts as a duplicate.
-  - **Relics and cosmetics:** already owned.
 - Refunds count toward the 60% value cap in section 3.3. The worst case is Large with every chest a duplicate: about 13% of the price back, well under the cap.
 - **(call)** If the inventory cannot hold the batch's gear, the shop refuses before payment, as the Forge does.
 
@@ -211,9 +230,9 @@ The rate is **OPEN Q13**. Proposed: a share of the single-chest price of the tie
 | Real money, binge spending, hidden odds | OPEN Q15: never sold for money nor granted by the Founders pass; band chances and slot tables shown in the shop; **(call)** no daily cap, because the value cap and earn-only currency already limit spending |
 
 ## 4. Approval gates when built
-- **Currency.** A new or changed currency is a save schema change and part of the economy rework (Q1).
-- **Progression.** Units, relics and epic gear arriving from chests are a new progression source (section 3.3).
-- **Save schema.** Pity counters, the openings already seen, and owned cosmetics all need new save fields.
+- **Currency.** Silver renames the match purse, and gold becomes a new persistent field (a save schema change). Both are part of the economy rework (Q1).
+- **Progression.** Units and gear arriving from chests are a new progression source (section 3.3).
+- **Save schema.** Gold, the pity counters and the openings already seen all need new save fields.
 - **Protocol.** The shop action, the batch reveal and the goblin's board variant need packet changes. The per-drop rune labels need altar art changes.
 - **Sounds.** Free-only: CC0, CC-BY, or good generated audio. Kort rates them.
 - **Lore.** The goblin's place (Q7). The tier names stay "small, medium, large" in this spec; flavour names wait for the lore lead, and nothing named "giant".
@@ -235,17 +254,18 @@ The rate is **OPEN Q13**. Proposed: a share of the single-chest price of the tie
 - duplicates converting to partial gold or upgrade shards;
 - plain players get a villager, a chest menu and item or title results.
 
+- **Q1:** silver in matches, gold carried to the lobby and spent at the goblin;
+- **Q2:** a real boost on goblin runs only, where an x1 equals no stake;
+- **Q5:** armour, weapons and units, picked by the player, with no writs, relics or cosmetics.
+
 **Open: numbers.**
 - **OPEN Q9:** single-chest prices, and each tier's band odds (3.2, 3.3)
 - **OPEN Q10:** the stake range and how it is priced (3.4)
 - **OPEN Q12:** N per tier (3.5)
 - **OPEN Q13:** the duplicate refund rate (3.5)
 
-**Open: still not numbers.** Ask these, or confirm the working assumption:
-- **OPEN Q1:** the currency (working assumption: a persistent goblin gold)
-- **OPEN Q2:** a raw multiplier for the goblin, against the board's approved mean-preserving rule
-- **OPEN Q5:** what each band holds (units, gear, writs, relics, cosmetics)
+**Open: not numbers.**
 - **OPEN Q7:** the goblin's place in the lore (his look is decided)
 - **OPEN Q15:** never for real money, odds shown, no daily cap
 
-Q6 and Q11 are decided for the goblin. Q6 for the staff NPCs, and Q3, Q4, Q8, Q14 and Q16, are in the lobby NPC spec.
+Q1, Q2, Q5, Q6 and Q11 are decided. The NPC questions are in the lobby NPC spec.

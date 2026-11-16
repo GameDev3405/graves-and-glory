@@ -52,9 +52,10 @@ Rows with no NPC: welcome, founders, the gates, war-gates, arsenal (Old Hold). T
   - A plain client gets the villager for free.
   - The Polymer mixed-client registry problem is never touched.
   - It is the pattern the troops already prove in game.
-- **Idle animation.** It runs on the client:
-  - a looping idle, plus a random fidget every 6 to 14 s;
-  - the head turns toward the nearest player within 8 blocks, as a client-side bone offset.
+- **Idle animation (style decided by Kort 2026-11-16: working idles).** It runs on the client:
+  - each NPC does their job on a loop (the smith hammers, the clerk counts crates), plus a random fidget every 6 to 14 s;
+  - **greet:** when a player comes within about 5 blocks, the NPC breaks off the work loop, turns and greets him with a short clip and a grunt, then goes back to work once he leaves (about 8 blocks). This is client-side, from the player's own position, so it needs no packet;
+  - the head follows the nearest player within 8 blocks, as a client-side bone offset.
 - **Interact animation.**
   - When a player opens a station, the server calls `swingHand` on that villager. Vanilla sends the entity-animation packet to every client tracking it.
   - The modded client maps that swing to the NPC's interact clip, so watchers see it too. Again no new packet.
@@ -77,10 +78,10 @@ Rows with no NPC: welcome, founders, the gates, war-gates, arsenal (Old Hold). T
 | B. New `gravesandglory:camp_npc` entity type, a Polymer virtual entity shown as a villager to plain clients | Clean identity, own hitbox, own AI | Hits the untested Polymer and modded-client registry problem; a modded client may get the wrong type, as the wagon likely does |
 | C. Display entities (item or block displays with resource-pack models) | Works on plain clients with the pack | No skeletal animation; poses would have to be streamed from the server; plain players would also need the pack art |
 
-### 3.3 Voices (OPEN Q14)
+### 3.3 Voices (decided by Kort 2026-11-16: grunts plus text bubbles)
 
-- **The rule:** audio is free-only, CC0 or CC-BY, and generated audio counts only if it is good. No free source gives spoken lines that would pass, so voice "lines" are text.
-- **Proposed:**
+- **The rule:** audio is free-only, CC0 or CC-BY, and generated audio counts only if it is good. Spoken lines are not used; lines are text.
+- **How it works:**
   - Each bark is a short line shown in a speech scroll over the NPC, for the clicking player only. It plays with a non-verbal vocal cue: a grunt, a hum, a bony rattle or a gurgle.
   - Cues come from the kept voices (forge, bone, sea, beast) or new CC0, CC-BY or Stable Audio takes. Kort rates them, as in Batch 1.
   - Lines are drawn at random from the character's set and never repeat twice in a row. **(call)** At most one line every 20 s per player per NPC.
@@ -97,7 +98,10 @@ Rows with no NPC: welcome, founders, the gates, war-gates, arsenal (Old Hold). T
 
 ## 4. The characters
 
-These follow the House-tied staff proposal (OPEN Q4): each camp station is run by someone from one House, so all five Houses have a face in the hub. Under the neutral alternative, every staff member is a human of the Gilded realms, and the House details drop away.
+**Decided by Kort (2026-11-16):**
+- **Q4:** each camp staff member comes from one House, as below.
+- **Style:** chunky and exaggerated. Big hands and feet, heavy heads, thick props and strong silhouettes, built in the troop pipeline (1 texel per model pixel) but pushed further than troop proportions. Each character's defining trait (the smith's arms, the goblin's nose and ears, the ram's horns) is oversized.
+- **Idles:** working idles with a greet (section 3.1). Each "Idle" below is the NPC's work loop.
 
 Sizes are relative to a villager or player (about 1.95 blocks; OPEN Q16).
 
@@ -226,6 +230,27 @@ One per hall door. Each recruiter reuses his House's troop rig and palette, with
   - "No refunds. Goblin law."
 - **Vanilla (Kort 2026-11-16):** a villager stand-in with a chest-style shop menu. **(call)** A baby villager with the swamp skin and no profession.
 
+### 4.12 Cosmetics dealer (new; OPEN Q17, character proposal)
+Kort (2026-11-16): cosmetics are sold by a separate lobby NPC, not the goblin. What it sells, for which currency, and where it stands are open with the character.
+- **Proposed character:** a Wildmoot alpaca tailor and dyer, "Madame Fleece". Wildmoot already runs the drill yard, but a fleece-bearing tailor is the natural cloth-maker, and a second Wildmoot face is the cheapest option because it reuses that House's rig.
+  - **Alternative:** a Gilded court tailor (a fussy human with a tape measure).
+- **Silhouette and size:** about 1.2 x villager height. A huge round fleece body on thin legs, a long neck, and a tiny proud head with a monocle. Chunky and exaggerated: the fleece is half the silhouette.
+- **Outfit and props:**
+  - a measuring tape around the neck and a pincushion strapped to one hoof;
+  - fabric bolts and dye pots on a rack, and banner swatches in House colours;
+  - a mannequin wearing whatever is on sale.
+- **Working idle:** stitches a banner on a frame, dips cloth into dye pots and holds it up to the light.
+  - **Fidgets:** fluffs her own fleece; sniffs at a dye; adjusts the mannequin.
+- **Greet:** looks the player up and down through the monocle, then a disapproving hum.
+- **Interact:** sweeps a bolt of cloth across and holds it up against the player.
+- **Lines:**
+  - "Darling, you fight in *that*?"
+  - "Colour wins half the battle. The other half is also colour."
+  - "No, it does not come in mud."
+- **Vanilla:** shepherd (wool), savanna skin.
+- **(call)** She stands near the quartermaster, outside the board court, so the goblin's court stays about loot.
+- **(call)** Currency: gold, like the goblin, with direct prices and no chests.
+
 ## 5. Data and code (for the plan, not built)
 
 - **Sheet:**
@@ -257,11 +282,10 @@ One per hall door. Each recruiter reuses his House's troop rig and palette, with
 ## 7. Open decisions in this spec
 
 - **OPEN Q3:** render approach (section 3.1).
-- **OPEN Q4:** House-tied staff or neutral humans (section 4).
-- **OPEN Q6:** plain-client behaviour for the NPCs and the goblin (section 3.4; shared with the goblin spec).
+- **OPEN Q6 (staff NPCs only):** plain-client behaviour (section 3.4). For the goblin, Kort decided a villager and a chest menu.
 - **OPEN Q7:** the goblin's identity in the lore (section 4.11; shared).
 - **OPEN Q8:** scope and order: which lobby, pilot first, the hall recruiters, who builds.
-- **OPEN Q14:** voices (section 3.3).
+- **OPEN Q17:** the cosmetics dealer: character, what it sells, currency and place (section 4.12).
 - **OPEN Q16:** sizes and click boxes (section 4).
 
-Q1, Q2, Q5, Q9, Q10, Q12, Q13 and Q15 are in the goblin spec (Q11 was decided by Kort on 2026-11-16).
+Decided by Kort on 2026-11-16: Q4 (House staff), Q14 (grunts plus text bubbles), and the style (chunky, exaggerated, working idles with a greet). The goblin questions are in the goblin spec.
