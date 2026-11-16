@@ -55,7 +55,9 @@ public final class PlainProbe implements ModInitializer {
             .then(CommandManager.literal("slot").then(CommandManager.argument("player", EntityArgumentType.player()).then(CommandManager.argument("n", IntegerArgumentType.integer(0, 8))
                 .executes(c -> { var p = EntityArgumentType.getPlayer(c, "player"); int n = IntegerArgumentType.getInteger(c, "n"); p.getInventory().selectedSlot = n; p.networkHandler.sendPacket(new UpdateSelectedSlotS2CPacket(n)); return 1; }))))
             .then(CommandManager.literal("view").then(CommandManager.argument("player", EntityArgumentType.player()).then(CommandManager.argument("entity", StringArgumentType.word())
-                .executes(c -> view(EntityArgumentType.getPlayer(c, "player"), StringArgumentType.getString(c, "entity"), 6)))))
+                .executes(c -> view(EntityArgumentType.getPlayer(c, "player"), StringArgumentType.getString(c, "entity"), 6))
+                .then(CommandManager.argument("dist", FloatArgumentType.floatArg(2, 40))
+                    .executes(c -> view(EntityArgumentType.getPlayer(c, "player"), StringArgumentType.getString(c, "entity"), FloatArgumentType.getFloat(c, "dist")))))))
             .then(CommandManager.literal("aim").then(CommandManager.argument("player", EntityArgumentType.player()).then(CommandManager.argument("dist", FloatArgumentType.floatArg(1, 600))
                 .executes(c -> aim(EntityArgumentType.getPlayer(c, "player"), FloatArgumentType.getFloat(c, "dist"))))))
             .then(CommandManager.literal("overview").then(CommandManager.argument("player", EntityArgumentType.player())
@@ -98,7 +100,7 @@ public final class PlainProbe implements ModInitializer {
         Vec3d m = best.mob.getPos();
         double ang = Math.atan2(p.getZ() - m.z, p.getX() - m.x);
         double x = m.x + Math.cos(ang) * dist, z = m.z + Math.sin(ang) * dist;
-        double y = Math.max(m.y, b.world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(x), (int) Math.floor(z))) + 1.5;
+        double y = Math.max(m.y, b.world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(x), (int) Math.floor(z))) + 1.5 + Math.max(0, dist - 6) / 2; // farther views look down over the front rank
         face(p, x, y, z, m.add(0, 1.2, 0));
         log("view " + what + ": entity " + best.mob.getId() + " troop=" + best.spec.id() + " server=" + Registries.ENTITY_TYPE.getId(best.mob.getType()) + " (raw " + Registries.ENTITY_TYPE.getRawId(best.mob.getType()) + ", class " + best.mob.getClass().getSimpleName() + ") plain look=" + Registries.ENTITY_TYPE.getId(PlainLooks.byRole(best.spec, best.mob.getType()))
             + " (raw " + Registries.ENTITY_TYPE.getRawId(PlainLooks.byRole(best.spec, best.mob.getType())) + ") look(viewer)=" + Registries.ENTITY_TYPE.getId(PlainLooks.look(best.mob, p)) + " named=" + (best.mob.hasCustomName() ? ArmyMobs.named(best.mob.getCustomName().getString()) != null : false));

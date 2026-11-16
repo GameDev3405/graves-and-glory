@@ -112,6 +112,16 @@ class Session:
             user32.SetForegroundWindow(self.fg)  # hand focus back to whatever Kort had in front (best effort)
         return self.hwnd is not None
 
+    def chunk_resend(self):
+        """Out of view distance and back to the same spot and look: the blocks then come in chunk data, not block updates."""
+        import re
+        pos = re.findall(r"-?[\d.]+(?=d)", self.rc("data get entity %s Pos" % NAME))
+        rot = re.findall(r"-?[\d.]+(?=f)", self.rc("data get entity %s Rotation" % NAME))
+        self.rc("execute as %s at @s run tp @s ~ ~ ~800" % NAME)
+        time.sleep(8)
+        self.rc("tp %s %s %s" % (NAME, " ".join(pos), " ".join(rot)))
+        time.sleep(8)
+
     def rc(self, cmd):
         out = spike.rcon(self.port, cmd)
         print("  rcon> %s :: %s" % (cmd, out.strip()[:200]), flush=True)
@@ -177,10 +187,13 @@ class Session:
         self.rc("plainprobe wagon " + NAME)
         self.rc("plainprobe blocks " + NAME)
         self.shot("wagon-and-map-blocks", 3)
-        self.rc("execute as %s at @s run tp @s ~ ~ ~800" % NAME)  # out of view distance and back: the blocks come in chunk data
-        time.sleep(8)
-        self.rc("execute as %s at @s run tp @s ~ ~ ~-800" % NAME)
-        self.shot("after-chunk-resend", 8)
+        self.chunk_resend()
+        # a barrier draws only for a creative player holding one: show where the stand-ins are
+        self.rc("gamemode creative " + NAME)
+        self.rc("item replace entity %s weapon.offhand with minecraft:barrier" % NAME)
+        self.shot("after-chunk-resend-barrier-markers", 6)
+        self.rc("item replace entity %s weapon.offhand with minecraft:air" % NAME)
+        self.rc("gamemode survival " + NAME)
         self.rc("plainprobe practice " + NAME)
         st = self.wait_state("running=true", 240)
         import re
@@ -195,6 +208,8 @@ class Session:
         self.shot("knight-husk", 3)
         self.rc("plainprobe view %s mage" % NAME)
         self.shot("mage-as-witch", 3)
+        self.rc("plainprobe view %s mage 14" % NAME)  # from above and behind the front rank, out of the spell particles
+        self.shot("mage-as-witch-far", 2)
         self.rc("plainprobe overview " + NAME)
         self.rc("plainprobe aim %s 25" % NAME)
         time.sleep(2)
