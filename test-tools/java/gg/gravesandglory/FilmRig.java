@@ -40,12 +40,16 @@ public final class FilmRig {
     public static volatile String lastStats="";
     static double[] cam;static long camFrame=-1;static double lift;static Recorder rec;
     static final ArrayList<Long> times=new ArrayList<>();static long lastNanos;
+    /** World ticks and real time at the take's start: its tick rate is logged at the end, so a slowed take shows its slowdown (20 a second is vanilla). */
+    static long startTick,startNanos;
 
     public static void start(Take t){
         var c=MinecraftClient.getInstance();
         frame=0;camFrame=-1;lift=0;times.clear();lastNanos=0;done=false;
         if(c.options.getMaxFps().getValue()!=t.fps())c.options.getMaxFps().setValue(t.fps());
         if(t.video()!=null){try{rec=new Recorder(t.video(),c.getFramebuffer().textureWidth,c.getFramebuffer().textureHeight,t.fps());}catch(Exception e){System.out.println("[film] recorder failed: "+e);rec=null;}}
+        startTick=c.world==null?0:c.world.getTime();startNanos=System.nanoTime();
+        System.out.println("[film] take "+t.name()+" starts at slow x"+slow);
         take=t;
     }
     /** The camera for this frame, or null while no shot runs. Called from Camera.update, so it is memoised per frame. */
@@ -95,6 +99,8 @@ public final class FilmRig {
         long over=ms.stream().filter(d->d>1000.0/t.fps()*1.35).count();
         lastStats=String.format("{\"take\":\"%s\",\"frames\":%d,\"avg_ms\":%.2f,\"p95_ms\":%.2f,\"p99_ms\":%.2f,\"max_ms\":%.2f,\"over_135pct\":%d}",t.name(),ms.size(),avg,p95,p99,max,over);
         System.out.println("[film] "+lastStats);
+        var w=MinecraftClient.getInstance().world;double secs=(System.nanoTime()-startNanos)/1e9;
+        if(w!=null&&secs>0)System.out.printf("[film] %s ran %d ticks in %.1f s (%.1f a second) at slow x%d at its end%n",t.name(),w.getTime()-startTick,secs,(w.getTime()-startTick)/secs,slow);
         if(t.video()!=null)try{java.nio.file.Files.writeString(new File(t.video().getPath()+".json").toPath(),lastStats);}catch(Exception ignored){}
         TitleDemos.pose=null;take=null;cam=null;done=true;FilmRig.slow=1; // the static factor, not a local
     }
