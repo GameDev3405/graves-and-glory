@@ -15,6 +15,7 @@
       "gg.gravesandglory.PerfProbe",
       "gg.gravesandglory.SliceProbe",
       "gg.gravesandglory.RewardDriver",
+      "gg.gravesandglory.NetExchangeProbe",
       "gg.gravesandglory.AiPurposeOverlay"
     ],
     "client": [
@@ -23,6 +24,7 @@
       "gg.gravesandglory.CompatibilityChecks",
       "gg.gravesandglory.ConnectOnStart",
       "gg.gravesandglory.ServerKitSmoke",
+      "gg.gravesandglory.NetExchangeChecks",
       "gg.gravesandglory.PerfClient",
       "gg.gravesandglory.PerfIntegrated",
       "gg.gravesandglory.SliceClient",

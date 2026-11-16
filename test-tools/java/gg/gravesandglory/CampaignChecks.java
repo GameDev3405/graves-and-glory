@@ -47,6 +47,7 @@ public final class CampaignChecks implements ClientModInitializer {
         if(!System.getProperty("gravesandglory.phase3Checks","").isEmpty())return; // the Phase 3 suites drive their own world
         // The battle self-test (-PselfTest) drives its own battle; these suites would fight it for the same world.
         {String forge=System.getenv("GRAVES_MAPFORGE_SCRIPT");if(forge!=null&&!forge.isBlank())return;} // the map forge harness drives its own world and camera (maps lead, 2026-11-12)
+        if(!System.getProperty("gravesandglory.netExchange","").isEmpty()||!System.getProperty("gravesandglory.serverSmoke","").isEmpty())return; // these join a dedicated server of their own
         if(!MeltyTest.active()||Boolean.getBoolean("gravesandglory.selfTest")||Boolean.getBoolean("gravesandglory.campChecks")||Boolean.getBoolean("gravesandglory.frontChecks")||Boolean.getBoolean("gravesandglory.networkHost")||Boolean.getBoolean("gravesandglory.networkJoin")||!System.getProperty("gravesandglory.rankNet","").isEmpty()||!System.getProperty("gravesandglory.phase1Checks","").isEmpty()||!System.getProperty("gravesandglory.phase2Checks","").isEmpty()||!System.getProperty("gravesandglory.phase4Checks","").isEmpty()||!System.getProperty("gravesandglory.commandUiChecks","").isEmpty())return;
         stateProbe();
         // Nothing else opens the world: without this the client idles on the first-run accessibility screen, then on the front menu (QA run 3 stall).

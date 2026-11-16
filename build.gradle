@@ -67,6 +67,18 @@ if (project.hasProperty('duelSim')) {
  }
  tasks.named('runServer') { dependsOn localTestToolsJar }
 }
+// Dedicated-server payload exchange (test-tools/java/gg/gravesandglory/NetExchangeProbe.java and NetExchangeChecks.java, port plan P1.3): -PnetExchange=<shared dir> loads the
+// test tools on the server, counts every gravesandglory payload it sends and receives and lets the client end the round and stop the server (SliceProbe
+// on the same dir). -PloginGate=false switches the 1.20.1 login fallback of VersionGate off for the gate cases; it changes no rule.
+if (project.hasProperty('netExchange')) {
+ loom.runs.server.vmArg '-Dgravesandglory.localIntegration=true'
+ loom.runs.server.vmArg "-Dfabric.addMods=${file('build/localTestTools/local-integration-DO-NOT-SHIP.jar').absolutePath}"
+ loom.runs.server.vmArg '-Dgravesandglory.localChecks=local-checks.txt'
+ loom.runs.server.vmArg "-Dgravesandglory.netExchange=${project.property('netExchange')}"
+ loom.runs.server.vmArg "-Dgravesandglory.sliceDir=${project.property('netExchange')}"
+ if (project.hasProperty('loginGate')) loom.runs.server.vmArg "-Dgravesandglory.loginGate=${project.property('loginGate')}"
+ tasks.named('runServer') { dependsOn localTestToolsJar }
+}
 // Reward driver (test-tools/java/gg/gravesandglory/RewardDriver.java, QA row K7): -PrewardDriver=<control dir> lets a script move a dedicated server round's clock back and call the real finish; it changes no rule.
 if (project.hasProperty('rewardDriver')) {
  loom.runs.server.vmArg '-Dgravesandglory.localIntegration=true'

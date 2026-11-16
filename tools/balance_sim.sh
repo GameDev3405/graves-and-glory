@@ -7,6 +7,7 @@
 #   tools/balance_sim.sh p1a 25681 -PbotSim=10 -PsimDawn=normal -PsimDusk=normal -PsimMaps=0,1,2,3,4 -PsimRoundSeconds=300 \
 #       -PsimBanner0=ironclad_normal -PsimBanner1=tidecallers_normal -PsimFast=true
 #   tools/balance_sim.sh duels 25682 -PduelSim=$PWD/work/method/plans/units.txt -PduelShard=0/2 -PsimFast=true
+# SIM_ONLINE_MODE=false lets dev clients and qa bots join (default true).
 # SIM_LEVEL_SEED=<n> in the environment fixes the world seed (vanilla level-seed; blank = random, the default).
 # Results: <root>/botsim/{results,gold,types}.csv and meta.txt, or <root>/duel/{duels,types}.csv and meta.txt.
 set -u
@@ -16,7 +17,7 @@ cd "$here" || exit 9
 # Other worktrees run servers too: refuse a port something already listens on.
 if netstat -ano 2>/dev/null | grep LISTENING | grep -qE "[:.]$port[[:space:]]"; then echo "port $port is in use; pick another"; exit 8; fi
 export JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot"
-G=$(ls -d ~/.gradle/wrapper/dists/gradle-8.8-bin/*/gradle-8.8/bin/gradle | head -1)
+G=./gradlew.bat  # the wrapper's Gradle (9.5.1 on 1.21.1; Loom 1.17 does not load on the old pinned 8.8)
 root="$here/work/method/$name-$(date +%H%M%S)"
 mkdir -p "$root"
 echo "eula=true" > "$root/eula.txt"
@@ -24,7 +25,7 @@ cat > "$root/server.properties" <<EOF
 level-name=Graves and Glory
 motd=Graves and Glory
 server-port=$port
-online-mode=true
+online-mode=${SIM_ONLINE_MODE:-true}
 max-tick-time=60000
 view-distance=10
 simulation-distance=10
