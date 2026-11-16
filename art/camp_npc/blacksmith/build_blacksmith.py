@@ -75,6 +75,9 @@ def side(face): return face in ("front", "back", "left", "right")
 def head_deco(face, x, y, w, h, v):
     """A 12 x 10 x 11 head: bald on top, a ring of hair round the back, heavy brows (their own cubes) over small hard eyes."""
     hair = lambda: (BEARD, 1 + (x + y // 3) % 2)
+    if face in ("front", "left", "right", "back") and y == 1:           # a sweat rag tied round the brow
+        if face == "back" and x in (5, 6): return (LEATH, 1)             # its knot
+        return (LEATH, 3 if (x + (face == "front")) % 4 == 0 else 2)
     if face == "front":
         if y >= 7: return (BEARD, 1)                              # under the beard
         if y == 4 and x in (4, 7): return (IRON, 0)               # pupils, close under the brows
@@ -97,6 +100,7 @@ def head_deco(face, x, y, w, h, v):
         return None
     if face == "top":
         if x in (2, 3, 4) and y in (6, 7): return v + 1
+        if (x, y) in ((8, 3), (9, 3), (9, 4), (5, 8), (6, 9), (3, 2)): return v - 1   # soot
         if y == 0: return v - 1
     return None
 
