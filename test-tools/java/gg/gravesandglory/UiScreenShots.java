@@ -45,6 +45,7 @@ public final class UiScreenShots implements ClientModInitializer {
             if (c.getOverlay() != null || shotsDone) return;
             try {
                 if (!entered) {
+                    if (c.currentScreen instanceof net.minecraft.client.gui.screen.AccessibilityOnboardingScreen s) { s.close(); return; } // a fresh root: Continue, as a player would
                     if (!(c.currentScreen instanceof FrontMenuScreen)) return;
                     if (++ticks == 60) { org.lwjgl.glfw.GLFW.glfwSetWindowSize(c.getWindow().getHandle(), 1920, 1080); c.options.getGuiScale().setValue(0); c.onResolutionChanged(); }
                     if (ticks == 80) { GravesAndGloryClient.startCamp(c, false); entered = true; }

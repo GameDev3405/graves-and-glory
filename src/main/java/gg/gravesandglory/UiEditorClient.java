@@ -94,7 +94,9 @@ public final class UiEditorClient {
                 JsonObject o = JsonParser.parseString(json).getAsJsonObject();
                 state = o;
                 message = UiSheet.str(o, "message");
-                UiText.setDraft(UiSheet.editsOf(o, ""));
+                JsonObject draft = new JsonObject();
+                if (o.has("draft")) draft.add("edits", o.get("draft")); // the owner's draft: id to {text}, as in a sheet's edits
+                UiText.setDraft(UiSheet.editsOf(draft, "draft: "));
                 if (o.has("open") && o.get("open").getAsBoolean()) {
                     on(true);
                     client.setScreen(new UiEditorScreen(client.currentScreen instanceof UiEditorScreen e ? e.parent : client.currentScreen));
