@@ -49,6 +49,28 @@ public final class Phase1Checks implements ClientModInitializer {
     static volatile Suite current;static volatile String currentName="";static volatile boolean failed;
     /** Test-only quit hook (shutdown livelock check, 951d1264): GRAVES_QUIT_AFTER_JOIN=N stops the client N client ticks after the player has joined the camp world, ready or not, through the same scheduleStop the suites use. Unset or negative: off. */
     static final int QUIT_AFTER_JOIN=parseQuit(System.getenv("GRAVES_QUIT_AFTER_JOIN"));static int joinTicks;static boolean quitDone;
+    /** With the quit hook on: a daemon thread logs, every 2 s for 3 minutes of the server's shutdown, each world's queued chunk main-thread tasks,
+     *  unload task queue, pending ChunkLoaders and chunks to unload (dev names, read by reflection from another thread: diagnostics only). */
+    static void shutdownProbe(net.minecraft.server.MinecraftServer server){
+        Thread t=new Thread(()->{
+            try{
+                var exec=net.minecraft.server.world.ServerChunkManager.class.getDeclaredField("mainThreadExecutor");exec.setAccessible(true);
+                var scl=net.minecraft.server.world.ServerChunkLoadingManager.class;
+                var unload=scl.getDeclaredField("unloadTaskQueue");unload.setAccessible(true);
+                var loaders=scl.getDeclaredField("loaders");loaders.setAccessible(true);
+                var toUnload=scl.getDeclaredField("chunksToUnload");toUnload.setAccessible(true);
+                for(int i=0;i<90;i++){
+                    StringBuilder sb=new StringBuilder("[p1] shutdown-probe t="+(i*2)+"s");
+                    for(var w:server.getWorlds()){var cm=w.getChunkManager();var lm=cm.chunkLoadingManager;
+                        sb.append(" | ").append(w.getRegistryKey().getValue().getPath()).append(" chunkTasks=").append(((net.minecraft.util.thread.ThreadExecutor<?>)exec.get(cm)).getTaskCount())
+                          .append(" unloadQueue=").append(((java.util.Queue<?>)unload.get(lm)).size()).append(" loaders=").append(((java.util.List<?>)loaders.get(lm)).size())
+                          .append(" toUnload=").append(((java.util.Map<?,?>)toUnload.get(lm)).size());}
+                    System.out.println(sb);Thread.sleep(2000);
+                }
+            }catch(InterruptedException e){}catch(Throwable e){System.out.println("[p1] shutdown-probe failed: "+e);}
+        },"gg-shutdown-probe");
+        t.setDaemon(true);t.start();
+    }
     static int parseQuit(String s){try{return s==null||s.isBlank()?-1:Integer.parseInt(s.trim());}catch(NumberFormatException e){return -1;}}
     static int tick,front,hold;static boolean started; // hold: client ticks the current suite waits (Phase1Checks.window)
 
@@ -98,6 +120,7 @@ public final class Phase1Checks implements ClientModInitializer {
     @Override public void onInitializeClient(){
         String list=System.getProperty("gravesandglory.phase1Checks","");if(list.isBlank()||!System.getProperty("gravesandglory.phase2Checks","").isEmpty())return;
         for(String name:list.split(","))if(!name.isBlank())queue.add(name.trim());
+        if(QUIT_AFTER_JOIN>=0)net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(Phase1Checks::shutdownProbe);
         ServerTickEvents.END_SERVER_TICK.register(s->{if(current instanceof ServerWatch w&&GravesAndGlory.battle!=null)try{w.serverTick(GravesAndGlory.battle);}catch(Exception e){report("p1-"+currentName+"-exception",false,e.toString());e.printStackTrace();}});
         HudRenderCallback.EVENT.register((g,delta)->{if(current instanceof HudWatch w)try{w.hudFrame(MinecraftClient.getInstance());}catch(Exception e){report("p1-"+currentName+"-exception",false,e.toString());e.printStackTrace();}});
         ClientTickEvents.END_CLIENT_TICK.register(c->{
