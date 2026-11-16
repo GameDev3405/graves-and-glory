@@ -194,14 +194,14 @@ class Session:
         self.shot("after-chunk-resend-barrier-markers", 6)
         self.rc("item replace entity %s weapon.offhand with minecraft:air" % NAME)
         self.rc("gamemode survival " + NAME)
-        q = "execute at %s if entity @e[type=minecraft:item,distance=..8]" % NAME
+        q = "execute if entity @e[type=minecraft:item,nbt={Item:{components:{\"minecraft:custom_data\":{gg_plain:\"recruit\"}}}}]"
         before = "passed" in self.rc(q)
-        press(self.hwnd, "8")  # the Recruit book
-        time.sleep(0.5)
+        self.rc("plainprobe slot %s 7" % NAME)  # the Recruit book, selected by the server so the key cannot miss
+        time.sleep(1)
         press(self.hwnd, "Q")  # drop it: the server keeps it (PlainDropMixin)
         time.sleep(1.5)
         after = "passed" in self.rc(q)
-        print("  drop check: %s" % ("LEAK (an item entity appeared)" if after and not before else "ok (no item dropped)" if not after else "unknown (items already near)"), flush=True)
+        print("  drop check: %s" % ("LEAK (the Recruit book is in the world)" if after and not before else "ok (the Recruit book stayed in the hotbar)" if not after else "unknown (items already near)"), flush=True)
         self.rc("execute as %s at @s run tp @s ~ ~ ~ 90 10" % NAME)  # face west, away from the wagon and blocks
         self.rc("plainprobe mage " + NAME)  # a lone mage, AI off, out of any battle
         self.shot("mage-as-witch-alone", 4)
