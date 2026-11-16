@@ -37,7 +37,7 @@ metafile = true
 
 [[files]]
 file = "mods/graves-and-glory-0.5.1.jar"
-hash = "485a1cca7135570d8f2aabe112d2bd3635683e625e79f89e260f01fdefffc4a4"
+hash = "22f35b6246db84f3d6ad6eeb03c897576f71504fff56d1911f4978ead31bc103"
 
 [[files]]
 file = "mods/immediatelyfast.pw.toml"
