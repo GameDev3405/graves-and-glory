@@ -48,6 +48,7 @@ public final class UiEditorChecks implements ClientModInitializer {
                 }
                 if (t == 160) shot(c, "edit-box");
                 if (t == 170 && id != null) { c.setScreen(new CampScreen("home")); UiEditorClient.set(id, EDIT, true); }
+                if (t == 195 && id != null) c.setScreen(new CampScreen("home")); // rebuilt after the draft reply, so init-time labels show it
                 if (t == 210 && id != null) {
                     report("draft-saved", EDIT.equals(UiText.draft().get(id)), UiEditorClient.message);
                     report("draft-drawn-for-owner", UiText.seen(id) != null && UiText.seen(id).shown.equals("EDITED IN GAME {ok}"), UiText.seen(id) == null ? "unseen" : UiText.seen(id).shown);
