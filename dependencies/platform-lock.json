@@ -11,7 +11,7 @@
       "sha1": "6776c0340845887477bfa463acc736ce7fcb6de5",
       "sha512": "a7fbb629793c52f0be8b049f787cb598879239b1ad8e1de62e103c8b9efff140e3232b93ef1f14e505d262897d8cf9505b1126396429ad4056bff969c8674e52"
     },
-    "sha256": null,
+    "sha256": "0ceb694040b4628bf3fa02286cfe5f0db833195669ab07f8caa4001359763eff",
     "downloads": [
       "https://cdn.modrinth.com/data/YL57xq9U/versions/bAo1Qhte/iris-fabric-1.8.14-beta.1%2Bmc1.21.1.jar"
     ],
@@ -34,7 +34,7 @@
     "curseforgeProjectId": null,
     "curseforgeFileId": null,
     "modrinthPublished": "2026-06-13",
-    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+    "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)"
   },
   {
     "slug": "sodium",
@@ -48,7 +48,7 @@
       "sha1": "003c114c85ca88ef3362e018deb6aca0c682d6a1",
       "sha512": "8614a374593698069a80ac74de8cd9c28f3928d16819a0e0d6320b538e823f7e54e8be06d5ea5a9c268beb0e02073209d1f831a02dede851588b972367680853"
     },
-    "sha256": null,
+    "sha256": "3d43c14985a4deb19c654aad3393b454cf57e1ebcbba86c4ae6a98dfc60eca2d",
     "downloads": [
       "https://cdn.modrinth.com/data/AANobbMI/versions/SMxNOGZ6/sodium-fabric-0.8.13%2Bmc1.21.1.jar"
     ],
@@ -71,7 +71,7 @@
     "curseforgeProjectId": null,
     "curseforgeFileId": null,
     "modrinthPublished": "2026-08-28",
-    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+    "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)"
   },
   {
     "slug": "lithium",
@@ -85,7 +85,7 @@
       "sha1": "7d82a004403b7780d4443d8e40361a55cfd0ae63",
       "sha512": "182064b00e6315e2255b857eaab8eb759e6b042ebd4cc8b855ff0d93f875a5a7188fac49f878d7b29d4ef7e6b6341190ad7f6f6f39f4a6d2c62003468b08e4c6"
     },
-    "sha256": null,
+    "sha256": "92329d98c57f5a22091a0adb509fdb1d60113a5602c708b799b13134bad13baa",
     "downloads": [
       "https://cdn.modrinth.com/data/gvQqBUqZ/versions/N08Z8wog/lithium-fabric-0.15.4%2Bmc1.21.1.jar"
     ],
@@ -108,7 +108,7 @@
     "curseforgeProjectId": null,
     "curseforgeFileId": null,
     "modrinthPublished": "2026-06-27",
-    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+    "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)"
   },
   {
     "slug": "ferrite-core",
@@ -122,7 +122,7 @@
       "sha1": "a8a6a34fcda177da2828cedef44e0e538cf78aad",
       "sha512": "3ad31620fac4ff44327dc7dedbe162b2d978f3f246dc16255a6e400ce9592a0d326fe36a626f3c1bf30a11f813093cbb4dcc107af039cff724d0cdf648541fdf"
     },
-    "sha256": null,
+    "sha256": "98c3ab1d5aab8f14b5d082d3f1a467727fd335f02d124555c94339761c4c18f2",
     "downloads": [
       "https://cdn.modrinth.com/data/uXXizFIs/versions/sOzRw3CG/ferritecore-7.0.3-fabric.jar"
     ],
@@ -145,7 +145,7 @@
     "curseforgeProjectId": null,
     "curseforgeFileId": null,
     "modrinthPublished": "2026-01-25",
-    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+    "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)"
   },
   {
     "slug": "immediatelyfast",
@@ -159,7 +159,7 @@
       "sha1": "5067bdff1d5cc6d2dd89986f98bd8bd7ae62fb98",
       "sha512": "d4ac2d574d80000cd59b0b362706a6f86778bfc717748dca854f05ee8d09ce158738488e58c6b8ee05d5e54017f05b6c66c3bcaa3fa357d38cbfd75893dda9f4"
     },
-    "sha256": null,
+    "sha256": "9c391f0864caf9083cac98e44b1ab6235e45fbf340efda5ba75e0a21929d05d5",
     "downloads": [
       "https://cdn.modrinth.com/data/5ZwdcRci/versions/aLnBqxFW/ImmediatelyFast-Fabric-1.6.15%2B1.21.1.jar"
     ],
@@ -183,7 +183,7 @@
     "curseforgeProjectId": null,
     "curseforgeFileId": null,
     "modrinthPublished": "2026-10-13",
-    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+    "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)"
   },
   {
     "slug": "modernfix",
@@ -197,7 +197,7 @@
       "sha1": "4ab39e9c736e7204146792c545ec5b29fc0a3872",
       "sha512": "dc67d6e023e1fcdeaf7837917c477cba212c611dfc2463c6ea021319c644087c79b477e0ea8194e113ddd7332fd5c6d82baa47c291eaac7f4a86252507b4e19f"
     },
-    "sha256": null,
+    "sha256": "3ce5a9ce75066961b7fa5382692bb1387cc3536cc984b064ab7d70b97f3c674c",
     "downloads": [
       "https://cdn.modrinth.com/data/nmDcB62a/versions/NnNX8LBn/modernfix-fabric-5.25.1%2Bmc1.21.1.jar"
     ],
@@ -220,7 +220,7 @@
     "curseforgeProjectId": null,
     "curseforgeFileId": null,
     "modrinthPublished": "2025-11-08",
-    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+    "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)"
   },
   {
     "slug": "entity-model-features",
@@ -234,7 +234,7 @@
       "sha1": "1528d24c0c6577ac23408c661639a0a03a5207f3",
       "sha512": "0ab99fec33bb27334adf002b911f2834bd5cecc1e9a02acb6b7eda1b5e989cc704b7c35a0ee716fe86d43e4f20b5307a2dd55766b1018c4e1422c863d411c013"
     },
-    "sha256": null,
+    "sha256": "d089852c2b554165568ac786047a45efdc0f1141c607eca03f9e7e7e66524022",
     "downloads": [
       "https://cdn.modrinth.com/data/4I1XuqiY/versions/90RfzkYP/entity_model_features-3.3.12-1.21-fabric.jar"
     ],
@@ -258,7 +258,7 @@
     "curseforgeProjectId": null,
     "curseforgeFileId": null,
     "modrinthPublished": "2026-10-15",
-    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+    "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)"
   },
   {
     "slug": "entitytexturefeatures",
@@ -272,7 +272,7 @@
       "sha1": "1ec5508fe8252234bf175c1dc48f099530d687d3",
       "sha512": "5258b3c2bd7894b20f9597af78a7aa83a1f84a54956ed32febc1d04864336372b98ef282a0a3b9d85f60e745d93ee0b3bc2be664fc9a6227c6d2c28e031617b5"
     },
-    "sha256": null,
+    "sha256": "fc4bf6228195a0fe8af33a36409c8dab9b391ba2920210445d11c8c69e56a6b9",
     "downloads": [
       "https://cdn.modrinth.com/data/BVzZfTc1/versions/LNZeTHJf/entity_texture_features-7.2.6-1.21-fabric.jar"
     ],
@@ -296,7 +296,7 @@
     "curseforgeProjectId": null,
     "curseforgeFileId": null,
     "modrinthPublished": "2026-10-15",
-    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+    "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)"
   },
   {
     "slug": "presence-footsteps",
@@ -310,7 +310,7 @@
       "sha1": "2e0228905a1e5a2ddecb00d40d764a64a4600a6e",
       "sha512": "524e5fd9c063d3ee81baaf4dbe553982a906b9b315dffae4aa64332db22a1f2fa0bb13b339c74ac7c5ddf9a8453b6fdaa9e93abac3c8bc1a9a347405e382f1c5"
     },
-    "sha256": null,
+    "sha256": "0108e0df22f395bed4053b20d05663f98ea89db760c0cf0b7fb2d0edecb5af49",
     "downloads": [
       "https://cdn.modrinth.com/data/rcTfTZr3/versions/CrvsDgLW/PresenceFootsteps-1.11.2%2B1.21.jar"
     ],
@@ -330,11 +330,12 @@
       "1.21",
       "1.21.1"
     ],
-    "redistributionReview": "Use upstream Modrinth download; preserve notices and author conditions",
+    "redistributionReview": "FINAL (Kort 2026-11-16): the CurseForge zip bundles the pinned 1.11.2+1.21 jar unmodified (CurseForge has no 1.11.2 file), under Polyform Shield 1.0 with notices in docs/third-party.",
     "curseforgeProjectId": null,
     "curseforgeFileId": null,
     "modrinthPublished": "2026-06-23",
-    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+    "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)",
+    "curseforgeOverride": true
   },
   {
     "slug": "complementary-reimagined",
@@ -614,7 +615,7 @@
     "versionId": "5SwzqWUu",
     "version": "0.116.18+1.21.1",
     "fileName": "fabric-api-0.116.18+1.21.1.jar",
-    "localPath": null,
+    "localPath": "C:\\Users\\kortt\\.gradle\\caches\\modules-2\\files-2.1\\net.fabricmc.fabric-api\\fabric-api\\0.116.18+1.21.1\\584d303f646287ee6be059ecb2fc451255be9ee9\\fabric-api-0.116.18+1.21.1.jar",
     "fileSize": 2453884,
     "hashes": {
       "sha1": "584d303f646287ee6be059ecb2fc451255be9ee9",
@@ -643,13 +644,13 @@
     "curseforgeProjectId": null,
     "curseforgeFileId": null,
     "modrinthPublished": "2026-11-09",
-    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download",
+    "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)",
     "gradleCoordinate": "net.fabricmc.fabric-api:fabric-api:0.116.18+1.21.1"
   },
   {
     "slug": "entityculling",
     "kind": "mod",
-    "redistributionReview": "tr7zw Protective License: read it before shipping in the pack (Modrinth link download only until reviewed)",
+    "redistributionReview": "Kort 2026-11-16: licence allows bundling; handled like the other mods (player zip bundles the jar; mrpack and CurseForge reference the platform file). tr7zw Protective License text is in docs/third-party/entityculling.",
     "curseforgeProjectId": null,
     "curseforgeFileId": null,
     "projectId": "NNAgCjsB",
@@ -662,7 +663,7 @@
       "sha1": "1a28b70786ba203b160a406080232ef9834e500c",
       "sha512": "8b0e2a54a4b08edeb2aaf2dd4d6d20f152f7a88ddc266525f79661b46bfd00638d7ff03a628f258d0f27f2f99728ce1ffc182c0d547a686df7d3544b549d2b9b"
     },
-    "sha256": null,
+    "sha256": "6633d4bd692ac9bc4db26547abe31004ee06ff7f0fb99dcff60f34cf610e9779",
     "downloads": [
       "https://cdn.modrinth.com/data/NNAgCjsB/versions/ePsqkPkO/entityculling-fabric-1.12.1-mc1.21.1.jar"
     ],
@@ -681,7 +682,7 @@
       "1.21.1"
     ],
     "modrinthPublished": "2026-11-13",
-    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+    "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)"
   },
   {
     "slug": "modmenu",
@@ -699,7 +700,7 @@
       "sha1": "2321d890a25b5985eba576d7cd8fe9a9c136e33d",
       "sha512": "92e8e96267ff18d320903090f2ad9b32408a218919f5a0d578e232ad774c89d49a34a8271806652be7d6283f24e98432bc4af7f95855e78b843f9100d68696c7"
     },
-    "sha256": null,
+    "sha256": "afa55fe4e7c48560126dbe654fa9647f141bc6ffd3ce35525b65dd65d88251b5",
     "downloads": [
       "https://cdn.modrinth.com/data/mOgUt4GM/versions/6lgOkclV/modmenu-11.0.5.jar"
     ],
@@ -719,6 +720,6 @@
       "1.21.1"
     ],
     "modrinthPublished": "2026-09-24",
-    "status": "1.21.1 metadata only (port/tools, 2026-11-15): jar not downloaded; sha256, embedded fabric.mod.json and notices to refresh at first download"
+    "status": "1.21.1 pinned (port, 2026-11-15): jar on disk, size/sha512/sha256 verified (pack/p7, 2026-11-16)"
   }
 ]
