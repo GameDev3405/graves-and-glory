@@ -42,13 +42,15 @@ public final class ReplyProbe {
         for (int dx = -200; dx <= 200; dx += 2) for (int dz = -200; dz <= 200; dz += 2) {
             int cx = (int) x + dx, cz = (int) z + dz;
             double d = dx * dx + dz * dz;
-            if (d >= bd || !GravesAndGlory.Battle.inArena(cx, cz) || !Arena.deep(cx, cz)) continue;
+            if (d >= bd || !GravesAndGlory.Battle.inArena(cx, cz) || !wide(cx, cz)) continue;
             double[] dry = Arena.orderGround(b.world, cx + .5, cz + .5, x);
             if (dry == null || !GravesAndGlory.Battle.inArena(dry[0], dry[1])) continue;
             best = new int[]{cx, cz}; bd = d;
         }
         return best;
     }
+    /** Deep water across the 5 x 5 columns around (x, z): a river or a lake, not one wet cell in a yard. */
+    static boolean wide(int x, int z) { for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) if (!Arena.deep(x + dx, z + dz)) return false; return true; }
     public static boolean deep(double x, double z) { return Arena.deep((int) Math.floor(x), (int) Math.floor(z)); }
     /** The client's own answer to a point in water (the same helper the server asks), from the client's world. */
     public static double[] clientGround(net.minecraft.world.BlockView w, double x, double z, double towardX) { return Arena.orderGround(w, x, z, towardX); }

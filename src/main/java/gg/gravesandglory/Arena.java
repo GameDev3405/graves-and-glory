@@ -310,7 +310,8 @@ public final class Arena {
     public static double[] orderGround(net.minecraft.world.BlockView w,double x,double z,double towardX){
         int ix=(int)Math.floor(x),iz=(int)Math.floor(z);
         if(!deep(ix,iz))return new double[]{x,z};
-        if(EngineMaps.current()!=null){int[] c=dryNear(w,ix,iz,towardX,Integer.MAX_VALUE);return c==null?null:new double[]{c[0]+.5,c[1]+.5};}
+        if(EngineMaps.current()!=null){int[] c=dryNear(w,ix,iz,towardX,Integer.MAX_VALUE);if(c==null)return null;
+            int[] f=floor(null,c[0],c[1],towardX,c[1]+.5);return new double[]{f[0]+.5,f[1]+.5};} // on the floor column the server's groundAt stands the order on (floor; the block test is the server's alone)
         double rx=riverX(z);return new double[]{rx+(x>rx?12:-12),z};
     }
     /** The nearest column to (x, z) within 16 that is not deep water, whose ground is at most maxGround, with two free cells above it (w null: not tested);

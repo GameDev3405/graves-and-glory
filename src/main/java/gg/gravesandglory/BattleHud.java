@@ -647,8 +647,8 @@ public final class BattleHud {
         int x=box[0],y=box[1],cx=x+box[2]/2;String line="Respawn in "+GravesAndGloryClient.respawn+" s";Text t=DarkUi.heading(line);
         UiTex.draw(g,"hud/respawn-card",x,y);
         String keep=OrderReply.downCard(); // the block is said before the player tries (army control spec section 5): his troops keep their last orders
-        g.drawText(font,t,(int)Math.round(cx-font.getWidth(t)/2.0),y+5,DarkUi.INK_TEXT,false);
-        g.drawText(font,keep,(int)Math.round(cx-font.getWidth(keep)/2.0),y+16,DarkUi.SEPIA,false);
+        g.drawText(font,t,(int)Math.round(cx-font.getWidth(t)/2.0),y+4,DarkUi.INK_TEXT,false);
+        g.drawText(font,keep,(int)Math.round(cx-font.getWidth(keep)/2.0),y+14,DarkUi.SEPIA,false);
         r.put("respawn",box);tx.put("respawn",line);
     }
 
