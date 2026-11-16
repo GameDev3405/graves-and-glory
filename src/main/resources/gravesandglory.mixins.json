@@ -15,6 +15,7 @@
     "ChatHudAccessor",
     "LivingEntityRendererAccessor",
     "RenderSystemAccessor",
+    "MatrixEntryAccessor",
     "EntityFlagsAccessor",
     "EntityRenderDispatcherAccessor",
     "CorpseOverlayMixin",
