@@ -1125,7 +1125,8 @@ public final class Phase2Checks implements ClientModInitializer {
                 if(wantShot.equals("gilded-showcase")){var h=GravesAndGloryClient.houses;hudOk=h.getOrDefault("gilded",0)==3;hudWhy="the client's House strip holds "+h+" (Gilded at III="+hudOk+")";
                     // the troops the client itself holds around the line (the picture draws the client's world, not the server's)
                     Map<String,Integer> near=new TreeMap<>();for(var e:c.world.getEntities())if(e.getCustomName()!=null&&e.isAlive()&&Math.abs(e.getX()-(SX-6))<=10&&Math.abs(e.getZ()-(SZ+2))<=10){var t=ArmyMobs.named(e.getCustomName().getString());if(t!=null&&t.house().equals("gilded"))near.merge(t.id(),1,Integer::sum);}
-                    clientOk=near.getOrDefault("knight",0)>0&&near.getOrDefault("sentinel",0)>0&&near.getOrDefault("longbow",0)>0;clientWhy="the client's world holds "+near+" Gilded troops within 10 blocks of the line's middle (Squire, Templar and Longbow="+clientOk+")";}
+                    clientOk=near.getOrDefault("knight",0)>0&&near.getOrDefault("sentinel",0)>0&&near.getOrDefault("longbow",0)>0;clientWhy="the client's world holds "+near+" Gilded troops within 10 blocks of the line's middle (Squire, Templar and Longbow="+clientOk+")";
+                    if(!clientOk){int tot=0,named=0,inWin=0;String first="";for(var e:c.world.getEntities()){tot++;if(e.getCustomName()!=null)named++;if(Math.abs(e.getX()-(SX-6))<=10&&Math.abs(e.getZ()-(SZ+2))<=10){inWin++;if(first.length()<200)first+=e.getType().getUntranslatedName()+"/"+(e.getCustomName()==null?"-":e.getCustomName().getString())+"/"+e.isAlive()+"@"+(int)e.getX()+","+(int)e.getY()+","+(int)e.getZ()+" ";}}clientWhy+=" [diag: client entities "+tot+", named "+named+", in the window "+inWin+": "+first+"; camera "+(int)c.player.getX()+","+(int)c.player.getY()+","+(int)c.player.getZ()+"]";}}
                 shot(c,wantShot);shotTaken=true;
             }
             if(tileWatch==1){var d=slotTile();
@@ -2098,10 +2099,12 @@ public final class Phase2Checks implements ClientModInitializer {
             return null;
         }
         /** Puts the commander on the platform (centre or the west edge), cancels the cooldown and plants the banner; null when it was refused. */
+        String plantNote="";
         GravesAndGlory.ArmySupplyBanner plant(GravesAndGlory.Battle b,ServerPlayerEntity p,double dx){return plant(b,p,dx,0);}
         GravesAndGlory.ArmySupplyBanner plant(GravesAndGlory.Battle b,ServerPlayerEntity p,double dx,double dz){
             Commander.reset(b,own);p.changeGameMode(net.minecraft.world.GameMode.ADVENTURE);
             b.relocate(p,site.getX()+.5+dx,site.getY(),site.getZ()+.5+dz,-90f,0f);b.campaign.notices.remove(player);b.command(p,"relic:0");
+            plantNote="refused: notice \""+b.campaign.notices.get(player)+"\", running "+b.running+", ending "+b.campaign.ending()+", intro over "+(b.time>=b.campaign.introUntil)+", at "+fmt(p.getX())+" "+fmt(p.getY())+" "+fmt(p.getZ())+" mode "+p.interactionManager.getGameMode()+", alive "+p.isAlive()+", slot0 ready "+(b.time>=own.relicState.readyAt[0])+", site chunk loaded "+b.world.isChunkLoaded(site)+", block below "+b.world.getBlockState(site.down()).getBlock();
             return b.structures.isEmpty()?null:b.structures.get(b.structures.size()-1);
         }
         /** A bare, tough knight of Dusk, frozen and pinned on real ground at `at`. */
@@ -2667,12 +2670,12 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 71->{ // p2-supply-cleanup, (a): the ways a standing banner goes that are not a shot: the sweep every round start, map switch and lobby makes, and a kill
                     var p=sp(b);if(p==null)return;
                     clearFixture(b,"cleanup paths");Commander.reset(b,own);own.training.clear();supplyWhy.clear();
-                    banner=plant(b,p,0);if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted");next(b,70);return;}
+                    banner=plant(b,p,0);if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted ("+plantNote+")");next(b,70);return;}
                     bannerBlock=banner.block;var first=banner;
                     Abilities.clearBanners(b); // the call returnLobby, startRound, switchMap and the server stopping each make
                     boolean swept=first.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&!"Your supply banner has fallen.".equals(b.campaign.notices.get(player));
                     Commander.reset(b,own);
-                    banner=plant(b,p,0);if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted (kill)");next(b,70);return;}
+                    banner=plant(b,p,0);if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted (kill; "+plantNote+")");next(b,70);return;}
                     bannerBlock=banner.block;banner.kill(); // what /kill does to an armor stand
                     boolean killed=banner.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&"Your supply banner has fallen.".equals(b.campaign.notices.get(player))&&own.relicState.until[0]==0&&own.relicState.readyAt[0]>b.time;
                     supplyOk=swept&&killed;
@@ -2682,7 +2685,7 @@ public final class Phase2Checks implements ClientModInitializer {
                 case 72->{ // (b): the round ends with a banner standing
                     var p=sp(b);if(p==null)return;
                     Commander.reset(b,own);banner=plant(b,p,0);
-                    if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted (lobby)");next(b,70);return;}
+                    if(banner==null){report("p2-supply-cleanup",false,"no banner could be planted (lobby; "+plantNote+")");next(b,70);return;}
                     bannerBlock=banner.block;var planted=banner;
                     b.campaign.returnLobby();
                     boolean lobby=!b.running&&planted.isRemoved()&&b.structures.isEmpty()&&b.world.getBlockState(bannerBlock).isAir()&&own.relicState.until[0]==0&&own.relicState.data[0]==null;
