@@ -26,6 +26,8 @@ public final class TroopRenderers {
         over(EntityType.POLAR_BEAR,PolarBearEntityRenderer::new,.9f);
         over(EntityType.IRON_GOLEM,IronGolemEntityRenderer::new,.7f);
         over(EntityType.RAVAGER,RavagerEntityRenderer::new,1.1f);
+        // camp NPCs (lobby NPC spec 3.1): a villager whose name names a look draws its GeckoLib rig, every other villager vanilla
+        EntityRendererRegistry.register(EntityType.VILLAGER,CampNpcRenderer::new);
     }
     private static <T extends MobEntity> void over(EntityType<T> type,Function<EntityRendererFactory.Context,? extends EntityRenderer<? super T>> vanilla,float shadow){
         EntityRendererRegistry.register(type,ctx->new TroopRenderer<T>(ctx,vanilla.apply(ctx),shadow));

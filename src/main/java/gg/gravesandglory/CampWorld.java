@@ -249,11 +249,29 @@ final class CampWorld {
         var c=Spec.CAMP[0];VillagerEntity v=new VillagerEntity(EntityType.VILLAGER,w);
         v.refreshPositionAndAngles(c.originX()+s.x(),s.y(),c.originZ()+s.z(),(float)s.yaw(),0);v.setHeadYaw((float)s.yaw());v.setBodyYaw((float)s.yaw());
         v.setAiDisabled(true);v.setInvulnerable(true);v.setSilent(true);v.setPersistent();
+        // the profession and biome skin a plain client sees (lobby NPC spec 4); a modded client draws the row's look over them, matched by the name (CampNpcs)
         var profession=Registries.VILLAGER_PROFESSION.get(Identifier.of("minecraft",s.npc()));
-        v.setVillagerData(v.getVillagerData().withProfession(profession).withLevel(5));
-        v.setCustomName(Text.literal(s.label().split(" / ")[0]));v.setCustomNameVisible(false);
+        var type=Registries.VILLAGER_TYPE.get(Identifier.of("minecraft",s.villagerType()));
+        v.setVillagerData(v.getVillagerData().withType(type).withProfession(profession).withLevel(5));
+        v.setCustomName(Text.literal(CampNpcs.name(s)));v.setCustomNameVisible(false);
         v.addCommandTag(TAG);v.addCommandTag("camp-generation:"+generation);v.addCommandTag("camp:"+s.page());
         w.spawnEntity(v);
+        var look=CampNpcs.look(s);
+        if(look!=null&&CampNpcs.hitBox(look))hitBox(w,s,look);
+    }
+    /** A vanilla interaction entity (1.19.4+, so plain clients accept it) sized to a look far off the villager's 0.6 x 1.95 box (spec 3.1, Q16), on the
+     *  villager's feet and tagged as he is: a click on it opens his station through the same UseEntityCallback, and the camp's discard takes it with him. */
+    static void hitBox(ServerWorld w,Spec.CampStationsRow s,Spec.CampNpcsRow look){
+        var c=Spec.CAMP[0];var box=EntityType.INTERACTION.create(w);if(box==null)return;
+        var nbt=box.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putFloat("width",(float)look.hitWidth());nbt.putFloat("height",(float)look.hitHeight());nbt.putBoolean("response",true);
+        box.readNbt(nbt);box.refreshPositionAndAngles(c.originX()+s.x(),s.y(),c.originZ()+s.z(),(float)s.yaw(),0);
+        box.addCommandTag(TAG);box.addCommandTag("camp-generation:"+generation);box.addCommandTag("camp:"+s.page());
+        w.spawnEntity(box);
+    }
+    /** The station's villagers near the player swing their arm (a station opened): vanilla sends the swing to every client tracking them, and a modded
+     *  client plays the look's interact clip for it (CampNpcRenderer), so watchers see it too; no new packet, and on a plain client nothing shows. */
+    static void swing(ServerWorld w,net.minecraft.entity.player.PlayerEntity p,String page){
+        for(var v:w.getEntitiesByClass(VillagerEntity.class,p.getBoundingBox().expand(16),e->e.getCommandTags().contains(TAG)&&e.getCommandTags().contains("camp:"+page)))v.swingHand(net.minecraft.util.Hand.MAIN_HAND);
     }
     /** The floating text of a row, 3.7 blocks above its y: the same text display style as before, the text from text(). */
     static void label(ServerWorld w,Spec.CampStationsRow s){

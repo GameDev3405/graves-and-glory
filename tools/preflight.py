@@ -728,9 +728,34 @@ for r in data.get('campPieces',[]):
     if r['station']!='-' and not re.fullmatch(r'[a-z]+(:[a-z]+)?',r['station']): errors.append(f'{where}: station {r["station"]} is neither - nor [a-z]+(:[a-z]+)?')
     slots=(r['slotX'],r['slotY'],r['slotZ'])
     if slots!=(-1,-1,-1) and not (0<=slots[0]<template['width'] and 0<=slots[1]<template['height'] and 0<=slots[2]<template['depth']): errors.append(f'{where}: slot {slots} is neither -1,-1,-1 nor a cell inside the template ({template["width"]} wide, {template["height"]} high, {template["depth"]} deep)')
+# Lobby NPCs (docs/superpowers/specs/2026-11-16-lobby-npcs-design.md): a station's villager keeps its vanilla profession and biome skin for
+# plain clients; look names the campNpcs row a modded client draws instead (CampNpcs.resolve, by the villager's name), or - to stay a villager.
+PROFESSIONS=('armorer','butcher','cartographer','cleric','farmer','fisherman','fletcher','leatherworker','librarian','mason','shepherd','toolsmith','weaponsmith')
+VILLAGER_TYPES=('plains','desert','savanna','snow','swamp','taiga','jungle')
+npc_rows={r['id']:r for r in data.get('campNpcs',[])}
+for r in npc_rows.values():
+    where=f'campNpcs/{r["id"]}'
+    if not re.fullmatch(r'[a-z0-9_]+',r['rig']): errors.append(f'{where}: rig {r["rig"]} is not [a-z0-9_]+')
+    else:
+        for rel in (f'geo/camp_npc/{r["rig"]}.geo.json',f'animations/camp_npc/{r["rig"]}.animation.json',f'textures/entity/camp_npc/{r["rig"]}.png'):
+            if not (root/'src/main/resources/assets/gravesandglory'/rel).is_file(): errors.append(f'{where}: rig {r["rig"]} has no assets/gravesandglory/{rel}')
+    if not 0.3<=r['scale']<=3: errors.append(f'{where}: scale {r["scale"]} is not 0.3..3')
+    if (r['hitWidth']==0)!=(r['hitHeight']==0) or r['hitWidth']<0 or r['hitHeight']<0: errors.append(f'{where}: hitWidth and hitHeight are both 0 (no interaction box) or both above 0')
+    if r['barkCue']!='-' and not re.fullmatch(r'[a-z0-9_.]+',r['barkCue']): errors.append(f'{where}: barkCue {r["barkCue"]} is neither - nor a sound id [a-z0-9_.]+')
+    for line in r['lines'].split(' | '):
+        if not line.strip() or len(line)>90: errors.append(f'{where}/lines: "{line}" is empty or longer than 90 characters (lines are split by " | ")')
+names={}
 for r in data.get('campStations',[]):
     where=f'campStations/{r["id"]}'
-    if r['npc'] not in ('-','armorer','cleric','librarian','cartographer','weaponsmith'): errors.append(f'{where}: npc {r["npc"]} is not - or a villager profession of the camp')
+    if r['npc']!='-' and r['npc'] not in PROFESSIONS: errors.append(f'{where}: npc {r["npc"]} is not - or a villager profession')
+    if (r['npc']=='-')!=(r['villagerType']=='-') or r['villagerType']!='-' and r['villagerType'] not in VILLAGER_TYPES: errors.append(f'{where}: villagerType {r["villagerType"]} is not one of '+', '.join(VILLAGER_TYPES)+' for a row with an npc, or - for a row without one')
+    if r['look']!='-':
+        if r['npc']=='-': errors.append(f'{where}: look {r["look"]} on a row with no npc')
+        if r['look'] not in npc_rows: errors.append(f'{where}: look {r["look"]} is not a campNpcs id')
+    if r['npc']!='-':
+        name=r['label'].split(' / ')[0]
+        if name in names: errors.append(f'{where}: its villager name {name} is also {names[name]}\'s, and the client tells camp NPCs apart by name')
+        names[name]=r['id']
     if r['page'] not in ('home','contracts','chapter','match','recruit','friends','army','train','forge'): errors.append(f'{where}: page {r["page"]} is not a camp page')
 # Lesson boards (Phase 3): ids unique (the generic check above), and every {key:<id>} marker of a text names a key the HUD lessons and the camp labels know.
 LESSON_KEYS={'menu','attack','charge','follow','retreat','formation','map','rotate_left','rotate_right','confirm','cancel','use'}

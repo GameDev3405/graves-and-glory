@@ -204,12 +204,12 @@ public final class GravesAndGlory implements ModInitializer {
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player,world,hand,entity,hit)->{
             String station=entity.getCommandTags().stream().filter(t->t.startsWith("camp:")).map(t->t.substring(5)).findFirst().orElse("");
             if(station.isEmpty())return ActionResult.PASS;
-            if(!world.isClient&&player instanceof ServerPlayerEntity p&&battle!=null&&p.squaredDistanceTo(entity)<36)openCamp(p,station);
+            if(!world.isClient&&player instanceof ServerPlayerEntity p&&battle!=null&&p.squaredDistanceTo(entity)<36){openCamp(p,station);CampWorld.swing(p.getServerWorld(),p,station);}
             return ActionResult.SUCCESS;
         });
         UseBlockCallback.EVENT.register((player,world,hand,hit)->{
             String station=CampWorld.station(hit.getBlockPos());if(station==null||battle==null)return ActionResult.PASS;
-            if(!world.isClient&&player instanceof ServerPlayerEntity p&&p.squaredDistanceTo(Vec3d.ofCenter(hit.getBlockPos()))<36)openCamp(p,station);
+            if(!world.isClient&&player instanceof ServerPlayerEntity p&&p.squaredDistanceTo(Vec3d.ofCenter(hit.getBlockPos()))<36){openCamp(p,station);CampWorld.swing(p.getServerWorld(),p,station);}
             return ActionResult.SUCCESS;
         });
         UseBlockCallback.EVENT.register((player,world,hand,hit)->{
