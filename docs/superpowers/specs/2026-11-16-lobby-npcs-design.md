@@ -93,7 +93,7 @@ Rows with no NPC: welcome, founders, the gates, war-gates, arsenal (Old Hold). T
 - A plain player always sees the villager, with the profession and skin in section 4. That needs no work beyond the `villagerType` column.
 - What the click does is the open part. Under the narrowed plain scope, station screens are not built for plain players at first.
 - **(call)** At first, a plain player's click on a staff NPC gives one chat line: the character's name and "this station needs the Graves and Glory modpack", with the download link the version gate already uses.
-- The Recruit chest menu is the exception, because P2 built it. The House hall recruiters (Old Hold) can open it for plain players.
+- The Recruit chest menu is the likely exception: P2 built it on the unmerged `spike/plain-p2` branch, and it is in the narrowed scope. If it lands, the House hall recruiters (Old Hold) can open it for plain players.
 
 ## 4. The characters
 
@@ -195,7 +195,7 @@ One per hall door. Each recruiter reuses his House's troop rig and palette, with
 | Gilded | A herald | Player height, upright | Tabard, a trumpet with a banner, a scroll of names | Unrolls the roll, reads, nods | "The Charter needs swords." / "Sign, and be remembered." | armorer, plains |
 | Graveborn | A bone-sexton | Tall and gaunt | Grave-robe, lantern, shovel | Leans on the shovel and taps the ground | "We were bound. Now we choose." / "Dig in with us." | cleric, snow |
 | Wildmoot | A den-mother (a boar) | Low and wide, 0.9 x | Hide wraps, tusk charms, a carved staff | Sniffs the air and paws the ground | "The herd remembers who hunted it." / "Run with us." | leatherworker, savanna |
-| Ironclad | A foreman | Square, 1.1 x | Goggles, a redstone graft, a clipboard plate | Taps a gauge and adjusts the goggles | "Good steel, good pay, no questions." / "Mind the sparks." | toolsmith, taiga |
+| Ironclad | A foreman | Square, 1.1 x | Goggles, a redstone graft, a clipboard plate | Taps a gauge and adjusts the goggles | "Good steel, good pay, no questions." / "Mind the sparks." | toolsmith, snow (the blacksmith is toolsmith, taiga) |
 | Tidecallers | A purser | Player height, finned | Captain's coat, a coral pistol-shell | Rocks heel to toe and checks the tide on a shell | "The sea is calling. Answer." / "Sign the roll. Mind the salt." | fisherman, swamp |
 
 ### 4.11 The goblin dealer (rules in the goblin spec; identity OPEN Q7)
@@ -203,13 +203,20 @@ One per hall door. Each recruiter reuses his House's troop rig and palette, with
 - **Outfit and props:**
   - a patched coat with too many pockets, coin pouches and a jeweller's loupe;
   - a shard of violet-white crystal on a string;
-  - three chests on a little handcart, a sack, an iron-bound chest and a bone-and-stone coffer, which double as the shop display.
+  - three chests on a little handcart (small, medium and large, Kort 2026-11-16), which double as the shop display;
+  - a lockpick roll and an oversized mallet in the pack, for opening (c).
 - **Idle:** counts coins, bites one, peeks into the pack.
   - **Fidgets:** polishes the loupe; tosses a coin and catches it; glances at the altar.
-- **Interact:**
-  - rubs his hands and slides the chosen chest forward;
-  - **paid board:** scurries two steps toward the drop altar and beckons;
-  - **jackpot (x10):** a little dance.
+- **Where:** his stand sits right next to the drop altar (Kort 2026-11-16).
+- **Interact:** rubs his hands and slides the chosen chest forward.
+  - **Staked buy:** the board drop happens first; then he walks to the chest.
+  - **Jackpot (x10):** a little dance.
+- **Openings (Kort 2026-11-16).** One of three plays at random, and the same performance plays for 1, 3 or 5 chests:
+  - **(a) the kick:** a big, satisfying chest kick;
+  - **(b) the mimic:** he dives into a mimic chest, it chomps, and he pops out with the loot. The idea comes from Frieren's gag; the art and motion are original;
+  - **(c) the lockpick:** the lockpick snaps, then he smashes the chest with a huge mallet.
+- A player can skip an opening only after seeing it once. The details are in the goblin spec, 3.1.
+- **Clips needed:** idle, 2 fidgets, the interact, the walk, three openings (each with its chest or mimic prop rigged; the mimic is its own small rig), and the dance.
 - **Lines:**
   - "Gold for a box. Box for a maybe."
   - "Pay a bit more and the old stone listens."
@@ -230,7 +237,7 @@ One per hall door. Each recruiter reuses his House's troop rig and palette, with
   - a resolve check (every row's name maps to its look, and an unknown villager draws vanilla);
   - a harness shot per NPC (idle and interact);
   - a plain-bot check that no unknown entity or sound id is sent from the lobby.
-- **Port:** built on 1.21.1 after the port lands (GeckoLib for 1.21.1 is the port lane's pin).
+- **Port:** built on 1.21.1 after the port lands, on whichever GeckoLib 1.21.1 build the port pins (not checked here).
 
 ## 6. Risks
 
@@ -254,4 +261,4 @@ One per hall door. Each recruiter reuses his House's troop rig and palette, with
 - **OPEN Q14:** voices (section 3.3).
 - **OPEN Q16:** sizes and click boxes (section 4).
 
-Q1, Q2, Q5 and Q9 to Q13 and Q15 are in the goblin spec.
+Q1, Q2, Q5, Q9, Q10, Q12, Q13 and Q15 are in the goblin spec (Q11 was decided by Kort on 2026-11-16).
