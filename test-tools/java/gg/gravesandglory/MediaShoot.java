@@ -83,7 +83,7 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
             if(System.getenv("GRAVES_FILM_GAMMA")!=null)c.options.getGamma().setValue(envInt("GRAVES_FILM_GAMMA",50)/100.0);}
         if(tick==30&&envInt("GRAVES_FILM_SHADER",-1)>=0)Presentation.selectShader(envInt("GRAVES_FILM_SHADER",-1));
         if(tick==20){c.setScreen(null);player=c.player.getUuid();phase=1;}
-        if(tick>40000&&!finished){finished=true;FilmRig.take=null;Phase1Checks.report("film-timeout",false,"stuck in phase "+phase+" map "+curMap);Phase1Checks.finish(c,"film");return;}
+        if(tick>40000&&!finished){finished=true;FilmRig.take=null;FilmRig.slow=1;Phase1Checks.report("film-timeout",false,"stuck in phase "+phase+" map "+curMap);Phase1Checks.finish(c,"film");return;}
         if(phase<1||finished)return;
         if(tick%10==0){boolean now=classicSteve(c);if(now&&!steve)Phase1Checks.report("film-steve",true,"classic Steve");steve|=now;}
         hold(c);
@@ -129,8 +129,8 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
         }
     }
     boolean wanted(String id){if(ONLY.isBlank())return true;for(String s:ONLY.split(","))if(id.startsWith(s.trim()))return true;return false;}
-    void finish(MinecraftClient c){finished=true;FilmRig.take=null;TitleDemos.pose=null;Phase1Checks.finish(c,"film");}
-    public void cleanup(MinecraftClient c){FilmRig.take=null;TitleDemos.pose=null;c.options.hudHidden=false;FilmRig.noHud=false;}
+    void finish(MinecraftClient c){finished=true;FilmRig.take=null;FilmRig.slow=1;TitleDemos.pose=null;Phase1Checks.finish(c,"film");}
+    public void cleanup(MinecraftClient c){FilmRig.take=null;FilmRig.slow=1;TitleDemos.pose=null;c.options.hudHidden=false;FilmRig.noHud=false;}
     /** Every tick: no HUD, no screens, no toasts, no grabbed mouse, third person so the commander is drawn, the commander looking at the fight. */
     void hold(MinecraftClient c){
         c.options.hudHidden=false;FilmRig.noHud=true;

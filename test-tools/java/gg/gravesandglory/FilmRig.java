@@ -92,11 +92,11 @@ public final class FilmRig {
         if(bad.length()>0)System.out.println("[film] slow frames (index=ms): "+bad);
         Collections.sort(ms);
         double avg=ms.stream().mapToDouble(d->d).average().orElse(0),p95=ms.isEmpty()?0:ms.get((int)(ms.size()*.95)),p99=ms.isEmpty()?0:ms.get((int)(ms.size()*.99)),max=ms.isEmpty()?0:ms.get(ms.size()-1);
-        long slow=ms.stream().filter(d->d>1000.0/t.fps()*1.35).count();
-        lastStats=String.format("{\"take\":\"%s\",\"frames\":%d,\"avg_ms\":%.2f,\"p95_ms\":%.2f,\"p99_ms\":%.2f,\"max_ms\":%.2f,\"over_135pct\":%d}",t.name(),ms.size(),avg,p95,p99,max,slow);
+        long over=ms.stream().filter(d->d>1000.0/t.fps()*1.35).count();
+        lastStats=String.format("{\"take\":\"%s\",\"frames\":%d,\"avg_ms\":%.2f,\"p95_ms\":%.2f,\"p99_ms\":%.2f,\"max_ms\":%.2f,\"over_135pct\":%d}",t.name(),ms.size(),avg,p95,p99,max,over);
         System.out.println("[film] "+lastStats);
         if(t.video()!=null)try{java.nio.file.Files.writeString(new File(t.video().getPath()+".json").toPath(),lastStats);}catch(Exception ignored){}
-        TitleDemos.pose=null;take=null;cam=null;done=true;slow=1;
+        TitleDemos.pose=null;take=null;cam=null;done=true;FilmRig.slow=1; // the static factor, not a local
     }
 
     // ---- paths ------------------------------------------------------------------------------------------------
