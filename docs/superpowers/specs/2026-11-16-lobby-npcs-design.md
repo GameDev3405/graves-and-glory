@@ -1,6 +1,6 @@
-# Lobby NPCs: design (draft)
+# Lobby NPCs: design
 
-Date: 2026-11-16. Status: DRAFT for the grill-me interview with Kort. Nothing here is approved or built.
+Date: 2026-11-16. Status: **Approved by Kort 2026-11-16 (economy-dependent parts wait for the economy rework).**
 Brief: `Melty/status/brief-lobby-npcs-goblin.md`. Branch `design/lobby-npcs-goblin` from main 616b2705.
 Companion: `2026-11-16-goblin-dealer-design.md` (the goblin's rules; its character is in section 4.11 here).
 Open decisions are marked **OPEN Qn**. The numbering is shared with the goblin spec, and the grill asks them in order.
@@ -40,7 +40,7 @@ Rows with no NPC: welcome, founders, the gates, war-gates, arsenal (Old Hold). T
 
 ## 3. Shared technical approach
 
-### 3.1 Recommended: server villager, client GeckoLib replacement (OPEN Q3)
+### 3.1 Recommended: server villager, client GeckoLib replacement (Q3 (decided))
 
 - **Server: no new entity.** The server keeps spawning a `VillagerEntity` per row. Two new sheet columns:
   - `look`: the character id, or `-` to stay a villager for everyone.
@@ -89,7 +89,7 @@ Rows with no NPC: welcome, founders, the gates, war-gates, arsenal (Old Hold). T
   - Lines never name the giants (Act I never names them). They may hint ("the old stone").
   - Lines never state a troop or banner number limit.
 
-### 3.4 Plain clients (OPEN Q6)
+### 3.4 Plain clients (Q6 (assumption))
 
 - A plain player always sees the villager, with the profession and skin in section 4. That needs no work beyond the `villagerType` column.
 - What the click does is the open part. Under the narrowed plain scope, station screens are not built for plain players at first.
@@ -103,7 +103,7 @@ Rows with no NPC: welcome, founders, the gates, war-gates, arsenal (Old Hold). T
 - **Style:** chunky and exaggerated. Big hands and feet, heavy heads, thick props and strong silhouettes, built in the troop pipeline (1 texel per model pixel) but pushed further than troop proportions. Each character's defining trait (the smith's arms, the goblin's nose and ears, the ram's horns) is oversized.
 - **Idles:** working idles with a greet (section 3.1). Each "Idle" below is the NPC's work loop.
 
-Sizes are relative to a villager or player (about 1.95 blocks; OPEN Q16).
+Sizes are relative to a villager or player (about 1.95 blocks; Q16 (decided)).
 
 ### 4.1 Blacksmith (forge and repairs): Ironclad smith, "Ingot" Haldra (name a placeholder)
 - **Silhouette and size:** big and burly, about 1.3 x villager height (about 2.5 blocks) and nearly twice as wide at the shoulders. A barrel chest, a short neck and huge forearms. He reads at 40 blocks as a block of a man.
@@ -191,7 +191,7 @@ Sizes are relative to a villager or player (about 1.95 blocks; OPEN Q16).
   - "You'll sweat here or bleed out there. Choose."
 - **Vanilla:** weaponsmith, savanna skin.
 
-### 4.6 to 4.10 House hall recruiters (Old Hold only; OPEN Q8)
+### 4.6 to 4.10 House hall recruiters (Old Hold only; Q8 (decided))
 One per hall door. Each recruiter reuses his House's troop rig and palette, with a recruiter's prop and idle. All five share one interact: presents the House banner and gestures at the hall.
 
 | House | Character | Silhouette and size | Outfit and props | Idle | Lines (2 of 3) | Vanilla |
@@ -202,9 +202,9 @@ One per hall door. Each recruiter reuses his House's troop rig and palette, with
 | Ironclad | A foreman | Square, 1.1 x | Goggles, a redstone graft, a clipboard plate | Taps a gauge and adjusts the goggles | "Good steel, good pay, no questions." / "Mind the sparks." | toolsmith, snow (the blacksmith is toolsmith, taiga) |
 | Tidecallers | A purser | Player height, finned | Captain's coat, a coral pistol-shell | Rocks heel to toe and checks the tide on a shell | "The sea is calling. Answer." / "Sign the roll. Mind the salt." | fisherman, swamp |
 
-### 4.11 The goblin dealer (look decided by Kort 2026-11-16; lore place OPEN Q7)
+### 4.11 The goblin dealer (look decided by Kort 2026-11-16; lore place Q7 (decided))
 - **Kort's brief:** a scrappy merchant. Short and wiry, with a big nose and big ears, a patched coat with too many pockets, a loupe over one eye and a coin pouch. Greedy but likeable.
-- **Silhouette and size:** short and wiry, about 0.6 x villager height (about 1.2 blocks; size per OPEN Q16). Thin limbs, quick and springy. The big nose and big ears carry the silhouette at range.
+- **Silhouette and size:** short and wiry, about 0.6 x villager height (about 1.2 blocks; size per Q16 (decided)). Thin limbs, quick and springy. The big nose and big ears carry the silhouette at range.
 - **Outfit and props:**
   - a patched coat with too many pockets, a loupe over one eye, and a fat coin pouch at the belt;
   - **(call)** a small pack on his back that holds the lockpick roll and the mallet, but does not hide his outline;
@@ -273,19 +273,28 @@ Kort (2026-11-16): cosmetics are sold by a separate lobby NPC, not the goblin. W
 2. **Hitbox against model.** A 2.5-block smith with a 1.95 box causes missed clicks. Mitigated by the `interaction` entity, which is new to the camp and needs a harness check.
 3. **The swing as the interact signal.** Verify the villager swing packet reaches trackers on 1.21.1, and that the vanilla villager model ignores it.
 4. **Renderer wrap on every villager.** The wrapper costs one name lookup per villager per frame. That is trivial, but it must fall through to vanilla exactly, including baby villagers and campaign map villagers.
-5. **Animation capacity.** Kort moved all troop animation to the animation-skill session. Eleven new rigs compete with the troop booth queue (OPEN Q8).
+5. **Animation capacity.** Kort moved all troop animation to the animation-skill session. Eleven new rigs compete with the troop booth queue (Q8 (decided)).
 6. **Lobby churn.** The Banner Camp and the Old Hold differ, and the Old Hold waits on Q129. Station rows move with the lobby, and characters do not depend on the layout.
 7. **Plain players.** Clicking an NPC that does nothing feels broken; the chat line covers the first release (Q6).
 8. **Lore.** The House-tied staff and the goblin need the lore lead's pass. No line names the giants.
 9. **Audio.** Vocal cues need Kort's ears; text lines carry the character until cues pass.
 
-## 7. Open decisions in this spec
+## 7. Decisions
 
-- **OPEN Q3:** render approach (section 3.1).
-- **OPEN Q6 (staff NPCs only):** plain-client behaviour (section 3.4). For the goblin, Kort decided a villager and a chest menu.
-- **OPEN Q7:** the goblin's identity in the lore (section 4.11; shared).
-- **OPEN Q8:** scope and order: which lobby, pilot first, the hall recruiters, who builds.
-- **OPEN Q17:** the cosmetics dealer: character, what it sells, currency and place (section 4.12).
-- **OPEN Q16:** sizes and click boxes (section 4).
+**Decided by Kort (2026-11-16):**
+- **Q3:** a server villager with a client-side GeckoLib skin, matched by name (section 3.1).
+- **Q4 and the cast:** House staff; all five camp staff are approved as in section 4.
+- **Q7:** the goblin is a neutral relic-grubber.
+- **Q8, the order:**
+  1. The blacksmith first, as the template.
+  2. The other four staff, the goblin and the cosmetics dealer.
+  3. The hall recruiters, after Kort's walk of the Old Hold.
+- **Q14:** grunts plus text bubbles.
+- **Q16:** the sizes in section 4 (blacksmith about 1.3x, goblin about 0.6x) with `interaction` click boxes where needed.
+- **Style:** chunky and exaggerated, with working idles and a greet.
 
-Decided by Kort on 2026-11-16: Q4 (House staff), Q14 (grunts plus text bubbles), and the style (chunky, exaggerated, working idles with a greet). The goblin questions are in the goblin spec.
+**Assumption, not confirmed:**
+- **Q6 (staff NPCs):** plain players see the villager, and a click gives a "needs the modpack" chat line. The goblin has Kort's chest-menu decision.
+
+**Open:**
+- **OPEN Q17:** the cosmetics dealer's character (section 4.12; Madame Fleece is only a proposal), what it sells, its currency and where it stands.

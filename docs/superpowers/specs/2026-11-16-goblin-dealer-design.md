@@ -1,6 +1,6 @@
-# Goblin loot dealer: design (draft, SPEC ONLY)
+# Goblin loot dealer: design (SPEC ONLY)
 
-Date: 2026-11-16. Status: DRAFT. Kort answered most of the grill on 2026-11-16 (relayed by the coordinator). His answers are marked **(Kort)**. Only numbers, the lore placement and the money guardrails stay open.
+Date: 2026-11-16. Status: **Approved by Kort 2026-11-16 (economy-dependent parts wait for the economy rework).** Every number below is a starting value for tuning.
 
 > **SPEC ONLY. Do not build.** The army economy is on hold until Kort reworks its spec (`status/DECISIONS-2026-11-15-port.md`). This feature is part of that rework.
 
@@ -73,7 +73,7 @@ Kort's idea (2026-11-15): a goblin NPC in the lobby takes gold for random chests
 - **(Kort)** There are three tiers: small, medium and large. Bigger tiers have a better rarity floor and better odds.
 - **(Kort)** Buying in bulk is discounted. 3 chests cost about 2.8 x one chest, and 5 chests about 4.5 x one chest.
 
-The single-chest prices and each tier's band odds (the table in 3.3) are **OPEN Q9**. They are given in match payouts (one match pays about 80 to 120 old-gold equivalent today), because the gold a match pays is set by the economy rework.
+The single-chest prices and each tier's band odds (the table in 3.3) are **Q9 (decided)**. They are given in match payouts (one match pays about 80 to 120 old-gold equivalent today), because the gold a match pays is set by the economy rework.
 
 | Tier | 1 chest (proposed) | 3 chests (x2.8) | 5 chests (x4.5) | Floor (the worst roll) | Base rare or better |
 |---|---|---|---|---|---|
@@ -88,7 +88,7 @@ The single-chest prices and each tier's band odds (the table in 3.3) are **OPEN 
 - No writs and no relics are in his chests (no strong reason to add them: writs would undercut writ rolls, and relics have no rarity to boost).
 - Cosmetics are sold by a separate cosmetics NPC (lobby NPC spec, OPEN Q17), not the goblin.
 
-**Band odds per tier** (OPEN Q9; the same bands for every category):
+**Band odds per tier** (Q9 (decided); the same bands for every category):
 
 | Band | Small | Medium | Large |
 |---|---|---|---|
@@ -124,7 +124,7 @@ The single-chest prices and each tier's band odds (the table in 3.3) are **OPEN 
 - War Table and Forge rolls keep the approved mean-preserving rule.
 - **Cap:** base rare-or-better x the highest multiplier must stay at or under 100%. With x10 as the top peg, that is why the Large tier stops at 9%. Preflight checks this cap for every tier and every stake.
 
-**The stake ladder (OPEN Q10).** Proposed: three stake levels. Each one is a slot table on the same nine runes.
+**The stake ladder (Q10 (decided)).** Proposed: three stake levels. Each one is a slot table on the same nine runes.
 
 | Stake | Price (proposed) | Slot table | Mean |
 |---|---|---|---|
@@ -162,7 +162,7 @@ So the bigger stakes buy swing more than value.
 - Each tier counts chests (not batches) since its last rare-or-better.
 - The shop shows the counter per tier, for example "Rare or better in 7".
 
-**N per tier (OPEN Q12):**
+**N per tier (Q12 (decided)):**
 
 | Tier | Base rare or better | N (proposed) | Chance a run reaches the guarantee without luck |
 |---|---|---|---|
@@ -179,7 +179,7 @@ So the bigger stakes buy swing more than value.
 
 **Duplicates (Kort, 2026-11-16): a duplicate converts back into partial gold or upgrade shards.**
 
-The rate is **OPEN Q13**. Proposed: a share of the single-chest price of the tier it came from.
+The rate is **Q13 (decided)**. Proposed: a share of the single-chest price of the tier it came from.
 
 | Band | Refund (proposed) |
 |---|---|
@@ -227,7 +227,7 @@ The rate is **OPEN Q13**. Proposed: a share of the single-chest price of the tie
 | Free rolls through debug or test commands | Op-only, and absent from release builds (the release leak guard) |
 | Farming the currency with bots or AFK play | The earn rules of Q1's currency apply; this feature adds no new way to earn |
 | Alts or trading | No trading exists, profiles are per UUID, and no loot is transferable |
-| Real money, binge spending, hidden odds | OPEN Q15: never sold for money nor granted by the Founders pass; band chances and slot tables shown in the shop; **(call)** no daily cap, because the value cap and earn-only currency already limit spending |
+| Real money, binge spending, hidden odds | Q15 (decided): never sold for money nor granted by the Founders pass; band chances and slot tables shown in the shop; **(call)** no daily cap, because the value cap and earn-only currency already limit spending |
 
 ## 4. Approval gates when built
 - **Currency.** Silver renames the match purse, and gold becomes a new persistent field (a save schema change). Both are part of the economy rework (Q1).
@@ -258,14 +258,15 @@ The rate is **OPEN Q13**. Proposed: a share of the single-chest price of the tie
 - **Q2:** a real boost on goblin runs only, where an x1 equals no stake;
 - **Q5:** armour, weapons and units, picked by the player, with no writs, relics or cosmetics.
 
-**Open: numbers.**
-- **OPEN Q9:** single-chest prices, and each tier's band odds (3.2, 3.3)
-- **OPEN Q10:** the stake range and how it is priced (3.4)
-- **OPEN Q12:** N per tier (3.5)
-- **OPEN Q13:** the duplicate refund rate (3.5)
+**Decided in the final round (Kort, 2026-11-16):**
+- **Q7:** the goblin is a neutral relic-grubber.
+- **Q9:** the proposed prices and band odds are the starting values.
+- **Q10:** the stake ladder: Light +50%, Heavy +100%, All-in +200% of the batch price.
+- **Q12:** pity at 25, 15 and 10 for small, medium and large, with a separate counter per tier.
+- **Q13:** duplicate refunds of 5, 10, 30, 60 and 100% of the tier's single-chest price.
+- **Q15:**
+  - gold can never be bought with real money, nor come from Founders;
+  - the odds are shown;
+  - there is no daily cap.
 
-**Open: not numbers.**
-- **OPEN Q7:** the goblin's place in the lore (his look is decided)
-- **OPEN Q15:** never for real money, odds shown, no daily cap
-
-Q1, Q2, Q5, Q6 and Q11 are decided. The NPC questions are in the lobby NPC spec.
+**Nothing in this spec is open.** Building waits for the economy rework, which sets the silver rename, persistent gold and the gold paid per match.
