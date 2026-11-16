@@ -182,9 +182,15 @@ def land(a):
     for p in clear_generated_noise(wt): say(f'restored line-ending noise in {p}')
     if dirty := dirt(wt): raise Stop(EXIT_DIRTY, f'{wt} has uncommitted changes; commit or discard them first:\n  ' + '\n  '.join(dirty[:20]))
 
-    say(f'rebasing {a.branch} onto {a.main} {base[:10]}')
-    r = run(wt, 'rebase', base, check=False)
-    if r.returncode:
+    # Already on main (main is an ancestor): nothing to rebase. Rebasing would flatten the branch's merge commits and can
+    # conflict on resolutions those merges already made; the fast-forward below lands the exact verified history.
+    if run(wt, 'merge-base', '--is-ancestor', base, 'HEAD', check=False).returncode == 0:
+        say(f'{a.branch} already contains {a.main} {base[:10]}; no rebase needed')
+        r = None
+    else:
+        say(f'rebasing {a.branch} onto {a.main} {base[:10]}')
+        r = run(wt, 'rebase', base, check=False)
+    if r is not None and r.returncode:
         conflicts = git(wt, 'diff', '--name-only', '--diff-filter=U')
         if any((wt/git(wt, 'rev-parse', '--git-path', d)).exists() for d in ('rebase-merge', 'rebase-apply')):
             run(wt, 'rebase', '--abort', check=False)  # land refused earlier if one was already in progress
