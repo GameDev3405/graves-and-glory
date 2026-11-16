@@ -48,7 +48,7 @@ class ModdedSession(vc.Session):
         self.proc = subprocess.Popen(cmd, cwd=srv.REPO, env=genv, stdout=open(os.path.join(self.root, "gradle-run.txt"), "w"), stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
         t0 = time.time()
         self.hwnd = None
-        while time.time() - t0 < 900 and self.proc.poll() is None and not self.hwnd:
+        while time.time() - t0 < 3000 and self.proc.poll() is None and not self.hwnd:
             time.sleep(5)
             self.hwnd = find_minecraft_window()
         print("modded client window %s" % self.hwnd, flush=True)
@@ -77,12 +77,24 @@ class ModdedSession(vc.Session):
     def wait_join(self, timeout=600):
         t0 = time.time()
         while time.time() - t0 < timeout:
-            if NAME in srv.rcon(self.port, "list"):
-                return True
+            try:
+                if NAME in srv.rcon(self.port, "list"):
+                    return True
+            except OSError:
+                pass  # the server still busy (camp build): ask again
             if self.proc.poll() is not None:
                 return False
             time.sleep(3)
         return False
+
+    def chunk_resend(self):
+        """Out of view distance and back: the blocks then come in chunk data, not block updates."""
+        pos = re.findall(r"-?[\d.]+(?=d)", srv.rcon(self.port, "data get entity %s Pos" % NAME))
+        rot = re.findall(r"-?[\d.]+(?=f)", srv.rcon(self.port, "data get entity %s Rotation" % NAME))
+        self.rc("execute as %s at @s run tp @s ~ ~ ~800" % NAME)
+        time.sleep(8)
+        self.rc("tp %s %s %s" % (NAME, " ".join(pos), " ".join(rot)))  # the same spot and look as before
+        time.sleep(8)
 
     def run(self):
         if not self.launch():
@@ -98,6 +110,8 @@ class ModdedSession(vc.Session):
         self.rc("plainprobe wagon " + NAME)
         self.rc("plainprobe blocks " + NAME)
         self.shot("wagon-and-map-blocks", 4)
+        self.chunk_resend()
+        self.shot("after-chunk-resend", 4)
         self.rc("plainprobe practice " + NAME)
         st = self.wait_state("running=true", 240)
         m = re.search(r"time=(\d+) intro=(\d+)", st or "")

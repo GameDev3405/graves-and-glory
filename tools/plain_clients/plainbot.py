@@ -30,6 +30,7 @@ class PlainBot(ggbot.Bot):
         self.seq = 1
         self.block_states, self.bad_blocks = collections.Counter(), []
         self.key_leaks = []
+        self.odd = []
 
     def _play(self, pid, d):
         try:
@@ -46,8 +47,11 @@ class PlainBot(ggbot.Bot):
                     self.key_leaks.append("0x%02X %s %r" % (pid, needle.decode(), d[:160]))
         if pid == ADD_ENTITY:
             eid, p = rvi(d, 0)
-            t, p = rvi(d, p + 16)
+            t, _ = rvi(d, p + 16)
             self.types[TYPE_NAMES.get(t, str(t))] += 1
+            if t not in TYPE_NAMES and len(self.odd) < 40:
+                u = d[p:p + 16].hex()
+                self.odd.append((t, eid, "%s-%s-%s-%s-%s" % (u[:8], u[8:12], u[12:16], u[16:20], u[20:])))
             if t >= VANILLA_ENTITY_TYPES:
                 self.bad_types.append(t)
         elif pid in (SOUND, SOUND_ENTITY):
@@ -177,6 +181,12 @@ def script(b, port, name):
     if m and int(m.group(2)) > int(m.group(1)):
         time.sleep((int(m.group(2)) - int(m.group(1))) / 20 + 2)  # past the intro
     rc(port, "plainprobe state")
+    rc(port, "plainprobe view %s mage" % name)  # near the enemy mage: its spawn should come as a witch (type 118)
+    time.sleep(3)
+    rc(port, "plainprobe view %s knight" % name)
+    rc(port, "plainprobe view %s archer" % name)
+    rc(port, "plainprobe overview " + name)
+    time.sleep(2)
     rc(port, "plainprobe aim %s 20" % name)
     time.sleep(1)
     print("  -- item order: hold (slot 3), aimed 20 blocks", flush=True)
@@ -255,7 +265,14 @@ def main(argv):
         while b.alive and time.time() - t0 < a.stay:
             b.move()
             time.sleep(0.5)
+    for t, eid, u in b.odd[:6]:  # what the server holds behind a type id the audit has no name for
+        for q in ("execute as %s if entity @s[type=minecraft:husk]" % u, "data get entity %s CustomName" % u):
+            try:
+                rc(a.port, q)
+            except OSError:
+                pass
     s = b.summary()
+    s["odd_types"] = b.odd[:20]
     b.close()
     print(json.dumps(s, indent=1, ensure_ascii=True)[:6000])
     if a.out:

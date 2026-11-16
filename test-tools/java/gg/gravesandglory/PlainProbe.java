@@ -3,6 +3,7 @@ package gg.gravesandglory;
 import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
@@ -36,14 +37,15 @@ public final class PlainProbe implements ModInitializer {
             .then(CommandManager.literal("practice").then(CommandManager.argument("player", EntityArgumentType.player())
                 .executes(c -> { PlainClients.use(EntityArgumentType.getPlayer(c, "player"), "practice"); return 1; })))
             .then(CommandManager.literal("wagon").then(CommandManager.argument("player", EntityArgumentType.player())
-                .executes(c -> { var p = EntityArgumentType.getPlayer(c, "player"); var w = new WagonEntity(p.getServerWorld()); w.refreshPositionAndAngles(p.getX() + 4, p.getY(), p.getZ(), 0, 0);
+                .executes(c -> { var p = EntityArgumentType.getPlayer(c, "player"); var w = new WagonEntity(p.getServerWorld()); w.refreshPositionAndAngles(p.getX() + 6, p.getY(), p.getZ() - 4, 0, 0);
                     p.getServerWorld().spawnEntity(w);
                     for (var v : p.getServer().getPlayerManager().getPlayerList()) log("wagon " + w.getId() + " for " + v.getName().getString() + ": sent as " + Registries.ENTITY_TYPE.getId(PlainLooks.wagon(v)));
                     return 1; })))
             .then(CommandManager.literal("blocks").then(CommandManager.argument("player", EntityArgumentType.player())
-                .executes(c -> { var p = EntityArgumentType.getPlayer(c, "player"); var at = p.getBlockPos().up(3);
-                    p.getServerWorld().setBlockState(at.east(2), MapBlocks.TROOP_FENCE.getDefaultState()); p.getServerWorld().setBlockState(at.west(2), MapBlocks.STILL_WATER.getDefaultState());
-                    log("test blocks at " + at.east(2).toShortString() + " (troop_fence) and " + at.west(2).toShortString() + " (still_water)");
+                .executes(c -> { var p = EntityArgumentType.getPlayer(c, "player"); var at = p.getBlockPos().east(3); // at the feet, 3 east: in view of a player facing east
+                    p.getServerWorld().setBlockState(at.north(2), MapBlocks.TROOP_FENCE.getDefaultState());
+                    for (var w : List.of(at, at.south(), at.east(), at.east().south())) p.getServerWorld().setBlockState(w, MapBlocks.STILL_WATER.getDefaultState());
+                    log("test blocks at " + at.north(2).toShortString() + " (troop_fence) and a 2x2 of still_water from " + at.toShortString());
                     for (var v : p.getServer().getPlayerManager().getPlayerList()) log("blocks for " + v.getName().getString() + ": " + (PlainLooks.realBlocks(v) ? "real" : "barrier"));
                     return 1; })))
             .then(CommandManager.literal("recruit").then(CommandManager.argument("player", EntityArgumentType.player())
@@ -98,7 +100,8 @@ public final class PlainProbe implements ModInitializer {
         double x = m.x + Math.cos(ang) * dist, z = m.z + Math.sin(ang) * dist;
         double y = Math.max(m.y, b.world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(x), (int) Math.floor(z))) + 1.5;
         face(p, x, y, z, m.add(0, 1.2, 0));
-        log("view " + what + ": entity " + best.mob.getId() + " troop=" + best.spec.id() + " server=" + Registries.ENTITY_TYPE.getId(best.mob.getType()) + " plain look=" + Registries.ENTITY_TYPE.getId(PlainLooks.byRole(best.spec, best.mob.getType())));
+        log("view " + what + ": entity " + best.mob.getId() + " troop=" + best.spec.id() + " server=" + Registries.ENTITY_TYPE.getId(best.mob.getType()) + " (raw " + Registries.ENTITY_TYPE.getRawId(best.mob.getType()) + ", class " + best.mob.getClass().getSimpleName() + ") plain look=" + Registries.ENTITY_TYPE.getId(PlainLooks.byRole(best.spec, best.mob.getType()))
+            + " (raw " + Registries.ENTITY_TYPE.getRawId(PlainLooks.byRole(best.spec, best.mob.getType())) + ") look(viewer)=" + Registries.ENTITY_TYPE.getId(PlainLooks.look(best.mob, p)) + " named=" + (best.mob.hasCustomName() ? ArmyMobs.named(best.mob.getCustomName().getString()) != null : false));
         return 1;
     }
 

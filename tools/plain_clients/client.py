@@ -177,6 +177,10 @@ class Session:
         self.rc("plainprobe wagon " + NAME)
         self.rc("plainprobe blocks " + NAME)
         self.shot("wagon-and-map-blocks", 3)
+        self.rc("execute as %s at @s run tp @s ~ ~ ~800" % NAME)  # out of view distance and back: the blocks come in chunk data
+        time.sleep(8)
+        self.rc("execute as %s at @s run tp @s ~ ~ ~-800" % NAME)
+        self.shot("after-chunk-resend", 8)
         self.rc("plainprobe practice " + NAME)
         st = self.wait_state("running=true", 240)
         import re
