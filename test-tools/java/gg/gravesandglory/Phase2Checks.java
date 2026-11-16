@@ -1063,6 +1063,20 @@ public final class Phase2Checks implements ClientModInitializer {
             return new Spec.TroopsRow(id,k.house(),k.rarity(),name,"husk",k.group(),k.health(),k.damage(),k.range(),k.ranged(),k.speed(),k.cooldown(),k.cost(),k.trainingSeconds(),false,k.weapon(),k.helmet(),k.chest(),tags,ability,"none",k.slotWeight(),k.pennant(),k.shield(),k.texture(),k.family());
         }
         static Vec3d ground(GravesAndGlory.Battle b,double x,double z){return new Vec3d(x,Phase1Checks.top(b,x,z),z);}
+        /**
+         * 1.21 builds an entity's spawn packet from its tracker's last synced position (1.20.1 took the entity's own): a troop moved far while no
+         * client tracks it first appears where it last stood, in a client chunk that no longer ticks, and freezes there. Syncs the tracker to where it
+         * now stands, so the client first sees it here, as on 1.20.1. Only for a troop the client does not track at the moment.
+         */
+        static void syncTracker(GravesAndGlory.Battle b,net.minecraft.entity.Entity e){
+            try{
+                var f=net.minecraft.server.world.ServerChunkLoadingManager.class.getDeclaredField("entityTrackers");f.setAccessible(true);
+                Object t=((it.unimi.dsi.fastutil.ints.Int2ObjectMap<?>)f.get(b.world.getChunkManager().chunkLoadingManager)).get(e.getId());if(t==null)return;
+                var ef=t.getClass().getDeclaredField("entry");ef.setAccessible(true);
+                var pf=net.minecraft.server.network.EntityTrackerEntry.class.getDeclaredField("trackedPos");pf.setAccessible(true);
+                ((net.minecraft.entity.TrackedPosition)pf.get(ef.get(t))).setPos(e.getPos());
+            }catch(ReflectiveOperationException x){throw new IllegalStateException("the tracker of "+e,x);}
+        }
         /** Diagnostics: the named entities the client holds, with their network ids and where it draws them. */
         static String clientNamed(MinecraftClient c){StringBuilder o=new StringBuilder();for(var e:c.world.getEntities())if(e.getCustomName()!=null&&o.length()<900)o.append(e.getCustomName().getString()).append('#').append(e.getId()).append('@').append((int)e.getX()).append(',').append((int)e.getZ()).append(' ');return o.toString();}
         /** Diagnostics: where the server holds the commander's own troops, and whether their chunk ticks entities. */
@@ -1471,7 +1485,7 @@ public final class Phase2Checks implements ClientModInitializer {
                     next(b,72);
                 }
                 case 72->{if(since(b)<40)return; // then the host: in line facing east on the valley floor, and twelve Bone Archers of an ad hoc Dusk army 22 blocks east of the shield line
-                    for(var u:b.units)if(u.squad==own){Vec3d at=b.formation(u);place(b,u,at.x,at.z,-90);}
+                    for(var u:b.units)if(u.squad==own){Vec3d at=b.formation(u);place(b,u,at.x,at.z,-90);syncTracker(b,u.mob);}
                     for(String g:Morale.GROUPS)own.fullHealth.put(g,Math.max(1,living(b,own,g)));
                     dusk=new GravesAndGlory.Squad(UUID.randomUUID(),1,ground(b,SX+22,SZ));dusk.order="attack";dusk.formation="loose";dusk.target=ground(b,SX+22,SZ);dusk.yaw=90;dusk.bot=true;
                     for(int i=0;i<12;i++){double z=SZ-8.25+i*1.5,x=SX+22+(i%2)*1.5;var u=b.spawn(dusk,Campaign.troop("bonebow"),40+i,ground(b,x,z));place(b,u,x,z,90);fixture.add(u);}
