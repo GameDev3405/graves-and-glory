@@ -805,6 +805,11 @@ public final class GravesAndGlory implements ModInitializer {
             world.getGameRules().get(GameRules.DO_VINES_SPREAD).set(false,server); // the camp's stonework holds 53 vines; a random tick would grow them into the cells the pieces leave void
             world.getGameRules().get(GameRules.KEEP_INVENTORY).set(true,server);
             world.getGameRules().get(GameRules.ANNOUNCE_ADVANCEMENTS).set(false,server); // vanilla advancement lines do not belong in battle chat
+            // 1.20.1 kept the spawn chunks loaded with a fixed START ticket of 11 (the 23 x 23 chunks round (-108, 0), which hold map 0's field from
+            // its Dawn base to past the river). 1.20.5+ reads the radius from this rule (+1) and defaults it to 2, which leaves the field's middle
+            // unloaded: heightmap reads there return the world bottom (a supply banner finds no spot, a camera placed by getTopY falls under the
+            // field). 10 restores the 1.20.1 ticket; set before setSpawnPos below, which places it.
+            world.getGameRules().get(GameRules.SPAWN_CHUNK_RADIUS).set(10,server);
             world.setTimeOfDay(3000);
             world.setWeather(0,0,false,false);
             world.setSpawnPos(new BlockPos(-108,66,0),-90);
