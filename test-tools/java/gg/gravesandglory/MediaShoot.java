@@ -259,6 +259,18 @@ public final class MediaShoot implements Phase1Checks.Suite,Phase1Checks.ServerW
         if(shotWanted("c9"))out.add(new Shot(clip(id+"-c9-clashorbit",10,FilmRig.orbitEx(10,.15,M(),17,11,5.5,3.4,face+165,face-40,m,m,52,46),point,60,1.0),"hold"));
         if(shotWanted("c10"))out.add(new Shot(clip(id+"-c10-sidetrack",8,follow(0,9,1.9,2,1.4,54),point,20,1.2),"hold"));
         if(shotWanted("c11"))out.add(new Shot(clipAt(120,id+"-c11-slowmo",6.5,FilmRig.orbitEx(6.5,.2,M(),10,8,2.8,2.0,face+200,face+245,m,m,50,46),point,0,0.8,Map.of()),"hold"));
+        // title-screen slow motion (board 4F.3): both armies charge on recorded frame 0, slow time (GRAVES_FILM_SLOW, 4) starts
+        // shortly before contact, so each clip is a short real-speed lead-in then a long slowed stretch to trim into a loop
+        int sf=envInt("GRAVES_FILM_SLOW",4),slowAt=envInt("GRAVES_FILM_SLOW_AT",80);
+        Map<Integer,Runnable> slowEv=Map.of(slowAt,()->FilmRig.slow=sf);
+        // t1 volley: low beside our rear (archer) squad, looking up the line of fire over the column at the clash
+        if(shotWanted("t1"))out.add(new Shot(clipAt(FPS,id+"-t1-volley",12,FilmRig.rail(12,.15,
+            new Vec3d[]{at(M(),-tail0+4,-7,1.2),at(M(),-tail0+7,-8,1.6)},new Vec3d[]{at(M(),-g*.5,0,9),at(M(),0,0,6)},new double[]{58,54}),point,0,0.6,slowEv),"hold"));
+        // t2 shield-line clash: low side view across the meeting point, slow lateral drift
+        if(shotWanted("t2"))out.add(new Shot(clipAt(FPS,id+"-t2-clash",11,FilmRig.rail(11,.15,
+            new Vec3d[]{at(M(),-5,-11,1.3),at(M(),2,-10,1.5)},new Vec3d[]{at(M(),-2,0,1.4),at(M(),1,0,1.5)},new double[]{46,44}),point,0,0.6,slowEv),"hold"));
+        // t3 wide: high slow orbit over the clash for an establishing loop
+        if(shotWanted("t3"))out.add(new Shot(clipAt(FPS,id+"-t3-wide",12,FilmRig.orbitEx(12,.15,M(),22,18,9,7,face+120,face+150,m,m,54,52),point,0,1.0,slowEv),"hold"));
         if(shotWanted("c12"))out.add(new Shot(clip(id+"-c12-reverse",12,FilmRig.rail(12,.2,
             new Vec3d[]{at(M(),tail1+10,0,10),at(M(),tail1*.55,-1.5,8),at(M(),g+2,1,8.5),at(M(),-6,5,10),at(M(),-24,10,13)},
             new Vec3d[]{at(M(),tail1*.55,0,1),at(M(),g,0,1),at(M(),0,0,1.2),at(M(),-2,0,1.2),at(M(),8,0,1.4)},new double[]{62,62,64,62,58}),point,200,1.8),"hold"));

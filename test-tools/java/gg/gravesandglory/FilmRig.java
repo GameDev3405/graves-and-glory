@@ -29,6 +29,10 @@ public final class FilmRig {
     public record Take(String name,int fps,int warm,int frames,Path path,Pose pose,File video,Map<Integer,String> stills,Map<Integer,Runnable> events,double clearance){}
 
     public static volatile Take take;
+    /** Slow-time factor for title-screen slow motion (FilmSlowServerMixin, FilmSlowClockMixin): the integrated server's 50 ms
+     *  tick slot and the client's render clock both stretch by this factor, so ticks interpolate smoothly and a 60 fps
+     *  capture shows true slow motion. 1 is vanilla speed; a take's event switches it on, the end of the take resets it. */
+    public static volatile int slow=1;
     public static volatile long frame;
     public static volatile boolean done;
     /** True while the media shoot runs: InGameHud.render is cancelled (FilmHudMixin). */
@@ -92,7 +96,7 @@ public final class FilmRig {
         lastStats=String.format("{\"take\":\"%s\",\"frames\":%d,\"avg_ms\":%.2f,\"p95_ms\":%.2f,\"p99_ms\":%.2f,\"max_ms\":%.2f,\"over_135pct\":%d}",t.name(),ms.size(),avg,p95,p99,max,slow);
         System.out.println("[film] "+lastStats);
         if(t.video()!=null)try{java.nio.file.Files.writeString(new File(t.video().getPath()+".json").toPath(),lastStats);}catch(Exception ignored){}
-        TitleDemos.pose=null;take=null;cam=null;done=true;
+        TitleDemos.pose=null;take=null;cam=null;done=true;slow=1;
     }
 
     // ---- paths ------------------------------------------------------------------------------------------------

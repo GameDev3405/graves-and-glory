@@ -4,7 +4,8 @@
   "package": "gg.gravesandglory.testing.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "FastTickMixin"
+    "FastTickMixin",
+    "FilmSlowServerMixin"
   ],
   "client": [
     "TitleDemoCameraMixin",
@@ -15,7 +16,8 @@
     "FilmCameraMixin",
     "FilmFovMixin",
     "FilmFrameMixin",
-    "FilmHudMixin"
+    "FilmHudMixin",
+    "FilmSlowClockMixin"
   ],
   "injectors": {
     "defaultRequire": 0
