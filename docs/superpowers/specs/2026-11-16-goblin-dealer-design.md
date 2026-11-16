@@ -25,7 +25,7 @@ Kort's idea (2026-11-15): a goblin NPC in the lobby takes gold for random chests
 - Kort's rule (2026-11-12): "writs are for the troops, gear shards are for weapons and armors, gold is for in matches and banner in lobby."
 - A match pays the old-gold equivalent of about 80 to 120 (`matchGold` 80, `winGold` 40). Through `Profile.payGold` that comes to about 1 writ plus 80 to 120 shards. A gear roll costs 75 shards and a troop roll 1 writ.
 
-**Conflict 1, the currency (OPEN Q1).** "Gold buys a chest" has no lobby gold to spend today.
+**Conflict 1, the currency (OPEN Q1).** "Gold buys a chest" has no lobby gold to spend today. Kort's answers keep saying "gold" (the stake, and duplicate refunds of "partial gold"), so the spec's working assumption is a persistent goblin gold earned at match end. That still needs his confirmation, and it is a save schema change.
 
 **The drop board** (`port1211/drop-board` 74fc4399, approved 2026-11-14, not merged).
 - On a War Table or Forge roll, the server draws a slot from table A: x10 1%, x5 4%, x3 10%, x2 20%, x1 30%, mirrored. The mean is 2.30.
@@ -65,7 +65,7 @@ Kort's idea (2026-11-15): a goblin NPC in the lobby takes gold for random chests
 - **(Kort)** There are three tiers: small, medium and large. Bigger tiers have a better rarity floor and better odds.
 - **(Kort)** Buying in bulk is discounted. 3 chests cost about 2.8 x one chest, and 5 chests about 4.5 x one chest.
 
-The single-chest prices are **OPEN Q9**. They are given in match payouts (one match pays about 80 to 120 old-gold equivalent), so they survive whichever currency Q1 picks.
+The single-chest prices and each tier's band odds (the table in 3.3) are **OPEN Q9**. They are given in match payouts (one match pays about 80 to 120 old-gold equivalent), so they survive whichever currency Q1 picks.
 
 | Tier | 1 chest (proposed) | 3 chests (x2.8) | 5 chests (x4.5) | Floor (the worst roll) | Base rare or better |
 |---|---|---|---|---|---|
@@ -137,41 +137,59 @@ With the stake as a share of the batch price, rare-or-better per unit of gold ag
 So the bigger stakes buy swing more than value.
 
 ### 3.5 Pity and duplicates
-**Pity (OPEN Q12). Recommended: per tier.**
+**Pity (Kort, 2026-11-16): a hard counter that players can see.**
+- A rare-or-better is guaranteed every N chests.
 - Each tier counts chests (not batches) since its last rare-or-better.
-  - Medium: 15 misses force rare-or-better.
-  - Large: 10 misses force rare-or-better.
-  - Small: no pity.
+- The shop shows the counter per tier, for example "Rare or better in 7".
+
+**N per tier (OPEN Q12):**
+
+| Tier | Base rare or better | N (proposed) | Chance a run reaches the guarantee without luck |
+|---|---|---|---|
+| Small | 5% | 25 | 0.95^24, about 29% |
+| Medium | 7% | 15 | 0.93^14, about 36% |
+| Large | 9% | 10 | 0.91^9, about 43% |
+
 - Chests opened under a stake count the same as unstaked chests.
-- **A forced chest** draws the rare, epic and legendary bands at their base proportions. Under a stake, only legendary is then scaled by m / mean against rare and epic.
-  - Large at x10 on the Light table: 0.4 / 9 = 4.4%, x 4.35 = about 19%. That fits under the whole.
-  - **(The earlier draft's epic-and-legendary shift overflowed at x10: 121% and 130%. That is fixed here.)**
-- Per-tier counters stop a player from building pity on small chests and cashing it on a large one.
+- **(call)** In a batch, the counter runs chest by chest, so the guaranteed chest can fall inside a 3- or 5-batch.
+- **A forced chest** draws the rare, epic and legendary bands at their base proportions. Under a stake, only legendary is then scaled by m / mean against rare and epic, so the result can never exceed the whole.
+  - Large at x10 on the Light table: 0.4 / 9 = 4.4%, x 4.35 = about 19%.
+- Separate counters per tier stop a player from building pity on small chests and cashing it on a large one.
 - The counters are new profile fields, so this is a save schema change.
 
-**Duplicates (OPEN Q13). Recommended: the existing rule for each kind of loot.**
-- **Gear:** duplicates are kept and flagged, as in the Forge, and break down into shards.
-  - If the inventory cannot hold the whole batch, the shop refuses before payment, as the Forge does.
-  - **(call)** An alternative: overflow gear turns into its breakdown shards.
-- **Units:** stars, then shards past max stars, as recruitment does.
-- **Relics:** the relic duplicate refund (`relicDuplicatePct`).
-- **Chest-only cosmetics:** never duplicated. An owned cosmetic redraws within its band; when the band is fully owned, it pays shards.
+**Duplicates (Kort, 2026-11-16): a duplicate converts back into partial gold or upgrade shards.**
 
-### 3.6 What vanilla (plain) clients see (OPEN Q6)
-The narrowed plain scope leaves the lobby out of the first plain release.
-- **Recommended at first:**
-  - the goblin shows as a villager: a baby with the swamp skin and no profession, so it reads small and green;
-  - a click gives one chat line, "The goblin deals only with the Graves and Glory modpack", plus the download link.
-- **Later (P4):**
-  - a chest menu with tier, count and stake;
-  - the same server draw;
-  - the result as a title ("x5!" then the items) and chat lines, with the board sounds sent by name;
-  - no altar cinematic and no opening performance;
-  - odds identical to modded clients.
-- **Fallbacks:**
-  - an adult nitwit with the swamp skin;
-  - a wandering trader (it reads as a dealer, but it is not a villager).
-- **Risk:** a baby villager ages, so the server must hold it as a baby.
+The rate is **OPEN Q13**. Proposed: a share of the single-chest price of the tier it came from.
+
+| Band | Refund (proposed) |
+|---|---|
+| Common | 5% |
+| Uncommon | 10% |
+| Rare | 30% |
+| Epic | 60% |
+| Legendary | 100% |
+
+- **(call)** Gear duplicates pay upgrade shards. Unit, relic and cosmetic duplicates pay gold.
+- **(call)** What counts as a duplicate:
+  - **Gear:** the same item at the same rarity is already owned (the Forge's rule).
+  - **Units:** a unit copy still stars its troop while it can, as recruitment does. Only a copy past max stars counts as a duplicate.
+  - **Relics and cosmetics:** already owned.
+- Refunds count toward the 60% value cap in section 3.3. The worst case is Large with every chest a duplicate: about 13% of the price back, well under the cap.
+- **(call)** If the inventory cannot hold the batch's gear, the shop refuses before payment, as the Forge does.
+
+### 3.6 What vanilla (plain) clients see
+**(Kort, 2026-11-16)**
+- Plain players see a villager stand-in.
+- They buy through a chest-style menu: tier, count and stake.
+- Results show as items or a title message, with no custom animation (no altar cinematic and no opening performance).
+- The server draws exactly as for modded players, so the odds and pity are the same.
+
+**(call) Details:**
+- **The stand-in:** a baby villager with the swamp skin and no profession, which reads small and green. The server holds it as a baby.
+  - Fallback: an adult nitwit with the swamp skin.
+- **A staked buy** shows the slot as a title ("x5!"), then the items, with the board sounds sent by name (P2 showed that sounds resolve on plain clients).
+- **The menu** shows the pity counters and the odds.
+- **Scope:** this is lobby work on top of the narrowed plain scope (which covers battles only at first), so it ships when the plain lobby menus do.
 
 ### 3.7 Exploits and guards
 
@@ -182,6 +200,7 @@ The narrowed plain scope leaves the lobby out of the first plain release.
 | Profit loops | The 60% value cap in section 3.3, for every tier, count and stake |
 | Batch abuse (one stake boosting five chests) | The stake is priced as a share of the batch price (Q10), and the guardrail is checked at 5 |
 | Pity shopping across tiers | Per-tier counters |
+| Duplicate refunds as a profit loop | Refunds count toward the 60% value cap |
 | The stake is paid but no board is shown (altar out of view, a match starts) | The multiplier is drawn whenever the stake is paid. The board is only the show, with a result card as the fallback |
 | The inventory cannot hold the batch | Refuse before payment |
 | Two sessions buying at once on one profile | Pay, draw and bank in one server step on the profile, as rolls do |
@@ -210,18 +229,23 @@ The narrowed plain scope leaves the lobby out of the first plain release.
 - the shop beside the board, with the board first;
 - one drop per batch, with the stake paid per batch;
 - bulk prices x2.8 and x4.5;
-- skipping only after one viewing.
+- skipping only after one viewing;
+- the goblin's look (NPC spec 4.11);
+- hard pity with a visible counter;
+- duplicates converting to partial gold or upgrade shards;
+- plain players get a villager, a chest menu and item or title results.
 
-**Open**, in the order the grill asks them:
-- **OPEN Q1:** the currency
-- **OPEN Q2:** the multiplier rule
-- **OPEN Q5:** what chests hold
-- **OPEN Q6:** plain clients (shared with the NPC spec)
-- **OPEN Q7:** the goblin in the lore (shared)
-- **OPEN Q9:** single-chest prices
-- **OPEN Q10:** the stake ladder and how it is priced
-- **OPEN Q12:** pity
-- **OPEN Q13:** duplicates
-- **OPEN Q15:** money, odds and limits
+**Open: numbers.**
+- **OPEN Q9:** single-chest prices, and each tier's band odds (3.2, 3.3)
+- **OPEN Q10:** the stake range and how it is priced (3.4)
+- **OPEN Q12:** N per tier (3.5)
+- **OPEN Q13:** the duplicate refund rate (3.5)
 
-Q11 (bad loot) is decided. Q3, Q4, Q8, Q14 and Q16 are in the lobby NPC spec.
+**Open: still not numbers.** Ask these, or confirm the working assumption:
+- **OPEN Q1:** the currency (working assumption: a persistent goblin gold)
+- **OPEN Q2:** a raw multiplier for the goblin, against the board's approved mean-preserving rule
+- **OPEN Q5:** what each band holds (units, gear, writs, relics, cosmetics)
+- **OPEN Q7:** the goblin's place in the lore (his look is decided)
+- **OPEN Q15:** never for real money, odds shown, no daily cap
+
+Q6 and Q11 are decided for the goblin. Q6 for the staff NPCs, and Q3, Q4, Q8, Q14 and Q16, are in the lobby NPC spec.

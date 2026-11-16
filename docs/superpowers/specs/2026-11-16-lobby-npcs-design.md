@@ -198,13 +198,16 @@ One per hall door. Each recruiter reuses his House's troop rig and palette, with
 | Ironclad | A foreman | Square, 1.1 x | Goggles, a redstone graft, a clipboard plate | Taps a gauge and adjusts the goggles | "Good steel, good pay, no questions." / "Mind the sparks." | toolsmith, snow (the blacksmith is toolsmith, taiga) |
 | Tidecallers | A purser | Player height, finned | Captain's coat, a coral pistol-shell | Rocks heel to toe and checks the tide on a shell | "The sea is calling. Answer." / "Sign the roll. Mind the salt." | fisherman, swamp |
 
-### 4.11 The goblin dealer (rules in the goblin spec; identity OPEN Q7)
-- **Silhouette and size:** small, about 0.6 x villager height (about 1.2 blocks), hunched. Huge ears and a long nose. A pack of junk on the back that is taller than he is. The pack is the silhouette.
+### 4.11 The goblin dealer (look decided by Kort 2026-11-16; lore place OPEN Q7)
+- **Kort's brief:** a scrappy merchant. Short and wiry, with a big nose and big ears, a patched coat with too many pockets, a loupe over one eye and a coin pouch. Greedy but likeable.
+- **Silhouette and size:** short and wiry, about 0.6 x villager height (about 1.2 blocks; size per OPEN Q16). Thin limbs, quick and springy. The big nose and big ears carry the silhouette at range.
 - **Outfit and props:**
-  - a patched coat with too many pockets, coin pouches and a jeweller's loupe;
+  - a patched coat with too many pockets, a loupe over one eye, and a fat coin pouch at the belt;
+  - **(call)** a small pack on his back that holds the lockpick roll and the mallet, but does not hide his outline;
   - a shard of violet-white crystal on a string;
   - three chests on a little handcart (small, medium and large, Kort 2026-11-16), which double as the shop display;
-  - a lockpick roll and an oversized mallet in the pack, for opening (c).
+  - an oversized mallet, for opening (c).
+- **Greedy but likeable:** his eyes go wide at gold; he hugs the coin pouch; he is honestly delighted when a player wins big.
 - **Idle:** counts coins, bites one, peeks into the pack.
   - **Fidgets:** polishes the loupe; tosses a coin and catches it; glances at the altar.
 - **Where:** his stand sits right next to the drop altar (Kort 2026-11-16).
@@ -221,7 +224,7 @@ One per hall door. Each recruiter reuses his House's troop rig and palette, with
   - "Gold for a box. Box for a maybe."
   - "Pay a bit more and the old stone listens."
   - "No refunds. Goblin law."
-- **Vanilla:** see goblin spec OPEN Q6 (proposed: a baby swamp-skin villager, which reads small and green).
+- **Vanilla (Kort 2026-11-16):** a villager stand-in with a chest-style shop menu. **(call)** A baby villager with the swamp skin and no profession.
 
 ## 5. Data and code (for the plan, not built)
 
