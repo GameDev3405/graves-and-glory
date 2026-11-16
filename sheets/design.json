@@ -8138,7 +8138,7 @@
   "campNpcs": [
     {
       "id": "blacksmith",
-      "rig": "placeholder",
+      "rig": "blacksmith",
       "scale": 1.3,
       "hitWidth": 1.4,
       "hitHeight": 2.6,
