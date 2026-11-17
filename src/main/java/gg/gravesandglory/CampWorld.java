@@ -126,7 +126,8 @@ final class CampWorld {
         generation=UUID.randomUUID().toString();
         String hash=hash();
         long started=System.nanoTime();
-        if(!built(w,hash)){terrain(w);log("[Graves and Glory] camp terrain "+millis(started)+" ms");}
+        boolean rebuilt=!built(w,hash);
+        if(rebuilt){terrain(w);log("[Graves and Glory] camp terrain "+millis(started)+" ms");}
         else log("[Graves and Glory] camp terrain skipped");
         started=System.nanoTime();
         var c=Spec.CAMP[0];
@@ -134,6 +135,7 @@ final class CampWorld {
         log("[Graves and Glory] camp pieces "+millis(started)+" ms");
         people(w);
         warTable(w);
+        if(rebuilt)w.getChunkManager().save(true); // the marker must not outlive a crash that loses the terrain: write the rebuilt chunks to disk first
         mark(w,hash);
     }
     /** The builder server: terrain and pieces, once. No people, no war table, no marker; BuildMode keeps its own. */
