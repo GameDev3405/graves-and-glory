@@ -113,6 +113,8 @@ When `skin_proven` is first granted, it is auto-equipped. That keeps today's beh
   - `GearModels` (forgets the cached flags on reload)
   - the `tools/verify.py` names list: `+ Cosmetics CosmeticGrants`
   - `Phase1Checks.SUITES`: `cosmetics`
+  - `tools/release_config.py`: the jar leak guard refuses `CosmeticChecks` and `CosmeticsCheck`
+  - `tools/where.py` and `tools/where_extract.py`: an `art/geo_trim/` recipe is labelled and ranked below a troop's models, so the new gl_marshal recipe does not push its geo model out of `where`'s art rows (`test_where`)
 - Files that are not touched, because siblings own them: `sheets/design.json`, `Spec.java`, `PlainClients.java`, `CampScreen.java`, `WarTablePages.java` and `gravesandglory.mixins.json`. No new mixin.
 
 ## 9. Assumptions (Kort may overturn them)
