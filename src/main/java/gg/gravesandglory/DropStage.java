@@ -39,6 +39,15 @@ final class DropStage {
         return new BlockPos(o[0] + r[0] * side + out[0] * front, o[1] + up, o[2] + r[1] * side + out[1] * front);
     }
 
+    /** The altar's solid space over its plinth (barrier blocks; the client draws the altar): 11 wide, 2 deep, 13 high. Shared with the
+     *  camp walkthrough's barrier scan, which allows exactly these. */
+    static java.util.Set<BlockPos> altarCells() {
+        int back = -DropLayout.COURT_DEPTH / 2;
+        var out = new java.util.HashSet<BlockPos>();
+        for (int s = -5; s <= 5; s++) for (int f = back; f <= back + 1; f++) for (int up = 3; up <= 15; up++) out.add(at(s, f, up));
+        return out;
+    }
+
     static void build(ServerWorld w) {
         force(w, true);
         try { raise(w); standing = w; } finally { force(w, false); }
@@ -65,7 +74,7 @@ final class DropStage {
         // the altar's plinth: two courses under the slots, across the altar's width, at the back
         for (int s = -5; s <= 5; s++) for (int f = back; f <= back + 1; f++) for (int up = 1; up <= 2; up++) set(w, at(s, f, up), up == 2 ? tiles : bricks);
         // the altar itself is drawn by the client (DropAltar); its space is kept solid
-        for (int s = -5; s <= 5; s++) for (int f = back; f <= back + 1; f++) for (int up = 3; up <= 15; up++) set(w, at(s, f, up), Blocks.BARRIER);
+        for (BlockPos p : altarCells()) set(w, p, Blocks.BARRIER);
         set(w, markerPos(), MARKER);
         System.out.println("[Graves and Glory] drop board court built at " + markerPos().toShortString() + " in " + (System.nanoTime() - started) / 1000000 + " ms");
     }

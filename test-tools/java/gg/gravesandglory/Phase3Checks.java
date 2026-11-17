@@ -2517,7 +2517,7 @@ public final class Phase3Checks implements ClientModInitializer {
      *  the war table, the island from outside). Pictures are screenshots/p3-cw-<NN>-<what>.png, each with a check line p3-cw-<NN>-<what> that says where the walker stood and looked.
      *  Checks: p3-cw-leg-<id> (the lane finished, no stuck window of 2 s with under 3 blocks gained, no forced step), p3-cw-walk (all legs: stuck windows, forced steps, auto-jumps, blocks walked), p3-cw-pad-west and p3-cw-pad-east (the walker stood on the pad: his feet inside it,
      *  smooth quartz under him), p3-cw-stairs (the west flight climbed to feet 77 and the east flight descended to feet 65, no forced step), p3-cw-floating (floatBox over the island box and the rim rows, y from minY: no solid block that does not reach the
-     *  floor), p3-cw-lantern (every lantern of the box could be placed where it hangs: LanternBlock.canPlaceAt), p3-cw-barrier (the 21 barriers are the arch's and no other barrier stands in the box), p3-cw-entities (no camp entity inside a block that stops him: villagers by their
+     *  floor), p3-cw-lantern (every lantern of the box could be placed where it hangs: LanternBlock.canPlaceAt), p3-cw-barrier (the 21 barriers are the arch's, the drop board altar's solid space (DropStage.altarCells) is allowed, and no other barrier stands in the box), p3-cw-entities (no camp entity inside a block that stops him: villagers by their
      *  collision box, labels by the cell they stand in), p3-cw-labels (every label 3.7 above its row and, from the place the walker photographed it, all five sample points of its rectangle in sight; no two labels overlap in his view), p3-cw-pictures (the files exist),
      *  p3-cw-complete (every id of the walk was reported; only when no filter was given) and p3-cw-suite.
      *  GRAVES_WALK_ONLY lists name fragments: leg1, leg2, leg3b, leg4, night, flank, fly (nothing given: all). A leg that is run alone starts with the walker put at its first point (a note says so). GRAVES_CW_SABOTAGE=1 plants one defect for each scan check
@@ -2877,7 +2877,7 @@ public final class Phase3Checks implements ClientModInitializer {
             ck("p3-cw-floating",fs.found().isEmpty()&&fs.reached()>100000,"island box x "+x0+".."+x1+", z "+z0+".."+z1+" (the rim rows included), y "+y0+".."+y1+": solid blocks reached from the floor "+fs.reached()+", floating pieces "+fs.found().size()+" of "+fs.floatTotal()+" blocks"+(fs.found().isEmpty()?"":", the biggest "+fs.found().stream().limit(6).map(p->p.size()+" blocks x "+p.x0()+".."+p.x1()+" y "+p.y0()+".."+p.y1()+" z "+p.z0()+".."+p.z1()+" ("+p.top()+")").toList()));
             for(int i=0;i<Math.min(40,fs.found().size());i++){var p=fs.found().get(i);note("floating piece "+(i+1)+": "+p.size()+" blocks, x "+p.x0()+" to "+p.x1()+", y "+p.y0()+" to "+p.y1()+", z "+p.z0()+" to "+p.z1()+": "+p.top());}
             // 2. lanterns and barriers
-            var arch=archCells();int lanterns=0,loose=0,barriers=0,inArch=0,outside=0,exposed=0;var looseAt=new StringBuilder();var outAt=new StringBuilder();var pos=new BlockPos.Mutable();
+            var arch=archCells();var altar=DropStage.built(w)?DropStage.altarCells():Set.<BlockPos>of();int lanterns=0,loose=0,barriers=0,inArch=0,inAltar=0,outside=0,exposed=0;var looseAt=new StringBuilder();var outAt=new StringBuilder();var pos=new BlockPos.Mutable();
             for(int cx=x0>>4;cx<=x1>>4;cx++)for(int cz=z0>>4;cz<=z1>>4;cz++){
                 var ch=w.getChunk(cx,cz);
                 for(int x=Math.max(x0,cx*16);x<=Math.min(x1,cx*16+15);x++)for(int z=Math.max(z0,cz*16);z<=Math.min(z1,cz*16+15);z++)for(int y=y0;y<=y1;y++){
@@ -2887,6 +2887,7 @@ public final class Phase3Checks implements ClientModInitializer {
                     }else if(st.isOf(Blocks.BARRIER)){
                         barriers++;
                         if(arch.contains(pos.toImmutable()))inArch++;
+                        else if(altar.contains(pos.toImmutable()))inAltar++; // the drop board altar's solid space (DropStage), drawn by the client
                         else{
                             outside++;boolean open=false;for(var d:Direction.values()){var nb=pos.offset(d);var ns=w.getBlockState(nb);if(!ns.isOf(Blocks.BARRIER)&&!ns.isOpaqueFullCube(w,nb))open=true;}
                             if(open)exposed++;if(outside<=6)outAt.append(outside>1?"; ":"").append(xyz(pos.toImmutable())).append(open?" in the open":" buried");
@@ -2895,7 +2896,7 @@ public final class Phase3Checks implements ClientModInitializer {
                 }
             }
             ck("p3-cw-lantern",lanterns>0&&loose==0,"lanterns in the box "+lanterns+", without a block to hang from or to stand on (the test LanternBlock.canPlaceAt makes) "+loose+(loose==0?"":", first: "+looseAt));
-            ck("p3-cw-barrier",inArch==arch.size()&&outside==0,"barrier blocks in the box "+barriers+": in the arch "+inArch+" of "+arch.size()+" cells, anywhere else "+outside+" ("+exposed+" of them with a face in the open)"+(outside==0?"":": "+outAt)+"; the walker's lanes pass no barrier but the arch's portcullis stop");
+            ck("p3-cw-barrier",inArch==arch.size()&&outside==0,"barrier blocks in the box "+barriers+": in the arch "+inArch+" of "+arch.size()+" cells, in the drop altar "+inAltar+" of "+altar.size()+", anywhere else "+outside+" ("+exposed+" of them with a face in the open)"+(outside==0?"":": "+outAt)+"; the walker's lanes pass no barrier but the arch's portcullis stop");
             // 3. entities
             int villagers=0,labels=0,inside=0,others=0,boxes=0;var insideAt=new StringBuilder();int wantV=0,wantB=0;for(var s:Spec.CAMPSTATIONS)if(!s.npc().equals("-")){wantV++;var look=CampNpcs.look(s);if(look!=null&&CampNpcs.hitBox(look))wantB++;}
             for(var e:w.iterateEntities()){
