@@ -53,6 +53,8 @@ public final class CampNpcsCheck {
             check(!l.name().isBlank() && CampNpcs.plainLine(row.page()).startsWith(Character.toUpperCase(l.name().charAt(0)) + l.name().substring(1) + ": ")
                 && CampNpcs.plainLine(row.page()).contains("needs the Graves and Glory modpack"), w[0] + ": the plain chat line names " + l.name() + ": " + CampNpcs.plainLine(row.page()));
         }
+        check(CampNpcs.hasNpc("contracts") && CampNpcs.hasNpc("friends") && CampNpcs.hasNpc("forge") && !CampNpcs.hasNpc("match") && !CampNpcs.hasNpc("home") && !CampNpcs.hasNpc("chapter"),
+            "only staff NPC pages get the chat line; gates, welcome and founders keep the action-bar line");
         check(CampNpcs.plainLine("nope").equals("This station needs the Graves and Glory modpack."), "a page with no villager gets the bare line");
         for (var r : Spec.CAMPNPCS) check(r.scale() > 0 && (r.hitWidth() == 0) == (r.hitHeight() == 0), r.id() + ": scale above 0, hit box both or neither");
         System.out.println(checks + " checks, " + failed + " failed");

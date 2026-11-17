@@ -58,6 +58,12 @@ public final class CampNpcs {
         return "This station needs the Graves and Glory modpack.";
     }
 
+    /** Whether a campStations row of that page has a villager (a staff NPC's station, which gets plainLine). */
+    public static boolean hasNpc(String page) {
+        for (var s : Spec.CAMPSTATIONS) if (s.page().equals(page) && !s.npc().equals("-")) return true;
+        return false;
+    }
+
     /** Whether a look gets a vanilla interaction entity as its click box (hitWidth and hitHeight above 0). */
     public static boolean hitBox(Spec.CampNpcsRow r) { return r.hitWidth() > 0 && r.hitHeight() > 0; }
 }
