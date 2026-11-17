@@ -1,0 +1,109 @@
+{
+  "troop": "ic_hearthguard",
+  "note": "The Proven (Mastery II) veteran trim on the GeckoLib hearthguard, in the knight's style (art/geo_trim/knight.json): twisted rope edgings in brass on the armour rims and cuffs, studs on the belt. One overlay per armour tier, side independent (no team bone carries trim). Built by tools/build_geo_trim.py.",
+  "colours": {
+    "light": "dcb145",
+    "dark": "b8852a"
+  },
+  "marks": [
+    {
+      "what": "studs on the belt, every tier",
+      "bone": "belt",
+      "cube": 0,
+      "pattern": "studs",
+      "rows": [
+        0,
+        1
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging round the greaves above the boots",
+      "bone": "right_shin",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -2
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging round the greaves above the boots",
+      "bone": "left_shin",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -2
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging on the sleeve cuffs",
+      "bone": "right_forearm",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -1
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging on the sleeve cuffs",
+      "bone": "left_forearm",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -1
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging round the helm's lower rim",
+      "bone": "helm",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -1
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging on the breastplate's lower edge",
+      "bone": "breastplate",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -1
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "troop": "gl_marshal",
+  "note": "The Proven (Mastery II) veteran trim on the GeckoLib marshal, in the knight's style (art/geo_trim/knight.json): twisted rope edgings in brass on the armour rims and cuffs, studs on the belt. One overlay per armour tier, side independent (no team bone carries trim). Built by tools/build_geo_trim.py.",
+  "colours": {
+    "light": "dcb145",
+    "dark": "b8852a"
+  },
+  "marks": [
+    {
+      "what": "studs on the belt, every tier",
+      "bone": "belt",
+      "cube": 0,
+      "pattern": "studs",
+      "rows": [
+        0,
+        1
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging round the greaves above the boots",
+      "bone": "right_shin",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -2
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging round the greaves above the boots",
+      "bone": "left_shin",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -2
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging on the sleeves above the cuffs",
+      "bone": "right_forearm",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        3
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging on the sleeves above the cuffs",
+      "bone": "left_forearm",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        3
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging round the helm's lower rim",
+      "bone": "helm",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -1
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging on the pauldrons' lowest lame",
+      "bone": "right_pauldron",
+      "cube": 2,
+      "pattern": "rope",
+      "rows": [
+        -1
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging on the pauldrons' lowest lame",
+      "bone": "left_pauldron",
+      "cube": 2,
+      "pattern": "rope",
+      "rows": [
+        -1
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging round the gorget",
+      "bone": "gorget",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -1
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    }
+  ]
+}

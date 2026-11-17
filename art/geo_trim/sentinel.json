@@ -1,0 +1,127 @@
+{
+  "troop": "sentinel",
+  "note": "The Proven (Mastery II) veteran trim on the GeckoLib sentinel, in the knight's style (art/geo_trim/knight.json): twisted rope edgings in brass on the armour rims and cuffs, studs on the belt. One overlay per armour tier, side independent (no team bone carries trim). Built by tools/build_geo_trim.py. Plate tiers add the pauldrons' lowest lame.",
+  "colours": {
+    "light": "dcb145",
+    "dark": "b8852a"
+  },
+  "tier_colours": {
+    "3": {
+      "light": "fff0b4",
+      "dark": "583513"
+    }
+  },
+  "marks": [
+    {
+      "what": "studs on the belt, every tier",
+      "bone": "belt",
+      "cube": 0,
+      "pattern": "studs",
+      "rows": [
+        0,
+        1
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging round the greaves above the boots",
+      "bone": "right_shin",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -2
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging round the greaves above the boots",
+      "bone": "left_shin",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -2
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging on the sleeve above the gauntlet cuffs",
+      "bone": "right_forearm",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        3
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging on the sleeve above the gauntlet cuffs",
+      "bone": "left_forearm",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        3
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging round the helm's lower rim",
+      "bone": "helm",
+      "cube": 0,
+      "pattern": "rope",
+      "rows": [
+        -1
+      ],
+      "tiers": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging on the pauldrons' lowest lame (plate tiers)",
+      "bone": "right_pauldron",
+      "cube": 2,
+      "pattern": "rope",
+      "rows": [
+        -1
+      ],
+      "tiers": [
+        2,
+        3
+      ]
+    },
+    {
+      "what": "rope edging on the pauldrons' lowest lame (plate tiers)",
+      "bone": "left_pauldron",
+      "cube": 2,
+      "pattern": "rope",
+      "rows": [
+        -1
+      ],
+      "tiers": [
+        2,
+        3
+      ]
+    }
+  ]
+}
