@@ -132,6 +132,9 @@ public final class BotSimulation implements ModInitializer {
         overlayCheck=Boolean.getBoolean("gravesandglory.simOverlayCheck");
         net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((entity,source)->ledger.onDeath(GravesAndGlory.battle,entity,source));
         ServerTickEvents.END_SERVER_TICK.register(this::tick);
+        // -PsimNoLeash=true (test only, off by default): the camp leash (Campaign.leash) is off for the whole run, so a player or a headless client that is not seated can
+        // stand on the field and watch the bots' fight (traffic and Polymer measurements, report-polymer-perf.md). It changes nothing for the bots.
+        if(Boolean.getBoolean("gravesandglory.simNoLeash"))ServerTickEvents.END_SERVER_TICK.register(s->{var bt=GravesAndGlory.battle;if(bt!=null&&bt.campaign.leash)bt.campaign.leash=false;});
         probe="1".equals(System.getenv("GRAVES_BOTSIM_PROBE"))||Boolean.getBoolean("gravesandglory.simProbe");
         if(probe){
             probeCsv=dir.resolve("probe.csv");

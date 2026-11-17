@@ -29,12 +29,16 @@ import net.minecraft.util.math.MathHelper;
  * The plain player's battle HUD (plain clients, port plan P3; the P2 spike's HUD): a boss bar (score and clock, or the camp line),
  * an action bar (order, Charge, troops, gold) and a per-player sidebar (points, army), all built from the battle fields the modpack's
  * state_v10 packet carries, with vanilla packets only. The camp's notices, which the modpack shows on its War Table, come to chat in
- * plain words. Refreshed every 10 ticks by PlainClients.
+ * plain words. Built every 10 ticks by PlainClients; only the sidebar's changed parts go to the client (sidebar).
  */
 final class PlainHud {
     private PlainHud() {}
     private static final Map<UUID, ServerBossBar> BARS = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> SIDEBAR_LINES = new ConcurrentHashMap<>();
+    /** What each player's client already shows (server cost 5, report-polymer-perf.md): the sidebar title and lines; only what changed is sent again.
+     *  The action bar is still sent every 10 ticks: it fades, and other notices on it should give way to the HUD line as before. */
+    private static final Map<UUID, Text> SIDEBAR_TITLE = new ConcurrentHashMap<>();
+    private static final Map<UUID, List<Text>> SIDEBAR_SHOWN = new ConcurrentHashMap<>();
     private static final Map<UUID, String> LAST_NOTICE = new ConcurrentHashMap<>();
 
     static Text glyph(int code) { return Text.literal(String.valueOf((char) code)).styled(st -> st.withFont(PlainPack.GLYPHS).withColor(Formatting.WHITE)); }
@@ -46,6 +50,8 @@ final class PlainHud {
         var bar = BARS.remove(p.getUuid());
         if (bar != null) bar.clearPlayers();
         SIDEBAR_LINES.remove(p.getUuid());
+        SIDEBAR_TITLE.remove(p.getUuid());
+        SIDEBAR_SHOWN.remove(p.getUuid());
         LAST_NOTICE.remove(p.getUuid());
     }
 
@@ -115,15 +121,25 @@ final class PlainHud {
         return out;
     }
 
-    /** A per-player sidebar: packets to this player only (the server scoreboard is never touched). */
+    /** A per-player sidebar: packets to this player only (the server scoreboard is never touched). Only a changed title or line is sent again; a line's score is its
+     *  place from the bottom, so a line whose place moved (the list grew or shrank above it) counts as changed. */
     static void sidebar(ServerPlayerEntity p, Text title, List<Text> lines) {
-        var obj = new ScoreboardObjective(new Scoreboard(), "gg_plain", ScoreboardCriterion.DUMMY, title, ScoreboardCriterion.RenderType.INTEGER, false, BlankNumberFormat.INSTANCE);
-        Integer had = SIDEBAR_LINES.get(p.getUuid());
-        p.networkHandler.sendPacket(new ScoreboardObjectiveUpdateS2CPacket(obj, had == null ? ScoreboardObjectiveUpdateS2CPacket.ADD_MODE : ScoreboardObjectiveUpdateS2CPacket.UPDATE_MODE));
-        if (had == null) p.networkHandler.sendPacket(new ScoreboardDisplayS2CPacket(ScoreboardDisplaySlot.SIDEBAR, obj));
-        for (int i = 0; i < lines.size(); i++) p.networkHandler.sendPacket(new ScoreboardScoreUpdateS2CPacket("l" + i, "gg_plain", lines.size() - i, Optional.of(lines.get(i)), Optional.empty()));
+        UUID id = p.getUuid();
+        Integer had = SIDEBAR_LINES.get(id);
+        List<Text> shown = had == null ? null : SIDEBAR_SHOWN.get(id);
+        if (had == null || !title.equals(SIDEBAR_TITLE.get(id))) {
+            var obj = new ScoreboardObjective(new Scoreboard(), "gg_plain", ScoreboardCriterion.DUMMY, title, ScoreboardCriterion.RenderType.INTEGER, false, BlankNumberFormat.INSTANCE);
+            p.networkHandler.sendPacket(new ScoreboardObjectiveUpdateS2CPacket(obj, had == null ? ScoreboardObjectiveUpdateS2CPacket.ADD_MODE : ScoreboardObjectiveUpdateS2CPacket.UPDATE_MODE));
+            if (had == null) p.networkHandler.sendPacket(new ScoreboardDisplayS2CPacket(ScoreboardDisplaySlot.SIDEBAR, obj));
+            SIDEBAR_TITLE.put(id, title);
+        }
+        boolean sameCount = shown != null && shown.size() == lines.size();
+        for (int i = 0; i < lines.size(); i++)
+            if (!sameCount || !lines.get(i).equals(shown.get(i)))
+                p.networkHandler.sendPacket(new ScoreboardScoreUpdateS2CPacket("l" + i, "gg_plain", lines.size() - i, Optional.of(lines.get(i)), Optional.empty()));
         for (int i = lines.size(); had != null && i < had; i++) p.networkHandler.sendPacket(new ScoreboardScoreResetS2CPacket("l" + i, "gg_plain"));
-        SIDEBAR_LINES.put(p.getUuid(), lines.size());
+        SIDEBAR_LINES.put(id, lines.size());
+        SIDEBAR_SHOWN.put(id, List.copyOf(lines));
     }
 
     /** The camp's current notice to chat once (a refusal, a roll result), in plain words: the modpack shows it on the War Table. */

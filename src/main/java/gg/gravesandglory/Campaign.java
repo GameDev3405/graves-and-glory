@@ -231,7 +231,7 @@ public final class Campaign {
         for(var s:b.squads.values())Commander.reset(b,s); // every running commander ability ends before its units go
         boolean wasEnding=ending();endingStart=-1;skipped.clear();endingStaged.clear();endingDone.clear();endingRanks.clear();endingAwards.clear();endingLines.clear();endingLeft.clear();endingMvp=null;if(wasEnding)PodiumStage.release(b.world);
         b.running=false;introUntil=0;social.finish();readyAgain();activeRoom="";roundTier="";activeBattle=null;bonusTracker=null;Projectiles.clear(b);b.strikes.clear();Abilities.clearBanners(b);b.clearIntel();
-        Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearCorpses();b.clearSides();b.clearProgression();b.clearPlans();
+        Houses.reset(b);for(var u:b.units)u.mob.discard();b.units.clear();b.clearCorpses();clearFieldItems();b.clearSides();b.clearProgression();b.clearPlans();
         b.squads.values().removeIf(s->s.bot);botRespawns.clear();botRetreating.clear();botGuard.clear();musterFirstAt.clear();b.respawns.clear();vacated.clear();vacatedUntil.clear();awayTicks.clear();leftAt.clear();absentSeat.clear();deleteProgress();
         for(var s:b.squads.values()){s.training.clear();s.seated=false;}closeParty();
         notices.values().removeIf(t->t.startsWith(WELCOME_WAIT));noticeAt.keySet().retainAll(notices.keySet()); // "Battle in progress" is no longer true
@@ -239,6 +239,13 @@ public final class Campaign {
         // The autosaves skipped during the round (ArenaAutosave) are paid now, with the armies gone and everyone in camp.
         // A stopping server skips this: its own shutdown save follows.
         if(ArenaAutosave.settle()&&b.server.isRunning()){long at=System.nanoTime();b.server.saveAll(true,false,false);System.out.println("[Graves and Glory] Saved the world after the battle ("+(System.nanoTime()-at)/1_000_000+" ms).");}
+    }
+    /** Server cost 5 (report-polymer-perf.md): item stacks left lying on the field when a round ends (20 to 40 per round in the bot runs) would sit there ticking until
+     *  vanilla despawns them five minutes later; the field is cleared with the armies. Only items on the field (Field.inside), so nothing dropped in camp is touched. */
+    void clearFieldItems(){
+        List<net.minecraft.entity.Entity> items=new ArrayList<>();
+        for(net.minecraft.entity.Entity e:b.world.iterateEntities())if(e instanceof net.minecraft.entity.ItemEntity&&!e.isRemoved()&&Field.inside(e.getX(),e.getZ(),0))items.add(e);
+        for(net.minecraft.entity.Entity e:items)e.discard();
     }
     /** Leaving frees any seat in the solo-start group, and forgets which snapshot forms were logged for him. */
     void left(UUID id){drops.left(id);newerSaveTold.remove(id);gearSent.remove(id);forgeResults.remove(id);leaveParty(id);snapshotForms.remove(id);notices.remove(id);noticeAt.remove(id);} // his notice entries go with him, a standing line's too (expireNotices never drops those)
