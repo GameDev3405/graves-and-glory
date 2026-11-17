@@ -9,7 +9,7 @@ import net.minecraft.util.Formatting;
 
 /**
  * The War Table's home as a plain player's chest menu (plain clients P4, plan decision 5): a hub to every page and the home page's
- * own two rides (practice, the next Long March battle). Each page is its own PlainMenu (Plain* classes); every press sends the
+ * own two rides (practice, the next campaign battle). Each page is its own PlainMenu (Plain* classes); every press sends the
  * modpack page's own command, so the rules and refusals are the modpack's.
  */
 final class PlainWarTable {
@@ -30,7 +30,7 @@ final class PlainWarTable {
         }
     }
 
-    /** The Long March battle the home page rides to: the one after the last cleared, or the last once all are cleared (WarTableHome.next). */
+    /** The campaign battle the home page rides to: the one after the last cleared, or the last once all are cleared (WarTableHome.next). */
     static Spec.CampaignBattlesRow next(Profile pr) {
         for (var row : Spec.CAMPAIGNBATTLES) if (row.order() == pr.campaignCleared + 1) return row;
         return Spec.CAMPAIGNBATTLES[Spec.CAMPAIGNBATTLES.length - 1];
@@ -50,7 +50,7 @@ final class PlainWarTable {
         page(m, 15, Items.WRITTEN_BOOK, "Results", "The last battle's report.", PlainResults::open);
         m.command(11, PlainMenu.named(Items.COMPASS, "Practice battle", Formatting.GREEN, "A battle against one bot, in camp."), "camp:practice");
         var row = next(pr);
-        m.command(13, PlainMenu.named(Items.GOLDEN_SWORD, "Long March: " + row.name(), Formatting.GOLD, "Ride to the next campaign battle.", "Played solo."), "campaign:" + row.id());
+        m.command(13, PlainMenu.named(Items.GOLDEN_SWORD, "Campaign: " + row.name(), Formatting.GOLD, "Ride to the next campaign battle.", "Played solo."), "campaign:" + row.id());
         m.icon(22, PlainMenu.named(Items.GOLD_NUGGET, "Purse", Formatting.YELLOW, "Writs " + pr.troopWrits + "  Pacts " + pr.pacts, "Wins " + pr.wins + " of " + pr.matches));
     }
 

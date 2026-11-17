@@ -215,7 +215,7 @@ final class PlainBanner {
         }
         if (pr.notice != null && !pr.notice.isEmpty()) {
             List<String> lore = new ArrayList<>(wrap(pr.notice, 40));
-            lore.add("Click: Understood");
+            lore.add("Click to confirm");
             m.command(17, item(Items.WRITABLE_BOOK, "Notice", Formatting.GOLD, lore), "notice:understood");
         }
         // the team colour
@@ -290,7 +290,7 @@ final class PlainBanner {
         // the control row
         List<String> lore = new ArrayList<>(goldLines(table));
         lore.add("Brush: " + brushWord(v.brush));
-        lore.add("Click: back to the banner tools");
+        lore.add("Click to back to the banner tools");
         m.button(45, item(Items.ARROW, "Tools: " + bannerName(pr, shown), Formatting.WHITE, lore), pl -> { v.grid = false; v.lifted = -1; });
         if (rows > shownRows) {
             boolean atTop = v.top == 0;
@@ -314,13 +314,13 @@ final class PlainBanner {
         if (id != null) {
             var t = troop(id);
             if (t != null) lore.add(rarityWord(t.rarity()) + ", " + RosterMath.Catalog.fromSpec().cost(id) + " gold");
-            if (move) lore.add(v.lifted == cell ? "Lifted: click another cell to move it" : v.lifted >= 0 ? "Click: move the lifted troop here" : "Click: lift this troop");
-            else if (erase || id.equals(v.brush)) lore.add("Click: take it off");
-            else lore.add("Click: put " + brushWord(v.brush) + " here");
+            if (move) lore.add(v.lifted == cell ? "Lifted: click another cell to move it" : v.lifted >= 0 ? "Click to move the lifted troop here" : "Click to lift this troop");
+            else if (erase || id.equals(v.brush)) lore.add("Click to take it off");
+            else lore.add("Click to put " + brushWord(v.brush) + " here");
             return glint(item(egg(id), troopName(id), Formatting.WHITE, lore), v.lifted == cell);
         }
-        if (move) lore.add(v.lifted >= 0 ? "Click: move the lifted troop here" : "Empty");
-        else if (!erase) lore.add("Click: put " + brushWord(v.brush) + " here");
+        if (move) lore.add(v.lifted >= 0 ? "Click to move the lifted troop here" : "Empty");
+        else if (!erase) lore.add("Click to put " + brushWord(v.brush) + " here");
         return item(WarGrid.row(cell) == 0 ? Items.WHITE_STAINED_GLASS_PANE : Items.LIGHT_GRAY_STAINED_GLASS_PANE, WarGrid.row(cell) == 0 ? "Front row" : "Empty cell", Formatting.GRAY, lore);
     }
 

@@ -209,10 +209,10 @@ final class PlainFriends {
                 Formatting colour = seat.ready() ? Formatting.GREEN : seat.kind().equals("human") ? Formatting.WHITE : Formatting.GRAY;
                 if (v.choosingHost && heir(seat)) {
                     String name = seat.name();
-                    lore.add("Click: make " + name + " host");
+                    lore.add("Click to make " + name + " host");
                     m.button(slot, PlainBanner.glint(PlainBanner.item(seatItem(seat, t), "Make " + name + " host", Formatting.GOLD, lore), true), pl -> { v.choosingHost = false; PlainBanner.send(pl, "social:host:" + name); });
                 } else if (!v.choosingHost && idle && t != myTeam && (seat.kind().equals("bot") || seat.kind().equals("open"))) {
-                    lore.add("Click: move your group to this side");
+                    lore.add("Click to move your group to this side");
                     m.command(slot, PlainBanner.item(seatItem(seat, t), seat.name(), colour, lore), "social:team:" + t);
                 } else m.icon(slot, PlainBanner.item(seatItem(seat, t), seat.name(), colour, lore));
             }
