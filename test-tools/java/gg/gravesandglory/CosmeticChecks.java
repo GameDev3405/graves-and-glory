@@ -27,6 +27,7 @@ final class CosmeticChecks implements Phase1Checks.Suite {
     volatile BlockPos plantedAt;
     volatile GravesAndGlory.ArmySupplyBanner planted;
     volatile GravesAndGlory.Unit knight;
+    volatile float knightYaw;
     volatile String why = "";
     int stage, at, i;
     float yaw;
@@ -114,13 +115,13 @@ final class CosmeticChecks implements Phase1Checks.Suite {
                 }
                 if (k > 120) { i = 0; GeoDraws.install(); next(tick, 2); }
             }
-            case 2 -> { // one held banner cosmetic at a time, three-quarter front
+            case 2 -> { // one held banner cosmetic at a time, the right side (the flag's face: it hangs along the arm, front to back) to the camera
                 String id = HELD[i];
                 var item = Cosmetics.item(id);
                 if (k == 1) Phase1Checks.server(c, b -> wear(b, Map.of(item.slot(), id)));
                 if (k == 2) { c.setScreen(null); c.options.hudHidden = true; c.options.setPerspective(Perspective.THIRD_PERSON_FRONT); yaw = c.player.getYaw(); }
                 if (k >= 2) {
-                    float turn = yaw + 35;
+                    float turn = yaw - 70; // body yaw - 90 puts the right side toward the front camera; 20 back toward the face
                     c.player.setYaw(yaw); c.player.setPitch(5); c.player.prevYaw = yaw; c.player.prevPitch = 5;
                     c.player.setBodyYaw(turn); c.player.prevBodyYaw = turn; c.player.setHeadYaw(turn); c.player.prevHeadYaw = turn;
                 }
@@ -203,14 +204,16 @@ final class CosmeticChecks implements Phase1Checks.Suite {
                     if (p == null || s == null) { why += "no player or squad for the knight; "; return; }
                     float py = p.getYaw();
                     double r = Math.toRadians(py);
-                    double x = p.getX() - Math.sin(r) * 4, z = p.getZ() + Math.cos(r) * 4;
+                    double x = p.getX() - Math.sin(r) * 5, z = p.getZ() + Math.cos(r) * 5;
                     var u = b.spawn(s, Campaign.troop("knight"), 40, new Vec3d(x, Arena.ground((int) Math.floor(x), (int) Math.floor(z)) + 1, z));
                     u.mob.setAiDisabled(true); u.mob.setInvulnerable(true);
-                    float face = py + 180;
+                    float face = py + 90; // side-on: the shield hides the trim from the front
                     u.mob.setYaw(face); u.mob.setBodyYaw(face); u.mob.setHeadYaw(face);
                     knight = u;
-                    p.networkHandler.requestTeleport(p.getX(), p.getY(), p.getZ(), py, 15);
+                    p.networkHandler.requestTeleport(p.getX(), p.getY(), p.getZ(), py, 12);
+                    knightYaw = face;
                 });
+                if (k > 1 && k < 50) Phase1Checks.server(c, b -> { var u = knight; if (u != null) { float f = knightYaw; u.mob.setYaw(f); u.mob.setBodyYaw(f); u.mob.setHeadYaw(f); u.mob.prevYaw = f; u.mob.prevBodyYaw = f; u.mob.prevHeadYaw = f; } });
                 if (k == 50) {
                     var u = knight;
                     var e = u == null || c.world == null ? null : c.world.getEntityById(u.mob.getId());
