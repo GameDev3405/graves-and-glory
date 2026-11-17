@@ -43,6 +43,21 @@ public final class CampNpcs {
     /** The bark lines of a look (its lines column, split on " | "). */
     public static String[] lines(Spec.CampNpcsRow r) { return r.lines().split(" \\| "); }
 
+    /**
+     * The chat line a plain player gets for a click on a staff NPC whose station has no plain menu (lobby NPC spec 3.4): the character's name
+     * and that the station needs the modpack (VersionGate.refusal appends the download link). The page's villager row names the character
+     * through its look; a page with no look falls back to the villager's name, and a page with no villager to a bare line.
+     */
+    public static String plainLine(String page) {
+        for (var s : Spec.CAMPSTATIONS) {
+            if (!s.page().equals(page) || s.npc().equals("-")) continue;
+            var l = look(s);
+            String who = l != null ? l.name() : name(s);
+            return Character.toUpperCase(who.charAt(0)) + who.substring(1) + ": this station needs the Graves and Glory modpack.";
+        }
+        return "This station needs the Graves and Glory modpack.";
+    }
+
     /** Whether a look gets a vanilla interaction entity as its click box (hitWidth and hitHeight above 0). */
     public static boolean hitBox(Spec.CampNpcsRow r) { return r.hitWidth() > 0 && r.hitHeight() > 0; }
 }

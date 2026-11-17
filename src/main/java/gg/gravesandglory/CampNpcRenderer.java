@@ -32,6 +32,8 @@ public final class CampNpcRenderer extends VillagerEntityRenderer {
     /** Harness counters: camp NPC draws through a look, interact clips started, and the look the last drawn camp NPC wore (null before any). */
     static volatile long npcDraws, interactsPlayed;
     static volatile String lastLook;
+    /** Harness counters per look id: draws through the look and interact clips started (the camp-npcs suite tells five NPCs apart by them). */
+    static final Map<String, Long> drawsByLook = new java.util.concurrent.ConcurrentHashMap<>(), interactsByLook = new java.util.concurrent.ConcurrentHashMap<>();
 
     public CampNpcRenderer(EntityRendererFactory.Context ctx) { super(ctx); this.ctx = ctx; }
 
@@ -46,7 +48,7 @@ public final class CampNpcRenderer extends VillagerEntityRenderer {
         if (l == null) { super.render(e, yaw, tickDelta, matrices, consumers, light); return; }
         if (e.handSwinging) { e.handSwinging = false; SWUNG.put(e, Boolean.TRUE); }
         geo.computeIfAbsent(l.id(), id -> new Geo(ctx, l)).render(e, yaw, tickDelta, matrices, consumers, light);
-        npcDraws++; lastLook = l.id();
+        npcDraws++; lastLook = l.id(); drawsByLook.merge(l.id(), 1L, Long::sum);
     }
 
     /** Whether this villager swung since its interact clip last started (taken once, by GeoCampNpc's controller). */

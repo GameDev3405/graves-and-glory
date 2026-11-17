@@ -129,7 +129,8 @@ public final class PlainClients {
     }
 
     /** A camp station or lectern used by a plain player (GravesAndGlory's use callbacks, which send the modpack's screens to modded
-     *  players only). The barracks lectern opens Recruit, the drillmaster starts a practice battle; the rest need the modpack. */
+     *  players only). The barracks lectern and the quartermaster open Recruit, the drillmaster starts a practice battle; the rest give the
+     *  station NPC's chat line (CampNpcs.plainLine). */
     static void station(ServerPlayerEntity p, String station) {
         var b = GravesAndGlory.battle;
         if (b == null) return;

@@ -36,7 +36,7 @@ final class GeoCampNpc implements GeoReplacedEntity {
         controllers.add(new AnimationController<>(this, "main", BLEND, state -> {
             AnimationController<GeoCampNpc> c = state.getController();
             Entity e = state.getData(DataTickets.ENTITY);
-            if (e != null && CampNpcRenderer.takeInteract(e)) { c.forceAnimationReset(); CampNpcRenderer.interactsPlayed++; return state.setAndContinue(INTERACT); }
+            if (e != null && CampNpcRenderer.takeInteract(e)) { c.forceAnimationReset(); CampNpcRenderer.interactsPlayed++; CampNpcRenderer.interactsByLook.merge(look.id(), 1L, Long::sum); return state.setAndContinue(INTERACT); }
             RawAnimation now = c.getCurrentRawAnimation();
             return state.setAndContinue(now == null ? IDLE : now);
         }));

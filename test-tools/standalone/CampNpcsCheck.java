@@ -36,6 +36,24 @@ public final class CampNpcsCheck {
         check(CampNpcs.resolve(null, true) == null, "an unnamed villager draws vanilla");
         check(CampNpcs.resolve("Villager", true) == null && CampNpcs.resolve("blacksmith", true) == null && CampNpcs.resolve("Blacksmith ", true) == null,
             "an unknown or near-miss name draws vanilla (the match is exact)");
+        // the four staff NPCs of lobby NPC spec 4.2 to 4.5, by their villager names, with the spec's vanilla profession and skin
+        String[][] staff = {{"quartermaster", "armorer", "desert"}, {"archivist", "librarian", "snow"}, {"steward", "cartographer", "swamp"}, {"drillmaster", "weaponsmith", "savanna"}, {"blacksmith", "toolsmith", "taiga"}};
+        for (String[] w : staff) {
+            Spec.CampStationsRow row = null;
+            for (var s : Spec.CAMPSTATIONS) if (s.id().equals(w[0])) row = s;
+            check(row != null, w[0] + ": a campStations row");
+            if (row == null) continue;
+            check(row.look().equals(w[0]) && row.npc().equals(w[1]) && row.villagerType().equals(w[2]), w[0] + ": look " + w[0] + ", " + w[1] + ", " + w[2] + " (got " + row.look() + ", " + row.npc() + ", " + row.villagerType() + ")");
+            var l = CampNpcs.resolve(CampNpcs.name(row), true);
+            check(l != null && l.id().equals(w[0]), w[0] + ": its villager name '" + CampNpcs.name(row) + "' resolves to its look");
+            if (l == null) continue;
+            int n = CampNpcs.lines(l).length;
+            check(n >= 2 && n <= 3, w[0] + ": 2 or 3 lines, has " + n);
+            check(!l.lines().toLowerCase().contains("giant"), w[0] + ": no line names the giants");
+            check(!l.name().isBlank() && CampNpcs.plainLine(row.page()).startsWith(Character.toUpperCase(l.name().charAt(0)) + l.name().substring(1) + ": ")
+                && CampNpcs.plainLine(row.page()).contains("needs the Graves and Glory modpack"), w[0] + ": the plain chat line names " + l.name() + ": " + CampNpcs.plainLine(row.page()));
+        }
+        check(CampNpcs.plainLine("nope").equals("This station needs the Graves and Glory modpack."), "a page with no villager gets the bare line");
         for (var r : Spec.CAMPNPCS) check(r.scale() > 0 && (r.hitWidth() == 0) == (r.hitHeight() == 0), r.id() + ": scale above 0, hit box both or neither");
         System.out.println(checks + " checks, " + failed + " failed");
         if (failed > 0) System.exit(1);
