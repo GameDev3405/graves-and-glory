@@ -136,6 +136,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         ClientEntityEvents.ENTITY_UNLOAD.register((entity,world)->{TroopMotion.forget(entity.getId());MotionEvents.Client.forget(entity.getId());});
         // A soldier's rank (rank_v1): level, weapon tier and armour tier by entity id, for the troop renderer, the chevrons and the portraits (Task 9).
         RankSync.registerClient();
+        CosmeticSync.registerClient(); // equipped cosmetics and titles (cosmetics render plan 5)
         CommandNet.registerClient(); // command_v1: the charge cooldown, teammates' outlines and order acknowledgements
         ClientPlayNetworking.registerGlobalReceiver(Payloads.StatePayload.ID,(payload,context)->{MinecraftClient client=context.client();PacketByteBuf buf=payload.buf();
             modServer=true;
@@ -165,7 +166,7 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         // thread, and not through client.execute: Fabric can fire this event on the network thread, and MinecraftClient.disconnect
         // wipes the queued tasks (the Task 3 re-review's race). The flag waits for the first client tick without a world, and the
         // next join clears them as well; no HUD frame runs without a world to clear them before the next one.
-        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{CommandPanel.disconnected(client);if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);EndingClient.forget(client);DropClient.clear(client);CampaignClient.forget();MusicDirector.reset(client);TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
+        ClientPlayConnectionEvents.DISCONNECT.register((handler,client)->{CommandPanel.disconnected(client);if(connectingInvitation&&!joined)say("Melty join failed: connection closed before joining");CampaignClient.end(client);EndingClient.forget(client);DropClient.clear(client);CampaignClient.forget();MusicDirector.reset(client);TroopMotion.clear();MotionEvents.Client.clear();RankSync.clear();CosmeticSync.clear();hudResetPending=true;ready=false;modServer=false;running=false;team=-1;houses=Map.of();opened=false;worldTicks=0;shareCamp=false;connectingInvitation=false;});
         ClientTickEvents.END_CLIENT_TICK.register(GravesAndGloryClient::ebbCasters);
         ClientTickEvents.END_CLIENT_TICK.register(client->{
             if(!toolbarFreed&&client.options!=null){toolbarFreed=true;freeToolbarKeys(client,toolbarFlag());KeyMigration.run(client);} // the old G / V command keys move to Z / C once (KeyMigration)
@@ -206,6 +207,8 @@ public final class GravesAndGloryClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(DropAltar::world);
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(DropRender::world); // the drop board's coins, flares and risers
         net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(EndingClient::renderFigures); // the match ending's podium figures
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.AFTER_ENTITIES.register(CosmeticExtras::world); // planted banner extras and title lines (cosmetics render plan 6)
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(ctx->CosmeticExtras.begin());
         ChargeCamera.register(); // the overhead charge camera: its option, its toggle binding and the ground arrow
         OrderOutlines.register(); // formation outlines, pulses and the rally pose; registered after the tick handler above so it reads the aim that handler left
         // Troop depth: the frame's cutoff from the game camera, once, before any pass draws (Iris's shadow pass among them).

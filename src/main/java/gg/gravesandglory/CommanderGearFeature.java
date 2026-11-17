@@ -88,7 +88,7 @@ public final class CommanderGearFeature extends FeatureRenderer<AbstractClientPl
             var armour = GearModels.armour(a.item());
             if (armour != null) { armour(m, v, light, overlay, armour, a.rarity(), side); drawn.add(a.item()); continue; }
             var w = GearModels.weapon(a.item());
-            if (w != null && weapon(m, v, light, overlay, e, w, a.rarity(), side)) drawn.add(a.item());
+            if (w != null && weapon(m, v, light, overlay, e, w, a.item(), a.rarity(), side)) drawn.add(a.item());
         }
     }
 
@@ -108,7 +108,7 @@ public final class CommanderGearFeature extends FeatureRenderer<AbstractClientPl
         }
     }
 
-    boolean weapon(MatrixStack m, VertexConsumerProvider v, int light, int overlay, AbstractClientPlayerEntity e, GearModels.Weapon w, int rarity, String side) {
+    boolean weapon(MatrixStack m, VertexConsumerProvider v, int light, int overlay, AbstractClientPlayerEntity e, GearModels.Weapon w, String item, int rarity, String side) {
         var r = w.rarities().getOrDefault(rarity, w.rarities().get(1)); ModelPart own = part(w.parent());
         if (r == null || own == null || !own.visible) return false;
         m.push(); own.rotate(m);
@@ -119,6 +119,8 @@ public final class CommanderGearFeature extends FeatureRenderer<AbstractClientPl
         }
         r.mesh().render(m.peek(), v.getBuffer(RenderLayer.getEntityCutoutNoCull(w.texture(r, side))), light, overlay, 1f, 1f, 1f, 1f, Integer.MAX_VALUE);
         if (r.glow() != null) r.mesh().render(m.peek(), v.getBuffer(RenderLayer.getEyes(r.glow())), FULL_BRIGHT, OverlayTexture.DEFAULT_UV, 1f, 1f, 1f, 1f, Integer.MAX_VALUE);
+        var row = Gear.item(item); // a banner's vanilla patterns and its cosmetic extras (cosmetics render plan 6)
+        if (row != null && row.family().equals("banner")) CosmeticExtras.held(m, v, light, overlay, e, item);
         m.pop();
         return true;
     }

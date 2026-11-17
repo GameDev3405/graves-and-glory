@@ -63,6 +63,7 @@ public final class GearModels implements SimpleSynchronousResourceReloadListener
         }
         armour = Collections.unmodifiableMap(a); weapons = Collections.unmodifiableMap(w);
         CommanderClips.reload(manager);
+        CosmeticExtras.reload(); // the banner flags it read from these files
         TroopModelLoader.LOG.info("[gear-models] {} armour pieces, {} weapons", a.size(), w.size());
     }
 
