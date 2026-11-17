@@ -39,7 +39,8 @@ public final class CosmeticGrants {
         var claims = p.progression == null ? null : p.progression.claims;
         List<String> fresh = new ArrayList<>();
         for (String id : Cosmetics.earned(maxRenown(p), maxMastery(p), claims)) if (p.cosmetics.add(id)) fresh.add(id);
-        if (fresh.contains("skin_proven")) p.cosmeticSlots.put("skin", "skin_proven");
+        // Proven goes on when first granted, and whenever it is owned with the skin slot never set (a rollback or an old save); an explicit none stays
+        if (fresh.contains("skin_proven") || p.cosmetics.contains("skin_proven") && !p.cosmeticSlots.containsKey(Cosmetics.SKIN)) p.cosmeticSlots.put(Cosmetics.SKIN, "skin_proven");
         return fresh;
     }
 

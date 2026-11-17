@@ -54,8 +54,11 @@ public final class CosmeticExtras {
     /** Harness probes: what the last frames drew ("held:<id>", "planted:<id>", "pattern:<n>" for a flag's layer count, "title:<text>"), cleared by begin(). */
     static final Set<String> drawn = ConcurrentHashMap.newKeySet();
     static final Set<String> drawing = ConcurrentHashMap.newKeySet();
+    /** Set by the harness only: while false nothing is recorded (no probe strings in a normal frame). */
+    static volatile boolean probing;
     /** Harness: the extra drawn per frame is written to drawing, then swapped into drawn at the next frame's start. */
-    static void begin() { drawn.clear(); drawn.addAll(drawing); drawing.clear(); }
+    static void begin() { if (!probing) return; drawn.clear(); drawn.addAll(drawing); drawing.clear(); }
+    static void probe(String a, String b) { if (probing) drawing.add(a + b); }
 
     /**
      * A flag's frame in the current matrix's units (blocks): o the top corner on the pole side of the flag's mid-plane, u across the flag,
@@ -107,39 +110,57 @@ public final class CosmeticExtras {
                 }
                 default -> any = false; // skin_proven draws on the troops (GeoTroopRenderer), not the banner
             }
-            if (any) drawing.add(record + ":" + id);
+            if (any) probe(record + ":", id);
         }
     }
 
     /** A box between flag coordinates (u0..u1, v0..v1, n0..n1 in blocks along the normal), every face in one swatch, drawn without culling. */
     static void box(VertexConsumer vc, MatrixStack.Entry me, Frame f, float u0, float u1, float v0, float v1, float n0, float n1, int cell, int light) {
         Matrix4f pm = me.getPositionMatrix();
-        Vector3f[] c = new Vector3f[8];
-        for (int i = 0; i < 8; i++) c[i] = f.at((i & 1) == 0 ? u0 : u1, (i & 2) == 0 ? v0 : v1, (i & 4) == 0 ? n0 : n1);
+        for (int i = 0; i < 8; i++) {
+            float fu = (i & 1) == 0 ? u0 : u1, fv = (i & 2) == 0 ? v0 : v1, fn = (i & 4) == 0 ? n0 : n1;
+            Vector3f c = CORNERS[i];
+            c.set(f.o()).fma(fu, f.u()).fma(fv, f.v()).fma(fn, f.n());
+            pm.transformPosition(c);
+        }
         float s0 = (cell % 4) * 4 / 16f + .01f, s1 = s0 + 4 / 16f - .02f, t0 = (cell / 4) * 4 / 16f + .01f, t1 = t0 + 4 / 16f - .02f;
-        int[][] faces = {{4, 5, 7, 6}, {1, 0, 2, 3}, {0, 1, 5, 4}, {6, 7, 3, 2}, {0, 4, 6, 2}, {5, 1, 3, 7}}; // front, back, top, bottom, pole side, far side
-        Vector3f[] normals = {new Vector3f(f.n()), new Vector3f(f.n()).negate(), new Vector3f(f.v()).normalize().negate(), new Vector3f(f.v()).normalize(), new Vector3f(f.u()).normalize().negate(), new Vector3f(f.u()).normalize()};
-        float[][] uv = {{s0, t0}, {s1, t0}, {s1, t1}, {s0, t1}};
         for (int k = 0; k < 6; k++) {
-            Vector3f nn = me.getNormalMatrix().transform(new Vector3f(normals[k])).normalize();
+            Vector3f nn = NORMAL.set(k < 2 ? f.n() : k < 4 ? f.v() : f.u());
+            if (k % 2 == (k < 2 ? 1 : 0)) nn.negate(); // front +n, back -n, top -v, bottom +v, pole side -u, far side +u
+            me.getNormalMatrix().transform(nn).normalize();
+            int[] face = FACES[k];
             for (int j = 0; j < 4; j++) {
-                Vector3f p = pm.transformPosition(new Vector3f(c[faces[k][j]]));
-                vc.vertex(p.x, p.y, p.z, 0xFFFFFFFF, uv[j][0], uv[j][1], OverlayTexture.DEFAULT_UV, light, nn.x, nn.y, nn.z);
+                Vector3f p = CORNERS[face[j]];
+                vc.vertex(p.x, p.y, p.z, 0xFFFFFFFF, j == 0 || j == 3 ? s0 : s1, j < 2 ? t0 : t1, OverlayTexture.DEFAULT_UV, light, nn.x, nn.y, nn.z);
             }
         }
     }
+    /** box's faces as corner indices (front, back, top, bottom, pole side, far side) and its scratch vectors (render thread only). */
+    private static final int[][] FACES = {{4, 5, 7, 6}, {1, 0, 2, 3}, {0, 1, 5, 4}, {6, 7, 3, 2}, {0, 4, 6, 2}, {5, 1, 3, 7}};
+    private static final Vector3f[] CORNERS = {new Vector3f(), new Vector3f(), new Vector3f(), new Vector3f(), new Vector3f(), new Vector3f(), new Vector3f(), new Vector3f()};
+    private static final Vector3f NORMAL = new Vector3f();
 
     // ---- the held banner (CommanderGearFeature) ----
 
     /** One weapon file's flag: its two faces (corners in pixels, with their sheet texels) and the pole's top; null when the file has none. */
-    record Flag(float[][] front, float[][] frontUv, float[][] back, float[][] backUv, float[] poleTop) {}
-    private static final Map<String, Optional<Flag>> FLAGS = new ConcurrentHashMap<>();
+    record Flag(float[][] front, float[][] frontUv, float[][] back, float[][] backUv, float[] poleTop, Frame frame, Vector3f frontCentre, Vector3f backCentre) {}
+    /** The flags read so far, by item then rarity (index 0 to 7); MISSING for a file or rarity without one. */
+    private static final Map<String, Flag[]> FLAGS = new ConcurrentHashMap<>();
+    private static final Flag MISSING = new Flag(null, null, null, null, null, null, null, null);
     /** Forgets the cached flags (a resource reload). */
     static void reload() { FLAGS.clear(); }
 
     /** The flag of a banner weapon at a rarity, read once from models/gear/weapon/<item>.json: the two largest quads whose sheet region is no more than four times as tall as wide. */
     static Flag flag(String item, int rarity) {
-        return FLAGS.computeIfAbsent(item + "#" + rarity, k -> {
+        Flag[] row = FLAGS.computeIfAbsent(item, k -> new Flag[8]);
+        int r = Math.max(0, Math.min(7, rarity));
+        Flag f = row[r];
+        if (f == null) row[r] = f = read(item, rarity).orElse(MISSING);
+        return f == MISSING ? null : f;
+    }
+
+    static Optional<Flag> read(String item, int rarity) {
+        {
             try {
                 var res = MinecraftClient.getInstance().getResourceManager().getResource(Identifier.of(TroopModels.NAMESPACE, "models/gear/weapon/" + item + ".json"));
                 if (res.isEmpty()) return Optional.empty();
@@ -152,7 +173,7 @@ public final class CosmeticExtras {
                 System.err.println("[Graves and Glory] cosmetic flag of " + item + " unreadable: " + e);
                 return Optional.empty();
             }
-        }).orElse(null);
+        }
     }
 
     static Flag flagOf(JsonArray quads) {
@@ -181,7 +202,9 @@ public final class CosmeticExtras {
             float best = Float.MAX_VALUE;
             for (float[] p : poles) for (Vector3f c : corners(p)) { float d = new Vector3f(c).sub(tl).dot(down); if (d < best) { best = d; top = new float[]{c.x, c.y, c.z}; } }
         }
-        return new Flag(pts(a), uvs(a), pts(b), uvs(b), top);
+        Flag raw = new Flag(pts(a), uvs(a), pts(b), uvs(b), top, null, null, null);
+        Frame f = frame(raw);
+        return f == null ? null : new Flag(raw.front(), raw.frontUv(), raw.back(), raw.backUv(), top, f, centre(raw.front()), centre(raw.back()));
     }
     static double area(float[] v) {
         Vector3f p0 = new Vector3f(v[0], v[1], v[2]), a = new Vector3f(v[3], v[4], v[5]).sub(p0), b = new Vector3f(v[9], v[10], v[11]).sub(p0);
@@ -236,20 +259,19 @@ public final class CosmeticExtras {
             for (var layer : layers.layers()) {
                 VertexConsumer vc = TexturedRenderLayers.getBannerPatternTextureId(layer.pattern()).getVertexConsumer(vcp, RenderLayer::getEntityNoOutline);
                 int argb = 0xFF000000 | (layer.color().getEntityColor() & 0xFFFFFF);
-                canvas(m, vc, fl.front(), fl.frontUv(), centre(fl.back()), argb, light, overlay);
-                canvas(m, vc, fl.back(), fl.backUv(), centre(fl.front()), argb, light, overlay);
+                canvas(m, vc, fl.front(), fl.frontUv(), fl.frontCentre(), fl.backCentre(), argb, light, overlay);
+                canvas(m, vc, fl.back(), fl.backUv(), fl.backCentre(), fl.frontCentre(), argb, light, overlay);
                 drawnLayers++;
             }
-            drawing.add("pattern:" + drawnLayers);
+            if (probing) probe("pattern:", Integer.toString(drawnLayers));
         }
-        Frame f = frame(fl);
-        if (f != null) extras(m, vcp, light, f, CosmeticSync.client(e).slots(), "held");
+        extras(m, vcp, light, fl.frame(), CosmeticSync.client(e).slots(), "held");
     }
 
     /** One face of the mesh's flag as a vanilla banner canvas (the pattern sprite's front, 20 by 40 of its 64 by 64), lifted off the cloth away from the other face. */
-    static void canvas(MatrixStack m, VertexConsumer vc, float[][] pts, float[][] uv, Vector3f otherCentre, int argb, int light, int overlay) {
+    static void canvas(MatrixStack m, VertexConsumer vc, float[][] pts, float[][] uv, Vector3f c, Vector3f otherCentre, int argb, int light, int overlay) {
         float u0 = min(uv, 0), u1 = max(uv, 0), t0 = min(uv, 1), t1 = max(uv, 1);
-        Vector3f c = centre(pts), out = new Vector3f(c).sub(otherCentre);
+        Vector3f out = new Vector3f(c).sub(otherCentre);
         if (out.lengthSquared() < 1e-10f) out.set(0, 0, 1);
         out.normalize();
         Matrix4f pm = m.peek().getPositionMatrix();
@@ -269,7 +291,7 @@ public final class CosmeticExtras {
 
     static void world(WorldRenderContext ctx) {
         var mc = MinecraftClient.getInstance();
-        if (mc.world == null || ctx.consumers() == null || ctx.matrixStack() == null) return;
+        if (CosmeticSync.ENTRIES.isEmpty() || mc.world == null || ctx.consumers() == null || ctx.matrixStack() == null) return; // nothing synced: nothing to draw
         var cam = ctx.camera().getPos();
         MatrixStack m = ctx.matrixStack();
         VertexConsumerProvider vcp = ctx.consumers();
@@ -314,6 +336,6 @@ public final class CosmeticExtras {
         if (!sneaking) font.draw(title, x, 0, 0x40FFFFFF & TITLE_INK | 0x40000000, false, pm, vcp, TextRenderer.TextLayerType.SEE_THROUGH, 0x30000000, light);
         font.draw(title, x, 0, sneaking ? 0x80FFFFFF & TITLE_INK | 0x80000000 : TITLE_INK, false, pm, vcp, TextRenderer.TextLayerType.NORMAL, sneaking ? 0x30000000 : 0, light);
         m.pop();
-        drawing.add("title:" + title);
+        probe("title:", title);
     }
 }

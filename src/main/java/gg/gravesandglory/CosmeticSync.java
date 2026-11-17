@@ -45,7 +45,7 @@ public final class CosmeticSync {
         if (b == null || e == null) return null;
         UUID owner = null;
         if (e instanceof ServerPlayerEntity p) owner = p.getUuid();
-        else if (e instanceof GravesAndGlory.ArmySupplyBanner banner && banner.squad() != null && !banner.squad().bot) owner = banner.squad().owner;
+        else if (e instanceof GravesAndGlory.ArmySupplyBanner banner && banner.block != null && banner.squad() != null && !banner.squad().bot) owner = banner.squad().owner; // a planted banner only: Siege's gate target (SiegeMode.GateTarget) is a stand with no block
         if (owner == null) return null;
         Profile pr = b.campaign.profile(owner);
         return new Entry(Cosmetics.normalize(pr.cosmetics, pr.cosmeticSlots), Cosmetics.wireTitle(pr.progression == null ? null : pr.progression.title));

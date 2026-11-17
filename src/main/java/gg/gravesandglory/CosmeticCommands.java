@@ -62,9 +62,16 @@ final class CosmeticCommands {
     }
 
     static String grant(Profile p, String id) {
-        if (id.equals("all")) { for (var i : Cosmetics.CATALOGUE) p.cosmetics.add(i.id()); return "granted every cosmetic."; }
+        if (id.equals("all")) { for (var i : Cosmetics.CATALOGUE) if (p.cosmetics.add(i.id())) proven(p, i.id()); return "granted every cosmetic."; }
         if (Cosmetics.item(id) == null) return "unknown cosmetic " + id + ".";
-        return p.cosmetics.add(id) ? "granted " + Cosmetics.name(id) + "." : "already owns " + Cosmetics.name(id) + ".";
+        if (!p.cosmetics.add(id)) return "already owns " + Cosmetics.name(id) + ".";
+        proven(p, id);
+        return "granted " + Cosmetics.name(id) + ".";
+    }
+
+    /** A newly granted Proven skin goes on, as an earned one does (CosmeticGrants.apply). */
+    static void proven(Profile p, String id) {
+        if (id.equals("skin_proven")) p.cosmeticSlots.put(Cosmetics.SKIN, id);
     }
 
     static String revoke(Profile p, String id) {

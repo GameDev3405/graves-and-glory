@@ -20,6 +20,8 @@ public final class Cosmetics {
     static final List<String> LAYER_ORDER = List.of("standard", "frame", "trim", "pennant");
     /** What an equip names to empty a slot. */
     public static final String NONE = "none";
+    /** The skin slot: equip none stores NONE there (Proven turned off on purpose); a missing key means never set, and an owned Proven is put back on. */
+    public static final String SKIN = "skin";
     /** Vanilla draws at most six pattern layers on a banner; more are dropped, so the catalogue never asks for more. */
     public static final int MAX_LAYERS = 6;
     /** The default title every profile owns: it is no title on the wire (CosmeticSync sends ""), so nobody wears a "Recruit" line. */
@@ -83,6 +85,7 @@ public final class Cosmetics {
             String id = slots.get(slot);
             Item i = item(id);
             if (i != null && i.slot().equals(slot) && owned != null && owned.contains(id)) out.put(slot, id);
+            else if (SKIN.equals(slot) && NONE.equals(id)) out.put(slot, NONE); // the skin turned off on purpose, kept apart from never set
         }
         return out;
     }
@@ -93,7 +96,7 @@ public final class Cosmetics {
      */
     public static String equip(Set<String> owned, Map<String, String> slots, String slot, String id) {
         if (slot == null || !SLOTS.contains(slot)) return "Unknown cosmetic slot.";
-        if (NONE.equals(id)) { slots.remove(slot); return "Cosmetic slot cleared: " + slot + "."; }
+        if (NONE.equals(id)) { if (SKIN.equals(slot)) slots.put(slot, NONE); else slots.remove(slot); return "Cosmetic slot cleared: " + slot + "."; }
         Item i = item(id);
         if (i == null) return "Unknown cosmetic.";
         if (!i.slot().equals(slot)) return i.name() + " does not go in the " + slot + " slot.";
@@ -126,7 +129,7 @@ public final class Cosmetics {
     /** The slot map as cosmetic_v1 carries it: "slot=id" in SLOTS order. */
     public static List<String> wire(Map<String, String> slots) {
         List<String> out = new ArrayList<>();
-        if (slots != null) for (String slot : SLOTS) { String id = slots.get(slot); if (id != null) out.add(slot + "=" + id); }
+        if (slots != null) for (String slot : SLOTS) { String id = slots.get(slot); if (item(id) != null) out.add(slot + "=" + id); }
         return out;
     }
     /** A cosmetic_v1 list read back into a slot map; unknown slots or ids are dropped (an older client reading a newer server). */

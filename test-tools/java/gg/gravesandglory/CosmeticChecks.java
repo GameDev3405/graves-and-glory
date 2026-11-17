@@ -64,6 +64,7 @@ final class CosmeticChecks implements Phase1Checks.Suite {
     }
 
     @Override public void cleanup(MinecraftClient c) {
+        CosmeticExtras.probing = false;
         c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;
         if (!restored && c.getServer() != null) Phase1Checks.server(c, b -> restore());
     }
@@ -85,6 +86,7 @@ final class CosmeticChecks implements Phase1Checks.Suite {
         switch (stage) {
             case 0 -> { // the Legendary war banner, every cosmetic owned, the knight at Mastery II, nothing worn
                 if (tick != 20) return;
+                CosmeticExtras.probing = true;
                 c.setScreen(null);
                 UUID id = c.player.getUuid(); player = id;
                 Phase1Checks.server(c, b -> {
@@ -204,7 +206,7 @@ final class CosmeticChecks implements Phase1Checks.Suite {
                     if (knight != null) { knight.mob.discard(); b.units.remove(knight); knight = null; }
                     var pr = b.campaign.profile(player);
                     pr.progression.title = "Recruit";
-                    wear(b, on ? Map.of("skin", "skin_proven") : Map.of());
+                    wear(b, Map.of("skin", on ? "skin_proven" : Cosmetics.NONE)); // off is an explicit none: an unset skin slot puts an owned Proven back on
                     var p = b.server.getPlayerManager().getPlayer(player);
                     var s = b.squads.get(player);
                     if (p == null || s == null) { why += "no player or squad for the knight; "; return; }

@@ -49,9 +49,15 @@ public final class CosmeticsCheck {
         check(CosmeticGrants.apply(p).isEmpty(), "a second apply grants nothing");
         check(CosmeticGrants.lines(List.of("pennant")).equals(List.of("New cosmetic: Renown Pennant")), "the notice names the cosmetic");
         p.cosmeticSlots.remove("skin");
-        check(CosmeticGrants.apply(p).isEmpty() && !p.cosmeticSlots.containsKey("skin"), "turning Proven off survives another apply");
+        CosmeticGrants.apply(p);
+        check("skin_proven".equals(p.cosmeticSlots.get("skin")), "an owned Proven with the skin slot never set goes back on (the rollback case)");
+        check(Cosmetics.equip(p.cosmetics, p.cosmeticSlots, "skin", Cosmetics.NONE).startsWith("Cosmetic slot cleared") && Cosmetics.NONE.equals(p.cosmeticSlots.get("skin")), "turning Proven off stores an explicit none");
+        check(CosmeticGrants.apply(p).isEmpty() && Cosmetics.NONE.equals(p.cosmeticSlots.get("skin")), "turning Proven off survives another apply");
         p.sanitize();
-        check(!p.cosmeticSlots.containsKey("skin"), "turning Proven off survives a reload (sanitize)");
+        check(Cosmetics.NONE.equals(p.cosmeticSlots.get("skin")), "turning Proven off survives a reload (sanitize)");
+        var gs = new com.google.gson.Gson(); Profile off = gs.fromJson(gs.toJson(p), Profile.class); off.sanitize();
+        check(Cosmetics.NONE.equals(off.cosmeticSlots.get("skin")), "turning Proven off survives a save and load");
+        check(Cosmetics.wire(p.cosmeticSlots).stream().noneMatch(w -> w.startsWith("skin=")), "an explicit none is not sent on the wire");
         // sanitize grants retroactively too, from Renown in a second House
         Profile q = new Profile();
         q.renown.put(Profile.houseOrder().get(1), renownPoints(4));
