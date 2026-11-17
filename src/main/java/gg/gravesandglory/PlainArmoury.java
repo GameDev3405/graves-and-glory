@@ -100,7 +100,7 @@ final class PlainArmoury {
             int price = LevelMath.price(t.rarity(), tier);
             String why = Veterans.refusal(b, s, t, track, tier, buyHere);
             String level = "For " + t.name() + " soldiers of Rank " + tier + " and up.";
-            if (state == LevelMath.Buy.BOUGHT) { m.icon(slot, PlainMenu.named(weapon ? Items.IRON_SWORD : Items.IRON_CHESTPLATE, name + ": bought", Formatting.GREEN, level)); return; }
+            if (state == LevelMath.Buy.BOUGHT) { ItemStack done = PlainMenu.named(weapon ? Items.IRON_SWORD : Items.IRON_CHESTPLATE, name + ": bought", Formatting.GREEN, level); PlainGear.hideAttributes(done); m.icon(slot, done); return; }
             Item item = state == LevelMath.Buy.LOCKED ? Items.IRON_BARS : weapon ? (tier == 2 ? Items.IRON_SWORD : Items.DIAMOND_SWORD) : (tier == 2 ? Items.IRON_CHESTPLATE : Items.DIAMOND_CHESTPLATE);
             ItemStack st;
             if (why.isEmpty()) {

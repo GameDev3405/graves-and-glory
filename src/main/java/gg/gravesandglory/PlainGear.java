@@ -116,7 +116,7 @@ final class PlainGear {
             m.icon(13, piece(g, "", tip));
             m.button(9, PlainMenu.named(Items.ARROW, "Back to the Arsenal", Formatting.WHITE), pl -> { cardUid = -1; armedUid = -1; });
             String slot = Gear.item(g.item).slot();
-            if (worn) m.command(29, PlainMenu.named(Items.LEATHER_HELMET, "Unequip", Formatting.YELLOW, "Takes it off the " + GearView.SLOT_WORDS.get(slot) + " slot."), "gear:unequip:" + slot);
+            if (worn) m.command(29, PlainMenu.named(Items.BARRIER, "Unequip", Formatting.YELLOW, "Takes it off the " + GearView.SLOT_WORDS.get(slot) + " slot."), "gear:unequip:" + slot);
             else {
                 List<String> l = new ArrayList<>(List.of("Wear it in the " + GearView.SLOT_WORDS.get(slot) + " slot."));
                 l.addAll(GearView.compare(v, g));
@@ -124,10 +124,10 @@ final class PlainGear {
             }
             int value = Forge.breakdownValue(g);
             if (worn) m.icon(31, PlainMenu.named(Items.GRAY_DYE, "Break down", Formatting.DARK_GRAY, "Unequip it first."));
-            else if (GearView.confirmBreakdown(g) && armedUid != uid)
-                m.button(31, PlainMenu.named(Items.TNT, "Break down for " + value + " gear shards", Formatting.RED, "A " + Gear.rarity(g.rarity).name() + " piece: click again to confirm."), pl -> armedUid = uid);
-            else m.command(31, PlainMenu.named(Items.TNT, armedUid == uid ? "Confirm: break it down" : "Break down for " + value + " gear shards", Formatting.RED,
-                "Destroys the piece for " + value + " gear shards."), "forge:breakdown:" + uid);
+            else if (GearView.confirmBreakdown(g)) { // Epic and above ask first; the confirm sits on another slot, so a double-click never confirms
+                m.button(31, PlainMenu.named(Items.TNT, "Break down for " + value + " gear shards", Formatting.RED, "A " + Gear.rarity(g.rarity).name() + " piece: confirm below."), pl -> armedUid = uid);
+                if (armedUid == uid) m.command(40, PlainMenu.named(Items.TNT, "Confirm: break it down", Formatting.RED, "Destroys the piece for " + value + " gear shards."), "forge:breakdown:" + uid);
+            } else m.command(31, PlainMenu.named(Items.TNT, "Break down for " + value + " gear shards", Formatting.RED, "Destroys the piece for " + value + " gear shards."), "forge:breakdown:" + uid);
             int cost = Forge.repairCost(g);
             if (g.durability >= Gear.forge().maxDurability()) m.icon(33, PlainMenu.named(Items.GRAY_DYE, "Repair", Formatting.DARK_GRAY, "It needs no repair."));
             else if (v.gearShards() < cost) m.icon(33, PlainMenu.named(Items.GRAY_DYE, "Repair for " + cost + " gear shards", Formatting.DARK_GRAY, "Repair costs " + cost + " gear shards."));
@@ -175,8 +175,10 @@ final class PlainGear {
             for (int i = 0; i < FORGE_SLOTS.size(); i++) {
                 String s = FORGE_SLOTS.get(i);
                 boolean on = s.equals(forgeSlot);
-                m.button(10 + i, PlainMenu.named(forgeItem(s), cap(s) + (on ? " (chosen)" : ""), on ? Formatting.GREEN : Formatting.WHITE,
-                    "A roll costs " + Forge.rollCost(s) + " gear shards.", on ? "Roll draws from this slot." : "Click to roll this slot."), on ? null : pl -> forgeSlot = s);
+                ItemStack st = PlainMenu.named(forgeItem(s), cap(s) + (on ? " (chosen)" : ""), on ? Formatting.GREEN : Formatting.WHITE,
+                    "A roll costs " + Forge.rollCost(s) + " gear shards.", on ? "Roll draws from this slot." : "Click to roll this slot.");
+                hideAttributes(st);
+                m.button(10 + i, st, on ? null : pl -> forgeSlot = s);
             }
             String why = GearView.rollRefusal(v, forgeSlot);
             int cost = Forge.rollCost(forgeSlot);
@@ -190,14 +192,16 @@ final class PlainGear {
             m.icon(20, PlainMenu.named(Items.BOOK, "Odds", Formatting.WHITE, odds(v).toArray(String[]::new)));
             int dupes = GearView.duplicatesValue(v);
             if (dupes <= 0) m.icon(38, PlainMenu.named(Items.GRAY_DYE, "Break down all duplicates", Formatting.DARK_GRAY, "You have no duplicates to break down."));
-            else if (!dupesArmed) m.button(38, PlainMenu.named(Items.TNT, "Break down all duplicates", Formatting.RED, "Keeps the best of each; +" + dupes + " gear shards.", "Click, then confirm."), pl -> dupesArmed = true);
-            else m.button(38, PlainMenu.named(Items.TNT, "Confirm: break down duplicates", Formatting.RED, "+" + dupes + " gear shards. Click to confirm."), pl -> {
+            else {
+                m.button(38, PlainMenu.named(Items.TNT, "Break down all duplicates", Formatting.RED, "Keeps the best of each; +" + dupes + " gear shards.", "Click, then confirm below."), pl -> dupesArmed = true);
+                if (dupesArmed) m.button(47, PlainMenu.named(Items.TNT, "Confirm: break down duplicates", Formatting.RED, "+" + dupes + " gear shards. Click to confirm."), pl -> {
                 dupesArmed = false;
                 var b = GravesAndGlory.battle;
                 if (b == null) return;
                 b.command(pl, "forge:breakdown-duplicates");
                 PlainHud.notices(pl);
             });
+            }
             int repair = GearView.repairAllCost(v);
             if (repair <= 0) m.icon(40, PlainMenu.named(Items.GRAY_DYE, "Repair all", Formatting.DARK_GRAY, "It needs no repair."));
             else m.command(40, PlainMenu.named(Items.SMITHING_TABLE, "Repair all (" + repair + " gear shards)", v.gearShards() >= repair ? Formatting.GREEN : Formatting.RED,
@@ -241,6 +245,7 @@ final class PlainGear {
         List<String> t = new ArrayList<>(GearView.tooltip(v, g));
         if (!t.isEmpty()) t.remove(t.size() - 1);
         if (!t.isEmpty()) t.remove(0); // the name is the stack's
+        if (GearView.worn(v, g.uid)) t.add("Worn");
         return t;
     }
 
