@@ -21,7 +21,8 @@ import net.minecraft.world.Heightmap;
 
 /**
  * UNSHIPPED plain-client test commands (port plan P3; the P2 spike's /plainspike), only with -Dgravesandglory.plainProbe=true
- * (build.gradle -PplainProbe). /plainprobe state|writs|practice|wagon|blocks|recruit|keyorder|slot|view|aim|overview, op 2, for the
+ * (build.gradle -PplainProbe). /plainprobe state|writs|practice|wagon|blocks|recruit|keyorder|slot|view|aim|overview and, for P4,
+ * open|inv|relic|squad, op 2, for the
  * scripted RCON session (tools/plain_clients). Every line goes to the server log with a "[plain-probe]" prefix.
  */
 public final class PlainProbe implements ModInitializer {
@@ -63,7 +64,15 @@ public final class PlainProbe implements ModInitializer {
             .then(CommandManager.literal("aim").then(CommandManager.argument("player", EntityArgumentType.player()).then(CommandManager.argument("dist", FloatArgumentType.floatArg(1, 600))
                 .executes(c -> aim(EntityArgumentType.getPlayer(c, "player"), FloatArgumentType.getFloat(c, "dist"))))))
             .then(CommandManager.literal("overview").then(CommandManager.argument("player", EntityArgumentType.player())
-                .executes(c -> overview(EntityArgumentType.getPlayer(c, "player")))))));
+                .executes(c -> overview(EntityArgumentType.getPlayer(c, "player")))))
+            .then(CommandManager.literal("open").then(CommandManager.argument("player", EntityArgumentType.player()).then(CommandManager.argument("page", StringArgumentType.word())
+                .executes(c -> open(EntityArgumentType.getPlayer(c, "player"), StringArgumentType.getString(c, "page"))))))
+            .then(CommandManager.literal("inv").then(CommandManager.argument("player", EntityArgumentType.player())
+                .executes(c -> { String st = inv(EntityArgumentType.getPlayer(c, "player")); c.getSource().sendFeedback(() -> Text.literal(st), false); return 1; })))
+            .then(CommandManager.literal("relic").then(CommandManager.argument("player", EntityArgumentType.player())
+                .executes(c -> relic(EntityArgumentType.getPlayer(c, "player")))))
+            .then(CommandManager.literal("squad").then(CommandManager.argument("player", EntityArgumentType.player())
+                .executes(c -> { String st = squad(EntityArgumentType.getPlayer(c, "player")); c.getSource().sendFeedback(() -> Text.literal(st), false); return 1; })))));
     }
 
     static String state() {
@@ -78,6 +87,86 @@ public final class PlainProbe implements ModInitializer {
         String st = "state ready=" + b.ready + " running=" + b.running + " time=" + b.time + " intro=" + b.campaign.introUntil + " players=" + flags + "squads=" + sq + " units=" + types;
         log(st);
         return st;
+    }
+
+    /** P4: opens a plain War Table page by name. */
+    static int open(ServerPlayerEntity p, String page) {
+        switch (page) {
+            case "wartable" -> PlainWarTable.open(p);
+            case "recruit" -> PlainRecruit.open(p, null);
+            case "banner" -> PlainBanner.open(p);
+            case "contracts" -> PlainContracts.open(p);
+            case "chapter" -> PlainChapter.open(p);
+            case "friends" -> PlainFriends.open(p);
+            case "field" -> PlainField.open(p);
+            case "results" -> PlainResults.open(p);
+            case "gear" -> PlainGear.open(p);
+            case "armoury" -> PlainArmoury.open(p);
+            default -> { log("open: no page " + page); return 0; }
+        }
+        log("open " + page + " for " + p.getName().getString() + ": " + p.currentScreenHandler.getClass().getSimpleName() + " sync " + p.currentScreenHandler.syncId);
+        return 1;
+    }
+
+    /** P4 dupe checks: the player's inventory (every non-empty slot as index:item*count[:plain kind]), the cursor, the open menu and
+     *  whether every stack in it is a vanilla item, and item entities within 16 blocks. The harness compares it before and after each
+     *  exploit packet. */
+    static String inv(ServerPlayerEntity p) {
+        StringBuilder sb = new StringBuilder("inv");
+        var in = p.getInventory();
+        for (int i = 0; i < in.size(); i++) {
+            var st = in.getStack(i);
+            if (st.isEmpty()) continue;
+            String kind = PlainClients.kindOf(st);
+            sb.append(' ').append(i).append(':').append(Registries.ITEM.getId(st.getItem())).append('*').append(st.getCount()).append(kind == null ? "" : ":" + kind);
+        }
+        var h = p.currentScreenHandler;
+        sb.append(" cursor=").append(h.getCursorStack().isEmpty() ? "empty" : Registries.ITEM.getId(h.getCursorStack().getItem()) + "*" + h.getCursorStack().getCount());
+        sb.append(" screen=").append(h.getClass().getSimpleName()).append('#').append(h.syncId);
+        if (h instanceof PlainMenu m) {
+            int modded = 0, filled = 0;
+            for (int i = 0; i < m.size; i++) {
+                var st = m.inv.getStack(i);
+                if (st.isEmpty()) continue;
+                filled++;
+                if (!Registries.ITEM.getId(st.getItem()).getNamespace().equals("minecraft")) modded++;
+            }
+            int pane = -1, button = -1;
+            for (int i = 0; i < m.size; i++) { boolean isPane = m.inv.getStack(i).isOf(net.minecraft.item.Items.GRAY_STAINED_GLASS_PANE); if (isPane && pane < 0) pane = i; if (!isPane && !m.inv.getStack(i).isEmpty() && button < 0) button = i; }
+            sb.append(" menu=").append(m.size).append(" filled=").append(filled).append(" moditems=").append(modded).append(" pane=").append(pane).append(" button=").append(button);
+        }
+        int drops = p.getServerWorld().getEntitiesByClass(net.minecraft.entity.ItemEntity.class, p.getBoundingBox().expand(16), e -> true).size();
+        sb.append(" drops=").append(drops);
+        log(sb.toString());
+        return sb.toString();
+    }
+
+    /** P4: puts the first relic this build has behaviour for in the player's relic slot 1 (test only), so a practice battle seats it. */
+    static int relic(ServerPlayerEntity p) {
+        var pr = GravesAndGlory.battle.campaign.profile(p.getUuid());
+        for (var r : Spec.RELICS) {
+            var t = Commander.tuning(r.id());
+            if (t == null || RelicEffects.ACTIVES.get(t.effect()) == null) continue;
+            pr.relics.add(r.id());
+            String why = Gear.setRelic(pr, 0, r.id());
+            log("test relic for " + p.getName().getString() + ": " + r.id() + " in slot 1" + (why == null ? "" : " refused: " + why) + " (test only)");
+            return 1;
+        }
+        log("relic: none with behaviour");
+        return 0;
+    }
+
+    /** P4: a plain player's battle squad: the kept shape, each group's assignment (order/formation) and each relic slot's clock. */
+    static String squad(ServerPlayerEntity p) {
+        var b = GravesAndGlory.battle;
+        var s = b == null ? null : b.squads.get(p.getUuid());
+        if (s == null) { log("squad: none"); return "squad none"; }
+        StringBuilder sb = new StringBuilder("squad shape=" + PlainClients.SHAPE.get(p.getUuid()) + " formation=" + s.formation + " order=" + s.order + " tactics=" + PlainClients.ON_TACTICS.contains(p.getUuid()) + " assign=");
+        for (var e : s.assignments.entrySet()) sb.append(e.getKey()).append('/').append(e.getValue().order).append('/').append(e.getValue().formation).append(',');
+        sb.append(" relics=");
+        for (int i = 0; i < s.relicState.size(); i++) sb.append(i).append(':').append(Commander.relicIn(s, i)).append(":ready").append(Commander.readyIn(b, s, i)).append(":active").append(Commander.activeFor(b, s, i)).append(',');
+        log(sb.toString());
+        return sb.toString();
     }
 
     static void face(ServerPlayerEntity p, double x, double y, double z, Vec3d look) {

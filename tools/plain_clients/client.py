@@ -16,7 +16,7 @@ M2 = os.path.expanduser("~/.gradle/caches/modules-2/files-2.1")
 NAME = "PlainPlayer"
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 WM_KEYDOWN, WM_KEYUP = 0x0100, 0x0101
-KEYS = {"F2": (0x71, 0x3C), "ESC": (0x1B, 0x01), "1": (0x31, 0x02), "2": (0x32, 0x03), "3": (0x33, 0x04), "4": (0x34, 0x05), "5": (0x35, 0x06), "6": (0x36, 0x07), "F1": (0x70, 0x3B), "8": (0x38, 0x09), "Q": (0x51, 0x10)}
+KEYS = {"F2": (0x71, 0x3C), "ESC": (0x1B, 0x01), "1": (0x31, 0x02), "2": (0x32, 0x03), "3": (0x33, 0x04), "4": (0x34, 0x05), "5": (0x35, 0x06), "6": (0x36, 0x07), "F1": (0x70, 0x3B), "7": (0x37, 0x08), "8": (0x38, 0x09), "9": (0x39, 0x0A), "Q": (0x51, 0x10), "F": (0x46, 0x21)}
 
 
 def classpath():
@@ -183,6 +183,12 @@ class Session:
         self.rc("plainprobe recruit " + NAME)
         self.shot("recruit-menu", 3)
         press(self.hwnd, "ESC")
+        for page in ("wartable", "banner", "gear", "contracts", "chapter", "friends", "field", "results"):  # P4: the War Table pages
+            self.rc("plainprobe open %s %s" % (NAME, page))
+            self.shot("p4-" + page, 2.5)
+            press(self.hwnd, "ESC")
+            time.sleep(0.5)
+        self.rc("plainprobe relic " + NAME)  # a relic in slot 1 for the battle (test only)
         self.rc("execute as %s at @s run tp @s ~ ~ ~ -90 25" % NAME)  # face east, where the wagon spawns (4 blocks); the map blocks are barriers, invisible
         self.rc("plainprobe wagon " + NAME)
         self.rc("plainprobe blocks " + NAME)
@@ -194,14 +200,14 @@ class Session:
         self.shot("after-chunk-resend-barrier-markers", 6)
         self.rc("item replace entity %s weapon.offhand with minecraft:air" % NAME)
         self.rc("gamemode survival " + NAME)
-        q = "execute if entity @e[type=minecraft:item,nbt={Item:{components:{\"minecraft:custom_data\":{gg_plain:\"recruit\"}}}}]"
+        q = "execute if entity @e[type=minecraft:item,nbt={Item:{components:{\"minecraft:custom_data\":{gg_plain:\"wartable\"}}}}]"
         before = "passed" in self.rc(q)
-        self.rc("plainprobe slot %s 7" % NAME)  # the Recruit book, selected by the server so the key cannot miss
+        self.rc("plainprobe slot %s 7" % NAME)  # the War Table book, selected by the server so the key cannot miss
         time.sleep(1)
         press(self.hwnd, "Q")  # drop it: the server keeps it (PlainDropMixin)
         time.sleep(1.5)
         after = "passed" in self.rc(q)
-        print("  drop check: %s" % ("LEAK (the Recruit book is in the world)" if after and not before else "ok (the Recruit book stayed in the hotbar)" if not after else "unknown (items already near)"), flush=True)
+        print("  drop check: %s" % ("LEAK (the War Table book is in the world)" if after and not before else "ok (the War Table book stayed in the hotbar)" if not after else "unknown (items already near)"), flush=True)
         self.rc("execute as %s at @s run tp @s ~ ~ ~ 90 10" % NAME)  # face west, away from the wagon and blocks
         self.rc("plainprobe mage " + NAME)  # a lone mage, AI off, out of any battle
         self.shot("mage-as-witch-alone", 4)
@@ -230,6 +236,21 @@ class Session:
         press(self.hwnd, "3")  # key 3 = slot 2 = Charge
         self.shot("after-charge-key", 4)
         self.rc("plainprobe state")
+        # P4: F turns to the tactics page; key 4 = Wedge, key 6 = relic slot 1; F back; key 9 there = the Armoury
+        press(self.hwnd, "F")
+        self.shot("p4-tactics-page", 2)
+        press(self.hwnd, "4")
+        self.shot("p4-after-wedge-key", 3)
+        self.rc("plainprobe squad " + NAME)
+        press(self.hwnd, "6")
+        self.shot("p4-after-relic-key", 3)
+        self.rc("plainprobe squad " + NAME)
+        press(self.hwnd, "9")
+        self.shot("p4-armoury", 3)
+        press(self.hwnd, "ESC")
+        press(self.hwnd, "F")
+        time.sleep(1)
+        self.rc("plainprobe squad " + NAME)
         return 0
 
     def stop(self):
@@ -243,6 +264,11 @@ class Session:
         if os.path.exists(log):
             bad = [l.rstrip() for l in open(log, encoding="utf-8", errors="replace") if "ERROR" in l or "Exception" in l or "WARN" in l]
             print("client log: %d WARN/ERROR lines" % len(bad), flush=True)
+            lines = open(log, encoding="utf-8", errors="replace").read()
+            import re as _re
+            disc = len(_re.findall(r"Disconnect|Lost connection|Connection lost|kicked", lines, _re.I))
+            unknown = len(_re.findall(r"[Uu]nknown (registry|item|block|entity|id)|Unknown custom packet|unknown key|Failed to decode|Error decoding|Unknown packet", lines))
+            print("client P4 counts: disconnects=%d unknown-id/decode errors=%d" % (disc, unknown), flush=True)
             for l in bad[:40]:
                 print("  " + l[:300], flush=True)
             chat = [l.rstrip() for l in open(log, encoding="utf-8", errors="replace") if "[CHAT]" in l]
