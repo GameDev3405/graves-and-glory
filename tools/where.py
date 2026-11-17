@@ -16,7 +16,7 @@ STOP = set('a an and are as at be by does do for from how in is it of on or that
            'find me show list all every'.split())
 REL_RANK = {'design_key': 0, 'design_row': 0, 'design_ref': 2, 'spec_field': 1, 'spec_value': 1, 'spec_row': 1, 'file': 1, 'files': 3, 'animation_json': 0, 'attack_clips': 1, 'family_clips': 2, 'weapon': 3,
             'rig_module': 3, 'sound_arm': 3, 'plays': 4, 'sounds_json': 4, 'java_reader': 4, 'python_reader': 4, 'loaded_by': 5, 'attack_variant': 1, 'family_code': 2,
-            'texture_dir': 0, 'texture_dir_geo': 0, 'texture_art': 1, 'model': 1, 'builder': 0, 'builder_ref': 2, 'builder_import': 1, 'rig_entry': 2, 'spec_ref': 5}
+            'texture_dir': 0, 'texture_dir_geo': 0, 'texture_art': 1, 'model': 1, 'builder': 0, 'builder_ref': 2, 'builder_import': 1, 'rig_entry': 2, 'spec_ref': 5, 'trim_recipe': 2}
 
 
 def norm(s):

@@ -390,7 +390,7 @@ def troop(ov, dz, tid, allfiles, tables, thits, rig, bidx):
                 fs = [f for f in fs if f not in pngs]
             for f in fs:
                 if f.endswith('.animation.json') and '/animations/troop/' in f: continue   # the animation_json node below describes it with its clip names
-                ov.link(ent, ov.loc(k, f, 1, describe_file(f)), 'model' if f.endswith(('.geo.json', '.bbmodel')) or '/models/' in f else 'file')
+                ov.link(ent, ov.loc(k, f, 1, describe_file(f)), 'model' if f.endswith(('.geo.json', '.bbmodel')) or '/models/' in f else 'trim_recipe' if f.startswith('art/geo_trim/') else 'file')
     # ---- troop_rig.py entry (art dir, builder module, weapon module, weapon id), weapon art json, builder scripts and their imports
     rigent = rig.get(tid)
     if rigent:
@@ -448,6 +448,7 @@ def describe_file(f):
     if '/troop_rig/' in f: kind = 'troop rig rules json (renderer reads it)'
     if f.startswith('art/troops/') and n.endswith('.json'): kind = 'troop art json (bones, skins, weapon)'
     if f.startswith('art/hand/'): kind = 'hand-built art builder'
+    if f.startswith('art/geo_trim/'): kind = 'Proven trim recipe (build_geo_trim.py)'
     return f'{kind}: {n}'
 
 
