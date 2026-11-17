@@ -2,22 +2,13 @@ package gg.gravesandglory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.LoreComponent;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.registry.Registries;
-import net.minecraft.screen.GenericContainerScreenHandler;
-import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
-import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -80,85 +71,62 @@ final class PlainRecruit {
 
     /** Opens the page on a House (null: the first fieldable House). */
     static void open(ServerPlayerEntity p, String houseId) {
-        var b = GravesAndGlory.battle;
-        if (b == null) return;
-        Profile pr = b.campaign.profile(p.getUuid());
-        List<Spec.HousesRow> houses = Arrays.stream(Spec.HOUSES).filter(Spec.HousesRow::fieldable).toList();
-        if (houses.isEmpty()) houses = Arrays.asList(Spec.HOUSES);
-        String house = houseId != null ? houseId : houses.get(0).id();
-        var inv = new SimpleInventory(54);
-        Map<Integer, String> actions = new HashMap<>();
-        ItemStack pane = named(Items.GRAY_STAINED_GLASS_PANE, Text.literal(" "), List.of());
-        for (int i = 0; i < 54; i++) inv.setStack(i, pane.copy());
-        int col = 0;
-        for (var h : houses) {
-            if (col > 4) break;
-            boolean on = h.id().equals(house);
-            Item banner = switch (h.id()) { case "gilded" -> Items.YELLOW_BANNER; case "graveborn" -> Items.BLACK_BANNER; case "ironclad" -> Items.GRAY_BANNER; case "tidecallers" -> Items.CYAN_BANNER; default -> Items.GREEN_BANNER; };
-            inv.setStack(col, named(banner, Text.empty().append(crest(h.id())).append(Text.literal(h.name()).formatted(on ? Formatting.GOLD : Formatting.WHITE)),
-                List.of(Text.literal("Shards " + pr.shards.getOrDefault(h.id(), 0) + "  Renown " + pr.renown.getOrDefault(h.id(), 0)).formatted(Formatting.GRAY),
-                    Text.literal(on ? "Shown" : "Click to show").formatted(on ? Formatting.GREEN : Formatting.DARK_GRAY))));
-            actions.put(col, "house:" + h.id());
-            col++;
-        }
-        boolean canRoll = pr.troopWrits >= Profile.ROLL_WRITS;
-        inv.setStack(6, named(Items.PAPER, Text.literal("Enlist: open a sealed letter").formatted(Formatting.GOLD),
-            List.of(Text.literal("A random " + RosterMath.houseName(house) + " troop for " + Profile.ROLL_WRITS + " writs").formatted(Formatting.GRAY),
-                Text.literal(canRoll ? "Click to enlist" : "Need " + Profile.ROLL_WRITS + " writs").formatted(canRoll ? Formatting.GREEN : Formatting.RED))));
-        if (canRoll) actions.put(6, "roll:" + house);
-        inv.setStack(8, named(Items.GOLD_NUGGET, Text.literal("Purse").formatted(Formatting.YELLOW),
-            List.of(Text.literal("Writs " + pr.troopWrits).formatted(Formatting.WHITE), Text.literal("Pacts " + pr.pacts).formatted(Formatting.WHITE))));
-        int slot = 18;
-        for (var t : Spec.TROOPS) {
-            if (!t.house().equals(house) || slot >= 54) continue;
-            var o = pr.owned.get(t.id());
-            Item egg = Registries.ITEM.get(Identifier.of("minecraft", t.entity() + "_spawn_egg"));
-            if (egg == Items.AIR) egg = Items.PAPER;
-            Action a = action(t, pr);
-            List<Text> lore = new ArrayList<>();
-            lore.add(Text.literal(PlainClients.label(t.rarity()) + " " + t.group() + (t.ranged() ? ", ranged" : "")).formatted(rarityColour(t.rarity())));
-            lore.add(Text.literal(o == null ? "Not in your collection" : "Owned: " + "★".repeat(o.stars) + "☆".repeat(Math.max(0, Spec.RECRUITMENT[0].maxStars() - o.stars)) + "  copies " + o.copies).formatted(Formatting.GRAY));
-            lore.add(Text.literal("HP " + t.health() + "  damage " + t.damage() + "  cost " + t.cost() + " gold").formatted(Formatting.DARK_GRAY));
-            if (a == null) lore.add(Text.literal("Full stars").formatted(Formatting.DARK_GRAY));
-            else {
-                lore.add(Text.literal(a.label() + (a.active() ? " (click)" : "")).formatted(a.active() ? Formatting.GREEN : Formatting.RED));
-                lore.add(Text.literal(a.tip()).formatted(Formatting.GRAY));
-                if (a.active() && a.command() != null) actions.put(slot, a.command());
-            }
-            inv.setStack(slot, named(egg, Text.literal(t.name()).formatted(rarityColour(t.rarity())), lore));
-            slot++;
-        }
+        String house = houseId != null ? houseId : houses().get(0).id();
         Text title = Text.empty().append(crest(house)).append(Text.literal("Recruit: " + RosterMath.houseName(house)).styled(st -> st.withFont(PlainPack.TITLE_FONT)));
-        final String shown = house;
-        p.openHandledScreen(new SimpleNamedScreenHandlerFactory((syncId, playerInv, pl) -> new Menu(syncId, playerInv, inv, actions, shown), title));
+        PlainMenu.open(p, title, 6, page(house));
     }
 
-    /** A chest menu whose slots are buttons: a click runs the slot's command and never moves an item. */
-    static final class Menu extends GenericContainerScreenHandler {
-        final Map<Integer, String> actions;
-        final String house;
-        Menu(int syncId, PlayerInventory pi, SimpleInventory inv, Map<Integer, String> actions, String house) {
-            super(ScreenHandlerType.GENERIC_9X6, syncId, pi, inv, 6);
-            this.actions = actions;
-            this.house = house;
-        }
-        @Override public void onSlotClick(int slot, int button, SlotActionType type, PlayerEntity player) {
-            if (player instanceof ServerPlayerEntity sp && slot >= 0 && slot < 54) {
-                String a = actions.get(slot);
-                if (a != null) sp.getServer().execute(() -> click(sp, a, house));
+    static List<Spec.HousesRow> houses() {
+        List<Spec.HousesRow> houses = Arrays.stream(Spec.HOUSES).filter(Spec.HousesRow::fieldable).toList();
+        return houses.isEmpty() ? Arrays.asList(Spec.HOUSES) : houses;
+    }
+
+    /** The page on one House: row 1 the Houses (a click reopens on that House: the title names it), the sealed letter and the purse;
+     *  rows 3 to 6 the House's muster roll. Slot 9, the way back to the War Table. */
+    static PlainMenu.Page page(String house) {
+        return (m, p) -> {
+            var b = GravesAndGlory.battle;
+            if (b == null) return;
+            Profile pr = b.campaign.profile(p.getUuid());
+            int col = 0;
+            for (var h : houses()) {
+                if (col > 4) break;
+                boolean on = h.id().equals(house);
+                Item banner = switch (h.id()) { case "gilded" -> Items.YELLOW_BANNER; case "graveborn" -> Items.BLACK_BANNER; case "ironclad" -> Items.GRAY_BANNER; case "tidecallers" -> Items.CYAN_BANNER; default -> Items.GREEN_BANNER; };
+                String id = h.id();
+                m.button(col, named(banner, Text.empty().append(crest(id)).append(Text.literal(h.name()).formatted(on ? Formatting.GOLD : Formatting.WHITE)),
+                    List.of(Text.literal("Shards " + pr.shards.getOrDefault(id, 0) + "  Renown " + pr.renown.getOrDefault(id, 0)).formatted(Formatting.GRAY),
+                        Text.literal(on ? "Shown" : "Click to show").formatted(on ? Formatting.GREEN : Formatting.DARK_GRAY))), on ? null : pl -> open(pl, id));
+                col++;
             }
-            syncState();
-        }
-        @Override public ItemStack quickMove(PlayerEntity player, int slot) { return ItemStack.EMPTY; }
-        @Override public boolean canUse(PlayerEntity player) { return true; }
-    }
-
-    static void click(ServerPlayerEntity p, String a, String house) {
-        var b = GravesAndGlory.battle;
-        if (b == null) return;
-        if (a.startsWith("house:")) { open(p, a.substring(6)); return; }
-        b.command(p, a);
-        PlainHud.notices(p);
-        open(p, house);
+            boolean canRoll = pr.troopWrits >= Profile.ROLL_WRITS;
+            ItemStack letter = named(Items.PAPER, Text.literal("Enlist: open a sealed letter").formatted(Formatting.GOLD),
+                List.of(Text.literal("A random " + RosterMath.houseName(house) + " troop for " + Profile.ROLL_WRITS + " writs").formatted(Formatting.GRAY),
+                    Text.literal(canRoll ? "Click to enlist" : "Need " + Profile.ROLL_WRITS + " writs").formatted(canRoll ? Formatting.GREEN : Formatting.RED)));
+            if (canRoll) m.command(6, letter, "roll:" + house); else m.icon(6, letter);
+            m.icon(8, named(Items.GOLD_NUGGET, Text.literal("Purse").formatted(Formatting.YELLOW),
+                List.of(Text.literal("Writs " + pr.troopWrits).formatted(Formatting.WHITE), Text.literal("Pacts " + pr.pacts).formatted(Formatting.WHITE))));
+            m.button(9, PlainMenu.back(), PlainWarTable::open);
+            int slot = 18;
+            for (var t : Spec.TROOPS) {
+                if (!t.house().equals(house) || slot >= 54) continue;
+                var o = pr.owned.get(t.id());
+                Item egg = Registries.ITEM.get(Identifier.of("minecraft", t.entity() + "_spawn_egg"));
+                if (egg == Items.AIR) egg = Items.PAPER;
+                Action a = action(t, pr);
+                List<Text> lore = new ArrayList<>();
+                lore.add(Text.literal(PlainClients.label(t.rarity()) + " " + t.group() + (t.ranged() ? ", ranged" : "")).formatted(rarityColour(t.rarity())));
+                lore.add(Text.literal(o == null ? "Not in your collection" : "Owned: " + "★".repeat(o.stars) + "☆".repeat(Math.max(0, Spec.RECRUITMENT[0].maxStars() - o.stars)) + "  copies " + o.copies).formatted(Formatting.GRAY));
+                lore.add(Text.literal("HP " + t.health() + "  damage " + t.damage() + "  cost " + t.cost() + " gold").formatted(Formatting.DARK_GRAY));
+                if (a == null) lore.add(Text.literal("Full stars").formatted(Formatting.DARK_GRAY));
+                else {
+                    lore.add(Text.literal(a.label() + (a.active() ? " (click)" : "")).formatted(a.active() ? Formatting.GREEN : Formatting.RED));
+                    lore.add(Text.literal(a.tip()).formatted(Formatting.GRAY));
+                }
+                ItemStack card = named(egg, Text.literal(t.name()).formatted(rarityColour(t.rarity())), lore);
+                if (a != null && a.active() && a.command() != null) m.command(slot, card, a.command()); else m.icon(slot, card);
+                slot++;
+            }
+        };
     }
 }

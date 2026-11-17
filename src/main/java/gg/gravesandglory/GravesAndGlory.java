@@ -221,7 +221,7 @@ public final class GravesAndGlory implements ModInitializer {
             if(!world.getBlockState(hit.getBlockPos()).isOf(net.minecraft.block.Blocks.LECTERN))return ActionResult.PASS;
             if(world.isClient)return ActionResult.SUCCESS;
             if(battle!=null&&player instanceof ServerPlayerEntity p&&world==battle.world){
-                if(!battle.running&&VersionGate.plain(p))PlainClients.station(p,"army"); // a plain client has no War Table: the lectern opens the Recruit chest menu (P3)
+                if(!battle.running&&VersionGate.plain(p))PlainWarTable.open(p); // a plain client gets the War Table as chest menus (P4)
                 else if(!battle.running){
                     // Every lectern outside a running match opens the War Table (the client's OPEN_BARRACKS receiver); the old party lectern's PARTY packet id stays, and the client opens the War Table for it too.
                     if(VersionGate.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,new Payloads.OpenBarracksPayload(new byte[0]));
@@ -1166,7 +1166,7 @@ public final class GravesAndGlory implements ModInitializer {
         public boolean atBarracks(ServerPlayerEntity p,Squad s){
             return horizontalDistance(p.getPos(),fieldBarracks(s.team))<=Spec.ECONOMY[0].accessRadius()*Spec.ECONOMY[0].accessRadius();
         }
-        void openBarracks(ServerPlayerEntity p){if(running)campaign.tutorialDid(p,3);if(VersionGate.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,new Payloads.OpenBarracksPayload(new byte[0]));}
+        void openBarracks(ServerPlayerEntity p){if(running)campaign.tutorialDid(p,3);if(VersionGate.plain(p)){PlainArmoury.open(p);return;} /* plain clients P4: the Armoury chest menu */if(VersionGate.canSend(p,OPEN_BARRACKS))ServerPlayNetworking.send(p,new Payloads.OpenBarracksPayload(new byte[0]));}
         /** Why a troop cannot join the squad's training queue now, or null when it can: a troop trains only while its living and queued units are below its count in the squad's banner, and all living and queued troops stay below rules.maxTroops. */
         String roomFor(Squad s,Spec.TroopsRow spec){
             int listed=Collections.frequency(s.banner,spec.id());

@@ -71,9 +71,10 @@ final class PlainHud {
             long chargeLeft = Math.max(0, (s.chargeReadyAt - b.time + 19) / 20);
             long cmdLeft = Math.max(0, OrderRules.R.commandCooldownTicks() - (b.time - s.lastOrder));
             boolean intro = b.time < b.campaign.introUntil;
-            MutableText action = Text.empty().append(glyph(PlainPack.orderGlyph(order))).append(Text.literal(" " + PlainClients.label(order) + " · " + s.formation).formatted(Formatting.GOLD))
+            MutableText action = Text.empty().append(glyph(PlainPack.orderGlyph(order))).append(Text.literal(" " + PlainClients.label(order) + " · " + OrderRules.formationLabel(PlainClients.shape(p, s))).formatted(Formatting.GOLD))
                 .append(Text.literal("  |  Charge " + (chargeLeft > 0 ? "in " + chargeLeft + "s" : "ready")).formatted(chargeLeft > 0 ? Formatting.RED : Formatting.GREEN))
                 .append(Text.literal("  |  Troops " + b.fielded(s).count() + "  |  Gold " + s.gold).formatted(Formatting.YELLOW))
+                .append(relics(b, s))
                 .append(Text.literal(intro ? "  |  Orders open in " + (b.campaign.introUntil - b.time + 19) / 20 + "s" : cmdLeft > 0 ? "  |  wait" : "").formatted(Formatting.GRAY));
             if (b.respawns.containsKey(p.getUuid())) action = Text.literal("Respawning in " + (b.respawns.get(p.getUuid()) - b.time + 19) / 20 + "s").formatted(Formatting.RED);
             p.sendMessage(action, true);
@@ -93,13 +94,25 @@ final class PlainHud {
             bar.setColor(BossBar.Color.YELLOW);
             bar.setPercent(1);
             if (!LAST_NOTICE.containsKey(p.getUuid()))
-                p.sendMessage(Text.literal("Writs " + pr.troopWrits + "  |  Pacts " + pr.pacts + "  |  Book: Recruit").formatted(Formatting.YELLOW), true);
+                p.sendMessage(Text.literal("Writs " + pr.troopWrits + "  |  Pacts " + pr.pacts + "  |  Book: War Table").formatted(Formatting.YELLOW), true);
             lines.add(Text.literal("Camp").formatted(Formatting.GOLD, Formatting.BOLD));
             lines.add(Text.literal(" Writs " + pr.troopWrits).formatted(Formatting.WHITE));
             lines.add(Text.literal(" Troops owned " + pr.owned.size()).formatted(Formatting.WHITE));
             lines.add(Text.literal(" Wins " + pr.wins + " of " + pr.matches).formatted(Formatting.WHITE));
         }
         sidebar(p, Text.literal("Graves and Glory").styled(st -> st.withFont(PlainPack.TITLE_FONT).withColor(Formatting.GOLD)), lines);
+    }
+
+    /** The relic slots' readiness for the action bar (P4: sendRelics reaches modpack players only): "R1 ready", "R2 12s", "R3 on". Empty with no relic set. */
+    static MutableText relics(GravesAndGlory.Battle b, GravesAndGlory.Squad s) {
+        MutableText out = Text.empty();
+        for (int i = 0; i < s.relicState.size(); i++) {
+            String id = Commander.relicIn(s, i);
+            if (id == null || id.isEmpty()) continue;
+            int ready = Commander.readyIn(b, s, i), active = Commander.activeFor(b, s, i);
+            out.append(Text.literal("  |  R" + (i + 1) + " " + (active > 0 ? "on" : ready > 0 ? (ready + 19) / 20 + "s" : "ready")).formatted(active > 0 ? Formatting.AQUA : ready > 0 ? Formatting.RED : Formatting.GREEN));
+        }
+        return out;
     }
 
     /** A per-player sidebar: packets to this player only (the server scoreboard is never touched). */
