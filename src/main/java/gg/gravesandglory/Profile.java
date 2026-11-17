@@ -68,6 +68,8 @@ public final class Profile {
     Set<Integer> writChapters = new LinkedHashSet<>();
     /** Unlocked banner cosmetics (renown rewards such as cosmetic:pennant). */
     Set<String> cosmetics = new LinkedHashSet<>();
+    /** Equipped cosmetics, slot to id (Cosmetics.SLOTS; cosmetics render plan 4). Additive: a file without it loads empty. Not "equipped", which is the gear's. */
+    Map<String, String> cosmeticSlots = new LinkedHashMap<>();
     /** Schema 4: the commander's gear. Pieces (any number, kept even above inventorySize), worn uids by slot, unlocked relics and the three relic slots. */
     List<Gear.Piece> gear = new ArrayList<>();
     Map<String, Integer> equipped = new LinkedHashMap<>();
@@ -136,6 +138,8 @@ public final class Profile {
         writChapters.removeIf(chapter -> chapter == null || chapter < 1);
         if (cosmetics == null) cosmetics = new LinkedHashSet<>();
         cosmetics.removeIf(id -> id == null || id.isBlank());
+        CosmeticGrants.apply(this); // retroactive grants (Renown, Mastery, Founders claims), then the equipped slots keep only owned ids
+        cosmeticSlots = Cosmetics.normalize(cosmetics, cosmeticSlots);
         if (battlesWon == null) battlesWon = new LinkedHashSet<>();
         battlesWon.removeIf(id -> MarchMath.row(id, Spec.CAMPAIGNBATTLES) == null);
         if (bonusClaimed == null) bonusClaimed = new LinkedHashSet<>();
