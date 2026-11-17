@@ -20,6 +20,10 @@ public final class UiWarnings {
     /** What the size checks found: screen name, then line id, then what is wrong, then the sizes it showed at. */
     static final Map<String, Map<String, Map<String, Set<String>>>> FOUND = new LinkedHashMap<>();
 
+    /** At most this many lines are checked a frame; unchecked is how many more were drawn (shown on the strip). */
+    static final int CAP = 600;
+    static int unchecked;
+
     static final String CUT = "cut short", CLIPPED = "clipped by its box", OFF = "off screen", BUTTON = "runs into a button";
 
     // ---- one frame ----
@@ -27,7 +31,8 @@ public final class UiWarnings {
     /** Checks this frame's boxes (real GUI pixels) on a screen of w by h (the strip's band excluded). */
     static void compute(List<UiEditorClient.Box> boxes, List<float[]> widgets, int w, int h) {
         NOW.clear();
-        int n = Math.min(boxes.size(), 600);
+        int n = Math.min(boxes.size(), CAP);
+        unchecked = boxes.size() - n;
         for (int i = 0; i < n; i++) {
             UiEditorClient.Box b = boxes.get(i);
             if (hidden(b)) continue;
@@ -36,7 +41,7 @@ public final class UiWarnings {
             if (why == null) {
                 for (int j = 0; j < n; j++) {
                     UiEditorClient.Box o = boxes.get(j);
-                    if (j != i && !o.id().equals(b.id()) && !hidden(o) && overlap(b, o)) { why = "overlaps " + o.id(); break; }
+                    if (j != i && overlap(b, o) && !hidden(o) && !o.id().equals(b.id())) { why = "overlaps " + o.id(); break; }
                 }
             }
             if (why != null) NOW.putIfAbsent(b.id(), why);

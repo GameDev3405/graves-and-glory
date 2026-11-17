@@ -154,4 +154,7 @@ public final class UiText {
     }
 
     public static Seen seen(String id) { return SEEN.get(id); }
+
+    /** Every piece recorded, without a copy (render thread only; the editor's per-draw lookup). */
+    static java.util.Collection<Seen> allSeen() { return SEEN.values(); }
 }

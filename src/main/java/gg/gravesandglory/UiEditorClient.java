@@ -82,6 +82,8 @@ public final class UiEditorClient {
         ScreenEvents.AFTER_INIT.register((client, screen, w, h) -> {
             if (!editable(screen)) return;
             // laid out at the real size (opened, or the window resized) while a size is previewed: again at the preview's, before the next frame
+            // "Size: actual" with a fixed scale follows the real window when it is resized
+            if (UiPreview.res < 0 && UiPreview.gui >= 0 && UiPreview.on() && !UiPreview.scoped()) UiPreview.size = UiPreview.chosen();
             if (UiPreview.previewing(screen) && (w != UiPreview.w() || h != UiPreview.h())) client.send(() -> UiPreview.relayout(screen));
             ScreenEvents.beforeRender(screen).register((s, g, mx, my, d) -> {
                 UiPreview.frameStart();
@@ -222,7 +224,7 @@ public final class UiEditorClient {
     static String idFor(String text) {
         String trimmed = text.endsWith("...") ? text.substring(0, text.length() - 3) : text.endsWith("…") ? text.substring(0, text.length() - 1) : null;
         String best = null; long bestFrame = -1; int rank = 9;
-        for (UiText.Seen s : UiText.seen(Long.MAX_VALUE)) {
+        for (UiText.Seen s : UiText.allSeen()) {
             int r = s.shown.equals(text) ? 0 : trimmed != null && !trimmed.isEmpty() && s.shown.startsWith(trimmed) ? 1 : text.length() >= 6 && s.shown.contains(text) ? 2 : 9;
             if (r < rank || r == rank && r < 9 && s.frame > bestFrame) { rank = r; best = s.id; bestFrame = s.frame; }
         }
@@ -296,7 +298,7 @@ public final class UiEditorClient {
         else {
             int n = UiWarnings.NOW.size();
             String size = UiPreview.on() ? UiPreview.describe(UiPreview.size()) + (UiPreview.stretched() ? ", stretched to fit" : "") + ". " : "";
-            tip = size + (n == 0 ? "" : n + (n == 1 ? " line warned about" : " lines warned about") + " (rust outline). ") + message;
+            tip = size + (n == 0 ? "" : n + (n == 1 ? " line warned about" : " lines warned about") + " (rust outline). ") + (UiWarnings.unchecked > 0 ? UiWarnings.unchecked + " lines not checked. " : "") + message;
         }
         if (!tip.isEmpty()) g.drawText(tr, tr.trimToWidth(tip, Math.max(0, w - x - 8)), x + 6, top + 3, hover != null && UiWarnings.NOW.containsKey(hover.id()) ? 0xffe0a070 : 0xffb8c8a0, false);
         g.getMatrices().pop();
