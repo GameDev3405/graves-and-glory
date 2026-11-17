@@ -168,9 +168,12 @@ final class PlainFriends {
         String room = str(s, "room");
         m.button(0, PlainMenu.named(Items.ARROW, "Back to Friends", Formatting.WHITE), PlainFriends::open);
         refresh(m, 8);
-        if (room.isEmpty()) { noRoom(m, s); return; }
+        if (room.isEmpty()) { v.inviting = false; v.choosingHost = false; noRoom(m, s); return; }
         if (v.inviting) { invite(m, s, v); return; }
         boolean playing = flag(s, "playing"), preparing = flag(s, "preparing"), idle = !playing, host = flag(s, "host") && idle;
+        boolean heirs = false;
+        for (int t = 0; t < 2; t++) for (var seat : seats(s, t)) if (heir(seat)) heirs = true;
+        if (!host || !heirs) v.choosingHost = false; // the heir left or the host's seat moved: never stuck passing it
         var mine = me(s);
         boolean myReady = mine != null && flag(mine, "ready");
         int myTeam = mine == null || !mine.has("team") ? -1 : mine.get("team").getAsInt();
@@ -276,8 +279,6 @@ final class PlainFriends {
         }
         // Pass host (the host's), Ready, Start now
         if (host) {
-            boolean heirs = false;
-            for (int t = 0; t < 2; t++) for (var seat : seats(s, t)) if (heir(seat)) heirs = true;
             if (heirs) m.button(51, PlainBanner.glint(PlainMenu.named(Items.GOLDEN_HELMET, v.choosingHost ? "Passing the host: pick a seat" : "Pass host", Formatting.GOLD,
                 v.choosingHost ? "Click a glowing seat, or here to stop." : "Hand the host's seat to another commander."), v.choosingHost), pl -> v.choosingHost = !v.choosingHost);
             else m.icon(51, off("Pass host", "No other commander online in the room."));
