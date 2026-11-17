@@ -1442,7 +1442,7 @@ public final class Campaign {
             var troop=reward.troop()==null?null:troop(reward.troop());if(troop!=null)result+=". "+receive(p,troop); // the Founders Rare: a new troop, a copy, or past full stars its shards
             if(reward.cosmetic()!=null)p.cosmetics.add(reward.cosmetic());}
         if(!save(id)){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));result="Reward was not applied because saving failed. Try again after checking disk space.";}
-        else if(action.startsWith("title:")||action.startsWith("cosmetic:")){CosmeticSync.changed(player);if(b.running)CosmeticBanners.dress(b,player,p);} // his trackers see the new set; the held banner takes the new layers
+        else if(action.startsWith("title:")||action.startsWith("cosmetic:")){CosmeticSync.changed(player);CosmeticBanners.dress(b,player,p);CosmeticBanners.replant(b,player.getUuid());} // his trackers see the new set; the held banner takes the new layers
         notice(id,result);return true;
     }
     JsonObject progressSnapshot(UUID id){Profile p=profile(id);Progression.reset(p.progression,Progression.today());JsonObject j=forClient(p.progression);j.addProperty("tier",Progression.tier(p.progression));var roster=RosterMath.launchRoster();j.addProperty("chapter",Progression.chapter(p.progression,(int)roster.stream().filter(p.owned::containsKey).count(),roster.size()));return j;}

@@ -1296,6 +1296,7 @@ public final class GravesAndGlory implements ModInitializer {
             }
             Audio.reset(); // before the mode's first tick: a new round's cooldowns start empty and nothing queued by the last one plays
             rounds++;roundStarted=time;running=true;message=mode.startLine(this);
+            for(Squad s:squads.values())if(s.seated&&!s.bot)CosmeticBanners.dress(this,server.getPlayerManager().getPlayer(s.owner),campaign.profile(s.owner)); // equipPlayer above ran before running: now the side's dye
             rolls.setSeed(BattleMath.roundSeed(world.getSeed(),rounds)); // this round's swings, whatever the rounds before drew
             mode.mark(this); // the mode says what it changed: flags down, saved pieces
             BattleMapNet.sendGridAll(this);

@@ -71,7 +71,7 @@ public final class CosmeticExtras {
     static void extras(MatrixStack m, VertexConsumerProvider vcp, int light, Frame f, Map<String, String> slots, String record) {
         if (slots == null || slots.isEmpty()) return;
         VertexConsumer vc = vcp.getBuffer(RenderLayer.getEntityCutoutNoCull(TEX));
-        Matrix4f pm = m.peek().getPositionMatrix();
+        MatrixStack.Entry pm = m.peek();
         float cloth = Math.max(.006f, f.half() * .6f), rail = Math.max(.02f, f.half() * 2.2f);
         for (String slot : Cosmetics.SLOTS) {
             String id = slots.get(slot);
@@ -112,7 +112,8 @@ public final class CosmeticExtras {
     }
 
     /** A box between flag coordinates (u0..u1, v0..v1, n0..n1 in blocks along the normal), every face in one swatch, drawn without culling. */
-    static void box(VertexConsumer vc, Matrix4f pm, Frame f, float u0, float u1, float v0, float v1, float n0, float n1, int cell, int light) {
+    static void box(VertexConsumer vc, MatrixStack.Entry me, Frame f, float u0, float u1, float v0, float v1, float n0, float n1, int cell, int light) {
+        Matrix4f pm = me.getPositionMatrix();
         Vector3f[] c = new Vector3f[8];
         for (int i = 0; i < 8; i++) c[i] = f.at((i & 1) == 0 ? u0 : u1, (i & 2) == 0 ? v0 : v1, (i & 4) == 0 ? n0 : n1);
         float s0 = (cell % 4) * 4 / 16f + .01f, s1 = s0 + 4 / 16f - .02f, t0 = (cell / 4) * 4 / 16f + .01f, t1 = t0 + 4 / 16f - .02f;
@@ -120,7 +121,7 @@ public final class CosmeticExtras {
         Vector3f[] normals = {new Vector3f(f.n()), new Vector3f(f.n()).negate(), new Vector3f(f.v()).normalize().negate(), new Vector3f(f.v()).normalize(), new Vector3f(f.u()).normalize().negate(), new Vector3f(f.u()).normalize()};
         float[][] uv = {{s0, t0}, {s1, t0}, {s1, t1}, {s0, t1}};
         for (int k = 0; k < 6; k++) {
-            Vector3f nn = normals[k];
+            Vector3f nn = me.getNormalMatrix().transform(new Vector3f(normals[k])).normalize();
             for (int j = 0; j < 4; j++) {
                 Vector3f p = pm.transformPosition(new Vector3f(c[faces[k][j]]));
                 vc.vertex(p.x, p.y, p.z, 0xFFFFFFFF, uv[j][0], uv[j][1], OverlayTexture.DEFAULT_UV, light, nn.x, nn.y, nn.z);
@@ -309,8 +310,9 @@ public final class CosmeticExtras {
         Matrix4f pm = m.peek().getPositionMatrix();
         float x = -font.getWidth(title) / 2f;
         int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
-        font.draw(title, x, 0, 0x40FFFFFF & TITLE_INK | 0x40000000, false, pm, vcp, TextRenderer.TextLayerType.SEE_THROUGH, 0x30000000, light);
-        font.draw(title, x, 0, TITLE_INK, false, pm, vcp, TextRenderer.TextLayerType.NORMAL, 0, light);
+        boolean sneaking = p.isSneaky(); // as vanilla name tags: a sneaking player's line does not show through walls
+        if (!sneaking) font.draw(title, x, 0, 0x40FFFFFF & TITLE_INK | 0x40000000, false, pm, vcp, TextRenderer.TextLayerType.SEE_THROUGH, 0x30000000, light);
+        font.draw(title, x, 0, sneaking ? 0x80FFFFFF & TITLE_INK | 0x80000000 : TITLE_INK, false, pm, vcp, TextRenderer.TextLayerType.NORMAL, sneaking ? 0x30000000 : 0, light);
         m.pop();
         drawing.add("title:" + title);
     }

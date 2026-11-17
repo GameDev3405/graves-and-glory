@@ -99,6 +99,9 @@ public final class CosmeticSync {
         EntityTrackingEvents.START_TRACKING.register((entity, player) -> {
             if (entity instanceof ServerPlayerEntity || entity instanceof GravesAndGlory.ArmySupplyBanner) trackingSends += send(entity, List.of(player));
         });
+        // a respawn or a world change makes a new client entity, whose unload dropped the player's own entry; the server never tracks him to himself
+        net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents.AFTER_RESPAWN.register((old, player, alive) -> changed(player));
+        net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) -> changed(player));
         S2CPlayChannelEvents.REGISTER.register((handler, sender, server, channels) -> {
             if (!channels.contains(CHANNEL)) return;
             ServerPlayerEntity joined = handler.player;
@@ -114,15 +117,7 @@ public final class CosmeticSync {
     static volatile int received;
 
     /** The set an entity draws in: for the local player the Wardrobe preview while one runs (Cosmetics.previewOverride), else what the server sent; NONE when unknown. */
-    public static Entry client(Entity e) {
-        if (e == null) return Entry.NONE;
-        var mc = net.minecraft.client.MinecraftClient.getInstance();
-        var preview = Cosmetics.previewOverride;
-        Entry sent = ENTRIES.get(e.getId());
-        if (preview != null && mc != null && e == mc.player) return new Entry(preview, sent == null ? "" : sent.title());
-        var world = e.getWorld();
-        return sent != null && world != null && world.getEntityById(e.getId()) == e ? sent : Entry.NONE;
-    }
+    public static Entry client(Entity e) { return Client.entry(e); }
 
     static void accept(int entityId, List<String> pairs, String title) {
         received++;
@@ -139,6 +134,15 @@ public final class CosmeticSync {
     /** The client-only half, a nested class a dedicated server never loads. */
     static final class Client {
         private Client() {}
+        static Entry entry(Entity e) {
+            if (e == null) return Entry.NONE;
+            var mc = net.minecraft.client.MinecraftClient.getInstance();
+            var preview = Cosmetics.previewOverride;
+            Entry sent = ENTRIES.get(e.getId());
+            if (preview != null && mc != null && e == mc.player) return new Entry(preview, sent == null ? "" : sent.title());
+            var world = e.getWorld();
+            return sent != null && world != null && world.getEntityById(e.getId()) == e ? sent : Entry.NONE;
+        }
         static void register() {
             net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(gg.gravesandglory.net.Payloads.CosmeticPayload.ID, (payload, context) -> {
                 var buf = payload.buf();

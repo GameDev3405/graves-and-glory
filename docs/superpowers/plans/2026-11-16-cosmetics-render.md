@@ -64,6 +64,7 @@ When `skin_proven` is first granted, it is auto-equipped. That keeps today's beh
   - on late channel registration;
   - to every tracker and to the player itself when the player equips;
   - when a cosmetic or title changes, also for each of the player's planted supply banners.
+- It is also resent to the player himself after a respawn or a world change (his new client entity lost its entry).
 - A client keeps the entries in `CosmeticSync.ENTRIES` (receiver in `CosmeticSync.Client`), drops one on entity unload and clears them on disconnect.
 - The title `Recruit` (everyone's default) is sent as no title; `/gg cosmetics title <player> none` sets Recruit.
 - It is a real `Payloads.CosmeticPayload` record registered in `Payloads.register()` (1.21.1 needs a payload type per channel), wrapping the raw bytes like `RankPayload`.
@@ -73,7 +74,7 @@ When `skin_proven` is first granted, it is auto-equipped. That keeps today's beh
 
 - **Vanilla carriers (all clients):**
   - `Cosmetics.layers(slots, fieldDye)` returns pattern ids that are all `minecraft:` (order standard, frame, trim, pennant; at most six); `CosmeticBanners.component` looks them up in the `BANNER_PATTERN` registry.
-  - **Banner block:** the planted banner (supply banner and Oath Banner) sets `BannerBlockEntity` patterns (`readFrom`), marks the block dirty and sends the block update.
+  - **Banner block:** the planted banner (supply banner and Oath Banner) sets `BannerBlockEntity` patterns (`readFrom`), marks the block dirty and sends the block update. A change of set re-plants the commander's live banners (`CosmeticBanners.replant`).
   - **Held banner stack:** a 1.21.1 banner's colour is its item, not a component, so the server swaps the banner-gear stack to the banner item of the side dye (white outside a running battle), keeping every component, and sets `BANNER_PATTERNS`.
   - Bots have no cosmetics.
 - **Modded extras:**
@@ -83,6 +84,7 @@ When `skin_proven` is first granted, it is auto-equipped. That keeps today's beh
 - **Title:** a billboard line over the player drawn in the same `AFTER_ENTITIES` pass (no mixin), small and grey-gold. It is never drawn on your own player in first person, nor with the HUD hidden.
 - **Proven:**
   - `Campaign.veteran` also needs the owner's `skin` slot to be `skin_proven`. Default is on, as above.
+  - The trim follows the troop's name, set at spawn and level-up: turning Proven on or off mid-battle reaches the troops that spawn afterwards.
   - Add `art/geo_trim/<troop>.json` recipes and built overlays for more Geo troops through `build_geo_trim.py`, at least two beyond the knight (`--check` must pass). Built: sentinel, ic_hearthguard, gl_marshal.
   - The troops without a recipe are listed in PARKED.md.
 

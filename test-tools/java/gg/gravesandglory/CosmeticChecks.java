@@ -113,7 +113,13 @@ final class CosmeticChecks implements Phase1Checks.Suite {
                     if (k > 900) { Phase1Checks.report("p1-cosmetics-battle", false, "the practice battle never started"); next(tick, 9); }
                     return;
                 }
-                if (k > 120) { i = 0; GeoDraws.install(); next(tick, 2); }
+                if (k > 120) {
+                    // the round start dresses the held banner in the side's dye (startRound re-dresses once running is set), not white
+                    var held = c.player.getMainHandStack();
+                    boolean dyed = GearLooks.art(held) != null && held.getItem() != net.minecraft.item.Items.WHITE_BANNER;
+                    Phase1Checks.report("p1-cosmetics-round-dye", dyed, "the held banner at the round start is " + held.getItem());
+                    i = 0; GeoDraws.install(); next(tick, 2);
+                }
             }
             case 2 -> { // one held banner cosmetic at a time, the right side (the flag's face: it hangs along the arm, front to back) to the camera
                 String id = HELD[i];

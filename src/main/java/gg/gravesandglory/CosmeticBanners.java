@@ -61,7 +61,7 @@ public final class CosmeticBanners {
             if (!(s.getItem() instanceof BannerItem) || GearLooks.art(s) == null) continue;
             ItemStack out = s.copyComponentsToNewStack(BannerBlock.getForColor(field), s.getCount());
             var layers = component(slots, field.getName(), pl.getServerWorld().getRegistryManager());
-            if (layers.layers().isEmpty()) out.remove(DataComponentTypes.BANNER_PATTERNS); else out.set(DataComponentTypes.BANNER_PATTERNS, layers);
+            out.set(DataComponentTypes.BANNER_PATTERNS, layers); // empty equals the banner's default
             inv.setStack(i, out);
             dressed++;
         }
@@ -76,18 +76,30 @@ public final class CosmeticBanners {
     }
 
     /** Puts a squad's commander's layers on the banner block at pos (its field stays the block's own colour). Nothing for a bot, an empty set or no banner there. */
-    static void plant(GravesAndGlory.Battle b, GravesAndGlory.Squad s, BlockPos pos) {
+    static void plant(GravesAndGlory.Battle b, GravesAndGlory.Squad s, BlockPos pos) { plant(b, s, pos, false); }
+
+    /** plant; a refresh also writes an empty set, so slots cleared since the planting come off. */
+    static void plant(GravesAndGlory.Battle b, GravesAndGlory.Squad s, BlockPos pos, boolean refresh) {
         var slots = slots(b, s);
         if (slots == null || pos == null || b.world == null) return;
         var state = b.world.getBlockState(pos);
         if (!(state.getBlock() instanceof AbstractBannerBlock banner) || !(b.world.getBlockEntity(pos) instanceof BannerBlockEntity be)) return;
         var layers = component(slots, banner.getColor().getName(), b.world.getRegistryManager());
-        if (layers.layers().isEmpty()) return;
+        if (layers.layers().isEmpty() && !refresh) return;
         ItemStack carrier = new ItemStack(BannerBlock.getForColor(banner.getColor()));
         carrier.set(DataComponentTypes.BANNER_PATTERNS, layers);
         be.readFrom(carrier, banner.getColor());
         be.markDirty();
         b.world.updateListeners(pos, state, state, net.minecraft.block.Block.NOTIFY_LISTENERS);
         planted++;
+    }
+
+    /** A commander's set changed: his live supply banners and Oath Banners take the new layers. */
+    static void replant(GravesAndGlory.Battle b, java.util.UUID owner) {
+        if (b == null || owner == null) return;
+        for (var st : java.util.List.copyOf(b.structures))
+            if (st instanceof GravesAndGlory.ArmySupplyBanner banner && banner.squad() != null && owner.equals(banner.squad().owner)) plant(b, banner.squad(), banner.block, true);
+        for (var banner : java.util.List.copyOf(b.banners))
+            if (banner.squad() != null && owner.equals(banner.squad().owner) && banner.block() != null) plant(b, banner.squad(), banner.block(), true);
     }
 }

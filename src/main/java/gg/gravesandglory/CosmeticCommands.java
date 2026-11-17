@@ -56,7 +56,8 @@ final class CosmeticCommands {
         p.cosmeticSlots = Cosmetics.normalize(p.cosmetics, p.cosmeticSlots);
         if (!b.campaign.save(id)) { b.campaign.profiles.put(id, Profile.restored(Campaign.JSON.fromJson(before, Profile.class))); return AdminCommands.say(c.getSource(), "Not saved; nothing changed."); }
         CosmeticSync.changed(target);
-        if (b.running) CosmeticBanners.dress(b, target, p);
+        CosmeticBanners.dress(b, target, p);
+        CosmeticBanners.replant(b, target.getUuid());
         return AdminCommands.say(c.getSource(), target.getName().getString() + ": " + result);
     }
 
