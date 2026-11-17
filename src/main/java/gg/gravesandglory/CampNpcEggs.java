@@ -102,6 +102,8 @@ final class CampNpcEggs {
     /** Places (place != null) or resets (null) one NPC where the player is: the live camp or their build canvas. "" when done, else why not. */
     static String set(ServerPlayerEntity p, Spec.CampStationsRow s, CampNpcPlacements.Place place) {
         ServerWorld w = p.getServerWorld();
+        // the same limits parse() reads back: a spot it would refuse would make the whole file unreadable on the next load
+        if (place != null && (Math.abs(place.dx()) > CampNpcPlacements.REACH || Math.abs(place.dz()) > CampNpcPlacements.REACH || place.y() < CampNpcPlacements.MIN_Y || place.y() > CampNpcPlacements.MAX_Y)) return "That is too far from the map's origin to save.";
         if (BuildMode.active()) {
             var plan = BuildMode.plan(p);
             if (plan == null) return "Stand in a build canvas to place a camp NPC.";

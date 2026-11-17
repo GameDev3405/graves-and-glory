@@ -2897,7 +2897,7 @@ public final class Phase3Checks implements ClientModInitializer {
             ck("p3-cw-lantern",lanterns>0&&loose==0,"lanterns in the box "+lanterns+", without a block to hang from or to stand on (the test LanternBlock.canPlaceAt makes) "+loose+(loose==0?"":", first: "+looseAt));
             ck("p3-cw-barrier",inArch==arch.size()&&outside==0,"barrier blocks in the box "+barriers+": in the arch "+inArch+" of "+arch.size()+" cells, anywhere else "+outside+" ("+exposed+" of them with a face in the open)"+(outside==0?"":": "+outAt)+"; the walker's lanes pass no barrier but the arch's portcullis stop");
             // 3. entities
-            int villagers=0,labels=0,inside=0,others=0;var insideAt=new StringBuilder();int wantV=0;for(var s:Spec.CAMPSTATIONS)if(!s.npc().equals("-"))wantV++;
+            int villagers=0,labels=0,inside=0,others=0,boxes=0;var insideAt=new StringBuilder();int wantV=0,wantB=0;for(var s:Spec.CAMPSTATIONS)if(!s.npc().equals("-")){wantV++;var look=CampNpcs.look(s);if(look!=null&&CampNpcs.hitBox(look))wantB++;}
             for(var e:w.iterateEntities()){
                 if(!e.getCommandTags().contains(CampWorld.TAG))continue;
                 boolean bad;
@@ -2905,12 +2905,12 @@ public final class Phase3Checks implements ClientModInitializer {
                     if(e instanceof net.minecraft.entity.passive.VillagerEntity)villagers++;else others++;
                     bad=w.getBlockCollisions(e,e.getBoundingBox().contract(0.01)).iterator().hasNext();
                 }else{
-                    if(e instanceof net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity)labels++;else others++;
+                    if(e instanceof net.minecraft.entity.decoration.DisplayEntity.TextDisplayEntity)labels++;else if(e instanceof net.minecraft.entity.decoration.InteractionEntity)boxes++;else others++; // a staff NPC's click box (CampWorld.hitBox) is its own count
                     var cell=BlockPos.ofFloored(e.getPos());bad=!w.getBlockState(cell).getCollisionShape(w,cell).isEmpty();
                 }
                 if(bad){inside++;if(inside<=6)insideAt.append(inside>1?"; ":"").append(e.getType().getUntranslatedName()).append(' ').append(String.format(Locale.ROOT,"(%.2f, %.2f, %.2f)",e.getX(),e.getY(),e.getZ()));}
             }
-            ck("p3-cw-entities",villagers==wantV&&labels==Spec.CAMPSTATIONS.length+Spec.CAMPLESSONS.length&&others==CampWorld.DUMMIES&&inside==0,"camp entities: villagers "+villagers+" (want "+wantV+"), labels "+labels+" (want "+Spec.CAMPSTATIONS.length+" stations + "+Spec.CAMPLESSONS.length+" lessons), other camp entities "+others+" (want "+CampWorld.DUMMIES+", the yard dummies), inside a block that stops them "+inside+(inside==0?"":": "+insideAt));
+            ck("p3-cw-entities",boxes==wantB&&villagers==wantV&&labels==Spec.CAMPSTATIONS.length+Spec.CAMPLESSONS.length&&others==CampWorld.DUMMIES&&inside==0,"camp entities: villagers "+villagers+" (want "+wantV+"), click boxes "+boxes+" (want "+wantB+"), labels "+labels+" (want "+Spec.CAMPSTATIONS.length+" stations + "+Spec.CAMPLESSONS.length+" lessons), other camp entities "+others+" (want "+CampWorld.DUMMIES+", the yard dummies), inside a block that stops them "+inside+(inside==0?"":": "+insideAt));
             // 4. places for the flank pictures
             var m=new LinkedHashMap<String,double[]>();
             Object[][] want={{"north-edge",OX,OZ-106,new double[]{0,-1},new double[]{0,1}},{"sw-corner",OX-92,OZ+36}};
