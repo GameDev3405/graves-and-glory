@@ -128,15 +128,17 @@ public final class PlainClients {
         });
     }
 
-    /** A plain client's click on a staff NPC (the villager or its click box): the NPC's chat line, and for Madame Fleece her store line too. */
+    /** A plain client's click on a staff NPC (the villager or its click box): the Quartermaster and Drillmaster say their chat line (their
+     *  station blocks, the lectern and the hotbar items keep Recruit and practice); the others open what their station does (P4's menus,
+     *  Madame Fleece's store line). */
     static void npc(ServerPlayerEntity p, String station) {
-        if (station.equals(CampNpcs.WARDROBE)) { station(p, station); return; }
+        if (!station.equals("army") && !station.equals("train")) { station(p, station); return; }
         p.sendMessage(Text.literal(VersionGate.refusal(CampNpcs.plainLine(station) + " Recruit with the book in hotbar slot 8.")).formatted(Formatting.GRAY), false);
     }
 
     /** A camp station or lectern used by a plain player (GravesAndGlory's use callbacks, which send the modpack's screens to modded
-     *  players only). The barracks lectern and the quartermaster open Recruit, the drillmaster starts a practice battle; the rest give the
-     *  station NPC's chat line (CampNpcs.plainLine). */
+     *  players only). The barracks lectern and the quartermaster open Recruit, the drillmaster starts a practice battle, Madame Fleece gives her
+     *  chat and store lines; the rest go to the plain war table (PlainWarTable.station). */
     static void station(ServerPlayerEntity p, String station) {
         var b = GravesAndGlory.battle;
         if (b == null) return;
