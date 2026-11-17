@@ -36,6 +36,8 @@ final class CampScreen extends ArmyScreen {
     WarTableLobby lobby;
     /** The War Table battle report (page results, plan 4F.2), kept while the page is open; leaving the page drops it. */
     WarTableReport report;
+    /** The UI editor's sample report (UiSamples.battleReport): the results page draws its frames over the sample finished battle; turning to another page ends it. */
+    boolean sample;
     /** The War Table's other pages (UI plan Task 7), kept while the page is open, so the armed troop, the track's place and a room code being written survive a rebuild; leaving the page drops it. */
     WarTablePages pages;
     /** The Arsenal (page gear, the gear screen plan): the commander's gear on its Arsenal tab, the blacksmith on its Forge tab (gearTab, from the station's forge). Kept while the page is open; leaving the page drops it. */
@@ -86,7 +88,7 @@ final class CampScreen extends ArmyScreen {
     /** Turns the table to another page (an old name goes through alias); the keyboard's focus starts afresh there. */
     /** Opens a page that goes back to another than home: the Banner page opened from the war council returns to it. */
     void pageFrom(String next,String back){page(next);backPage=back;}
-    void page(String next){backPage="home";if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;if("forge".equals(next))gearTab="forge";page=alias(next);if(!page.equals("gear"))arsenal=null;offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("troop"))troopSheet=null;if(!page.equals("lobby"))lobby=null;if(!page.equals("results"))report=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
+    void page(String next){sample=false;backPage="home";if(CampaignClient.rollShowing())CampaignClient.revealUntil=0;CampaignClient.dismissed=CampaignClient.notice;if("forge".equals(next))gearTab="forge";page=alias(next);if(!page.equals("gear"))arsenal=null;offset=0;if(!page.equals("recruit"))recruit=null;if(!page.equals("troop"))troopSheet=null;if(!page.equals("lobby"))lobby=null;if(!page.equals("results"))report=null;if(pages!=null&&!pages.page.equals(page))pages=null;super.clearAndInit();}
     void rebuild(){clearAndInit();}
     /** The pages drawn at UiMath.pageScale, so they fill a 1440p window (Kort, 2026-10-31): every War Table page (home, recruit,
      *  the troop sheet, the lobby, the report and WarTablePages'), so the rail keeps one size from page to page. */
@@ -243,6 +245,7 @@ final class CampScreen extends ArmyScreen {
     /** 1.21: Screen.render draws this (blur, dimming, the title panorama) before the widgets; 1.20.1 drew none here, and this screen draws its own. */
     @Override public void renderBackground(DrawContext g,int mx,int my,float delta){}
     @Override public void render(DrawContext g,int mx,int my,float delta){
+        if(sample&&page.equals("results")&&!UiSamples.in()){UiSamples.withReport(()->render(g,mx,my,delta));return;}
         if(page.equals("home")&&home!=null){home.render(g);super.render(g,mx,my,delta);return;}
         if(page.equals("recruit")&&recruit!=null){recruit.render(g);super.render(g,mx,my,delta);recruit.overlay(g);return;} // the Odds note lies over the widgets
         if(page.equals("troop")&&troopSheet!=null){troopSheet.render(g);super.render(g,mx,my,delta);return;}

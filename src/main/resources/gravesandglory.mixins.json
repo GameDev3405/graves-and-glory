@@ -27,7 +27,13 @@
     "EndingTimeMixin",
     "EndingViewMixin",
     "EndingKeyMixin",
-    "UiTextLocateMixin"
+    "UiTextLocateMixin",
+    "UiPreviewWindowMixin",
+    "UiPreviewDrawMixin",
+    "UiPreviewMouseMixin",
+    "UiPreviewRenderMixin",
+    "UiWidgetLocateMixin",
+    "UiPreviewClientMixin"
   ],
   "injectors": {
     "defaultRequire": 1

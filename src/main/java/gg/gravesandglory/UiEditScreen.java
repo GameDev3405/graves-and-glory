@@ -6,6 +6,8 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -13,6 +15,8 @@ import java.util.Set;
  * comes from, its default, and the live values it offers as {slots}; the field holds the template, checked as it is typed with the
  * same rules the server applies (UiSheet.problem). Save sends it to the owner's draft; Default puts back the code default (over a built-in edit too). A locked piece
  * (a design-sheet name, server text) only says where it comes from. The editor's own controls are not editable pieces.
+ * Phase 2: under the field, a value chip per live value shows its name and the value it has now; a click on a chip puts its
+ * {slot} in at the cursor.
  */
 public final class UiEditScreen extends Screen {
     final Screen parent;
@@ -35,17 +39,56 @@ public final class UiEditScreen extends Screen {
             addDrawableChild(ButtonWidget.builder(Text.literal("Back"), b -> close()).dimensions(x, y + 40, 80, 20).build());
             return;
         }
-        String current = UiText.draft().getOrDefault(piece.id, UiText.builtin().getOrDefault(piece.id, piece.def));
+        String drafted = UiEditorClient.viewed(piece.id);
+        String current = drafted != null ? drafted : UiText.builtin().getOrDefault(piece.id, piece.def);
         field = new TextFieldWidget(textRenderer, x, y, w, 20, Text.literal("Wording"));
         field.setMaxLength(UiSheet.TEXT_CAP);
         field.setText(current);
         field.setChangedListener(t -> check());
         addDrawableChild(field);
         setInitialFocus(field);
-        save = addDrawableChild(ButtonWidget.builder(Text.literal("Save to draft"), b -> save()).dimensions(x, y + 60, 110, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Default"), b -> { UiEditorClient.set(piece.id, piece.def, true); close(); }).dimensions(x + 116, y + 60, 80, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Cancel"), b -> close()).dimensions(x + 202, y + 60, 80, 20).build());
+        int by = Math.max(y + 60, belowChips() + 16);
+        save = addDrawableChild(ButtonWidget.builder(Text.literal("Save to draft"), b -> save()).dimensions(x, by, 110, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Default"), b -> { UiEditorClient.set(piece.id, piece.def, true); close(); }).dimensions(x + 116, by, 80, 20).build());
+        addDrawableChild(ButtonWidget.builder(Text.literal("Cancel"), b -> close()).dimensions(x + 202, by, 80, 20).build());
         check();
+    }
+
+    /** The value chips: {name, slot text, x, y, w} for each live value, laid out in rows under the field. */
+    record Chip(String slot, String label, int x, int y, int w) {}
+    static final int CHIP_H = 11;
+
+    List<Chip> chips() {
+        List<Chip> out = new ArrayList<>();
+        int x0 = left(), x = x0, y = height / 2 - 10 + 24, maxX = x0 + boxW();
+        for (String slot : piece.slots) {
+            String value = piece.values.getOrDefault(slot, "");
+            if (value.length() > 24) value = value.substring(0, 23) + "…";
+            String label = slot + "  " + value;
+            int w = textRenderer.getWidth(label) + 8;
+            if (x > x0 && x + w > maxX) { x = x0; y += CHIP_H + 2; }
+            out.add(new Chip(slot, label, x, y, w));
+            x += w + 4;
+        }
+        return out;
+    }
+
+    /** The y under the chips, where the save line goes. */
+    int belowChips() {
+        List<Chip> c = chips();
+        return c.isEmpty() ? height / 2 - 10 + 26 : c.get(c.size() - 1).y() + CHIP_H + 4;
+    }
+
+    @Override public boolean mouseClicked(double mx, double my, int button) {
+        if (field != null && button == 0) for (Chip c : chips()) {
+            if (mx >= c.x() && mx < c.x() + c.w() && my >= c.y() && my < c.y() + CHIP_H) {
+                field.write("{" + c.slot() + "}");
+                setFocused(field);
+                check();
+                return true;
+            }
+        }
+        return super.mouseClicked(mx, my, button);
     }
 
     UiSheet.Piece asPiece() { return new UiSheet.Piece(piece.id, piece.def, piece.slots, piece.keys, ""); }
@@ -57,7 +100,7 @@ public final class UiEditScreen extends Screen {
     void save() {
         if (problem() != null) return;
         String text = field.getText();
-        String before = UiText.draft().get(piece.id);
+        String before = UiEditorClient.viewed(piece.id);
         if (!text.equals(before == null ? UiText.builtin().getOrDefault(piece.id, piece.def) : before)) UiEditorClient.set(piece.id, text, true);
         close();
     }
@@ -80,14 +123,25 @@ public final class UiEditScreen extends Screen {
         g.drawText(textRenderer, "Now from: " + UiText.source(piece.id), x, y - 48, dim, false);
         g.drawText(textRenderer, textRenderer.trimToWidth("Default: " + piece.def, w), x, y - 36, dim, false);
         Set<String> slots = piece.slots;
-        g.drawText(textRenderer, slots.isEmpty() ? "Live values: none" : "Live values: " + UiTemplate.braced(slots), x, y - 24, ink, false);
+        g.drawText(textRenderer, slots.isEmpty() ? "Live values: none" : "Live values: click one to put it in", x, y - 24, ink, false);
         g.drawText(textRenderer, "Type {{ or }} for a brace. Enter saves.", x, y - 12 + 0, dim, false);
+        // the value chips: a quiet plate each, the slot's name dim and its value now in ink; the pointer's chip a shade lighter
+        String typed = field.getText();
+        for (Chip c : chips()) {
+            boolean over = mx >= c.x() && mx < c.x() + c.w() && my >= c.y() && my < c.y() + CHIP_H;
+            boolean used = typed.contains("{" + c.slot() + "}");
+            g.fill(c.x(), c.y(), c.x() + c.w(), c.y() + CHIP_H, over ? 0xff4e3d22 : 0xff2c2216);
+            g.fill(c.x(), c.y() + CHIP_H - 1, c.x() + c.w(), c.y() + CHIP_H, used ? 0xff8a7040 : 0xff3a2e1c);
+            g.drawText(textRenderer, c.slot(), c.x() + 4, c.y() + 2, dim, false);
+            g.drawText(textRenderer, c.label().substring(c.slot().length()), c.x() + 4 + textRenderer.getWidth(c.slot()), c.y() + 2, ink, false);
+        }
+        int ly = belowChips();
         String p = problem();
-        if (p != null) g.drawText(textRenderer, textRenderer.trimToWidth("Cannot save: " + p, w), x, y + 26, warn, false);
+        if (p != null) g.drawText(textRenderer, textRenderer.trimToWidth("Cannot save: " + p, w), x, ly, warn, false);
         else {
-            Set<String> dropped = UiTemplate.dropped(piece.def, field.getText());
-            if (!dropped.isEmpty()) g.drawText(textRenderer, textRenderer.trimToWidth("No longer shown: " + UiTemplate.braced(dropped), w), x, y + 26, warn, false);
-            else g.drawText(textRenderer, textRenderer.trimToWidth("Shows now: " + piece.shown, w), x, y + 26, dim, false);
+            Set<String> dropped = UiTemplate.dropped(piece.def, typed);
+            if (!dropped.isEmpty()) g.drawText(textRenderer, textRenderer.trimToWidth("No longer shown: " + UiTemplate.braced(dropped), w), x, ly, warn, false);
+            else g.drawText(textRenderer, textRenderer.trimToWidth("Shows now: " + piece.shown, w), x, ly, dim, false);
         }
     }
 

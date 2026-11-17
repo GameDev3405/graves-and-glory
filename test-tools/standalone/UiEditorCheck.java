@@ -133,6 +133,44 @@ public final class UiEditorCheck {
 
         check(OrderReply.downCardLine().equals(OrderReply.downCard()), "the down card line matches the sheet");
 
+        // ---- phase 2: invisible characters, the gate's cache, value chips, rate limit, sizes ----
+        for (String bad : new String[] {"a​b", "a‮b", "a⁦b", "a﻿b", "a‍b", "aㅤb"})
+            check(UiSheet.problem(wave, bad) != null, "an invisible or direction character is refused: " + Integer.toHexString(bad.codePointAt(1)));
+        check(UiSheet.problem(wave, "Vague {wave} été üß") == null, "accented letters pass");
+        check(UiSheet.problem(wave, "Wave {wave} 🛡") == null, "a whole emoji (a surrogate pair) passes");
+        check(UiSheet.problem(wave, "x\uD83Dy") != null, "a lone surrogate is refused");
+
+        UiText.setBuiltin(Map.of()); UiText.setDraft(Map.of());
+        UiText.setServer(Map.of("p2.line", "Round {wave}"));
+        check(UiText.t("p2.line", "Wave {wave}", "wave", 3).equals("Round 3"), "an edit using an offered slot draws");
+        check(UiText.t("p2.line", "Wave {wave}", "round", 3).equals("Wave {wave}"), "the cache does not reuse a check made for other slot names");
+        check(UiText.t("p2.line", "Wave {wave}", "wave", 4).equals("Round 4"), "back to the first slot names, the edit draws again");
+        check(UiText.names(new Object[] {"a", 1, "b", 2}).length == 2, "slot names are every other entry");
+        check(UiText.values(new Object[] {"wave", 3, "total", "five"}).equals(Map.of("wave", "3", "total", "five")), "value chips show each slot's value");
+        UiText.recording(true); UiText.nextFrame();
+        UiText.t("p2.line", "Wave {wave}", "wave", 9);
+        check(UiText.seen("p2.line") != null && "9".equals(UiText.seen("p2.line").values.get("wave")), "a drawn piece remembers its live values");
+        UiText.recording(false); UiText.setServer(Map.of());
+
+        UiEditRate rate = new UiEditRate(3, 1);
+        java.util.UUID who = new java.util.UUID(1, 2), other = new java.util.UUID(3, 4);
+        check(rate.take(who, 0) && rate.take(who, 0) && rate.take(who, 0), "a burst fits");
+        check(!rate.take(who, 0), "past the burst a request is dropped");
+        check(rate.take(other, 0), "another player has a separate bucket");
+        check(rate.warn(who, 0) && !rate.warn(who, 1000) && rate.warn(who, 2000), "the warning repeats at most every two seconds");
+        rate.forget(who);
+        check(rate.take(who, 0) && rate.take(who, 0) && rate.take(who, 0) && !rate.take(who, 0), "a forgotten player starts full");
+        check(!rate.take(who, 500) && rate.take(who, 1000), "a token refills after a second");
+
+        check(UiSizes.scaleFor(1920, 1080, 0, false) == 4 && UiSizes.scaleFor(1280, 720, 0, false) == 3, "auto scale as vanilla");
+        check(UiSizes.scaleFor(3840, 2160, 0, false) == 9 && UiSizes.scaleFor(1280, 720, 0, true) == 4, "4K auto and the unicode font's even scale");
+        check(UiSizes.scaleFor(1280, 720, 5, false) == 3 && !UiSizes.fits(1280, 720, 4) && UiSizes.fits(1280, 720, 3), "a scale too big for the window is lowered");
+        check(UiSizes.scaled(1920, 4) == 480 && UiSizes.scaled(1366, 3) == 456, "scaled sizes round up");
+        var sizes = UiSizes.checkSizes(false);
+        check(sizes.stream().map(z -> z.fbW() + "x" + z.fbH() + "@" + z.scale()).distinct().count() == sizes.size(), "no size is checked twice");
+        check(sizes.stream().allMatch(z -> z.w() >= 320 && z.h() >= 240), "every checked size is one vanilla allows");
+        check(sizes.size() >= 8, "every resolution is checked at several scales");
+
         System.out.println("UiEditorCheck: " + checks + " checks passed");
     }
 }

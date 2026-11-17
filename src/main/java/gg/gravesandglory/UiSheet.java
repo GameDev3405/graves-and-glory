@@ -83,12 +83,22 @@ public final class UiSheet {
         if (piece == null) return "no such piece";
         if (text == null) return "no text";
         if (text.length() > TEXT_CAP) return "longer than " + TEXT_CAP + " characters";
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
+        for (int i = 0; i < text.length(); ) {
+            int c = text.codePointAt(i);
+            i += Character.charCount(c);
             if (c == '§') return "the section sign (a formatting code) is not allowed; text is shown as typed";
             if (Character.isISOControl(c)) return "control characters (line breaks, tabs) are not allowed";
+            if (invisible(c)) return String.format(java.util.Locale.ROOT, "invisible or direction characters (U+%04X) are not allowed", c);
         }
         return UiTemplate.problem(text, piece.slots(), piece.keys());
+    }
+
+    /** A character that draws nothing or reorders the text around it: every format character (zero-width spaces and joiners, the
+     *  bidi marks, embeddings, overrides and isolates, the byte-order mark, the soft hyphen, the word joiner), the Hangul and
+     *  halfwidth fillers, and a lone surrogate. An edit with one could look like other wording than it holds. */
+    static boolean invisible(int c) {
+        return Character.getType(c) == Character.FORMAT || Character.getType(c) == Character.SURROGATE
+            || c == 0x115F || c == 0x1160 || c == 0x3164 || c == 0xFFA0 || c == 0x034F;
     }
 
     /** The text a client may draw for an edit, or null to draw the default: the same rules, applied to a sheet it does not trust. */

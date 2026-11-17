@@ -25,8 +25,17 @@ public final class UiText {
     /** Bumped on every layer change, so cached checks are redone. */
     private static volatile int generation;
 
-    /** What the last check said about an id's edit (per generation). */
-    private record Checked(int generation, String edit, String supplied, String use) {}
+    /** What the last check said about an id's edit: the layer generation it was made in, the slot names the call supplied (every
+     *  other array entry of the call's slots, names only), and the template to use (null: the default). Every layer change bumps the
+     *  generation, so the layers' strings need no key of their own; the hit path below allocates nothing. */
+    private record Checked(int generation, Object[] slots, String use) {
+        boolean sameSlots(Object[] other) {
+            int n = other == null ? 0 : other.length, m = slots.length;
+            if (n / 2 != m) return false;
+            for (int i = 0; i < m; i++) if (!slots[i].equals(other[i * 2])) return false;
+            return true;
+        }
+    }
     private static final Map<String, Checked> CHECKED = new HashMap<>();
 
     /** A piece drawn recently, for the editor's list and its click targets. */
@@ -34,6 +43,8 @@ public final class UiText {
         public final String id;
         public String def = "", shown = "", source = "";
         public Set<String> slots = Set.of();
+        /** The live value each slot had when the piece was last drawn, as drawn (the editor's value chips). */
+        public Map<String, String> values = Map.of();
         public boolean keys, locked;
         public long frame;
         Seen(String id) { this.id = id; }
@@ -62,25 +73,25 @@ public final class UiText {
     /** The template that wins for this id: the draft or published edit if it passes the client's check, else the built-in edit if
      *  it does, else the default. */
     public static String template(String id, String def, Object... slots) {
+        int gen = generation; // read before the layers, so a layer change in between is never cached under the new generation
         String top = previewDraft ? draft.get(id) : server.get(id), base = builtin.get(id);
         if (top == null && base == null) return def;
-        String supplied = suppliedKey(slots);
         Checked c;
         synchronized (CHECKED) { c = CHECKED.get(id); }
-        String key = (top == null ? -1 : top.length()) + ":" + top + "|" + base;
-        if (c != null && c.generation == generation && c.edit.equals(key) && c.supplied.equals(supplied)) return c.use == null ? def : c.use;
+        if (c != null && c.generation == gen && c.sameSlots(slots)) return c.use == null ? def : c.use;
         UiSheet.Piece piece = new UiSheet.Piece(id, def, UiTemplate.supplied(slots), UiTemplate.hasKeyHint(def), "");
         String use = top == null ? null : UiSheet.usable(piece, top);
         if (use == null && base != null) use = UiSheet.usable(piece, base);
-        synchronized (CHECKED) { CHECKED.put(id, new Checked(generation, key, supplied, use)); }
+        synchronized (CHECKED) { CHECKED.put(id, new Checked(gen, names(slots), use)); }
         return use == null ? def : use;
     }
 
-    static String suppliedKey(Object[] slots) {
-        if (slots == null || slots.length == 0) return "";
-        StringBuilder b = new StringBuilder();
-        for (int i = 0; i + 1 < slots.length; i += 2) b.append(slots[i]).append(',');
-        return b.toString();
+    /** The slot names of a call's slots (name, value, name, value...). */
+    static Object[] names(Object[] slots) {
+        if (slots == null) return new Object[0];
+        Object[] out = new Object[slots.length / 2];
+        for (int i = 0; i < out.length; i++) out[i] = String.valueOf(slots[i * 2]);
+        return out;
     }
 
     /** The edited template for an id from the layers (draft or server, then built-in), or null for none. */
@@ -124,7 +135,15 @@ public final class UiText {
         }
         s.def = def; s.shown = shown; s.frame = frame; s.locked = locked;
         s.source = locked ? source : "";
-        if (slots != null) { s.slots = UiTemplate.supplied(slots); s.keys = UiTemplate.hasKeyHint(def); }
+        if (slots != null) { s.slots = UiTemplate.supplied(slots); s.keys = UiTemplate.hasKeyHint(def); s.values = values(slots); }
+    }
+
+    /** A call's slots as name to value, in the call's order; a value is shown as the template would draw it. */
+    static Map<String, String> values(Object[] slots) {
+        if (slots.length < 2) return Map.of();
+        Map<String, String> out = new LinkedHashMap<>();
+        for (int i = 0; i + 1 < slots.length; i += 2) out.put(String.valueOf(slots[i]), String.valueOf(slots[i + 1]));
+        return out;
     }
 
     /** The pieces drawn within the last few frames, newest last. */

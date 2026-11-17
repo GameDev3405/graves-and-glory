@@ -11,7 +11,8 @@ import java.nio.file.Path;
 /** UI editor phase 1 (words), in a real client with its built-in server, after UiScreenShots: the owner gate (admin.json owners),
  *  /gg ui edit opening the editor, lines located on a War Table page, a draft edit drawn for the owner only while previewing, a bad
  *  edit refused by the server, Publish reaching the client's published layer, a non-owner request ignored, and /gg ui reset. Shots:
- *  uiedit-*.png. Only loaded by the isolated dev harness (GRAVES_UI_SHOTS=true and GRAVES_UI_EDITOR_CHECKS=true). Never shipped. */
+ *  uiedit-*.png. Phase 2: undo before the server replies, the window-size preview (4K, 720p), value chips, a size check and the
+ *  Warnings tab. Only loaded by the isolated dev harness (GRAVES_UI_SHOTS=true and GRAVES_UI_EDITOR_CHECKS=true). Never shipped. */
 public final class UiEditorChecks implements ClientModInitializer {
     int t;
     String id, before;
@@ -94,7 +95,65 @@ public final class UiEditorChecks implements ClientModInitializer {
                     UiEditorClient.op("publish");
                 }
                 if (t == 460 && id != null) report("no-change-publish-refused", UiEditorClient.message.startsWith("Not published: nothing to publish"), UiEditorClient.message);
-                if (t == 470) { Files.deleteIfExists(admin()); c.setScreen(null); c.scheduleStop(); }
+                // ---- phase 2: undo against replies in flight, the size preview, value chips, the size check, the new hub screens ----
+                if (t == 470 && id != null) {
+                    UiEditorClient.set(id, "UNDO A", true); UiEditorClient.set(id, "UNDO B", true); UiEditorClient.undo(); // all before any reply
+                }
+                if (t == 510 && id != null) {
+                    report("undo-before-reply", "UNDO A".equals(UiText.draft().get(id)), String.valueOf(UiText.draft().get(id)));
+                    UiEditorClient.op("discard");
+                }
+                if (t == 530) { if (!UiEditorClient.active) c.player.networkHandler.sendChatCommand("gg ui edit"); }
+                if (t == 560) { c.setScreen(new CampScreen("home")); UiPreview.res = 3; UiPreview.gui = 0; UiPreview.apply(); }
+                if (t == 590) {
+                    var size = UiPreview.size();
+                    report("preview-4k", UiPreview.previewingShown() && size != null && c.currentScreen.width == size.w() && c.currentScreen.height == size.h(), UiPreview.describe(size) + " screen " + c.currentScreen.width + "x" + c.currentScreen.height);
+                    report("preview-keeps-real-window", c.getWindow().getScaledWidth() != size.w() || c.getWindow().getFramebufferWidth() != size.fbW(), "window " + c.getWindow().getFramebufferWidth() + "x" + c.getWindow().getFramebufferHeight());
+                    shot(c, "preview-4k");
+                    UiPreview.res = 0; UiPreview.gui = 0; UiPreview.apply();
+                }
+                if (t == 620) {
+                    var size = UiPreview.size();
+                    report("preview-720p", size != null && c.currentScreen.width == size.w() && size.scale() == 3, UiPreview.describe(size));
+                    shot(c, "preview-720p");
+                    UiPreview.reset();
+                }
+                if (t == 640) {
+                    report("preview-reset", !UiPreview.on() && c.currentScreen.width == c.getWindow().getScaledWidth(), c.currentScreen.width + " vs " + c.getWindow().getScaledWidth());
+                    UiText.Seen wave = new UiText.Seen("hud.wave");
+                    wave.def = "Wave {wave} of {total}"; wave.shown = "Wave 3 of 5";
+                    wave.slots = new java.util.LinkedHashSet<>(java.util.List.of("wave", "total"));
+                    wave.values = java.util.Map.of("wave", "3", "total", "5");
+                    UiEditScreen box = new UiEditScreen(c.currentScreen, wave);
+                    c.setScreen(box);
+                    report("value-chips", box.chips().size() == 2 && box.chips().get(0).label().contains("3"), String.valueOf(box.chips()));
+                }
+                if (t == 660) { shot(c, "chips"); c.setScreen(new CampScreen("home")); }
+                if (t == 680) UiWarnings.start(c.currentScreen, "War Table: home", null);
+                if (t > 680 && t < 1400 && UiWarnings.scanning()) return;
+                if (t >= 681 && t < 1400) {
+                    report("size-check-ran", !UiWarnings.scanning() && !UiPreview.on(), UiWarnings.count() + " warning(s)");
+                    c.setScreen(new UiEditorScreen(c.currentScreen, "warnings"));
+                    t = 1400;
+                }
+                if (t == 1420) { shot(c, "warnings"); c.setScreen(UiSamples.battleMap(c.currentScreen)); }
+                if (t == 1450) {
+                    shot(c, "sample-map");
+                    report("sample-map-lines", UiEditorClient.editable(c.currentScreen) && !UiEditorClient.LAST.isEmpty(), UiEditorClient.LAST.size() + " boxes");
+                    c.setScreen(UiSamples.battleReport());
+                }
+                if (t == 1480) {
+                    shot(c, "sample-report");
+                    report("sample-report-lines", UiEditorClient.editable(c.currentScreen) && !UiEditorClient.LAST.isEmpty(), UiEditorClient.LAST.size() + " boxes");
+                    c.setScreen(UiSamples.battleHud(null));
+                }
+                if (t == 1510) {
+                    shot(c, "sample-hud");
+                    report("sample-hud-lines", UiEditorClient.editable(c.currentScreen) && !UiEditorClient.LAST.isEmpty(), UiEditorClient.LAST.size() + " boxes");
+                    report("sample-state-restored", !CampaignClient.result.toString().contains("Old Mill"), "report state after the samples");
+                    c.setScreen(null);
+                }
+                if (t == 1530) { Files.deleteIfExists(admin()); c.setScreen(null); c.scheduleStop(); }
             } catch (Exception e) { report("suite", false, e.toString()); e.printStackTrace(); c.scheduleStop(); }
         });
     }

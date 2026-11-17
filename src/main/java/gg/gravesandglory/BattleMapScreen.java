@@ -99,6 +99,9 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     private int pressButton = -1;
     private boolean dragging;
 
+    /** The UI editor's sample (UiSamples.battleMap): each frame draws over the sample battle, it never closes itself, and no click orders, plans, pings or selects. */
+    boolean sample;
+
     BattleMapScreen(Screen parent) { super("Battlefield map"); this.parent = parent; }
 
     /** A marker's box and what a click or a hover there means. kind: point, ally, own, enemy, ping, you. A point's box is its disc. */
@@ -169,7 +172,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         view.layout(ax, ay, aw, ah);
     }
 
-    @Override public void tick() { if (!GravesAndGloryClient.battleActive()) client.setScreen(null); } // the round ended under the screen
+    @Override public void tick() { if (!sample && !GravesAndGloryClient.battleActive()) client.setScreen(null); } // the round ended under the screen
 
     void fit() { view.fit(); popup = null; }
 
@@ -199,7 +202,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
         if (button == 1) {
             if (popup != null || attackArmy != null || !pingMode.isEmpty()) { popup = null; attackArmy = null; pingMode = ""; return true; } // only cancels
             double wx = view.worldX(mx), wz = view.worldZ(my);
-            if (inMap(mx, my) && inField(wx, wz) && client.player != null) CommandSelection.issueSelected("hold", CommandMode.formation, new Vec3d(wx, 65, wz), client.player.getYaw(), -1);
+            if (!sample && inMap(mx, my) && inField(wx, wz) && client.player != null) CommandSelection.issueSelected("hold", CommandMode.formation, new Vec3d(wx, 65, wz), client.player.getYaw(), -1);
             return true;
         }
         if (button == 0 || button == 2) { pressX = lastX = mx; pressY = lastY = my; pressButton = button; dragging = false; return true; }
@@ -223,6 +226,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
 
     /** A left click without a drag: popup row, armed ping or attack, point disc, ally bot icon, own group icon. */
     void click(double mx, double my) {
+        if (sample) return; // the sample sends and selects nothing
         if (popup != null) {
             var p = popup;
             popup = null;
@@ -388,6 +392,7 @@ public final class BattleMapScreen extends GravesAndGloryClient.ArmyScreen {
     // ---------------------------------------------------------------- drawing
 
     @Override public void render(DrawContext g, int mx, int my, float delta) {
+        if (sample && !UiSamples.in()) { UiSamples.withBattle(() -> render(g, mx, my, delta)); return; }
         ensureView(); // re-clamps when the window changed under a live screen; rebuilt for another field
         clipX0 = ax; clipY0 = ay; clipX1 = ax + aw; clipY1 = ay + ah;
         hoverOwn = hoverArmy = hoverAllyGroup = null;

@@ -32,7 +32,8 @@ import java.util.*;
  *
  * <p>Wire (ui_sheet_v1, server to client): a byte kind, then UTF-8 JSON as a byte array. Kind 0: the published sheet (version and
  * edits). Kind 1, owners only: the editor's state (open, draft, published version, history list, a message). ui_edit_v1 (client to
- * server): UTF-8 JSON {op: set|clear|publish|discard|rollback|state|close, id, text, version}.
+ * server): UTF-8 JSON {op: set|clear|publish|discard|rollback|state|close, id, text, version, seq}; the reply echoes seq. Requests
+ * are rate-limited per player (RATE on every request, HEAVY on Publish, Roll back and Discard); one over the limit is dropped.
  */
 public final class UiEdits {
     private UiEdits() {}
@@ -54,6 +55,11 @@ public final class UiEdits {
     /** An owner's own draft: the published version it was started from, and its edits. Only kept once he changed something. */
     static final class Draft { int base; final TreeMap<String, String> edits; Draft(int base, Map<String, String> edits) { this.base = base; this.edits = new TreeMap<>(edits); } }
     private static final Map<UUID, Draft> DRAFTS = new HashMap<>();
+    /** Every editor request, checked on the network thread before anything is parsed: 30 at once, 15 a second after that. */
+    static final UiEditRate RATE = new UiEditRate(30, 15);
+    /** Publish, Roll back and Discard, which rewrite files and reach every player: 3 at once, one every 2 seconds after that. */
+    static final UiEditRate HEAVY = new UiEditRate(3, 0.5);
+    static final String SLOW = "Too many editor requests; wait a moment and try again.";
 
     // ---- resources ----
 
@@ -149,10 +155,17 @@ public final class UiEdits {
     public static void register() {
         ServerLifecycleEvents.SERVER_STOPPED.register(s -> { synchronized (UiEdits.class) { sheet = null; problem = null; DRAFTS.clear(); } });
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> sendSheet(handler.player));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> { RATE.forget(handler.player.getUuid()); HEAVY.forget(handler.player.getUuid()); });
         ServerPlayNetworking.registerGlobalReceiver(Payloads.UiEditPayload.ID, (payload, context) -> {
             ServerPlayerEntity p = context.player();
             byte[] body = payload.body();
             if (body.length > REQUEST_CAP) return;
+            long now = System.currentTimeMillis();
+            if (!RATE.take(p.getUuid(), now)) {
+                // over the limit: dropped before it is parsed or queued; an owner hears why, now and then
+                if (RATE.warn(p.getUuid(), now)) context.server().execute(() -> { if (owner(p)) sendState(p, false, SLOW, -1); });
+                return;
+            }
             String json = new String(body, StandardCharsets.UTF_8);
             context.server().execute(() -> request(context.server(), p, json));
         });
@@ -178,10 +191,14 @@ public final class UiEdits {
     static void broadcast(MinecraftServer server) { for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) sendSheet(p); }
 
     /** Sends an owner the editor's state; open asks his client to show the editor. */
-    static void sendState(ServerPlayerEntity p, boolean open, String message) {
+    static void sendState(ServerPlayerEntity p, boolean open, String message) { sendState(p, open, message, -1); }
+
+    /** The same, answering the request numbered seq (echoed, so the client knows which of its requests the draft includes; -1 none). */
+    static void sendState(ServerPlayerEntity p, boolean open, String message, long seq) {
         UiSheet s = sheet();
         JsonObject o = new JsonObject();
         o.addProperty("open", open);
+        if (seq >= 0) o.addProperty("seq", seq);
         o.addProperty("version", s.version);
         o.addProperty("published", s.summary.isEmpty() ? "" : "version " + s.version + ", " + s.time + ", " + s.who + ": " + s.summary);
         o.add("draft", UiSheet.editsJson(draft(p.getUuid())));
@@ -204,22 +221,27 @@ public final class UiEdits {
 
     static void request(MinecraftServer server, ServerPlayerEntity p, String json) {
         if (!owner(p)) return; // the gate, on every request
-        String op = "", id = "", text = null; int version = -1;
+        String op = "", id = "", text = null; int version = -1; long seq = -1;
         try {
             JsonObject o = JsonParser.parseString(json).getAsJsonObject();
             op = UiSheet.str(o, "op"); id = UiSheet.str(o, "id");
             if (o.has("text") && o.get("text").isJsonPrimitive()) text = o.get("text").getAsString();
             if (o.has("version")) version = o.get("version").getAsInt();
+            if (o.has("seq")) seq = Math.max(-1, o.get("seq").getAsLong());
         } catch (RuntimeException bad) { sendState(p, false, "Request not understood."); return; }
         String who = p.getName().getString();
+        if ((op.equals("publish") || op.equals("rollback") || op.equals("discard")) && !HEAVY.take(p.getUuid(), System.currentTimeMillis())) {
+            sendState(p, false, SLOW, seq);
+            return;
+        }
         switch (op) {
-            case "state" -> sendState(p, false, null);
-            case "set" -> sendState(p, false, set(p.getUuid(), id, text));
-            case "clear" -> sendState(p, false, set(p.getUuid(), id, null));
-            case "publish" -> sendState(p, false, publish(server, p.getUuid(), who));
-            case "discard" -> sendState(p, false, discard(p.getUuid()));
-            case "rollback" -> sendState(p, false, rollback(server, version, who));
-            default -> sendState(p, false, "Unknown request.");
+            case "state" -> sendState(p, false, null, seq);
+            case "set" -> sendState(p, false, set(p.getUuid(), id, text), seq);
+            case "clear" -> sendState(p, false, set(p.getUuid(), id, null), seq);
+            case "publish" -> sendState(p, false, publish(server, p.getUuid(), who), seq);
+            case "discard" -> sendState(p, false, discard(p.getUuid()), seq);
+            case "rollback" -> sendState(p, false, rollback(server, version, who), seq);
+            default -> sendState(p, false, "Unknown request.", seq);
         }
     }
 

@@ -79,11 +79,14 @@ public final class UiCanvas {
     public static void scissor(DrawContext g, int x, int y, int w, int h) {
         g.draw();
         int k = k();
-        RenderSystem.enableScissor(x * k, window().getFramebufferHeight() - (y + h) * k, Math.max(0, w) * k, Math.max(0, h) * k);
+        UiPreview.scissor(x * k, window().getFramebufferHeight() - (y + h) * k, Math.max(0, w) * k, Math.max(0, h) * k);
+        double toGui = k / window().getScaleFactor(); // canvas pixels to GUI pixels (the preview's, in a preview scope)
+        UiEditorClient.clipPush((int) Math.floor(x * toGui), (int) Math.floor(y * toGui), (int) Math.ceil((x + w) * toGui), (int) Math.ceil((y + h) * toGui));
     }
 
     public static void endScissor(DrawContext g) {
         g.draw();
         RenderSystem.disableScissor();
+        UiEditorClient.clipPop();
     }
 }

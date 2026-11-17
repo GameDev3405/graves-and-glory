@@ -16,6 +16,8 @@ import java.util.function.Supplier;
  * Screens (the screen browser: open any mod screen in edit mode, with this client's own camp state as its sample data; screens that
  * need a battle say so), Lines (every line drawn since the editor opened, the battle HUD's included, and the edits whose piece no
  * longer exists), and Versions (Publish, Discard, the published history with Roll back). The editor's own controls are not editable.
+ * Phase 2: a Warnings tab (lines cut short, clipped, off screen or running into each other or a button, at every common window size
+ * and GUI scale; Check every screen walks the browser's screens through them all), and their count shown above Publish.
  */
 public final class UiEditorScreen extends Screen {
     final Screen parent;
@@ -26,6 +28,8 @@ public final class UiEditorScreen extends Screen {
         super(Text.literal("UI editor"));
         this.parent = parent instanceof UiEditorScreen e ? e.parent : parent instanceof UiEditScreen s ? s.parent : parent;
     }
+
+    UiEditorScreen(Screen parent, String tab) { this(parent); this.tab = tab; }
 
     /** A screen the browser can open: a name, and how to make it (null when it cannot be opened here, with why). */
     record Entry(String name, Supplier<Screen> make, String why) {}
@@ -43,21 +47,24 @@ public final class UiEditorScreen extends Screen {
         out.add(new Entry("Barracks", inWorld ? RecruitmentScreen::new : null, camp));
         out.add(new Entry("Armoury", inWorld ? () -> new RecruitmentScreen(1) : null, camp));
         out.add(new Entry("Visuals and sound", () -> new PresentationScreen(null), null));
-        out.add(new Entry("Battlefield map", null, "needs a running battle: open it in a match"));
-        out.add(new Entry("Battle report", null, "needs a finished battle"));
-        out.add(new Entry("Battle HUD", null, "in a match its lines appear under Lines"));
+        // the battle screens, filled with a sample battle (UiSamples) so their lines can be edited outside a match
+        String map = UiSamples.whyNot("map"), report = UiSamples.whyNot("report"), hud = UiSamples.whyNot("hud");
+        out.add(new Entry("Battlefield map (sample)", map == null ? () -> UiSamples.battleMap(MinecraftClient.getInstance().currentScreen) : null, map));
+        out.add(new Entry("Battle report (sample)", report == null ? UiSamples::battleReport : null, report));
+        out.add(new Entry("Battle HUD (sample)", hud == null ? () -> UiSamples.battleHud(MinecraftClient.getInstance().currentScreen) : null, hud));
         return out;
     }
 
     void refresh() { if (client != null) clearAndInit(); }
 
     @Override protected void init() {
-        int x = 10, y = 30;
-        for (String t : new String[] {"screens", "lines", "versions"}) {
+        int x = 10, y = 30, tw = Math.min(70, (width - 200 - 10) / 4 - 4); // four tabs left of Exit editor at any width
+        for (String t : new String[] {"screens", "lines", "warnings", "versions"}) {
             String label = t.substring(0, 1).toUpperCase(Locale.ROOT) + t.substring(1);
-            var b = addDrawableChild(ButtonWidget.builder(Text.literal(label), w -> { tab = t; scroll = 0; clearAndInit(); }).dimensions(x, y, 70, 18).build());
+            if (t.equals("warnings") && UiWarnings.count() > 0) label += " (" + UiWarnings.count() + ")";
+            var b = addDrawableChild(ButtonWidget.builder(Text.literal(label), w -> { tab = t; scroll = 0; clearAndInit(); }).dimensions(x, y, tw, 18).build());
             b.active = !tab.equals(t);
-            x += 74;
+            x += tw + 4;
         }
         addDrawableChild(ButtonWidget.builder(Text.literal(UiEditorClient.active ? "Exit editor" : "Editor off"), w -> { UiEditorClient.on(false); close(); }).dimensions(width - 190, 30, 90, 18).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Back"), w -> close()).dimensions(width - 96, 30, 86, 18).build());
@@ -79,6 +86,10 @@ public final class UiEditorScreen extends Screen {
                     String label = textRenderer.trimToWidth(mark + s.id + ": " + s.shown, Math.min(460, width - 20) - 8);
                     addDrawableChild(ButtonWidget.builder(Text.literal(label), w -> client.setScreen(new UiEditScreen(this, s))).dimensions(10, top + i * 20, Math.min(460, width - 20), 18).build());
                 }
+            }
+            case "warnings" -> {
+                addDrawableChild(ButtonWidget.builder(Text.literal("Check every screen"), w -> UiWarnings.tour(screens(), parent)).dimensions(10, top, 120, 18).build()).active = UiEditorClient.active;
+                addDrawableChild(ButtonWidget.builder(Text.literal("Clear"), w -> { UiWarnings.FOUND.clear(); scroll = 0; clearAndInit(); }).dimensions(134, top, 60, 18).build()).active = UiWarnings.count() > 0;
             }
             default -> {
                 addDrawableChild(ButtonWidget.builder(Text.literal("Publish"), w -> UiEditorClient.op("publish")).dimensions(10, top, 90, 18).build()).active = !changes().equals("no change");
@@ -109,7 +120,7 @@ public final class UiEditorScreen extends Screen {
     static String changes() { return UiSheet.summary(UiText.server(), UiText.draft()); }
 
     int total() {
-        return switch (tab) { case "screens" -> screens().size(); case "lines" -> lines().size(); default -> history().size(); };
+        return switch (tab) { case "screens" -> screens().size(); case "lines" -> lines().size(); case "warnings" -> UiWarnings.lines().size(); default -> history().size(); };
     }
 
     @Override public boolean mouseScrolled(double mx, double my, double h, double v) {
@@ -132,8 +143,19 @@ public final class UiEditorScreen extends Screen {
                 int orphans = st.has("orphans") ? st.getAsJsonArray("orphans").size() : 0;
                 g.drawText(textRenderer, orphans == 0 ? "Every edit belongs to a line in this build." : orphans + " edit(s) belong to lines this build no longer has: kept, not shown (" + st.getAsJsonArray("orphans").get(0).getAsString() + (orphans > 1 ? ", ..." : "") + ").", 10, height - 24, dim, false);
             }
+            case "warnings" -> {
+                List<String> found = UiWarnings.lines();
+                g.drawText(textRenderer, textRenderer.trimToWidth(UiEditorClient.active ? "Lines cut short, clipped, off screen or overlapping, at common sizes." : "Turn the editor on (/gg ui edit) to check sizes.", width - 20), 10, top + 24, dim, false);
+                int rows = Math.max(1, (height - top - 74) / 11);
+                for (int i = 0; i < rows && i + scroll < found.size(); i++)
+                    g.drawText(textRenderer, textRenderer.trimToWidth(found.get(i + scroll), width - 20), 10, top + 40 + i * 11, 0xffe0a070, false);
+                if (found.isEmpty()) g.drawText(textRenderer, "Nothing found yet. Check every screen, or Check sizes on the strip of any screen.", 10, top + 40, dim, false);
+                g.drawText(textRenderer, "Panels and pictures are not pieces yet: only lines drawn through the editor are checked.", 10, height - 24, dim, false);
+            }
             default -> {
                 var st = UiEditorClient.state;
+                int warned = UiWarnings.count();
+                if (warned > 0) g.drawText(textRenderer, textRenderer.trimToWidth(warned + " size warning(s) from the last checks: see Warnings before you publish.", width - 210), 200, top + 5, 0xffe0a070, false);
                 String pub = UiSheet.str(st, "published");
                 g.drawText(textRenderer, textRenderer.trimToWidth("Published: " + (pub.isEmpty() ? "version " + (st.has("version") ? st.get("version").getAsInt() : 0) + " (the mod's built-in wording)" : pub), width - 20), 10, top + 26, ink, false);
                 String damaged = UiSheet.str(st, "damaged");
