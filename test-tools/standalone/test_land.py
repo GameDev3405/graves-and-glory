@@ -258,6 +258,19 @@ class Land(unittest.TestCase):
         self.assertEqual((self.r.m/'a.txt').read_text(), 'kort edit\n')
         self.assertTrue(self.r.w.exists())
 
+    def test_skip_rebase_path_wording_and_landing(self):
+        git(self.r.w, 'merge', '-q', '--no-ff', '-m', 'merge main', 'main')  # main is now an ancestor of the lane
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out): self.assertEqual(self.r.land('--dry-run'), 0)
+        self.assertIn('skip the rebase', out.getvalue()); self.assertNotIn('would rebase', out.getvalue())
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out): self.assertEqual(self.r.land(verify=FAIL), land.EXIT_VERIFY)
+        self.assertIn('no rebase needed', out.getvalue()); self.assertNotIn('is now rebased', out.getvalue())
+        self.assertIn('no rebase was done', out.getvalue())
+        lane = git(self.r.m, 'rev-parse', 'lane')
+        self.assertEqual(self.r.land(), 0)
+        self.assertIn('merge main', self.r.log())
+
     def test_dry_run_changes_nothing(self):
         refs = git(self.r.m, 'show-ref')
         self.assertEqual(self.r.land('--dry-run'), 0)

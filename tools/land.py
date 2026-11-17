@@ -5,7 +5,8 @@
 Run it from any checkout of the repository. Steps 1 to 4 stop at the first failure with main untouched:
   1. find the branch's worktree; refuse if it has uncommitted changes (CR-only noise on the generated
      Spec.java / preflight.json is restored, not counted)
-  2. rebase the branch on main in its own worktree (a failed rebase is aborted: branch unchanged)
+  2. rebase the branch on main in its own worktree (a failed rebase is aborted: branch unchanged); skipped when main is
+     already an ancestor of the branch (the branch's history, merge commits included, is verified and landed as it is)
   3. run verify there (default `python tools/verify.py fast`)
   4. fast-forward main to the verified tip in the checkout that has main checked out. Git refuses if
      that would overwrite uncommitted files there (Kort's edits, including CR-only edits to Spec.java),
@@ -170,7 +171,9 @@ def land(a):
     if not ahead: raise Stop(EXIT_USAGE, f'{a.branch} has nothing that is not already on {a.main}')
 
     if a.dry_run:
-        say(f'dry run: would rebase {a.branch} ({ahead} commits) in {wt} onto {a.main} {base[:10]}, run {a.verify_cmd!r},'
+        rebase_step = (f'skip the rebase ({a.branch} already contains {a.main} {base[:10]}; {ahead} commits)' if run(wt, 'merge-base', '--is-ancestor', base, a.branch, check=False).returncode == 0
+                       else f'rebase {a.branch} ({ahead} commits) onto {a.main} {base[:10]}')
+        say(f'dry run: would {rebase_step} in {wt}, run {a.verify_cmd!r},'
             f' fast-forward {a.main}' + (f' in {home["path"]}' if home else ' (ref only; no checkout has it)') +
             ('' if a.keep_worktree else f', move {wt} to work/land and delete {a.branch}') +
             (', commit docs/STATE.md' if home else ', no STATE.md (no checkout of main)') +
@@ -201,7 +204,7 @@ def land(a):
     say(f'verifying {tip[:10]}: {a.verify_cmd}')
     code = subprocess.run(a.verify_cmd if os.name == 'nt' else shlex.split(a.verify_cmd), cwd=wt).returncode
     clear_generated_noise(wt)
-    if code: raise Stop(EXIT_VERIFY, f'verify failed (exit {code}); {a.main} unchanged. {a.branch} is now rebased on {a.main}.')
+    if code: raise Stop(EXIT_VERIFY, f'verify failed (exit {code}); {a.main} unchanged. ' + (f'{a.branch} is now rebased on {a.main}.' if r is not None else f'{a.branch} was already on {a.main}; no rebase was done.'))
     if dirty := dirt(wt): raise Stop(EXIT_VERIFY, 'verify left changes in the worktree (generated output differs from what is committed?):\n  ' + '\n  '.join(dirty[:20]))
     if git(wt, 'rev-parse', 'HEAD') != tip: raise Stop(EXIT_MOVED, f'{a.branch} moved during verify; rerun land')
     if git(ops, 'rev-parse', a.main) != base: raise Stop(EXIT_MOVED, f'{a.main} moved during verify; rerun land')
