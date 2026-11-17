@@ -443,9 +443,9 @@ public final class Campaign {
         var rarity=RosterMath.rarityRow(t.rarity());
         return MatchRules.starsMultiplier(MatchRules.starsCount(battleMode),RosterMath.progressionMultiplier(rarity==null?0:RosterMath.starPct(o.stars,rarity),Spec.RECRUITMENT[0].capPct())); // the starsCount rule: a mode that switches stars off fights at 1
     }
-    /** Whether a commander's owned troop wears the veteran trim: Mastery II or higher (Houses spec 4.7, in-match progression design 4.4). Never a bot's. */
+    /** Whether a commander's owned troop wears the veteran trim: Mastery II or higher (Houses spec 4.7, in-match progression design 4.4) and the Proven skin equipped (cosmetics render plan 6; on when first granted). Never a bot's. */
     boolean veteran(GravesAndGlory.Squad s,Spec.TroopsRow t){
-        if(s.bot)return false;var o=profile(s.owner).owned.get(t.id());return o!=null&&o.mastery>=2;
+        if(s.bot)return false;var pr=profile(s.owner);var o=pr.owned.get(t.id());return o!=null&&o.mastery>=2&&"skin_proven".equals(pr.cosmeticSlots.get("skin"));
     }
     double damage(GravesAndGlory.Unit u){return progression(u.squad,u.spec);}
     double health(GravesAndGlory.Squad s,Spec.TroopsRow t){return progression(s,t);}
@@ -672,6 +672,7 @@ public final class Campaign {
             var paid=eligible?RosterMath.prorate(RosterMath.matchRewards(slots,Houses.thresholds(Spec.HOUSES[0].id()),Profile.houseOrder(),credited),seated,seconds):NO_REWARDS; // every House has the same slot thresholds (HousesCheck)
             paid.shards().forEach((h,n)->p.shards.merge(h,n,Integer::sum));paid.renown().forEach((h,n)->p.renown.merge(h,n,Integer::sum));
             List<String> titles=eligible?ledger(p,s):List.of();List<Integer> pactChapters=pacts(p);int pacts=pactChapters.size();
+            List<String> cosmetics=CosmeticGrants.apply(p); // Renown and Mastery cosmetics this match reached, in the same save (cosmetics render plan 3)
             List<MatchEnding.Best> bests=eligible?MatchEnding.bests(p.bests,bestValues(liveSquad(id,s))):List.of(); // pass 3: personal bests, in the same save as the rewards
             if(JoinLedger.finished(present,seated,Spec.CAMPAIGN[0].minimumRewardSeconds()))AdminCommands.matched(id,nameOf(id)); // admin tools phase A: the first finished match, in the server's join ledger (never the profile)
             boolean saved=save(id);JsonObject report=new JsonObject();report.addProperty("id",matchId);report.addProperty("outcome",winner<0?"DRAW":s.team==winner?"VICTORY":"BATTLE COMPLETE");report.addProperty("map",Spec.MAPS[map].name());report.addProperty("seconds",seconds);report.addProperty("saved",saved);report.addProperty("eligible",eligible);report.addProperty("gold",saved?earned:0);report.addProperty("writs",saved?p.troopWrits-writs0:0);report.addProperty("gearShards",saved?p.gearShards-shards0:0);report.addProperty("xp",saved?p.progression.xp-priorXp:0);report.addProperty("beforeXp",priorXp);report.add("squads",reportSquads(s));report.add("points",reportPoints());report.add("houses",reportHouses(s,slots,saved?paid:NO_REWARDS));report.add("levels",reportLevels(s));report.add("mode",reportMode());if(activeBattle!=null)report.add("march",reportMarch(p,credited,march,pactChapters));results.put(id,report);
@@ -682,12 +683,12 @@ public final class Campaign {
             if(saved){String why=(credited?"victory":practice?"practice":"match complete")+(percent<100?" (pro-rated "+percent+"%)":"");reward(rewards,"Troop writs",p.troopWrits-writs0,why);reward(rewards,"Gear shards",p.gearShards-shards0,why);reward(rewards,"XP",p.progression.xp-priorXp,"battle progress");
                 for(String h:Profile.houseOrder()){String troops=RosterMath.troopsOf(slots.getOrDefault(h,0),h);reward(rewards,RosterMath.houseName(h)+" shards",paid.shards().getOrDefault(h,0),troops);reward(rewards,RosterMath.houseName(h)+" Renown",paid.renown().getOrDefault(h,0),troops);}
                 if(march!=null&&march.bonusPaid()){reward(rewards,RosterMath.houseName(march.bonusHouse())+" shards",march.bonusShards(),"bonus objective");}
-                reward(rewards,pacts==1?"Pact":"Pacts",pacts,"chapter cleared");for(String t:titles)reward(rewards,"New title: "+t,1,"mastery");}
+                reward(rewards,pacts==1?"Pact":"Pacts",pacts,"chapter cleared");for(String t:titles)reward(rewards,"New title: "+t,1,"mastery");for(String line:CosmeticGrants.lines(cosmetics))reward(rewards,line,1,"renown or mastery");}
             report.add("rewards",rewards);
             if(saved)report.add("progress",reportProgress(p,priorXp,priorBattles,paid)); // ending polish pass 2: the REWARDS bars
             report.add("timeline",reportTimeline());if(saved)report.add("bests",reportBests(bests)); // pass 3: the STATS graph and the REWARDS bests
             if(!saved){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));standing(id,"Match reward could not be saved. Progress was not changed; check disk space.");continue;}
-            String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gear shards":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles));
+            String extra=(march!=null&&march.bonusPaid()?" / bonus objective: +"+march.bonusShards()+" "+RosterMath.houseName(march.bonusHouse())+" shards, +"+march.bonusGold()+" gear shards":"")+(pacts>0?" / "+(pacts==1?"a Pact":pacts+" Pacts")+" earned":"")+(titles.isEmpty()?"":" / new title"+(titles.size()==1?" ":"s ")+String.join(", ",titles))+(cosmetics.isEmpty()?"":" / "+String.join(" / ",CosmeticGrants.lines(cosmetics)));
             standing(id,(winner<0?"Draw":s.team==winner?"Victory":"Battle complete")+" / +"+(p.troopWrits-writs0)+" troop writs / +"+(p.gearShards-shards0)+" gear shards"+(!eligible?" (reward requires 3 minutes of play)":percent<100?" (pro-rated: you were seated for "+percent+"% of the match)":"")+extra);
         }
         b.message=(winner<0?"Draw":b.side(winner).name()+" wins")+"! Back to the war council.";headline=b.message;
@@ -1431,6 +1432,7 @@ public final class Campaign {
         String action=cmd.substring(9),result;
         if(action.equals("reroll"))result=Progression.reroll(p.progression);
         else if(action.startsWith("title:")){String title=action.substring(6);if(p.progression.titles.contains(title)){p.progression.title=title;result="Title equipped: "+title;}else result="That title is locked.";}
+        else if(action.startsWith("cosmetic:equip:")){String[] a=action.substring(15).split(":",2);result=a.length<2?"Unknown cosmetic slot.":Cosmetics.equip(p.cosmetics,p.cosmeticSlots,a[0],a[1]);} // progress:cosmetic:equip:<slot>:<id|none> (cosmetics render plan 4; the future Wardrobe sends it)
         else {var reward=Progression.claim(p.progression,action);
             // A claim that grants a troop (the Founders Rare) waits for the match to end, as roll and buy do: a copy taken mid-battle would raise the stars of a fielded troop.
             var seat=b.squads.get(id);if(reward.troop()!=null&&b.running&&seat!=null&&seat.seated){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));notice(id,"Claim tier "+Progression.RARE_TIER+"'s Rare after the battle: active battle choices are locked until the match ends.");return true;}
@@ -1440,6 +1442,7 @@ public final class Campaign {
             var troop=reward.troop()==null?null:troop(reward.troop());if(troop!=null)result+=". "+receive(p,troop); // the Founders Rare: a new troop, a copy, or past full stars its shards
             if(reward.cosmetic()!=null)p.cosmetics.add(reward.cosmetic());}
         if(!save(id)){profiles.put(id,Profile.restored(JSON.fromJson(before,Profile.class)));result="Reward was not applied because saving failed. Try again after checking disk space.";}
+        else if(action.startsWith("title:")||action.startsWith("cosmetic:")){CosmeticSync.changed(player);if(b.running)CosmeticBanners.dress(b,player,p);} // his trackers see the new set; the held banner takes the new layers
         notice(id,result);return true;
     }
     JsonObject progressSnapshot(UUID id){Profile p=profile(id);Progression.reset(p.progression,Progression.today());JsonObject j=forClient(p.progression);j.addProperty("tier",Progression.tier(p.progression));var roster=RosterMath.launchRoster();j.addProperty("chapter",Progression.chapter(p.progression,(int)roster.stream().filter(p.owned::containsKey).count(),roster.size()));return j;}

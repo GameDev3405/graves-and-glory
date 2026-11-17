@@ -70,6 +70,7 @@ public final class AdminCommands {
                 .then(CommandManager.literal("remove").then(CommandManager.argument("player", StringArgumentType.word()).executes(c -> edit(c, false))))
                 .then(CommandManager.literal("list").executes(c -> list(c.getSource())))
                 .then(CommandManager.literal("check").then(CommandManager.argument("player", StringArgumentType.word()).executes(c -> check(c)))))
+            .then(CosmeticCommands.node()) // /gg cosmetics: list, grant, revoke, equip, title (cosmetics render plan 7)
             // the UI editor (UI editor design 5.6, 5.7; phase 1: words). The command name is open question 1 for Kort.
             .then(CommandManager.literal("ui")
                 .then(CommandManager.literal("edit").executes(c -> uiEdit(c.getSource())))

@@ -807,6 +807,7 @@ final class Abilities {
             was = b.world.getBlockState(block);
             b.world.setBlockState(block, BannerBlock.getForColor(dye(b.side(u.squad.team).color())).getDefaultState().with(BannerBlock.ROTATION, RotationPropertyHelper.fromYaw(yaw)));
             at = new Vec3d(block.getX() + .5, block.getY(), block.getZ() + .5);
+            CosmeticBanners.plant(b, u.squad, block); // the commander's cosmetic layers on the Oath Banner (vanilla patterns only: it has no stand for modded extras)
         }
         var banner = new Banner(u.squad, at, time + row.durationTicks(), row.radius(), row.amount(), row.anchors(), block, was, u);
         b.banners.add(banner);

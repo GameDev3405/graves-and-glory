@@ -1,6 +1,7 @@
 package gg.gravesandglory.net;
 
 import gg.gravesandglory.CommandNet;
+import gg.gravesandglory.CosmeticSync;
 import gg.gravesandglory.GravesAndGlory;
 import gg.gravesandglory.MotionEvents;
 import gg.gravesandglory.RankSync;
@@ -11,8 +12,8 @@ import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
 
 /**
- * Every Graves and Glory play channel as a 1.21.1 CustomPayload (26: 18 server to client, 8 client to server). Channel ids are
- * unchanged and stay defined where 1.20.1 defined them (GravesAndGlory, CommandNet, MotionEvents, RankSync). Each body is the
+ * Every Graves and Glory play channel as a 1.21.1 CustomPayload (27: 19 server to client, 8 client to server; cosmetic_v1 is new on 1.21.1). Channel ids are
+ * unchanged and stay defined where 1.20.1 defined them (GravesAndGlory, CommandNet, MotionEvents, RankSync, CosmeticSync). Each body is the
  * channel's 1.20.1 byte layout (RawBody), so the send and receive sites keep their PacketByteBuf code:
  * <pre>
  *   send:    ServerPlayNetworking.send(p, Payloads.FeedPayload.of(buf));
@@ -25,7 +26,7 @@ import net.minecraft.util.Identifier;
 public final class Payloads {
     private Payloads() {}
 
-    /** Registers all 29 types (27 play, 2 configuration), once, from the common initializer (GravesAndGlory.onInitialize): both sides need them. */
+    /** Registers all 30 types (28 play, 2 configuration), once, from the common initializer (GravesAndGlory.onInitialize): both sides need them. */
     public static void register() {
         PayloadTypeRegistry.playS2C().register(CampPayload.ID, CampPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(CommandPayload.ID, CommandPayload.CODEC);
@@ -45,6 +46,7 @@ public final class Payloads {
         PayloadTypeRegistry.playS2C().register(StancePayload.ID, StancePayload.CODEC);
         PayloadTypeRegistry.playS2C().register(RisePayload.ID, RisePayload.CODEC);
         PayloadTypeRegistry.playS2C().register(RankPayload.ID, RankPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(CosmeticPayload.ID, CosmeticPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(OrderPayload.ID, OrderPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(ProfilePayload.ID, ProfilePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(CameraPayload.ID, CameraPayload.CODEC);
@@ -241,6 +243,17 @@ public final class Payloads {
         /** A fresh reader over the body, for a receive site. */
         public PacketByteBuf buf() { return RawBody.reader(body); }
         @Override public Id<RankPayload> getId() { return ID; }
+    }
+
+    /** S2C CosmeticSync.CHANNEL: cosmetic_v1 (cosmetics render plan 5), sent only to clients that registered it. */
+    public record CosmeticPayload(byte[] body) implements CustomPayload {
+        public static final Id<CosmeticPayload> ID = new Id<>(CosmeticSync.CHANNEL);
+        public static final PacketCodec<PacketByteBuf, CosmeticPayload> CODEC = RawBody.codec(CosmeticPayload::new, CosmeticPayload::body);
+        /** Wraps the bytes a send site wrote (copied). */
+        public static CosmeticPayload of(PacketByteBuf buf) { return new CosmeticPayload(RawBody.copy(buf)); }
+        /** A fresh reader over the body, for a receive site. */
+        public PacketByteBuf buf() { return RawBody.reader(body); }
+        @Override public Id<CosmeticPayload> getId() { return ID; }
     }
 
     // Client to server.

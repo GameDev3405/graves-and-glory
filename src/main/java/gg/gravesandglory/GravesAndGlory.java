@@ -147,6 +147,7 @@ public final class GravesAndGlory implements ModInitializer {
         });
         // A soldier's rank (rank_v1: level, weapon tier, armour tier) goes the same two ways as his stance: on START_TRACKING and on a late channel registration.
         RankSync.registerServer();
+        CosmeticSync.registerServer(); // cosmetic_v1: equipped cosmetics and title, to modded clients only (cosmetics render plan 5)
         CommandNet.registerServer(); // command_v1, server to client: charge cooldown, teammate outlines, order acknowledgements (command UI plan)
         ServerPlayNetworking.registerGlobalReceiver(Payloads.OrderPayload.ID, (payload, context) -> { MinecraftServer server=context.server(); ServerPlayerEntity player=context.player(); PacketByteBuf buf=payload.buf();
             String command=buf.readString(128);
@@ -484,6 +485,7 @@ public final class GravesAndGlory implements ModInitializer {
             var e=new ArmySupplyBanner(b.world);
             e.squad=s;e.hp=hp;e.block=spot;e.was=b.world.getBlockState(spot);
             b.world.setBlockState(spot,net.minecraft.block.BannerBlock.getForColor(Abilities.dye(b.side(s.team).color())).getDefaultState().with(net.minecraft.block.BannerBlock.ROTATION,RotationPropertyHelper.fromYaw(yaw)));
+            CosmeticBanners.plant(b,s,spot); // his cosmetic layers on the block (vanilla patterns, every client)
             e.refreshPositionAndAngles(spot.getX()+.5,spot.getY(),spot.getZ()+.5,yaw,0);
             e.setNoGravity(true);e.setInvisible(true);
             e.addCommandTag("gravesandglory");e.addCommandTag("structure");
@@ -1021,7 +1023,7 @@ public final class GravesAndGlory implements ModInitializer {
          *  player (a spectator seat) gets the kit with no modifiers. */
         void equipPlayer(ServerPlayerEntity p){
             var pr=campaign.profile(p.getUuid());var s=squads.get(p.getUuid());
-            GearCombat.kit(p,pr);
+            GearCombat.kit(p,pr);CosmeticBanners.dress(this,p,pr);CosmeticSync.changed(p); // the held banner in his side's dye and cosmetic layers; his cosmetics to every modded tracker
             if(s!=null&&s.seated&&!s.bot){GearCombat.seat(s,pr);GearCombat.apply(p,s.gear);}else GearCombat.clear(p);
             p.getHungerManager().setFoodLevel(20);
         }
