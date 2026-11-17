@@ -115,7 +115,9 @@ final class PlainGear {
             List<String> tip = tooltip(v, g);
             m.icon(13, piece(g, "", tip));
             m.button(9, PlainMenu.named(Items.ARROW, "Back to the Arsenal", Formatting.WHITE), pl -> { cardUid = -1; armedUid = -1; });
-            String slot = Gear.item(g.item).slot();
+            var def = Gear.item(g.item);
+            if (def == null) { cardUid = -1; return; } // review L4: an unknown item id
+            String slot = def.slot();
             if (worn) m.command(29, PlainMenu.named(Items.BARRIER, "Unequip", Formatting.YELLOW, "Takes it off the " + GearView.SLOT_WORDS.get(slot) + " slot."), "gear:unequip:" + slot);
             else {
                 List<String> l = new ArrayList<>(List.of("Wear it in the " + GearView.SLOT_WORDS.get(slot) + " slot."));

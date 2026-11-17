@@ -50,7 +50,7 @@ class PlainBot(ggbot.Bot):
             for needle in (b"key.gravesandglory", b"{key:", b"keybind"):
                 if needle in d:
                     self.key_leaks.append("0x%02X %s %r" % (pid, needle.decode(), d[:160]))
-        if pid in (CONTAINER_CONTENT, SET_SLOT) and MOD_NEEDLE in d:  # P4: no mod id in any menu or inventory stack (item_model, components)
+        if pid in (CONTAINER_CONTENT, SET_SLOT) and MOD_NEEDLE in d.replace(b"gravesandglory:plain", b"").replace(b"gravesandglory:title", b""):  # the required pack's fonts  # P4: no mod id in any menu or inventory stack (item_model, components)
             self.item_leaks.append("0x%02X %r" % (pid, d[:200]))
         if pid == ADD_ENTITY:
             eid, p = rvi(d, 0)
@@ -354,6 +354,39 @@ def menu_checks(b, port, name, pages, hotbar=True):
     return fails
 
 
+WINDOW0 = [  # review H1: the player's own inventory screen; hotbar slot 1 (an order item) is window-0 slot 37, the 2x2 grid 1-4
+    ("w0 pickup", [(37, 0, 0)]), ("w0 shift", [(37, 0, 1)]), ("w0 key2->inv", [(10, 1, 2)]), ("w0 offhand", [(37, 40, 2)]),
+    ("w0 throw", [(37, 0, 4)]), ("w0 ctrl-throw", [(37, 1, 4)]), ("w0 grid", [(37, 0, 0), (1, 0, 0)]),
+    ("w0 drag", [(37, 0, 0), (-999, 0, 5), (1, 1, 5), (2, 1, 5), (-999, 2, 5)]), ("w0 collect", [(37, 0, 6)]),
+]
+
+
+def window0_checks(b, port, name):
+    """P4 review H1: no click in a plain player's own inventory screen moves, throws or crafts a plain hotbar item (server truth)."""
+    fails = []
+    if b.window:
+        b.close_window()
+    time.sleep(1)
+    base = inv(port, name)
+    for ex, clicks in WINDOW0:
+        b.window = 0
+        for slot, button, mode in clicks:
+            b.click(slot, button, mode, (), None)
+            time.sleep(0.12)
+        time.sleep(0.8)
+        now = inv(port, name)
+        bad = []
+        if now["items"] != base["items"]:
+            bad.append("inventory changed: %s -> %s" % (base["items"][-160:], now["items"][-160:]))
+        if now.get("cursor") != "empty":
+            bad.append("cursor " + now.get("cursor", "?"))
+        if now.get("drops") != base.get("drops"):
+            bad.append("drops %s -> %s" % (base.get("drops"), now.get("drops")))
+        print("  window0 %-14s %s" % (ex, "ok" if not bad else "FAIL " + "; ".join(bad)), flush=True)
+        fails += ["window0 %s: %s" % (ex, "; ".join(bad))] if bad else []
+    return fails
+
+
 def tactics_script(b, port, name):
     """P4 formations and relics in a practice battle: F to the tactics page, the Wedge key, F back, a Hold that keeps the wedge, then the
     relic in slot 1, then the Armoury's dupe checks. Returns the failures."""
@@ -436,17 +469,18 @@ def main(argv):
     b.quiet = True
     ok = b.connect(timeout=180)
     print("joined" if ok else "refused: %s" % b.disconnect, flush=True)
+    menu_fails = None
     if ok:
         t0 = time.time()
         if a.registry:
             registry_check(b, a.port, a.name)
         if a.script:
             script(b, a.port, a.name)
-        menu_fails = None
         if a.menus:
             wait_state(a.port, "ready=true", 180)
             time.sleep(2)
             menu_fails = menu_checks(b, a.port, a.name, PAGES)
+            menu_fails += window0_checks(b, a.port, a.name)
             menu_fails += tactics_script(b, a.port, a.name)
         while b.alive and time.time() - t0 < a.stay:
             b.move()

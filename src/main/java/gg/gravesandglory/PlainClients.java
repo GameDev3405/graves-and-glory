@@ -175,16 +175,39 @@ public final class PlainClients {
     public static void hotbar(ServerPlayerEntity p) {
         var inv = p.getInventory();
         var s = seated(p);
-        if (s == null) ON_TACTICS.remove(p.getUuid());
-        if (s != null && ON_TACTICS.contains(p.getUuid())) {
+        UUID id = p.getUuid();
+        if (s == null) { ON_TACTICS.remove(id); SHAPE.remove(id); SWEPT.remove(id); } // the next battle starts from its own shape
+        Map<Integer, String> page = s != null && ON_TACTICS.contains(id) ? TACTICS : HOTBAR;
+        if (page == TACTICS) {
             for (var e : TACTICS.entrySet()) {
                 ItemStack want = tacticsItem(s, e.getValue()), have = inv.getStack(e.getKey());
                 if (!ItemStack.areItemsAndComponentsEqual(want, have) || have.getCount() != want.getCount()) inv.setStack(e.getKey(), want);
             }
             relicSweep(p, s);
-            return;
+        } else for (var e : HOTBAR.entrySet()) if (!e.getValue().equals(kindOf(inv.getStack(e.getKey())))) inv.setStack(e.getKey(), item(e.getValue()));
+        // P4 review H1: a plain item anywhere but its own slot (moved by the inventory screen, pick-block, the 2x2 grid) is removed,
+        // so a refresh can never hand out a second copy to keep, craft or drop.
+        for (int i = 0; i < inv.size(); i++) {
+            String kind = kindOf(inv.getStack(i));
+            if (kind != null && !kind.equals(page.get(i))) inv.setStack(i, ItemStack.EMPTY);
         }
-        for (var e : HOTBAR.entrySet()) if (!e.getValue().equals(kindOf(inv.getStack(e.getKey())))) inv.setStack(e.getKey(), item(e.getValue()));
+        var grid = p.playerScreenHandler.getCraftingInput();
+        for (int i = 0; i < grid.size(); i++) if (kindOf(grid.getStack(i)) != null) grid.setStack(i, ItemStack.EMPTY);
+        if (kindOf(p.playerScreenHandler.getCursorStack()) != null) p.playerScreenHandler.setCursorStack(ItemStack.EMPTY);
+    }
+
+    /** P4 review H1 (PlainInventoryMixin): a click in a plain player's own inventory screen (window 0) that would pick up, swap or drag
+     *  a plain hotbar item is refused and the screen resynced; the items stay locked in their slots. True when refused. */
+    public static boolean lockedClick(net.minecraft.screen.ScreenHandler h, int slot, int button, net.minecraft.screen.slot.SlotActionType type, net.minecraft.entity.player.PlayerEntity pl) {
+        if (!ON || !(pl instanceof ServerPlayerEntity p) || !VersionGate.plain(p) || h != p.playerScreenHandler) return false;
+        boolean plain = kindOf(h.getCursorStack()) != null
+            || slot >= 0 && slot < h.slots.size() && kindOf(h.slots.get(slot).getStack()) != null
+            || type == net.minecraft.screen.slot.SlotActionType.SWAP && (button == 40 ? kindOf(p.getOffHandStack()) != null
+                : button >= 0 && button < 9 && kindOf(p.getInventory().getStack(button)) != null);
+        if (!plain) return false;
+        h.setCursorStack(ItemStack.EMPTY);
+        h.syncState();
+        return true;
     }
 
     /** The squad of a plain player seated in a running battle, else null. */
@@ -217,7 +240,7 @@ public final class PlainClients {
         if (kind.equals("tactics")) { turnPage(p); return; }
         if (kind.startsWith("formation:")) { formation(p, kind.substring(10)); return; }
         if (kind.startsWith("relic:")) { b.command(p, kind); PlainHud.notices(p); hotbar(p); return; }
-        if (kind.equals("armoury")) { PlainArmoury.open(p); return; }
+        if (kind.equals("armoury")) { b.command(p, "barracks"); return; } // review L2: Battle.command's gates; openBarracks routes plain players to the Armoury
         order(p, kind);
     }
 
@@ -253,7 +276,7 @@ public final class PlainClients {
         Formatting colour = Formatting.GOLD;
         if (kind.startsWith("formation:")) {
             String id = kind.substring(10);
-            st = new ItemStack(switch (id) { case "block" -> Items.SHIELD; case "banner" -> Items.WHITE_BANNER; case "wedge" -> Items.SPECTRAL_ARROW; default -> Items.FEATHER; });
+            st = new ItemStack(switch (id) { case "block" -> Items.SHIELD; case "banner" -> Items.WHITE_BANNER; case "wedge" -> Items.FLINT; default -> Items.FEATHER; });
             boolean on = s != null && id.equals(SHAPE.getOrDefault(s.owner, s.formation));
             name = OrderRules.formationLabel(id) + (on ? " (chosen)" : "");
             if (on) colour = Formatting.GREEN;
@@ -269,7 +292,6 @@ public final class PlainClients {
                 int ready = Commander.readyIn(b, s, slot), active = Commander.activeFor(b, s, slot);
                 name = r.name() + (active > 0 ? " (active " + (active + 19) / 20 + "s)" : ready > 0 ? " (ready in " + (ready + 19) / 20 + "s)" : " (ready)");
                 colour = active > 0 ? Formatting.AQUA : ready > 0 ? Formatting.RED : Formatting.GREEN;
-                if (ready > 0) st.setCount(Math.max(1, Math.min(64, (ready + 19) / 20)));
                 lore.add(Text.literal("Key " + key + ": use it.").formatted(Formatting.DARK_GRAY));
             }
         } else {

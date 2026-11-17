@@ -2,7 +2,7 @@
   "required": true,
   "package": "gg.gravesandglory.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": ["ContactFeedbackMixin", "AutosaveMixin", "ShieldCooldownMixin", "BowDrawMixin", "CorpseMixin", "HitEventMixin", "ShotAttitudeMixin", "PropSwingMixin", "PropExplosionMixin", "DisplayPoseAccessor", "ServerCommandSourceAccessor", "PropRestSaveMixin", "CarvedPumpkinGuardMixin", "FarmlandGuardMixin", "TroopPathMixin", "TroopAmphibiousPathMixin", "PierceLevelInvoker", "ShutdownUnloadMixin", "PlainDropMixin", "PlainSwapMixin"],
+  "mixins": ["ContactFeedbackMixin", "AutosaveMixin", "ShieldCooldownMixin", "BowDrawMixin", "CorpseMixin", "HitEventMixin", "ShotAttitudeMixin", "PropSwingMixin", "PropExplosionMixin", "DisplayPoseAccessor", "ServerCommandSourceAccessor", "PropRestSaveMixin", "CarvedPumpkinGuardMixin", "FarmlandGuardMixin", "TroopPathMixin", "TroopAmphibiousPathMixin", "PierceLevelInvoker", "ShutdownUnloadMixin", "PlainDropMixin", "PlainSwapMixin", "PlainInventoryMixin"],
   "client": [
     "CommandInputMixin",
     "PanelInputMixin",

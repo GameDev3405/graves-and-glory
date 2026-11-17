@@ -62,6 +62,7 @@ final class PlainMenu extends GenericContainerScreenHandler {
 
     /** Clears the menu to the background pane and draws the page again (same window). */
     void redraw(ServerPlayerEntity p) {
+        lastRun = p.getServer().getTicks(); // review M2: a double-click never lands on the view it opened
         buttons.clear();
         ItemStack pane = named(Items.GRAY_STAINED_GLASS_PANE, Text.literal(" "), List.of());
         for (int i = 0; i < size; i++) inv.setStack(i, pane.copy());

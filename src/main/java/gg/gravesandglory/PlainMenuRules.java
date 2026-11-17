@@ -14,7 +14,7 @@ public final class PlainMenuRules {
     /** SlotActionType's ordinals (1.21.1). */
     public static final int PICKUP = 0, QUICK_MOVE = 1, SWAP = 2, CLONE = 3, THROW = 4, QUICK_CRAFT = 5, PICKUP_ALL = 6;
     /** Ticks between two buttons run from one menu: a double-click or a burst of packets runs a button once. */
-    public static final int COOLDOWN = 4;
+    public static final int COOLDOWN = 8;
 
     /** Whether the click runs the button in slot: a PICKUP with the left or right button on a menu slot (0 to menuSize - 1). */
     public static boolean runs(int slot, int button, int mode, int menuSize) {
