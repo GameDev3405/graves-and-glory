@@ -211,6 +211,7 @@ public final class BotSimulation implements ModInitializer {
         // A real round starts from the camp some time after the arena is ready (a room's start, a practice press); starting in the ready tick put
         // the build's last step (landmarks, overlay, war table, mapReady) inside the round's tick 0 (docs/reports/perf-targets-2026-11-02.md, tick 0 fix).
         if(++lobbyTicks<LOBBY_TICKS)return;lobbyTicks=0;
+        if(match>0)leftovers(b);
         var c=b.campaign;c.size=size;c.fill=true;c.practice=false;c.difficulty=dawnTier;c.lastWinner=ABORTED;c.battleMode=simMode;
         long t0=System.nanoTime();b.startRound();startRoundNs=System.nanoTime()-t0;if(roundSecondsGiven||simMode.equals(Modes.DOMINATION))b.roundSeconds=roundSeconds; // after startRound, which sets the row's clock
         armies.clear();for(var s:b.squads.values())if(s.bot){if(s.team==1)s.tier=duskTier;armies.add(s);}
@@ -284,6 +285,20 @@ public final class BotSimulation implements ModInitializer {
             rows.append(match+1).append(',').append(SEATS[t]).append(',').append(fielded[t]).append(',').append(first2).append(',').append(first3).append(',')
                 .append(shareLevel2[t]<0?"":String.format(Locale.ROOT,"%.3f",shareLevel2[t])).append(',').append(tally==null?0:tally.level3s).append(',').append(gear).append('\n');}
         append(levels,rows.toString());
+    }
+    /** Bug sweep 1: what the last round left in the world once the camp took the players back (Campaign.returnLobby), counted just before the
+     *  next round starts: living troops, entities still tagged as the mod's, and projectiles. leftovers.csv gets a row per round after the first;
+     *  any count above zero is a cleanup leak. */
+    void leftovers(GravesAndGlory.Battle b){
+        int troops=0,tagged=0,shots=0;Map<String,Integer> kinds=new TreeMap<>();
+        for(var e:b.world.iterateEntities()){if(e.isRemoved()||e instanceof net.minecraft.server.network.ServerPlayerEntity)continue;
+            var tags=e.getCommandTags();boolean troop=ArmyMobs.isTroop(e)&&e.isAlive(),tag=tags.contains("gravesandglory")||tags.contains("bannerbound"),shot=tags.contains(Projectiles.TAG);
+            if(troop)troops++;if(tag)tagged++;if(shot)shots++;
+            if(troop||tag||shot)kinds.merge(net.minecraft.registry.Registries.ENTITY_TYPE.getId(e.getType()).getPath(),1,Integer::sum);}
+        Path f=results.resolveSibling("leftovers.csv");
+        try{if(!Files.exists(f))Files.writeString(f,"beforeMatch,troops,tagged,projectiles,kinds\n",StandardCharsets.UTF_8);}catch(IOException e){throw new UncheckedIOException(e);}
+        append(f,(match+1)+","+troops+","+tagged+","+shots+","+kinds.toString().replace(',',' ')+"\n");
+        System.out.println("[botsim] leftovers before match "+(match+1)+": troops="+troops+" tagged="+tagged+" projectiles="+shots+" "+kinds);
     }
     void record(GravesAndGlory.Battle b){
         int winner=b.campaign.lastWinner;
