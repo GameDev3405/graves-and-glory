@@ -103,7 +103,7 @@ public final class PropPack {
         for(PropDef d:Props.DEFS.values())for(var part:d.parts()){cmds.add(part.cmd());owner.putIfAbsent(part.cmd(),d.id());}
         if(cmds.isEmpty())return null;
         java.util.List<Integer> miss;
-        try{miss=PropPackFile.missing(p.bytes(),cmds);}catch(IOException e){return "STALE OR BROKEN PROP PACK: could not read "+p.file()+" as a zip ("+e.getMessage()+")";}
+        try{miss=PropPackFile.missing(p.bytes(),cmds);}catch(IOException|RuntimeException e){return "STALE OR BROKEN PROP PACK: could not read "+p.file()+" as a zip ("+e.getMessage()+")";}
         if(miss.isEmpty())return null;
         var ids=new java.util.TreeSet<String>();for(int c:miss)ids.add(owner.get(c));
         String some=String.join(", ",ids.stream().limit(5).toList())+(ids.size()>5?", ...":"");
