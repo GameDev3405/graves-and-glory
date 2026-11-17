@@ -50,7 +50,7 @@ class PlainBot(ggbot.Bot):
             for needle in (b"key.gravesandglory", b"{key:", b"keybind"):
                 if needle in d:
                     self.key_leaks.append("0x%02X %s %r" % (pid, needle.decode(), d[:160]))
-        if pid in (CONTAINER_CONTENT, SET_SLOT) and MOD_NEEDLE in d.replace(b"gravesandglory:plain", b"").replace(b"gravesandglory:title", b""):  # the required pack's fonts  # P4: no mod id in any menu or inventory stack (item_model, components)
+        if pid in (CONTAINER_CONTENT, SET_SLOT) and MOD_NEEDLE in d.replace(b"gravesandglory:plain", b"").replace(b"gravesandglory:title", b"").replace(b"gravesandglory:no_vanilla_stats", b""):  # the required pack's fonts; an attribute modifier id (free-form, not a registry entry)  # P4: no mod id in any menu or inventory stack (item_model, components)
             self.item_leaks.append("0x%02X %r" % (pid, d[:200]))
         if pid == ADD_ENTITY:
             eid, p = rvi(d, 0)

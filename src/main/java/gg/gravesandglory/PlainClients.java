@@ -196,16 +196,16 @@ public final class PlainClients {
         if (kindOf(p.playerScreenHandler.getCursorStack()) != null) p.playerScreenHandler.setCursorStack(ItemStack.EMPTY);
     }
 
-    /** P4 review H1 (PlainInventoryMixin): a click in a plain player's own inventory screen (window 0) that would pick up, swap or drag
-     *  a plain hotbar item is refused and the screen resynced; the items stay locked in their slots. True when refused. */
+    /** P4 review H1 (PlainInventoryMixin): a click in any window (the player's own inventory, a barrel, an anvil) that would pick up,
+     *  swap or drag a plain hotbar item is refused and the screen resynced; the items stay locked in their slots. True when refused. */
     public static boolean lockedClick(net.minecraft.screen.ScreenHandler h, int slot, int button, net.minecraft.screen.slot.SlotActionType type, net.minecraft.entity.player.PlayerEntity pl) {
-        if (!ON || !(pl instanceof ServerPlayerEntity p) || !VersionGate.plain(p) || h != p.playerScreenHandler) return false;
+        if (!ON || !(pl instanceof ServerPlayerEntity p) || !VersionGate.plain(p)) return false; // any window: own inventory, barrels, anvils (review round 2)
         boolean plain = kindOf(h.getCursorStack()) != null
             || slot >= 0 && slot < h.slots.size() && kindOf(h.slots.get(slot).getStack()) != null
             || type == net.minecraft.screen.slot.SlotActionType.SWAP && (button == 40 ? kindOf(p.getOffHandStack()) != null
                 : button >= 0 && button < 9 && kindOf(p.getInventory().getStack(button)) != null);
         if (!plain) return false;
-        h.setCursorStack(ItemStack.EMPTY);
+        if (kindOf(h.getCursorStack()) != null) h.setCursorStack(ItemStack.EMPTY); // a real item held stays held
         h.syncState();
         return true;
     }
