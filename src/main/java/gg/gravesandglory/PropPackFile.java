@@ -62,6 +62,32 @@ public final class PropPackFile {
         return new Pack(file,bytes,sha);
     }
 
+    static final String PAPER="assets/minecraft/models/item/paper.json";
+    private static final java.util.regex.Pattern CMD=java.util.regex.Pattern.compile("\"custom_model_data\"\\s*:\\s*(\\d+)");
+
+    /** The custom_model_data values the pack's paper.json overrides name; empty when the zip has no paper.json. */
+    static java.util.SortedSet<Integer> overrides(byte[] zip)throws IOException{
+        java.util.SortedSet<Integer> out=new java.util.TreeSet<>();
+        try(var in=new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(zip))){
+            for(var e=in.getNextEntry();e!=null;e=in.getNextEntry()){
+                if(!e.getName().equals(PAPER))continue;
+                var m=CMD.matcher(new String(in.readAllBytes(),StandardCharsets.UTF_8));
+                while(m.find())try{out.add(Integer.parseInt(m.group(1)));}catch(NumberFormatException x){}
+                break;
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The part custom_model_data values the pack has no exact override for, ascending. A stale pack is the usual cause: paper overrides match
+     * any value at or above their own and the last match wins, so every missing part draws as the highest lower part (one part repeated).
+     */
+    static java.util.List<Integer> missing(byte[] zip,java.util.Collection<Integer> cmds)throws IOException{
+        var have=overrides(zip);
+        return new java.util.TreeSet<>(cmds).stream().filter(c->!have.contains(c)).toList();
+    }
+
     /** gg.propPack.port: blank or unset is 0 (no embedded server); else 1..65535. */
     static int port(String text){
         if(text==null||text.isBlank())return 0;

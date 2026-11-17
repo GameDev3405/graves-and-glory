@@ -34,7 +34,7 @@ Hosting options:
 
 Updating the props (no jar change, no builder-pack reinstall):
 1. A new or changed prop def must reach the server: the next jar, or a data pack holding `data/gravesandglory/gg_props/<id>.json` in the save's `datapacks/` folder, then `/reload`. Art-only changes skip this step.
-2. `python tools/build_prop_pack.py`, then copy `gg-props-<sha8>.zip` and `gg-props-latest.sha1` into the server's pack folder (and upload the zip to the external host, if one is used).
+2. `python tools/build_prop_pack.py`, then copy `gg-props-<sha8>.zip` and `gg-props-latest.sha1` into the server's pack folder (and upload the zip to the external host, if one is used). Build it from the same commit as the jar, never from an old `dist/props`. A pack missing any prop part's model makes every newer part draw as one old part, and the server log then says `STALE PROP PACK`.
 3. In game or over RCON: `/prop pack reload` (op 2). It re-reads the file, computes the new sha1 and resends the pack to everyone online; their client reloads resources and stays connected. Players joining later get the new pack.
 4. If the reload fails (missing file, sha1 not matching `gg-props-latest.sha1`), the last good pack stays and the error is printed.
 

@@ -88,8 +88,27 @@ public final class PropPack {
         try{
             pack=PropPackFile.read(Path.of(System.getProperty(FILE)));
             log("read "+pack.file()+" ("+pack.bytes().length+" bytes, sha1 "+pack.sha1()+")");
+            stale=coverage(pack);
+            if(stale!=null)log(stale);
             return null;
         }catch(IOException e){log(e.getMessage());return e.getMessage();}
+    }
+
+    /** The last coverage warning (null: the pack has a model for every loaded prop part); /prop pack reload shows it to the operator. */
+    static volatile String stale;
+
+    /** A warning when the pack lacks an override for any loaded prop part (a stale pack draws every newer part as one old part), else null. */
+    static String coverage(PropPackFile.Pack p){
+        var cmds=new java.util.ArrayList<Integer>();var owner=new java.util.HashMap<Integer,String>();
+        for(PropDef d:Props.DEFS.values())for(var part:d.parts()){cmds.add(part.cmd());owner.putIfAbsent(part.cmd(),d.id());}
+        if(cmds.isEmpty())return null;
+        java.util.List<Integer> miss;
+        try{miss=PropPackFile.missing(p.bytes(),cmds);}catch(IOException e){return "STALE OR BROKEN PROP PACK: could not read "+p.file()+" as a zip ("+e.getMessage()+")";}
+        if(miss.isEmpty())return null;
+        var ids=new java.util.TreeSet<String>();for(int c:miss)ids.add(owner.get(c));
+        String some=String.join(", ",ids.stream().limit(5).toList())+(ids.size()>5?", ...":"");
+        return "STALE PROP PACK: "+p.name()+" (sha1 "+p.sha1()+") has no model for "+miss.size()+" of "+new java.util.HashSet<>(cmds).size()
+            +" prop parts in "+ids.size()+" props ("+some+"); those parts draw as one old part. Rebuild with tools/build_prop_pack.py from this jar's commit and /prop pack reload.";
     }
 
     static String url(){
@@ -116,6 +135,7 @@ public final class PropPack {
         for(var player:source.getServer().getPlayerManager().getPlayerList())if(send(player))n++;
         int sent=n;
         source.sendFeedback(()->Text.literal("Prop pack "+p.name()+" (sha1 "+p.sha1()+") sent to "+sent+" player"+(sent==1?"":"s")),true);
+        String warn=stale;if(warn!=null)source.sendError(Text.literal(warn));
         return Math.max(1,sent);
     }
 }

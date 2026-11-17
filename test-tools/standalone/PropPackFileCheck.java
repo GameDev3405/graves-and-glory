@@ -86,7 +86,28 @@ public final class PropPackFileCheck {
   }
  }
 
+ static byte[] realZip(String paper)throws IOException{
+  var bytes=new java.io.ByteArrayOutputStream();
+  try(var z=new java.util.zip.ZipOutputStream(bytes)){
+   z.putNextEntry(new java.util.zip.ZipEntry("pack.mcmeta"));z.write("{}".getBytes());z.closeEntry();
+   if(paper!=null){z.putNextEntry(new java.util.zip.ZipEntry(PropPackFile.PAPER));z.write(paper.getBytes(java.nio.charset.StandardCharsets.UTF_8));z.closeEntry();}
+  }
+  return bytes.toByteArray();
+ }
+
+ /** Coverage: the stale builder pack (2026-11-16) had overrides only up to 7310051, so every newer part drew as grindstone_bench. */
+ static void coverage()throws IOException{
+  String paper="{\"parent\":\"minecraft:item/generated\",\"overrides\":[{\"predicate\": {\"custom_model_data\": 7310001},\"model\":\"a\"},"
+   +"{\"predicate\":{\"custom_model_data\":7310051},\"model\":\"b\"}]}";
+  byte[] z=realZip(paper);
+  check(PropPackFile.overrides(z).equals(new java.util.TreeSet<>(java.util.List.of(7310001,7310051))),"overrides reads every custom_model_data in paper.json");
+  check(PropPackFile.missing(z,java.util.List.of(7310001,7310051)).isEmpty(),"a full pack misses nothing");
+  check(PropPackFile.missing(z,java.util.List.of(7311102,7310001,7311102,7311103)).equals(java.util.List.of(7311102,7311103)),"a stale pack lists the newer parts once, ascending");
+  check(PropPackFile.missing(realZip(null),java.util.List.of(7310001)).equals(java.util.List.of(7310001)),"no paper.json: every part missing");
+ }
+
  public static void main(String[] args)throws Exception{
+  coverage();
   check(PropPackFile.sha1(new byte[0]).equals("da39a3ee5e6b4b0d3255bfef95601890afd80709"),"sha1 of nothing");
   String sha="246af3b5"+"0".repeat(32);
   check(PropPackFile.name(sha).equals("gg-props-246af3b5.zip"),"name is gg-props-<sha8>.zip");
