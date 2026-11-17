@@ -12,7 +12,10 @@ files (runs.py). The game half is /mapforge (test-tools MapForge.java) and the s
   bake OVERLAY --base CAPTURE --target dev|release [--approved-by NAME]
         validate the overlay against the capture it was made from, stamp it with the mod version and copy it into the
         mod: dev = test-tools/resources/data/gravesandglory/adoption-dev/ (unshipped, read with -PadoptionDev),
-        release = src/main/resources/data/gravesandglory/adoption/ (ships; needs Kort's approval, --approved-by)."""
+        release = src/main/resources/data/gravesandglory/adoption/ (ships; needs Kort's approval, --approved-by).
+  npcs FILE --approved-by NAME
+        ship a map's camp NPC placements (the gg-npcs-<map>.json a placement egg wrote in the world save's dimension folder,
+        CampNpcPlacements) beside its overlay as adoption/<map>.npcs.json. The world save's file still outranks it."""
 import argparse
 import json
 import pathlib
@@ -25,6 +28,26 @@ from .world import World
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 TARGETS = {'dev': ROOT / 'test-tools/resources/data/gravesandglory/adoption-dev',
            'release': ROOT / 'src/main/resources/data/gravesandglory/adoption'}
+
+
+def check_npcs(path):
+    """The shape CampNpcPlacements.parse reads: version 1, a file-safe map id, and per NPC finite dx, y, dz and yaw within reach."""
+    import math, re
+    try:
+        data = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as e:
+        return [f'{path}: {e}'], None
+    errors = []
+    if data.get('version') != 1: errors.append('version is not 1')
+    if not isinstance(data.get('map'), str) or not re.fullmatch(r'[a-z0-9_-]{1,64}', data['map']): errors.append(f'map {data.get("map")!r} is not a map id')
+    npcs = data.get('npcs')
+    if not isinstance(npcs, dict) or not npcs: errors.append('no npcs')
+    for k, v in (npcs or {}).items():
+        for key in ('dx', 'y', 'dz', 'yaw'):
+            if not isinstance(v, dict) or not isinstance(v.get(key), (int, float)) or not math.isfinite(v[key]): errors.append(f'{k}: {key} is not a number')
+        if isinstance(v, dict) and all(isinstance(v.get(q), (int, float)) for q in ('dx', 'y', 'dz')):
+            if abs(v['dx']) > 4096 or abs(v['dz']) > 4096 or not -64 <= v['y'] <= 320: errors.append(f'{k}: out of reach')
+    return errors, data
 
 
 def _inside(x, y, z, lock):
@@ -102,8 +125,20 @@ def main(argv):
     p = sub.add_parser('apply'); p.add_argument('patch'); p.add_argument('capture'); p.add_argument('out')
     p = sub.add_parser('bake'); p.add_argument('overlay'); p.add_argument('--base', required=True)
     p.add_argument('--target', choices=sorted(TARGETS), required=True); p.add_argument('--approved-by')
+    p = sub.add_parser('npcs'); p.add_argument('file'); p.add_argument('--approved-by', required=True)
     a = ap.parse_args(argv)
     try:
+        if a.cmd == 'npcs':
+            errors, data = check_npcs(pathlib.Path(a.file))
+            if errors:
+                print('REFUSED:\n  ' + '\n  '.join(errors), file=sys.stderr)
+                return 2
+            data['approvedBy'] = a.approved_by
+            out = TARGETS['release'] / f'{data["map"]}.npcs.json'
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(data, indent=2, sort_keys=True) + '\n', encoding='utf-8', newline='\n')
+            print(f'shipped {out}: {len(data["npcs"])} NPC placements for {data["map"]}')
+            return 0
         if a.cmd == 'batch':
             keep = [tuple(int(v) for v in s.split(',')) for s in a.keep_column]
             world = World.load(a.world)

@@ -207,6 +207,7 @@ public final class GravesAndGlory implements ModInitializer {
                 FeedEvents.died(battle,victim,winner);
             }
         });
+        CampNpcEggs.register(); // first: a placement egg used on a station NPC or its block zone places, it never opens the station
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player,world,hand,entity,hit)->{
             String station=entity.getCommandTags().stream().filter(t->t.startsWith("camp:")).map(t->t.substring(5)).findFirst().orElse("");
             if(station.isEmpty())return ActionResult.PASS;
@@ -235,6 +236,7 @@ public final class GravesAndGlory implements ModInitializer {
     static void openCamp(ServerPlayerEntity p,String station){
         if(battle==null)return;var s=battle.squads.get(p.getUuid());if(battle.running&&s!=null&&s.seated)return;
         if(VersionGate.plain(p)){PlainClients.station(p,station);return;} // plain clients (P3): no camp screen; Recruit, practice, or a line naming the modpack
+        if(station.equals(CampNpcs.WARDROBE)){p.sendMessage(Text.literal(CampNpcs.wardrobeSoon()).formatted(Formatting.GRAY),false);return;} // Madame Fleece: the Wardrobe screen waits for cosmetics to render (Kort 2026-11-16)
         if(VersionGate.canSend(p,CAMP)){var packet=PacketByteBufs.create();packet.writeString(station);ServerPlayNetworking.send(p,Payloads.CampPayload.of(packet));}
     }
     public static final class Squad {

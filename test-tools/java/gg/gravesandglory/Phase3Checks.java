@@ -1180,7 +1180,7 @@ public final class Phase3Checks implements ClientModInitializer {
     static final class Camp implements Suite {
         static final Spec.CampRow C=Spec.CAMP[0];
         static final List<String> PAGES=new ArrayList<>();
-        static{for(var s:Spec.CAMPSTATIONS)if(!PAGES.contains(s.page()))PAGES.add(s.page());}
+        static{for(var s:Spec.CAMPSTATIONS)if(!PAGES.contains(s.page())&&!s.page().equals(CampNpcs.WARDROBE))PAGES.add(s.page());} // the Wardrobe has no screen yet (a chat line), CampNpcChecks covers it
         static final String[] VIEW_NAMES={"camp-arrival","camp-ridge","camp-aerial","camp-war-table","camp-gates-inside","camp-gates-outside","camp-archive","camp-south-pads","camp-south-oblique","camp-bank","camp-flank-west","camp-flank-east"};
         /** The views that are taken again once Frostmarch (map 2, the highest hills at the south edge) stands: indexes into VIEWS, the photographs are called camp-map2-<name>. */
         static final int[] FROST_VIEWS={4,1,8,2};

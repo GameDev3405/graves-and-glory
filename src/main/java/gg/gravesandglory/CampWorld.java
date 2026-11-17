@@ -76,15 +76,15 @@ final class CampWorld {
     /** The first campStations row with that page, else the centre of the first campPieces row whose station starts with it (at the height of a standing commander); null when there is none. */
     static Vec3d where(String page){
         var c=Spec.CAMP[0];
-        for(var s:Spec.CAMPSTATIONS)if(s.page().equals(page))return new Vec3d(c.originX()+s.x(),s.y(),c.originZ()+s.z());
+        for(var s:Spec.CAMPSTATIONS)if(s.page().equals(page)){var a=at(s);return new Vec3d(a.x(),a.y(),a.z());}
         for(var row:Spec.CAMPPIECES)if(!row.station().equals("-")&&row.station().startsWith(page)){var box=box(row);return new Vec3d((box.getMinX()+box.getMaxX()+1)/2.0,row.y()+1,(box.getMinZ()+box.getMaxZ()+1)/2.0);}
         return null;
     }
 
     /** The page of the station a clicked block belongs to: a campStations box (|x-sx|<=halfX, |z-sz|<=halfZ, y-2 to y+4, the block taken by its centre), else a campPieces footprint whose station is not - (from one below the floor to 12 above it); null for none. */
     static String station(BlockPos p){
-        var c=Spec.CAMP[0];double x=p.getX()+.5,z=p.getZ()+.5;
-        for(var s:Spec.CAMPSTATIONS)if(Math.abs(x-(c.originX()+s.x()))<=s.halfX()&&Math.abs(z-(c.originZ()+s.z()))<=s.halfZ()&&p.getY()>=s.y()-2&&p.getY()<=s.y()+4)return s.page();
+        double x=p.getX()+.5,z=p.getZ()+.5;
+        for(var s:Spec.CAMPSTATIONS){var a=at(s);if(Math.abs(x-a.x())<=s.halfX()&&Math.abs(z-a.z())<=s.halfZ()&&p.getY()>=a.y()-2&&p.getY()<=a.y()+4)return s.page();}
         for(var row:Spec.CAMPPIECES){
             if(row.station().equals("-"))continue;var box=box(row);
             if(p.getX()>=box.getMinX()&&p.getX()<=box.getMaxX()&&p.getZ()>=box.getMinZ()&&p.getZ()<=box.getMaxZ()&&p.getY()>=row.y()-1&&p.getY()<=row.y()+12)return row.station();
@@ -133,6 +133,7 @@ final class CampWorld {
         var c=Spec.CAMP[0];
         for(var row:Spec.CAMPPIECES)Structures.place(w,row.template(),c.originX()+row.dx(),row.y(),c.originZ()+row.dz(),row.rotation());
         log("[Graves and Glory] camp pieces "+millis(started)+" ms");
+        CampNpcEggs.load(w);
         people(w);
         warTable(w);
         if(rebuilt)w.getChunkManager().save(true); // the marker must not outlive a crash that loses the terrain: write the rebuilt chunks to disk first
@@ -239,6 +240,24 @@ final class CampWorld {
 
     // ---- the people ----
 
+    /** The live camp's NPC placements (placement eggs, CampNpcEggs): the world save's file and the one shipped with the mod, loaded at build. Empty: every row stands where the sheet puts it. */
+    static volatile Map<String,CampNpcPlacements.Place> placedWorld=Map.of(),placedShipped=Map.of();
+    /** Where a station row stands in the world, and its yaw. */
+    record At(double x,double y,double z,float yaw){}
+    /** A row's spot: its placement (the world save's, else the shipped one), else the campStations row. The villager, its click box, its label, its block zone (station) and where() all read it. */
+    static At at(Spec.CampStationsRow s){
+        var c=Spec.CAMP[0];var p=CampNpcPlacements.pick(s.id(),placedWorld,placedShipped);
+        return p==null?new At(c.originX()+s.x(),s.y(),c.originZ()+s.z(),(float)s.yaw()):new At(c.originX()+p.dx(),p.y(),c.originZ()+p.dz(),p.yaw());
+    }
+    /** The tag on a station NPC's villager, click box and label, so a placement moves exactly those three. */
+    static String npcTag(String id){return "camp-npc:"+id;}
+    /** Moves one station's people after a placement: discards its tagged villager, click box and label, and spawns them again where at() now puts them. */
+    static void respawn(ServerWorld w,Spec.CampStationsRow s){
+        var old=new ArrayList<Entity>();for(var e:w.iterateEntities())if(e.getCommandTags().contains(TAG)&&e.getCommandTags().contains(npcTag(s.id())))old.add(e);
+        old.forEach(Entity::discard);
+        if(!s.npc().equals("-"))npc(w,s);label(w,s);
+    }
+
     /** Discards what the older camps and this one left (every tag in the discard list), then spawns the villager of each station row with an npc and the label of every row. */
     static void people(ServerWorld w){
         var old=new ArrayList<Entity>();
@@ -248,26 +267,31 @@ final class CampWorld {
         lessons(w);dummies(w);
     }
     static void npc(ServerWorld w,Spec.CampStationsRow s){
-        var c=Spec.CAMP[0];VillagerEntity v=new VillagerEntity(EntityType.VILLAGER,w);
-        v.refreshPositionAndAngles(c.originX()+s.x(),s.y(),c.originZ()+s.z(),(float)s.yaw(),0);v.setHeadYaw((float)s.yaw());v.setBodyYaw((float)s.yaw());
+        var v=villager(w,s,at(s));
+        v.addCommandTag(TAG);v.addCommandTag("camp-generation:"+generation);v.addCommandTag("camp:"+s.page());v.addCommandTag(npcTag(s.id()));
+        w.spawnEntity(v);
+        var look=CampNpcs.look(s);
+        if(look!=null&&CampNpcs.hitBox(look))hitBox(w,s,look);
+    }
+    /** A station's villager at a spot, not yet tagged or spawned: AI off, invulnerable, silent, persistent, the row's profession and skin, and the name a modded client draws its look by. The camp and a builder's marker (CampNpcEggs) share it. */
+    static VillagerEntity villager(ServerWorld w,Spec.CampStationsRow s,At a){
+        VillagerEntity v=new VillagerEntity(EntityType.VILLAGER,w);
+        v.refreshPositionAndAngles(a.x(),a.y(),a.z(),a.yaw(),0);v.setHeadYaw(a.yaw());v.setBodyYaw(a.yaw());
         v.setAiDisabled(true);v.setInvulnerable(true);v.setSilent(true);v.setPersistent();
         // the profession and biome skin a plain client sees (lobby NPC spec 4); a modded client draws the row's look over them, matched by the name (CampNpcs)
         var profession=Registries.VILLAGER_PROFESSION.get(Identifier.of("minecraft",s.npc()));
         var type=Registries.VILLAGER_TYPE.get(Identifier.of("minecraft",s.villagerType()));
         v.setVillagerData(v.getVillagerData().withType(type).withProfession(profession).withLevel(5));
         v.setCustomName(Text.literal(CampNpcs.name(s)));v.setCustomNameVisible(false);
-        v.addCommandTag(TAG);v.addCommandTag("camp-generation:"+generation);v.addCommandTag("camp:"+s.page());
-        w.spawnEntity(v);
-        var look=CampNpcs.look(s);
-        if(look!=null&&CampNpcs.hitBox(look))hitBox(w,s,look);
+        return v;
     }
     /** A vanilla interaction entity (1.19.4+, so plain clients accept it) sized to a look far off the villager's 0.6 x 1.95 box (spec 3.1, Q16), on the
      *  villager's feet and tagged as he is: a click on it opens his station through the same UseEntityCallback, and the camp's discard takes it with him. */
     static void hitBox(ServerWorld w,Spec.CampStationsRow s,Spec.CampNpcsRow look){
-        var c=Spec.CAMP[0];var box=EntityType.INTERACTION.create(w);if(box==null)return;
+        var a=at(s);var box=EntityType.INTERACTION.create(w);if(box==null)return;
         var nbt=box.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putFloat("width",(float)look.hitWidth());nbt.putFloat("height",(float)look.hitHeight());nbt.putBoolean("response",true);
-        box.readNbt(nbt);box.refreshPositionAndAngles(c.originX()+s.x(),s.y(),c.originZ()+s.z(),(float)s.yaw(),0);
-        box.addCommandTag(TAG);box.addCommandTag("camp-generation:"+generation);box.addCommandTag("camp:"+s.page());
+        box.readNbt(nbt);box.refreshPositionAndAngles(a.x(),a.y(),a.z(),a.yaw(),0);
+        box.addCommandTag(TAG);box.addCommandTag("camp-generation:"+generation);box.addCommandTag("camp:"+s.page());box.addCommandTag(npcTag(s.id()));
         w.spawnEntity(box);
     }
     /** The station's villagers near the player swing their arm (a station opened): vanilla sends the swing to every client tracking them, and a modded
@@ -277,19 +301,20 @@ final class CampWorld {
     }
     /** The floating text of a row, 3.7 blocks above its y: the same text display style as before, the text from text(). */
     static void label(ServerWorld w,Spec.CampStationsRow s){
-        var c=Spec.CAMP[0];display(w,s.label(),c.originX()+s.x(),s.y()+3.7,c.originZ()+s.z(),"camp:"+s.page());
+        var a=at(s);var label=display(w,s.label(),a.x(),a.y()+3.7,a.z(),"camp:"+s.page());if(label!=null)label.addCommandTag(npcTag(s.id()));
     }
     /** One text display in the label style (centre billboard, dark panel, shadow, 1.7 scale) at a world position, text through text(), tagged TAG, the generation and the extra tag. */
-    static void display(ServerWorld w,String text,double x,double y,double z,String extraTag){display(w,text(text),x,y,z,extraTag,"center",1.7f,220,0f);}
+    static Entity display(ServerWorld w,String text,double x,double y,double z,String extraTag){return display(w,text(text),x,y,z,extraTag,"center",1.7f,220,0f);}
     /** One text display with the label's dark panel and shadow: the billboard mode (center turns to the viewer, fixed stands at the yaw), the scale, the line width in pixels and the yaw. */
-    static void display(ServerWorld w,Text text,double x,double y,double z,String extraTag,String billboard,float size,int lineWidth,float yaw){
-        var label=EntityType.TEXT_DISPLAY.create(w);if(label==null)return;
+    static Entity display(ServerWorld w,Text text,double x,double y,double z,String extraTag,String billboard,float size,int lineWidth,float yaw){
+        var label=EntityType.TEXT_DISPLAY.create(w);if(label==null)return null;
         var nbt=label.writeNbt(new net.minecraft.nbt.NbtCompound());nbt.putString("text",Text.Serialization.toJsonString(text,w.getRegistryManager()));
         nbt.putString("billboard",billboard);nbt.putInt("background",0xb0192227);nbt.putBoolean("shadow",true);nbt.putInt("line_width",lineWidth);nbt.putFloat("view_range",2f);
         var transform=new net.minecraft.nbt.NbtCompound();var scale=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++)scale.add(net.minecraft.nbt.NbtFloat.of(size));transform.put("scale",scale);var translation=new net.minecraft.nbt.NbtList();for(int i=0;i<3;i++)translation.add(net.minecraft.nbt.NbtFloat.of(0));transform.put("translation",translation);
         for(String key:new String[]{"left_rotation","right_rotation"}){var rotation=new net.minecraft.nbt.NbtList();for(int i=0;i<4;i++)rotation.add(net.minecraft.nbt.NbtFloat.of(i==3?1:0));transform.put(key,rotation);}nbt.put("transformation",transform);
         label.readNbt(nbt);label.refreshPositionAndAngles(x,y,z,yaw,0);
         label.addCommandTag(TAG);label.addCommandTag("camp-generation:"+generation);label.addCommandTag(extraTag);w.spawnEntity(label);
+        return label;
     }
 
     // ---- the training yard ----

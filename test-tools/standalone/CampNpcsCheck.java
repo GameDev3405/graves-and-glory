@@ -36,8 +36,8 @@ public final class CampNpcsCheck {
         check(CampNpcs.resolve(null, true) == null, "an unnamed villager draws vanilla");
         check(CampNpcs.resolve("Villager", true) == null && CampNpcs.resolve("blacksmith", true) == null && CampNpcs.resolve("Blacksmith ", true) == null,
             "an unknown or near-miss name draws vanilla (the match is exact)");
-        // the four staff NPCs of lobby NPC spec 4.2 to 4.5, by their villager names, with the spec's vanilla profession and skin
-        String[][] staff = {{"quartermaster", "armorer", "desert"}, {"archivist", "librarian", "snow"}, {"steward", "cartographer", "swamp"}, {"drillmaster", "weaponsmith", "savanna"}, {"blacksmith", "toolsmith", "taiga"}};
+        // the staff NPCs of lobby NPC spec 4.2 to 4.5, the Blacksmith and Madame Fleece (Kort 2026-11-16), by their villager names, with the spec's vanilla profession and skin
+        String[][] staff = {{"quartermaster", "armorer", "desert"}, {"archivist", "librarian", "snow"}, {"steward", "cartographer", "swamp"}, {"drillmaster", "weaponsmith", "savanna"}, {"blacksmith", "toolsmith", "taiga"}, {"tailor", "shepherd", "savanna"}};
         for (String[] w : staff) {
             Spec.CampStationsRow row = null;
             for (var s : Spec.CAMPSTATIONS) if (s.id().equals(w[0])) row = s;
@@ -53,6 +53,9 @@ public final class CampNpcsCheck {
             check(!l.name().isBlank() && CampNpcs.plainLine(row.page()).startsWith(Character.toUpperCase(l.name().charAt(0)) + l.name().substring(1) + ": ")
                 && CampNpcs.plainLine(row.page()).contains("needs the Graves and Glory modpack"), w[0] + ": the plain chat line names " + l.name() + ": " + CampNpcs.plainLine(row.page()));
         }
+        check(CampNpcs.hasNpc(CampNpcs.WARDROBE) && CampNpcs.plainLine(CampNpcs.WARDROBE).startsWith("Madame Fleece: "), "the Wardrobe is Madame Fleece's: " + CampNpcs.plainLine(CampNpcs.WARDROBE));
+        check(CampNpcs.wardrobeSoon().equals("Madame Fleece: the Wardrobe opens soon."), "her modded line: " + CampNpcs.wardrobeSoon());
+        check(CampNpcs.storeLine("").endsWith("link coming soon.") && CampNpcs.storeLine("https://store.example").endsWith("Store: https://store.example"), "her store line, with and without a URL");
         check(CampNpcs.hasNpc("contracts") && CampNpcs.hasNpc("friends") && CampNpcs.hasNpc("forge") && !CampNpcs.hasNpc("match") && !CampNpcs.hasNpc("home") && !CampNpcs.hasNpc("chapter"),
             "only staff NPC pages get the chat line; gates, welcome and founders keep the action-bar line");
         check(CampNpcs.plainLine("nope").equals("This station needs the Graves and Glory modpack."), "a page with no villager gets the bare line");

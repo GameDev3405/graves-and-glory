@@ -1,5 +1,6 @@
 package gg.gravesandglory;
 
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.Perspective;
 import net.minecraft.entity.Entity;
@@ -15,6 +16,9 @@ import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.RaycastContext;
 import java.util.*;
 
@@ -25,11 +29,14 @@ import java.util.*;
  * blocks apart are told apart), while a villager the suite spawns with the same name but its AI on, and an unnamed one, draw vanilla;
  * CampWorld.swing starts its interact clip, and a real click on its interaction box opens the camp screen on its station's page and plays the
  * clip again. The camera stands on the first free spot with a clear view of the NPC (front first, then the sides). One shot per NPC:
- * p1-camp-npc-<id>-idle. Never shipped.
+ * p1-camp-npc-<id>-idle. Madame Fleece (tailor, Kort 2026-11-16) has no screen yet: her click opens none and says the Wardrobe opens soon.
+ * Then the placement egg (p1-camp-npc-eggs): her egg used on a block inside her station's zone moves her villager, click box, label and zone
+ * there (it does not open the station or spawn a vanilla villager), the camp's file in the world save holds the spot and a reload of it keeps
+ * it (a restart), and a reset puts her back on her row's spot. Shot p1-camp-npc-tailor-placed. Never shipped.
  */
 final class CampNpcChecks implements Phase1Checks.Suite {
     static final String SPAWNED = "camp-npc-check";
-    static final String[] NPCS = {"blacksmith", "quartermaster", "archivist", "steward", "drillmaster"};
+    static final String[] NPCS = {"blacksmith", "quartermaster", "archivist", "steward", "drillmaster", "tailor"};
     volatile UUID player;
     volatile String serverWhy;
     volatile boolean placed;
@@ -44,7 +51,13 @@ final class CampNpcChecks implements Phase1Checks.Suite {
     void next(int tick, int s) { stage = s; at = tick; }
 
     static Spec.CampStationsRow row(String id) { for (var s : Spec.CAMPSTATIONS) if (s.id().equals(id)) return s; return null; }
-    static Vec3d pos(Spec.CampStationsRow s) { var c = Spec.CAMP[0]; return new Vec3d(c.originX() + s.x(), s.y(), c.originZ() + s.z()); }
+    /** Where the row's NPC stands now (CampWorld.at: a placement, else the row); the integrated server shares the client's JVM, so the client reads it too. */
+    static Vec3d pos(Spec.CampStationsRow s) { var a = CampWorld.at(s); return new Vec3d(a.x(), a.y(), a.z()); }
+    /** The game chat lines the client received (not the action bar), cleared before each click. */
+    static final List<String> CHAT = Collections.synchronizedList(new ArrayList<>());
+    static boolean hooked;
+    volatile String eggWhy;
+    volatile BlockPos eggFloor;
 
     /** The client's villager of a station (its name, AI off, on its spot), or null. */
     static VillagerEntity npc(MinecraftClient c, Spec.CampStationsRow s) {
@@ -58,7 +71,7 @@ final class CampNpcChecks implements Phase1Checks.Suite {
      *  are free, whose floor is solid, and from whose eye the NPC's chest is in plain view. Null if none is. */
     static Vec3d stand(ServerWorld w, Spec.CampStationsRow s, double height) {
         Vec3d at = pos(s), chest = at.add(0, height * .6, 0);
-        double yaw = Math.toRadians(s.yaw());
+        double yaw = Math.toRadians(CampWorld.at(s).yaw());
         Vec3d fwd = new Vec3d(-Math.sin(yaw), 0, Math.cos(yaw)), side = new Vec3d(fwd.z, 0, -fwd.x);
         for (Vec3d dir : new Vec3d[]{fwd, side, side.negate(), fwd.negate()})
             for (double d = 3.5; d >= 2; d -= .5) {
@@ -75,6 +88,69 @@ final class CampNpcChecks implements Phase1Checks.Suite {
 
     static void discardSpawned(GravesAndGlory.Battle b) { var gone = new ArrayList<Entity>(); for (var e : b.world.iterateEntities()) if (e.getCommandTags().contains(SPAWNED)) gone.add(e); gone.forEach(Entity::discard); }
 
+    /** The placement egg on Madame Fleece: used on the floor block one east of her spot (inside her station zone), then the checks, a reload, a reset. */
+    void eggs(MinecraftClient c, int k, int tick) {
+        var s = row("tailor");
+        if (k == 1) {
+            eggWhy = null; eggFloor = null;
+            Phase1Checks.server(c, b -> {
+                var p = b.server.getPlayerManager().getPlayer(player);
+                if (p == null) { eggWhy = "no player; "; return; }
+                if (!CampNpcEggs.allowed(p)) b.server.getPlayerManager().addToOperators(p.getGameProfile()); // the throwaway test world's player; deopped below
+                p.getInventory().setStack(p.getInventory().selectedSlot, CampNpcEggs.egg(s));
+                Vec3d at = pos(s);
+                eggFloor = BlockPos.ofFloored(at.x + 1, at.y - 1, at.z);
+            });
+        }
+        if (k == 20) {
+            if (eggFloor == null) { Phase1Checks.report("p1-camp-npc-eggs", false, eggWhy == null ? "the server never set up the egg" : eggWhy); next(tick, 9); return; }
+            CHAT.clear();
+            c.interactionManager.interactBlock(c.player, Hand.MAIN_HAND, new BlockHitResult(Vec3d.ofCenter(eggFloor).add(0, .5, 0), Direction.UP, eggFloor, false));
+        }
+        if (k == 50) Phase1Checks.shot(c, "camp-npc-tailor-placed");
+        if (k == 60) {
+            StringBuilder bad = new StringBuilder();
+            if (c.currentScreen != null) bad.append("the egg's click opened ").append(c.currentScreen.getClass().getSimpleName()).append("; ");
+            BlockPos floor = eggFloor;
+            Phase1Checks.server(c, b -> {
+                var w = b.world; var p = b.server.getPlayerManager().getPlayer(player); var camp = Spec.CAMP[0];
+                Vec3d want = new Vec3d(floor.getX() + .5, floor.getY() + 1, floor.getZ() + .5);
+                String tag = CampWorld.npcTag(s.id());
+                java.util.function.BiConsumer<String, Vec3d> near = (what, spot) -> {
+                    List<Entity> found = new ArrayList<>();
+                    for (var e : w.iterateEntities()) if (e.getCommandTags().contains(tag) && e.getCommandTags().contains(CampWorld.TAG) && (what.equals("label") ? e.getType() == EntityType.TEXT_DISPLAY : what.equals("box") ? e instanceof InteractionEntity : e instanceof VillagerEntity)) found.add(e);
+                    if (found.size() != 1) bad.append(found.size()).append(" ").append(what).append("s tagged ").append(tag).append("; ");
+                    else if (found.get(0).getPos().distanceTo(spot) > .05) bad.append(what).append(" at ").append(found.get(0).getPos()).append(", want ").append(spot).append("; ");
+                };
+                near.accept("villager", want); near.accept("box", want); near.accept("label", want.add(0, 3.7, 0));
+                if (!CampNpcs.WARDROBE.equals(CampWorld.station(floor.up()))) bad.append("station() at the new spot is ").append(CampWorld.station(floor.up())).append("; ");
+                int strays = w.getEntitiesByClass(VillagerEntity.class, new Box(want, want).expand(3), e -> !e.getCommandTags().contains(CampWorld.TAG)).size();
+                if (strays > 0) bad.append(strays).append(" vanilla villagers near the spot (the egg spawned one); ");
+                var file = DimensionType.getSaveDirectory(w.getRegistryKey(), b.server.getSavePath(net.minecraft.util.WorldSavePath.ROOT)).resolve(CampNpcPlacements.fileName(camp.id()));
+                try {
+                    var saved = CampNpcPlacements.parse(java.nio.file.Files.readString(file), camp.id()).get(s.id());
+                    if (saved == null || Math.abs(saved.dx() - (want.x - camp.originX())) > .01 || Math.abs(saved.dz() - (want.z - camp.originZ())) > .01 || Math.abs(saved.y() - want.y) > .01) bad.append("the file holds ").append(saved).append("; ");
+                } catch (Exception e) { bad.append("the file ").append(file).append(" could not be read: ").append(e).append("; "); }
+                // a restart: the camp loads the file again before its people spawn
+                CampWorld.placedWorld = Map.of(); CampNpcEggs.load(w); CampWorld.respawn(w, s);
+                near.accept("villager", want);
+                // the reset: back on the row's spot, the file without her
+                String why = p == null ? "no player" : CampNpcEggs.set(p, s, null);
+                if (!why.isEmpty()) bad.append("reset: ").append(why).append("; ");
+                near.accept("villager", new Vec3d(camp.originX() + s.x(), s.y(), camp.originZ() + s.z()));
+                try { if (CampNpcPlacements.parse(java.nio.file.Files.readString(file), camp.id()).containsKey(s.id())) bad.append("the reset left her in the file; "); } catch (Exception e) { bad.append("after the reset the file could not be read: ").append(e).append("; "); }
+                if (p != null) { p.getInventory().setStack(p.getInventory().selectedSlot, net.minecraft.item.ItemStack.EMPTY); b.server.getPlayerManager().removeFromOperators(p.getGameProfile()); }
+                eggWhy = bad.toString();
+            });
+        }
+        if (k == 80) {
+            String w = eggWhy == null ? "the server checks never ran" : eggWhy;
+            if (!CHAT.isEmpty()) say("egg said: " + CHAT);
+            Phase1Checks.report("p1-camp-npc-eggs", w.isEmpty(), w.isEmpty() ? "Madame Fleece's egg on a block in her station zone moved her villager, click box, label and zone there without opening the station or spawning a villager; the world save's file holds the spot, a reload keeps it, and a reset puts her back on her row" : w);
+            next(tick, 9);
+        }
+    }
+
     @Override public void cleanup(MinecraftClient c) {
         c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;
         if (c.getServer() != null) Phase1Checks.server(c, CampNpcChecks::discardSpawned);
@@ -84,7 +160,7 @@ final class CampNpcChecks implements Phase1Checks.Suite {
         if (tick > 9000 && stage < 9) { Phase1Checks.report("p1-camp-npcs-timeout", false, "stuck at stage " + stage + " on " + NPCS[Math.min(index, NPCS.length - 1)]); next(tick, 9); }
         int k = tick - at;
         switch (stage) {
-            case 0 -> { if (tick == 20) { c.setScreen(null); player = c.player.getUuid(); next(tick, 1); } }
+            case 0 -> { if (tick == 20) { c.setScreen(null); player = c.player.getUuid(); if (!hooked) { hooked = true; ClientReceiveMessageEvents.GAME.register((m, overlay) -> { if (!overlay) CHAT.add(m.getString()); }); } next(tick, 1); } }
             case 1 -> { // one NPC: the server's side, then the camera on its free spot facing it, with the two vanilla villagers beside the camera
                 String id = NPCS[index];
                 Spec.CampStationsRow s = row(id);
@@ -147,7 +223,7 @@ final class CampNpcChecks implements Phase1Checks.Suite {
                     if (plain < 2 || wrong > 0) why += id + ": " + plain + " spawned AI villagers on the client, " + wrong + " of them drawn as a look (want 2 and 0); ";
                     if (v != null && !(c.getEntityRenderDispatcher().getRenderer(v) instanceof CampNpcRenderer)) why += id + ": the villager renderer is not CampNpcRenderer; ";
                     draws = CampNpcRenderer.drawsByLook.getOrDefault(id, 0L);
-                    Phase1Checks.server(c, b -> { for (var e : b.world.iterateEntities()) if (e.getCommandTags().contains(SPAWNED)) say(id + ": spawned villager on the server at " + e.getBlockPos().toShortString() + " removed " + e.isRemoved()); discardSpawned(b); }); // they have their AI on and wander
+                    Phase1Checks.server(c, CampNpcChecks::discardSpawned); // they have their AI on and wander
                 }
                 if (k == 140) {
                     long now = CampNpcRenderer.drawsByLook.getOrDefault(id, 0L);
@@ -164,9 +240,16 @@ final class CampNpcChecks implements Phase1Checks.Suite {
                     for (Entity e : c.world.getEntities()) if (e instanceof InteractionEntity i && i.squaredDistanceTo(pos(s)) < .25) target = i;
                     if (target == null) target = npc(c, s);
                     if (target == null) why += id + ": nothing to click on the client; ";
-                    else c.interactionManager.interactEntity(c.player, target, Hand.MAIN_HAND);
+                    else { CHAT.clear(); c.interactionManager.interactEntity(c.player, target, Hand.MAIN_HAND); }
                 }
-                if (k == 200) {
+                if (k == 200 && s.page().equals(CampNpcs.WARDROBE)) { // no Wardrobe screen yet: no screen, her chat line
+                    if (c.currentScreen != null) why += id + ": the click opened " + c.currentScreen.getClass().getSimpleName() + ", want none yet; ";
+                    if (!CHAT.contains(CampNpcs.wardrobeSoon())) why += id + ": no '" + CampNpcs.wardrobeSoon() + "' chat line (got " + CHAT + "); ";
+                    else say(id + ": the click said " + CampNpcs.wardrobeSoon());
+                    if (CampNpcRenderer.interactsByLook.getOrDefault(id, 0L) <= played) why += id + ": the click did not play its interact clip; ";
+                    c.setScreen(null);
+                    next(tick, 2);
+                } else if (k == 200) {
                     String want = CampScreen.alias(s.page());
                     if (!(c.currentScreen instanceof CampScreen cs)) why += id + ": the click opened " + (c.currentScreen == null ? "no screen" : c.currentScreen.getClass().getSimpleName()) + ", not the camp screen; ";
                     else if (!want.equals(cs.page)) why += id + ": the click opened page " + cs.page + ", not " + want + "; ";
@@ -181,9 +264,10 @@ final class CampNpcChecks implements Phase1Checks.Suite {
                 if (!why.contains(NPCS[index] + ":")) passed.add(NPCS[index]);
                 index++;
                 if (index < NPCS.length) { next(tick, 1); return; }
-                Phase1Checks.report("p1-camp-npcs", why.isEmpty(), why.isEmpty() ? "all five staff NPCs (" + String.join(", ", passed) + ") draw their looks, a same-named villager with AI on and an unnamed one stay vanilla, the server's villagers and interaction boxes are right, and both the swing and a click play the interact clip and open the station's page" : why);
-                next(tick, 9);
+                Phase1Checks.report("p1-camp-npcs", why.isEmpty(), why.isEmpty() ? "all six staff NPCs (" + String.join(", ", passed) + ") draw their looks, a same-named villager with AI on and an unnamed one stay vanilla, the server's villagers and interaction boxes are right, and both the swing and a click play the interact clip and open the station's page (Madame Fleece: no screen yet, her chat line)" : why);
+                next(tick, 3);
             }
+            case 3 -> eggs(c, k, tick);
             case 9 -> {
                 c.options.setPerspective(Perspective.FIRST_PERSON); c.options.hudHidden = false;
                 if (k == 1) Phase1Checks.server(c, CampNpcChecks::discardSpawned);

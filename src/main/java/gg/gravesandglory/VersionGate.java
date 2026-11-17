@@ -76,6 +76,8 @@ public final class VersionGate {
     public static final long GRACE_MS = 5000;
     /** Optional: where to get the modpack, added to every refusal (-Dgravesandglory.modpackUrl). */
     static final String MODPACK_URL = System.getProperty("gravesandglory.modpackUrl", "").trim();
+    /** The cosmetics store (Tebex, NET-4), named in Madame Fleece's plain-client line. TODO(store): no URL yet; set -Dgravesandglory.storeUrl once the store is live. */
+    static final String STORE_URL = System.getProperty("gravesandglory.storeUrl", "").trim();
 
     /** The configuration check's result for a connected (or configuring) player, empty if none ran. For the P3.1 plain flag. */
     public static Optional<Result> result(UUID player) { return Optional.ofNullable(RESULTS.get(player)); }

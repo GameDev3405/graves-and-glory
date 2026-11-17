@@ -137,6 +137,11 @@ public final class PlainClients {
         switch (station) {
             case "army" -> PlainRecruit.open(p, null);
             case "train" -> b.command(p, "camp:practice");
+            // Madame Fleece (Kort 2026-11-16): her modpack line with the download link, then the store line, since buying works without the mod
+            case CampNpcs.WARDROBE -> {
+                p.sendMessage(Text.literal(VersionGate.refusal(CampNpcs.plainLine(station))).formatted(Formatting.GRAY), false);
+                p.sendMessage(Text.literal(CampNpcs.storeLine(VersionGate.STORE_URL)).formatted(Formatting.GRAY), false);
+            }
             default -> PlainWarTable.station(p, station);
         }
     }

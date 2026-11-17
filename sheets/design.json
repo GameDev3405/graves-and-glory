@@ -8009,6 +8009,20 @@
       "label": "Quartermaster / Army & shop"
     },
     {
+      "id": "tailor",
+      "page": "wardrobe",
+      "npc": "shepherd",
+      "look": "tailor",
+      "villagerType": "savanna",
+      "x": 16.5,
+      "y": 77.0,
+      "z": -58.5,
+      "yaw": 0.0,
+      "halfX": 1,
+      "halfZ": 1,
+      "label": "Tailor / Wardrobe"
+    },
+    {
       "id": "archivist",
       "page": "contracts",
       "npc": "librarian",
@@ -8185,6 +8199,16 @@
       "hitHeight": 2.3,
       "barkCue": "-",
       "lines": "Again! The dummy is winning. | Hold the line. Then hold it longer. | You'll sweat here or bleed out there. Choose."
+    },
+    {
+      "id": "tailor",
+      "name": "Madame Fleece",
+      "rig": "placeholder",
+      "scale": 1.2,
+      "hitWidth": 1.3,
+      "hitHeight": 2.4,
+      "barkCue": "-",
+      "lines": "Darling, you fight in that? | Colour wins half the battle. The other half is also colour. | No, it does not come in mud."
     }
   ],
   "blacksmithLines": [

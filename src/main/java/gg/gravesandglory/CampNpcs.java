@@ -64,6 +64,13 @@ public final class CampNpcs {
         return false;
     }
 
+    /** Madame Fleece's page (Kort 2026-11-16): no screen yet, so a modded click gets wardrobeSoon() and a plain one plainLine plus storeLine. */
+    public static final String WARDROBE = "wardrobe";
+    /** The modded click on Madame Fleece until the Wardrobe screen is built (it waits for cosmetics to render). */
+    public static String wardrobeSoon() { return plainLine(WARDROBE).replaceFirst(":.*$", "") + ": the Wardrobe opens soon."; }
+    /** Madame Fleece's second plain-client line: the store, where cosmetics are bought without the mod. No URL yet (VersionGate.STORE_URL, a TODO): then it says the link is coming. */
+    public static String storeLine(String url) { return "Cosmetics are sold in the Graves and Glory store and show with the modpack. Store: " + (url == null || url.isBlank() ? "link coming soon." : url); }
+
     /** Whether a look gets a vanilla interaction entity as its click box (hitWidth and hitHeight above 0). */
     public static boolean hitBox(Spec.CampNpcsRow r) { return r.hitWidth() > 0 && r.hitHeight() > 0; }
 }
