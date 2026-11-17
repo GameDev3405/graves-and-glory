@@ -30,6 +30,10 @@ TARGETS = {'dev': ROOT / 'test-tools/resources/data/gravesandglory/adoption-dev'
            'release': ROOT / 'src/main/resources/data/gravesandglory/adoption'}
 
 
+# The maps whose shipped NPC placements the game reads (CampNpcEggs.load: the live camp, Spec camp[0].id).
+NPC_MAPS = {'camp-4'}
+
+
 def check_npcs(path):
     """The shape CampNpcPlacements.parse reads: version 1, a file-safe map id, and per NPC finite dx, y, dz and yaw within reach."""
     import math, re
@@ -42,9 +46,12 @@ def check_npcs(path):
     if not isinstance(data.get('map'), str) or not re.fullmatch(r'[a-z0-9_-]{1,64}', data['map']): errors.append(f'map {data.get("map")!r} is not a map id')
     npcs = data.get('npcs')
     if not isinstance(npcs, dict) or not npcs: errors.append('no npcs')
+    if isinstance(data.get('map'), str) and data['map'] not in NPC_MAPS:
+        errors.append(f'map {data["map"]} is not one the game reads NPC placements for ({", ".join(sorted(NPC_MAPS))}); a canvas file waits until its map is wired as the lobby')
     for k, v in (npcs or {}).items():
+        if not re.fullmatch(r'[a-z0-9_]{1,64}', k): errors.append(f'{k!r} is not an NPC id')
         for key in ('dx', 'y', 'dz', 'yaw'):
-            if not isinstance(v, dict) or not isinstance(v.get(key), (int, float)) or not math.isfinite(v[key]): errors.append(f'{k}: {key} is not a number')
+            if not isinstance(v, dict) or isinstance(v.get(key), bool) or not isinstance(v.get(key), (int, float)) or not math.isfinite(v[key]): errors.append(f'{k}: {key} is not a number')
         if isinstance(v, dict) and all(isinstance(v.get(q), (int, float)) for q in ('dx', 'y', 'dz')):
             if abs(v['dx']) > 4096 or abs(v['dz']) > 4096 or not -64 <= v['y'] <= 320: errors.append(f'{k}: out of reach')
     return errors, data

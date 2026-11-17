@@ -46,6 +46,10 @@ import java.util.UUID;
  */
 final class CampNpcEggs {
     static final String KEY = "gg_npc", MARKER_TAG = "gg-npc-marker";
+    /** On the villager a dispenser (or anything else that skips the use callbacks) hatches from an egg: discarded the moment it loads. */
+    static final String DUD_TAG = "gg-npc-egg-dud";
+    /** Each builder canvas's placements as last read or written, keyed by its world: the marker clean-up on entity load compares against it. */
+    static final Map<net.minecraft.registry.RegistryKey<net.minecraft.world.World>, Map<String, CampNpcPlacements.Place>> CANVAS = new java.util.concurrent.ConcurrentHashMap<>();
     /** The server tick a player's egg was last used on a block or entity: the item use vanilla sends after it in the same tick is swallowed (as PropMenu does). */
     static final Map<UUID, Integer> USED = new HashMap<>();
 
@@ -71,6 +75,10 @@ final class CampNpcEggs {
         var st = new ItemStack(Items.VILLAGER_SPAWN_EGG);
         var nbt = new NbtCompound(); nbt.putString(KEY, s.id());
         st.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt));
+        // a dispenser hatches spawn eggs without the use callbacks: what it hatches carries DUD_TAG and is discarded on load
+        var entity = new NbtCompound(); entity.putString("id", "minecraft:villager");
+        var tags = new net.minecraft.nbt.NbtList(); tags.add(net.minecraft.nbt.NbtString.of(DUD_TAG)); entity.put("Tags", tags);
+        st.set(DataComponentTypes.ENTITY_DATA, NbtComponent.of(entity));
         st.set(DataComponentTypes.CUSTOM_NAME, Text.literal("Place " + who(s)).formatted(Formatting.GOLD));
         st.set(DataComponentTypes.LORE, new LoreComponent(List.of(Text.literal("Use on a block: " + who(s) + " stands there, facing you.").formatted(Formatting.GRAY),
                 Text.literal("Placing again moves them. /campnpc reset " + s.id() + " undoes it.").formatted(Formatting.GRAY))));
@@ -83,6 +91,15 @@ final class CampNpcEggs {
     static Path file(Path dimension, String map) { return dimension.resolve(CampNpcPlacements.fileName(map)); }
     static Map<String, CampNpcPlacements.Place> read(Path file, String map) {
         return SafeFiles.load(file, f -> CampNpcPlacements.parse(Files.readString(f, StandardCharsets.UTF_8), map), Map::of, "NPC placements " + file.getFileName());
+    }
+    /** A file read for a write: missing is empty, but a damaged file throws, so a save never replaces placements it could not read. */
+    static Map<String, CampNpcPlacements.Place> strict(Path file, String map) throws Exception {
+        return Files.exists(file) ? CampNpcPlacements.parse(Files.readString(file, StandardCharsets.UTF_8), map) : Map.of();
+    }
+    /** Writes a placements file with a .bak of the one before (SafeFiles.load falls back to it). "" when saved, else why not. */
+    static String save(Path file, String map, Map<String, CampNpcPlacements.Place> places) {
+        try { SafeFiles.writeWithBackup(file, CampNpcPlacements.write(map, places)); return ""; }
+        catch (Exception e) { SafeFiles.warn.accept("NPC placements " + file.getFileName() + " could not be written: " + e); return "The placement could not be saved; see the server log."; }
     }
     static Map<String, CampNpcPlacements.Place> shipped(String map) {
         try (InputStream in = CampNpcEggs.class.getResourceAsStream(CampNpcPlacements.resource(map))) {
@@ -110,7 +127,12 @@ final class CampNpcEggs {
             String map = plan.id();
             if (!CampNpcPlacements.validMap(map)) return "This canvas id cannot name a file: " + map;
             Path f = file(DimensionType.getSaveDirectory(plan.key(), BuildMode.root()), map);
-            if (!SafeFiles.tryWrite(f, CampNpcPlacements.write(map, CampNpcPlacements.with(read(f, map), s.id(), place)), "NPC placements " + f.getFileName())) return "The placement could not be saved; see the server log.";
+            Map<String, CampNpcPlacements.Place> now;
+            try { now = strict(f, map); } catch (Exception e) { return "The canvas's NPC file " + f.getFileName() + " is damaged (" + e.getMessage() + "); fix or remove it first."; }
+            var next = CampNpcPlacements.with(now, s.id(), place);
+            String why = save(f, map, next);
+            if (!why.isEmpty()) return why;
+            CANVAS.put(plan.key(), Map.copyOf(next)); // before the marker spawns: its load is checked against this
             marker(w, s, place);
             return "";
         }
@@ -121,7 +143,8 @@ final class CampNpcEggs {
         String map = c.id();
         Path f = file(DimensionType.getSaveDirectory(w.getRegistryKey(), root(w)), map);
         var next = CampNpcPlacements.with(CampWorld.placedWorld, s.id(), place);
-        if (!SafeFiles.tryWrite(f, CampNpcPlacements.write(map, next), "NPC placements " + f.getFileName())) return "The placement could not be saved; see the server log.";
+        String why = save(f, map, next);
+        if (!why.isEmpty()) return why;
         CampWorld.placedWorld = Map.copyOf(next);
         CampWorld.respawn(w, s);
         return "";
@@ -148,6 +171,48 @@ final class CampNpcEggs {
         if (!BuildMode.active()) { ox = Spec.CAMP[0].originX(); oz = Spec.CAMP[0].originZ(); }
         return new CampNpcPlacements.Place(cell.getX() + 0.5 - ox, y, cell.getZ() + 0.5 - oz, CampNpcPlacements.facing(p.getYaw()));
     }
+    /**
+     * A camp NPC's entity as it loads (a chunk coming back, or a spawn): a dud hatched from an egg goes, and so does a villager, click box or
+     * stand-in left behind in an unloaded chunk when its NPC moved (respawn and marker only reach loaded entities): one whose x/z is not its
+     * NPC's current spot. Labels get their camp-npc tag after they spawn, so a new one is never checked here; an old one from disk is.
+     */
+    static void loaded(Entity e, ServerWorld w) {
+        var tags = e.getCommandTags();
+        if (tags.contains(DUD_TAG)) { e.discard(); return; }
+        String id = null;
+        for (String t : tags) if (t.startsWith("camp-npc:")) id = t.substring(9);
+        if (id == null) return;
+        var s = row(id);
+        double x, z;
+        if (tags.contains(MARKER_TAG)) {
+            if (!BuildMode.active()) return;
+            var places = canvas(w);
+            if (places == null) return; // unreadable: leave it
+            var p = places.get(id);
+            if (s == null || p == null) { e.discard(); return; }
+            x = p.dx(); z = p.dz();
+        } else if (tags.contains(CampWorld.TAG)) {
+            var b = GravesAndGlory.battle;
+            if (b == null || w != b.world || CampWorld.generation.isEmpty() || !tags.contains("camp-generation:" + CampWorld.generation)) return; // older generations: GravesAndGlory's own clean-up
+            if (s == null) return;
+            var a = CampWorld.at(s); x = a.x(); z = a.z();
+        } else return;
+        if (Math.abs(e.getX() - x) > 0.05 || Math.abs(e.getZ() - z) > 0.05) e.discard();
+    }
+    /** A canvas world's placements (cached), or null when it is no canvas or its file cannot be read. */
+    static Map<String, CampNpcPlacements.Place> canvas(ServerWorld w) {
+        var cached = CANVAS.get(w.getRegistryKey());
+        if (cached != null) return cached;
+        for (var plan : BuildMode.PLANS.values()) if (plan.key() == w.getRegistryKey()) {
+            try {
+                var places = Map.copyOf(strict(file(DimensionType.getSaveDirectory(plan.key(), BuildMode.root()), plan.id()), plan.id()));
+                CANVAS.put(plan.key(), places);
+                return places;
+            } catch (Exception ex) { return null; }
+        }
+        return null;
+    }
+
     static void tell(ServerPlayerEntity p, String why, String done) {
         p.sendMessage(why.isEmpty() ? Text.literal(done).formatted(Formatting.GREEN) : Text.literal(why).formatted(Formatting.RED), false);
     }
@@ -168,6 +233,7 @@ final class CampNpcEggs {
             return why.isEmpty() ? ActionResult.SUCCESS : ActionResult.FAIL;
         });
         UseEntityCallback.EVENT.register((player, world, hand, entity, hit) -> {
+            if (entity.getCommandTags().contains(MARKER_TAG)) return ActionResult.FAIL; // a canvas stand-in is not a trader
             if (eggId(player.getStackInHand(hand)) == null) return ActionResult.PASS;
             if (!world.isClient && player instanceof ServerPlayerEntity p) { USED.put(p.getUuid(), p.getServer().getTicks()); if (hand == Hand.MAIN_HAND) tell(p, "Use the egg on a block where the NPC should stand.", ""); }
             return ActionResult.FAIL;
@@ -180,6 +246,8 @@ final class CampNpcEggs {
             return TypedActionResult.fail(held);
         });
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register((h, server) -> USED.remove(h.player.getUuid()));
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register(CampNpcEggs::loaded);
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPED.register(server -> CANVAS.clear());
         CommandRegistrationCallback.EVENT.register((d, access, env) -> d.register(CommandManager.literal("campnpc").requires(CampNpcEggs::allowed)
             .then(CommandManager.literal("egg").then(CommandManager.argument("id", StringArgumentType.word()).suggests((c, b) -> { b.suggest("all"); CampNpcPlacements.ids().forEach(b::suggest); return b.buildFuture(); })
                 .executes(c -> {
@@ -197,10 +265,18 @@ final class CampNpcEggs {
                         n++;
                     }
                     if (n == 0) { tell(p, "No camp NPC is called " + id + ".", ""); return 0; }
-                    tell(p, "", n + " NPC" + (n == 1 ? "" : "s") + " back to the shipped or default spot."); return n;
+                    tell(p, "", n + " NPC" + (n == 1 ? "" : "s") + (BuildMode.active() ? " removed from this canvas." : " back to the shipped or default spot.")); return n;
                 })))
             .then(CommandManager.literal("list").executes(c -> {
                 var src = c.getSource();
+                if (BuildMode.active()) {
+                    var pl = src.getPlayer() == null ? null : BuildMode.plan(src.getPlayer());
+                    var places = pl == null ? null : canvas(src.getWorld());
+                    if (places == null) { src.sendFeedback(() -> Text.literal("Stand in a build canvas whose NPC file can be read."), false); return 0; }
+                    if (places.isEmpty()) src.sendFeedback(() -> Text.literal("No camp NPCs placed on " + pl.id() + "."), false);
+                    for (var e : new java.util.TreeMap<>(places).entrySet()) src.sendFeedback(() -> Text.literal(String.format(java.util.Locale.ROOT, "%s: %.1f, %.1f, %.1f yaw %.0f [%s]", e.getKey(), e.getValue().dx(), e.getValue().y(), e.getValue().dz(), e.getValue().yaw(), pl.id())), false);
+                    return 1;
+                }
                 for (var s : Spec.CAMPSTATIONS) if (!s.npc().equals("-")) {
                     var a = CampWorld.at(s);
                     String from = CampWorld.placedWorld.containsKey(s.id()) ? "placed" : CampWorld.placedShipped.containsKey(s.id()) ? "shipped" : "sheet";

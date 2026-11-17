@@ -33,7 +33,8 @@ public final class CampNpcPlacementsCheck {
         check(refused("not json", "camp-4"), "a broken file is refused");
         check(refused("{\"version\":1,\"map\":\"camp-4\",\"npcs\":{\"tailor\":{\"dx\":1,\"y\":65,\"dz\":1}}}", "camp-4"), "a placement with no yaw is refused");
         check(refused("{\"version\":1,\"map\":\"camp-4\",\"npcs\":{\"tailor\":{\"dx\":99999,\"y\":65,\"dz\":1,\"yaw\":0}}}", "camp-4"), "a placement out of reach is refused");
-        check(CampNpcPlacements.parse("{\"version\":1,\"map\":\"camp-4\",\"npcs\":{\"gone\":{\"dx\":1,\"y\":65,\"dz\":1,\"yaw\":0}}}", "camp-4").isEmpty(), "an id no longer on the sheet is skipped");
+        check(CampNpcPlacements.parse("{\"version\":1,\"map\":\"camp-4\",\"npcs\":{\"gone\":{\"dx\":1,\"y\":65,\"dz\":1,\"yaw\":0}}}", "camp-4").containsKey("gone"), "an id no longer on the sheet is kept, so a save does not erase it");
+        check(refused("{\"version\":1,\"map\":\"camp-4\",\"npcs\":{\"../x\":{\"dx\":1,\"y\":65,\"dz\":1,\"yaw\":0}}}", "camp-4"), "an id that is not an NPC id is refused");
         check(CampNpcPlacements.parse("{\"version\":1,\"map\":\"camp-4\"}", "camp-4").isEmpty(), "a file with no npcs is empty");
 
         var shipped = Map.of("tailor", b, "archivist", a);

@@ -211,7 +211,13 @@ public final class GravesAndGlory implements ModInitializer {
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register((player,world,hand,entity,hit)->{
             String station=entity.getCommandTags().stream().filter(t->t.startsWith("camp:")).map(t->t.substring(5)).findFirst().orElse("");
             if(station.isEmpty())return ActionResult.PASS;
-            if(!world.isClient&&player instanceof ServerPlayerEntity p&&battle!=null&&p.squaredDistanceTo(entity)<36){openCamp(p,station);CampWorld.swing(p.getServerWorld(),p,station);}
+            if(!world.isClient&&player instanceof ServerPlayerEntity p&&battle!=null&&p.squaredDistanceTo(entity)<36){
+                // a plain client's click on a staff NPC itself always gets the NPC's chat line (lobby NPC spec 3.4), the Quartermaster and Drillmaster too;
+                // their station blocks, the lectern and the hotbar items keep Recruit and practice
+                if(VersionGate.plain(p)&&CampNpcs.hasNpc(station)&&!(battle.running&&battle.squads.get(p.getUuid())!=null&&battle.squads.get(p.getUuid()).seated))PlainClients.npc(p,station);
+                else openCamp(p,station);
+                CampWorld.swing(p.getServerWorld(),p,station);
+            }
             return ActionResult.SUCCESS;
         });
         UseBlockCallback.EVENT.register((player,world,hand,hit)->{

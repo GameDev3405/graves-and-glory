@@ -41,7 +41,8 @@ final class CampNpcPlacements {
 
     /**
      * The placements of a file for map. Throws IllegalArgumentException on a file that is not this version, names another map, or holds a
-     * coordinate that is not finite or out of reach. An id that is no longer an NPC (a row removed from the sheet) is skipped, not an error.
+     * coordinate that is not finite or out of reach. An id that is no longer an NPC (a row renamed or removed) is kept, so a later save does
+     * not erase it; at() only ever asks for real rows.
      */
     static Map<String, Place> parse(String json, String map) {
         JsonObject o;
@@ -51,9 +52,8 @@ final class CampNpcPlacements {
         if (!in.equals(map)) throw new IllegalArgumentException("the file is for map '" + in + "', not '" + map + "'");
         var out = new TreeMap<String, Place>();
         if (!o.has("npcs")) return out;
-        var known = ids();
         for (var e : o.getAsJsonObject("npcs").entrySet()) {
-            if (!known.contains(e.getKey())) continue;
+            if (!e.getKey().matches("[a-z0-9_]{1,64}")) throw new IllegalArgumentException("'" + e.getKey() + "' is not an NPC id");
             var p = e.getValue().getAsJsonObject();
             double dx = num(p, "dx", e.getKey()), y = num(p, "y", e.getKey()), dz = num(p, "dz", e.getKey()), yaw = num(p, "yaw", e.getKey());
             if (Math.abs(dx) > REACH || Math.abs(dz) > REACH || y < MIN_Y || y > MAX_Y) throw new IllegalArgumentException(e.getKey() + ": out of reach (" + dx + ", " + y + ", " + dz + ")");
